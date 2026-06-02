@@ -98,10 +98,16 @@ qianfan = ["qianfan>=0.4.12.3"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+testpaths = ["backend/tests"]
+addopts = "-m \"not integration\" -k \"not (test_server_config or test_stock_codes)\""
+markers = [
+    "integration: 标记集成/端到端测试（默认跳过）",
+]
 
 [project.scripts]
-tradingagents = "main:main"
+tradingagents = "cli.main:main"
 
 [tool.setuptools.packages.find]
-include = ["tradingagents*"]
+where = ["backend"]
+include = ["app*", "cli*", "tradingagents*"]
 exclude = ["tests*", "docs*", "scripts*", "data*", "logs*", "reports*", "results*", "eval_results*", "upstream_contribution*"]

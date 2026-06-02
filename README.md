@@ -41,8 +41,8 @@
 ### 📄 许可证详情
 
 本项目采用**混合许可证**模式：
-- 🔓 **开源部分**（Apache 2.0）：除 `app/` 和 `frontend/` 外的所有文件
-- 🔒 **专有部分**（需商业授权）：`app/`（FastAPI后端）和 `frontend/`（Vue前端）目录
+- 🔓 **开源部分**（Apache 2.0）：除 `backend/app/` 和 `frontend/` 外的所有文件
+- 🔒 **专有部分**（需商业授权）：`backend/app/`（FastAPI后端）和 `frontend/`（Vue前端）目录
 
 详细说明请查看：[版权声明](./COPYRIGHT.md) | [许可证文件](./LICENSE)
 
@@ -204,12 +204,12 @@
 本项目采用**混合许可证**模式，详见 [LICENSE](LICENSE) 文件：
 
 ### 🔓 开源部分（Apache 2.0）
-- **适用范围**：除 `app/` 和 `frontend/` 外的所有文件
+- **适用范围**：除 `backend/app/` 和 `frontend/` 外的所有文件
 - **权限**：商业使用 ✅ | 修改分发 ✅ | 私人使用 ✅ | 专利使用 ✅
 - **条件**：保留版权声明 ❗ | 包含许可证副本 ❗
 
 ### 🔒 专有部分（需商业授权）
-- **适用范围**：`app/`（FastAPI后端）和 `frontend/`（Vue前端）目录
+- **适用范围**：`backend/app/`（FastAPI后端）和 `frontend/`（Vue前端）目录
 - **商业使用**：需要单独许可协议
 - **联系授权**：[hsliup@163.com](mailto:hsliup@163.com)
 
@@ -222,7 +222,7 @@
 
 - [版权声明](./COPYRIGHT.md) - 详细的版权信息和使用条款
 - [主许可证](./LICENSE) - Apache 2.0 许可证
-- [后端专有许可证](./app/LICENSE) - 后端专有组件许可证
+- [后端专有许可证](./backend/app/LICENSE) - 后端专有组件许可证
 - [前端专有许可证](./frontend/LICENSE) - 前端专有组件许可证
 
 ## 🙏 致谢与感恩

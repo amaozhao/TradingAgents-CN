@@ -11,6 +11,7 @@ ARG TARGETARCH
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app/backend \
     TZ=Asia/Shanghai
 
 WORKDIR /app
@@ -55,8 +56,9 @@ RUN mkdir -p /app/logs /app/data /app/config && \
     fc-cache -fv && \
     rm -rf /var/lib/apt/lists/*
 
-# 复制pyproject.toml和README.md（pip安装需要）
-COPY pyproject.toml README.md ./
+# 复制后端源码和打包元数据（pyproject 从 backend/ 发现 Python 包）
+COPY pyproject.toml README.md VERSION ./
+COPY backend ./backend
 
 # 安装Python依赖
 # 优化说明：
@@ -68,13 +70,9 @@ RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
     pip install --prefer-binary . -i https://pypi.tuna.tsinghua.edu.cn/simple && \
     pip install --prefer-binary pdfkit -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# 复制后端代码和必需模块
-COPY app ./app
-COPY tradingagents ./tradingagents
+# 复制运行时配置和文档资源
 COPY config ./config
-COPY scripts ./scripts
 COPY docs ./docs
-COPY install ./install
 
 # 复制Docker环境配置文件
 COPY .env.docker ./.env

@@ -57,11 +57,11 @@ pip install pytest pytest-asyncio
 
 ### 基础连接测试
 
-创建 `tests/test_your_provider_adapter.py`：
+创建 `backend/tests/test_your_provider_adapter.py`：
 
 ### 千帆模型专项测试（OpenAI 兼容模式）
 
-创建 `tests/test_qianfan_adapter.py`：
+创建 `backend/tests/test_qianfan_adapter.py`：
 
 ```python
 import os
@@ -479,7 +479,7 @@ if __name__ == "__main__":
 
 ### 自动化 Web 测试
 
-创建 `tests/test_web_integration.py`：
+创建 `backend/tests/test_web_integration.py`：
 
 ```python
 import streamlit as st

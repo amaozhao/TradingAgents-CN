@@ -107,7 +107,7 @@ GOOGLE_API_KEY=your_google_api_key_here
 
 1. **启动Web界面**:
    ```bash
-   python -m streamlit run web/app.py
+   python -m streamlit run backend/web/app.py
    ```
 
 2. **在左侧边栏中**:
@@ -177,23 +177,23 @@ TradingAgents-CN的一个独特功能是智能混合嵌入服务：
 
 ```bash
 # 测试Google AI连接
-python tests/test_gemini_correct.py
+python backend/tests/test_gemini_correct.py
 
 # 测试Web界面Google模型功能
-python tests/test_web_interface.py
+python backend/tests/test_web_interface.py
 
 # 完整的Gemini功能测试
-python tests/final_gemini_test.py
+python backend/tests/final_gemini_test.py
 ```
 
 ### 2. 验证配置
 
 ```bash
 # 检查API密钥配置
-python tests/test_all_apis.py
+python backend/tests/test_all_apis.py
 
 # 测试中文输出功能
-python tests/test_chinese_output.py
+python backend/tests/test_chinese_output.py
 ```
 
 ## 💡 使用建议
@@ -259,7 +259,7 @@ python tests/test_chinese_output.py
 echo $GOOGLE_API_KEY
 
 # 验证API密钥有效性
-python tests/test_correct_apis.py
+python backend/tests/test_correct_apis.py
 ```
 
 #### 2. 模型调用失败
@@ -277,7 +277,7 @@ python tests/test_correct_apis.py
 如果遇到问题：
 
 1. 📖 查看 [完整文档](../README.md)
-2. 🧪 运行 [测试程序](../../tests/)
+2. 🧪 运行 [测试程序](../../backend/tests/)
 3. 💬 提交 [GitHub Issue](https://github.com/hsliuping/TradingAgents-CN/issues)
 
 ## 🎉 开始使用
@@ -286,7 +286,7 @@ python tests/test_correct_apis.py
 
 ```bash
 # 启动Web界面
-python -m streamlit run web/app.py
+python -m streamlit run backend/web/app.py
 
 # 或使用CLI
 python -m cli.main --llm-provider google --model gemini-2.0-flash --stock AAPL

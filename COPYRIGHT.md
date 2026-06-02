@@ -8,19 +8,19 @@
 **版权所有者 / Copyright Owner**: hsliuping  
 **版权年份 / Copyright Year**: 2025  
 **适用组件 / Applicable Components**:
-- `app/` - FastAPI 后端应用 / FastAPI Backend Application
+- `backend/app/` - FastAPI 后端应用 / FastAPI Backend Application
 - `frontend/` - Vue.js 前端应用 / Vue.js Frontend Application
 
 ### 开源组件 / Open Source Components
 
 **许可证 / License**: Apache License 2.0  
 **适用组件 / Applicable Components**:
-- `tradingagents/` - 核心交易智能体库 / Core Trading Agents Library
-- `cli/` - 命令行工具 / Command Line Tools
-- `scripts/` - 运维脚本 / Operational Scripts
+- `backend/tradingagents/` - 核心交易智能体库 / Core Trading Agents Library
+- `backend/cli/` - 命令行工具 / Command Line Tools
+- `backend/scripts/` - 运维脚本 / Operational Scripts
 - `docs/` - 文档 / Documentation
-- `examples/` - 示例代码 / Example Code
-- `web/` - Streamlit Web 应用 / Streamlit Web Application
+- `backend/examples/` - 示例代码 / Example Code
+- `backend/web/` - Streamlit Web 应用 / Streamlit Web Application
 - `tests/` - 测试文件 / Test Files
 - 其他配置文件 / Other Configuration Files
 
@@ -65,7 +65,7 @@ For commercial licensing of proprietary components, please contact the copyright
 ## 📚 相关文档 / Related Documents
 
 - [LICENSE](./LICENSE) - 主许可证文件 / Main License File
-- [app/LICENSE](./app/LICENSE) - 后端专有许可证 / Backend Proprietary License
+- [backend/app/LICENSE](./backend/app/LICENSE) - 后端专有许可证 / Backend Proprietary License
 - [frontend/LICENSE](./frontend/LICENSE) - 前端专有许可证 / Frontend Proprietary License
 - [LICENSING.md](./LICENSING.md) - 详细许可证说明 / Detailed License Information
 - [COMMERCIAL_LICENSE_TEMPLATE.md](./COMMERCIAL_LICENSE_TEMPLATE.md) - 商业许可证模板 / Commercial License Template

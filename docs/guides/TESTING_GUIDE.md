@@ -49,10 +49,10 @@ print('DeepSeek API Key:', '✅ 已配置' if os.getenv('DEEPSEEK_API_KEY') else
 "
 
 # 测试基本面分析
-python tests/test_fundamentals_analysis.py
+python backend/tests/test_fundamentals_analysis.py
 
 # 测试DeepSeek Token统计
-python tests/test_deepseek_token_tracking.py
+python backend/tests/test_deepseek_token_tracking.py
 ```
 
 ## 📊 详细测试项目
@@ -150,7 +150,7 @@ print('苹果公司分析:', result)
 
 ```bash
 # 启动Web界面
-streamlit run web/app.py
+streamlit run backend/web/app.py
 ```
 
 访问 http://localhost:8501 进行测试：
@@ -210,7 +210,7 @@ python -m cli.main
 ```bash
 # 启用调试模式
 export TRADINGAGENTS_LOG_LEVEL=DEBUG
-python tests/test_deepseek_token_tracking.py
+python backend/tests/test_deepseek_token_tracking.py
 ```
 
 ### 问题3：基本面分析显示模板内容
@@ -236,7 +236,7 @@ print('数据获取结果:', data[:200] if data else '获取失败')
 
 **测试环境**：
 - 操作系统：Windows 11 / macOS / Ubuntu
-- Python版本：3.10.x
+- Python版本：3.13.x
 - 测试时间：2025-01-08
 
 **测试项目**：

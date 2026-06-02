@@ -197,8 +197,8 @@ These files should only be touched when a backend contract must explicitly under
 **Files:**
 - Modify: `pyproject.toml`
 - Modify: `tradingagents/default_config.py`
-- Test: `tests/test_env_overrides.py`
-- Test: `tests/test_checkpoint_resume.py`
+- Test: `backend/tests/test_env_overrides.py`
+- Test: `backend/tests/test_checkpoint_resume.py`
 
 **Required dependency changes:**
 - Add `langgraph-checkpoint-sqlite>=2.0.0`.
@@ -248,8 +248,8 @@ These files should only be touched when a backend contract must explicitly under
 - Modify: `tradingagents/agents/risk_mgmt/conservative_debator.py`
 - Modify: `tradingagents/agents/risk_mgmt/neutral_debator.py`
 - Modify: `tradingagents/agents/managers/risk_manager.py`
-- Test: `tests/test_crypto_asset_mode.py`
-- Test: `tests/test_instrument_identity.py`
+- Test: `backend/tests/test_crypto_asset_mode.py`
+- Test: `backend/tests/test_instrument_identity.py`
 
 **Required state additions:**
 - `asset_type`
@@ -288,9 +288,9 @@ These files should only be touched when a backend contract must explicitly under
 - Modify: `tradingagents/agents/utils/agent_utils.py`
 - Modify: `tradingagents/agents/utils/instrument_utils.py`
 - Modify: `tradingagents/graph/trading_graph.py`
-- Test: `tests/test_symbol_utils.py`
-- Test: `tests/test_safe_ticker_component.py`
-- Test: `tests/test_instrument_identity.py`
+- Test: `backend/tests/test_symbol_utils.py`
+- Test: `backend/tests/test_safe_ticker_component.py`
+- Test: `backend/tests/test_instrument_identity.py`
 
 **Required behavior:**
 - `safe_ticker_component()` rejects path traversal and produces a filesystem-safe ticker directory name.
@@ -321,14 +321,14 @@ These files should only be touched when a backend contract must explicitly under
 - Modify: `tradingagents/llm_clients/model_catalog.py`
 - Modify: `tradingagents/llm_clients/provider_keys.py`
 - Modify: `tradingagents/graph/trading_graph.py`
-- Test: `tests/test_api_key_env.py`
-- Test: `tests/test_capabilities.py`
-- Test: `tests/test_deepseek_reasoning.py`
-- Test: `tests/test_minimax.py`
-- Test: `tests/test_google_api_key.py`
-- Test: `tests/test_ollama_base_url.py`
-- Test: `tests/test_anthropic_effort.py`
-- Test: `tests/test_model_validation.py`
+- Test: `backend/tests/test_api_key_env.py`
+- Test: `backend/tests/test_capabilities.py`
+- Test: `backend/tests/test_deepseek_reasoning.py`
+- Test: `backend/tests/test_minimax.py`
+- Test: `backend/tests/test_google_api_key.py`
+- Test: `backend/tests/test_ollama_base_url.py`
+- Test: `backend/tests/test_anthropic_effort.py`
+- Test: `backend/tests/test_model_validation.py`
 
 **Providers to preserve from CN:**
 - `openai`
@@ -382,7 +382,7 @@ These files should only be touched when a backend contract must explicitly under
 - Modify: `tradingagents/agents/trader/trader.py`
 - Modify: `tradingagents/agents/managers/risk_manager.py`
 - Modify: `tradingagents/agents/__init__.py`
-- Test: `tests/test_structured_agents.py`
+- Test: `backend/tests/test_structured_agents.py`
 
 **Schemas to include:**
 - `PortfolioRating`
@@ -426,8 +426,8 @@ These files should only be touched when a backend contract must explicitly under
 - Modify: `tradingagents/graph/trading_graph.py`
 - Modify only if required: `app/services/simple_analysis_service.py`
 - Modify only if required: `web/utils/analysis_runner.py`
-- Test: `tests/test_signal_processing.py`
-- Test: `tests/test_structured_agents.py`
+- Test: `backend/tests/test_signal_processing.py`
+- Test: `backend/tests/test_structured_agents.py`
 
 **Required behavior:**
 - Existing `Risk Judge` node path remains valid.
@@ -454,8 +454,8 @@ These files should only be touched when a backend contract must explicitly under
 - Modify: `tradingagents/graph/setup.py`
 - Modify: `tradingagents/graph/trading_graph.py`
 - Modify: `tradingagents/graph/propagation.py`
-- Test: `tests/test_checkpoint_resume.py`
-- Test: `tests/test_cli_env_skip.py`
+- Test: `backend/tests/test_checkpoint_resume.py`
+- Test: `backend/tests/test_cli_env_skip.py`
 
 **Required behavior:**
 - `TradingAgentsGraph` keeps `self.workflow`.
@@ -482,7 +482,7 @@ These files should only be touched when a backend contract must explicitly under
 - Modify: `tradingagents/graph/setup.py`
 - Modify: `tradingagents/graph/trading_graph.py`
 - Modify: `app/services/simple_analysis_service.py` only if node-message mapping needs explicit aliases.
-- Test: `tests/test_analyst_execution.py`
+- Test: `backend/tests/test_analyst_execution.py`
 
 **Required behavior:**
 - Empty selected analyst list raises clear error.
@@ -517,10 +517,10 @@ These files should only be touched when a backend contract must explicitly under
 - Create/adapt: `tradingagents/agents/utils/fundamental_data_tools.py`
 - Create/adapt: `tradingagents/agents/utils/news_data_tools.py`
 - Create/adapt: `tradingagents/agents/utils/technical_indicators_tools.py`
-- Test: `tests/test_dataflows_config.py`
-- Test: `tests/test_market_data_validator.py`
-- Test: `tests/test_no_data_handling.py`
-- Test: `tests/test_stockstats_date_column.py`
+- Test: `backend/tests/test_dataflows_config.py`
+- Test: `backend/tests/test_market_data_validator.py`
+- Test: `backend/tests/test_no_data_handling.py`
+- Test: `backend/tests/test_stockstats_date_column.py`
 
 **Required behavior:**
 - Upstream tool names such as `get_stock_data`, `get_indicators`, `get_fundamentals`, `get_news`, and `get_global_news` exist as CN-compatible wrappers.
@@ -547,8 +547,8 @@ These files should only be touched when a backend contract must explicitly under
 - Create/adapt: `tradingagents/dataflows/reddit.py`
 - Create/adapt: `tradingagents/dataflows/stocktwits.py`
 - Modify: `tradingagents/dataflows/interface.py`
-- Test: `tests/test_reddit_fallback.py`
-- Test: `tests/test_structured_agents.py`
+- Test: `backend/tests/test_reddit_fallback.py`
+- Test: `backend/tests/test_structured_agents.py`
 
 **Required source routing:**
 - A-share:
@@ -583,7 +583,7 @@ These files should only be touched when a backend contract must explicitly under
 - Modify: `tradingagents/agents/utils/memory.py`
 - Modify: `tradingagents/graph/trading_graph.py`
 - Modify: `tradingagents/graph/reflection.py`
-- Create/adapt: `tests/test_memory_log.py`
+- Create/adapt: `backend/tests/test_memory_log.py`
 
 **Required behavior:**
 - `FinancialSituationMemory` remains unchanged for role-level vector memory.
@@ -608,7 +608,7 @@ These files should only be touched when a backend contract must explicitly under
 - Create/adapt: `tradingagents/agents/utils/rating.py`
 - Modify: `tradingagents/graph/signal_processing.py`
 - Modify: `tradingagents/graph/trading_graph.py`
-- Test: `tests/test_signal_processing.py`
+- Test: `backend/tests/test_signal_processing.py`
 
 **Required behavior:**
 - Parse upstream rating labels:
@@ -665,7 +665,7 @@ These files should only be touched when a backend contract must explicitly under
 **Purpose:** Make upstream behavior measurable in this project.
 
 **Files:**
-- Create/adapt upstream tests under `tests/`
+- Create/adapt upstream tests under `backend/tests/`
 - Create/adapt: `scripts/smoke_structured_output.py`
 
 **Test groups to port/adapt:**
@@ -696,11 +696,11 @@ These files should only be touched when a backend contract must explicitly under
 - `test_temperature_config.py`
 
 **Verification commands:**
-- `conda run -n trader python -m pytest tests/test_capabilities.py tests/test_api_key_env.py -q`
-- `conda run -n trader python -m pytest tests/test_structured_agents.py tests/test_signal_processing.py -q`
-- `conda run -n trader python -m pytest tests/test_checkpoint_resume.py -q`
-- `conda run -n trader python -m pytest tests/test_market_data_validator.py tests/test_symbol_utils.py tests/test_no_data_handling.py -q`
-- `conda run -n trader python -m pytest tests -q`
+- `conda run -n trader python -m pytest backend/tests/test_capabilities.py backend/tests/test_api_key_env.py -q`
+- `conda run -n trader python -m pytest backend/tests/test_structured_agents.py backend/tests/test_signal_processing.py -q`
+- `conda run -n trader python -m pytest backend/tests/test_checkpoint_resume.py -q`
+- `conda run -n trader python -m pytest backend/tests/test_market_data_validator.py backend/tests/test_symbol_utils.py backend/tests/test_no_data_handling.py -q`
+- `conda run -n trader python -m pytest backend/tests -q`
 
 **Acceptance:**
 - Migrated upstream behavior has local tests.

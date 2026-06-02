@@ -9,15 +9,13 @@ TradingAgents-CN 项目采用**混合许可证策略**，不同组件使用不�
 以下组件继续使用 Apache License 2.0，保持开源：
 
 ```
-├── tradingagents/          # 核心交易智能体库
-├── cli/                    # 命令行工具
-├── scripts/                # 运维脚本
+├── backend/tradingagents/  # 核心交易智能体库
+├── backend/cli/            # 命令行工具
+├── backend/scripts/        # 运维脚本
 ├── docs/                   # 文档
-├── examples/               # 示例代码
-├── web/                    # Streamlit Web 应用
-├── assets/                 # 静态资源
+├── backend/examples/       # 示例代码
+├── backend/web/            # Streamlit Web 应用
 ├── tests/                  # 测试文件
-├── *.py                    # 根目录 Python 文件
 ├── *.md                    # 文档文件
 ├── *.yml, *.yaml           # 配置文件
 └── 其他配置文件
@@ -34,7 +32,7 @@ TradingAgents-CN 项目采用**混合许可证策略**，不同组件使用不�
 以下组件使用专有许可证，保护商业利益：
 
 ```
-├── app/                    # FastAPI 后端应用
+├── backend/app/            # FastAPI 后端应用
 │   ├── models/            # 数据模型
 │   ├── routers/           # API 路由
 │   ├── services/          # 业务服务

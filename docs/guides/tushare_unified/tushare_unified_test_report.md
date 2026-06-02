@@ -21,18 +21,18 @@
 #### 1. TushareProvider单元测试 (12/12 通过)
 
 ```bash
-tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_connect_success PASSED
-tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_connect_no_token PASSED
-tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_get_stock_list PASSED
-tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_get_stock_basic_info_single PASSED
-tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_get_stock_quotes PASSED
-tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_get_historical_data PASSED
-tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_normalize_ts_code PASSED
-tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_determine_market_info_from_ts_code PASSED
-tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_standardize_basic_info PASSED
-tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_standardize_quotes PASSED
-tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_format_date_output PASSED
-tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_convert_to_float PASSED
+backend/tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_connect_success PASSED
+backend/tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_connect_no_token PASSED
+backend/tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_get_stock_list PASSED
+backend/tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_get_stock_basic_info_single PASSED
+backend/tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_get_stock_quotes PASSED
+backend/tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_get_historical_data PASSED
+backend/tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_normalize_ts_code PASSED
+backend/tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_determine_market_info_from_ts_code PASSED
+backend/tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_standardize_basic_info PASSED
+backend/tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_standardize_quotes PASSED
+backend/tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_format_date_output PASSED
+backend/tests/test_tushare_unified/test_tushare_provider.py::TestTushareProvider::test_convert_to_float PASSED
 ```
 
 **测试覆盖**:

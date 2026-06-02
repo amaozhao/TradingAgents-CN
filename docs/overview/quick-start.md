@@ -117,7 +117,7 @@ REDIS_ENABLED=false
 
 ```bash
 # 启动Web界面
-streamlit run web/app.py
+streamlit run backend/web/app.py
 ```
 
 然后在浏览器中访问 `http://localhost:8501`

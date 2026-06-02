@@ -175,7 +175,7 @@ python test_data_config_cli.py
 
 ### 3. 使用演示脚本验证 | Verify Using Demo Script
 ```bash
-python examples/data_dir_config_demo.py
+python backend/examples/data_dir_config_demo.py
 ```
 
 ## 最佳实践 | Best Practices
@@ -229,10 +229,10 @@ print(f"新数据目录: {config_manager.get_data_dir()}")
 
 ## 相关文件 | Related Files
 
-- `tradingagents/config/config_manager.py` - 配置管理器
-- `tradingagents/dataflows/config.py` - 数据流配置
-- `cli/main.py` - CLI命令实现
-- `examples/data_dir_config_demo.py` - 配置演示脚本
+- `backend/tradingagents/config/config_manager.py` - 配置管理器
+- `backend/tradingagents/dataflows/config.py` - 数据流配置
+- `backend/cli/main.py` - CLI命令实现
+- `backend/examples/data_dir_config_demo.py` - 配置演示脚本
 - `test_data_config_cli.py` - 配置测试脚本
 
 ## 技术支持 | Technical Support

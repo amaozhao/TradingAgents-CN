@@ -97,8 +97,8 @@ tmp/
 temp/
 *.tmp
 
-# 测试相关（排除根目录的测试，但保留frontend/src下的测试文件）
-tests/
+# 测试相关（排除后端测试，但保留 frontend/src 下的测试文件）
+backend/tests/
 test/
 coverage/
 # 前端测试文件在构建时会被排除，这里不需要特别处理
@@ -120,11 +120,11 @@ docker-compose.*.yml
 !docker-compose.v1.0.0.yml
 
 # 脚本（保留Python脚本，排除Shell脚本）
-# scripts/ - 注释掉，因为需要Python初始化脚本
-scripts/*.sh
-scripts/*.ps1
-scripts/build-and-publish-*.sh
-scripts/full_redeploy_*.sh
+# backend/scripts/ - 保留 Python 初始化脚本，排除 shell/PowerShell 脚本
+backend/scripts/*.sh
+backend/scripts/*.ps1
+backend/scripts/build-and-publish-*.sh
+backend/scripts/full_redeploy_*.sh
 
 # 配置示例文件
 .env.example
@@ -134,4 +134,3 @@ scripts/full_redeploy_*.sh
 .editorconfig
 .prettierrc
 # 注意：不排除 tsconfig.json、vite.config.js 等，因为前端构建需要这些文件
-
