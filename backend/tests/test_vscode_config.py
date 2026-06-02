@@ -160,7 +160,7 @@ def test_project_structure():
     
     required_files = [
         '.env',
-        'pyproject.toml',
+        'backend/pyproject.toml',
         'README.md',
         '.gitignore'
     ]

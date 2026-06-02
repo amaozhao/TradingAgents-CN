@@ -83,7 +83,7 @@ source tradingagents/bin/activate  # Linux/macOS
 
 ### 3. 安装依赖
 ```bash
-pip install -e .
+pip install -e backend
 ```
 
 ### 4. 配置环境变量

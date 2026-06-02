@@ -121,7 +121,7 @@ REDDIT_USER_AGENT=your_user_agent
 
 ### Python依赖
 ```bash
-pip install -e .
+pip install -e backend
 ```
 
 ### 测试结果解读

@@ -128,6 +128,11 @@ backend/scripts/full_redeploy_*.sh
 
 # 配置示例文件
 .env.example
+
+# 后端默认配置 JSON 需要进入镜像
+!config/models.json
+!config/pricing.json
+!config/settings.json
 *.example
 
 # 其他配置文件

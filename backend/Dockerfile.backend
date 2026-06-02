@@ -2,7 +2,7 @@
 # 前后端分离架构 - 后端服务
 # 支持多架构: amd64, arm64
 
-# 使用 Python 3.13，与 pyproject.toml 的最低运行版本保持一致
+# 使用 Python 3.13，与 backend/pyproject.toml 的最低运行版本保持一致
 FROM python:3.13-slim-bookworm
 
 # 获取构建架构信息
@@ -56,8 +56,8 @@ RUN mkdir -p /app/logs /app/data /app/config && \
     fc-cache -fv && \
     rm -rf /var/lib/apt/lists/*
 
-# 复制后端源码和打包元数据（pyproject 从 backend/ 发现 Python 包）
-COPY pyproject.toml README.md VERSION ./
+# 复制后端源码和打包元数据（pyproject 位于 backend/）
+COPY README.md VERSION ./
 COPY backend ./backend
 
 # 安装Python依赖
@@ -67,7 +67,7 @@ COPY backend ./backend
 # 3. 避免从源码编译，大幅提升ARM架构构建速度
 # 4. 安装 PDF 导出工具: pdfkit
 RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
-    pip install --prefer-binary . -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip install --prefer-binary ./backend -i https://pypi.tuna.tsinghua.edu.cn/simple && \
     pip install --prefer-binary pdfkit -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 复制运行时配置和文档资源

@@ -142,7 +142,7 @@ These modules can be created from upstream, then patched for CN compatibility:
 - `tradingagents/llm_clients/model_catalog.py`: merge provider/model validation coverage.
 - `tradingagents/llm_clients/provider_keys.py`: merge canonical provider key names.
 - `tradingagents/default_config.py`: add missing upstream config keys while preserving DB-managed config boundaries.
-- `pyproject.toml`: canonical dependency declaration using `>=` lower bounds where applicable.
+- `backend/pyproject.toml`: canonical dependency declaration using `>=` lower bounds where applicable.
 
 ### Backend Integration Points To Keep Stable
 
@@ -195,7 +195,7 @@ These files should only be touched when a backend contract must explicitly under
 **Purpose:** Add only the backend dependencies and config keys required for migrated upstream capabilities.
 
 **Files:**
-- Modify: `pyproject.toml`
+- Modify: `backend/pyproject.toml`
 - Modify: `tradingagents/default_config.py`
 - Test: `backend/tests/test_env_overrides.py`
 - Test: `backend/tests/test_checkpoint_resume.py`
@@ -203,7 +203,7 @@ These files should only be touched when a backend contract must explicitly under
 **Required dependency changes:**
 - Add `langgraph-checkpoint-sqlite>=2.0.0`.
 - Add `backtrader>=1.9.78.123` only if a migrated backend module imports it or an upstream verification test requires it.
-- Keep `pyproject.toml` as the only Python dependency declaration in this repository.
+- Keep `backend/pyproject.toml` as the only Python dependency declaration in this repository.
 - Do not use `uv`.
 
 **Required config keys to add or preserve:**

@@ -125,8 +125,7 @@ else
 fi
 echo ""
 echo "如需重新构建镜像："
-echo "  docker build -t hsliup/tradingagents-backend:latest -f Dockerfile.backend ."
+echo "  docker build -t hsliup/tradingagents-backend:latest -f backend/Dockerfile.backend ."
 echo "  docker push hsliup/tradingagents-backend:latest"
 echo ""
 echo "=========================================="
-

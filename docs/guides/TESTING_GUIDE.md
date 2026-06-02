@@ -19,7 +19,7 @@ env\Scripts\activate  # Windows
 # source env/bin/activate  # Linux/macOS
 
 # 3. 安装依赖
-pip install -e .
+pip install -e backend
 
 # 4. 配置环境变量
 cp .env.example .env

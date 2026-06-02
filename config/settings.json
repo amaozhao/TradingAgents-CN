@@ -1,0 +1,51 @@
+{
+  "project_dir": "./backend/tradingagents",
+  "results_dir": "./results",
+  "data_dir": "./data",
+  "data_cache_dir": "./backend/tradingagents/dataflows/data_cache",
+  "memory_log_path": "./data/memory/trading_memory.md",
+  "memory_log_max_entries": null,
+  "llm_provider": "dashscope",
+  "deep_think_llm": "qwen-plus",
+  "quick_think_llm": "qwen-turbo",
+  "backend_url": "https://api.openai.com/v1",
+  "google_thinking_level": null,
+  "openai_reasoning_effort": null,
+  "anthropic_effort": null,
+  "temperature": null,
+  "output_language": "Chinese",
+  "checkpoint_enabled": false,
+  "max_debate_rounds": 1,
+  "max_risk_discuss_rounds": 1,
+  "max_recur_limit": 100,
+  "analyst_concurrency_limit": 1,
+  "final_decision_engine": "risk_manager",
+  "news_article_limit": 20,
+  "global_news_article_limit": 10,
+  "global_news_lookback_days": 7,
+  "global_news_queries": [
+    "中国A股 宏观经济 政策 利率 通胀",
+    "上证指数 深证成指 创业板 市场情绪",
+    "Federal Reserve interest rates inflation",
+    "S&P 500 earnings GDP economic outlook",
+    "geopolitical risk trade war sanctions"
+  ],
+  "data_vendors": {
+    "core_stock_apis": "cn_unified",
+    "technical_indicators": "cn_unified",
+    "fundamental_data": "cn_unified",
+    "news_data": "cn_unified"
+  },
+  "tool_vendors": {},
+  "benchmark_ticker": null,
+  "benchmark_map": {
+    ".SS": "000001.SS",
+    ".SH": "000001.SS",
+    ".SZ": "399001.SZ",
+    ".HK": "^HSI",
+    "": "SPY"
+  },
+  "online_tools": false,
+  "online_news": true,
+  "realtime_data": false
+}

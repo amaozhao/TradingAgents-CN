@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "tradingagents"
 version = "1.0.1"
 description = "Add your description here"
-readme = "README.md"
+readme = { text = "TradingAgents-CN backend package", content-type = "text/plain" }
 requires-python = ">=3.13"
 dependencies = [
     # 后端API框架和服务器
@@ -98,7 +98,7 @@ qianfan = ["qianfan>=0.4.12.3"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["backend/tests"]
+testpaths = ["tests"]
 addopts = "-m \"not integration\" -k \"not (test_server_config or test_stock_codes)\""
 markers = [
     "integration: 标记集成/端到端测试（默认跳过）",
@@ -108,6 +108,6 @@ markers = [
 tradingagents = "cli.main:main"
 
 [tool.setuptools.packages.find]
-where = ["backend"]
+where = ["."]
 include = ["app*", "cli*", "tradingagents*"]
 exclude = ["tests*", "docs*", "scripts*", "data*", "logs*", "reports*", "results*", "eval_results*", "upstream_contribution*"]

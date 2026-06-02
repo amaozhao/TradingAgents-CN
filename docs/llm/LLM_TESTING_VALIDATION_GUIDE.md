@@ -47,7 +47,7 @@
 
 ```bash
 # 确保项目已安装
-pip install -e .
+pip install -e backend
 
 # 安装测试相关依赖
 pip install pytest pytest-asyncio
@@ -649,7 +649,7 @@ print(f"模型支持 function calling: {models}")
 **解决方案**:
 ```bash
 # 确保项目已安装
-pip install -e .
+pip install -e backend
 
 # 检查 __init__.py 导出
 python -c "from tradingagents.llm_adapters import ChatYourProvider; print('导入成功')"

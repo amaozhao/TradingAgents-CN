@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 测试数据库依赖包兼容性修复
-验证pyproject.toml中的数据库依赖兼容性
+验证 backend/pyproject.toml 中的数据库依赖兼容性
 """
 
 import os
@@ -62,12 +62,12 @@ def test_pickle_compatibility():
 
 def test_pyproject_dependency_syntax():
     """测试pyproject依赖声明语法"""
-    print("🔧 测试pyproject.toml数据库依赖...")
+    print("🔧 测试 backend/pyproject.toml 数据库依赖...")
 
-    pyproject_file = Path(project_root) / "pyproject.toml"
+    pyproject_file = Path(backend_root) / "pyproject.toml"
 
     if not pyproject_file.exists():
-        print("  ❌ pyproject.toml文件不存在")
+        print("  ❌ backend/pyproject.toml 文件不存在")
         return False
 
     try:
@@ -76,7 +76,7 @@ def test_pyproject_dependency_syntax():
 
         dependency_text = "\n".join(dependencies)
         if "pickle5" in dependency_text:
-            print("  ❌ pyproject.toml仍包含pickle5依赖")
+            print("  ❌ backend/pyproject.toml 仍包含pickle5依赖")
             return False
 
         required_database_packages = {
@@ -101,11 +101,11 @@ def test_pyproject_dependency_syntax():
             print(f"  ❌ 存在非最小版本依赖声明: {unpinned}")
             return False
 
-        print(f"  ✅ pyproject.toml依赖检查通过，有效包数量: {len(dependencies)}")
+        print(f"  ✅ backend/pyproject.toml 依赖检查通过，有效包数量: {len(dependencies)}")
         return True
 
     except Exception as e:
-        print(f"  ❌ pyproject.toml读取失败: {e}")
+        print(f"  ❌ backend/pyproject.toml 读取失败: {e}")
         return False
 
 
@@ -137,7 +137,7 @@ def test_package_installation_simulation():
     
     if missing_packages:
         print(f"  缺少包: {missing_packages}")
-        print("  💡 运行以下命令安装: pip install -e .")
+        print("  💡 运行以下命令安装: pip install -e backend")
     
     return True  # 这个测试总是通过，只是信息性的
 
@@ -160,7 +160,7 @@ def test_deprecated_requirements_files_removed():
         print(f"  ❌ 废弃依赖文件仍存在: {remaining}")
         return False
 
-    print("  ✅ 废弃requirements文件已移除，依赖入口统一为pyproject.toml")
+    print("  ✅ 废弃requirements文件已移除，依赖入口统一为 backend/pyproject.toml")
     return True
 
 

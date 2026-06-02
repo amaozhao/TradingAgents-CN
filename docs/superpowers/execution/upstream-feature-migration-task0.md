@@ -30,7 +30,7 @@ Existing modified files before this migration execution:
 - `frontend/src/views/System/SchedulerManagement.vue`
 - `frontend/tsconfig.json`
 - `frontend/yarn.lock`
-- `pyproject.toml`
+- `backend/pyproject.toml`
 
 Existing untracked migration-related files before this execution:
 

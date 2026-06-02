@@ -46,7 +46,7 @@ def main():
         
         1. 安装依赖包：
         ```bash
-        pip install -e .
+        pip install -e backend
         ```
         
         2. 启动数据库服务：
@@ -56,7 +56,7 @@ def main():
         
         3. 测试连接：
         ```bash
-        python -m pytest tests/test_database_integration.py
+        python -m pytest backend/tests/test_database_integration.py
         ```
         """)
         return

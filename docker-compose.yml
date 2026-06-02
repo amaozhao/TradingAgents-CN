@@ -6,7 +6,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile.backend
+      dockerfile: backend/Dockerfile.backend
     image: tradingagents-backend:v1.0.1
     container_name: tradingagents-backend
     ports:
@@ -63,7 +63,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.frontend
+      dockerfile: frontend/Dockerfile.frontend
     image: tradingagents-frontend:v1.0.1
     container_name: tradingagents-frontend
     ports:
