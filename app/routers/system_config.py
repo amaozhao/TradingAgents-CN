@@ -33,6 +33,8 @@ def _mask_value(key: str, value: Any) -> Any:
         v = re.sub(r"(mongodb://[^:/?#]+):([^@/]+)@", r"\1:***@", v)
         # redis://:pass@host:port/db
         v = re.sub(r"(redis://:)[^@/]+@", r"\1***@", v)
+        if key == "REDIS_URL" and v.startswith("redis://") and "@" not in v:
+            return v.replace("redis://", "redis://:***@", 1)
         return v
     return value
 

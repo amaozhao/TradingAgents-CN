@@ -9,16 +9,22 @@ __version__ = "1.0.0-preview"
 __author__ = "TradingAgents-CN Team"
 __description__ = "Multi-agent stock analysis system for Chinese markets"
 
-# 导入核心模块
-try:
-    from .config import config_manager
-    from .utils import logging_manager
-except ImportError:
-    # 如果导入失败，不影响模块的基本功能
-    pass
+def __getattr__(name):
+    """Lazy compatibility exports without initializing config/logging on import."""
+    if name == "config_manager":
+        from .config import config_manager
+
+        return config_manager
+    if name == "logging_manager":
+        from .utils import logging_manager
+
+        return logging_manager
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     "__version__",
     "__author__", 
-    "__description__"
+    "__description__",
+    "config_manager",
+    "logging_manager",
 ]

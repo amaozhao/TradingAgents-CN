@@ -1,13 +1,17 @@
 import os
 import re
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List
 
 import questionary
+from dotenv import find_dotenv, set_key
 from rich.console import Console
 
-from cli.models import AnalystType
+from cli.models import AnalystType, AssetType
+from tradingagents.llm_clients.api_key_env import get_api_key_env
 from tradingagents.llm_clients.model_catalog import get_model_options
+from tradingagents.llm_clients.provider_keys import default_backend_url, normalize_provider_key
 from tradingagents.utils.logging_manager import get_logger
 from tradingagents.utils.stock_utils import StockUtils
 
@@ -20,6 +24,8 @@ ANALYST_ORDER = [
     ("新闻分析师 | News Analyst", AnalystType.NEWS),
     ("基本面分析师 | Fundamentals Analyst", AnalystType.FUNDAMENTALS),
 ]
+
+CRYPTO_SUFFIXES = ("-USD", "-USDT", "-USDC", "-BTC", "-ETH")
 
 PROVIDER_OPTIONS: List[Dict[str, str]] = [
     {
@@ -72,12 +78,56 @@ PROVIDER_OPTIONS: List[Dict[str, str]] = [
         "key": "glm",
         "base_url": "https://open.bigmodel.cn/api/paas/v4/",
     },
+    {
+        "label": "xAI",
+        "key": "xai",
+        "base_url": "https://api.x.ai/v1",
+    },
+    {
+        "label": "MiniMax",
+        "key": "minimax-cn",
+        "base_url": "https://api.minimaxi.com/v1",
+    },
+    {
+        "label": "Azure OpenAI",
+        "key": "azure",
+        "base_url": "",
+    },
+    {
+        "label": "千帆 Qianfan",
+        "key": "qianfan",
+        "base_url": "https://qianfan.baidubce.com/v2",
+    },
+    {
+        "label": "硅基流动 SiliconFlow",
+        "key": "siliconflow",
+        "base_url": "https://api.siliconflow.cn/v1",
+    },
 ]
 
 
 def normalize_ticker_symbol(ticker: str) -> str:
     """Normalize ticker input while preserving exchange suffixes."""
     return ticker.strip().upper()
+
+
+def detect_asset_type(ticker: str) -> AssetType:
+    normalized_ticker = ticker.strip().upper()
+    if normalized_ticker.endswith(CRYPTO_SUFFIXES):
+        return AssetType.CRYPTO
+    return AssetType.STOCK
+
+
+def filter_analysts_for_asset_type(
+    analysts: List[AnalystType], asset_type: AssetType
+) -> List[AnalystType]:
+    if asset_type != AssetType.CRYPTO:
+        return analysts
+    return [
+        analyst
+        for analyst in analysts
+        if analyst != AnalystType.FUNDAMENTALS
+    ]
 
 
 def get_ticker() -> str:
@@ -244,6 +294,110 @@ def select_shallow_thinking_agent(provider: str) -> str:
 
 def select_deep_thinking_agent(provider: str) -> str:
     return _select_model(provider, "deep")
+
+
+def provider_default_url(provider_key: str) -> str | None:
+    """Return the CLI default endpoint for a provider, matching config aliases."""
+    key = normalize_provider_key(provider_key)
+    if not key:
+        return None
+    known_keys = {item["key"] for item in PROVIDER_OPTIONS} | {
+        "qwen-cn",
+        "glm-cn",
+        "minimax",
+        "custom_openai",
+    }
+    if key not in known_keys:
+        return None
+    if key == "google":
+        return None
+    if key == "ollama":
+        return os.environ.get("OLLAMA_BASE_URL") or default_backend_url(key)
+
+    url = default_backend_url(key)
+    if key == "azure" and not url:
+        return None
+    return url or None
+
+
+def ensure_api_key(provider: str) -> str | None:
+    """Ensure the provider API key exists, prompting and persisting when missing."""
+    env_var = get_api_key_env(provider)
+    if not env_var:
+        return None
+
+    existing = os.environ.get(env_var)
+    if existing:
+        return existing
+
+    console.print(f"\n[yellow]{env_var} 未设置 | {env_var} is not set.[/yellow]")
+    key = questionary.password(
+        f"请输入 {env_var}，将保存到 .env | Paste {env_var} (will be saved to .env):",
+        style=questionary.Style(
+            [
+                ("text", "fg:green"),
+                ("highlighted", "noinherit"),
+            ]
+        ),
+    ).ask()
+    if not key:
+        console.print(f"[red]跳过。API 调用会在设置 {env_var} 前失败。[/red]")
+        return None
+
+    env_path = find_dotenv(usecwd=True) or str(Path.cwd() / ".env")
+    Path(env_path).touch(exist_ok=True)
+    set_key(env_path, env_var, key)
+    os.environ[env_var] = key
+    console.print(f"[green]已保存 {env_var} 到 {env_path}[/green]")
+    return key
+
+
+def confirm_ollama_endpoint(url: str) -> None:
+    """Print a concise confirmation and soft validation for the Ollama endpoint."""
+    from_env = os.environ.get("OLLAMA_BASE_URL")
+    origin = " (from OLLAMA_BASE_URL)" if from_env and from_env == url else ""
+    console.print(f"Using Ollama at {url}{origin}")
+
+    if not url.startswith(("http://", "https://")):
+        console.print(
+            "Note: endpoint is missing a scheme. "
+            "Ollama usually expects http://<host>:11434/v1."
+        )
+        return
+    if (
+        ":11434" not in url
+        and "://localhost" not in url
+        and "://127.0.0.1" not in url
+    ):
+        console.print("Note: remote Ollama endpoints usually include port 11434.")
+
+
+def ask_output_language() -> str:
+    """Ask for the report output language."""
+    choice = questionary.select(
+        "选择报告输出语言 | Select output language:",
+        choices=[
+            questionary.Choice("中文 (默认) | Chinese", "Chinese"),
+            questionary.Choice("English", "English"),
+            questionary.Choice("日本語 | Japanese", "Japanese"),
+            questionary.Choice("한국어 | Korean", "Korean"),
+            questionary.Choice("自定义 | Custom", "custom"),
+        ],
+        style=questionary.Style(
+            [
+                ("selected", "fg:green noinherit"),
+                ("highlighted", "fg:green noinherit"),
+                ("pointer", "noinherit"),
+            ]
+        ),
+    ).ask()
+    if choice == "custom":
+        custom = questionary.text(
+            "请输入语言名称 | Enter language name:",
+            validate=lambda x: len(x.strip()) > 0 or "请输入语言名称 | Please enter a language name.",
+        ).ask()
+        return custom.strip() if custom else "Chinese"
+    return choice or "Chinese"
 
 
 def select_llm_provider() -> tuple[str, str]:

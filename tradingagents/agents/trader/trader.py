@@ -2,21 +2,30 @@ import functools
 import time
 import json
 
+from langchain_core.messages import AIMessage
+
+from tradingagents.agents.schemas import TraderProposal, render_trader_proposal
+from tradingagents.agents.utils.agent_utils import get_instrument_context_from_state
+from tradingagents.agents.utils.structured import (
+    bind_structured,
+    invoke_structured_or_freetext,
+)
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
-from tradingagents.agents.utils.instrument_utils import build_instrument_context
 logger = get_logger("default")
 
 
-def create_trader(llm, memory):
+def create_trader(llm, memory=None):
+    structured_llm = bind_structured(llm, TraderProposal, "Trader")
+
     def trader_node(state, name):
         company_name = state["company_of_interest"]
-        instrument_context = build_instrument_context(company_name)
+        instrument_context = get_instrument_context_from_state(state)
         investment_plan = state["investment_plan"]
-        market_research_report = state["market_report"]
-        sentiment_report = state["sentiment_report"]
-        news_report = state["news_report"]
-        fundamentals_report = state["fundamentals_report"]
+        market_research_report = state.get("market_report", "")
+        sentiment_report = state.get("sentiment_report", "")
+        news_report = state.get("news_report", "")
+        fundamentals_report = state.get("fundamentals_report", "")
 
         # 使用统一的股票类型检测
         from tradingagents.utils.stock_utils import StockUtils
@@ -103,16 +112,22 @@ def create_trader(llm, memory):
         logger.debug(f"💰 [DEBUG] 准备调用LLM，系统提示包含货币: {currency}")
         logger.debug(f"💰 [DEBUG] 系统提示中的关键部分: 目标价格({currency})")
 
-        result = llm.invoke(messages)
+        trader_plan = invoke_structured_or_freetext(
+            structured_llm,
+            llm,
+            messages,
+            render_trader_proposal,
+            "Trader",
+        )
 
         logger.debug(f"💰 [DEBUG] LLM调用完成")
-        logger.debug(f"💰 [DEBUG] 交易员回复长度: {len(result.content)}")
-        logger.debug(f"💰 [DEBUG] 交易员回复前500字符: {result.content[:500]}...")
+        logger.debug(f"💰 [DEBUG] 交易员回复长度: {len(trader_plan)}")
+        logger.debug(f"💰 [DEBUG] 交易员回复前500字符: {trader_plan[:500]}...")
         logger.debug(f"💰 [DEBUG] ===== 交易员节点结束 =====")
 
         return {
-            "messages": [result],
-            "trader_investment_plan": result.content,
+            "messages": [AIMessage(content=trader_plan)],
+            "trader_investment_plan": trader_plan,
             "sender": name,
         }
 

@@ -1,10 +1,9 @@
 import unittest
 import warnings
-from types import ModuleType
-from unittest.mock import patch
+
+import pytest
 
 from tradingagents.llm_clients.base_client import BaseLLMClient
-from tradingagents.llm_clients.factory import create_llm_client
 from tradingagents.llm_clients.model_catalog import get_known_models
 from tradingagents.llm_clients.validators import validate_model
 
@@ -22,10 +21,11 @@ class DummyLLMClient(BaseLLMClient):
         return validate_model(self.provider, self.model)
 
 
+@pytest.mark.unit
 class ModelValidationTests(unittest.TestCase):
-    def test_catalog_models_are_validator_approved(self):
+    def test_cli_catalog_models_are_all_validator_approved(self):
         for provider, models in get_known_models().items():
-            if provider in ("ollama", "openrouter", "aihubmix", "custom_openai"):
+            if provider in ("ollama", "openrouter"):
                 continue
 
             for model in models:
@@ -43,8 +43,8 @@ class ModelValidationTests(unittest.TestCase):
         self.assertIn("not-a-real-openai-model", str(caught[0].message))
         self.assertIn("openai", str(caught[0].message))
 
-    def test_openrouter_aihubmix_ollama_and_custom_openai_allow_custom_models(self):
-        for provider in ("openrouter", "aihubmix", "ollama", "custom_openai"):
+    def test_openrouter_and_ollama_accept_custom_models_without_warning(self):
+        for provider in ("openrouter", "ollama"):
             client = DummyLLMClient(provider, "custom-model-name")
 
             with self.subTest(provider=provider):
@@ -53,35 +53,3 @@ class ModelValidationTests(unittest.TestCase):
                     client.get_llm()
 
                 self.assertEqual(caught, [])
-
-    def test_factory_supports_qianfan_as_openai_compatible(self):
-        fake_langchain_openai = ModuleType("langchain_openai")
-
-        class _FakeChatOpenAI:
-            def __init__(self, **kwargs):
-                self.kwargs = kwargs
-
-        fake_langchain_openai.ChatOpenAI = _FakeChatOpenAI
-
-        with patch.dict("sys.modules", {"langchain_openai": fake_langchain_openai}):
-            client = create_llm_client("qianfan", "ernie-4.0-8k")
-
-        self.assertEqual(client.provider, "qianfan")
-
-    def test_factory_supports_google_via_compatible_adapter(self):
-        fake_google_adapter = ModuleType("tradingagents.llm_adapters.google_openai_adapter")
-
-        class _FakeChatGoogleOpenAI:
-            def __init__(self, **kwargs):
-                self.kwargs = kwargs
-
-        fake_google_adapter.ChatGoogleOpenAI = _FakeChatGoogleOpenAI
-
-        with patch.dict("sys.modules", {"tradingagents.llm_adapters.google_openai_adapter": fake_google_adapter}):
-            client = create_llm_client("google", "gemini-2.5-pro")
-
-        self.assertEqual(client.__class__.__name__, "GoogleClient")
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -323,8 +323,12 @@ async def lifespan(app: FastAPI):
         if settings.QUOTES_INGEST_ENABLED:
             quotes_ingestion = QuotesIngestionService()
             await quotes_ingestion.ensure_indexes()
+
+            def run_quotes_ingestion_tick():
+                asyncio.create_task(quotes_ingestion.run_once())
+
             scheduler.add_job(
-                quotes_ingestion.run_once,  # coroutine function; AsyncIOScheduler will await it
+                run_quotes_ingestion_tick,
                 IntervalTrigger(seconds=settings.QUOTES_INGEST_INTERVAL_SECONDS, timezone=settings.TIMEZONE),
                 id="quotes_ingestion_service",
                 name="实时行情入库服务"

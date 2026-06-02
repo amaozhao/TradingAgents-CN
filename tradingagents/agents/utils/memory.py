@@ -8,6 +8,8 @@ import threading
 import hashlib
 from typing import Dict, Optional
 
+from tradingagents.agents.utils.trading_memory_log import TradingMemoryLog
+
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
 logger = get_logger("agents.utils.memory")

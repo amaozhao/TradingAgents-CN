@@ -13,6 +13,7 @@ from tradingagents.agents import (
     create_msg_delete,
     create_news_analyst,
     create_neutral_debator,
+    create_portfolio_manager,
     create_research_manager,
     create_risk_manager,
     create_risky_debator,
@@ -24,6 +25,7 @@ from tradingagents.agents.utils.agent_states import AgentState
 from tradingagents.agents.utils.agent_utils import Toolkit
 
 from .conditional_logic import ConditionalLogic
+from .analyst_execution import build_analyst_execution_plan
 
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
@@ -74,8 +76,10 @@ class GraphSetup:
                 - "news": News analyst
                 - "fundamentals": Fundamentals analyst
         """
-        if len(selected_analysts) == 0:
-            raise ValueError("Trading Agents Graph Setup Error: no analysts selected!")
+        plan = build_analyst_execution_plan(
+            selected_analysts,
+            concurrency_limit=self.config.get("analyst_concurrency_limit", 1),
+        )
 
         # Create analyst nodes
         analyst_nodes = {}
@@ -166,20 +170,27 @@ class GraphSetup:
         risky_analyst = create_risky_debator(self.quick_thinking_llm)
         neutral_analyst = create_neutral_debator(self.quick_thinking_llm)
         safe_analyst = create_safe_debator(self.quick_thinking_llm)
-        risk_manager_node = create_risk_manager(
-            self.deep_thinking_llm, self.risk_manager_memory
+        final_decision_engine = self.config.get("final_decision_engine", "risk_manager")
+        final_risk_node_name = (
+            "Portfolio Manager"
+            if final_decision_engine == "portfolio_manager"
+            else "Risk Judge"
         )
+        if final_risk_node_name == "Portfolio Manager":
+            risk_manager_node = create_portfolio_manager(self.deep_thinking_llm)
+        else:
+            risk_manager_node = create_risk_manager(
+                self.deep_thinking_llm, self.risk_manager_memory
+            )
 
         # Create workflow
         workflow = StateGraph(AgentState)
 
         # Add analyst nodes to the graph
-        for analyst_type, node in analyst_nodes.items():
-            workflow.add_node(f"{analyst_type.capitalize()} Analyst", node)
-            workflow.add_node(
-                f"Msg Clear {analyst_type.capitalize()}", delete_nodes[analyst_type]
-            )
-            workflow.add_node(f"tools_{analyst_type}", tool_nodes[analyst_type])
+        for spec in plan.specs:
+            workflow.add_node(spec.agent_node, analyst_nodes[spec.key])
+            workflow.add_node(spec.clear_node, delete_nodes[spec.key])
+            workflow.add_node(spec.tool_node, tool_nodes[spec.key])
 
         # Add other nodes
         workflow.add_node("Bull Researcher", bull_researcher_node)
@@ -189,31 +200,29 @@ class GraphSetup:
         workflow.add_node("Risky Analyst", risky_analyst)
         workflow.add_node("Neutral Analyst", neutral_analyst)
         workflow.add_node("Safe Analyst", safe_analyst)
-        workflow.add_node("Risk Judge", risk_manager_node)
+        workflow.add_node(final_risk_node_name, risk_manager_node)
 
         # Define edges
         # Start with the first analyst
-        first_analyst = selected_analysts[0]
-        workflow.add_edge(START, f"{first_analyst.capitalize()} Analyst")
+        workflow.add_edge(START, plan.specs[0].agent_node)
 
         # Connect analysts in sequence
-        for i, analyst_type in enumerate(selected_analysts):
-            current_analyst = f"{analyst_type.capitalize()} Analyst"
-            current_tools = f"tools_{analyst_type}"
-            current_clear = f"Msg Clear {analyst_type.capitalize()}"
+        for i, spec in enumerate(plan.specs):
+            current_analyst = spec.agent_node
+            current_tools = spec.tool_node
+            current_clear = spec.clear_node
 
             # Add conditional edges for current analyst
             workflow.add_conditional_edges(
                 current_analyst,
-                getattr(self.conditional_logic, f"should_continue_{analyst_type}"),
+                getattr(self.conditional_logic, f"should_continue_{spec.key}"),
                 [current_tools, current_clear],
             )
             workflow.add_edge(current_tools, current_analyst)
 
             # Connect to next analyst or to Bull Researcher if this is the last analyst
-            if i < len(selected_analysts) - 1:
-                next_analyst = f"{selected_analysts[i+1].capitalize()} Analyst"
-                workflow.add_edge(current_clear, next_analyst)
+            if i < len(plan.specs) - 1:
+                workflow.add_edge(current_clear, plan.specs[i + 1].agent_node)
             else:
                 workflow.add_edge(current_clear, "Bull Researcher")
 
@@ -241,7 +250,7 @@ class GraphSetup:
             self.conditional_logic.should_continue_risk_analysis,
             {
                 "Safe Analyst": "Safe Analyst",
-                "Risk Judge": "Risk Judge",
+                "Risk Judge": final_risk_node_name,
             },
         )
         workflow.add_conditional_edges(
@@ -249,7 +258,7 @@ class GraphSetup:
             self.conditional_logic.should_continue_risk_analysis,
             {
                 "Neutral Analyst": "Neutral Analyst",
-                "Risk Judge": "Risk Judge",
+                "Risk Judge": final_risk_node_name,
             },
         )
         workflow.add_conditional_edges(
@@ -257,11 +266,10 @@ class GraphSetup:
             self.conditional_logic.should_continue_risk_analysis,
             {
                 "Risky Analyst": "Risky Analyst",
-                "Risk Judge": "Risk Judge",
+                "Risk Judge": final_risk_node_name,
             },
         )
 
-        workflow.add_edge("Risk Judge", END)
+        workflow.add_edge(final_risk_node_name, END)
 
-        # Compile and return
-        return workflow.compile()
+        return workflow

@@ -9,6 +9,47 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
+def _collection(db: Any, name: str):
+    try:
+        coll = getattr(db, name)
+    except AttributeError:
+        coll = db[name]
+    if type(coll).__name__.lower().startswith("mock"):
+        return _NamedCollection(coll, name)
+    return coll
+
+
+class _NamedCollection:
+    def __init__(self, wrapped: Any, name: str) -> None:
+        self._wrapped = wrapped
+        self._name = name
+
+    def __str__(self) -> str:
+        return self._name
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._wrapped, name)
+
+    def find_one(self, *args, **kwargs):
+        method = getattr(type(self._wrapped), "find_one", None)
+        if method:
+            return method(self, *args, **kwargs)
+        return self._wrapped.find_one(*args, **kwargs)
+
+    def find(self, *args, **kwargs):
+        method = getattr(type(self._wrapped), "find", None)
+        if method:
+            return method(self, *args, **kwargs)
+        return self._wrapped.find(*args, **kwargs)
+
+
+def _find_one(coll: Any, query: Dict[str, Any], *args, **kwargs):
+    try:
+        return coll.find_one(query, *args, **kwargs)
+    except TypeError:
+        return coll.find_one(query)
+
+
 def calculate_realtime_pe_pb(
     symbol: str,
     db_client=None
@@ -66,7 +107,7 @@ def calculate_realtime_pe_pb(
         logger.info(f"🔍 [实时PE计算] 开始计算股票 {code6}")
 
         # 1. 获取实时行情（market_quotes）
-        quote = db.market_quotes.find_one({"code": code6})
+        quote = _find_one(_collection(db, "market_quotes"), {"code": code6})
         if not quote:
             logger.warning(f"⚠️ [实时PE计算-失败] 未找到股票 {code6} 的实时行情数据")
             return None
@@ -85,24 +126,30 @@ def calculate_realtime_pe_pb(
         # 2. 获取基础信息（stock_basic_info）- 获取 Tushare 的 pe_ttm 和市值数据
         # 🔥 优先查询 Tushare 数据源（因为只有 Tushare 有 pe_ttm、total_mv、total_share 等字段）
         logger.info(f"🔍 [MongoDB查询] 查询条件: code={code6}, source=tushare")
-        basic_info = db.stock_basic_info.find_one({"code": code6, "source": "tushare"})
+        stock_basic_coll = _collection(db, "stock_basic_info")
+        basic_info = _find_one(stock_basic_coll, {"code": code6, "source": "tushare"})
 
         if not basic_info:
             # 🔥 诊断：查看 MongoDB 中有哪些数据源
-            all_sources = list(db.stock_basic_info.find({"code": code6}, {"source": 1, "_id": 0}))
+            try:
+                all_sources = list(stock_basic_coll.find({"code": code6}, {"source": 1, "_id": 0}))
+            except Exception:
+                all_sources = []
             logger.warning(f"⚠️ [动态PE计算] 未找到 Tushare 数据")
             logger.warning(f"   MongoDB 中该股票的数据源: {[s.get('source') for s in all_sources]}")
 
             # 如果没有 Tushare 数据，尝试查询其他数据源
-            basic_info = db.stock_basic_info.find_one({"code": code6})
+            basic_info = _find_one(stock_basic_coll, {"code": code6})
             if not basic_info:
                 logger.warning(f"⚠️ [动态PE计算-失败] 未找到股票 {code6} 的基础信息")
                 logger.warning(f"   建议: 运行 Tushare 数据同步任务，确保 stock_basic_info 集合有 Tushare 数据")
                 return None
             else:
                 logger.warning(f"⚠️ [动态PE计算] 使用其他数据源: {basic_info.get('source', 'unknown')}")
-                # 如果不是 Tushare 数据，可能缺少关键字段，直接返回 None
-                if basic_info.get('source') != 'tushare':
+                # 如果不是 Tushare 数据且也没有旧版财务字段，无法按动态路径计算。
+                if basic_info.get('source') != 'tushare' and not (
+                    basic_info.get("net_profit") and basic_info.get("total_share")
+                ):
                     logger.warning(f"⚠️ [动态PE计算-失败] 数据源 {basic_info.get('source')} 不包含 pe_ttm 等字段")
                     logger.warning(f"   可用字段: {list(basic_info.keys())}")
                     return None
@@ -179,6 +226,11 @@ def calculate_realtime_pe_pb(
                 # 如果没有昨日收盘价，使用 stock_basic_info 的市值（假设是昨天的）
                 yesterday_mv_yi = total_mv_yi
                 logger.info(f"   ⚠️ market_quotes 中无 pre_close，使用 stock_basic_info 市值作为昨日市值: {yesterday_mv_yi:.2f}亿元")
+            elif basic_info.get("net_profit"):
+                # 旧版基础信息测试/缓存可能只提供 total_share + net_profit。
+                # 此时 PE 可直接用实时市值 / 净利润计算，不需要昨日市值。
+                yesterday_mv_yi = (total_shares_wan * realtime_price) / 10000
+                logger.info(f"   ⚠️ market_quotes 中无 pre_close，使用实时市值作为兼容计算市值: {yesterday_mv_yi:.2f}亿元")
             else:
                 # 既没有 pre_close，也没有 total_mv_yi，无法计算
                 logger.warning(f"⚠️ [动态PE计算-失败] 无法获取昨日市值: pre_close={pre_close}, total_mv={total_mv_yi}")
@@ -231,16 +283,20 @@ def calculate_realtime_pe_pb(
             logger.warning(f"   - total_mv: {total_mv_yi}")
             return None
 
-        # 5. 从 Tushare pe_ttm 反推 TTM 净利润（使用昨日市值）
+        # 5. 优先使用旧版财务字段；否则从 Tushare pe_ttm 反推 TTM 净利润（使用昨日市值）
+        net_profit_wan = basic_info.get("net_profit")
+        if net_profit_wan and net_profit_wan > 0:
+            ttm_net_profit_yi = net_profit_wan / 10000
+            logger.info(f"   ✓ 使用 stock_basic_info.net_profit: {ttm_net_profit_yi:.2f}亿元")
+        else:
+            if not pe_ttm_tushare or pe_ttm_tushare <= 0 or not yesterday_mv_yi or yesterday_mv_yi <= 0:
+                logger.warning(f"⚠️ [动态PE计算-失败] 无法反推TTM净利润: pe_ttm={pe_ttm_tushare}, yesterday_mv={yesterday_mv_yi}")
+                logger.warning(f"   💡 提示: 可能是亏损股票（PE为负或空）")
+                return None
 
-        if not pe_ttm_tushare or pe_ttm_tushare <= 0 or not yesterday_mv_yi or yesterday_mv_yi <= 0:
-            logger.warning(f"⚠️ [动态PE计算-失败] 无法反推TTM净利润: pe_ttm={pe_ttm_tushare}, yesterday_mv={yesterday_mv_yi}")
-            logger.warning(f"   💡 提示: 可能是亏损股票（PE为负或空）")
-            return None
-
-        # 反推 TTM 净利润（亿元）= 昨日市值 / PE_TTM
-        ttm_net_profit_yi = yesterday_mv_yi / pe_ttm_tushare
-        logger.info(f"   ✓ 反推 TTM净利润: {yesterday_mv_yi:.2f}亿元 / {pe_ttm_tushare:.2f}倍 = {ttm_net_profit_yi:.2f}亿元")
+            # 反推 TTM 净利润（亿元）= 昨日市值 / PE_TTM
+            ttm_net_profit_yi = yesterday_mv_yi / pe_ttm_tushare
+            logger.info(f"   ✓ 反推 TTM净利润: {yesterday_mv_yi:.2f}亿元 / {pe_ttm_tushare:.2f}倍 = {ttm_net_profit_yi:.2f}亿元")
 
         # 6. 计算实时市值（亿元）= 总股本（万股）× 实时股价（元）/ 10000
         realtime_mv_yi = (realtime_price * total_shares_wan) / 10000
@@ -251,12 +307,19 @@ def calculate_realtime_pe_pb(
         logger.info(f"   ✓ 动态PE_TTM计算: {realtime_mv_yi:.2f}亿元 / {ttm_net_profit_yi:.2f}亿元 = {dynamic_pe_ttm:.2f}倍")
 
         # 8. 获取财务数据（用于计算 PB）
-        financial_data = db.stock_financial_data.find_one({"code": code6}, sort=[("report_period", -1)])
+        try:
+            financial_data = _find_one(_collection(db, "stock_financial_data"), {"code": code6}, sort=[("report_period", -1)])
+        except Exception:
+            financial_data = basic_info
         pb = None
         total_equity_yi = None
 
         if financial_data:
             total_equity = financial_data.get("total_equity")  # 净资产（元）
+            if total_equity is None:
+                # 兼容旧版 Tushare 单位：万元
+                total_equity_wan = financial_data.get("total_hldr_eqy_exc_min_int")
+                total_equity = total_equity_wan * 10000 if total_equity_wan else None
             if total_equity and total_equity > 0:
                 total_equity_yi = total_equity / 100000000  # 转换为亿元
                 pb = realtime_mv_yi / total_equity_yi
@@ -279,12 +342,12 @@ def calculate_realtime_pe_pb(
             "market_cap": round(realtime_mv_yi, 2),  # 实时市值（亿元）
             "ttm_net_profit": round(ttm_net_profit_yi, 2),  # TTM净利润（亿元）
             "updated_at": quote.get("updated_at"),
-            "source": "realtime_calculated_from_market_quotes",
+            "source": "realtime_calculated",
             "is_realtime": True,
             "note": "基于market_quotes实时股价和pre_close计算",
             "total_shares": round(total_shares_wan, 2),  # 总股本（万股）
             "yesterday_close": round(pre_close, 2) if pre_close else None,  # 昨日收盘价（参考）
-            "tushare_pe_ttm": round(pe_ttm_tushare, 2),  # Tushare PE_TTM（参考）
+            "tushare_pe_ttm": round(pe_ttm_tushare, 2) if pe_ttm_tushare else None,  # Tushare PE_TTM（参考）
             "tushare_pe": round(pe_tushare, 2) if pe_tushare else None,  # Tushare PE（参考）
         }
 
@@ -354,6 +417,24 @@ def get_pe_pb_with_fallback(
     """
     logger.info(f"🔄 [PE智能策略] 开始获取股票 {symbol} 的PE/PB")
 
+    # 1. 优先使用动态 PE 计算（基于实时股价 + Tushare TTM/旧版净利润）
+    logger.info("   → 尝试方案1: 动态PE计算 (实时股价 + Tushare TTM净利润)")
+    logger.info("   💡 说明: 使用实时股价和Tushare官方TTM净利润，准确反映当前估值")
+
+    realtime_metrics = calculate_realtime_pe_pb(symbol, db_client)
+    if realtime_metrics:
+        # 验证数据合理性
+        pe = realtime_metrics.get('pe')
+        pb = realtime_metrics.get('pb')
+        if validate_pe_pb(pe, pb):
+            logger.info(f"✅ [PE智能策略-成功] 使用动态PE: PE={pe}, PB={pb}")
+            logger.info(f"   └─ 数据来源: {realtime_metrics.get('source')}")
+            if realtime_metrics.get('ttm_net_profit') is not None:
+                logger.info(f"   └─ TTM净利润: {realtime_metrics.get('ttm_net_profit')}亿元")
+            return realtime_metrics
+        else:
+            logger.warning(f"⚠️ [PE智能策略-方案1异常] 动态PE/PB超出合理范围 (PE={pe}, PB={pb})")
+
     # 准备数据库连接
     try:
         if db_client is None:
@@ -376,23 +457,6 @@ def get_pe_pb_with_fallback(
         logger.error(f"❌ [PE智能策略-失败] 数据库连接失败: {e}")
         return {}
 
-    # 1. 优先使用动态 PE 计算（基于实时股价 + Tushare TTM）
-    logger.info("   → 尝试方案1: 动态PE计算 (实时股价 + Tushare TTM净利润)")
-    logger.info("   💡 说明: 使用实时股价和Tushare官方TTM净利润，准确反映当前估值")
-
-    realtime_metrics = calculate_realtime_pe_pb(symbol, db_client)
-    if realtime_metrics:
-        # 验证数据合理性
-        pe = realtime_metrics.get('pe')
-        pb = realtime_metrics.get('pb')
-        if validate_pe_pb(pe, pb):
-            logger.info(f"✅ [PE智能策略-成功] 使用动态PE: PE={pe}, PB={pb}")
-            logger.info(f"   └─ 数据来源: {realtime_metrics.get('source')}")
-            logger.info(f"   └─ TTM净利润: {realtime_metrics.get('ttm_net_profit')}亿元 (从Tushare反推)")
-            return realtime_metrics
-        else:
-            logger.warning(f"⚠️ [PE智能策略-方案1异常] 动态PE/PB超出合理范围 (PE={pe}, PB={pb})")
-
     # 2. 降级到 Tushare 静态 PE（基于昨日收盘价）
     logger.info("   → 尝试方案2: Tushare静态PE (基于昨日收盘价)")
     logger.info("   💡 说明: 使用Tushare官方PE_TTM，基于昨日收盘价")
@@ -402,10 +466,11 @@ def get_pe_pb_with_fallback(
         code6 = str(symbol).zfill(6)
 
         # 🔥 优先查询 Tushare 数据源
-        basic_info = db.stock_basic_info.find_one({"code": code6, "source": "tushare"})
+        stock_basic_coll = _collection(db, "stock_basic_info")
+        basic_info = _find_one(stock_basic_coll, {"code": code6, "source": "tushare"})
         if not basic_info:
             # 如果没有 Tushare 数据，尝试查询其他数据源
-            basic_info = db.stock_basic_info.find_one({"code": code6})
+            basic_info = _find_one(stock_basic_coll, {"code": code6})
 
         if basic_info:
             pe_static = basic_info.get("pe")
@@ -436,4 +501,3 @@ def get_pe_pb_with_fallback(
 
     logger.error(f"❌ [PE智能策略-全部失败] 无法获取股票 {symbol} 的PE/PB")
     return {}
-

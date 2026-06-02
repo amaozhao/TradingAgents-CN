@@ -58,6 +58,19 @@ except Exception as e:
     MongoDBStorage = None
 
 
+class CostResult(float):
+    """Float-compatible cost value that can still be unpacked as (cost, currency)."""
+
+    def __new__(cls, value: float, currency: str = "CNY"):
+        obj = float.__new__(cls, value)
+        obj.currency = currency
+        return obj
+
+    def __iter__(self):
+        yield float(self)
+        yield self.currency
+
+
 class ConfigManager:
     """配置管理器"""
     
@@ -438,12 +451,12 @@ class ConfigManager:
         logger.info(f"✅ [Token记录] JSON 文件保存成功: {self.usage_file}")
         return record
     
-    def calculate_cost(self, provider: str, model_name: str, input_tokens: int, output_tokens: int) -> tuple[float, str]:
+    def calculate_cost(self, provider: str, model_name: str, input_tokens: int, output_tokens: int) -> CostResult:
         """
         计算使用成本
 
         Returns:
-            tuple[float, str]: (成本, 货币单位)
+            CostResult: float-compatible cost value, unpackable as (cost, currency)
         """
         pricing_configs = self.load_pricing()
 
@@ -452,7 +465,7 @@ class ConfigManager:
                 input_cost = (input_tokens / 1000) * pricing.input_price_per_1k
                 output_cost = (output_tokens / 1000) * pricing.output_price_per_1k
                 total_cost = input_cost + output_cost
-                return round(total_cost, 6), pricing.currency
+                return CostResult(round(total_cost, 6), pricing.currency)
 
         # 只在找不到配置时输出调试信息
         logger.warning(f"⚠️ [calculate_cost] 未找到匹配的定价配置: {provider}/{model_name}")
@@ -460,7 +473,7 @@ class ConfigManager:
         for pricing in pricing_configs:
             logger.debug(f"⚠️ [calculate_cost]   - {pricing.provider}/{pricing.model_name}")
 
-        return 0.0, "CNY"
+        return CostResult(0.0, "CNY")
     
     def load_settings(self) -> Dict[str, Any]:
         """加载设置，合并.env中的配置"""
@@ -579,12 +592,15 @@ class ConfigManager:
         # 过滤最近N天的记录
         from datetime import datetime, timedelta
 
-        cutoff_date = datetime.now() - timedelta(days=days)
+        tz = ZoneInfo(get_timezone_name())
+        cutoff_date = datetime.now(tz) - timedelta(days=days)
         
         recent_records = []
         for record in records:
             try:
-                record_date = datetime.fromisoformat(record.timestamp)
+                record_date = datetime.fromisoformat(record.timestamp.replace("Z", "+00:00"))
+                if record_date.tzinfo is None:
+                    record_date = record_date.replace(tzinfo=tz)
                 if record_date >= cutoff_date:
                     recent_records.append(record)
             except:

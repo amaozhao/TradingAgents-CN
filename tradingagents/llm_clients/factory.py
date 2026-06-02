@@ -13,9 +13,15 @@ _PROVIDER_ALIASES = {
 
 _OPENAI_COMPATIBLE = {
     "openai",
+    "azure",
+    "xai",
     "deepseek",
     "qwen",
+    "qwen-cn",
     "glm",
+    "glm-cn",
+    "minimax",
+    "minimax-cn",
     "qianfan",
     "openrouter",
     "aihubmix",
@@ -34,6 +40,11 @@ def create_llm_client(
     provider_lower = _PROVIDER_ALIASES.get(provider_lower, provider_lower)
 
     if provider_lower in _OPENAI_COMPATIBLE:
+        if provider_lower == "azure":
+            from .azure_client import AzureOpenAIClient
+
+            return AzureOpenAIClient(model, base_url, **kwargs)
+
         from .openai_client import OpenAIClient
 
         return OpenAIClient(model, base_url, provider=provider_lower, **kwargs)

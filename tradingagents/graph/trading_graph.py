@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 import json
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Dict, Any, Tuple, List, Optional
 import time
 
@@ -14,7 +14,11 @@ from langgraph.prebuilt import ToolNode
 
 from tradingagents.agents import Toolkit
 from tradingagents.default_config import DEFAULT_CONFIG
-from tradingagents.agents.utils.memory import FinancialSituationMemory
+from tradingagents.agents.utils.memory import FinancialSituationMemory, TradingMemoryLog
+from tradingagents.agents.utils.agent_utils import (
+    build_instrument_context,
+    resolve_instrument_identity,
+)
 
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
@@ -27,13 +31,36 @@ from tradingagents.agents.utils.agent_states import (
     InvestDebateState,
     RiskDebateState,
 )
-from tradingagents.dataflows.interface import set_config
+from tradingagents.dataflows.interface import set_config as set_interface_config
+from tradingagents.dataflows.config import set_config as set_dataflows_config
+from tradingagents.dataflows.utils import safe_ticker_component
 
 from .conditional_logic import ConditionalLogic
+from .checkpointer import checkpoint_step, clear_checkpoint, get_checkpointer, thread_id
 from .setup import GraphSetup
 from .propagation import Propagator
 from .reflection import Reflector
 from .signal_processing import SignalProcessor
+
+
+def _configured_provider_kwargs(config: Dict[str, Any], provider: Optional[str]) -> Dict[str, Any]:
+    """Return provider-specific runtime knobs from graph config.
+
+    Keep these provider-scoped. Some OpenAI-compatible endpoints reject
+    reasoning-specific fields, and Anthropic effort support is model-gated by
+    the Anthropic client.
+    """
+    normalized_provider = normalize_provider_key(provider) if provider else None
+    provider_kwargs: Dict[str, Any] = {}
+
+    if normalized_provider == "google" and config.get("google_thinking_level"):
+        provider_kwargs["thinking_level"] = config["google_thinking_level"]
+    if normalized_provider in {"openai", "custom_openai"} and config.get("openai_reasoning_effort"):
+        provider_kwargs["reasoning_effort"] = config["openai_reasoning_effort"]
+    if normalized_provider == "anthropic" and config.get("anthropic_effort"):
+        provider_kwargs["effort"] = config["anthropic_effort"]
+
+    return provider_kwargs
 
 
 def create_llm_by_provider(provider: str, model: str, backend_url: str, temperature: float, max_tokens: int, timeout: int, api_key: str = None, **extra_kwargs):
@@ -57,7 +84,23 @@ def create_llm_by_provider(provider: str, model: str, backend_url: str, temperat
 
     normalized_provider = normalize_provider_key(provider)
 
-    if normalized_provider in {"openai", "siliconflow", "openrouter", "aihubmix", "ollama", "deepseek", "qwen", "glm", "custom_openai", "qianfan"}:
+    if normalized_provider in {
+        "openai",
+        "siliconflow",
+        "openrouter",
+        "aihubmix",
+        "ollama",
+        "deepseek",
+        "qwen",
+        "qwen-cn",
+        "glm",
+        "glm-cn",
+        "xai",
+        "minimax",
+        "minimax-cn",
+        "custom_openai",
+        "qianfan",
+    }:
         if not api_key:
             if normalized_provider == "siliconflow":
                 api_key = os.getenv('SILICONFLOW_API_KEY')
@@ -102,16 +145,17 @@ def create_llm_by_provider(provider: str, model: str, backend_url: str, temperat
         return client.get_llm()
 
     elif normalized_provider == "anthropic":
-        from langchain_anthropic import ChatAnthropic
-
-        return ChatAnthropic(
+        client = create_llm_client(
+            provider="anthropic",
             model=model,
             base_url=backend_url,
+            api_key=api_key,
             temperature=temperature,
             max_tokens=max_tokens,
             timeout=timeout,
             **extra_kwargs,
         )
+        return client.get_llm()
 
     else:
         # 🔧 自定义厂家：使用 OpenAI 兼容模式
@@ -162,8 +206,9 @@ def _create_provider_pair(
 ) -> Tuple[Any, Any]:
     resolved_backend_url = backend_url if backend_url is not None else config.get("backend_url", "")
     shared_api_key = api_key or config.get("quick_api_key") or config.get("deep_api_key")
-    quick_extra_kwargs = quick_extra_kwargs or {}
-    deep_extra_kwargs = deep_extra_kwargs or {}
+    configured_kwargs = _configured_provider_kwargs(config, provider)
+    quick_extra_kwargs = {**configured_kwargs, **(quick_extra_kwargs or {})}
+    deep_extra_kwargs = {**configured_kwargs, **(deep_extra_kwargs or {})}
 
     deep_llm = create_llm_by_provider(
         provider=provider,
@@ -191,6 +236,19 @@ def _create_provider_pair(
 class TradingAgentsGraph:
     """Main class that orchestrates the trading agents framework."""
 
+    def _get_provider_kwargs(self) -> Dict[str, Any]:
+        provider_kwargs: Dict[str, Any] = {}
+        temperature = self.config.get("temperature")
+        if temperature not in (None, ""):
+            provider_kwargs["temperature"] = float(temperature)
+        if self.config.get("google_thinking_level"):
+            provider_kwargs["thinking_level"] = self.config["google_thinking_level"]
+        if self.config.get("openai_reasoning_effort"):
+            provider_kwargs["reasoning_effort"] = self.config["openai_reasoning_effort"]
+        if self.config.get("anthropic_effort"):
+            provider_kwargs["effort"] = self.config["anthropic_effort"]
+        return provider_kwargs
+
     def __init__(
         self,
         selected_analysts=["market", "social", "news", "fundamentals"],
@@ -207,8 +265,9 @@ class TradingAgentsGraph:
         self.debug = debug
         self.config = config or DEFAULT_CONFIG
 
-        # Update the interface's config
-        set_config(self.config)
+        # Keep both CN runtime settings and migrated upstream dataflow routing in sync.
+        set_interface_config(self.config)
+        set_dataflows_config(self.config)
 
         # Create necessary directories
         os.makedirs(
@@ -221,14 +280,17 @@ class TradingAgentsGraph:
         quick_config = self.config.get("quick_model_config", {})
         deep_config = self.config.get("deep_model_config", {})
 
+        configured_temperature = self.config.get("temperature")
+        default_temperature = 0.7 if configured_temperature in (None, "") else float(configured_temperature)
+
         # 读取快速模型参数
         quick_max_tokens = quick_config.get("max_tokens", 4000)
-        quick_temperature = quick_config.get("temperature", 0.7)
+        quick_temperature = quick_config.get("temperature", default_temperature)
         quick_timeout = quick_config.get("timeout", 180)
 
         # 读取深度模型参数
         deep_max_tokens = deep_config.get("max_tokens", 4000)
-        deep_temperature = deep_config.get("temperature", 0.7)
+        deep_temperature = deep_config.get("temperature", default_temperature)
         deep_timeout = deep_config.get("timeout", 180)
 
         # 🔧 检查是否为混合模式（快速模型和深度模型来自不同厂家）
@@ -254,7 +316,8 @@ class TradingAgentsGraph:
                 temperature=quick_temperature,
                 max_tokens=quick_max_tokens,
                 timeout=quick_timeout,
-                api_key=self.config.get("quick_api_key")  # 🔥 传递 API Key
+                api_key=self.config.get("quick_api_key"),  # 🔥 传递 API Key
+                **_configured_provider_kwargs(self.config, normalized_quick_provider),
             )
 
             self.deep_thinking_llm = create_llm_by_provider(
@@ -264,7 +327,8 @@ class TradingAgentsGraph:
                 temperature=deep_temperature,
                 max_tokens=deep_max_tokens,
                 timeout=deep_timeout,
-                api_key=self.config.get("deep_api_key")  # 🔥 传递 API Key
+                api_key=self.config.get("deep_api_key"),  # 🔥 传递 API Key
+                **_configured_provider_kwargs(self.config, normalized_deep_provider),
             )
 
             logger.info(f"✅ [混合模式] LLM 实例创建成功")
@@ -301,24 +365,21 @@ class TradingAgentsGraph:
                 api_key=api_key,
             )
         elif normalized_provider == "anthropic":
-            from langchain_anthropic import ChatAnthropic
-
             logger.info(f"🔧 [Anthropic-快速模型] max_tokens={quick_max_tokens}, temperature={quick_temperature}, timeout={quick_timeout}s")
             logger.info(f"🔧 [Anthropic-深度模型] max_tokens={deep_max_tokens}, temperature={deep_temperature}, timeout={deep_timeout}s")
 
-            self.deep_thinking_llm = ChatAnthropic(
-                model=self.config["deep_think_llm"],
-                base_url=self.config["backend_url"],
-                temperature=deep_temperature,
-                max_tokens=deep_max_tokens,
-                timeout=deep_timeout
-            )
-            self.quick_thinking_llm = ChatAnthropic(
-                model=self.config["quick_think_llm"],
-                base_url=self.config["backend_url"],
-                temperature=quick_temperature,
-                max_tokens=quick_max_tokens,
-                timeout=quick_timeout
+            anthropic_api_key = self.config.get("quick_api_key") or self.config.get("deep_api_key") or os.getenv("ANTHROPIC_API_KEY")
+            self.deep_thinking_llm, self.quick_thinking_llm = _create_provider_pair(
+                provider="anthropic",
+                config=self.config,
+                quick_temperature=quick_temperature,
+                quick_max_tokens=quick_max_tokens,
+                quick_timeout=quick_timeout,
+                deep_temperature=deep_temperature,
+                deep_max_tokens=deep_max_tokens,
+                deep_timeout=deep_timeout,
+                backend_url=self.config.get("backend_url"),
+                api_key=anthropic_api_key,
             )
         elif normalized_provider == "google":
             # 使用统一 llm_clients 入口，但底层仍返回 ChatGoogleOpenAI 兼容适配器
@@ -437,11 +498,11 @@ class TradingAgentsGraph:
             deep_config = self.config.get("deep_model_config", {})
             
             quick_max_tokens = quick_config.get("max_tokens", 4000)
-            quick_temperature = quick_config.get("temperature", 0.7)
+            quick_temperature = quick_config.get("temperature", default_temperature)
             quick_timeout = quick_config.get("timeout", 180)
             
             deep_max_tokens = deep_config.get("max_tokens", 4000)
-            deep_temperature = deep_config.get("temperature", 0.7)
+            deep_temperature = deep_config.get("temperature", default_temperature)
             deep_timeout = deep_config.get("timeout", 180)
             
             logger.info(f"🔧 [智谱AI-快速模型] max_tokens={quick_max_tokens}, temperature={quick_temperature}, timeout={quick_timeout}s")
@@ -504,11 +565,11 @@ class TradingAgentsGraph:
             deep_config = self.config.get("deep_model_config", {})
 
             quick_max_tokens = quick_config.get("max_tokens", 4000)
-            quick_temperature = quick_config.get("temperature", 0.7)
+            quick_temperature = quick_config.get("temperature", default_temperature)
             quick_timeout = quick_config.get("timeout", 180)
 
             deep_max_tokens = deep_config.get("max_tokens", 4000)
-            deep_temperature = deep_config.get("temperature", 0.7)
+            deep_temperature = deep_config.get("temperature", default_temperature)
             deep_timeout = deep_config.get("timeout", 180)
 
             logger.info(f"🔧 [{provider_name}-快速模型] max_tokens={quick_max_tokens}, temperature={quick_temperature}, timeout={quick_timeout}s")
@@ -531,17 +592,15 @@ class TradingAgentsGraph:
         
         self.toolkit = Toolkit(config=self.config)
 
-        # Initialize memories (如果启用)
+        # Preserve existing CN role memories; TradingMemoryLog is additive.
         memory_enabled = self.config.get("memory_enabled", True)
         if memory_enabled:
-            # 使用单例ChromaDB管理器，避免并发创建冲突
             self.bull_memory = FinancialSituationMemory("bull_memory", self.config)
             self.bear_memory = FinancialSituationMemory("bear_memory", self.config)
             self.trader_memory = FinancialSituationMemory("trader_memory", self.config)
             self.invest_judge_memory = FinancialSituationMemory("invest_judge_memory", self.config)
             self.risk_manager_memory = FinancialSituationMemory("risk_manager_memory", self.config)
         else:
-            # 创建空的内存对象
             self.bull_memory = None
             self.bear_memory = None
             self.trader_memory = None
@@ -579,6 +638,7 @@ class TradingAgentsGraph:
         self.propagator = Propagator()
         self.reflector = Reflector(self.quick_thinking_llm)
         self.signal_processor = SignalProcessor(self.quick_thinking_llm)
+        self.memory_log = TradingMemoryLog(self.config)
 
         # State tracking
         self.curr_state = None
@@ -586,7 +646,9 @@ class TradingAgentsGraph:
         self.log_states_dict = {}  # date to full state dict
 
         # Set up the graph
-        self.graph = self.graph_setup.setup_graph(selected_analysts)
+        self.workflow = self.graph_setup.setup_graph(selected_analysts)
+        self.graph = self.workflow.compile()
+        self._checkpointer_ctx = None
 
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:
         """Create tool nodes for different data sources.
@@ -646,7 +708,123 @@ class TradingAgentsGraph:
             ),
         }
 
-    def propagate(self, company_name, trade_date, progress_callback=None, task_id=None):
+    def resolve_instrument_context(self, ticker: str, asset_type: str = "stock") -> str:
+        identity = resolve_instrument_identity(ticker)
+        return build_instrument_context(ticker, asset_type, identity)
+
+    def _resolve_benchmark(self, ticker: str) -> str:
+        explicit = self.config.get("benchmark_ticker")
+        if explicit:
+            return explicit
+        benchmark_map = self.config.get("benchmark_map", {})
+        ticker_upper = str(ticker).upper()
+        for suffix, benchmark in benchmark_map.items():
+            if suffix and ticker_upper.endswith(str(suffix).upper()):
+                return benchmark
+        return benchmark_map.get("", "SPY")
+
+    def _fetch_returns(
+        self,
+        ticker: str,
+        trade_date: str,
+        holding_days: int = 5,
+        benchmark: str = "SPY",
+    ) -> Tuple[Optional[float], Optional[float], Optional[int]]:
+        try:
+            import yfinance as yf
+
+            start = datetime.strptime(str(trade_date), "%Y-%m-%d")
+            end = start + timedelta(days=holding_days + 7)
+            end_str = end.strftime("%Y-%m-%d")
+            stock = yf.Ticker(ticker).history(start=str(trade_date), end=end_str)
+            bench = yf.Ticker(benchmark).history(start=str(trade_date), end=end_str)
+            if len(stock) < 2 or len(bench) < 2:
+                return None, None, None
+            actual_days = min(holding_days, len(stock) - 1, len(bench) - 1)
+            raw = float(
+                (stock["Close"].iloc[actual_days] - stock["Close"].iloc[0])
+                / stock["Close"].iloc[0]
+            )
+            bench_ret = float(
+                (bench["Close"].iloc[actual_days] - bench["Close"].iloc[0])
+                / bench["Close"].iloc[0]
+            )
+            return raw, raw - bench_ret, actual_days
+        except Exception as exc:
+            logger.warning(
+                "Could not resolve outcome for %s on %s vs %s: %s",
+                ticker,
+                trade_date,
+                benchmark,
+                exc,
+            )
+            return None, None, None
+
+    def _resolve_pending_entries(self, ticker: str) -> None:
+        pending = [e for e in self.memory_log.get_pending_entries() if e["ticker"] == ticker]
+        if not pending:
+            return
+        benchmark = self._resolve_benchmark(ticker)
+        updates = []
+        for entry in pending:
+            raw, alpha, days = self._fetch_returns(ticker, entry["date"], benchmark=benchmark)
+            if raw is None:
+                continue
+            reflection = self.reflector.reflect_on_final_decision(
+                final_decision=entry.get("decision", ""),
+                raw_return=raw,
+                alpha_return=alpha,
+                benchmark_name=benchmark,
+            )
+            updates.append(
+                {
+                    "ticker": ticker,
+                    "trade_date": entry["date"],
+                    "raw_return": raw,
+                    "alpha_return": alpha,
+                    "holding_days": days,
+                    "reflection": reflection,
+                }
+            )
+        if updates:
+            self.memory_log.batch_update_with_outcomes(updates)
+
+    def _run_graph(self, company_name, trade_date, asset_type: str = "stock"):
+        self._resolve_pending_entries(company_name)
+        past_context = self.memory_log.get_past_context(company_name)
+        instrument_context = self.resolve_instrument_context(company_name, asset_type)
+        init_agent_state = self.propagator.create_initial_state(
+            company_name,
+            trade_date,
+            asset_type=asset_type,
+            past_context=past_context,
+            instrument_context=instrument_context,
+        )
+        args = self.propagator.get_graph_args()
+        if self.config.get("checkpoint_enabled"):
+            args.setdefault("config", {}).setdefault("configurable", {})["thread_id"] = thread_id(
+                company_name, str(trade_date)
+            )
+        final_state = self.graph.invoke(init_agent_state, **args)
+        self.curr_state = final_state
+        self._log_state(trade_date, final_state)
+        self.memory_log.store_decision(
+            ticker=company_name,
+            trade_date=str(trade_date),
+            final_trade_decision=final_state["final_trade_decision"],
+        )
+        if self.config.get("checkpoint_enabled"):
+            clear_checkpoint(self.config["data_cache_dir"], company_name, str(trade_date))
+        return final_state, self.process_signal(final_state["final_trade_decision"], company_name)
+
+    def propagate(
+        self,
+        company_name,
+        trade_date,
+        progress_callback=None,
+        task_id=None,
+        asset_type: str = "stock",
+    ):
         """Run the trading agents graph for a company on a specific date.
 
         Args:
@@ -662,13 +840,38 @@ class TradingAgentsGraph:
         logger.debug(f"🔍 [GRAPH DEBUG] 接收到的trade_date: '{trade_date}' (类型: {type(trade_date)})")
         logger.debug(f"🔍 [GRAPH DEBUG] 接收到的task_id: '{task_id}'")
 
+        if not isinstance(self, TradingAgentsGraph) and callable(getattr(self, "_run_graph", None)):
+            return self._run_graph(company_name, trade_date, asset_type=asset_type)
+
         self.ticker = company_name
         logger.debug(f"🔍 [GRAPH DEBUG] 设置self.ticker: '{self.ticker}'")
+
+        self._resolve_pending_entries(company_name)
+        past_context = self.memory_log.get_past_context(company_name)
+        instrument_context = self.resolve_instrument_context(company_name, asset_type)
+
+        if self.config.get("checkpoint_enabled"):
+            self._checkpointer_ctx = get_checkpointer(
+                self.config["data_cache_dir"], company_name
+            )
+            saver = self._checkpointer_ctx.__enter__()
+            self.graph = self.workflow.compile(checkpointer=saver)
+            step = checkpoint_step(
+                self.config["data_cache_dir"], company_name, str(trade_date)
+            )
+            if step is not None:
+                logger.info(f"🔄 [Checkpoint] 从步骤 {step} 恢复: {company_name} {trade_date}")
+            else:
+                logger.info(f"🆕 [Checkpoint] 开始新的分析: {company_name} {trade_date}")
 
         # Initialize state
         logger.debug(f"🔍 [GRAPH DEBUG] 创建初始状态，传递参数: company_name='{company_name}', trade_date='{trade_date}'")
         init_agent_state = self.propagator.create_initial_state(
-            company_name, trade_date
+            company_name,
+            trade_date,
+            asset_type=asset_type,
+            past_context=past_context,
+            instrument_context=instrument_context,
         )
         logger.debug(f"🔍 [GRAPH DEBUG] 初始状态中的company_of_interest: '{init_agent_state.get('company_of_interest', 'NOT_FOUND')}'")
         logger.debug(f"🔍 [GRAPH DEBUG] 初始状态中的trade_date: '{init_agent_state.get('trade_date', 'NOT_FOUND')}'")
@@ -684,106 +887,89 @@ class TradingAgentsGraph:
 
         # 根据是否有进度回调选择不同的stream_mode
         args = self.propagator.get_graph_args(use_progress_callback=bool(progress_callback))
+        if self.config.get("checkpoint_enabled"):
+            args.setdefault("config", {}).setdefault("configurable", {})["thread_id"] = thread_id(
+                company_name, str(trade_date)
+            )
 
-        if self.debug:
-            # Debug mode with tracing and progress updates
-            trace = []
-            final_state = None
-            for chunk in self.graph.stream(init_agent_state, **args):
-                # 记录节点计时
-                for node_name in chunk.keys():
-                    if not node_name.startswith('__'):
-                        # 如果有上一个节点，记录其结束时间
-                        if current_node_name and current_node_start:
-                            elapsed = time.time() - current_node_start
-                            node_timings[current_node_name] = elapsed
-                            logger.info(f"⏱️ [{current_node_name}] 耗时: {elapsed:.2f}秒")
-
-                        # 开始新节点计时
-                        current_node_name = node_name
-                        current_node_start = time.time()
-                        break
-
-                # 在 updates 模式下，chunk 格式为 {node_name: state_update}
-                # 在 values 模式下，chunk 格式为完整的状态
-                if progress_callback and args.get("stream_mode") == "updates":
-                    # updates 模式：chunk = {"Market Analyst": {...}}
-                    self._send_progress_update(chunk, progress_callback)
-                    # 累积状态更新
-                    if final_state is None:
-                        final_state = init_agent_state.copy()
-                    for node_name, node_update in chunk.items():
-                        if not node_name.startswith('__'):
-                            final_state.update(node_update)
-                else:
-                    # values 模式：chunk = {"messages": [...], ...}
-                    if len(chunk.get("messages", [])) > 0:
-                        chunk["messages"][-1].pretty_print()
-                    trace.append(chunk)
-                    final_state = chunk
-
-            if not trace and final_state:
-                # updates 模式下，使用累积的状态
-                pass
-            elif trace:
-                final_state = trace[-1]
-        else:
-            # Standard mode without tracing but with progress updates
-            if progress_callback:
-                # 使用 updates 模式以便获取节点级别的进度
+        try:
+            if self.debug:
                 trace = []
                 final_state = None
                 for chunk in self.graph.stream(init_agent_state, **args):
-                    # 记录节点计时
                     for node_name in chunk.keys():
                         if not node_name.startswith('__'):
-                            # 如果有上一个节点，记录其结束时间
+                            if current_node_name and current_node_start:
+                                elapsed = time.time() - current_node_start
+                                node_timings[current_node_name] = elapsed
+                                logger.info(f"⏱️ [{current_node_name}] 耗时: {elapsed:.2f}秒")
+
+                            current_node_name = node_name
+                            current_node_start = time.time()
+                            break
+
+                    if progress_callback and args.get("stream_mode") == "updates":
+                        self._send_progress_update(chunk, progress_callback)
+                        if final_state is None:
+                            final_state = init_agent_state.copy()
+                        for node_name, node_update in chunk.items():
+                            if not node_name.startswith('__'):
+                                final_state.update(node_update)
+                    else:
+                        if len(chunk.get("messages", [])) > 0:
+                            chunk["messages"][-1].pretty_print()
+                        trace.append(chunk)
+                        final_state = chunk
+
+                if trace:
+                    final_state = trace[-1]
+            elif progress_callback:
+                final_state = None
+                for chunk in self.graph.stream(init_agent_state, **args):
+                    for node_name in chunk.keys():
+                        if not node_name.startswith('__'):
                             if current_node_name and current_node_start:
                                 elapsed = time.time() - current_node_start
                                 node_timings[current_node_name] = elapsed
                                 logger.info(f"⏱️ [{current_node_name}] 耗时: {elapsed:.2f}秒")
                                 logger.info(f"🔍 [TIMING] 节点切换: {current_node_name} → {node_name}")
 
-                            # 开始新节点计时
                             current_node_name = node_name
                             current_node_start = time.time()
                             logger.info(f"🔍 [TIMING] 开始计时: {node_name}")
                             break
 
                     self._send_progress_update(chunk, progress_callback)
-                    # 累积状态更新
                     if final_state is None:
                         final_state = init_agent_state.copy()
                     for node_name, node_update in chunk.items():
                         if not node_name.startswith('__'):
                             final_state.update(node_update)
             else:
-                # 原有的invoke模式（也需要计时）
                 logger.info("⏱️ 使用 invoke 模式执行分析（无进度回调）")
-                # 使用stream模式以便计时，但不发送进度更新
-                trace = []
                 final_state = None
                 for chunk in self.graph.stream(init_agent_state, **args):
-                    # 记录节点计时
                     for node_name in chunk.keys():
                         if not node_name.startswith('__'):
-                            # 如果有上一个节点，记录其结束时间
                             if current_node_name and current_node_start:
                                 elapsed = time.time() - current_node_start
                                 node_timings[current_node_name] = elapsed
                                 logger.info(f"⏱️ [{current_node_name}] 耗时: {elapsed:.2f}秒")
 
-                            # 开始新节点计时
                             current_node_name = node_name
                             current_node_start = time.time()
                             break
 
-                    # 累积状态更新
                     if final_state is None:
                         final_state = init_agent_state.copy()
                     for node_name, node_update in chunk.items():
                         if not node_name.startswith('__'):
                             final_state.update(node_update)
+        finally:
+            if self._checkpointer_ctx is not None:
+                self._checkpointer_ctx.__exit__(None, None, None)
+                self._checkpointer_ctx = None
+                self.graph = self.workflow.compile()
 
         # 记录最后一个节点的时间
         if current_node_name and current_node_start:
@@ -816,6 +1002,17 @@ class TradingAgentsGraph:
         # Log state
         self._log_state(trade_date, final_state)
 
+        self.memory_log.store_decision(
+            ticker=company_name,
+            trade_date=str(trade_date),
+            final_trade_decision=final_state["final_trade_decision"],
+        )
+
+        if self.config.get("checkpoint_enabled"):
+            clear_checkpoint(
+                self.config["data_cache_dir"], company_name, str(trade_date)
+            )
+
         # 获取模型信息
         model_info = ""
         try:
@@ -843,7 +1040,7 @@ class TradingAgentsGraph:
         - "Msg Clear Market", "Msg Clear Fundamentals", etc.
         - "Bull Researcher", "Bear Researcher", "Research Manager"
         - "Trader"
-        - "Risky Analyst", "Safe Analyst", "Neutral Analyst", "Risk Judge"
+        - "Risky Analyst", "Safe Analyst", "Neutral Analyst", "Risk Judge", "Portfolio Manager"
         """
         try:
             # 从chunk中提取当前执行的节点信息
@@ -896,6 +1093,7 @@ class TradingAgentsGraph:
                 'Safe Analyst': "🛡️ 保守风险评估",
                 'Neutral Analyst': "⚖️ 中性风险评估",
                 'Risk Judge': "🎯 风险经理",
+                'Portfolio Manager': "🎯 投资组合经理",
             }
 
             # 查找映射的消息
@@ -939,7 +1137,7 @@ class TradingAgentsGraph:
 
         for node_name, elapsed in node_timings.items():
             # 优先匹配风险管理团队（因为它们也包含'Analyst'）
-            if 'Risky' in node_name or 'Safe' in node_name or 'Neutral' in node_name or 'Risk Judge' in node_name:
+            if 'Risky' in node_name or 'Safe' in node_name or 'Neutral' in node_name or 'Risk Judge' in node_name or 'Portfolio Manager' in node_name:
                 risk_nodes[node_name] = elapsed
             # 然后匹配分析师团队
             elif 'Analyst' in node_name:
@@ -1049,7 +1247,7 @@ class TradingAgentsGraph:
 
         for node_name, elapsed in node_timings.items():
             # 优先匹配风险管理团队（因为它们也包含'Analyst'）
-            if 'Risky' in node_name or 'Safe' in node_name or 'Neutral' in node_name or 'Risk Judge' in node_name:
+            if 'Risky' in node_name or 'Safe' in node_name or 'Neutral' in node_name or 'Risk Judge' in node_name or 'Portfolio Manager' in node_name:
                 risk_nodes.append((node_name, elapsed))
             # 然后匹配分析师团队
             elif 'Analyst' in node_name:
@@ -1142,32 +1340,35 @@ class TradingAgentsGraph:
         }
 
         # Save to file
-        directory = Path(f"eval_results/{self.ticker}/TradingAgentsStrategy_logs/")
+        safe_ticker = safe_ticker_component(str(self.ticker))
+        directory = Path("eval_results") / safe_ticker / "TradingAgentsStrategy_logs"
         directory.mkdir(parents=True, exist_ok=True)
 
-        with open(
-            f"eval_results/{self.ticker}/TradingAgentsStrategy_logs/full_states_log.json",
-            "w",
-        ) as f:
+        with open(directory / "full_states_log.json", "w", encoding="utf-8") as f:
             json.dump(self.log_states_dict, f, indent=4)
 
     def reflect_and_remember(self, returns_losses):
-        """Reflect on decisions and update memory based on returns."""
-        self.reflector.reflect_bull_researcher(
-            self.curr_state, returns_losses, self.bull_memory
-        )
-        self.reflector.reflect_bear_researcher(
-            self.curr_state, returns_losses, self.bear_memory
-        )
-        self.reflector.reflect_trader(
-            self.curr_state, returns_losses, self.trader_memory
-        )
-        self.reflector.reflect_invest_judge(
-            self.curr_state, returns_losses, self.invest_judge_memory
-        )
-        self.reflector.reflect_risk_manager(
-            self.curr_state, returns_losses, self.risk_manager_memory
-        )
+        """Reflect on decisions and update existing CN role memories."""
+        if self.bull_memory is not None:
+            self.reflector.reflect_bull_researcher(
+                self.curr_state, returns_losses, self.bull_memory
+            )
+        if self.bear_memory is not None:
+            self.reflector.reflect_bear_researcher(
+                self.curr_state, returns_losses, self.bear_memory
+            )
+        if self.trader_memory is not None:
+            self.reflector.reflect_trader(
+                self.curr_state, returns_losses, self.trader_memory
+            )
+        if self.invest_judge_memory is not None:
+            self.reflector.reflect_invest_judge(
+                self.curr_state, returns_losses, self.invest_judge_memory
+            )
+        if self.risk_manager_memory is not None:
+            self.reflector.reflect_risk_manager(
+                self.curr_state, returns_losses, self.risk_manager_memory
+            )
 
     def process_signal(self, full_signal, stock_symbol=None):
         """Process a signal to extract the core decision."""

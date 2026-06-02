@@ -372,16 +372,39 @@ class TushareProvider(BaseStockDataProvider):
             end_date = datetime.now().strftime('%Y%m%d')
             start_date = (datetime.now() - timedelta(days=3)).strftime('%Y%m%d')
 
-            df = await asyncio.to_thread(
-                self.api.daily,
-                ts_code=ts_code,
-                start_date=start_date,
-                end_date=end_date
-            )
+            try:
+                df = await asyncio.to_thread(
+                    self.api.realtime_quote,
+                    ts_code=ts_code,
+                )
+            except Exception as realtime_error:
+                if self._is_rate_limit_error(str(realtime_error)):
+                    raise
+                self.logger.warning(
+                    f"⚠️ 实时行情接口失败，回退到daily接口 symbol={symbol}: {realtime_error}"
+                )
+                df = await asyncio.to_thread(
+                    self.api.daily,
+                    ts_code=ts_code,
+                    start_date=start_date,
+                    end_date=end_date
+                )
 
             if df is not None and not df.empty:
                 # 取最新一天的数据
                 row = df.iloc[0].to_dict()
+
+                daily_basic = None
+                try:
+                    daily_basic = await asyncio.to_thread(
+                        self.api.daily_basic,
+                        ts_code=ts_code,
+                        trade_date=row.get('trade_date')
+                    )
+                except Exception:
+                    daily_basic = None
+                if daily_basic is not None and not daily_basic.empty:
+                    row.update(daily_basic.iloc[0].to_dict())
 
                 # 标准化字段
                 quote_data = {
@@ -395,8 +418,11 @@ class TushareProvider(BaseStockDataProvider):
                     'pre_close': row.get('pre_close'),
                     'change': row.get('change'),  # 涨跌额
                     'pct_chg': row.get('pct_chg'),  # 涨跌幅
-                    'volume': row.get('vol'),  # 成交量（手）
-                    'amount': row.get('amount'),  # 成交额（千元）
+                    'volume': row.get('volume', row.get('vol')),
+                    'amount': row.get('amount'),
+                    'pe': row.get('pe'),
+                    'pb': row.get('pb'),
+                    'turnover_rate': row.get('turnover_rate'),
                 }
 
                 return self.standardize_quotes(quote_data)
@@ -1201,11 +1227,10 @@ class TushareProvider(BaseStockDataProvider):
             "change": self._convert_to_float(raw_data.get('change')),
             "pct_chg": self._convert_to_float(raw_data.get('pct_chg')),
 
-            # 成交数据
-            # 🔥 成交量单位转换：Tushare 返回的是手，需要转换为股
-            "volume": self._convert_to_float(raw_data.get('vol')) * 100 if raw_data.get('vol') else None,
-            # 🔥 成交额单位转换：Tushare daily 接口返回的是千元，需要转换为元
-            "amount": self._convert_to_float(raw_data.get('amount')) * 1000 if raw_data.get('amount') else None,
+            # 成交数据。历史K线的单位转换在 historical path 完成；这里保持
+            # quote 标准化为调用方传入的当前行情单位，兼容旧接口。
+            "volume": self._convert_to_float(raw_data.get('volume', raw_data.get('vol'))),
+            "amount": self._convert_to_float(raw_data.get('amount')),
 
             # 财务指标
             "total_mv": self._convert_to_float(raw_data.get('total_mv')),

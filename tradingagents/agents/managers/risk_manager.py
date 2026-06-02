@@ -149,11 +149,21 @@ def create_risk_manager(llm, memory):
             "judge_decision": response_content,
             "history": risk_debate_state["history"],
             "risky_history": risk_debate_state["risky_history"],
+            "aggressive_history": risk_debate_state.get("aggressive_history", risk_debate_state["risky_history"]),
             "safe_history": risk_debate_state["safe_history"],
+            "conservative_history": risk_debate_state.get("conservative_history", risk_debate_state["safe_history"]),
             "neutral_history": risk_debate_state["neutral_history"],
             "latest_speaker": "Judge",
             "current_risky_response": risk_debate_state["current_risky_response"],
+            "current_aggressive_response": risk_debate_state.get(
+                "current_aggressive_response",
+                risk_debate_state["current_risky_response"],
+            ),
             "current_safe_response": risk_debate_state["current_safe_response"],
+            "current_conservative_response": risk_debate_state.get(
+                "current_conservative_response",
+                risk_debate_state["current_safe_response"],
+            ),
             "current_neutral_response": risk_debate_state["current_neutral_response"],
             "count": risk_debate_state["count"],
         }

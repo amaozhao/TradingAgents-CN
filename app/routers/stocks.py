@@ -723,6 +723,24 @@ async def get_news(code: str, days: int = 30, limit: int = 50, include_announcem
 
             logger.info(f"✅ 转换完成: {len(items)} 条新闻")
 
+            if not items:
+                logger.info(f"🔄 数据库/同步服务无新闻，尝试统一数据源兜底: {normalized_code}")
+                try:
+                    from app.services.data_sources.manager import DataSourceManager
+
+                    fallback_items, fallback_source = DataSourceManager().get_news_with_fallback(
+                        normalized_code,
+                        days=days,
+                        limit=limit,
+                        include_announcements=include_announcements,
+                    )
+                    if fallback_items:
+                        items = fallback_items
+                        data_source = fallback_source
+                        logger.info(f"✅ 统一数据源兜底成功: source={fallback_source}, items={len(items)}")
+                except Exception as fallback_error:
+                    logger.error(f"❌ 统一数据源兜底失败: {fallback_error}", exc_info=True)
+
             data = {
                 "code": normalized_code,
                 "days": days,
@@ -738,6 +756,26 @@ async def get_news(code: str, days: int = 30, limit: int = 50, include_announcem
 
         except Exception as e:
             logger.error(f"❌ 获取新闻失败: {e}", exc_info=True)
+            try:
+                from app.services.data_sources.manager import DataSourceManager
+
+                fallback_items, fallback_source = DataSourceManager().get_news_with_fallback(
+                    normalized_code,
+                    days=days,
+                    limit=limit,
+                    include_announcements=include_announcements,
+                )
+                data = {
+                    "code": normalized_code,
+                    "days": days,
+                    "limit": limit,
+                    "include_announcements": include_announcements,
+                    "source": fallback_source,
+                    "items": fallback_items or [],
+                }
+                return ok(data)
+            except Exception as fallback_error:
+                logger.error(f"❌ 新闻备用数据源也失败: {fallback_error}", exc_info=True)
             data = {
                 "code": normalized_code,
                 "days": days,
@@ -747,4 +785,3 @@ async def get_news(code: str, days: int = 30, limit: int = 50, include_announcem
                 "items": []
             }
             return ok(data)
-

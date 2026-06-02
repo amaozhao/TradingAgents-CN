@@ -7,6 +7,50 @@ from typing import Dict, List, Tuple
 ModelOption = Tuple[str, str]
 ProviderModeOptions = Dict[str, Dict[str, List[ModelOption]]]
 
+_QWEN_MODELS = {
+    "quick": [
+        ("Qwen Turbo - Fast", "qwen-turbo"),
+        ("Qwen Plus - Balanced", "qwen-plus"),
+        ("Qwen 3.5 Flash", "qwen3.5-flash"),
+        ("Custom model ID", "custom"),
+    ],
+    "deep": [
+        ("Qwen Max - High capability", "qwen-max"),
+        ("Qwen 3.7 Max", "qwen3.7-max"),
+        ("Qwen Plus - Balanced", "qwen-plus"),
+        ("Custom model ID", "custom"),
+    ],
+}
+
+_GLM_MODELS = {
+    "quick": [
+        ("GLM-4-Flash", "glm-4-flash"),
+        ("GLM-4-Air", "glm-4-air"),
+        ("GLM-5-Turbo", "glm-5-turbo"),
+        ("Custom model ID", "custom"),
+    ],
+    "deep": [
+        ("GLM-4-Plus", "glm-4-plus"),
+        ("GLM-4-Long", "glm-4-long"),
+        ("GLM-5", "glm-5"),
+        ("Custom model ID", "custom"),
+    ],
+}
+
+_MINIMAX_MODELS = {
+    "quick": [
+        ("MiniMax-M2.7-highspeed", "MiniMax-M2.7-highspeed"),
+        ("MiniMax-M2.5-highspeed", "MiniMax-M2.5-highspeed"),
+        ("Custom model ID", "custom"),
+    ],
+    "deep": [
+        ("MiniMax-M2.7", "MiniMax-M2.7"),
+        ("MiniMax-M2.7-highspeed", "MiniMax-M2.7-highspeed"),
+        ("MiniMax-M2.5", "MiniMax-M2.5"),
+        ("Custom model ID", "custom"),
+    ],
+}
+
 
 MODEL_OPTIONS: ProviderModeOptions = {
     "openai": {
@@ -62,19 +106,20 @@ MODEL_OPTIONS: ProviderModeOptions = {
             ("Custom model ID", "custom"),
         ],
     },
-    "qwen": {
+    "xai": {
         "quick": [
-            ("Qwen Turbo - Fast", "qwen-turbo"),
-            ("Qwen Plus - Balanced", "qwen-plus"),
+            ("Grok 4 Fast", "grok-4-fast-non-reasoning"),
+            ("Grok 4.3", "grok-4.3"),
             ("Custom model ID", "custom"),
         ],
         "deep": [
-            ("Qwen Max - High capability", "qwen-max"),
-            ("Qwen Max LongContext - Long context", "qwen-max-longcontext"),
-            ("Qwen Plus - Balanced", "qwen-plus"),
+            ("Grok 4.3", "grok-4.3"),
+            ("Grok 4 Fast Reasoning", "grok-4-fast-reasoning"),
             ("Custom model ID", "custom"),
         ],
     },
+    "qwen": _QWEN_MODELS,
+    "qwen-cn": _QWEN_MODELS,
     "openrouter": {
         "quick": [
             ("Custom model ID", "custom"),
@@ -105,15 +150,17 @@ MODEL_OPTIONS: ProviderModeOptions = {
             ("Custom model ID", "custom"),
         ],
     },
-    "glm": {
+    "glm": _GLM_MODELS,
+    "glm-cn": _GLM_MODELS,
+    "minimax": _MINIMAX_MODELS,
+    "minimax-cn": _MINIMAX_MODELS,
+    "qianfan": {
         "quick": [
-            ("GLM-4-Flash", "glm-4-flash"),
-            ("GLM-4-Air", "glm-4-air"),
+            ("ERNIE Speed", "ernie-speed-128k"),
             ("Custom model ID", "custom"),
         ],
         "deep": [
-            ("GLM-4-Plus", "glm-4-plus"),
-            ("GLM-4-Long", "glm-4-long"),
+            ("ERNIE 4.0 Turbo", "ernie-4.0-turbo-128k"),
             ("Custom model ID", "custom"),
         ],
     },

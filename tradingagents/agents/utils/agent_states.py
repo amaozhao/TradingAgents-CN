@@ -29,9 +29,15 @@ class RiskDebateState(TypedDict):
     risky_history: Annotated[
         str, "Risky Agent's Conversation history"
     ]  # Conversation history
+    aggressive_history: Annotated[
+        str, "Aggressive Agent's Conversation history"
+    ]  # Upstream-compatible alias for risky_history
     safe_history: Annotated[
         str, "Safe Agent's Conversation history"
     ]  # Conversation history
+    conservative_history: Annotated[
+        str, "Conservative Agent's Conversation history"
+    ]  # Upstream-compatible alias for safe_history
     neutral_history: Annotated[
         str, "Neutral Agent's Conversation history"
     ]  # Conversation history
@@ -40,9 +46,15 @@ class RiskDebateState(TypedDict):
     current_risky_response: Annotated[
         str, "Latest response by the risky analyst"
     ]  # Last response
+    current_aggressive_response: Annotated[
+        str, "Latest response by the aggressive analyst"
+    ]  # Upstream-compatible alias for current_risky_response
     current_safe_response: Annotated[
         str, "Latest response by the safe analyst"
     ]  # Last response
+    current_conservative_response: Annotated[
+        str, "Latest response by the conservative analyst"
+    ]  # Upstream-compatible alias for current_safe_response
     current_neutral_response: Annotated[
         str, "Latest response by the neutral analyst"
     ]  # Last response
@@ -52,6 +64,8 @@ class RiskDebateState(TypedDict):
 
 class AgentState(MessagesState):
     company_of_interest: Annotated[str, "Company that we are interested in trading"]
+    asset_type: Annotated[str, "Asset type under analysis such as stock or crypto"]
+    instrument_context: Annotated[str, "Deterministic ticker identity resolved at run start"]
     trade_date: Annotated[str, "What date we are trading at"]
 
     sender: Annotated[str, "Agent that sent this message"]
@@ -83,3 +97,4 @@ class AgentState(MessagesState):
         RiskDebateState, "Current state of the debate on evaluating risk"
     ]
     final_trade_decision: Annotated[str, "Final decision made by the Risk Analysts"]
+    past_context: Annotated[str, "Memory log context injected at run start"]

@@ -734,81 +734,9 @@ def get_realtime_stock_news(ticker: str, curr_date: str, hours_back: int = 6) ->
 
     logger.info(f"[新闻分析] 最终判断结果 - 股票 {ticker} 类型: {stock_type}, 是否A股: {is_china_stock}")
 
-    # 对于A股，优先使用东方财富新闻源
-    if is_china_stock:
-        logger.info(f"[新闻分析] ========== 步骤2: A股东方财富新闻获取 ==========")
-        logger.info(f"[新闻分析] 检测到A股股票 {ticker}，优先尝试使用东方财富新闻源")
-        try:
-            logger.info(f"[新闻分析] 尝试通过 AKShare Provider 获取新闻")
-            from tradingagents.dataflows.providers.china.akshare import AKShareProvider
-
-            provider = AKShareProvider()
-            logger.info(f"[新闻分析] 成功创建 AKShare Provider 实例")
-
-            # 处理A股代码
-            clean_ticker = ticker.replace('.SH', '').replace('.SZ', '').replace('.SS', '')\
-                            .replace('.XSHE', '').replace('.XSHG', '')
-            logger.info(f"[新闻分析] 原始ticker: {ticker} -> 清理后ticker: {clean_ticker}")
-
-            logger.info(f"[新闻分析] 准备调用 provider.get_stock_news_sync({clean_ticker})")
-            logger.info(f"[新闻分析] 开始从东方财富获取 {clean_ticker} 的新闻数据")
-            start_time = datetime.now(ZoneInfo(get_timezone_name()))
-            logger.info(f"[新闻分析] 东方财富API调用开始时间: {start_time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}")
-
-            news_df = provider.get_stock_news_sync(symbol=clean_ticker, limit=10)
-
-            end_time = datetime.now(ZoneInfo(get_timezone_name()))
-            time_taken = (end_time - start_time).total_seconds()
-            logger.info(f"[新闻分析] 东方财富API调用结束时间: {end_time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}")
-            logger.info(f"[新闻分析] 东方财富API调用耗时: {time_taken:.2f}秒")
-            logger.info(f"[新闻分析] 东方财富API返回数据类型: {type(news_df)}")
-
-            if hasattr(news_df, 'empty'):
-                logger.info(f"[新闻分析] 东方财富API返回DataFrame，是否为空: {news_df.empty}")
-                if not news_df.empty:
-                    logger.info(f"[新闻分析] 东方财富API返回DataFrame形状: {news_df.shape}")
-                    logger.info(f"[新闻分析] 东方财富API返回DataFrame列名: {list(news_df.columns) if hasattr(news_df, 'columns') else '无列名'}")
-            else:
-                logger.info(f"[新闻分析] 东方财富API返回数据: {news_df}")
-
-            if not news_df.empty:
-                # 构建简单的新闻报告
-                news_count = len(news_df)
-                logger.info(f"[新闻分析] 成功获取 {news_count} 条东方财富新闻，耗时 {time_taken:.2f} 秒")
-
-                report = f"# {ticker} 东方财富新闻报告\n\n"
-                report += f"📅 生成时间: {datetime.now(ZoneInfo(get_timezone_name())).strftime('%Y-%m-%d %H:%M:%S')}\n"
-                report += f"📊 新闻总数: {news_count}条\n"
-                report += f"🕒 获取耗时: {time_taken:.2f}秒\n\n"
-
-                # 记录一些新闻标题示例
-                sample_titles = [row.get('新闻标题', '无标题') for _, row in news_df.head(3).iterrows()]
-                logger.info(f"[新闻分析] 新闻标题示例: {', '.join(sample_titles)}")
-
-                logger.info(f"[新闻分析] 开始构建新闻报告")
-                for idx, (_, row) in enumerate(news_df.iterrows()):
-                    if idx < 3:  # 只记录前3条的详细信息
-                        logger.info(f"[新闻分析] 第{idx+1}条新闻: 标题={row.get('新闻标题', '无标题')}, 时间={row.get('发布时间', '无时间')}")
-                    report += f"### {row.get('新闻标题', '')}\n"
-                    report += f"📅 {row.get('发布时间', '')}\n"
-                    report += f"🔗 {row.get('新闻链接', '')}\n\n"
-                    report += f"{row.get('新闻内容', '无内容')}\n\n"
-
-                total_time_taken = (datetime.now(ZoneInfo(get_timezone_name())) - start_total_time).total_seconds()
-                logger.info(f"[新闻分析] 成功生成 {ticker} 的新闻报告，总耗时 {total_time_taken:.2f} 秒，新闻来源: 东方财富")
-                logger.info(f"[新闻分析] 报告长度: {len(report)} 字符")
-                logger.info(f"[新闻分析] ========== 东方财富新闻获取成功，函数即将返回 ==========")
-                return report
-            else:
-                logger.warning(f"[新闻分析] 东方财富未获取到 {ticker} 的新闻，耗时 {time_taken:.2f} 秒，尝试使用其他新闻源")
-        except Exception as e:
-            logger.error(f"[新闻分析] 东方财富新闻获取失败: {e}，将尝试其他新闻源")
-            logger.error(f"[新闻分析] 异常详情: {type(e).__name__}: {str(e)}")
-            import traceback
-            logger.error(f"[新闻分析] 异常堆栈: {traceback.format_exc()}")
-    else:
-        logger.info(f"[新闻分析] ========== 跳过A股东方财富新闻获取 ==========")
-        logger.info(f"[新闻分析] 股票类型为 {stock_type}，不是A股，跳过东方财富新闻源")
+    # A股东方财富新闻源保留为最终 fallback；先走聚合器/Google，避免
+    # 单一中文站点反爬或超时阻塞整个新闻链路。
+    logger.info(f"[新闻分析] ========== 步骤2: 跳过东方财富优先路径，股票类型: {stock_type} ==========")
 
     # 如果不是A股或A股新闻获取失败，使用实时新闻聚合器
     logger.info(f"[新闻分析] ========== 步骤3: 实时新闻聚合器 ==========")
@@ -944,7 +872,43 @@ def get_realtime_stock_news(ticker: str, curr_date: str, hours_back: int = 6) ->
         else:
             logger.warning(f"[新闻分析] Google 新闻未获取到 {ticker} 的新闻数据，耗时 {time_taken:.2f} 秒")
     except Exception as e:
-        logger.error(f"[新闻分析] Google 新闻获取失败: {e}，所有备用方案均已尝试")
+        logger.error(f"[新闻分析] Google 新闻获取失败: {e}，将尝试东方财富备用新闻源")
+
+    # 备用方案3: A股最后尝试东方财富新闻，使用兼容函数以便测试和脚本 patch。
+    if is_china_stock:
+        try:
+            from tradingagents.dataflows.akshare_utils import get_stock_news_em
+
+            clean_ticker = ticker.replace('.SH', '').replace('.SZ', '').replace('.SS', '')\
+                           .replace('.XSHE', '').replace('.XSHG', '')
+            logger.info(f"[新闻分析] 尝试东方财富备用新闻源: {clean_ticker}")
+            start_time = datetime.now(ZoneInfo(get_timezone_name()))
+            news_df = get_stock_news_em(clean_ticker, limit=10)
+            end_time = datetime.now(ZoneInfo(get_timezone_name()))
+            time_taken = (end_time - start_time).total_seconds()
+
+            if news_df is not None and hasattr(news_df, "empty") and not news_df.empty:
+                news_count = len(news_df)
+                report = f"# {ticker} 东方财富新闻报告\n\n"
+                report += f"📅 生成时间: {datetime.now(ZoneInfo(get_timezone_name())).strftime('%Y-%m-%d %H:%M:%S')}\n"
+                report += f"📊 新闻总数: {news_count}条\n"
+                report += f"🕒 获取耗时: {time_taken:.2f}秒\n\n"
+
+                for _, row in news_df.iterrows():
+                    title = row.get('新闻标题', row.get('标题', row.get('title', '')))
+                    publish_time = row.get('发布时间', row.get('时间', row.get('time', '')))
+                    link = row.get('新闻链接', row.get('链接', row.get('url', '')))
+                    content = row.get('新闻内容', row.get('内容', row.get('content', '无内容')))
+                    report += f"### {title}\n"
+                    report += f"📅 {publish_time}\n"
+                    report += f"🔗 {link}\n\n"
+                    report += f"{content}\n\n"
+
+                logger.info(f"[新闻分析] 东方财富备用新闻源成功，新闻数: {news_count}")
+                return report
+            logger.warning(f"[新闻分析] 东方财富备用新闻源未获取到数据")
+        except Exception as e:
+            logger.error(f"[新闻分析] 东方财富备用新闻源失败: {e}")
 
     # 所有方法都失败，返回错误信息
     total_time_taken = (datetime.now(ZoneInfo(get_timezone_name())) - start_total_time).total_seconds()

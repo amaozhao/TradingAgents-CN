@@ -523,6 +523,9 @@ class QuotesIngestionService:
             if is_empty:
                 logger.info("🔁 market_quotes 集合为空，尝试从历史数据导入")
                 await self.backfill_from_historical_data()
+                if await self._collection_empty():
+                    logger.info("🔁 历史数据不可用，改用近实时快照兜底")
+                    await self.backfill_last_close_snapshot()
                 return
 
             # 如果集合不为空但数据陈旧，使用实时接口更新
@@ -634,6 +637,14 @@ class QuotesIngestionService:
             quotes_map, source_name = self._fetch_quotes_from_source(source_type, akshare_api)
 
             if not quotes_map:
+                logger.warning(f"⚠️ {source_name or source_type} 未获取到行情数据，尝试统一数据源兜底")
+                try:
+                    manager = DataSourceManager()
+                    quotes_map, source_name = manager.get_realtime_quotes_with_fallback()
+                except Exception as fallback_error:
+                    logger.warning(f"⚠️ 统一数据源兜底失败: {fallback_error}")
+
+            if not quotes_map:
                 logger.warning(f"⚠️ {source_name or source_type} 未获取到行情数据，跳过本次入库")
                 # 记录失败状态
                 await self._record_sync_status(
@@ -671,4 +682,3 @@ class QuotesIngestionService:
                 records_count=0,
                 error_msg=str(e)
             )
-

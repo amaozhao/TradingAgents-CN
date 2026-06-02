@@ -1,6 +1,6 @@
 # TradingAgents/graph/propagation.py
 
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
@@ -20,7 +20,12 @@ class Propagator:
         self.max_recur_limit = max_recur_limit
 
     def create_initial_state(
-        self, company_name: str, trade_date: str
+        self,
+        company_name: str,
+        trade_date: str,
+        asset_type: str = "stock",
+        past_context: str = "",
+        instrument_context: str = "",
     ) -> Dict[str, Any]:
         """Create the initial state for the agent graph."""
         from langchain_core.messages import HumanMessage
@@ -32,16 +37,35 @@ class Propagator:
         return {
             "messages": [HumanMessage(content=analysis_request)],
             "company_of_interest": company_name,
+            "asset_type": asset_type,
+            "instrument_context": instrument_context,
             "trade_date": str(trade_date),
+            "past_context": past_context,
             "investment_debate_state": InvestDebateState(
-                {"history": "", "current_response": "", "count": 0}
+                {
+                    "bull_history": "",
+                    "bear_history": "",
+                    "history": "",
+                    "current_response": "",
+                    "judge_decision": "",
+                    "count": 0,
+                }
             ),
             "risk_debate_state": RiskDebateState(
                 {
+                    "risky_history": "",
+                    "aggressive_history": "",
+                    "safe_history": "",
+                    "conservative_history": "",
+                    "neutral_history": "",
                     "history": "",
+                    "latest_speaker": "",
                     "current_risky_response": "",
+                    "current_aggressive_response": "",
                     "current_safe_response": "",
+                    "current_conservative_response": "",
                     "current_neutral_response": "",
+                    "judge_decision": "",
                     "count": 0,
                 }
             ),
@@ -49,9 +73,17 @@ class Propagator:
             "fundamentals_report": "",
             "sentiment_report": "",
             "news_report": "",
+            "market_tool_call_count": 0,
+            "news_tool_call_count": 0,
+            "sentiment_tool_call_count": 0,
+            "fundamentals_tool_call_count": 0,
         }
 
-    def get_graph_args(self, use_progress_callback: bool = False) -> Dict[str, Any]:
+    def get_graph_args(
+        self,
+        use_progress_callback: bool = False,
+        callbacks: Optional[List] = None,
+    ) -> Dict[str, Any]:
         """Get arguments for the graph invocation.
 
         Args:
@@ -62,7 +94,11 @@ class Propagator:
         # 使用 'values' 模式可以获取完整的状态更新
         stream_mode = "updates" if use_progress_callback else "values"
 
+        config = {"recursion_limit": self.max_recur_limit}
+        if callbacks:
+            config["callbacks"] = callbacks
+
         return {
             "stream_mode": stream_mode,
-            "config": {"recursion_limit": self.max_recur_limit},
+            "config": config,
         }

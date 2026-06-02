@@ -69,9 +69,12 @@ class StockDataService:
             Dict: 股票基础信息
         """
         logger.info(f"📊 获取股票基础信息: {stock_code or '全部股票'}")
-        
-        # 1. 优先从MongoDB获取
-        if self.db_manager and self.db_manager.is_mongodb_available():
+
+        from tradingagents.config.runtime_settings import use_app_cache_enabled
+        use_app_cache = use_app_cache_enabled(default=True)
+
+        # 1. 启用 app cache 时优先从 MongoDB 获取
+        if use_app_cache and self.db_manager and self.db_manager.is_mongodb_available():
             try:
                 result = self._get_from_mongodb(stock_code)
                 if result:
@@ -79,12 +82,12 @@ class StockDataService:
                     return result
             except Exception as e:
                 logger.error(f"⚠️ MongoDB查询失败: {e}")
-        
-        # 2. 降级到增强获取器
-        logger.info(f"🔄 MongoDB不可用，降级到增强获取器")
+
+        # 2. 降级到增强获取器 / 旧 TDX API 入口
+        logger.info(f"🔄 {'MongoDB不可用或未命中' if use_app_cache else '未启用MongoDB优先缓存'}，降级到增强获取器")
         if ENHANCED_FETCHER_AVAILABLE:
             try:
-                result = self._get_from_enhanced_fetcher(stock_code)
+                result = self._get_from_tdx_api(stock_code)
                 if result:
                     logger.info(f"✅ 从增强获取器获取成功: {len(result) if isinstance(result, list) else 1}条记录")
                     # 尝试缓存到MongoDB（如果可用）
@@ -92,6 +95,16 @@ class StockDataService:
                     return result
             except Exception as e:
                 logger.error(f"⚠️ 增强获取器查询失败: {e}")
+
+        # 3. 未启用 app cache 时，API 失败后再尝试 MongoDB 兜底
+        if not use_app_cache and self.db_manager and self.db_manager.is_mongodb_available():
+            try:
+                result = self._get_from_mongodb(stock_code)
+                if result:
+                    logger.info(f"✅ 从MongoDB兜底获取成功: {len(result) if isinstance(result, list) else 1}条记录")
+                    return result
+            except Exception as e:
+                logger.error(f"⚠️ MongoDB兜底查询失败: {e}")
         
         # 3. 最后的降级方案
         logger.error(f"❌ 所有数据源都不可用")
@@ -180,6 +193,10 @@ class StockDataService:
         except Exception as e:
             logger.error(f"增强获取器查询失败: {e}")
             return None
+
+    def _get_from_tdx_api(self, stock_code: str = None) -> Optional[Dict[str, Any]]:
+        """旧版 TDX API 入口兼容；当前实现委托给增强股票列表获取器。"""
+        return self._get_from_enhanced_fetcher(stock_code)
     
     def _cache_to_mongodb(self, data: Any) -> bool:
         """将数据缓存到MongoDB"""

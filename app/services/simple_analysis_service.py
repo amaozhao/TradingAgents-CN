@@ -458,8 +458,8 @@ def create_analysis_config(
         config["max_debate_rounds"] = 1
         config["max_risk_discuss_rounds"] = 1
         config["memory_enabled"] = False  # 禁用记忆以加速
-        config["online_tools"] = True  # 统一使用在线工具，避免离线工具的各种问题
-        logger.info(f"🔧 [1级-快速分析] {market_type}使用统一工具，确保数据源正确和稳定性")
+        config["online_tools"] = False  # 禁用在线工具以加速
+        logger.info(f"🔧 [1级-快速分析] {market_type}禁用在线工具，优先保证速度")
         logger.info(f"🔧 [1级-快速分析] 使用用户配置的模型: quick={quick_model}, deep={deep_model}")
 
     elif research_depth == "基础":

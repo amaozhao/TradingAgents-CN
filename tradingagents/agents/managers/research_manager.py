@@ -1,21 +1,28 @@
 import time
 import json
 
+from tradingagents.agents.schemas import ResearchPlan, render_research_plan
+from tradingagents.agents.utils.structured import (
+    bind_structured,
+    invoke_structured_or_freetext,
+)
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
-from tradingagents.agents.utils.instrument_utils import build_instrument_context
+from tradingagents.agents.utils.agent_utils import get_instrument_context_from_state
 logger = get_logger("default")
 
 
-def create_research_manager(llm, memory):
+def create_research_manager(llm, memory=None):
+    structured_llm = bind_structured(llm, ResearchPlan, "Research Manager")
+
     def research_manager_node(state) -> dict:
         ticker = state["company_of_interest"]
-        instrument_context = build_instrument_context(ticker)
+        instrument_context = get_instrument_context_from_state(state)
         history = state["investment_debate_state"].get("history", "")
-        market_research_report = state["market_report"]
-        sentiment_report = state["sentiment_report"]
-        news_report = state["news_report"]
-        fundamentals_report = state["fundamentals_report"]
+        market_research_report = state.get("market_report", "")
+        sentiment_report = state.get("sentiment_report", "")
+        news_report = state.get("news_report", "")
+        fundamentals_report = state.get("fundamentals_report", "")
 
         investment_debate_state = state["investment_debate_state"]
 
@@ -39,6 +46,7 @@ def create_research_manager(llm, memory):
 此外，为交易员制定详细的投资计划。这应该包括：
 
 您的建议：基于最有说服力论点的明确立场。
+结构化评级必须使用五档之一：**Buy**、**Overweight**、**Hold**、**Underweight**、**Sell**。
 理由：解释为什么这些论点导致您的结论。
 战略行动：实施建议的具体步骤。
 📊 目标价格分析：基于所有可用报告（基本面、新闻、情绪），提供全面的目标价格区间和具体价格目标。考虑：
@@ -85,30 +93,36 @@ def create_research_manager(llm, memory):
         # ⏱️ 记录开始时间
         start_time = time.time()
 
-        response = llm.invoke(prompt)
+        investment_plan = invoke_structured_or_freetext(
+            structured_llm,
+            llm,
+            prompt,
+            render_research_plan,
+            "Research Manager",
+        )
 
         # ⏱️ 记录结束时间
         elapsed_time = time.time() - start_time
 
         # 📊 统计响应信息
-        response_length = len(response.content) if response and hasattr(response, 'content') else 0
+        response_length = len(investment_plan)
         estimated_output_tokens = int(response_length / 1.8)
 
         logger.info(f"⏱️ [Research Manager] LLM调用耗时: {elapsed_time:.2f}秒")
         logger.info(f"📊 [Research Manager] 响应统计: {response_length} 字符, 估算~{estimated_output_tokens} tokens")
 
         new_investment_debate_state = {
-            "judge_decision": response.content,
+            "judge_decision": investment_plan,
             "history": investment_debate_state.get("history", ""),
             "bear_history": investment_debate_state.get("bear_history", ""),
             "bull_history": investment_debate_state.get("bull_history", ""),
-            "current_response": response.content,
+            "current_response": investment_plan,
             "count": investment_debate_state["count"],
         }
 
         return {
             "investment_debate_state": new_investment_debate_state,
-            "investment_plan": response.content,
+            "investment_plan": investment_plan,
         }
 
     return research_manager_node

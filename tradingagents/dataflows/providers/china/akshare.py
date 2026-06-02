@@ -976,10 +976,11 @@ class AKShareProvider(BaseStockDataProvider):
 
     async def get_historical_data(
         self,
-        code: str,
-        start_date: str,
-        end_date: str,
-        period: str = "daily"
+        code: str = None,
+        start_date: str = None,
+        end_date: str = None,
+        period: str = "daily",
+        **kwargs
     ) -> Optional[pd.DataFrame]:
         """
         获取历史行情数据
@@ -993,6 +994,16 @@ class AKShareProvider(BaseStockDataProvider):
         Returns:
             历史行情数据DataFrame
         """
+        code = code or kwargs.get("symbol")
+        if not code:
+            logger.error("❌ 获取历史数据失败: 缺少股票代码")
+            return None
+
+        if hasattr(start_date, "strftime"):
+            start_date = start_date.strftime("%Y-%m-%d")
+        if hasattr(end_date, "strftime"):
+            end_date = end_date.strftime("%Y-%m-%d")
+
         if not self.connected:
             return None
 

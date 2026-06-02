@@ -3,6 +3,7 @@ Tushare数据同步服务
 负责将Tushare数据同步到MongoDB标准化集合
 """
 import asyncio
+import inspect
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 import logging
@@ -63,10 +64,18 @@ class TushareSyncService:
             raise RuntimeError("❌ Tushare连接失败，无法启动同步服务")
 
         # 初始化历史数据服务
-        self.historical_service = await get_historical_data_service()
+        try:
+            self.historical_service = await get_historical_data_service()
+        except Exception as e:
+            logger.warning(f"⚠️ 历史数据服务初始化失败，后续按需重试: {e}")
+            self.historical_service = None
 
         # 初始化新闻数据服务
-        self.news_service = await get_news_data_service()
+        try:
+            self.news_service = await get_news_data_service()
+        except Exception as e:
+            logger.warning(f"⚠️ 新闻数据服务初始化失败，后续按需重试: {e}")
+            self.news_service = None
 
         logger.info("✅ Tushare同步服务初始化完成")
     
@@ -253,10 +262,12 @@ class TushareSyncService:
 
         try:
             # 检查是否在交易时间（手动同步时可以跳过检查）
-            if not force and not self._is_trading_time():
+            if not force and not self._is_trading_time() and not self.settings.DEBUG:
                 logger.info("⏸️ 当前不在交易时间，跳过实时行情同步（使用 force=True 可强制执行）")
                 stats["skipped_non_trading_time"] = True
                 return stats
+            elif not force and not self._is_trading_time():
+                logger.info("⏸️ 当前不在交易时间；DEBUG 模式继续执行实时行情同步")
 
             # 🔥 策略选择：少量股票切换到 AKShare，大量股票或全市场用 Tushare 批量接口
             USE_AKSHARE_THRESHOLD = 10  # 少于等于10只股票时切换到 AKShare
@@ -309,7 +320,17 @@ class TushareSyncService:
                     logger.info("📊 使用 Tushare 批量接口同步全市场实时行情...")
 
                 logger.info("📡 调用 rt_k 批量接口获取全市场实时行情...")
-                quotes_map = await self.provider.get_realtime_quotes_batch()
+                batch_fetch = getattr(self.provider, "get_realtime_quotes_batch", None)
+                if not callable(batch_fetch):
+                    return await self._sync_realtime_quotes_by_batches(symbols, stats)
+
+                batch_result = batch_fetch()
+                if inspect.isawaitable(batch_result):
+                    quotes_map = await batch_result
+                elif isinstance(batch_result, dict):
+                    quotes_map = batch_result
+                else:
+                    return await self._sync_realtime_quotes_by_batches(symbols, stats)
 
                 if not quotes_map:
                     logger.warning("⚠️ 未获取到实时行情数据")
@@ -387,6 +408,32 @@ class TushareSyncService:
 
             stats["errors"].append({"error": str(e), "context": "sync_realtime_quotes"})
             return stats
+
+    async def _load_stock_symbols_for_quotes(self) -> List[str]:
+        cursor = self.db.stock_basic_info.find({}, {"code": 1})
+        return [doc["code"] async for doc in cursor]
+
+    async def _sync_realtime_quotes_by_batches(self, symbols: Optional[List[str]], stats: Dict[str, Any]) -> Dict[str, Any]:
+        """旧版兼容路径：从 stock_basic_info 取代码后逐批调用 _process_quotes_batch。"""
+        if symbols is None:
+            symbols = await self._load_stock_symbols_for_quotes()
+            logger.info(f"📋 从 stock_basic_info 获取到 {len(symbols)} 只股票")
+
+        stats["total_processed"] = len(symbols)
+
+        for i in range(0, len(symbols), self.batch_size):
+            batch = symbols[i:i + self.batch_size]
+            batch_stats = await self._process_quotes_batch(batch)
+            stats["success_count"] += batch_stats["success_count"]
+            stats["error_count"] += batch_stats["error_count"]
+            stats["errors"].extend(batch_stats["errors"])
+            if batch_stats.get("rate_limit_hit"):
+                stats["stopped_by_rate_limit"] = True
+                break
+
+        stats["end_time"] = datetime.utcnow()
+        stats["duration"] = (stats["end_time"] - stats["start_time"]).total_seconds()
+        return stats
 
     # 🔥 已废弃：不再使用 Tushare 单只接口（rt_k 每小时只能调用2次，太宝贵）
     # 少量股票（≤10只）自动切换到 AKShare 接口

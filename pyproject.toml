@@ -10,85 +10,92 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     # 后端API框架和服务器
-    "fastapi>=0.104.0",
-    "uvicorn[standard]>=0.24.0",
-    "pydantic>=2.0.0",
-    "pydantic-settings>=2.0.0",
-    "python-multipart>=0.0.6",
+    "fastapi>=0.136.3",
+    "uvicorn[standard]>=0.48.0",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.1",
+    "python-multipart>=0.0.30",
 
     # 数据库和缓存
-    "motor>=3.3.0",
-    "pymongo>=4.0.0",
-    "redis>=6.2.0",
+    "motor>=3.7.1",
+    "pymongo>=4.17.0",
+    "redis>=8.0.0",
 
     # 认证和安全
-    "PyJWT>=2.0.0",
-    "bcrypt>=4.0.0",
+    "PyJWT>=2.13.0",
+    "bcrypt>=5.0.0",
 
     # 任务调度和异步
-    "apscheduler>=3.10.0",
-    "aiofiles>=0.8.0",
+    "apscheduler>=3.11.2",
+    "aiofiles>=25.1.0",
 
     # HTTP客户端和SSE
-    "httpx>=0.24.0",
-    "sse-starlette>=1.0.0",
+    "httpx>=0.28.1",
+    "sse-starlette>=3.4.4",
 
     # 日志处理
-    "concurrent-log-handler>=0.9.24",  # Windows 友好的日志轮转处理器
+    "concurrent-log-handler>=0.9.29",  # Windows 友好的日志轮转处理器
 
     # 数据源和金融数据
-    "akshare>=1.17.86",
-    "baostock>=0.8.8",
+    "akshare>=1.18.64",
+    "baostock>=0.9.1",
     "eodhd>=1.0.32",
-    "finnhub-python>=2.4.23",
-    "tushare>=1.4.21",
-    "yfinance>=0.2.63",
-    "stockstats>=0.6.5",
+    "finnhub-python>=2.4.28",
+    "tushare>=1.4.29",
+    "yfinance>=1.4.1",
+    "stockstats>=0.6.8",
 
     # AI和LLM
-    "chainlit>=2.5.5",
-    "chromadb>=1.0.12",
-    "dashscope>=1.20.0",
-    "langchain-anthropic>=0.3.15",
-    "langchain-core>=0.3.0",
-    "langchain-experimental>=0.3.4",
-    "langchain-google-genai>=2.1.12",  # 修复 client_options 未定义错误
-    "langchain-openai>=0.3.23",
-    "langgraph>=0.4.8",
-    "openai>=1.0.0,<2.0.0",
+    "chainlit>=2.11.1",
+    "chromadb>=1.5.9",
+    "dashscope>=1.25.20",
+    "langchain-anthropic>=1.4.4",
+    "langchain>=1.3.2",
+    "langchain-core>=1.4.0",
+    "langchain-experimental>=0.4.2",
+    "langchain-google-genai>=4.2.4",  # 修复 client_options 未定义错误
+    "langchain-openai>=1.2.2",
+    "langgraph>=1.2.2",
+    "langgraph-checkpoint-sqlite>=3.1.0",
+    "openai>=2.40.0",
 
     # 数据处理和分析
-    "pandas>=2.3.0",
-    "plotly>=5.0.0",
+    "pandas>=3.0.3",
+    "plotly>=6.7.0",
 
     # 网络爬虫和解析
-    "curl-cffi>=0.6.0",  # 模拟真实浏览器TLS指纹，绕过反爬虫检测
-    "feedparser>=6.0.11",
-    "parsel>=1.10.0",
+    "curl-cffi>=0.15.0",  # 模拟真实浏览器TLS指纹，绕过反爬虫检测
+    "feedparser>=6.0.12",
+    "parsel>=1.11.0",
     "praw>=7.8.1",
-    "requests>=2.32.4",
+    "requests>=2.34.2",
 
     # 文档和格式化
-    "markdown>=3.4.0",
-    "pypandoc>=1.11",
-    "python-docx>=0.8.11",  # Word文档处理，用于修复文本方向
+    "markdown>=3.10.2",
+    "pypandoc>=1.17",
+    "python-docx>=1.2.0",  # Word文档处理，用于修复文本方向
     "pdfkit>=1.0.0",  # PDF生成工具，需要wkhtmltopdf
 
     # 工具和辅助
-    "psutil>=6.1.0",
-    "python-dotenv>=1.0.0",
-    "pytz>=2025.2",
+    "psutil>=7.2.2",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
+    "python-dotenv>=1.2.2",
+    "pytz>=2026.2",
     "questionary>=2.1.0",
-    "rich>=14.0.0",
-    "setuptools>=80.9.0",
-    "streamlit>=1.28.0",
+    "rich>=15.0.0",
+    "setuptools>=82.0.1",
+    "streamlit>=1.58.0",
     "toml>=0.10.2",
-    "tqdm>=4.67.1",
-    "typing-extensions>=4.14.0",
+    "tqdm>=4.67.3",
+    "typing-extensions>=4.15.0",
 ]
 
 [project.optional-dependencies]
-qianfan = ["qianfan>=0.4.20"]
+qianfan = ["qianfan>=0.4.12.3"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
 
 [project.scripts]
 tradingagents = "main:main"

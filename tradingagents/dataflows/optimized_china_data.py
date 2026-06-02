@@ -2145,6 +2145,10 @@ def get_china_stock_data_cached(symbol: str, start_date: str, end_date: str,
     return provider.get_stock_data(symbol, start_date, end_date, force_refresh)
 
 
+# Backward-compatible class name used by legacy tests/scripts.
+OptimizedChinaDataFlow = OptimizedChinaDataProvider
+
+
 def get_china_fundamentals_cached(symbol: str, force_refresh: bool = False) -> str:
     """
     获取A股基本面数据的便捷函数

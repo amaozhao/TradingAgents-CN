@@ -1,6 +1,7 @@
 # TradingAgents/graph/signal_processing.py
 
 from langchain_openai import ChatOpenAI
+from tradingagents.agents.utils.rating import parse_rating
 
 # 导入统一日志系统和图处理模块日志装饰器
 from tradingagents.utils.logging_init import get_logger
@@ -11,7 +12,7 @@ logger = get_logger("graph.signal_processing")
 class SignalProcessor:
     """Processes trading signals to extract actionable decisions."""
 
-    def __init__(self, quick_thinking_llm: ChatOpenAI):
+    def __init__(self, quick_thinking_llm: ChatOpenAI | None = None):
         """Initialize with an LLM for processing."""
         self.quick_thinking_llm = quick_thinking_llm
 
@@ -50,6 +51,11 @@ class SignalProcessor:
                 'risk_score': 0.5,
                 'reasoning': '信号内容为空，默认持有建议'
             }
+
+        rating_decision = self._extract_rating_decision(full_signal)
+        if rating_decision:
+            logger.info(f"🔍 [SignalProcessor] 使用确定性评级解析: {rating_decision}")
+            return rating_decision
 
         # 检测股票类型和货币
         from tradingagents.utils.stock_utils import StockUtils
@@ -212,6 +218,54 @@ class SignalProcessor:
             logger.error(f"信号处理错误: {e}", exc_info=True, extra={'stock_symbol': stock_symbol})
             # 回退到简单提取
             return self._extract_simple_decision(full_signal)
+
+    def _extract_rating_decision(self, text: str) -> dict | None:
+        try:
+            rating = parse_rating(text)
+        except Exception:
+            return None
+
+        if rating == "Hold" and "Rating" not in text and "评级" not in text:
+            return None
+
+        action_map = {
+            "Buy": "买入",
+            "Overweight": "买入",
+            "Hold": "持有",
+            "Underweight": "卖出",
+            "Sell": "卖出",
+        }
+        risk_map = {
+            "Buy": 0.55,
+            "Overweight": 0.50,
+            "Hold": 0.40,
+            "Underweight": 0.60,
+            "Sell": 0.70,
+        }
+        return {
+            "action": action_map.get(rating, "持有"),
+            "target_price": self._extract_price_target(text),
+            "confidence": 0.75,
+            "risk_score": risk_map.get(rating, 0.5),
+            "reasoning": f"根据组合经理结构化评级 {rating} 解析得到的投资建议。",
+        }
+
+    def _extract_price_target(self, text: str):
+        import re
+
+        patterns = [
+            r"\*\*Price Target\*\*:\s*[¥￥$]?(\d+(?:\.\d+)?)",
+            r"Price Target[：:]\s*[¥￥$]?(\d+(?:\.\d+)?)",
+            r"目标价[位格]?[：:]\s*[¥￥$]?(\d+(?:\.\d+)?)",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                try:
+                    return float(match.group(1))
+                except ValueError:
+                    return None
+        return None
 
     def _smart_price_estimation(self, text: str, action: str, is_china: bool) -> float:
         """智能价格推算方法"""

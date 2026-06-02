@@ -29,7 +29,10 @@ from rich.text import Text
 # 项目内部导入
 from cli.models import AnalystType
 from cli.utils import (
+    ask_output_language,
+    ensure_api_key,
     normalize_ticker_symbol,
+    provider_default_url,
     select_analysts,
     select_deep_thinking_agent,
     select_llm_provider,
@@ -71,14 +74,14 @@ def setup_cli_logging():
     # 移除所有控制台处理器，只保留文件日志
     for handler in root_logger.handlers[:]:
         if isinstance(handler, logging.StreamHandler) and hasattr(handler, 'stream'):
-            if handler.stream.name in ['<stderr>', '<stdout>']:
+            if getattr(handler.stream, "name", None) in ['<stderr>', '<stdout>']:
                 root_logger.removeHandler(handler)
 
     # 同时移除tradingagents日志器的控制台处理器
     tradingagents_logger = logging.getLogger('tradingagents')
     for handler in tradingagents_logger.handlers[:]:
         if isinstance(handler, logging.StreamHandler) and hasattr(handler, 'stream'):
-            if handler.stream.name in ['<stderr>', '<stdout>']:
+            if getattr(handler.stream, "name", None) in ['<stderr>', '<stdout>']:
                 tradingagents_logger.removeHandler(handler)
 
     # 记录CLI启动日志（只写入文件）
@@ -588,6 +591,12 @@ def get_user_selections():
     )
     analysis_date = get_analysis_date()
 
+    if os.environ.get("TRADINGAGENTS_OUTPUT_LANGUAGE"):
+        output_language = DEFAULT_CONFIG["output_language"]
+        console.print(f"[green]✓ 输出语言来自环境变量 | Output language from environment:[/green] {output_language}")
+    else:
+        output_language = DEFAULT_CONFIG.get("output_language", "Chinese")
+
     # Step 4: Select analysts
     console.print(
         create_question_box(
@@ -616,17 +625,33 @@ def get_user_selections():
             "选择要使用的LLM服务 | Select which LLM service to use"
         )
     )
-    selected_llm_provider, backend_url = select_llm_provider()
+    provider_from_env = bool(os.environ.get("TRADINGAGENTS_LLM_PROVIDER"))
+    if provider_from_env:
+        selected_llm_provider = str(DEFAULT_CONFIG["llm_provider"]).lower()
+        backend_url = DEFAULT_CONFIG.get("backend_url") or provider_default_url(selected_llm_provider)
+        console.print(f"[green]✓ LLM提供商来自环境变量 | LLM provider from environment:[/green] {selected_llm_provider}")
+        console.print(f"[green]✓ Backend URL:[/green] {backend_url}")
+        ensure_api_key(selected_llm_provider)
+    else:
+        selected_llm_provider, backend_url = select_llm_provider()
 
     # Step 7: Thinking agents
-    console.print(
-        create_question_box(
-            "步骤 7: 思考智能体 | Step 7: Thinking Agents",
-            "选择您的思考智能体进行分析 | Select your thinking agents for analysis"
+    if os.environ.get("TRADINGAGENTS_QUICK_THINK_LLM") or os.environ.get("TRADINGAGENTS_DEEP_THINK_LLM"):
+        selected_shallow_thinker = DEFAULT_CONFIG["quick_think_llm"]
+        selected_deep_thinker = DEFAULT_CONFIG["deep_think_llm"]
+        console.print(
+            f"[green]✓ 思考模型来自环境变量 | Thinking agents from environment:[/green] "
+            f"quick={selected_shallow_thinker}, deep={selected_deep_thinker}"
         )
-    )
-    selected_shallow_thinker = select_shallow_thinking_agent(selected_llm_provider)
-    selected_deep_thinker = select_deep_thinking_agent(selected_llm_provider)
+    else:
+        console.print(
+            create_question_box(
+                "步骤 7: 思考智能体 | Step 7: Thinking Agents",
+                "选择您的思考智能体进行分析 | Select your thinking agents for analysis"
+            )
+        )
+        selected_shallow_thinker = select_shallow_thinking_agent(selected_llm_provider)
+        selected_deep_thinker = select_deep_thinking_agent(selected_llm_provider)
 
     return {
         "ticker": selected_ticker,
@@ -638,6 +663,10 @@ def get_user_selections():
         "backend_url": backend_url,
         "shallow_thinker": selected_shallow_thinker,
         "deep_thinker": selected_deep_thinker,
+        "google_thinking_level": DEFAULT_CONFIG.get("google_thinking_level"),
+        "openai_reasoning_effort": DEFAULT_CONFIG.get("openai_reasoning_effort"),
+        "anthropic_effort": DEFAULT_CONFIG.get("anthropic_effort"),
+        "output_language": output_language,
     }
 
 
@@ -1066,6 +1095,10 @@ def run_analysis():
     config["quick_think_llm"] = selections["shallow_thinker"]
     config["deep_think_llm"] = selections["deep_thinker"]
     config["backend_url"] = selections["backend_url"]
+    config["output_language"] = selections.get("output_language", config.get("output_language"))
+    config["google_thinking_level"] = selections.get("google_thinking_level", config.get("google_thinking_level"))
+    config["openai_reasoning_effort"] = selections.get("openai_reasoning_effort", config.get("openai_reasoning_effort"))
+    config["anthropic_effort"] = selections.get("anthropic_effort", config.get("anthropic_effort"))
     selected_llm_provider_name = selections["llm_provider"]
     config["llm_provider"] = selected_llm_provider_name
 

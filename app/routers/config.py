@@ -325,16 +325,13 @@ async def add_llm_provider(
 
         provider_data = request.model_dump()
 
-        # 新增时也允许保存完整密钥；占位符/截断值则跳过该字段
+        # Provider catalog endpoints must not persist secrets directly. Secret
+        # values are managed through dedicated config paths/env bridges.
         if 'api_key' in provider_data:
-            api_key = provider_data.get('api_key', '')
-            if should_skip_api_key_update(api_key):
-                del provider_data['api_key']
+            provider_data['api_key'] = ""
 
         if 'api_secret' in provider_data:
-            api_secret = provider_data.get('api_secret', '')
-            if should_skip_api_key_update(api_secret):
-                del provider_data['api_secret']
+            provider_data['api_secret'] = ""
 
         provider = LLMProvider(**provider_data)
         provider_id = await config_service.add_llm_provider(provider)
@@ -372,23 +369,13 @@ async def update_llm_provider(
 
         update_data = request.model_dump(exclude_unset=True)
 
-        # 🔥 修改：处理 API Key 的更新逻辑
-        # 1. 如果 API Key 是空字符串，表示用户想清空密钥 → 保存空字符串
-        # 2. 如果 API Key 是占位符或截断的密钥（如 "sk-99054..."），则删除该字段（不更新）
-        # 3. 如果 API Key 是有效的完整密钥，则更新
+        # Provider catalog endpoints must not persist secrets directly. Secret
+        # values are managed through dedicated config paths/env bridges.
         if 'api_key' in update_data:
-            api_key = update_data.get('api_key', '')
-            # 如果应该跳过更新（占位符或截断的密钥），则删除该字段
-            if should_skip_api_key_update(api_key):
-                del update_data['api_key']
-            # 如果是空字符串，保留（表示清空）
-            # 如果是有效的完整密钥，保留（表示更新）
+            update_data['api_key'] = ""
 
         if 'api_secret' in update_data:
-            api_secret = update_data.get('api_secret', '')
-            # 同样的逻辑处理 API Secret
-            if should_skip_api_key_update(api_secret):
-                del update_data['api_secret']
+            update_data['api_secret'] = ""
 
         success = await config_service.update_llm_provider(provider_id, update_data)
 
@@ -1737,7 +1724,13 @@ async def get_system_settings(
     """获取系统设置"""
     try:
         effective = await config_provider.get_effective_system_settings()
-        return ok(data=_sanitize_kv(effective), message="获取系统设置成功")
+        sanitized = _sanitize_kv(effective)
+        response = ok(data=sanitized, message="获取系统设置成功")
+        if isinstance(sanitized, dict):
+            for key, value in sanitized.items():
+                if key not in response:
+                    response[key] = value
+        return response
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

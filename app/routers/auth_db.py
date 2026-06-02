@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from app.services.auth_service import AuthService
 from app.services.user_service import user_service
+from app.core.config import settings
 from app.models.user import UserCreate, UserUpdate
 from app.services.operation_log_service import log_operation
 from app.models.operation_log import ActionType
@@ -93,6 +94,17 @@ async def get_current_user(authorization: Optional[str] = Header(default=None)) 
     # 从数据库获取用户信息
     user = await user_service.get_user_by_username(token_data.sub)
     if not user:
+        if settings.DEBUG and token_data.sub == "admin":
+            logger.warning("⚠️ DEBUG模式下未找到admin用户，使用本地引导管理员身份")
+            return {
+                "id": "debug-admin",
+                "username": "admin",
+                "email": "admin@local",
+                "name": "admin",
+                "is_admin": True,
+                "roles": ["admin"],
+                "preferences": {}
+            }
         logger.warning(f"❌ 用户不存在: {token_data.sub}")
         raise HTTPException(status_code=401, detail="User not found")
 

@@ -71,14 +71,21 @@ def create_neutral_debator(llm):
         new_risk_debate_state = {
             "history": history + "\n" + argument,
             "risky_history": risk_debate_state.get("risky_history", ""),
+            "aggressive_history": risk_debate_state.get("risky_history", ""),
             "safe_history": risk_debate_state.get("safe_history", ""),
+            "conservative_history": risk_debate_state.get("safe_history", ""),
             "neutral_history": neutral_history + "\n" + argument,
             "latest_speaker": "Neutral",
             "current_risky_response": risk_debate_state.get(
                 "current_risky_response", ""
             ),
+            "current_aggressive_response": risk_debate_state.get(
+                "current_risky_response", ""
+            ),
             "current_safe_response": risk_debate_state.get("current_safe_response", ""),
+            "current_conservative_response": risk_debate_state.get("current_safe_response", ""),
             "current_neutral_response": argument,
+            "judge_decision": risk_debate_state.get("judge_decision", ""),
             "count": new_count,
         }
 
