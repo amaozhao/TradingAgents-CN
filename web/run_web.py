@@ -234,7 +234,7 @@ def main():
     # 如果配置目录存在，添加配置路径
     if config_dir.exists():
         logger.info(f"📁 使用配置目录: {config_dir}")
-        # Streamlit会自动查找.streamlit/config.toml文件
+        # Streamlit will use its default settings when no local config file exists.
     
     logger.info(f"执行命令: {' '.join(cmd)}")
     logger.info(f"\n🎉 Web应用启动中...")

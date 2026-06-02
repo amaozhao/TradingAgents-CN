@@ -4,7 +4,7 @@
 
 本指南将帮助您快速上手 TradingAgents 框架，从安装到运行第一个交易分析，只需几分钟时间。
 
-## 🎉 v0.1.7 新特性
+## 🎉 v1.0.1 当前特性
 
 ### Docker容器化部署
 - ✅ **一键部署**: Docker Compose完整环境
@@ -36,7 +36,7 @@ TUSHARE_TOKEN=your_tushare_token      # Tushare数据
 
 ### 系统要求
 - **操作系统**: Windows 10+, macOS 10.15+, 或 Linux
-- **Python**: 3.10 或更高版本
+- **Python**: 3.13 或更高版本
 - **内存**: 至少 4GB RAM (推荐 8GB+)
 - **存储**: 至少 2GB 可用空间
 
@@ -83,7 +83,7 @@ source tradingagents/bin/activate  # Linux/macOS
 
 ### 3. 安装依赖
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ### 4. 配置环境变量
@@ -334,17 +334,17 @@ config["online_tools"] = False  # 使用缓存数据而不是实时数据
 
 现在您已经成功运行了第一个分析，可以：
 
-1. **探索更多功能**: 查看 [API参考文档](../api/core-api.md)
-2. **自定义配置**: 阅读 [配置指南](../configuration/config-guide.md)
-3. **开发自定义智能体**: 参考 [扩展开发指南](../development/extending.md)
-4. **查看更多示例**: 浏览 [示例和教程](../examples/basic-examples.md)
+1. **查看文档入口**: 阅读 [文档入口](../README.md)
+2. **自定义数据目录**: 阅读 [数据目录配置](../configuration/data-directory-configuration.md)
+3. **配置 Google AI**: 阅读 [Google AI 配置](../configuration/google-ai-setup.md)
+4. **理解学习中心**: 阅读 [多智能体系统](../learning/04-analysis-principles/multi-agent-system.md)
 
 ## 获取帮助
 
 如果遇到问题，可以：
-- 查看 [常见问题](../faq/faq.md)
+- 查看 [常见问题](../learning/08-faq/general-questions.md)
 - 访问 [GitHub Issues](https://github.com/TauricResearch/TradingAgents/issues)
 - 加入 [Discord 社区](https://discord.com/invite/hk9PGKShPK)
-- 查看 [故障排除指南](../faq/troubleshooting.md)
+- 查看 [文档入口](../README.md)
 
 祝您使用愉快！🚀

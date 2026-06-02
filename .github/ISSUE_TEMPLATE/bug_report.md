@@ -42,8 +42,8 @@ assignees: ''
 
 **系统信息 / System Info:**
 - 操作系统 / OS: [例如 Windows 11, macOS 13, Ubuntu 22.04]
-- Python版本 / Python Version: [例如 3.10.0]
-- 项目版本 / Project Version: [例如 v0.1.6]
+- Python版本 / Python Version: [例如 3.13.13]
+- 项目版本 / Project Version: [例如 v1.0.1]
 
 **安装方式 / Installation Method:**
 - [ ] 本地安装 / Local Installation

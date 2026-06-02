@@ -1,13 +1,13 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=82.0.1", "wheel>=0.47.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "tradingagents"
-version = "1.0.0-preview"
+version = "1.0.1"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 dependencies = [
     # 后端API框架和服务器
     "fastapi>=0.136.3",
@@ -49,8 +49,10 @@ dependencies = [
     "chainlit>=2.11.1",
     "chromadb>=1.5.9",
     "dashscope>=1.25.20",
-    "langchain-anthropic>=1.4.4",
+    "google-genai>=2.7.0",
     "langchain>=1.3.2",
+    "langchain-anthropic>=1.4.4",
+    "langchain-community>=0.4.2",
     "langchain-core>=1.4.0",
     "langchain-experimental>=0.4.2",
     "langchain-google-genai>=4.2.4",  # 修复 client_options 未定义错误
@@ -82,7 +84,7 @@ dependencies = [
     "pytest-asyncio>=1.4.0",
     "python-dotenv>=1.2.2",
     "pytz>=2026.2",
-    "questionary>=2.1.0",
+    "questionary>=2.1.1",
     "rich>=15.0.0",
     "setuptools>=82.0.1",
     "streamlit>=1.58.0",

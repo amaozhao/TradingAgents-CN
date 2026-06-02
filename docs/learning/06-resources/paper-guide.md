@@ -18,7 +18,7 @@
 ³ Tauric Research
 
 **资源**:
-- 📄 [英文原版 PDF](../../paper/TradingAgents_paper.pdf)
+- 📄 [英文原版 PDF](/paper/TradingAgents_paper.pdf)
 - 📄 [中文翻译版](../../paper/TradingAgents_论文中文版.md)
 - 💻 [项目地址](https://github.com/TauricResearch/TradingAgents)
 
@@ -385,5 +385,4 @@ TradingAgents-CN 的数据流架构设计用于高效地获取、处理和分发
 **推荐阅读顺序**：
 1. 📄 先读[论文中文版](../../paper/TradingAgents_论文中文版.md)
 2. 📖 再看[多智能体系统](../04-analysis-principles/multi-agent-system.md)
-3. 🚀 最后[快速开始](../07-tutorials/getting-started.md)实践
-
+3. 🚀 最后[快速开始](../../overview/quick-start.md)实践

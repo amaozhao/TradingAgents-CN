@@ -275,7 +275,7 @@ class InstallationTester:
             print("   运行: python start_web.py")
         else:
             print("\n⚠️ 安装验证发现问题，请根据上述错误信息进行修复。")
-            print("   参考文档: docs/guides/installation-guide.md")
+            print("   参考文档: docs/overview/quick-start.md")
 
 def main():
     """主函数"""

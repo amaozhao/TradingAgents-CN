@@ -387,10 +387,9 @@ AI分析：基本面优秀，技术面良好，建议买入
 
 ## 🔗 相关资源
 
-- 📖 [幻觉问题详解](./hallucination.md)
-- 📖 [数据时效性](./data-timeliness.md)
-- 📖 [正确使用方式](./proper-usage.md)
-- 📖 [风险管理教程](../07-tutorials/risk-management.md)
+- 📖 [常见问题解答](../08-faq/general-questions.md)
+- 📖 [什么是大语言模型](../01-ai-basics/what-is-llm.md)
+- 📖 [多智能体系统详解](../04-analysis-principles/multi-agent-system.md)
 
 ---
 
@@ -429,4 +428,3 @@ A:
 ⚠️ **AI分析仅供学习参考，不构成投资建议**
 
 ⚠️ **请根据自身情况做出独立判断**
-

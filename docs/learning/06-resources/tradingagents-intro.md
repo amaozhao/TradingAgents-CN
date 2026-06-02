@@ -209,7 +209,7 @@ TradingAgents论文提出了一个开源的AI智能体平台，用于股票分�
 
 ### 论文下载
 
-- 📄 [英文原版PDF](../../paper/TradingAgents_paper.pdf)
+- 📄 [英文原版PDF](/paper/TradingAgents_paper.pdf)
 - 📄 [中文翻译版](../../paper/TradingAgents_论文中文版.md)
 - 📄 [arXiv在线版](https://arxiv.org/pdf/2412.20138)
 - 📄 [论文解读](./paper-guide.md)
@@ -266,5 +266,4 @@ A: 欢迎贡献！请访问GitHub仓库，提交Pull Request或Issue。
 **下一步阅读**：
 - 📖 [论文中文版](../../paper/TradingAgents_论文中文版.md)
 - 📖 [多智能体系统](../04-analysis-principles/multi-agent-system.md)
-- 📖 [快速开始](../07-tutorials/getting-started.md)
-
+- 📖 [快速开始](../../overview/quick-start.md)

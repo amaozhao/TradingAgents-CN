@@ -25,10 +25,14 @@ def test_scheduler_adds_quotes_job(monkeypatch):
     class _FakeScheduler:
         def __init__(self):
             self.jobs = []
+            self.paused_job_ids = []
 
         def add_job(self, func, trigger, *args, **kwargs):
             # record and keep a handle to the callable and trigger
             self.jobs.append({"func": func, "trigger": trigger, "args": args, "kwargs": kwargs})
+
+        def pause_job(self, job_id):
+            self.paused_job_ids.append(job_id)
 
         def start(self):
             # no-op in tests
@@ -95,4 +99,3 @@ def test_scheduler_adds_quotes_job(monkeypatch):
     job_func()  # should call asyncio.create_task(...) with our fake
 
     assert state.create_task_called is True
-

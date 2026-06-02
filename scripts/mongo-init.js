@@ -1,4 +1,4 @@
-// MongoDB初始化脚本 - TradingAgents-CN v1.0.0-preview
+// MongoDB初始化脚本 - TradingAgents-CN v1.0.1
 // 创建TradingAgents数据库、用户、集合和索引
 
 print('开始初始化TradingAgents数据库...');
@@ -160,7 +160,7 @@ print('\n插入初始数据...');
 db.system_config.insertMany([
   {
     key: 'system_version',
-    value: 'v1.0.0-preview',
+    value: 'v1.0.1',
     description: '系统版本号',
     updated_at: new Date()
   },

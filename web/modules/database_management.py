@@ -46,17 +46,17 @@ def main():
         
         1. 安装依赖包：
         ```bash
-        pip install -r requirements_db.txt
+        pip install -e .
         ```
         
-        2. 设置数据库：
+        2. 启动数据库服务：
         ```bash
-        python scripts/setup_databases.py
+        docker compose up -d mongodb redis
         ```
         
         3. 测试连接：
         ```bash
-        python scripts/setup_databases.py --test
+        python -m pytest tests/test_database_integration.py
         ```
         """)
         return

@@ -196,7 +196,6 @@ LLM可以生成结构化的分析报告：
 
 ### 下一步学习
 
-- 📖 [Transformer架构详解](./transformer.md)
 - 📖 [提示词工程基础](../02-prompt-engineering/prompt-basics.md)
 - 📖 [多智能体系统](../04-analysis-principles/multi-agent-system.md)
 
@@ -222,4 +221,3 @@ A: 需要考虑多个因素：任务需求、成本预算、响应速度、准�
 - [OpenAI GPT系列](https://openai.com/research/gpt-4)
 - [Transformer论文](https://arxiv.org/abs/1706.03762)
 - [TradingAgents项目](../06-resources/tradingagents-intro.md)
-

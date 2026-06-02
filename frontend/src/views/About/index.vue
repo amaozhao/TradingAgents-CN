@@ -199,7 +199,7 @@
               <span class="tech-desc">高性能API框架</span>
             </div>
             <div class="tech-item">
-              <span class="tech-name">Python 3.10+</span>
+              <span class="tech-name">Python 3.13+</span>
               <span class="tech-desc">现代Python开发</span>
             </div>
             <div class="tech-item">
@@ -359,7 +359,7 @@
             </div>
             <div class="framework-item">
               <span class="name">Python</span>
-              <span class="version">3.10+</span>
+              <span class="version">3.13+</span>
             </div>
           </div>
         </div>

@@ -121,7 +121,7 @@ REDDIT_USER_AGENT=your_user_agent
 
 ### Python依赖
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ### 测试结果解读

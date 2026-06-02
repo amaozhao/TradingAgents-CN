@@ -31,8 +31,6 @@ Existing modified files before this migration execution:
 - `frontend/tsconfig.json`
 - `frontend/yarn.lock`
 - `pyproject.toml`
-- `requirements-lock.txt`
-- `requirements.txt`
 
 Existing untracked migration-related files before this execution:
 

@@ -5,8 +5,6 @@
 
 ⚠️ DEPRECATED: 此模块已废弃，将在 2026-03-31 后移除
    请使用新的配置系统: app.services.config_service.ConfigService
-   迁移指南: docs/DEPRECATION_NOTICE.md
-   迁移脚本: scripts/migrate_config_to_db.py
 """
 
 import json
@@ -23,8 +21,7 @@ from dotenv import load_dotenv
 # 发出废弃警告
 warnings.warn(
     "ConfigManager is deprecated and will be removed in version 2.0 (2026-03-31). "
-    "Please use app.services.config_service.ConfigService instead. "
-    "See docs/DEPRECATION_NOTICE.md for migration guide.",
+    "Please use app.services.config_service.ConfigService instead.",
     DeprecationWarning,
     stacklevel=2
 )

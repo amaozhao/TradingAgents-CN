@@ -1,7 +1,7 @@
 # TradingAgents 中文增强版
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.13%2B-blue.svg)](https://www.python.org/)
 [![Version](https://img.shields.io/badge/Version-v1.0.1-green.svg)](./VERSION)
 [![Documentation](https://img.shields.io/badge/docs-中文文档-green.svg)](./docs/)
 [![Original](https://img.shields.io/badge/基于-TauricResearch/TradingAgents-orange.svg)](https://github.com/TauricResearch/TradingAgents)
@@ -62,7 +62,7 @@
 
 ## 🎉 v1.0.1 版本说明 - 配置体验与同步稳定性增强
 
-> 🚀 **当前推荐版本**: `v1.0.1` 已正式可用，在 `v1.0.0-preview` 架构基础上，重点增强配置管理、聚合厂家、页面切换、单股同步和上游能力吸收。
+> 🚀 **当前推荐版本**: `v1.0.1` 已正式可用，重点增强配置管理、聚合厂家、页面切换、单股同步和上游能力吸收。
 
 ### ✨ 核心特性
 
@@ -137,19 +137,11 @@
 #### 📚 使用指南
 
 在使用前，建议先阅读详细的使用指南：
-- **[v1.0.1 发布说明](./docs/releases/v1.0.1-release-notes.md)**
-- **[v1.0.1 使用手册](./docs/guides/v1.0.1-user-manual.md)**
-- **[v1.0.1 升级指南](./docs/releases/upgrade-guide.md)**
-- **[完整更新日志](./docs/releases/CHANGELOG.md)**
-- **[0、📘 TradingAgents-CN v1.0.0-preview 快速入门视频](https://www.bilibili.com/video/BV1i2CeBwEP7/?vd_source=5d790a5b8d2f46d2c10fd4e770be1594)**
-
-- **[1、📘 TradingAgents-CN v1.0.0-preview 使用指南](https://mp.weixin.qq.com/s/ppsYiBncynxlsfKFG8uEbw)**
-- **[2、📘 使用 Docker Compose 部署TradingAgents-CN v1.0.0-preview（完全版）](https://mp.weixin.qq.com/s/JkA0cOu8xJnoY_3LC5oXNw)**
-- **[3、📘 从 Docker Hub 更新 TradingAgents‑CN 镜像](https://mp.weixin.qq.com/s/WKYhW8J80Watpg8K6E_dSQ)**
-- **[4、📘 TradingAgents-CN v1.0.0-preview绿色版安装和升级指南](https://mp.weixin.qq.com/s/eoo_HeIGxaQZVT76LBbRJQ)**
-- **[5、📘 TradingAgents-CN v1.0.0-preview绿色版端口配置说明](https://mp.weixin.qq.com/s/o5QdNuh2-iKkIHzJXCj7vQ)**
-- **[6、📘 TradingAgents v1.0.0-preview 源码版安装手册（修订版）](https://mp.weixin.qq.com/s/cqUGf-sAzcBV19gdI4sYfA)**
-- **[7、📘 TradingAgents v1.0.0-preview 源码安装视频教程](https://www.bilibili.com/video/BV1FxCtBHEte/?vd_source=5d790a5b8d2f46d2c10fd4e770be1594)**
+- **[文档入口](./docs/README.md)**
+- **[快速开始](./docs/overview/quick-start.md)**
+- **[数据库配置](./docs/database_setup.md)**
+- **[数据目录配置](./docs/configuration/data-directory-configuration.md)**
+- **[Google AI 配置](./docs/configuration/google-ai-setup.md)**
 
 
 使用指南包含：
@@ -157,17 +149,6 @@
 - ✅ 详细的配置说明和最佳实践
 - ✅ 常见问题解答和故障排除
 - ✅ 实际使用案例和效果展示
-
-### 数据库运维补充
-
-- 数据库版本隔离、共享库保护、迁移脚本与 provider 规范化说明：
-  - [数据库版本隔离与 Provider 规范化](./docs/deployment/database/DB_VERSION_ISOLATION_AND_PROVIDER_NORMALIZATION.md)
-
-### 上游吸收补充
-
-- 当前项目采用人工选择性吸收上游更新：
-  - [上游同步策略](./docs/maintenance/upstream-sync.md)
-  - [人工上游吸收清单](./docs/maintenance/manual-upstream-absorption-checklist.md)
 
 - `v1.0.1` 已明确同步到当前版本的上游能力包括：
   - `llm_clients` 抽象层主链路
@@ -186,8 +167,6 @@
 
 
 - **微信公众号**: TradingAgents-CN（推荐）
-
-  <img src="assets/wexin.png" alt="微信公众号" width="200"/>
 
 
 ## 🆚 中文增强特色
@@ -301,14 +280,11 @@
 
 ## [感谢AIHubmix赞助，推荐llm模型使用AIHubmix](https://aihubmix.com/?aff=2rIi)
 
-<a href="https://aihubmix.com/?aff=2rIi" target="_blank" rel="noopener noreferrer">
-  <img src="assets/AIHubmixlogo.png" alt="AIHubMix" width="220"/>
-</a>
+AIHubMix 入口：https://aihubmix.com/?aff=2rIi
 
 ## 📈 版本历史
 
 - **v1.0.1** (2026-04-14): 🔧 配置管理优化、AiHubMix 聚合厂家、单股同步增强与上游能力吸收 ✨ **当前版本**
-- **v1.0.0-preview** (2025-10-10): 🏗️ FastAPI + Vue 3 新架构预览版
 - **v0.1.13** (2025-08-02): 🤖 原生OpenAI支持与Google AI生态系统全面集成
 - **v0.1.12** (2025-07-29): 🧠 智能新闻分析模块与项目结构优化
 - **v0.1.11** (2025-07-27): 🤖 多LLM提供商集成与模型选择持久化
@@ -323,16 +299,12 @@
 - **v0.1.2** (2025-06-15): 🌐 Web界面和配置管理
 - **v0.1.1** (2025-06-01): 🧠 国产LLM集成
 
-📋 **详细更新日志**: [CHANGELOG.md](./docs/releases/CHANGELOG.md)
-
 ## 📞 联系方式
 
 - **GitHub Issues**: [提交问题和建议](https://github.com/hsliuping/TradingAgents-CN/issues)
 - **邮箱**: hsliup@163.com
 - 项目ＱＱ群：1091917201
 - 项目微信公众号：TradingAgents-CN
-
-  <img src="assets/wexin.png" alt="微信公众号" width="200"/>
 
 - **原项目**: [TauricResearch/TradingAgents](https://github.com/TauricResearch/TradingAgents)
 - **文档**: [完整文档目录](docs/)

@@ -427,8 +427,5 @@ class MultiAgentSystem:
 
 ## 🔗 相关资源
 
-- 📖 [辩论机制详解](./debate-mechanism.md)
-- 📖 [分析流程详解](./analysis-workflow.md)
 - 📖 [TradingAgents项目介绍](../06-resources/tradingagents-intro.md)
-- 📖 [实战教程](../07-tutorials/single-analysis.md)
-
+- 📖 [快速开始](../../overview/quick-start.md)

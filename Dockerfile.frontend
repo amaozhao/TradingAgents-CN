@@ -1,4 +1,4 @@
-# Frontend Dockerfile for Vue 3 + Vite app (TradingAgents-CN v1.0.0-preview)
+# Frontend Dockerfile for Vue 3 + Vite app (TradingAgents-CN v1.0.1)
 # 前后端分离架构 - 前端服务
 
 # 构建阶段：使用Node.js 22.x（与项目开发环境一致）
@@ -20,10 +20,7 @@ RUN yarn install --frozen-lockfile --production=false --network-timeout 300000
 # 复制前端源代码
 COPY frontend/. ./
 
-# 复制根目录的静态资源与文档到构建环境
-# - assets: 提供 /assets/* 静态资源（前端使用绝对路径）
-# - docs: 提供 Article.vue 中通过 ?raw 引用的 Markdown 文档
-COPY assets /app/frontend/public/assets
+# 复制前端学习中心通过 ?raw 引用的 Markdown 文档
 COPY docs /app/docs
 
 # 构建生产版本（跳过类型检查以加快构建速度）

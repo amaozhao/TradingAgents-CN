@@ -19,13 +19,7 @@ if _IS_WINDOWS:
 else:
     _USE_CONCURRENT_HANDLER = False
 
-try:
-    import tomllib as toml_loader  # Python 3.11+
-except Exception:
-    try:
-        import tomli as toml_loader  # Python 3.10 fallback
-    except Exception:
-        toml_loader = None
+import tomllib as toml_loader
 
 
 def resolve_logging_cfg_path() -> Path:

@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
 测试数据库依赖包兼容性修复
-验证requirements_db.txt的兼容性改进
+验证pyproject.toml中的数据库依赖兼容性
 """
 
 import os
 import sys
-import subprocess
-import tempfile
-import shutil
+import tomllib
+from pathlib import Path
 
 # 添加项目根目录到Python路径
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -20,7 +19,7 @@ def test_python_version_check():
     print("🔧 测试Python版本检查...")
     
     current_version = sys.version_info
-    if current_version >= (3, 10):
+    if current_version >= (3, 13):
         print(f"  ✅ Python {current_version.major}.{current_version.minor}.{current_version.micro} 符合要求")
         return True
     else:
@@ -59,47 +58,52 @@ def test_pickle_compatibility():
         return False
 
 
-def test_requirements_file_syntax():
-    """测试requirements文件语法"""
-    print("🔧 测试requirements_db.txt语法...")
-    
-    requirements_file = os.path.join(project_root, "requirements_db.txt")
-    
-    if not os.path.exists(requirements_file):
-        print("  ❌ requirements_db.txt文件不存在")
+def test_pyproject_dependency_syntax():
+    """测试pyproject依赖声明语法"""
+    print("🔧 测试pyproject.toml数据库依赖...")
+
+    pyproject_file = Path(project_root) / "pyproject.toml"
+
+    if not pyproject_file.exists():
+        print("  ❌ pyproject.toml文件不存在")
         return False
-    
+
     try:
-        with open(requirements_file, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-        
-        print(f"  文件行数: {len(lines)}")
-        
-        # 检查是否包含pickle5
-        pickle5_found = False
-        valid_packages = []
-        
-        for line_num, line in enumerate(lines, 1):
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-                
-            if 'pickle5' in line and not line.startswith('#'):
-                print(f"  ❌ 第{line_num}行仍包含pickle5: {line}")
-                pickle5_found = True
-            else:
-                valid_packages.append(line)
-                print(f"  ✅ 第{line_num}行: {line}")
-        
-        if pickle5_found:
-            print("  ❌ 仍包含pickle5依赖")
+        data = tomllib.loads(pyproject_file.read_text(encoding="utf-8"))
+        dependencies = data["project"]["dependencies"]
+
+        dependency_text = "\n".join(dependencies)
+        if "pickle5" in dependency_text:
+            print("  ❌ pyproject.toml仍包含pickle5依赖")
             return False
-        
-        print(f"  ✅ 语法检查通过，有效包数量: {len(valid_packages)}")
+
+        required_database_packages = {
+            "pymongo": "pymongo>=",
+            "motor": "motor>=",
+            "redis": "redis>=",
+        }
+        missing = [
+            name for name, prefix in required_database_packages.items()
+            if not any(dep.startswith(prefix) for dep in dependencies)
+        ]
+
+        if missing:
+            print(f"  ❌ 缺少数据库依赖: {missing}")
+            return False
+
+        unpinned = [
+            dep for dep in dependencies
+            if ">=" not in dep and not dep.startswith("#")
+        ]
+        if unpinned:
+            print(f"  ❌ 存在非最小版本依赖声明: {unpinned}")
+            return False
+
+        print(f"  ✅ pyproject.toml依赖检查通过，有效包数量: {len(dependencies)}")
         return True
-        
+
     except Exception as e:
-        print(f"  ❌ 文件读取失败: {e}")
+        print(f"  ❌ pyproject.toml读取失败: {e}")
         return False
 
 
@@ -112,9 +116,7 @@ def test_package_installation_simulation():
         "pymongo",
         "motor", 
         "redis",
-        "hiredis",
         "pandas",
-        "numpy"
     ]
     
     available_packages = []
@@ -133,54 +135,31 @@ def test_package_installation_simulation():
     
     if missing_packages:
         print(f"  缺少包: {missing_packages}")
-        print("  💡 运行以下命令安装: pip install -r requirements_db.txt")
+        print("  💡 运行以下命令安装: pip install -e .")
     
     return True  # 这个测试总是通过，只是信息性的
 
 
-def test_compatibility_checker_tool():
-    """测试兼容性检查工具"""
-    print("🔧 测试兼容性检查工具...")
-    
-    checker_file = os.path.join(project_root, "check_db_requirements.py")
-    
-    if not os.path.exists(checker_file):
-        print("  ❌ check_db_requirements.py文件不存在")
+def test_deprecated_requirements_files_removed():
+    """测试废弃requirements文件已移除"""
+    print("🔧 测试废弃requirements文件清理...")
+
+    deprecated_files = [
+        "requirements.txt",
+        "requirements-lock.txt",
+    ]
+
+    remaining = [
+        file_name for file_name in deprecated_files
+        if (Path(project_root) / file_name).exists()
+    ]
+
+    if remaining:
+        print(f"  ❌ 废弃依赖文件仍存在: {remaining}")
         return False
-    
-    try:
-        # 运行兼容性检查工具
-        result = subprocess.run(
-            [sys.executable, checker_file],
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        
-        print(f"  返回码: {result.returncode}")
-        
-        if "🔧 TradingAgents 数据库依赖包兼容性检查" in result.stdout:
-            print("  ✅ 兼容性检查工具运行成功")
-            
-            # 检查是否检测到pickle5问题
-            if "pickle5" in result.stdout and "建议卸载" in result.stdout:
-                print("  ⚠️ 检测到pickle5问题")
-            elif "未安装pickle5包，配置正确" in result.stdout:
-                print("  ✅ pickle5配置正确")
-            
-            return True
-        else:
-            print("  ❌ 兼容性检查工具输出异常")
-            print(f"  输出: {result.stdout[:200]}...")
-            return False
-            
-    except subprocess.TimeoutExpired:
-        print("  ❌ 兼容性检查工具运行超时")
-        return False
-    except Exception as e:
-        print(f"  ❌ 兼容性检查工具运行失败: {e}")
-        return False
+
+    print("  ✅ 废弃requirements文件已移除，依赖入口统一为pyproject.toml")
+    return True
 
 
 def test_documentation_completeness():
@@ -188,8 +167,9 @@ def test_documentation_completeness():
     print("🔧 测试文档完整性...")
     
     docs_to_check = [
-        "docs/DATABASE_SETUP_GUIDE.md",
-        "REQUIREMENTS_DB_UPDATE.md"
+        "docs/database_setup.md",
+        "docs/guides/TESTING_GUIDE.md",
+        "tests/README.md",
     ]
     
     all_exist = True
@@ -220,9 +200,9 @@ def main():
     tests = [
         ("Python版本检查", test_python_version_check),
         ("pickle兼容性", test_pickle_compatibility),
-        ("requirements文件语法", test_requirements_file_syntax),
+        ("pyproject依赖语法", test_pyproject_dependency_syntax),
         ("包安装模拟", test_package_installation_simulation),
-        ("兼容性检查工具", test_compatibility_checker_tool),
+        ("废弃依赖文件清理", test_deprecated_requirements_files_removed),
         ("文档完整性", test_documentation_completeness),
     ]
     
@@ -246,7 +226,7 @@ def main():
     if passed == total:
         print("🎉 所有测试通过！数据库依赖包兼容性修复成功")
         print("\n📋 修复内容:")
-        print("✅ 移除pickle5依赖，解决Python 3.10+兼容性问题")
+        print("✅ 移除pickle5依赖，解决Python 3.13+兼容性问题")
         print("✅ 优化版本要求，提高环境兼容性")
         print("✅ 添加兼容性检查工具")
         print("✅ 完善安装指南和故障排除文档")

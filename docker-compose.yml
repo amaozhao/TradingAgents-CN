@@ -1,6 +1,4 @@
-version: '3.8'
-
-# TradingAgents-CN v1.0.0-preview Docker Compose配置
+# TradingAgents-CN v1.0.1 Docker Compose配置
 # 支持前后端分离部署
 
 services:
@@ -9,7 +7,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    image: tradingagents-backend:v1.0.0-preview
+    image: tradingagents-backend:v1.0.1
     container_name: tradingagents-backend
     ports:
       - "8000:8000"
@@ -66,7 +64,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    image: tradingagents-frontend:v1.0.0-preview
+    image: tradingagents-frontend:v1.0.1
     container_name: tradingagents-frontend
     ports:
       - "3000:80"
@@ -94,7 +92,7 @@ services:
 
   # MongoDB 数据库服务
   mongodb:
-    image: mongo:4.4
+    image: mongo:latest
     container_name: tradingagents-mongodb
     restart: unless-stopped
     ports:
@@ -110,7 +108,7 @@ services:
     networks:
       - tradingagents-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -123,7 +121,7 @@ services:
 
   # Redis 缓存服务
   redis:
-    image: redis:7-alpine
+    image: redis:latest
     container_name: tradingagents-redis
     restart: unless-stopped
     ports:
@@ -205,4 +203,3 @@ networks:
   tradingagents-network:
     driver: bridge
     name: tradingagents-network
-
