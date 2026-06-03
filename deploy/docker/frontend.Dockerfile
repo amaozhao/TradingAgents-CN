@@ -35,7 +35,7 @@ WORKDIR /usr/share/nginx/html
 COPY --from=build /app/frontend/dist .
 
 # 复制Nginx配置（支持SPA路由）
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY deploy/docker/nginx/frontend.conf /etc/nginx/conf.d/default.conf
 
 # 暴露端口80
 EXPOSE 80

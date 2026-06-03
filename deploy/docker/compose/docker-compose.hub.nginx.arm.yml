@@ -1,11 +1,9 @@
-version: '3.8'
-
 # TradingAgents-CN v1.0.1 Docker Compose配置（带 Nginx 反向代理）
 # 使用Docker Hub镜像 + Nginx 反向代理
 #
 # 使用方法：
 # 1. 复制.env.example为.env并配置环境变量
-# 2. 运行: docker-compose -f docker-compose.hub.nginx.yml up -d
+# 2. 运行: docker compose -f deploy/docker/compose/docker-compose.hub.nginx.arm.yml up -d
 # 3. 访问: http://your-server (前端和后端API都通过80端口访问)
 #
 # 优势：
@@ -17,6 +15,7 @@ services:
   # MongoDB数据库
   mongodb:
     image: mongo:4.4
+    platform: linux/arm64  # 显式指定 ARM64 平台
     container_name: tradingagents-mongodb
     restart: unless-stopped
     ports:
@@ -42,6 +41,7 @@ services:
   # Redis缓存
   redis:
     image: redis:7-alpine
+    platform: linux/arm64  # 显式指定 ARM64 平台
     container_name: tradingagents-redis
     restart: unless-stopped
     ports:
@@ -62,25 +62,18 @@ services:
 
   # FastAPI后端服务
   backend:
-    # 支持本地构建或从Docker Hub拉取
-    # 本地构建: docker-compose -f docker-compose.hub.nginx.yml build backend
-    # 拉取镜像: docker-compose -f docker-compose.hub.nginx.yml pull backend
-    build:
-      context: .
-      dockerfile: backend/Dockerfile.backend
     image: hsliup/tradingagents-backend:v1.0.1
+    platform: linux/arm64  # 显式指定 ARM64 平台
     container_name: tradingagents-backend
     restart: unless-stopped
     expose:
       - "8000"
     volumes:
-      - ./logs:/app/logs
-      # 不映射config目录，使用镜像内的配置文件
-      # 如需修改配置，请修改代码后重新构建镜像
-      # - ./config:/app/config
-      - ./data:/app/data
+      - ../../../runtime/logs:/app/logs
+      #- ../../../config:/app/config
+      - ../../../runtime/data:/app/data
     env_file:
-      - .env
+      - ../../../deploy/env/docker.env
     environment:
       TZ: "Asia/Shanghai"
       TRADINGAGENTS_LOG_LEVEL: "INFO"
@@ -112,27 +105,24 @@ services:
       # CORS配置（允许 Nginx 代理）
       CORS_ORIGINS: "*"
       # AI模型API密钥（从.env文件读取，environment部分需要显式声明才能覆盖镜像内的占位符）
-      DASHSCOPE_API_KEY: "${DASHSCOPE_API_KEY}"
+      DASHSCOPE_API_KEY: "${DASHSCOPE_API_KEY:-your_dashscope_api_key_here}"
       DASHSCOPE_ENABLED: "${DASHSCOPE_ENABLED:-false}"
-      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY}"
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-your_deepseek_api_key_here}"
       DEEPSEEK_ENABLED: "${DEEPSEEK_ENABLED:-false}"
-      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-your_openai_api_key_here}"
       OPENAI_ENABLED: "${OPENAI_ENABLED:-false}"
-      GOOGLE_API_KEY: "${GOOGLE_API_KEY}"
+      GOOGLE_API_KEY: "${GOOGLE_API_KEY:-your_google_api_key_here}"
       GOOGLE_ENABLED: "${GOOGLE_ENABLED:-false}"
-      BAIDU_API_KEY: "${BAIDU_API_KEY}"
-      BAIDU_SECRET_KEY: "${BAIDU_SECRET_KEY}"
-      BAIDU_ENABLED: "${BAIDU_ENABLED:-false}"
-      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-your_openrouter_api_key_here}"
       OPENROUTER_ENABLED: "${OPENROUTER_ENABLED:-false}"
-      AIHUBMIX_API_KEY: "${AIHUBMIX_API_KEY}"
+      AIHUBMIX_API_KEY: "${AIHUBMIX_API_KEY:-your_aihubmix_api_key_here}"
       AIHUBMIX_ENABLED: "${AIHUBMIX_ENABLED:-false}"
       # 数据源API密钥
-      TUSHARE_TOKEN: "${TUSHARE_TOKEN}"
+      TUSHARE_TOKEN: "${TUSHARE_TOKEN:-your_tushare_token_here}"
       TUSHARE_ENABLED: "${TUSHARE_ENABLED:-false}"
       AKSHARE_ENABLED: "${AKSHARE_ENABLED:-true}"
       BAOSTOCK_ENABLED: "${BAOSTOCK_ENABLED:-true}"
-      FINNHUB_API_KEY: "${FINNHUB_API_KEY}"
+      FINNHUB_API_KEY: "${FINNHUB_API_KEY:-your_finnhub_api_key_here}"
       FINNHUB_ENABLED: "${FINNHUB_ENABLED:-false}"
     depends_on:
       mongodb:
@@ -150,11 +140,8 @@ services:
 
   # Vue 3前端服务
   frontend:
-    # 支持本地构建或从Docker Hub拉取
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile.frontend
     image: hsliup/tradingagents-frontend:v1.0.1
+    platform: linux/arm64  # 显式指定 ARM64 平台
     container_name: tradingagents-frontend
     restart: unless-stopped
     expose:
@@ -175,15 +162,15 @@ services:
       start_period: 10s
 
   # Nginx 反向代理
-  # ports可以改为8080:80,或者其它的端口映射，前面一个是外部的端口，后面一个是容器内的端口
   nginx:
     image: nginx:alpine
+    platform: linux/arm64  # 显式指定 ARM64 平台
     container_name: tradingagents-nginx
     restart: unless-stopped
     ports:
-      - "80:80" 
+      - "80:80"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../nginx/reverse-proxy.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - frontend
       - backend

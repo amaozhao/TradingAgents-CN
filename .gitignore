@@ -89,6 +89,7 @@ web/eval_results/
 
 # 运行时数据和配置 (不纳入版本控制)
 runtime/
+backend/config/
 
 # 第三方软件和依赖 (不纳入版本控制)
 vendors/
@@ -126,6 +127,7 @@ docs/v1.0.0-preview/
 # AI工具目录 (不纳入版本控制)
 .trae/
 .augment/
+.omx/
 
 # 自动清理脚本添加的规则
 # Python包元数据
@@ -178,6 +180,7 @@ node_modules/
 frontend/.vite
 
 # Installers and archives
+*.deb
 *.msi
 *.msix
 *.zip

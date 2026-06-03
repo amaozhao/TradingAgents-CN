@@ -138,6 +138,7 @@ const testing = ref(false)
 const testDialogVisible = ref(false)
 const testResults = ref<DataSourceTestResult[] | null>(null)
 const dataSourceStatusRef = ref()
+void dataSourceStatusRef
 
 // 运行全面测试
 const runFullTest = async () => {

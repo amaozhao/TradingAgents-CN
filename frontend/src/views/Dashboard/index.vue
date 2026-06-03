@@ -383,7 +383,7 @@ const goToLearning = () => {
   router.push('/learning')
 }
 
-const viewAnalysis = (analysis: AnalysisTask) => {
+const viewAnalysis = (analysis: any) => {
   const status = (analysis as any)?.status
   if (status === 'completed') {
     router.push({ name: 'ReportDetail', params: { id: analysis.task_id } })
@@ -393,7 +393,7 @@ const viewAnalysis = (analysis: AnalysisTask) => {
   }
 }
 
-const downloadReport = async (analysis: AnalysisTask) => {
+const downloadReport = async (analysis: any) => {
   try {
     const reportId = analysis.task_id
     const res = await fetch(`/api/reports/${reportId}/download?format=markdown`, {

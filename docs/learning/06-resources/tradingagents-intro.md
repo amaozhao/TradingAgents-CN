@@ -139,7 +139,7 @@ ANALYST_PROMPT = """
 ### 1. 开源与可扩展
 
 - ✅ 开源核心组件（Apache License 2.0）
-- 🔒 专有组件遵循项目根目录许可证说明（见 LICENSE 与 LICENSING.md）
+- 🔒 专有组件遵循项目许可证说明（见根目录 LICENSE 与 docs/legal/LICENSING.md）
 - ✅ 模块化设计，易于扩展
 - ✅ 支持自定义智能体和工具
 - ✅ 活跃的社区支持

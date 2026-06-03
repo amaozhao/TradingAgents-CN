@@ -5,21 +5,21 @@ services:
   # FastAPI 后端服务
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile.backend
+      context: ../../..
+      dockerfile: deploy/docker/backend.Dockerfile
     image: tradingagents-backend:v1.0.1
     container_name: tradingagents-backend
     ports:
       - "8000:8000"
     volumes:
       # 日志目录映射
-      - ./logs:/app/logs
+      - ../../../runtime/logs:/app/logs
       # 配置目录映射
-      - ./config:/app/config
+      - ../../../config:/app/config
       # 数据目录映射
-      - ./data:/app/data
+      - ../../../runtime/data:/app/data
     env_file:
-      - .env
+      - ../../../deploy/env/docker.env
     environment:
       PYTHONUNBUFFERED: 1
       PYTHONDONTWRITEBYTECODE: 1
@@ -62,8 +62,8 @@ services:
   # Vue 3 前端服务
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile.frontend
+      context: ../../..
+      dockerfile: deploy/docker/frontend.Dockerfile
     image: tradingagents-frontend:v1.0.1
     container_name: tradingagents-frontend
     ports:
@@ -104,7 +104,7 @@ services:
       TZ: "Asia/Shanghai"
     volumes:
       - mongodb_data:/data/db
-      - ./backend/scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ../../../backend/scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
       - tradingagents-network
     healthcheck:

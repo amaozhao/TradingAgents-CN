@@ -22,7 +22,7 @@ echo "1. 检查容器状态..."
 if ! docker ps | grep -q "$CONTAINER_NAME"; then
     echo -e "${RED}❌ 容器 $CONTAINER_NAME 未运行${NC}"
     echo "请先启动容器："
-    echo "  docker-compose -f docker-compose.hub.nginx.yml up -d backend"
+    echo "  docker compose -f deploy/docker/compose/docker-compose.hub.nginx.yml up -d backend"
     exit 1
 fi
 echo -e "${GREEN}✅ 容器正在运行${NC}"
@@ -125,7 +125,7 @@ else
 fi
 echo ""
 echo "如需重新构建镜像："
-echo "  docker build -t hsliup/tradingagents-backend:latest -f backend/Dockerfile.backend ."
+echo "  docker build -t hsliup/tradingagents-backend:latest -f deploy/docker/backend.Dockerfile ."
 echo "  docker push hsliup/tradingagents-backend:latest"
 echo ""
 echo "=========================================="

@@ -4,10 +4,14 @@
 Write-Host "🚀 Docker重建和日志测试" -ForegroundColor Green
 Write-Host "========================" -ForegroundColor Green
 
+$RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "../..")
+$ComposeFile = Join-Path $RepoRoot "deploy/docker/compose/docker-compose.yml"
+Set-Location $RepoRoot
+
 # 1. 停止现有容器
 Write-Host ""
 Write-Host "🛑 停止现有容器..." -ForegroundColor Yellow
-docker-compose down
+docker compose -f $ComposeFile down
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "✅ 容器已停止" -ForegroundColor Green
@@ -20,7 +24,7 @@ Write-Host ""
 Write-Host "🔨 重新构建Docker镜像..." -ForegroundColor Yellow
 Write-Host "💡 这可能需要几分钟时间..." -ForegroundColor Gray
 
-docker-compose build
+docker compose -f $ComposeFile build
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "✅ 镜像构建成功" -ForegroundColor Green
@@ -32,7 +36,7 @@ if ($LASTEXITCODE -eq 0) {
 # 3. 启动容器
 Write-Host ""
 Write-Host "🚀 启动容器..." -ForegroundColor Yellow
-docker-compose up -d
+docker compose -f $ComposeFile up -d
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "✅ 容器启动成功" -ForegroundColor Green
@@ -49,7 +53,7 @@ Start-Sleep -Seconds 15
 # 5. 检查容器状态
 Write-Host ""
 Write-Host "📊 检查容器状态..." -ForegroundColor Yellow
-docker-compose ps
+docker compose -f $ComposeFile ps
 
 # 6. 运行简单日志测试
 Write-Host ""
@@ -143,8 +147,8 @@ Write-Host "🎉 测试完成！" -ForegroundColor Green
 Write-Host ""
 Write-Host "💡 常用命令:" -ForegroundColor Yellow
 Write-Host "   实时查看日志: Get-Content logs\tradingagents.log -Wait" -ForegroundColor Gray
-Write-Host "   查看Docker日志: docker-compose logs -f web" -ForegroundColor Gray
-Write-Host "   重启服务: docker-compose restart web" -ForegroundColor Gray
+Write-Host "   查看Docker日志: docker compose -f $ComposeFile logs -f backend" -ForegroundColor Gray
+Write-Host "   重启服务: docker compose -f $ComposeFile restart backend" -ForegroundColor Gray
 Write-Host "   进入容器: docker exec -it TradingAgents-web bash" -ForegroundColor Gray
 Write-Host ""
 Write-Host "🌐 Web界面: http://localhost:8501" -ForegroundColor Cyan

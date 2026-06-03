@@ -629,6 +629,7 @@ const addRules = {
 const editDialogVisible = ref(false)
 const editLoading = ref(false)
 const editFormRef = ref()
+void editFormRef
 const editForm = ref({
   stock_code: '',
   stock_name: '',
@@ -1023,7 +1024,7 @@ const handleSelectionChange = (selection: FavoriteItem[]) => {
 }
 
 // 显示单个股票同步对话框
-const showSingleSyncDialog = (row: FavoriteItem) => {
+const showSingleSyncDialog = (row: any) => {
   currentSyncStock.value = {
     stock_code: row.stock_code || '',
     stock_name: row.stock_name || ''

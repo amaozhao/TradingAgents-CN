@@ -64,9 +64,9 @@ For commercial licensing of proprietary components, please contact the copyright
 
 ## 📚 相关文档 / Related Documents
 
-- [LICENSE](./LICENSE) - 主许可证文件 / Main License File
-- [backend/app/LICENSE](./backend/app/LICENSE) - 后端专有许可证 / Backend Proprietary License
-- [frontend/LICENSE](./frontend/LICENSE) - 前端专有许可证 / Frontend Proprietary License
+- [LICENSE](../../LICENSE) - 主许可证文件 / Main License File
+- [backend/app/LICENSE](../../backend/app/LICENSE) - 后端专有许可证 / Backend Proprietary License
+- [frontend/LICENSE](../../frontend/LICENSE) - 前端专有许可证 / Frontend Proprietary License
 - [LICENSING.md](./LICENSING.md) - 详细许可证说明 / Detailed License Information
 - [COMMERCIAL_LICENSE_TEMPLATE.md](./COMMERCIAL_LICENSE_TEMPLATE.md) - 商业许可证模板 / Commercial License Template
 
@@ -76,7 +76,7 @@ For commercial licensing of proprietary components, please contact the copyright
 Run the following command to check license status:
 
 ```bash
-python scripts/check_license.py
+python backend/scripts/check_license.py
 ```
 
 ---

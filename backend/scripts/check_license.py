@@ -42,7 +42,7 @@ def main():
     print("🔍 TradingAgents-CN 许可证检查")
     print("=" * 50)
     
-    project_root = Path(__file__).parent.parent
+    project_root = Path(__file__).resolve().parents[2]
     all_good = True
     
     # 检查主许可证文件
@@ -51,7 +51,7 @@ def main():
         all_good = False
     
     # 检查 app 目录许可证
-    app_license = project_root / "app" / "LICENSE"
+    app_license = project_root / "backend" / "app" / "LICENSE"
     if not check_license_file(app_license, "后端应用 (Backend App)"):
         all_good = False
     
@@ -61,17 +61,17 @@ def main():
         all_good = False
     
     # 检查许可证说明文档
-    licensing_doc = project_root / "LICENSING.md"
+    licensing_doc = project_root / "docs" / "legal" / "LICENSING.md"
     if not licensing_doc.exists():
-        print("❌ 许可证说明文档不存在 - LICENSING.md")
+        print("❌ 许可证说明文档不存在 - docs/legal/LICENSING.md")
         all_good = False
     else:
         print("✅ 许可证说明文档存在")
     
     # 检查商业许可证模板
-    commercial_template = project_root / "COMMERCIAL_LICENSE_TEMPLATE.md"
+    commercial_template = project_root / "docs" / "legal" / "COMMERCIAL_LICENSE_TEMPLATE.md"
     if not commercial_template.exists():
-        print("❌ 商业许可证模板不存在 - COMMERCIAL_LICENSE_TEMPLATE.md")
+        print("❌ 商业许可证模板不存在 - docs/legal/COMMERCIAL_LICENSE_TEMPLATE.md")
         all_good = False
     else:
         print("✅ 商业许可证模板存在")

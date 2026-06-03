@@ -44,7 +44,7 @@
 - 🔓 **开源部分**（Apache 2.0）：除 `backend/app/` 和 `frontend/` 外的所有文件
 - 🔒 **专有部分**（需商业授权）：`backend/app/`（FastAPI后端）和 `frontend/`（Vue前端）目录
 
-详细说明请查看：[版权声明](./COPYRIGHT.md) | [许可证文件](./LICENSE)
+详细说明请查看：[版权声明](./docs/legal/COPYRIGHT.md) | [许可证文件](./LICENSE)
 
 ---
 
@@ -132,6 +132,46 @@
 
 ⚠️ **重要提醒**：在分析股票之前，请按相关文档要求，将股票数据同步完成，否则分析结果将会出现数据错误。
 
+#### 🚀 当前仓库启动入口
+
+本仓库已按前后端和部署资产拆分：
+
+- `backend/`：FastAPI 后端和 `tradingagents` Python 包
+- `frontend/`：Vue 3 / Vite 前端
+- `deploy/`：Docker Compose、Dockerfile、Nginx 配置和 Docker 环境样例
+- `runtime/`：本地运行数据、日志、缓存和导出产物（不提交）
+
+本地后端开发启动：
+
+```bash
+cd backend
+mkdir -p ../runtime/logs ../runtime/data
+TRADINGAGENTS_LOG_DIR=../runtime/logs PYTHONPATH=. python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+本地前端开发启动：
+
+```bash
+cd frontend
+yarn dev --host 0.0.0.0
+```
+
+Docker 一体化启动：
+
+```bash
+docker compose -f deploy/docker/compose/docker-compose.yml up -d
+```
+
+带 Nginx 反向代理的部署：
+
+```bash
+docker compose -f deploy/docker/compose/docker-compose.hub.nginx.yml up -d
+```
+
+Docker 默认读取 `deploy/env/docker.env`。配置真实密钥时，可以先复制一份本地 `.env`，或在启动命令前通过环境变量覆盖对应值。
+
+目录归属说明见：[仓库目录结构](./docs/repo-structure.md)。
+
 
 
 #### 📚 使用指南
@@ -197,7 +237,7 @@
 
 ### 📋 查看贡献者
 
-查看所有贡献者和详细贡献内容：**[🤝 贡献者名单](CONTRIBUTORS.md)**
+查看所有贡献者和详细贡献内容：**[🤝 贡献者名单](./docs/community/CONTRIBUTORS.md)**
 
 ## 📄 许可证详情
 
@@ -220,10 +260,12 @@
 
 ### 📚 相关文档
 
-- [版权声明](./COPYRIGHT.md) - 详细的版权信息和使用条款
+- [版权声明](./docs/legal/COPYRIGHT.md) - 详细的版权信息和使用条款
 - [主许可证](./LICENSE) - Apache 2.0 许可证
 - [后端专有许可证](./backend/app/LICENSE) - 后端专有组件许可证
 - [前端专有许可证](./frontend/LICENSE) - 前端专有组件许可证
+- [详细许可证说明](./docs/legal/LICENSING.md) - 混合许可证策略说明
+- [商业许可证模板](./docs/legal/COMMERCIAL_LICENSE_TEMPLATE.md) - 商业授权模板
 
 ## 🙏 致谢与感恩
 
@@ -241,7 +283,7 @@
 
 感谢所有为TradingAgents-CN项目做出贡献的开发者和用户！
 
-详细的贡献者名单和贡献内容请查看：**[📋 贡献者名单](CONTRIBUTORS.md)**
+详细的贡献者名单和贡献内容请查看：**[📋 贡献者名单](./docs/community/CONTRIBUTORS.md)**
 
 包括但不限于：
 

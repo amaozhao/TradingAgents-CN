@@ -45,7 +45,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./backend/Dockerfile.backend
+          file: ./deploy/docker/backend.Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta-backend.outputs.tags }}
@@ -68,7 +68,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./frontend/Dockerfile.frontend
+          file: ./deploy/docker/frontend.Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
@@ -101,7 +101,7 @@ jobs:
           echo "docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tradingagents-frontend:latest" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "# Run with docker-compose" >> $GITHUB_STEP_SUMMARY
-          echo "docker-compose -f docker-compose.hub.nginx.yml up -d" >> $GITHUB_STEP_SUMMARY
+          echo "docker compose -f deploy/docker/compose/docker-compose.hub.nginx.yml up -d" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Verify Architecture" >> $GITHUB_STEP_SUMMARY
