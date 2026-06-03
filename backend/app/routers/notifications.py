@@ -5,11 +5,11 @@ import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.routers.auth_db import get_current_user
+from app.routers.authdb import get_current_user
 from app.core.response import ok
-from app.core.database import get_redis_client
-from app.models.api_response import ApiResponse
-from app.services.notifications_service import get_notifications_service
+from app.core.coredatabase import get_redis_client
+from app.models.apiresponse import ApiResponse
+from app.services.notificationsservice import get_notifications_service
 
 router = APIRouter()
 logger = logging.getLogger("webapi.notifications")

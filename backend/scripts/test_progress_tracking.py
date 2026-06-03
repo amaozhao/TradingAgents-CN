@@ -13,7 +13,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from tradingagents.utils.logging_init import get_logger
+from tradingagents.utils.logginginit import get_logger
 
 logger = get_logger("test")
 

@@ -80,7 +80,7 @@ async def verify_hk_data():
     logger.info("="*60)
 
     try:
-        from app.core.database import get_mongo_db
+        from app.core.coredatabase import get_mongo_db
 
         db = get_mongo_db()
         collection = db.stock_basic_info_hk
@@ -143,7 +143,7 @@ async def test_unified_service():
 
     try:
         from app.services.unified_stock_service import UnifiedStockService
-        from app.core.database import get_mongo_db
+        from app.core.coredatabase import get_mongo_db
 
         db = get_mongo_db()
         service = UnifiedStockService(db)
@@ -201,7 +201,7 @@ async def main():
     # 初始化数据库连接
     logger.info("📊 初始化数据库连接...")
     try:
-        from app.core.database import init_db
+        from app.core.coredatabase import init_db
         await init_db()
         logger.info("✅ 数据库连接初始化成功")
     except Exception as e:

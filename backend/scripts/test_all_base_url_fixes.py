@@ -11,7 +11,7 @@ def test_create_llm_by_provider():
     print("🧪 测试 1: create_llm_by_provider 函数")
     print("=" * 80)
     
-    from tradingagents.graph.trading_graph import create_llm_by_provider
+    from tradingagents.graph.graphtradinggraph import create_llm_by_provider
     
     custom_url = "https://dashscope.aliyuncs.com/api/v2"
     
@@ -46,7 +46,7 @@ def test_trading_graph_init():
     print("🧪 测试 2: TradingAgentsGraph 初始化")
     print("=" * 80)
     
-    from tradingagents.graph.trading_graph import TradingAgentsGraph
+    from tradingagents.graph.graphtradinggraph import TradingAgentsGraph
     from tradingagents.default_config import DEFAULT_CONFIG
     
     custom_url = "https://dashscope.aliyuncs.com/api/v2"

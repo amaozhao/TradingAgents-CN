@@ -6,7 +6,7 @@ import streamlit as st
 import datetime
 
 # 导入日志模块
-from tradingagents.utils.logging_manager import get_logger
+from tradingagents.utils.loggingmanager import get_logger
 
 # 导入用户活动记录器
 try:

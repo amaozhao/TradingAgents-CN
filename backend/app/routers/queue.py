@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from app.routers.auth_db import get_current_user
-from app.services.queue_service import get_queue_service, QueueService
+from app.routers.authdb import get_current_user
+from app.services.queueservice import get_queue_service, QueueService
 
 router = APIRouter()
 

@@ -34,6 +34,7 @@ dependencies = [
 
     # HTTP客户端和SSE
     "httpx>=0.28.1",
+    "httpx2>=0.1.0",
     "sse-starlette>=3.4.4",
 
     # 日志处理
@@ -67,6 +68,7 @@ dependencies = [
     # 数据处理和分析
     "pandas>=3.0.3",
     "plotly>=6.7.0",
+    "pyright>=1.1.407",
 
     # 网络爬虫和解析
     "curl-cffi>=0.15.0",  # 模拟真实浏览器TLS指纹，绕过反爬虫检测
@@ -105,10 +107,11 @@ testpaths = ["tests"]
 addopts = "-m \"not integration\" -k \"not (test_server_config or test_stock_codes)\""
 markers = [
     "integration: 标记集成/端到端测试（默认跳过）",
+    "unit: 标记单元测试",
 ]
 
 [project.scripts]
-tradingagents = "cli.main:main"
+tradingagents = "cli.climain:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

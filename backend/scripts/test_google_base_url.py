@@ -82,7 +82,7 @@ def test_google_base_url():
     print("\n📊 测试 4: 使用 create_llm_by_provider 函数")
     print("-" * 80)
     
-    from tradingagents.graph.trading_graph import create_llm_by_provider
+    from tradingagents.graph.graphtradinggraph import create_llm_by_provider
     
     try:
         llm4 = create_llm_by_provider(

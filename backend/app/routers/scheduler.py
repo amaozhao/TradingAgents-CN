@@ -10,10 +10,10 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel
 
-from app.routers.auth_db import get_current_user
-from app.services.scheduler_service import get_scheduler_service, SchedulerService
+from app.routers.authdb import get_current_user
+from app.services.schedulerservice import get_scheduler_service, SchedulerService
 from app.core.response import ok
-from app.models.api_response import ApiResponse
+from app.models.apiresponse import ApiResponse
 
 router = APIRouter(prefix="/api/scheduler", tags=["scheduler"])
 

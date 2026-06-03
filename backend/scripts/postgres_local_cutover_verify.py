@@ -18,7 +18,7 @@ REPO_ROOT = BACKEND_ROOT.parent
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.db.mongo_to_postgres_migrator import HOT_COLLECTIONS
+from app.db.mongotopostgresmigrator import HOT_COLLECTIONS
 from scripts.postgres_runtime_log_check import check_runtime_log
 
 DEFAULT_OUTPUT_ROOT = Path("/tmp/tradingagents_postgres_local_cutover")
@@ -134,7 +134,7 @@ def build_verification_steps(
             command=[
                 sys.executable,
                 "-m",
-                "app.db.mongo_to_postgres_migrator",
+                "app.db.mongotopostgresmigrator",
                 "--batch-size",
                 str(batch_size),
             ],

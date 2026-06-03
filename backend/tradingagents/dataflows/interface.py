@@ -7,12 +7,12 @@ from datetime import datetime
 try:
     from .news import fetch_top_from_category
 except ImportError:
-    from .news.reddit import fetch_top_from_category
+    from .news.newsreddit import fetch_top_from_category
 
-from .news.google_news import *
+from .news.googlenews import *
 
 
-from .news.chinese_finance import get_chinese_social_sentiment
+from .news.chinesefinance import get_chinese_social_sentiment
 
 # 导入 Finnhub 工具（支持新旧路径）
 
@@ -20,16 +20,16 @@ from .providers.us import get_data_in_range
 
 
 # 导入统一日志系统
-from tradingagents.utils.logging_init import setup_dataflow_logging
+from tradingagents.utils.logginginit import setup_dataflow_logging
 
 # 导入日志模块
-from tradingagents.utils.logging_manager import get_logger
+from tradingagents.utils.loggingmanager import get_logger
 logger = get_logger('agents')
 logger = setup_dataflow_logging()
 
 # 导入港股工具
 try:
-    from .providers.hk.hk_stock import get_hk_stock_data, get_hk_stock_info
+    from .providers.hk.hkstock import get_hk_stock_data, get_hk_stock_info
     HK_STOCK_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"⚠️ 港股工具不可用: {e}")
@@ -38,7 +38,7 @@ except ImportError as e:
 # 导入AKShare港股工具
 # 注意：港股功能在 providers/hk/ 目录中
 try:
-    from .providers.hk.improved_hk import get_hk_stock_data_akshare, get_hk_stock_info_akshare
+    from .providers.hk.improvedhk import get_hk_stock_data_akshare, get_hk_stock_info_akshare
     AKSHARE_HK_AVAILABLE = True
 except (ImportError, AttributeError) as e:
     logger.warning(f"⚠️ AKShare港股工具不可用: {e}")
@@ -61,7 +61,7 @@ def _get_enabled_hk_data_sources() -> list:
     """
     try:
         # 尝试从数据库读取配置
-        from app.core.database import get_mongo_db_sync
+        from app.core.coredatabase import get_mongo_db_sync
         db = get_mongo_db_sync()
 
         # 获取最新的激活配置
@@ -121,7 +121,7 @@ def _get_enabled_us_data_sources() -> list:
     """
     try:
         # 尝试从数据库读取配置
-        from app.core.database import get_mongo_db_sync
+        from app.core.coredatabase import get_mongo_db_sync
         db = get_mongo_db_sync()
 
         # 获取最新的激活配置
@@ -173,7 +173,7 @@ def _get_enabled_us_data_sources() -> list:
 
 # 尝试导入yfinance相关模块，如果失败则跳过
 try:
-    from .providers.us.yfinance import *
+    from .providers.us.usyfinance import *
     YFIN_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"⚠️ yfinance工具不可用: {e}")
@@ -202,7 +202,7 @@ except ImportError as e:
     logger.warning(f"⚠️ yfinance库不可用: {e}")
     yf = None
     YF_AVAILABLE = False
-from tradingagents.config.config_manager import config_manager
+from tradingagents.config.configmanager import config_manager
 
 # 获取数据目录
 DATA_DIR = config_manager.get_data_dir()
@@ -217,13 +217,13 @@ def set_config(config):
 
 
 try:
-    from tradingagents.dataflows.alpha_vantage_common import AlphaVantageRateLimitError
+    from tradingagents.dataflows.legacyalphavantagecommon import AlphaVantageRateLimitError
 except Exception:
     class AlphaVantageRateLimitError(Exception):
         pass
 
 try:
-    from tradingagents.dataflows.symbol_utils import NoMarketDataError
+    from tradingagents.dataflows.symbolutils import NoMarketDataError
 except Exception:
     class NoMarketDataError(Exception):
         symbol = ""
@@ -233,50 +233,50 @@ except Exception:
 VENDOR_METHODS = {
     "get_stock_data": {
         "alpha_vantage": lambda *args, **kwargs: __import__(
-            "tradingagents.dataflows.alpha_vantage", fromlist=["get_stock"]
+            "tradingagents.dataflows.alphavantage", fromlist=["get_stock"]
         ).get_stock(*args, **kwargs),
         "yfinance": lambda *args, **kwargs: __import__(
-            "tradingagents.dataflows.y_finance", fromlist=["get_YFin_data_online"]
+            "tradingagents.dataflows.yfinancelegacy", fromlist=["get_YFin_data_online"]
         ).get_YFin_data_online(*args, **kwargs),
     },
     "get_indicators": {
         "alpha_vantage": lambda *args, **kwargs: __import__(
-            "tradingagents.dataflows.alpha_vantage", fromlist=["get_indicator"]
+            "tradingagents.dataflows.alphavantage", fromlist=["get_indicator"]
         ).get_indicator(*args, **kwargs),
         "yfinance": lambda *args, **kwargs: __import__(
-            "tradingagents.dataflows.y_finance", fromlist=["get_stock_stats_indicators_window"]
+            "tradingagents.dataflows.yfinancelegacy", fromlist=["get_stock_stats_indicators_window"]
         ).get_stock_stats_indicators_window(*args, **kwargs),
     },
     "get_fundamentals": {
         "alpha_vantage": lambda *args, **kwargs: __import__(
-            "tradingagents.dataflows.alpha_vantage", fromlist=["get_fundamentals"]
+            "tradingagents.dataflows.alphavantage", fromlist=["get_fundamentals"]
         ).get_fundamentals(*args, **kwargs),
         "yfinance": lambda *args, **kwargs: __import__(
-            "tradingagents.dataflows.y_finance", fromlist=["get_fundamentals"]
+            "tradingagents.dataflows.yfinancelegacy", fromlist=["get_fundamentals"]
         ).get_fundamentals(*args, **kwargs),
     },
     "get_news": {
         "alpha_vantage": lambda *args, **kwargs: __import__(
-            "tradingagents.dataflows.alpha_vantage", fromlist=["get_news"]
+            "tradingagents.dataflows.alphavantage", fromlist=["get_news"]
         ).get_news(*args, **kwargs),
         "yfinance": lambda *args, **kwargs: __import__(
-            "tradingagents.dataflows.yfinance_news", fromlist=["get_news_yfinance"]
+            "tradingagents.dataflows.yfinancenews", fromlist=["get_news_yfinance"]
         ).get_news_yfinance(*args, **kwargs),
     },
     "get_global_news": {
         "alpha_vantage": lambda *args, **kwargs: __import__(
-            "tradingagents.dataflows.alpha_vantage", fromlist=["get_global_news"]
+            "tradingagents.dataflows.alphavantage", fromlist=["get_global_news"]
         ).get_global_news(*args, **kwargs),
         "yfinance": lambda *args, **kwargs: __import__(
-            "tradingagents.dataflows.yfinance_news", fromlist=["get_global_news_yfinance"]
+            "tradingagents.dataflows.yfinancenews", fromlist=["get_global_news_yfinance"]
         ).get_global_news_yfinance(*args, **kwargs),
     },
     "get_insider_transactions": {
         "alpha_vantage": lambda *args, **kwargs: __import__(
-            "tradingagents.dataflows.alpha_vantage", fromlist=["get_insider_transactions"]
+            "tradingagents.dataflows.alphavantage", fromlist=["get_insider_transactions"]
         ).get_insider_transactions(*args, **kwargs),
         "yfinance": lambda *args, **kwargs: __import__(
-            "tradingagents.dataflows.y_finance", fromlist=["get_insider_transactions"]
+            "tradingagents.dataflows.yfinancelegacy", fromlist=["get_insider_transactions"]
         ).get_insider_transactions(*args, **kwargs),
     },
 }
@@ -284,7 +284,7 @@ VENDOR_METHODS = {
 
 def _configured_vendor(category: str, method: str = None) -> str:
     try:
-        from tradingagents.dataflows.config import get_config as get_runtime_config
+        from tradingagents.dataflows.dataflowsconfig import get_config as get_runtime_config
 
         cfg = get_runtime_config()
     except Exception:
@@ -350,46 +350,46 @@ def _route_upstream_vendor(vendor: str, method: str, *args, **kwargs):
 
     if method == "get_stock_data":
         if vendor == "alpha_vantage":
-            from tradingagents.dataflows.alpha_vantage import get_stock
+            from tradingagents.dataflows.alphavantage import get_stock
 
             return get_stock(*args, **kwargs)
-        from tradingagents.dataflows.y_finance import get_YFin_data_online
+        from tradingagents.dataflows.yfinancelegacy import get_YFin_data_online
 
         return get_YFin_data_online(*args, **kwargs)
     if method == "get_indicators":
         if vendor == "alpha_vantage":
-            from tradingagents.dataflows.alpha_vantage import get_indicator
+            from tradingagents.dataflows.alphavantage import get_indicator
 
             return get_indicator(*args, **kwargs)
-        from tradingagents.dataflows.y_finance import get_stock_stats_indicators_window
+        from tradingagents.dataflows.yfinancelegacy import get_stock_stats_indicators_window
 
         return get_stock_stats_indicators_window(*args, **kwargs)
     if method == "get_fundamentals":
         if vendor == "alpha_vantage":
-            from tradingagents.dataflows.alpha_vantage import get_fundamentals
+            from tradingagents.dataflows.alphavantage import get_fundamentals
         else:
-            from tradingagents.dataflows.y_finance import get_fundamentals
+            from tradingagents.dataflows.yfinancelegacy import get_fundamentals
 
         return get_fundamentals(*args, **kwargs)
     if method == "get_news":
         if vendor == "alpha_vantage":
-            from tradingagents.dataflows.alpha_vantage import get_news
+            from tradingagents.dataflows.alphavantage import get_news
         else:
-            from tradingagents.dataflows.yfinance_news import get_news_yfinance as get_news
+            from tradingagents.dataflows.yfinancenews import get_news_yfinance as get_news
 
         return get_news(*args, **kwargs)
     if method == "get_global_news":
         if vendor == "alpha_vantage":
-            from tradingagents.dataflows.alpha_vantage import get_global_news
+            from tradingagents.dataflows.alphavantage import get_global_news
         else:
-            from tradingagents.dataflows.yfinance_news import get_global_news_yfinance as get_global_news
+            from tradingagents.dataflows.yfinancenews import get_global_news_yfinance as get_global_news
 
         return get_global_news(*args, **kwargs)
     if method == "get_insider_transactions":
         if vendor == "alpha_vantage":
-            from tradingagents.dataflows.alpha_vantage import get_insider_transactions
+            from tradingagents.dataflows.alphavantage import get_insider_transactions
         else:
-            from tradingagents.dataflows.y_finance import get_insider_transactions
+            from tradingagents.dataflows.yfinancelegacy import get_insider_transactions
 
         return get_insider_transactions(*args, **kwargs)
     raise ValueError(f"Method '{method}' not supported by vendor '{vendor}'")
@@ -748,7 +748,7 @@ def get_google_news(
     
     # 尝试使用StockUtils判断
     try:
-        from tradingagents.utils.stock_utils import StockUtils
+        from tradingagents.utils.stockutils import StockUtils
         market_info = StockUtils.get_market_info(query.split()[0])
         if market_info['is_china']:
             is_china_stock = True
@@ -1413,7 +1413,7 @@ def get_fundamentals_openai(ticker, curr_date):
     try:
         # 导入缓存管理器和数据源管理器
         from .cache import get_cache
-        from .data_source_manager import get_us_data_source_manager, USDataSource
+        from .datasourcemanager import get_us_data_source_manager, USDataSource
 
         cache = get_cache()
         us_manager = get_us_data_source_manager()
@@ -1500,7 +1500,7 @@ def _get_fundamentals_alpha_vantage(ticker, curr_date, cache):
     """
     try:
         logger.info(f"📊 [Alpha Vantage] 获取 {ticker} 的基本面数据...")
-        from .providers.us.alpha_vantage_fundamentals import get_fundamentals as get_av_fundamentals
+        from .providers.us.usfundamentalsalpha import get_fundamentals as get_av_fundamentals
 
         result = get_av_fundamentals(ticker, curr_date)
 
@@ -1671,7 +1671,7 @@ def get_china_stock_data_tushare(
         str: 格式化的股票数据报告
     """
     try:
-        from .data_source_manager import get_data_source_manager
+        from .datasourcemanager import get_data_source_manager
 
         logger.debug(f"📊 [Tushare] 获取{ticker}股票数据...")
 
@@ -1701,7 +1701,7 @@ def get_china_stock_info_tushare(
         str: 格式化的股票基本信息
     """
     try:
-        from .data_source_manager import get_data_source_manager
+        from .datasourcemanager import get_data_source_manager
 
         logger.debug(f"📊 [Tushare] 获取{ticker}股票信息...")
         logger.info(f"🔍 [股票代码追踪] get_china_stock_info_tushare 接收到的股票代码: '{ticker}' (类型: {type(ticker)})")
@@ -1742,7 +1742,7 @@ def get_china_stock_fundamentals_tushare(
         str: 基本面分析报告
     """
     try:
-        from .data_source_manager import get_data_source_manager
+        from .datasourcemanager import get_data_source_manager
 
         logger.debug(f"📊 获取{ticker}基本面数据...")
         logger.info(f"🔍 [股票代码追踪] 重定向到data_source_manager.get_fundamentals_data")
@@ -1776,8 +1776,8 @@ def get_china_stock_data_unified(
         str: 格式化的股票数据报告
     """
     # 🔧 智能日期范围处理：自动扩展到配置的回溯天数，处理周末/节假日
-    from tradingagents.utils.dataflow_utils import get_trading_date_range
-    from app.core.config import get_settings
+    from tradingagents.utils.dataflowutils import get_trading_date_range
+    from app.core.coreconfig import get_settings
 
     original_start_date = start_date
     original_end_date = end_date
@@ -1788,7 +1788,7 @@ def get_china_stock_data_unified(
         lookback_days = settings.MARKET_ANALYST_LOOKBACK_DAYS
         logger.info(f"📅 [配置验证] ===== MARKET_ANALYST_LOOKBACK_DAYS 配置检查 =====")
         logger.info(f"📅 [配置验证] 从配置文件读取: {lookback_days}天")
-        logger.info(f"📅 [配置验证] 配置来源: app.core.config.Settings")
+        logger.info(f"📅 [配置验证] 配置来源: app.core.coreconfig.Settings")
         logger.info(f"📅 [配置验证] 环境变量: MARKET_ANALYST_LOOKBACK_DAYS={lookback_days}")
     except Exception as e:
         lookback_days = 30  # 默认30天
@@ -1823,7 +1823,7 @@ def get_china_stock_data_unified(
     start_time = time.time()
 
     try:
-        from .data_source_manager import get_china_stock_data_unified
+        from .datasourcemanager import get_china_stock_data_unified
 
         result = get_china_stock_data_unified(ticker, start_date, end_date)
 
@@ -1888,7 +1888,7 @@ def get_china_stock_info_unified(
         str: 股票基本信息
     """
     try:
-        from .data_source_manager import get_china_stock_info_unified
+        from .datasourcemanager import get_china_stock_info_unified
 
         logger.info(f"📊 [统一接口] 获取{ticker}基本信息...")
 
@@ -1939,7 +1939,7 @@ def switch_china_data_source(
         str: 切换结果
     """
     try:
-        from .data_source_manager import get_data_source_manager, ChinaDataSource
+        from .datasourcemanager import get_data_source_manager, ChinaDataSource
 
         # 映射字符串到枚举（TDX 已移除）
         source_mapping = {
@@ -1973,7 +1973,7 @@ def get_current_china_data_source() -> str:
         str: 当前数据源信息
     """
     try:
-        from .data_source_manager import get_data_source_manager
+        from .datasourcemanager import get_data_source_manager
 
         manager = get_data_source_manager()
         current = manager.get_current_source()
@@ -2008,8 +2008,8 @@ def get_hk_stock_data_unified(symbol: str, start_date: str = None, end_date: str
         logger.info(f"🇭🇰 获取港股数据: {symbol}")
 
         # 🔧 智能日期范围处理：自动扩展到配置的回溯天数，处理周末/节假日
-        from tradingagents.utils.dataflow_utils import get_trading_date_range
-        from app.core.config import get_settings
+        from tradingagents.utils.dataflowutils import get_trading_date_range
+        from app.core.coreconfig import get_settings
 
         original_start_date = start_date
         original_end_date = end_date
@@ -2166,7 +2166,7 @@ def get_stock_data_by_market(symbol: str, start_date: str = None, end_date: str 
         str: 格式化的股票数据
     """
     try:
-        from tradingagents.utils.stock_utils import StockUtils
+        from tradingagents.utils.stockutils import StockUtils
 
         market_info = StockUtils.get_market_info(symbol)
 

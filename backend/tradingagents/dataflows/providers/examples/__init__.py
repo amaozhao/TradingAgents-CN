@@ -4,7 +4,7 @@
 展示如何创建新的数据源提供器
 """
 
-from .example_sdk import ExampleSDKProvider
+from .examplesdk import ExampleSDKProvider
 
 __all__ = [
     'ExampleSDKProvider',

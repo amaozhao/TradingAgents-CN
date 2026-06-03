@@ -16,8 +16,8 @@ sys.path.insert(0, str(project_root))
 
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from app.core.config import settings
-from app.core.database import init_database, get_mongo_db
+from app.core.coreconfig import settings
+from app.core.coredatabase import init_database, get_mongo_db
 
 
 async def test_kline_realtime():

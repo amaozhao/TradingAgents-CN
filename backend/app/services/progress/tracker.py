@@ -50,7 +50,7 @@ class RedisProgressTracker:
         self.task_id = task_id
         self.analysts = analysts
         self.research_depth = research_depth
-        from tradingagents.llm_clients.provider_keys import normalize_provider_key
+        from tradingagents.llmclients.providerkeys import normalize_provider_key
 
         self.llm_provider = normalize_provider_key(llm_provider)
 

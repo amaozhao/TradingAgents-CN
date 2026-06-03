@@ -5,7 +5,7 @@
 
 # 导入 Google News
 try:
-    from .google_news import getNewsData
+    from .googlenews import getNewsData
     GOOGLE_NEWS_AVAILABLE = True
 except ImportError:
     getNewsData = None
@@ -13,7 +13,7 @@ except ImportError:
 
 # 导入 Reddit
 try:
-    from .reddit import fetch_top_from_category
+    from .newsreddit import fetch_top_from_category
     REDDIT_AVAILABLE = True
 except ImportError:
     fetch_top_from_category = None
@@ -21,7 +21,7 @@ except ImportError:
 
 # 导入实时新闻
 try:
-    from .realtime_news import (
+    from .realtimenews import (
         get_realtime_news,
         get_news_with_sentiment,
         search_news_by_keyword
@@ -35,7 +35,7 @@ except ImportError:
 
 # 导入中国财经数据聚合器
 try:
-    from .chinese_finance import ChineseFinanceDataAggregator
+    from .chinesefinance import ChineseFinanceDataAggregator
     CHINESE_FINANCE_AVAILABLE = True
 except ImportError:
     ChineseFinanceDataAggregator = None

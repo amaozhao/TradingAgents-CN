@@ -8,7 +8,7 @@ from typing import Any
 
 HTTP_DECORATORS = {"get", "post", "put", "patch", "delete"}
 MONGO_IMPORT_MODULES = {
-    "app.core.database",
+    "app.core.coredatabase",
     "pymongo",
     "motor",
     "motor.motor_asyncio",

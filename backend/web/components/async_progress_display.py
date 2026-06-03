@@ -10,7 +10,7 @@ from typing import Optional, Dict, Any
 from web.utils.async_progress_tracker import get_progress_by_id, format_time
 
 # 导入日志模块
-from tradingagents.utils.logging_manager import get_logger
+from tradingagents.utils.loggingmanager import get_logger
 logger = get_logger('async_display')
 
 class AsyncProgressDisplay:

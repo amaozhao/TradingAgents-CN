@@ -18,7 +18,7 @@ from datetime import datetime
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.core.database import get_mongo_db, init_database
+from app.core.coredatabase import get_mongo_db, init_database
 
 
 async def test_stock_fundamentals(stock_code: str = "000001"):

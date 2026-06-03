@@ -4,7 +4,7 @@
 
 # 导入改进的港股工具
 try:
-    from .improved_hk import (
+    from .improvedhk import (
         ImprovedHKStockProvider,
         get_improved_hk_provider,
         get_hk_stock_info_improved
@@ -18,7 +18,7 @@ except ImportError:
 
 # 导入港股数据工具
 try:
-    from .hk_stock import HKStockProvider
+    from .hkstock import HKStockProvider
     HK_STOCK_AVAILABLE = True
 except ImportError:
     HKStockProvider = None

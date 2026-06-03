@@ -14,7 +14,7 @@ import threading
 import os
 
 # 导入日志模块
-from tradingagents.utils.logging_manager import get_logger
+from tradingagents.utils.loggingmanager import get_logger
 logger = get_logger('user_activity')
 
 @dataclass

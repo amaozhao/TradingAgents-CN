@@ -15,10 +15,10 @@ import logging
 
 from bson import ObjectId
 
-from app.core.database import get_mongo_db
-from app.core.config import settings
-from app.db.dual_write import dual_write_hot_document, dual_write_hot_documents, log_mongo_only_write
-from app.db.mongo_to_postgres_migrator import HOT_COLLECTIONS
+from app.core.coredatabase import get_mongo_db
+from app.core.coreconfig import settings
+from app.db.dualwrite import dual_write_hot_document, dual_write_hot_documents, log_mongo_only_write
+from app.db.mongotopostgresmigrator import HOT_COLLECTIONS
 from .serialization import serialize_document
 
 logger = logging.getLogger(__name__)

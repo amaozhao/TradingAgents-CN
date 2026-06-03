@@ -106,7 +106,7 @@ $appTest = docker exec TradingAgents-web python -c "
 import sys
 sys.path.insert(0, '/app')
 try:
-    from tradingagents.utils.logging_init import setup_web_logging
+    from tradingagents.utils.logginginit import setup_web_logging
     logger = setup_web_logging()
     logger.info('🧪 应用日志测试成功')
     print('✅ 应用日志测试完成')

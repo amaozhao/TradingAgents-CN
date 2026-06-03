@@ -3,7 +3,7 @@ import yfinance as yf
 from stockstats import wrap
 from typing import Annotated
 import os
-from tradingagents.config.config_manager import config_manager
+from tradingagents.config.configmanager import config_manager
 
 def get_config():
     """兼容性包装函数"""

@@ -11,7 +11,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 # 初始化日志
-from tradingagents.utils.logging_init import init_logging
+from tradingagents.utils.logginginit import init_logging
 init_logging()
 
 from tradingagents.config.config_manager import ConfigManager

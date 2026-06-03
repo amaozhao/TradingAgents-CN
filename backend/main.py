@@ -1,4 +1,4 @@
-from tradingagents.graph.trading_graph import TradingAgentsGraph
+from tradingagents.graph.graphtradinggraph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 
 # 导入日志模块

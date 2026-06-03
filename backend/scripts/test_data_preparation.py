@@ -109,7 +109,7 @@ async def test_data_sync_async():
     """测试数据同步功能（异步版本）"""
     from tradingagents.utils.stock_validator import StockDataPreparer
     from datetime import datetime, timedelta
-    from app.core.database import init_database, close_database
+    from app.core.coredatabase import init_database, close_database
 
     print("\n" + "=" * 80)
     print("🧪 测试数据同步功能（异步）")

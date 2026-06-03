@@ -11,8 +11,8 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from tradingagents.dataflows.providers.tushare_provider import TushareProvider
-from app.services.historical_data_service import get_historical_data_service
-from app.core.database import init_database
+from app.services.historicaldataservice import get_historical_data_service
+from app.core.coredatabase import init_database
 from tradingagents.config.database_manager import get_mongodb_client
 
 

@@ -14,7 +14,7 @@ def main():
     print("\n📊 1. 测试 create_llm_by_provider 函数")
     print("-" * 80)
     
-    from tradingagents.graph.trading_graph import create_llm_by_provider
+    from tradingagents.graph.graphtradinggraph import create_llm_by_provider
     
     # 测试参数
     provider = "dashscope"
@@ -100,7 +100,7 @@ def main():
     print("-" * 80)
     
     try:
-        from tradingagents.graph.trading_graph import TradingAgentsGraph
+        from tradingagents.graph.graphtradinggraph import TradingAgentsGraph
         from tradingagents.default_config import DEFAULT_CONFIG
         
         # 创建配置

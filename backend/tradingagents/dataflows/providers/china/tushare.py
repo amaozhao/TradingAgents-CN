@@ -3,13 +3,13 @@
 合并app层和tradingagents层的所有优势功能
 """
 from typing import Optional, Dict, Any, List, Union
-from datetime import datetime, date, timedelta
+from datetime import UTC, datetime, date, timedelta
 import pandas as pd
 import asyncio
 import logging
 
-from ..base_provider import BaseStockDataProvider
-from tradingagents.config.providers_config import get_provider_config
+from ..baseprovider import BaseStockDataProvider
+from tradingagents.config.providersconfig import get_provider_config
 
 # 尝试导入tushare
 try:
@@ -46,7 +46,7 @@ class TushareProvider(BaseStockDataProvider):
         """
         try:
             self.logger.info("🔍 [DB查询] 开始从数据库读取 Token...")
-            from app.core.database import get_mongo_db_sync
+            from app.core.coredatabase import get_mongo_db_sync
             db = get_mongo_db_sync()
             config_collection = db.system_configs
 
@@ -1035,14 +1035,14 @@ class TushareProvider(BaseStockDataProvider):
     def _parse_tushare_news_time(self, time_str: str) -> Optional[datetime]:
         """解析Tushare新闻时间"""
         if not time_str:
-            return datetime.utcnow()
+            return datetime.now(UTC).replace(tzinfo=None)
 
         try:
             # Tushare时间格式: 2018-11-21 09:30:00
             return datetime.strptime(str(time_str), '%Y-%m-%d %H:%M:%S')
         except Exception as e:
             self.logger.debug(f"解析Tushare新闻时间失败: {e}")
-            return datetime.utcnow()
+            return datetime.now(UTC).replace(tzinfo=None)
 
     def _classify_tushare_news(self, channels: str, content: str) -> str:
         """分类Tushare新闻"""
@@ -1158,7 +1158,7 @@ class TushareProvider(BaseStockDataProvider):
                     "ts_code": ts_code,
                     "financial_indicators": indicators,
                     "data_source": "tushare",
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.now(UTC).replace(tzinfo=None)
                 }
 
             return None
@@ -1200,7 +1200,7 @@ class TushareProvider(BaseStockDataProvider):
             # 元数据
             "data_source": "tushare",
             "data_version": 1,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now(UTC).replace(tzinfo=None)
         }
 
     def standardize_quotes(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -1241,12 +1241,12 @@ class TushareProvider(BaseStockDataProvider):
 
             # 时间数据
             "trade_date": self._format_date_output(raw_data.get('trade_date')),
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(UTC).replace(tzinfo=None),
 
             # 元数据
             "data_source": "tushare",
             "data_version": 1,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now(UTC).replace(tzinfo=None)
         }
 
     # ==================== 辅助方法 ====================
@@ -1438,7 +1438,7 @@ class TushareProvider(BaseStockDataProvider):
 
                 # 元数据
                 "data_source": "tushare",
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.now(UTC).replace(tzinfo=None)
             }
 
             return standardized_data
@@ -1448,7 +1448,7 @@ class TushareProvider(BaseStockDataProvider):
             return {
                 "symbol": ts_code.split('.')[0] if '.' in ts_code else ts_code,
                 "data_source": "tushare",
-                "updated_at": datetime.utcnow(),
+                "updated_at": datetime.now(UTC).replace(tzinfo=None),
                 "error": str(e)
             }
 

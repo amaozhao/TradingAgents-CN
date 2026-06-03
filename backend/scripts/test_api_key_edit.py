@@ -28,8 +28,8 @@ load_dotenv()
 async def test_add_provider_with_key():
     """测试添加厂家并配置 API Key"""
     from app.services.config_service import ConfigService
-    from app.models.config import LLMProvider
-    from app.core.database import init_db
+    from app.models.configmodels import LLMProvider
+    from app.core.coredatabase import init_db
     
     # 初始化数据库
     await init_db()
@@ -82,7 +82,7 @@ async def test_add_provider_with_key():
 async def test_update_provider_key(provider_id: str):
     """测试更新厂家的 API Key"""
     from app.services.config_service import ConfigService
-    from app.core.database import init_db
+    from app.core.coredatabase import init_db
     
     # 初始化数据库
     await init_db()
@@ -122,7 +122,7 @@ async def test_update_provider_key(provider_id: str):
 async def test_clear_provider_key(provider_id: str):
     """测试清空厂家的 API Key（使用环境变量）"""
     from app.services.config_service import ConfigService
-    from app.core.database import init_db
+    from app.core.coredatabase import init_db
     
     # 初始化数据库
     await init_db()
@@ -162,7 +162,7 @@ async def test_clear_provider_key(provider_id: str):
 async def test_cleanup(provider_id: str):
     """清理测试数据"""
     from app.services.config_service import ConfigService
-    from app.core.database import init_db
+    from app.core.coredatabase import init_db
     
     # 初始化数据库
     await init_db()

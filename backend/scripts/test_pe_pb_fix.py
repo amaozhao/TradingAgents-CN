@@ -36,7 +36,7 @@ def test_parse_mongodb_financial_data(code: str):
     logger.info("=" * 80)
     
     from pymongo import MongoClient
-    from app.core.config import settings
+    from app.core.coreconfig import settings
     from tradingagents.dataflows.optimized_china_data import OptimizedChinaDataProvider
     
     # 连接数据库
@@ -99,7 +99,7 @@ def test_realtime_metrics(code: str):
     
     from tradingagents.dataflows.realtime_metrics import get_pe_pb_with_fallback
     from pymongo import MongoClient
-    from app.core.config import settings
+    from app.core.coreconfig import settings
     
     code6 = str(code).zfill(6)
     

@@ -20,7 +20,7 @@ sys.path.insert(0, str(backend_root))
 
 # 导入日志模块
 try:
-    from tradingagents.utils.logging_manager import get_logger
+    from tradingagents.utils.loggingmanager import get_logger
     logger = get_logger('web')
 except ImportError:
     # 如果无法导入，使用标准logging

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.core.config import settings
+from app.core.coreconfig import settings
 
 _postgres_engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None

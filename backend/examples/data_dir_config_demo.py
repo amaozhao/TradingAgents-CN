@@ -17,7 +17,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from tradingagents.config.config_manager import config_manager
-from tradingagents.dataflows.config import get_config, set_data_dir, get_data_dir
+from tradingagents.dataflows.dataflowsconfig import get_config, set_data_dir, get_data_dir
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -174,7 +174,7 @@ def show_configuration_guide():
 
 [bold green]1. 通过代码配置:[/bold green]
 ```python
-from tradingagents.dataflows.config import set_data_dir
+from tradingagents.dataflows.dataflowsconfig import set_data_dir
 set_data_dir("/path/to/your/data/directory")
 ```
 

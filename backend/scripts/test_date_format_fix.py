@@ -52,7 +52,7 @@ async def test_mongodb_query():
     print("=" * 80)
     
     from motor.motor_asyncio import AsyncIOMotorClient
-    from app.core.config import settings
+    from app.core.coreconfig import settings
     
     client = AsyncIOMotorClient(settings.MONGO_URI)
     db = client[settings.MONGO_DB]

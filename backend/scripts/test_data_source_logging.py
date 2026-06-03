@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from tradingagents.dataflows.optimized_china_data import get_china_stock_data_cached
 from tradingagents.dataflows.optimized_us_data import get_us_stock_data_cached
-from tradingagents.utils.logging_init import get_logger
+from tradingagents.utils.logginginit import get_logger
 
 logger = get_logger("default")
 

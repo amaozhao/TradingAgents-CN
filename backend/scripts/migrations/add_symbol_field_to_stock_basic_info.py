@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 async def get_mongo_db() -> Optional[AsyncIOMotorDatabase]:
     """获取 MongoDB 数据库连接"""
     try:
-        from app.core.config import get_settings
+        from app.core.coreconfig import get_settings
         settings = get_settings()
         client = AsyncIOMotorClient(settings.MONGO_URI)
         db = client[settings.MONGO_DB]

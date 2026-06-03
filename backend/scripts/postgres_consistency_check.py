@@ -8,11 +8,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.db.consistency_checker import compare_hot_collections, consistency_summary_to_dict
+from app.db.consistencychecker import compare_hot_collections, consistency_summary_to_dict
 
 
 async def _run_cli(sample_limit: int) -> dict:
-    from app.core.database import close_mongodb_only, get_mongo_db, init_mongodb_only
+    from app.core.coredatabase import close_mongodb_only, get_mongo_db, init_mongodb_only
     from app.db.session import close_postgres, get_session_factory, init_postgres
 
     await init_mongodb_only()

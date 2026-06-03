@@ -92,7 +92,7 @@ Write-Host "  docker logs -f tradingagents-mongodb-test" -ForegroundColor Gray
 Write-Host "  docker logs -f tradingagents-redis-test" -ForegroundColor Gray
 Write-Host ""
 Write-Host "[INFO] Run local backend:" -ForegroundColor Yellow
-Write-Host "  .\.venv\Scripts\python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000" -ForegroundColor Gray
+Write-Host "  .\.venv\Scripts\python -m uvicorn app.appmain:app --reload --host 0.0.0.0 --port 8000" -ForegroundColor Gray
 Write-Host ""
 Write-Host "[INFO] Stop test database:" -ForegroundColor Yellow
 Write-Host "  .\scripts\stop_test_db.ps1" -ForegroundColor Gray

@@ -13,7 +13,7 @@ except ImportError:
 
 # 导入 Yahoo Finance 工具
 try:
-    from .yfinance import YFinanceUtils
+    from .usyfinance import YFinanceUtils
     YFINANCE_AVAILABLE = True
 except ImportError:
     YFinanceUtils = None

@@ -5,7 +5,7 @@ import asyncio
 import logging
 from datetime import datetime
 from tradingagents.config.database_manager import get_mongodb_client
-from app.core.database import init_database
+from app.core.coredatabase import init_database
 from app.worker.tushare_init_service import get_tushare_init_service
 
 logging.basicConfig(level=logging.INFO)

@@ -13,7 +13,7 @@ sys.path.insert(0, str(project_root))
 
 import asyncio
 import logging
-from app.core.database import init_database, get_mongo_db, close_database
+from app.core.coredatabase import init_database, get_mongo_db, close_database
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

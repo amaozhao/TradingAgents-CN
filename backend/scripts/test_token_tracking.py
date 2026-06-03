@@ -21,14 +21,14 @@ async def main():
     
     # 1. 初始化数据库
     print("\n1️⃣ 初始化数据库连接...")
-    from app.core.database import init_db, get_mongo_db
+    from app.core.coredatabase import init_db, get_mongo_db
     await init_db()
     print("✅ 数据库连接成功")
     
     # 2. 创建测试使用记录
     print("\n2️⃣ 创建测试使用记录...")
-    from app.services.usage_statistics_service import UsageStatisticsService
-    from app.models.config import UsageRecord
+    from app.services.usagestatisticsservice import UsageStatisticsService
+    from app.models.configmodels import UsageRecord
     
     usage_service = UsageStatisticsService()
     

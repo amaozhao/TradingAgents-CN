@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 from tradingagents.config.database_manager import get_mongodb_client
 from tradingagents.dataflows.providers.akshare_provider import AKShareProvider
 from tradingagents.dataflows.providers.baostock_provider import BaoStockProvider
-from app.services.historical_data_service import get_historical_data_service
-from app.core.database import init_database
+from app.services.historicaldataservice import get_historical_data_service
+from app.core.coredatabase import init_database
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

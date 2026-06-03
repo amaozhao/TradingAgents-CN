@@ -1,5 +1,5 @@
 """PostgreSQL database infrastructure."""
 
-from app.db.base import Base
+from app.db.dbbase import Base
 
 __all__ = ["Base"]

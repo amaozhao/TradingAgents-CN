@@ -22,7 +22,7 @@ def test_logging():
         os.environ['TRADINGAGENTS_LOG_DIR'] = '/app/logs'
         
         # 导入日志模块
-        from tradingagents.utils.logging_init import init_logging, get_logger
+        from tradingagents.utils.logginginit import init_logging, get_logger
         
         # 初始化日志
         print("📋 初始化日志系统...")

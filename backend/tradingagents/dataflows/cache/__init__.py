@@ -19,12 +19,12 @@ import os
 from typing import Union
 
 # 导入日志模块
-from tradingagents.utils.logging_manager import get_logger
+from tradingagents.utils.loggingmanager import get_logger
 logger = get_logger('agents')
 
 # 导入文件缓存
 try:
-    from .file_cache import StockDataCache
+    from .filecache import StockDataCache
     FILE_CACHE_AVAILABLE = True
 except ImportError:
     StockDataCache = None
@@ -32,7 +32,7 @@ except ImportError:
 
 # 导入数据库缓存
 try:
-    from .db_cache import DatabaseCacheManager
+    from .dbcache import DatabaseCacheManager
     DB_CACHE_AVAILABLE = True
 except ImportError:
     DatabaseCacheManager = None
@@ -56,7 +56,7 @@ except ImportError:
 
 # 导入应用缓存适配器（函数，非类）
 try:
-    from .app_adapter import get_basics_from_cache, get_market_quote_dataframe
+    from .appadapter import get_basics_from_cache, get_market_quote_dataframe
     APP_CACHE_AVAILABLE = True
 except ImportError:
     get_basics_from_cache = None
@@ -65,7 +65,7 @@ except ImportError:
 
 # 导入 MongoDB 缓存适配器
 try:
-    from .mongodb_cache_adapter import MongoDBCacheAdapter
+    from .mongodbcacheadapter import MongoDBCacheAdapter
     MONGODB_CACHE_ADAPTER_AVAILABLE = True
 except ImportError:
     MongoDBCacheAdapter = None

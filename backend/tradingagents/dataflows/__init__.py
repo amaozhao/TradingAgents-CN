@@ -4,7 +4,7 @@ try:
     from .providers.us import get_data_in_range
 except ImportError:
     try:
-        from .finnhub_utils import get_data_in_range
+        from .finnhubutils import get_data_in_range
     except ImportError:
         get_data_in_range = None
 
@@ -14,16 +14,16 @@ try:
 except ImportError:
     # 向后兼容：尝试从旧路径导入
     try:
-        from .news.google_news import getNewsData
+        from .news.googlenews import getNewsData
     except ImportError:
         getNewsData = None
     try:
-        from .news.reddit import fetch_top_from_category
+        from .news.newsreddit import fetch_top_from_category
     except ImportError:
         fetch_top_from_category = None
 
 # 导入日志模块
-from tradingagents.utils.logging_manager import get_logger
+from tradingagents.utils.loggingmanager import get_logger
 logger = get_logger('agents')
 
 # 尝试导入yfinance相关模块（支持新旧路径）
@@ -31,7 +31,7 @@ try:
     from .providers.us import YFinanceUtils, YFINANCE_AVAILABLE
 except ImportError:
     try:
-        from .yfin_utils import YFinanceUtils
+        from .providers.us.usyfinance import YFinanceUtils
         YFINANCE_AVAILABLE = True
     except ImportError as e:
         logger.warning(f"⚠️ yfinance模块不可用: {e}")

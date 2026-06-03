@@ -5,10 +5,10 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from app.models.api_response import ApiResponse
-from app.routers.auth_db import get_current_user
+from app.models.apiresponse import ApiResponse
+from app.routers.authdb import get_current_user
 from app.core.response import ok
-from app.services.tags_service import tags_service
+from app.services.tagsservice import tags_service
 
 router = APIRouter(prefix="/tags", tags=["标签管理"])
 

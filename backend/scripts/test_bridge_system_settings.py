@@ -27,13 +27,13 @@ async def main():
     
     # 1. 初始化数据库
     print("\n1️⃣ 初始化数据库连接...")
-    from app.core.database import init_db
+    from app.core.coredatabase import init_db
     await init_db()
     print("✅ 数据库连接成功")
     
     # 2. 直接调用 _bridge_system_settings
     print("\n2️⃣ 调用 _bridge_system_settings...")
-    from app.core.config_bridge import _bridge_system_settings
+    from app.core.coreconfig_bridge import _bridge_system_settings
     
     count = _bridge_system_settings()
     print(f"\n✅ 桥接了 {count} 个配置项")

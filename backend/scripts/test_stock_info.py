@@ -43,7 +43,7 @@ def test_stock_info_retrieval():
             
             # 4. 测试TushareAdapter直接调用
             print(f"🔍 步骤4: 测试TushareAdapter...")
-            from tradingagents.dataflows.tushare_adapter import get_tushare_adapter
+            from tradingagents.dataflows.dataflowtushareadapter import get_tushare_adapter
             adapter = get_tushare_adapter()
             adapter_result = adapter.get_stock_info(code)
             print(f"✅ Adapter结果: {adapter_result}")

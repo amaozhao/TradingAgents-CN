@@ -10,7 +10,7 @@ import tempfile
 from typing import Optional
 
 # 导入日志模块
-from tradingagents.utils.logging_manager import get_logger
+from tradingagents.utils.loggingmanager import get_logger
 logger = get_logger('web')
 
 def is_docker_environment() -> bool:

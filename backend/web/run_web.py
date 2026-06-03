@@ -14,7 +14,7 @@ project_root = backend_root.parent
 sys.path.insert(0, str(backend_root))
 
 # 导入日志模块
-from tradingagents.utils.logging_manager import get_logger
+from tradingagents.utils.loggingmanager import get_logger
 logger = get_logger('web')
 
 def check_dependencies():

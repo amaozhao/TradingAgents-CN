@@ -6,8 +6,8 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from tradingagents.dataflows.providers.tushare_provider import TushareProvider
-from app.services.historical_data_service import get_historical_data_service
-from app.core.database import init_database
+from app.services.historicaldataservice import get_historical_data_service
+from app.core.coredatabase import init_database
 from tradingagents.config.database_manager import get_mongodb_client
 
 # 设置日志

@@ -118,7 +118,7 @@ print("测试 TradingGraph 混合模式初始化")
 print(f"{'=' * 80}")
 
 try:
-    from tradingagents.graph.trading_graph import TradingAgentsGraph
+    from tradingagents.graph.graphtradinggraph import TradingAgentsGraph
     
     # 测试混合模式配置
     config = {

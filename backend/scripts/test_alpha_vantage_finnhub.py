@@ -20,7 +20,7 @@ print("\n📊 测试 Alpha Vantage GLOBAL_QUOTE API")
 print("-" * 80)
 
 try:
-    from tradingagents.dataflows.providers.us.alpha_vantage_common import get_api_key, _make_api_request
+    from tradingagents.dataflows.providers.us.uscommonalpha import get_api_key, _make_api_request
     
     # 检查 API Key
     try:

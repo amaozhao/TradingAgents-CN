@@ -72,7 +72,7 @@ def test_cli_integration():
     
     try:
         # 导入CLI相关模块
-        from cli.main import get_ticker
+        from cli.climain import get_ticker
         
         # 模拟A股市场配置
         a_stock_market = {

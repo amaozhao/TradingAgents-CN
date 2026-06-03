@@ -146,7 +146,7 @@
 ```bash
 cd backend
 mkdir -p ../runtime/logs ../runtime/data
-TRADINGAGENTS_LOG_DIR=../runtime/logs PYTHONPATH=. python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+TRADINGAGENTS_LOG_DIR=../runtime/logs PYTHONPATH=. python -m uvicorn app.appmain:app --host 0.0.0.0 --port 8000
 ```
 
 本地前端开发启动：

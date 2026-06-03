@@ -68,7 +68,7 @@ def test_model_config_service():
     print("=" * 80)
     
     from app.services.model_capability_service import ModelCapabilityService
-    from app.constants.model_capabilities import ModelFeature, ModelRole
+    from app.constants.modelcapabilitiescatalog import ModelFeature, ModelRole
     
     service = ModelCapabilityService()
     

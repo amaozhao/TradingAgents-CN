@@ -6,8 +6,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any, Dict
 
-from app.core.database import get_mongo_db
-from app.db.dual_write import dual_write_hot_documents
+from app.core.coredatabase import get_mongo_db
+from app.db.dualwrite import dual_write_hot_documents
 
 
 async def _dual_write_tombstones(collection: str, documents: list[dict], deleted_at: datetime) -> None:

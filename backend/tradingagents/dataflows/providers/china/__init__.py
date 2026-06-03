@@ -29,7 +29,7 @@ except ImportError:
 
 # 导入基本面快照工具
 try:
-    from .fundamentals_snapshot import get_fundamentals_snapshot
+    from .fundamentalssnapshot import get_fundamentals_snapshot
     FUNDAMENTALS_SNAPSHOT_AVAILABLE = True
 except ImportError:
     get_fundamentals_snapshot = None

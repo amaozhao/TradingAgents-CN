@@ -11,7 +11,7 @@ def main():
     print("=" * 80)
     
     from pymongo import MongoClient
-    from app.core.config import settings
+    from app.core.coreconfig import settings
     from app.services.simple_analysis_service import get_provider_and_url_by_model_sync
     
     # 连接数据库

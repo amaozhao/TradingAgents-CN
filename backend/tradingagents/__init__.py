@@ -16,7 +16,7 @@ def __getattr__(name):
 
         return config_manager
     if name == "logging_manager":
-        from .utils import logging_manager
+        from .utils import loggingmanager as logging_manager
 
         return logging_manager
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

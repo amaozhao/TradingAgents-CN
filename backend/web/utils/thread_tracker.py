@@ -6,7 +6,7 @@
 import threading
 import time
 from typing import Dict, Optional
-from tradingagents.utils.logging_manager import get_logger
+from tradingagents.utils.loggingmanager import get_logger
 
 logger = get_logger('web')
 

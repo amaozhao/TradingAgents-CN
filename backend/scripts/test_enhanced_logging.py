@@ -122,7 +122,7 @@ def test_adapter_layer():
     print("=" * 80)
     
     try:
-        from tradingagents.dataflows.tushare_adapter import get_tushare_adapter
+        from tradingagents.dataflows.dataflowtushareadapter import get_tushare_adapter
         
         adapter = get_tushare_adapter()
         

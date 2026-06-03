@@ -10,8 +10,8 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.core.database import init_database, get_mongo_db, close_database
-from app.worker.akshare_sync_service import get_akshare_sync_service
+from app.core.coredatabase import init_database, get_mongo_db, close_database
+from app.worker.aksharesyncservice import get_akshare_sync_service
 
 
 async def test_akshare_news_sync():

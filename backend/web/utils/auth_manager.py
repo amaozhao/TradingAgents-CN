@@ -13,7 +13,7 @@ from typing import Dict, Optional, Tuple
 import time
 
 # 导入日志模块
-from tradingagents.utils.logging_manager import get_logger
+from tradingagents.utils.loggingmanager import get_logger
 logger = get_logger('auth')
 
 # 导入用户活动记录器

@@ -10,7 +10,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 # 导入日志模块
-from tradingagents.utils.logging_manager import get_logger, get_logger_manager
+from tradingagents.utils.loggingmanager import get_logger, get_logger_manager
 logger = get_logger('web')
 
 # 添加后端源码目录到Python路径，并从仓库根目录加载 .env
@@ -22,7 +22,7 @@ sys.path.insert(0, str(backend_root))
 load_dotenv(project_root / ".env", override=True)
 
 # 导入统一日志系统
-from tradingagents.utils.logging_init import setup_web_logging
+from tradingagents.utils.logginginit import setup_web_logging
 logger = setup_web_logging()
 
 # 添加配置管理器
@@ -225,7 +225,7 @@ def run_stock_analysis(stock_symbol, analysis_date, analysts, research_depth, ll
 
     try:
         # 导入必要的模块
-        from tradingagents.graph.trading_graph import TradingAgentsGraph
+        from tradingagents.graph.graphtradinggraph import TradingAgentsGraph
         from tradingagents.default_config import DEFAULT_CONFIG
 
         # 创建配置

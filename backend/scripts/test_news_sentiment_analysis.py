@@ -11,7 +11,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from tradingagents.dataflows.providers.akshare_provider import get_akshare_provider
-from app.core.database import close_database
+from app.core.coredatabase import close_database
 
 
 async def test_sentiment_analysis():

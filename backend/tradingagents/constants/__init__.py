@@ -3,7 +3,7 @@
 统一管理系统中使用的常量
 """
 
-from .data_sources import (
+from .datasources import (
     DataSourceCode,
     DataSourceInfo,
     DATA_SOURCE_REGISTRY,

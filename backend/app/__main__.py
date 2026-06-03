@@ -98,8 +98,8 @@ def check_env_file():
     logger.info("-" * 50)
 
 try:
-    from app.core.config import settings
-    from app.core.dev_config import DEV_CONFIG
+    from app.core.coreconfig import settings
+    from app.core.devconfig import DEV_CONFIG
 except Exception as e:
     import traceback
     print(f"❌ 导入配置模块失败: {e}")
@@ -151,7 +151,7 @@ def main():
     # 设置简化的日志配置
     logger.info("🔧 正在设置日志配置...")
     try:
-        from app.core.logging_config import setup_logging as app_setup_logging
+        from app.core.loggingconfig import setup_logging as app_setup_logging
         app_setup_logging(settings.LOG_LEVEL)
     except Exception:
         # 回退到开发环境简化日志配置
@@ -164,7 +164,7 @@ def main():
 
     try:
         uvicorn.run(
-            "app.main:app",
+            "app.appmain:app",
             host=settings.HOST,
             port=settings.PORT,
             **uvicorn_config

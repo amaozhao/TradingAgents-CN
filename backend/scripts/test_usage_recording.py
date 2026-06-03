@@ -21,7 +21,7 @@ async def test_usage_recording():
     # 1. 初始化数据库
     print("\n1️⃣ 初始化数据库...")
     try:
-        from app.core.database import init_db, get_mongo_db
+        from app.core.coredatabase import init_db, get_mongo_db
         await init_db()
         db = get_mongo_db()
         print("✅ 数据库初始化成功")
@@ -32,8 +32,8 @@ async def test_usage_recording():
     # 2. 创建测试使用记录
     print("\n2️⃣ 创建测试使用记录...")
     try:
-        from app.services.usage_statistics_service import UsageStatisticsService
-        from app.models.config import UsageRecord
+        from app.services.usagestatisticsservice import UsageStatisticsService
+        from app.models.configmodels import UsageRecord
         
         usage_service = UsageStatisticsService()
         
@@ -133,12 +133,12 @@ async def test_analysis_service_recording():
     print("=" * 80)
     
     try:
-        from app.core.database import init_db, get_mongo_db
+        from app.core.coredatabase import init_db, get_mongo_db
         await init_db()
         db = get_mongo_db()
         
         from app.services.analysis_service import AnalysisService
-        from app.models.analysis import AnalysisTask, AnalysisResult
+        from app.models.analysismodels import AnalysisTask, AnalysisResult
         from bson import ObjectId
 
         # 创建模拟任务

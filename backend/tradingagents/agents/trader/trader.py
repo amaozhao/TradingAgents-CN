@@ -5,13 +5,13 @@ import json
 from langchain_core.messages import AIMessage
 
 from tradingagents.agents.schemas import TraderProposal, render_trader_proposal
-from tradingagents.agents.utils.agent_utils import get_instrument_context_from_state
+from tradingagents.agents.utils.agentutils import get_instrument_context_from_state
 from tradingagents.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
 )
 # 导入统一日志系统
-from tradingagents.utils.logging_init import get_logger
+from tradingagents.utils.logginginit import get_logger
 logger = get_logger("default")
 
 
@@ -28,7 +28,7 @@ def create_trader(llm, memory=None):
         fundamentals_report = state.get("fundamentals_report", "")
 
         # 使用统一的股票类型检测
-        from tradingagents.utils.stock_utils import StockUtils
+        from tradingagents.utils.stockutils import StockUtils
         market_info = StockUtils.get_market_info(company_name)
         is_china = market_info['is_china']
         is_hk = market_info['is_hk']

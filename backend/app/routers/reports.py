@@ -11,10 +11,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
-from .auth_db import get_current_user
-from ..models.api_response import ApiResponse
-from ..core.database import get_mongo_db
-from ..db.dual_write import dual_write_hot_document
+from .authdb import get_current_user
+from ..models.apiresponse import ApiResponse
+from ..core.coredatabase import get_mongo_db
+from ..db.dualwrite import dual_write_hot_document
 from ..utils.timezone import to_config_tz
 import logging
 
@@ -36,8 +36,8 @@ def get_stock_name(stock_code: str) -> str:
 
     try:
         # 从 MongoDB 获取股票名称
-        from ..core.database import get_mongo_db_sync
-        from ..core.unified_config import UnifiedConfigManager
+        from ..core.coredatabase import get_mongo_db_sync
+        from ..core.unifiedconfig import UnifiedConfigManager
 
         db = get_mongo_db_sync()
         code6 = str(stock_code).zfill(6)
@@ -184,7 +184,7 @@ async def get_reports_list(
             # 🔥 获取市场类型，如果没有则根据股票代码推断
             market_type = doc.get("market_type")
             if not market_type:
-                from tradingagents.utils.stock_utils import StockUtils
+                from tradingagents.utils.stockutils import StockUtils
                 market_info = StockUtils.get_market_info(stock_code)
                 market_type_map = {
                     "china_a": "A股",
@@ -523,7 +523,7 @@ async def download_report(
 
         elif format == "docx":
             # Word 文档格式下载
-            from app.utils.report_exporter import report_exporter
+            from app.utils.reportexporter import report_exporter
 
             if not report_exporter.pandoc_available:
                 raise HTTPException(
@@ -551,7 +551,7 @@ async def download_report(
 
         elif format == "pdf":
             # PDF 格式下载
-            from app.utils.report_exporter import report_exporter
+            from app.utils.reportexporter import report_exporter
 
             if not report_exporter.pandoc_available:
                 raise HTTPException(

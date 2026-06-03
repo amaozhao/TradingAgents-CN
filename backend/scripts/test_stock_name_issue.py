@@ -8,7 +8,7 @@ import os
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
-from tradingagents.utils.logging_init import get_logger
+from tradingagents.utils.logginginit import get_logger
 logger = get_logger("default")
 
 

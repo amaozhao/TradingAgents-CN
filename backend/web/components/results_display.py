@@ -12,7 +12,7 @@ from datetime import datetime
 from utils.report_exporter import render_export_buttons
 
 # 导入日志模块
-from tradingagents.utils.logging_manager import get_logger
+from tradingagents.utils.loggingmanager import get_logger
 logger = get_logger('web')
 
 def render_results(results):

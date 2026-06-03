@@ -12,15 +12,15 @@ from typing import Any, Dict, Optional, Union
 import pandas as pd
 
 # 导入统一日志系统
-from tradingagents.utils.logging_init import setup_dataflow_logging
+from tradingagents.utils.logginginit import setup_dataflow_logging
 
 # 导入原有缓存系统
-from .file_cache import StockDataCache
+from .filecache import StockDataCache
 
 # 导入自适应缓存系统
 try:
     from .adaptive import AdaptiveCacheSystem
-    from tradingagents.config.database_manager import get_database_manager
+    from tradingagents.config.databasemanager import get_database_manager
     ADAPTIVE_CACHE_AVAILABLE = True
 except ImportError as e:
     ADAPTIVE_CACHE_AVAILABLE = False
@@ -301,7 +301,7 @@ class IntegratedCacheManager:
             try:
                 from datetime import datetime, timedelta
                 from zoneinfo import ZoneInfo
-                from tradingagents.config.runtime_settings import get_timezone_name
+                from tradingagents.config.runtimesettings import get_timezone_name
 
                 mongodb_db = self.db_manager.get_mongodb_db()
 

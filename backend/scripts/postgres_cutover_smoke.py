@@ -27,7 +27,7 @@ from app.db.message_repository import (
     query_internal_messages,
     query_social_media_messages,
 )
-from app.db.models import (
+from app.db.dbmodels import (
     AnalysisTask,
     InternalMessageDocument,
     LoginAttemptDocument,

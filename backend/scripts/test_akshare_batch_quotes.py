@@ -8,7 +8,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.core.database import init_database
+from app.core.coredatabase import init_database
 from tradingagents.dataflows.providers.china.akshare import AKShareProvider
 
 

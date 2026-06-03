@@ -5,11 +5,11 @@ import json
 import logging
 import time
 
-from app.routers.auth_db import get_current_user
-from app.core.database import get_redis_client
-from app.core.config import settings
+from app.routers.authdb import get_current_user
+from app.core.coredatabase import get_redis_client
+from app.core.coreconfig import settings
 
-from app.services.queue_service import get_queue_service, QueueService
+from app.services.queueservice import get_queue_service, QueueService
 
 router = APIRouter()
 logger = logging.getLogger("webapi.sse")
@@ -24,7 +24,7 @@ async def task_progress_generator(task_id: str, user_id: str):
     try:
         # Load dynamic SSE settings
         try:
-            from app.services.config_provider import provider as config_provider
+            from app.services.configprovider import provider as config_provider
             eff = await config_provider.get_effective_system_settings()
             poll_timeout = float(eff.get("sse_poll_timeout_seconds", 1.0))
             heartbeat_every = int(eff.get("sse_heartbeat_interval_seconds", 10))
@@ -117,7 +117,7 @@ async def batch_progress_generator(batch_id: str, user_id: str):
     try:
         # Load dynamic SSE settings for batch stream
         try:
-            from app.services.config_provider import provider as config_provider
+            from app.services.configprovider import provider as config_provider
             eff = await config_provider.get_effective_system_settings()
             batch_poll_interval = float(eff.get("sse_batch_poll_interval_seconds", 2))
             batch_max_idle_seconds = int(eff.get("sse_batch_max_idle_seconds", 600))
