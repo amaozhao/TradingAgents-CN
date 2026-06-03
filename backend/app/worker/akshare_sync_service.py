@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 
 from app.core.database import get_mongo_db
+from app.db.dual_write import dual_write_hot_document
 from app.services.historical_data_service import get_historical_data_service
 from app.services.news_data_service import get_news_data_service
 from tradingagents.dataflows.providers.china.akshare import get_akshare_provider
@@ -166,6 +167,9 @@ class AKShareSyncService:
                     if "source" not in basic_data:
                         basic_data["source"] = "akshare"
 
+                    if "code" not in basic_data:
+                        basic_data["code"] = code
+
                     # 🔥 确保 symbol 字段存在
                     if "symbol" not in basic_data:
                         basic_data["symbol"] = code
@@ -177,6 +181,7 @@ class AKShareSyncService:
                             {"$set": basic_data},
                             upsert=True
                         )
+                        await dual_write_hot_document("stock_basic_info", basic_data)
                         batch_stats["success_count"] += 1
                     except Exception as e:
                         batch_stats["error_count"] += 1
@@ -341,6 +346,8 @@ class AKShareSyncService:
                                         quotes_data["symbol"] = symbol
                                     if "code" not in quotes_data:
                                         quotes_data["code"] = symbol
+                                    if "source" not in quotes_data:
+                                        quotes_data["source"] = "akshare"
 
                                     # 更新到数据库
                                     await self.db.market_quotes.update_one(
@@ -348,6 +355,7 @@ class AKShareSyncService:
                                         {"$set": quotes_data},
                                         upsert=True
                                     )
+                                    await dual_write_hot_document("market_quotes", quotes_data)
                                     stats["success_count"] += 1
                                 else:
                                     stats["error_count"] += 1
@@ -422,6 +430,8 @@ class AKShareSyncService:
                             quotes_data["symbol"] = symbol
                         if "code" not in quotes_data:
                             quotes_data["code"] = symbol
+                        if "source" not in quotes_data:
+                            quotes_data["source"] = "akshare"
 
                         # 更新到数据库
                         await self.db.market_quotes.update_one(
@@ -429,6 +439,7 @@ class AKShareSyncService:
                             {"$set": quotes_data},
                             upsert=True
                         )
+                        await dual_write_hot_document("market_quotes", quotes_data)
                         batch_stats["success_count"] += 1
                     else:
                         batch_stats["error_count"] += 1
@@ -503,6 +514,10 @@ class AKShareSyncService:
                 # 确保 symbol 字段存在
                 if "symbol" not in quotes_data:
                     quotes_data["symbol"] = symbol
+                if "code" not in quotes_data:
+                    quotes_data["code"] = symbol
+                if "source" not in quotes_data:
+                    quotes_data["source"] = "akshare"
 
                 # 🔥 打印即将保存到数据库的数据
                 logger.info(f"💾 准备保存 {symbol} 行情到数据库:")
@@ -521,6 +536,7 @@ class AKShareSyncService:
                     {"$set": quotes_data},
                     upsert=True
                 )
+                await dual_write_hot_document("market_quotes", quotes_data)
 
                 logger.info(f"✅ {symbol} 行情已保存到数据库 (matched={result.matched_count}, modified={result.modified_count}, upserted_id={result.upserted_id})")
                 return True

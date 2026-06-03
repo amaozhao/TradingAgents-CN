@@ -12,6 +12,7 @@ from app.routers.auth_db import get_current_user
 from app.core.database import get_mongo_db
 from app.worker.tushare_init_service import get_tushare_init_service
 from app.core.response import ok
+from app.models.api_response import ApiResponse
 
 router = APIRouter(prefix="/api/tushare-init", tags=["Tushare初始化"])
 
@@ -52,7 +53,7 @@ _initialization_status = {
 }
 
 
-@router.get("/status", response_model=dict)
+@router.get("/status", response_model=ApiResponse)
 async def get_database_status(
     current_user: dict = Depends(get_current_user)
 ):
@@ -108,7 +109,7 @@ async def get_database_status(
         raise HTTPException(status_code=500, detail=f"获取数据库状态失败: {str(e)}")
 
 
-@router.get("/initialization-status", response_model=dict)
+@router.get("/initialization-status", response_model=ApiResponse)
 async def get_initialization_status(
     current_user: dict = Depends(get_current_user)
 ):
@@ -133,7 +134,7 @@ async def get_initialization_status(
         raise HTTPException(status_code=500, detail=f"获取初始化状态失败: {str(e)}")
 
 
-@router.post("/start-basic", response_model=dict)
+@router.post("/start-basic", response_model=ApiResponse)
 async def start_basic_initialization(
     background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user)
@@ -157,7 +158,7 @@ async def start_basic_initialization(
         raise HTTPException(status_code=500, detail=f"启动基础信息初始化失败: {str(e)}")
 
 
-@router.post("/start-full", response_model=dict)
+@router.post("/start-full", response_model=ApiResponse)
 async def start_full_initialization(
     request: InitializationRequest,
     background_tasks: BackgroundTasks,
@@ -190,7 +191,7 @@ async def start_full_initialization(
         raise HTTPException(status_code=500, detail=f"启动完整数据初始化失败: {str(e)}")
 
 
-@router.post("/stop", response_model=dict)
+@router.post("/stop", response_model=ApiResponse)
 async def stop_initialization(
     current_user: dict = Depends(get_current_user)
 ):

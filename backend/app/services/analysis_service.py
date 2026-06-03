@@ -16,12 +16,6 @@ import sys
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-# 初始化TradingAgents日志系统
-from tradingagents.utils.logging_init import init_logging
-init_logging()
-
-from tradingagents.graph.trading_graph import TradingAgentsGraph
-from tradingagents.default_config import DEFAULT_CONFIG
 from app.services.simple_analysis_service import create_analysis_config, get_provider_by_model_name
 from app.models.analysis import (
     AnalysisParameters, AnalysisResult, AnalysisTask, AnalysisBatch,
@@ -30,6 +24,7 @@ from app.models.analysis import (
 from app.models.user import PyObjectId
 from bson import ObjectId
 from app.core.database import get_mongo_db
+from app.db.dual_write import dual_write_hot_document, dual_write_hot_documents
 from app.core.redis_client import get_redis_service, RedisKeys
 from app.services.queue_service import QueueService
 from app.core.database import get_redis_client
@@ -41,6 +36,19 @@ from app.models.config import UsageRecord
 
 import logging
 logger = logging.getLogger(__name__)
+
+_tradingagents_logging_initialized = False
+
+
+def _ensure_tradingagents_logging() -> None:
+    global _tradingagents_logging_initialized
+    if _tradingagents_logging_initialized:
+        return
+
+    from tradingagents.utils.logging_init import init_logging
+
+    init_logging()
+    _tradingagents_logging_initialized = True
 
 
 class AnalysisService:
@@ -79,11 +87,14 @@ class AnalysisService:
             logger.warning(f"⚠️ 生成新的用户ID: {new_object_id}")
             return PyObjectId(new_object_id)
     
-    def _get_trading_graph(self, config: Dict[str, Any]) -> TradingAgentsGraph:
+    def _get_trading_graph(self, config: Dict[str, Any]) -> Any:
         """获取或创建TradingAgents图实例（带缓存）- 与单股分析保持一致"""
         config_key = json.dumps(config, sort_keys=True)
 
         if config_key not in self._trading_graph_cache:
+            _ensure_tradingagents_logging()
+            from tradingagents.graph.trading_graph import TradingAgentsGraph
+
             # 直接使用完整配置，不再合并DEFAULT_CONFIG（因为create_analysis_config已经处理了）
             # 这与单股分析服务和web目录的方式一致
             self._trading_graph_cache[config_key] = TradingAgentsGraph(
@@ -487,6 +498,7 @@ class AnalysisService:
             task_dict = task.model_dump(by_alias=True)
             logger.info(f"📄 任务字典: {task_dict}")
             await db.analysis_tasks.insert_one(task_dict)
+            await dual_write_hot_document("analysis_tasks", task_dict)
             logger.info(f"✅ 任务已保存到数据库")
 
             # 单股分析：直接在后台执行（不阻塞API响应）
@@ -578,8 +590,12 @@ class AnalysisService:
             
             # 保存到数据库
             db = get_mongo_db()
-            await db.analysis_batches.insert_one(batch.dict(by_alias=True))
-            await db.analysis_tasks.insert_many([task.dict(by_alias=True) for task in tasks])
+            batch_document = batch.dict(by_alias=True)
+            await db.analysis_batches.insert_one(batch_document)
+            await dual_write_hot_document("analysis_batches", batch_document)
+            task_documents = [task.dict(by_alias=True) for task in tasks]
+            await db.analysis_tasks.insert_many(task_documents)
+            await dual_write_hot_documents("analysis_tasks", task_documents)
             
             # 提交任务到队列
             for task in tasks:

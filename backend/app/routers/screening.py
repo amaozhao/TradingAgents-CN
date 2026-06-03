@@ -1,11 +1,10 @@
 
 import logging
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional, Dict, Any
 from app.routers.auth_db import get_current_user
 
-from app.services.screening_service import ScreeningService, ScreeningParams
 from app.services.enhanced_screening_service import get_enhanced_screening_service
 from app.models.screening import (
     ScreeningCondition, ScreeningRequest as NewScreeningRequest,
@@ -20,6 +19,41 @@ class FieldConfigResponse(BaseModel):
     """筛选字段配置响应"""
     fields: Dict[str, FieldInfo]
     categories: Dict[str, List[str]]
+
+
+class SupportedFieldInfoResponse(BaseModel):
+    """增强筛选字段信息响应，保留服务返回的统计和可选值字段。"""
+    model_config = ConfigDict(extra="allow")
+
+    name: str
+    display_name: str
+    field_type: str
+    data_type: str
+    description: str = ""
+    unit: Optional[str] = None
+    supported_operators: List[str] = Field(default_factory=list)
+    statistics: Any = None
+    available_values: Optional[List[Any]] = None
+
+
+class ConditionValidationResponse(BaseModel):
+    """筛选条件验证响应。"""
+    valid: bool
+    errors: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
+
+class IndustryItemResponse(BaseModel):
+    value: str
+    label: str
+    count: int
+
+
+class IndustriesResponse(BaseModel):
+    industries: List[IndustryItemResponse]
+    total: int
+    source: str
+
 
 # 传统的请求/响应模型（保持向后兼容）
 class OrderByItem(BaseModel):
@@ -39,9 +73,9 @@ class ScreeningResponse(BaseModel):
     total: int
     items: List[dict]
 
-# 服务实例
-svc = ScreeningService()
-enhanced_svc = get_enhanced_screening_service()
+
+def _get_enhanced_svc():
+    return get_enhanced_screening_service()
 
 
 @router.get("/fields", response_model=FieldConfigResponse)
@@ -164,7 +198,7 @@ async def run_screening(req: ScreeningRequest, user: dict = Depends(get_current_
         logger.info(f"[screening] 转换后的条件: {conditions}")
 
         # 使用增强筛选服务
-        result = await enhanced_svc.screen_stocks(
+        result = await _get_enhanced_svc().screen_stocks(
             conditions=conditions,
             market=req.market,
             date=req.date,
@@ -203,7 +237,7 @@ async def enhanced_screening(req: NewScreeningRequest, user: dict = Depends(get_
         logger.info(f"[enhanced_screening] 排序与分页: order_by={req.order_by}, limit={req.limit}, offset={req.offset}")
 
         # 执行增强筛选
-        result = await enhanced_svc.screen_stocks(
+        result = await _get_enhanced_svc().screen_stocks(
             conditions=req.conditions,
             market=req.market,
             date=req.date,
@@ -231,11 +265,11 @@ async def enhanced_screening(req: NewScreeningRequest, user: dict = Depends(get_
 
 
 # 获取支持的字段信息
-@router.get("/fields", response_model=List[Dict[str, Any]])
+@router.get("/fields", response_model=List[SupportedFieldInfoResponse])
 async def get_supported_fields(user: dict = Depends(get_current_user)):
     """获取所有支持的筛选字段信息"""
     try:
-        fields = await enhanced_svc.get_all_supported_fields()
+        fields = await _get_enhanced_svc().get_all_supported_fields()
         return fields
     except Exception as e:
         logger.error(f"[screening] 获取字段信息失败: {e}")
@@ -243,11 +277,11 @@ async def get_supported_fields(user: dict = Depends(get_current_user)):
 
 
 # 获取单个字段的详细信息
-@router.get("/fields/{field_name}", response_model=Dict[str, Any])
+@router.get("/fields/{field_name}", response_model=SupportedFieldInfoResponse)
 async def get_field_info(field_name: str, user: dict = Depends(get_current_user)):
     """获取指定字段的详细信息"""
     try:
-        field_info = await enhanced_svc.get_field_info(field_name)
+        field_info = await _get_enhanced_svc().get_field_info(field_name)
         if not field_info:
             raise HTTPException(status_code=404, detail=f"字段 '{field_name}' 不存在")
         return field_info
@@ -259,11 +293,11 @@ async def get_field_info(field_name: str, user: dict = Depends(get_current_user)
 
 
 # 验证筛选条件
-@router.post("/validate", response_model=Dict[str, Any])
+@router.post("/validate", response_model=ConditionValidationResponse)
 async def validate_conditions(conditions: List[ScreeningCondition], user: dict = Depends(get_current_user)):
     """验证筛选条件的有效性"""
     try:
-        validation_result = await enhanced_svc.validate_conditions(conditions)
+        validation_result = await _get_enhanced_svc().validate_conditions(conditions)
         return validation_result
     except Exception as e:
         logger.error(f"[screening] 验证条件失败: {e}")
@@ -272,7 +306,7 @@ async def validate_conditions(conditions: List[ScreeningCondition], user: dict =
 # 重复定义的旧端点移除（保留带日志的版本）
 
 
-@router.get("/industries")
+@router.get("/industries", response_model=IndustriesResponse)
 async def get_industries(user: dict = Depends(get_current_user)):
     """
     获取数据库中所有可用的行业列表

@@ -1,4 +1,5 @@
 import asyncio
+from types import SimpleNamespace
 from typing import Any, Dict, List
 
 
@@ -99,6 +100,7 @@ def test_quotes_ingestion_run_once_writes_bulk(monkeypatch):
     class _FakeColl:
         def __init__(self):
             self.last_ops = None
+            self.last_update = None
 
         async def create_index(self, *args, **kwargs):
             return "ok"
@@ -106,6 +108,10 @@ def test_quotes_ingestion_run_once_writes_bulk(monkeypatch):
         async def bulk_write(self, ops, ordered=False):
             self.last_ops = ops
             return _FakeResult(len(ops))
+
+        async def update_one(self, query, update, upsert=False):
+            self.last_update = (query, update, upsert)
+            return SimpleNamespace(modified_count=1, upserted_id=None)
 
     class _FakeDB:
         def __init__(self):
@@ -120,6 +126,19 @@ def test_quotes_ingestion_run_once_writes_bulk(monkeypatch):
         return fake_db
 
     monkeypatch.setattr(qis_mod, "get_mongo_db", _fake_get_mongo_db, raising=True)
+    dual_write_document_calls = []
+    dual_write_documents_calls = []
+
+    async def _fake_dual_write_document(collection, document):
+        dual_write_document_calls.append((collection, document))
+        return SimpleNamespace(status="success", reason=None)
+
+    async def _fake_dual_write_documents(collection, documents):
+        dual_write_documents_calls.append((collection, documents))
+        return SimpleNamespace(status="success", reason=None)
+
+    monkeypatch.setattr(qis_mod, "dual_write_hot_document", _fake_dual_write_document, raising=True)
+    monkeypatch.setattr(qis_mod, "dual_write_hot_documents", _fake_dual_write_documents, raising=True)
 
     async def _run():
         svc = QuotesIngestionService()
@@ -129,7 +148,64 @@ def test_quotes_ingestion_run_once_writes_bulk(monkeypatch):
         # Verify that two upsert operations were generated
         assert fake_db._coll.last_ops is not None
         assert len(fake_db._coll.last_ops) == 2
+        assert dual_write_documents_calls[0][0] == "market_quotes"
+        assert [doc["code"] for doc in dual_write_documents_calls[0][1]] == ["000001", "600000"]
+        assert all(doc["source"] == "fake" for doc in dual_write_documents_calls[0][1])
+        assert dual_write_document_calls[0][0] == "quotes_ingestion_status"
+        assert dual_write_document_calls[0][1]["job"] == "quotes_ingestion"
+        assert dual_write_document_calls[0][1]["success"] is True
 
     import asyncio
     asyncio.run(_run())
 
+
+def test_quotes_ingestion_status_dual_writes(monkeypatch):
+    from app.services.quotes_ingestion_service import QuotesIngestionService
+    import app.services.quotes_ingestion_service as qis_mod
+
+    class _FakeStatusCollection:
+        def __init__(self):
+            self.update_calls = []
+
+        async def update_one(self, query, update, upsert=False):
+            self.update_calls.append((query, update, upsert))
+            return SimpleNamespace(modified_count=1, upserted_id=None)
+
+    class _FakeDB:
+        def __init__(self):
+            self.status = _FakeStatusCollection()
+
+        def __getitem__(self, name: str):
+            assert name == "quotes_ingestion_status"
+            return self.status
+
+    fake_db = _FakeDB()
+    dual_write_calls = []
+
+    def _fake_get_mongo_db():
+        return fake_db
+
+    async def _fake_dual_write(collection, document):
+        dual_write_calls.append((collection, document))
+        return SimpleNamespace(status="success", reason=None)
+
+    monkeypatch.setattr(qis_mod, "get_mongo_db", _fake_get_mongo_db, raising=True)
+    monkeypatch.setattr(qis_mod, "dual_write_hot_document", _fake_dual_write, raising=True)
+
+    async def _run():
+        svc = QuotesIngestionService()
+        await svc._record_sync_status(
+            success=False,
+            source="akshare_eastmoney",
+            records_count=0,
+            error_msg="API limit",
+        )
+
+    asyncio.run(_run())
+
+    assert fake_db.status.update_calls
+    assert dual_write_calls[0][0] == "quotes_ingestion_status"
+    assert dual_write_calls[0][1]["job"] == "quotes_ingestion"
+    assert dual_write_calls[0][1]["success"] is False
+    assert dual_write_calls[0][1]["data_source"] == "akshare_eastmoney"
+    assert dual_write_calls[0][1]["error_message"] == "API limit"

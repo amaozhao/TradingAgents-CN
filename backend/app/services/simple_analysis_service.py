@@ -15,39 +15,68 @@ import sys
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-# 初始化TradingAgents日志系统
-from tradingagents.utils.logging_init import init_logging
-init_logging()
-
-from tradingagents.graph.trading_graph import TradingAgentsGraph
-from tradingagents.default_config import DEFAULT_CONFIG
 from app.models.analysis import (
     AnalysisTask, AnalysisStatus, SingleAnalysisRequest, AnalysisParameters
 )
 from app.models.user import PyObjectId
 from app.models.notification import NotificationCreate
 from bson import ObjectId
+from app.core.config import settings
 from app.core.database import get_mongo_db
+from app.db.dual_write import dual_write_hot_document
 from app.services.config_service import ConfigService
 from app.services.memory_state_manager import get_memory_state_manager, TaskStatus
 from app.services.redis_progress_tracker import RedisProgressTracker, get_progress_by_id
 from app.services.progress_log_handler import register_analysis_tracker, unregister_analysis_tracker
 
-# 股票基础信息获取（用于补充显示名称）
-try:
-    from tradingagents.dataflows.data_source_manager import get_data_source_manager
-    _data_source_manager = get_data_source_manager()
-    def _get_stock_info_safe(stock_code: str):
-        """获取股票基础信息的安全封装"""
+_tradingagents_logging_initialized = False
+_data_source_manager = None
+
+
+def _ensure_tradingagents_logging() -> None:
+    global _tradingagents_logging_initialized
+    if _tradingagents_logging_initialized:
+        return
+
+    from tradingagents.utils.logging_init import init_logging
+
+    init_logging()
+    _tradingagents_logging_initialized = True
+
+
+def _get_stock_info_safe(stock_code: str):
+    """获取股票基础信息的安全封装，延迟加载数据源管理器。"""
+
+    global _data_source_manager
+    try:
+        if _data_source_manager is None:
+            from tradingagents.dataflows.data_source_manager import get_data_source_manager
+
+            _data_source_manager = get_data_source_manager()
         return _data_source_manager.get_stock_basic_info(stock_code)
-except Exception:
-    _get_stock_info_safe = None
+    except Exception:
+        return None
 
 # 设置日志
 logger = logging.getLogger("app.services.simple_analysis_service")
 
 # 配置服务实例
 config_service = ConfigService()
+
+
+def _dual_write_analysis_task_sync(document: Dict[str, Any]) -> None:
+    """Run PostgreSQL dual-write from analysis worker threads."""
+
+    loop = asyncio.new_event_loop()
+    try:
+        result = loop.run_until_complete(dual_write_hot_document("analysis_tasks", document))
+        if result.status == "failed":
+            logger.warning("⚠️ 分析任务 PostgreSQL 双写失败: %s", result.reason)
+    except Exception as exc:
+        logger.warning("⚠️ 分析任务 PostgreSQL 双写失败: %s", exc)
+        raise
+    finally:
+        loop.close()
 
 
 async def get_provider_by_model_name(model_name: str) -> str:
@@ -446,6 +475,8 @@ def create_analysis_config(
         logger.warning(f"⚠️ 无效的研究深度类型: {type(research_depth)}，使用默认标准分析")
         research_depth = "标准"
 
+    from tradingagents.default_config import DEFAULT_CONFIG
+
     # 从DEFAULT_CONFIG开始，完全复制web目录的逻辑
     config = DEFAULT_CONFIG.copy()
     config["llm_provider"] = llm_provider
@@ -608,17 +639,17 @@ class SimpleAnalysisService:
             from app.core.database import get_mongo_db
             from datetime import datetime
             db = get_mongo_db()
+            update_data = {
+                "progress": progress,
+                "current_step": message,
+                "message": message,
+                "updated_at": datetime.utcnow()
+            }
             await db.analysis_tasks.update_one(
                 {"task_id": task_id},
-                {
-                    "$set": {
-                        "progress": progress,
-                        "current_step": message,
-                        "message": message,
-                        "updated_at": datetime.utcnow()
-                    }
-                }
+                {"$set": update_data}
             )
+            await dual_write_hot_document("analysis_tasks", {"task_id": task_id, **update_data})
             logger.debug(f"✅ [异步更新] 已更新内存和MongoDB: {progress}%")
         except Exception as e:
             logger.warning(f"⚠️ [异步更新] 失败: {e}")
@@ -678,7 +709,7 @@ class SimpleAnalysisService:
             logger.warning(f"⚠️ 生成新的用户ID: {new_object_id}")
             return PyObjectId(new_object_id)
 
-    def _get_trading_graph(self, config: Dict[str, Any]) -> TradingAgentsGraph:
+    def _get_trading_graph(self, config: Dict[str, Any]) -> Any:
         """获取或创建TradingAgents实例
 
         ⚠️ 注意：为了避免并发执行时的数据混淆，每次都创建新实例
@@ -690,6 +721,8 @@ class SimpleAnalysisService:
         # 🔧 [并发安全] 每次都创建新实例，避免多线程共享状态
         # 不再使用缓存，因为 TradingAgentsGraph 有可变的实例变量
         logger.info(f"🔧 创建新的TradingAgents实例（并发安全模式）...")
+        _ensure_tradingagents_logging()
+        from tradingagents.graph.trading_graph import TradingAgentsGraph
 
         trading_graph = TradingAgentsGraph(
             selected_analysts=config.get("selected_analysts", ["market", "fundamentals"]),
@@ -743,20 +776,22 @@ class SimpleAnalysisService:
 
             try:
                 db = get_mongo_db()
+                task_document = {
+                    "task_id": task_id,
+                    "user_id": user_id,
+                    "stock_code": code,
+                    "stock_symbol": code,
+                    "stock_name": name,
+                    "status": "pending",
+                    "progress": 0,
+                    "created_at": datetime.utcnow(),
+                }
                 result = await db.analysis_tasks.update_one(
                     {"task_id": task_id},
-                    {"$setOnInsert": {
-                        "task_id": task_id,
-                        "user_id": user_id,
-                        "stock_code": code,
-                        "stock_symbol": code,
-                        "stock_name": name,
-                        "status": "pending",
-                        "progress": 0,
-                        "created_at": datetime.utcnow(),
-                    }},
+                    {"$setOnInsert": task_document},
                     upsert=True
                 )
+                await dual_write_hot_document("analysis_tasks", task_document)
 
                 if result.upserted_id or result.matched_count > 0:
                     logger.info(f"✅ 任务已保存到MongoDB: {task_id}")
@@ -1115,17 +1150,17 @@ class SimpleAnalysisService:
                     sync_client = MongoClient(settings.MONGO_URI)
                     sync_db = sync_client[settings.MONGO_DB]
 
+                    update_data = {
+                        "progress": progress,
+                        "current_step": step,
+                        "message": message,
+                        "updated_at": datetime.utcnow()
+                    }
                     sync_db.analysis_tasks.update_one(
                         {"task_id": task_id},
-                        {
-                            "$set": {
-                                "progress": progress,
-                                "current_step": step,
-                                "message": message,
-                                "updated_at": datetime.utcnow()
-                            }
-                        }
+                        {"$set": update_data}
                     )
+                    _dual_write_analysis_task_sync({"task_id": task_id, **update_data})
                     sync_client.close()
 
                 except Exception as e:
@@ -1422,17 +1457,17 @@ class SimpleAnalysisService:
                                     sync_db = sync_client[settings.MONGO_DB]
 
                                     # 同步更新 MongoDB
+                                    update_data = {
+                                        "progress": int(progress_pct),
+                                        "current_step": message,
+                                        "message": message,
+                                        "updated_at": datetime.utcnow()
+                                    }
                                     sync_db.analysis_tasks.update_one(
                                         {"task_id": task_id},
-                                        {
-                                            "$set": {
-                                                "progress": int(progress_pct),
-                                                "current_step": message,
-                                                "message": message,
-                                                "updated_at": datetime.utcnow()
-                                            }
-                                        }
+                                        {"$set": update_data}
                                     )
+                                    _dual_write_analysis_task_sync({"task_id": task_id, **update_data})
                                     sync_client.close()
 
                                     # 异步更新内存（创建新的事件循环）
@@ -1992,6 +2027,108 @@ class SimpleAnalysisService:
             logger.error(f"❌ list_all_tasks 外层异常: {outer_e}", exc_info=True)
             return []
 
+    async def _list_user_tasks_from_postgres(
+        self,
+        *,
+        user_id: str,
+        status: Optional[str],
+        limit: int,
+        offset: int,
+    ) -> Optional[List[Dict[str, Any]]]:
+        if not settings.POSTGRES_READ_ENABLED:
+            return None
+        try:
+            from app.db.analysis_repository import list_user_analysis_tasks
+            from app.db.session import get_session_factory
+
+            async with get_session_factory()() as session:
+                documents = await list_user_analysis_tasks(
+                    session,
+                    user_id,
+                    status=status,
+                    limit=limit,
+                    offset=offset,
+                )
+            return [self._analysis_task_document_to_history_item(doc) for doc in documents]
+        except Exception as e:
+            logger.warning("PostgreSQL分析历史查询失败，回退MongoDB: %s", e)
+            return None
+
+    async def _list_user_tasks_from_mongo(
+        self,
+        *,
+        user_id: str,
+        task_status: Optional[TaskStatus],
+        limit: int,
+    ) -> tuple[List[Dict[str, Any]], int]:
+        db = get_mongo_db()
+
+        uid_candidates: List[Any] = [user_id]
+
+        if str(user_id) == 'admin':
+            try:
+                from bson import ObjectId
+                admin_oid_str = '507f1f77bcf86cd799439011'
+                uid_candidates.append(ObjectId(admin_oid_str))
+                uid_candidates.append(admin_oid_str)
+                logger.info(f"📋 [Tasks] admin用户查询，候选ID: ['admin', ObjectId('{admin_oid_str}'), '{admin_oid_str}']")
+            except Exception as e:
+                logger.warning(f"⚠️ [Tasks] admin用户ObjectId创建失败: {e}")
+        else:
+            try:
+                from bson import ObjectId
+                uid_candidates.append(ObjectId(user_id))
+                logger.debug(f"📋 [Tasks] 用户ID已转换为ObjectId: {user_id}")
+            except Exception as conv_err:
+                logger.warning(f"⚠️ [Tasks] 用户ID转换ObjectId失败，按字符串匹配: {conv_err}")
+
+        base_condition = {"$in": uid_candidates}
+        query = {"$or": [{"user_id": base_condition}, {"user": base_condition}]}
+
+        if task_status:
+            query["status"] = task_status.value
+            logger.info(f"📋 [Tasks] 添加状态过滤: {task_status.value}")
+
+        logger.info(f"📋 [Tasks] MongoDB 查询条件: {query}")
+        cursor = db.analysis_tasks.find(query).sort("created_at", -1).limit(limit * 2)
+        tasks = []
+        count = 0
+        async for doc in cursor:
+            count += 1
+            tasks.append(self._analysis_task_document_to_history_item(doc))
+        return tasks, count
+
+    def _analysis_task_document_to_history_item(self, doc: Dict[str, Any]) -> Dict[str, Any]:
+        user_field_val = doc.get("user_id", doc.get("user"))
+        stock_code_value = doc.get("symbol") or doc.get("stock_code") or doc.get("stock_symbol")
+        item = {
+            "task_id": doc.get("task_id"),
+            "user_id": str(user_field_val) if user_field_val is not None else None,
+            "symbol": stock_code_value,
+            "stock_code": stock_code_value,
+            "stock_symbol": stock_code_value,
+            "stock_name": doc.get("stock_name"),
+            "status": str(doc.get("status", "pending")),
+            "progress": int(doc.get("progress", 0) or 0),
+            "message": doc.get("message", ""),
+            "current_step": doc.get("current_step", ""),
+            "start_time": doc.get("started_at") or doc.get("created_at"),
+            "end_time": doc.get("completed_at"),
+            "parameters": doc.get("parameters", {}),
+            "execution_time": doc.get("execution_time"),
+            "tokens_used": doc.get("tokens_used"),
+            "result_data": doc.get("result"),
+        }
+        for key in ("start_time", "end_time"):
+            if item.get(key) and hasattr(item[key], "isoformat"):
+                dt = item[key]
+                if dt.tzinfo is None:
+                    from datetime import timezone, timedelta
+                    china_tz = timezone(timedelta(hours=8))
+                    dt = dt.replace(tzinfo=china_tz)
+                item[key] = dt.isoformat()
+        return item
+
     async def list_user_tasks(
         self,
         user_id: str,
@@ -2040,83 +2177,22 @@ class SimpleAnalysisService:
             mongo_tasks: List[Dict[str, Any]] = []
             count = 0
             try:
-                db = get_mongo_db()
-
-                # user_id 可能是字符串或 ObjectId，做兼容
-                uid_candidates: List[Any] = [user_id]
-
-                # 特殊处理 admin 用户
-                if str(user_id) == 'admin':
-                    # admin 用户：添加固定的 ObjectId 和字符串形式
-                    try:
-                        from bson import ObjectId
-                        admin_oid_str = '507f1f77bcf86cd799439011'
-                        uid_candidates.append(ObjectId(admin_oid_str))
-                        uid_candidates.append(admin_oid_str)  # 兼容字符串存储
-                        logger.info(f"📋 [Tasks] admin用户查询，候选ID: ['admin', ObjectId('{admin_oid_str}'), '{admin_oid_str}']")
-                    except Exception as e:
-                        logger.warning(f"⚠️ [Tasks] admin用户ObjectId创建失败: {e}")
+                postgres_tasks = await self._list_user_tasks_from_postgres(
+                    user_id=user_id,
+                    status=task_status.value if task_status else None,
+                    limit=limit * 2,
+                    offset=0,
+                )
+                if postgres_tasks:
+                    mongo_tasks = postgres_tasks
+                    count = len(postgres_tasks)
+                    logger.info(f"📋 [Tasks] PostgreSQL 返回数量: {count}")
                 else:
-                    # 普通用户：尝试转换为 ObjectId
-                    try:
-                        from bson import ObjectId
-                        uid_candidates.append(ObjectId(user_id))
-                        logger.debug(f"📋 [Tasks] 用户ID已转换为ObjectId: {user_id}")
-                    except Exception as conv_err:
-                        logger.warning(f"⚠️ [Tasks] 用户ID转换ObjectId失败，按字符串匹配: {conv_err}")
-
-                # 兼容 user_id 与 user 两种字段名
-                base_condition = {"$in": uid_candidates}
-                or_conditions: List[Dict[str, Any]] = [
-                    {"user_id": base_condition},
-                    {"user": base_condition}
-                ]
-                query = {"$or": or_conditions}
-
-                if task_status:
-                    # 使用映射后的状态值（TaskStatus枚举的value）
-                    query["status"] = task_status.value
-                    logger.info(f"📋 [Tasks] 添加状态过滤: {task_status.value}")
-
-                logger.info(f"📋 [Tasks] MongoDB 查询条件: {query}")
-                # 读取更多数据用于合并
-                cursor = db.analysis_tasks.find(query).sort("created_at", -1).limit(limit * 2)
-                async for doc in cursor:
-                    count += 1
-                    # 兼容 user_id 或 user 字段
-                    user_field_val = doc.get("user_id", doc.get("user"))
-                    # 🔧 兼容多种股票代码字段名：symbol, stock_code, stock_symbol
-                    stock_code_value = doc.get("symbol") or doc.get("stock_code") or doc.get("stock_symbol")
-                    item = {
-                        "task_id": doc.get("task_id"),
-                        "user_id": str(user_field_val) if user_field_val is not None else None,
-                        "symbol": stock_code_value,  # 🔧 添加 symbol 字段（前端优先使用）
-                        "stock_code": stock_code_value,  # 🔧 兼容字段
-                        "stock_symbol": stock_code_value,  # 🔧 兼容字段
-                        "stock_name": doc.get("stock_name"),
-                        "status": str(doc.get("status", "pending")),
-                        "progress": int(doc.get("progress", 0) or 0),
-                        "message": doc.get("message", ""),
-                        "current_step": doc.get("current_step", ""),
-                        "start_time": doc.get("started_at") or doc.get("created_at"),
-                        "end_time": doc.get("completed_at"),
-                        "parameters": doc.get("parameters", {}),
-                        "execution_time": doc.get("execution_time"),
-                        "tokens_used": doc.get("tokens_used"),
-                        # 为兼容前端，这里沿用 memory_manager 的字段名
-                        "result_data": doc.get("result"),
-                    }
-                    # 时间格式转为 ISO 字符串（添加时区信息）
-                    for k in ("start_time", "end_time"):
-                        if item.get(k) and hasattr(item[k], "isoformat"):
-                            dt = item[k]
-                            # 如果是 naive datetime（没有时区信息），假定为 UTC+8
-                            if dt.tzinfo is None:
-                                from datetime import timezone, timedelta
-                                china_tz = timezone(timedelta(hours=8))
-                                dt = dt.replace(tzinfo=china_tz)
-                            item[k] = dt.isoformat()
-                    mongo_tasks.append(item)
+                    mongo_tasks, count = await self._list_user_tasks_from_mongo(
+                        user_id=user_id,
+                        task_status=task_status,
+                        limit=limit,
+                    )
 
                 logger.info(f"📋 [Tasks] MongoDB 返回数量: {count}")
             except Exception as mongo_e:
@@ -2597,31 +2673,34 @@ class SimpleAnalysisService:
 
             # 保存到analysis_reports集合（与web目录保持一致）
             result_insert = await db.analysis_reports.insert_one(document)
+            await dual_write_hot_document("analysis_reports", document)
 
             if result_insert.inserted_id:
                 logger.info(f"✅ 分析报告已保存到MongoDB analysis_reports: {analysis_id}")
 
                 # 同时更新analysis_tasks集合中的result字段，保持API兼容性
+                task_result_update = {"result": {
+                    "analysis_id": analysis_id,
+                    "stock_symbol": stock_symbol,
+                    "stock_code": result.get('stock_code', stock_symbol),
+                    "analysis_date": result.get('analysis_date'),
+                    "summary": result.get("summary", ""),
+                    "recommendation": result.get("recommendation", ""),
+                    "confidence_score": result.get("confidence_score", 0.0),
+                    "risk_level": result.get("risk_level", "中等"),
+                    "key_points": result.get("key_points", []),
+                    "detailed_analysis": result.get("detailed_analysis", {}),
+                    "execution_time": result.get("execution_time", 0),
+                    "tokens_used": result.get("tokens_used", 0),
+                    "reports": reports,  # 包含提取的报告内容
+                    # 🔥 关键修复：添加格式化后的decision字段！
+                    "decision": result.get("decision", {})
+                }}
                 await db.analysis_tasks.update_one(
                     {"task_id": task_id},
-                    {"$set": {"result": {
-                        "analysis_id": analysis_id,
-                        "stock_symbol": stock_symbol,
-                        "stock_code": result.get('stock_code', stock_symbol),
-                        "analysis_date": result.get('analysis_date'),
-                        "summary": result.get("summary", ""),
-                        "recommendation": result.get("recommendation", ""),
-                        "confidence_score": result.get("confidence_score", 0.0),
-                        "risk_level": result.get("risk_level", "中等"),
-                        "key_points": result.get("key_points", []),
-                        "detailed_analysis": result.get("detailed_analysis", {}),
-                        "execution_time": result.get("execution_time", 0),
-                        "tokens_used": result.get("tokens_used", 0),
-                        "reports": reports,  # 包含提取的报告内容
-                        # 🔥 关键修复：添加格式化后的decision字段！
-                        "decision": result.get("decision", {})
-                    }}}
+                    {"$set": task_result_update}
                 )
+                await dual_write_hot_document("analysis_tasks", {"task_id": task_id, **task_result_update})
                 logger.info(f"💾 分析结果已保存 (web风格): {task_id}")
             else:
                 logger.error("❌ MongoDB插入失败")
@@ -2640,6 +2719,7 @@ class SimpleAnalysisService:
                     {"task_id": task_id},
                     {"$set": {"result": simple_result}}
                 )
+                await dual_write_hot_document("analysis_tasks", {"task_id": task_id, "result": simple_result})
                 logger.info(f"💾 使用简化结果保存: {task_id}")
             except Exception as fallback_error:
                 logger.error(f"❌ 简化保存也失败: {task_id} - {fallback_error}")

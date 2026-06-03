@@ -4,10 +4,12 @@ Provides endpoints for multi-source stock data synchronization
 """
 import asyncio
 import logging
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any, Union
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
+from app.db.dual_write import dual_write_hot_document
 from app.services.multi_source_basics_sync_service import get_multi_source_sync_service
 from app.services.data_sources.manager import DataSourceManager
 
@@ -37,7 +39,7 @@ class DataSourceStatus(BaseModel):
     description: str
 
 
-@router.get("/sources/status")
+@router.get("/sources/status", response_model=SyncResponse)
 async def get_data_sources_status():
     """获取所有数据源的状态"""
     try:
@@ -85,7 +87,7 @@ async def get_data_sources_status():
         raise HTTPException(status_code=500, detail=f"Failed to get data sources status: {str(e)}")
 
 
-@router.get("/sources/current")
+@router.get("/sources/current", response_model=SyncResponse)
 async def get_current_data_source():
     """获取当前正在使用的数据源（优先级最高且可用的）"""
     try:
@@ -134,7 +136,7 @@ async def get_current_data_source():
         raise HTTPException(status_code=500, detail=f"Failed to get current data source: {str(e)}")
 
 
-@router.get("/status")
+@router.get("/status", response_model=SyncResponse)
 async def get_sync_status():
     """获取多数据源同步状态"""
     try:
@@ -151,7 +153,7 @@ async def get_sync_status():
         raise HTTPException(status_code=500, detail=f"Failed to get sync status: {str(e)}")
 
 
-@router.post("/stock_basics/run")
+@router.post("/stock_basics/run", response_model=SyncResponse)
 async def run_stock_basics_sync(
     force: bool = Query(False, description="是否强制运行同步"),
     preferred_sources: Optional[str] = Query(None, description="优先使用的数据源，用逗号分隔")
@@ -274,7 +276,7 @@ class TestSourceRequest(BaseModel):
     source_name: str | None = None
 
 
-@router.post("/test-sources")
+@router.post("/test-sources", response_model=SyncResponse)
 async def test_data_sources(request: TestSourceRequest = TestSourceRequest()):
     """
     测试数据源的连通性
@@ -346,7 +348,7 @@ async def test_data_sources(request: TestSourceRequest = TestSourceRequest()):
         raise HTTPException(status_code=500, detail=f"Failed to test data sources: {str(e)}")
 
 
-@router.get("/recommendations")
+@router.get("/recommendations", response_model=SyncResponse)
 async def get_sync_recommendations():
     """获取数据源使用建议"""
     try:
@@ -399,7 +401,7 @@ async def get_sync_recommendations():
         raise HTTPException(status_code=500, detail=f"Failed to generate recommendations: {str(e)}")
 
 
-@router.get("/history")
+@router.get("/history", response_model=SyncResponse)
 async def get_sync_history(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(10, ge=1, le=50, description="每页大小"),
@@ -445,7 +447,7 @@ async def get_sync_history(
         raise HTTPException(status_code=500, detail=f"Failed to get sync history: {str(e)}")
 
 
-@router.delete("/cache")
+@router.delete("/cache", response_model=SyncResponse)
 async def clear_sync_cache():
     """清空同步相关的缓存"""
     try:
@@ -462,6 +464,16 @@ async def clear_sync_cache():
             # 删除同步状态记录
             result = await db.sync_status.delete_many({"job": "stock_basics_multi_source"})
             cleared_items += result.deleted_count
+            await dual_write_hot_document(
+                "sync_status",
+                {
+                    "job": "stock_basics_multi_source",
+                    "data_type": "stock_basics",
+                    "status": "cleared",
+                    "deleted": True,
+                    "finished_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                },
+            )
 
             # 重置服务状态
             service._running = False

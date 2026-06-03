@@ -63,6 +63,12 @@ class LogStatisticsResponse(BaseModel):
     log_types: dict
 
 
+class LogDeleteResponse(BaseModel):
+    """日志删除响应"""
+    success: bool
+    message: str
+
+
 @router.get("/files", response_model=List[LogFileInfo])
 async def list_log_files(
     current_user: dict = Depends(get_current_user)
@@ -121,7 +127,7 @@ async def read_log_file(
         raise HTTPException(status_code=500, detail=f"读取日志文件失败: {str(e)}")
 
 
-@router.post("/export")
+@router.post("/export", response_model=None)
 async def export_logs(
     request: LogExportRequest,
     current_user: dict = Depends(get_current_user)
@@ -196,7 +202,7 @@ async def get_log_statistics(
         raise HTTPException(status_code=500, detail=f"获取日志统计失败: {str(e)}")
 
 
-@router.delete("/files/{filename}")
+@router.delete("/files/{filename}", response_model=LogDeleteResponse)
 async def delete_log_file(
     filename: str,
     current_user: dict = Depends(get_current_user)
@@ -231,4 +237,3 @@ async def delete_log_file(
     except Exception as e:
         logger.error(f"❌ 删除日志文件失败: {e}")
         raise HTTPException(status_code=500, detail=f"删除日志文件失败: {str(e)}")
-

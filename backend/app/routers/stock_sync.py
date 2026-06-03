@@ -8,18 +8,51 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 
 from app.routers.auth_db import get_current_user
+from app.models.api_response import ApiResponse
 from app.core.response import ok
 from app.core.database import get_mongo_db
-from app.worker.tushare_sync_service import get_tushare_sync_service
-from app.worker.akshare_sync_service import get_akshare_sync_service
-from app.worker.financial_data_sync_service import get_financial_sync_service
+from app.db.dual_write import dual_write_hot_document
 import logging
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger("webapi")
 
 router = APIRouter(prefix="/api/stock-sync", tags=["股票数据同步"])
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+async def get_tushare_sync_service():
+    from app.worker.tushare_sync_service import get_tushare_sync_service as _get_tushare_sync_service
+
+    return await _get_tushare_sync_service()
+
+
+async def get_akshare_sync_service():
+    from app.worker.akshare_sync_service import get_akshare_sync_service as _get_akshare_sync_service
+
+    return await _get_akshare_sync_service()
+
+
+async def get_financial_sync_service():
+    from app.worker.financial_data_sync_service import get_financial_sync_service as _get_financial_sync_service
+
+    return await _get_financial_sync_service()
+
+
+async def _dual_write_market_quote(document: dict) -> None:
+    result = await dual_write_hot_document("market_quotes", document)
+    if result.status == "failed":
+        logger.warning("⚠️ stock-sync market_quotes PostgreSQL 双写失败: %s", result.reason)
+
+
+async def _dual_write_stock_basic_info(document: dict) -> None:
+    result = await dual_write_hot_document("stock_basic_info", document)
+    if result.status == "failed":
+        logger.warning("⚠️ stock-sync stock_basic_info PostgreSQL 双写失败: %s", result.reason)
 
 
 async def _sync_latest_to_market_quotes(symbol: str) -> None:
@@ -72,6 +105,8 @@ async def _sync_latest_to_market_quotes(symbol: str) -> None:
     quote_data = {
         "code": symbol6,
         "symbol": symbol6,
+        "source": latest_doc.get("data_source") or latest_doc.get("source") or "historical_data",
+        "data_source": latest_doc.get("data_source") or latest_doc.get("source") or "historical_data",
         "close": latest_doc.get("close"),
         "open": latest_doc.get("open"),
         "high": latest_doc.get("high"),
@@ -81,7 +116,7 @@ async def _sync_latest_to_market_quotes(symbol: str) -> None:
         "pct_chg": latest_doc.get("pct_chg"),
         "pre_close": latest_doc.get("pre_close"),
         "trade_date": latest_doc.get("trade_date"),
-        "updated_at": datetime.utcnow()
+        "updated_at": _utc_now()
     }
 
     # 🔥 日志：记录同步的成交量
@@ -96,6 +131,7 @@ async def _sync_latest_to_market_quotes(symbol: str) -> None:
         {"$set": quote_data},
         upsert=True
     )
+    await _dual_write_market_quote(quote_data)
 
 
 class SingleStockSyncRequest(BaseModel):
@@ -119,7 +155,7 @@ class BatchStockSyncRequest(BaseModel):
     days: int = Field(30, description="历史数据天数", ge=1, le=3650)
 
 
-@router.post("/single")
+@router.post("/single", response_model=ApiResponse)
 async def sync_single_stock(
     request: SingleStockSyncRequest,
     background_tasks: BackgroundTasks,
@@ -382,7 +418,7 @@ async def sync_single_stock(
 
                             # Step 3: 构建文档（参考 basics_sync_service 的逻辑）
                             # 🔥 先获取当前时间，避免作用域问题
-                            now_iso = datetime.utcnow().isoformat()
+                            now_iso = _utc_now().isoformat()
 
                             name = stock_row.get("name") or ""
                             area = stock_row.get("area") or ""
@@ -481,6 +517,7 @@ async def sync_single_stock(
                                 {"$set": doc},
                                 upsert=True
                             )
+                            await _dual_write_stock_basic_info(doc)
 
                             result["basic_sync"] = {
                                 "success": True,
@@ -512,7 +549,7 @@ async def sync_single_stock(
                         basic_data["code"] = symbol6
                         basic_data["symbol"] = symbol6
                         basic_data["source"] = "akshare"
-                        basic_data["updated_at"] = datetime.utcnow().isoformat()
+                        basic_data["updated_at"] = _utc_now().isoformat()
 
                         # 更新到数据库
                         await db.stock_basic_info.update_one(
@@ -520,6 +557,7 @@ async def sync_single_stock(
                             {"$set": basic_data},
                             upsert=True
                         )
+                        await _dual_write_stock_basic_info(basic_data)
 
                         result["basic_sync"] = {
                             "success": True,
@@ -567,7 +605,7 @@ async def sync_single_stock(
         raise HTTPException(status_code=500, detail=f"同步失败: {str(e)}")
 
 
-@router.post("/batch")
+@router.post("/batch", response_model=ApiResponse)
 async def sync_batch_stocks(
     request: BatchStockSyncRequest,
     background_tasks: BackgroundTasks,
@@ -693,13 +731,14 @@ async def sync_batch_stocks(
                                     # 添加必要字段
                                     basic_info["code"] = symbol6
                                     basic_info["source"] = "tushare"
-                                    basic_info["updated_at"] = datetime.utcnow()
+                                    basic_info["updated_at"] = _utc_now()
 
                                     await db.stock_basic_info.update_one(
                                         {"code": symbol6, "source": "tushare"},
                                         {"$set": basic_info},
                                         upsert=True
                                     )
+                                    await _dual_write_stock_basic_info(basic_info)
 
                                     success_count += 1
                                     logger.info(f"✅ {symbol} 基础数据同步成功")
@@ -758,7 +797,7 @@ async def sync_batch_stocks(
         raise HTTPException(status_code=500, detail=f"批量同步失败: {str(e)}")
 
 
-@router.get("/status/{symbol}")
+@router.get("/status/{symbol}", response_model=ApiResponse)
 async def get_sync_status(
     symbol: str,
     current_user: dict = Depends(get_current_user)
@@ -808,4 +847,3 @@ async def get_sync_status(
     except Exception as e:
         logger.error(f"❌ 获取同步状态失败: {e}")
         raise HTTPException(status_code=500, detail=f"获取同步状态失败: {str(e)}")
-

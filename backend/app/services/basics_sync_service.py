@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -21,6 +21,7 @@ from pymongo import UpdateOne
 
 from app.core.database import get_mongo_db
 from app.core.config import settings
+from app.db.dual_write import dual_write_hot_document, dual_write_hot_documents
 
 from app.services.basics_sync import (
     fetch_stock_basic_df as _fetch_stock_basic_df_util,
@@ -34,6 +35,10 @@ logger = logging.getLogger(__name__)
 STATUS_COLLECTION = "sync_status"
 DATA_COLLECTION = "stock_basic_info"
 JOB_KEY = "stock_basics"
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
 
 
 @dataclass
@@ -125,12 +130,16 @@ class BasicsSyncService:
     async def _persist_status(self, db: AsyncIOMotorDatabase, stats: Dict[str, Any]) -> None:
         stats["job"] = JOB_KEY
         await db[STATUS_COLLECTION].update_one({"job": JOB_KEY}, {"$set": stats}, upsert=True)
+        result = await dual_write_hot_document(STATUS_COLLECTION, stats)
+        if result.status not in {"written", "skipped"}:
+            logger.warning("PostgreSQL dual-write failed for %s: %s", STATUS_COLLECTION, result.reason)
         self._last_status = {k: v for k, v in stats.items() if k != "_id"}
 
     async def _execute_bulk_write_with_retry(
         self,
         db: AsyncIOMotorDatabase,
         operations: List,
+        documents: Optional[List[Dict[str, Any]]] = None,
         max_retries: int = 3
     ) -> tuple:
         """
@@ -151,6 +160,10 @@ class BasicsSyncService:
         while retry_count < max_retries:
             try:
                 result = await db[DATA_COLLECTION].bulk_write(operations, ordered=False)
+                if documents:
+                    dual_result = await dual_write_hot_documents(DATA_COLLECTION, documents)
+                    if dual_result.status not in {"written", "skipped"}:
+                        logger.warning("PostgreSQL dual-write failed for %s: %s", DATA_COLLECTION, dual_result.reason)
                 inserted = len(result.upserted_ids) if result.upserted_ids else 0
                 updated = result.modified_count or 0
                 logger.debug(f"✅ 批量写入成功: 新增 {inserted}, 更新 {updated}")
@@ -186,7 +199,7 @@ class BasicsSyncService:
         await self._ensure_indexes(db)
 
         stats = SyncStats()
-        stats.started_at = datetime.utcnow().isoformat()
+        stats.started_at = _utc_now_iso()
         stats.status = "running"
         await self._persist_status(db, stats.__dict__.copy())
 
@@ -218,7 +231,8 @@ class BasicsSyncService:
 
             # Step 3: Upsert into MongoDB (batched bulk writes)
             ops: List[UpdateOne] = []
-            now_iso = datetime.utcnow().isoformat()
+            postgres_docs: List[Dict[str, Any]] = []
+            now_iso = _utc_now_iso()
             for _, row in stock_df.iterrows():  # type: ignore
                 name = row.get("name") or ""
                 area = row.get("area") or ""
@@ -317,6 +331,7 @@ class BasicsSyncService:
                 ops.append(
                     UpdateOne({"code": code, "source": "tushare"}, {"$set": doc}, upsert=True)
                 )
+                postgres_docs.append(doc)
 
             inserted = 0
             updated = 0
@@ -325,7 +340,8 @@ class BasicsSyncService:
             BATCH = 1000
             for i in range(0, len(ops), BATCH):
                 batch = ops[i : i + BATCH]
-                batch_inserted, batch_updated = await self._execute_bulk_write_with_retry(db, batch)
+                batch_docs = postgres_docs[i : i + BATCH]
+                batch_inserted, batch_updated = await self._execute_bulk_write_with_retry(db, batch, batch_docs)
 
                 if batch_inserted > 0 or batch_updated > 0:
                     inserted += batch_inserted
@@ -339,7 +355,7 @@ class BasicsSyncService:
             stats.updated = updated
             stats.errors = errors
             stats.status = "success" if errors == 0 else "success_with_errors"
-            stats.finished_at = datetime.utcnow().isoformat()
+            stats.finished_at = _utc_now_iso()
             await self._persist_status(db, stats.__dict__.copy())
             logger.info(
                 f"Stock basics sync finished: total={stats.total} inserted={inserted} updated={updated} errors={errors} trade_date={latest_trade_date}"
@@ -349,7 +365,7 @@ class BasicsSyncService:
         except Exception as e:
             stats.status = "failed"
             stats.message = str(e)
-            stats.finished_at = datetime.utcnow().isoformat()
+            stats.finished_at = _utc_now_iso()
             await self._persist_status(db, stats.__dict__.copy())
             logger.exception(f"Stock basics sync failed: {e}")
             return stats.__dict__
@@ -416,4 +432,3 @@ def get_basics_sync_service() -> BasicsSyncService:
     if _basics_sync_service is None:
         _basics_sync_service = BasicsSyncService()
     return _basics_sync_service
-

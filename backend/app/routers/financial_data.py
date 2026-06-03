@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from app.worker.financial_data_sync_service import get_financial_sync_service
 from app.services.financial_data_service import get_financial_data_service
 from app.core.response import ok
+from app.models.api_response import ApiResponse
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ class SingleStockSyncRequest(BaseModel):
 
 # ==================== API端点 ====================
 
-@router.get("/query/{symbol}", summary="查询股票财务数据")
+@router.get("/query/{symbol}", response_model=ApiResponse, summary="查询股票财务数据")
 async def query_financial_data(
     symbol: str,
     report_period: Optional[str] = Query(None, description="报告期筛选 (YYYYMMDD)"),
@@ -87,7 +88,7 @@ async def query_financial_data(
         raise HTTPException(status_code=500, detail=f"查询财务数据失败: {str(e)}")
 
 
-@router.get("/latest/{symbol}", summary="获取最新财务数据")
+@router.get("/latest/{symbol}", response_model=ApiResponse, summary="获取最新财务数据")
 async def get_latest_financial_data(
     symbol: str,
     data_source: Optional[str] = Query(None, description="数据源筛选")
@@ -120,7 +121,7 @@ async def get_latest_financial_data(
         raise HTTPException(status_code=500, detail=f"获取最新财务数据失败: {str(e)}")
 
 
-@router.get("/statistics", summary="获取财务数据统计")
+@router.get("/statistics", response_model=ApiResponse, summary="获取财务数据统计")
 async def get_financial_statistics() -> dict:
     """
     获取财务数据统计信息
@@ -144,7 +145,7 @@ async def get_financial_statistics() -> dict:
         raise HTTPException(status_code=500, detail=f"获取财务数据统计失败: {str(e)}")
 
 
-@router.post("/sync/start", summary="启动财务数据同步")
+@router.post("/sync/start", response_model=ApiResponse, summary="启动财务数据同步")
 async def start_financial_sync(
     request: FinancialSyncRequest,
     background_tasks: BackgroundTasks
@@ -180,7 +181,7 @@ async def start_financial_sync(
         raise HTTPException(status_code=500, detail=f"启动财务数据同步失败: {str(e)}")
 
 
-@router.post("/sync/single", summary="同步单只股票财务数据")
+@router.post("/sync/single", response_model=ApiResponse, summary="同步单只股票财务数据")
 async def sync_single_stock_financial(
     request: SingleStockSyncRequest
 ) -> dict:
@@ -217,7 +218,7 @@ async def sync_single_stock_financial(
         raise HTTPException(status_code=500, detail=f"单股票财务数据同步失败: {str(e)}")
 
 
-@router.get("/sync/statistics", summary="获取同步统计信息")
+@router.get("/sync/statistics", response_model=ApiResponse, summary="获取同步统计信息")
 async def get_sync_statistics() -> dict:
     """
     获取财务数据同步统计信息
@@ -238,7 +239,7 @@ async def get_sync_statistics() -> dict:
         raise HTTPException(status_code=500, detail=f"获取同步统计信息失败: {str(e)}")
 
 
-@router.get("/health", summary="财务数据服务健康检查")
+@router.get("/health", response_model=ApiResponse, summary="财务数据服务健康检查")
 async def health_check() -> dict:
     """
     财务数据服务健康检查

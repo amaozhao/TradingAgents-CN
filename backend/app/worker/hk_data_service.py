@@ -29,6 +29,7 @@ from tradingagents.dataflows.providers.hk.hk_stock import HKStockProvider
 from tradingagents.dataflows.providers.hk.improved_hk import ImprovedHKStockProvider
 from app.core.database import get_mongo_db
 from app.core.config import settings
+from app.db.dual_write import dual_write_hot_document
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +140,7 @@ class HKDataService:
                 {"$set": stock_info},
                 upsert=True
             )
+            await dual_write_hot_document("stock_basic_info", stock_info)
             return True
             
         except Exception as e:
@@ -190,4 +192,3 @@ async def get_hk_data_service() -> HKDataService:
         _hk_data_service = HKDataService()
         await _hk_data_service.initialize()
     return _hk_data_service
-

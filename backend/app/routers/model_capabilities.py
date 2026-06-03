@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 
+from app.models.api_response import ApiResponse
 from app.services.model_capability_service import get_model_capability_service
 from app.constants.model_capabilities import (
     DEFAULT_MODEL_CAPABILITIES,
@@ -74,7 +75,7 @@ class BatchInitRequest(BaseModel):
 
 # ==================== API路由 ====================
 
-@router.get("/default-configs")
+@router.get("/default-configs", response_model=ApiResponse)
 async def get_default_model_configs():
     """
     获取所有默认模型能力配置
@@ -105,7 +106,7 @@ async def get_default_model_configs():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/depth-requirements", response_model=dict)
+@router.get("/depth-requirements", response_model=ApiResponse)
 async def get_depth_requirements():
     """
     获取分析深度要求
@@ -130,7 +131,7 @@ async def get_depth_requirements():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/capability-descriptions", response_model=dict)
+@router.get("/capability-descriptions", response_model=ApiResponse)
 async def get_capability_descriptions():
     """获取能力等级描述"""
     try:
@@ -140,7 +141,7 @@ async def get_capability_descriptions():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/badges", response_model=dict)
+@router.get("/badges", response_model=ApiResponse)
 async def get_all_badges():
     """
     获取所有徽章样式
@@ -169,7 +170,7 @@ async def get_all_badges():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/recommend", response_model=dict)
+@router.post("/recommend", response_model=ApiResponse)
 async def recommend_models(request: ModelRecommendationRequest):
     """
     推荐模型
@@ -231,7 +232,7 @@ async def recommend_models(request: ModelRecommendationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/validate", response_model=dict)
+@router.post("/validate", response_model=ApiResponse)
 async def validate_models(request: ModelValidationRequest):
     """
     验证模型对
@@ -254,7 +255,7 @@ async def validate_models(request: ModelValidationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/batch-init", response_model=dict)
+@router.post("/batch-init", response_model=ApiResponse)
 async def batch_init_capabilities(request: BatchInitRequest):
     """
     批量初始化模型能力
@@ -310,7 +311,7 @@ async def batch_init_capabilities(request: BatchInitRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/model/{model_name}", response_model=dict)
+@router.get("/model/{model_name}", response_model=ApiResponse)
 async def get_model_capability(model_name: str):
     """
     获取指定模型的能力信息
@@ -326,4 +327,3 @@ async def get_model_capability(model_name: str):
     except Exception as e:
         logger.error(f"获取模型能力信息失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-

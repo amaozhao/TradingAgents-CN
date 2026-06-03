@@ -8,6 +8,7 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 from app.routers.auth_db import get_current_user
+from app.models.api_response import ApiResponse
 from app.models.config import UsageRecord, UsageStatistics
 from app.services.usage_statistics_service import usage_statistics_service
 
@@ -16,7 +17,7 @@ logger = logging.getLogger("app.routers.usage_statistics")
 router = APIRouter(prefix="/api/usage", tags=["使用统计"])
 
 
-@router.get("/records", summary="获取使用记录")
+@router.get("/records", response_model=ApiResponse, summary="获取使用记录")
 async def get_usage_records(
     provider: Optional[str] = Query(None, description="供应商"),
     model_name: Optional[str] = Query(None, description="模型名称"),
@@ -53,7 +54,7 @@ async def get_usage_records(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/statistics", summary="获取使用统计")
+@router.get("/statistics", response_model=ApiResponse, summary="获取使用统计")
 async def get_usage_statistics(
     days: int = Query(7, ge=1, le=365, description="统计天数"),
     provider: Optional[str] = Query(None, description="供应商"),
@@ -78,7 +79,7 @@ async def get_usage_statistics(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/cost/by-provider", summary="按供应商统计成本")
+@router.get("/cost/by-provider", response_model=ApiResponse, summary="按供应商统计成本")
 async def get_cost_by_provider(
     days: int = Query(7, ge=1, le=365, description="统计天数"),
     current_user: dict = Depends(get_current_user)
@@ -97,7 +98,7 @@ async def get_cost_by_provider(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/cost/by-model", summary="按模型统计成本")
+@router.get("/cost/by-model", response_model=ApiResponse, summary="按模型统计成本")
 async def get_cost_by_model(
     days: int = Query(7, ge=1, le=365, description="统计天数"),
     current_user: dict = Depends(get_current_user)
@@ -116,7 +117,7 @@ async def get_cost_by_model(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/cost/daily", summary="每日成本统计")
+@router.get("/cost/daily", response_model=ApiResponse, summary="每日成本统计")
 async def get_daily_cost(
     days: int = Query(7, ge=1, le=365, description="统计天数"),
     current_user: dict = Depends(get_current_user)
@@ -135,7 +136,7 @@ async def get_daily_cost(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/records/old", summary="删除旧记录")
+@router.delete("/records/old", response_model=ApiResponse, summary="删除旧记录")
 async def delete_old_records(
     days: int = Query(90, ge=30, le=365, description="保留天数"),
     current_user: dict = Depends(get_current_user)
@@ -152,4 +153,3 @@ async def delete_old_records(
     except Exception as e:
         logger.error(f"删除旧记录失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-

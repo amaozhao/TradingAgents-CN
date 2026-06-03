@@ -9,9 +9,6 @@ import numpy as np
 
 # 统一指标库
 from tradingagents.tools.analysis.indicators import IndicatorSpec, compute_many
-# 统一多数据源DF接口（按优先级降级）
-from tradingagents.dataflows.data_source_manager import get_data_source_manager
-from tradingagents.dataflows.providers.china.fundamentals_snapshot import get_cn_fund_snapshot
 
 
 from app.services.screening.eval_utils import (
@@ -101,6 +98,10 @@ class ScreeningService:
 
                 # 如需要基础行情/技术指标才取K线
                 if need_base:
+                    # 统一多数据源DF接口（按优先级降级）。延迟导入，避免 OpenAPI/schema
+                    # 生成等导入路径触发数据源配置库读取。
+                    from tradingagents.dataflows.data_source_manager import get_data_source_manager
+
                     manager = get_data_source_manager()
                     df = manager.get_stock_dataframe(code, start_s, end_s)
                     if df is None or df.empty:
@@ -140,6 +141,8 @@ class ScreeningService:
                     passes = self._evaluate_conditions(dfc, conditions)
                 elif need_fund and not need_base and not need_tech:
                     # 仅基本面条件：使用基本面快照判断
+                    from tradingagents.dataflows.providers.china.fundamentals_snapshot import get_cn_fund_snapshot
+
                     snap = get_cn_fund_snapshot(code)
                     if not snap:
                         passes = False
@@ -238,4 +241,3 @@ class ScreeningService:
             logger.error(f"❌ 从 MongoDB 获取股票列表失败: {e}")
             # 异常时返回常见股票代码作为兜底
             return ["000001", "000002", "000858", "600519", "600036", "601318", "300750"]
-

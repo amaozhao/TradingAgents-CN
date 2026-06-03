@@ -14,6 +14,7 @@ from bson import ObjectId
 
 from app.core.database import get_mongo_db
 from app.core.unified_config import unified_config
+from app.db.dual_write import dual_write_hot_document
 from app.models.config import (
     SystemConfig, LLMConfig, DataSourceConfig, DatabaseConfig,
     ModelProvider, DataSourceType, DatabaseType, LLMProvider,
@@ -30,6 +31,22 @@ class ConfigService:
     def __init__(self, db_manager=None):
         self.db = None
         self.db_manager = db_manager
+
+    async def _dual_write_config_document(self, collection: str, document: Dict[str, Any]) -> None:
+        result = await dual_write_hot_document(collection, document)
+        if result.status == "failed":
+            logger.warning("⚠️ 配置 PostgreSQL 双写失败: collection=%s reason=%s", collection, result.reason)
+
+    async def _dual_write_config_tombstone(self, collection: str, document: Dict[str, Any]) -> None:
+        await self._dual_write_config_document(
+            collection,
+            {
+                **document,
+                "enabled": False,
+                "deleted": True,
+                "deleted_at": now_tz(),
+            },
+        )
 
     async def _get_db(self):
         """获取数据库连接"""
@@ -139,7 +156,9 @@ class ConfigService:
         categories_collection = db.market_categories
 
         for category in default_categories:
-            await categories_collection.insert_one(category.model_dump())
+            document = category.model_dump()
+            await categories_collection.insert_one(document)
+            await self._dual_write_config_document("market_categories", document)
 
         return default_categories
 
@@ -154,7 +173,9 @@ class ConfigService:
             if existing:
                 return False
 
-            await categories_collection.insert_one(category.model_dump())
+            document = category.model_dump()
+            await categories_collection.insert_one(document)
+            await self._dual_write_config_document("market_categories", document)
             return True
         except Exception as e:
             print(f"❌ 添加市场分类失败: {e}")
@@ -171,6 +192,8 @@ class ConfigService:
                 {"id": category_id},
                 {"$set": updates}
             )
+            if result.modified_count > 0:
+                await self._dual_write_config_document("market_categories", {"id": category_id, **updates})
             return result.modified_count > 0
         except Exception as e:
             print(f"❌ 更新市场分类失败: {e}")
@@ -191,6 +214,8 @@ class ConfigService:
                 return False
 
             result = await categories_collection.delete_one({"id": category_id})
+            if result.deleted_count > 0:
+                await self._dual_write_config_tombstone("market_categories", {"id": category_id})
             return result.deleted_count > 0
         except Exception as e:
             print(f"❌ 删除市场分类失败: {e}")
@@ -224,7 +249,9 @@ class ConfigService:
             if existing:
                 return False
 
-            await groupings_collection.insert_one(grouping.model_dump())
+            document = grouping.model_dump()
+            await groupings_collection.insert_one(document)
+            await self._dual_write_config_document("datasource_groupings", document)
             return True
         except Exception as e:
             print(f"❌ 添加数据源到分类失败: {e}")
@@ -240,6 +267,11 @@ class ConfigService:
                 "data_source_name": data_source_name,
                 "market_category_id": category_id
             })
+            if result.deleted_count > 0:
+                await self._dual_write_config_tombstone(
+                    "datasource_groupings",
+                    {"data_source_name": data_source_name, "market_category_id": category_id},
+                )
             return result.deleted_count > 0
         except Exception as e:
             print(f"❌ 从分类中移除数据源失败: {e}")
@@ -266,6 +298,15 @@ class ConfigService:
                 },
                 {"$set": updates}
             )
+            if result.modified_count > 0:
+                await self._dual_write_config_document(
+                    "datasource_groupings",
+                    {
+                        "data_source_name": data_source_name,
+                        "market_category_id": category_id,
+                        **updates,
+                    },
+                )
 
             # 2. 🔥 如果更新了优先级，同步更新 system_configs 集合
             if "priority" in updates and result.modified_count > 0:
@@ -304,6 +345,15 @@ class ConfigService:
                                 }
                             }
                         )
+                        await self._dual_write_config_document(
+                            "system_configs",
+                            {
+                                **config_data,
+                                "data_source_configs": data_source_configs,
+                                "version": version + 1,
+                                "updated_at": now_tz(),
+                            },
+                        )
                         logger.info(f"✅ [优先级同步] system_configs 版本更新: {version} -> {version + 1}")
                     else:
                         logger.warning(f"⚠️ [优先级同步] 未找到匹配的数据源配置: {data_source_name}")
@@ -339,6 +389,15 @@ class ConfigService:
                         }
                     }
                 )
+                await self._dual_write_config_document(
+                    "datasource_groupings",
+                    {
+                        "data_source_name": item["name"],
+                        "market_category_id": category_id,
+                        "priority": item["priority"],
+                        "updated_at": now_tz(),
+                    },
+                )
 
             # 2. 🔥 同步更新 system_configs 集合中的 data_source_configs
             # 获取当前激活的配置
@@ -373,6 +432,15 @@ class ConfigService:
                                 "version": config_data.get("version", 0) + 1
                             }
                         }
+                    )
+                    await self._dual_write_config_document(
+                        "system_configs",
+                        {
+                            **config_data,
+                            "data_source_configs": data_source_configs,
+                            "updated_at": now_tz(),
+                            "version": config_data.get("version", 0) + 1,
+                        },
                     )
                     print(f"✅ [优先级同步] 已同步更新 system_configs 集合，新版本: {config_data.get('version', 0) + 1}")
                 else:
@@ -555,11 +623,17 @@ class ConfigService:
             config.version += 1
 
             # 将当前激活的配置设为非激活
+            old_active_configs = await config_collection.find({"is_active": True}).to_list(length=None)
             update_result = await config_collection.update_many(
                 {"is_active": True},
                 {"$set": {"is_active": False}}
             )
             print(f"📝 禁用旧配置数量: {update_result.modified_count}")
+            for old_config in old_active_configs:
+                await self._dual_write_config_document(
+                    "system_configs",
+                    {**old_config, "is_active": False, "updated_at": now_tz()},
+                )
 
             # 插入新配置 - 移除_id字段让MongoDB自动生成新的
             config_dict = config.model_dump(by_alias=True)
@@ -580,6 +654,10 @@ class ConfigService:
 
             insert_result = await config_collection.insert_one(config_dict)
             print(f"📝 新配置ID: {insert_result.inserted_id}")
+            await self._dual_write_config_document(
+                "system_configs",
+                {**config_dict, "_id": insert_result.inserted_id},
+            )
 
             # 验证保存结果
             saved_config = await config_collection.find_one({"_id": insert_result.inserted_id})
@@ -2367,13 +2445,16 @@ class ConfigService:
             catalog_collection = db.model_catalog
 
             catalog.updated_at = now_tz()
+            document = catalog.model_dump(by_alias=True, exclude={"id"})
 
             # 更新或插入
             result = await catalog_collection.replace_one(
                 {"provider": catalog.provider},
-                catalog.model_dump(by_alias=True, exclude={"id"}),
+                document,
                 upsert=True
             )
+            if result.acknowledged:
+                await self._dual_write_config_document("model_catalog", document)
 
             return result.acknowledged
         except Exception as e:
@@ -2387,6 +2468,8 @@ class ConfigService:
             catalog_collection = db.model_catalog
 
             result = await catalog_collection.delete_one({"provider": provider})
+            if result.deleted_count > 0:
+                await self._dual_write_config_tombstone("model_catalog", {"provider": provider})
             return result.deleted_count > 0
         except Exception as e:
             print(f"删除模型目录失败: {e}")
@@ -2952,6 +3035,10 @@ class ConfigService:
                 del provider_data["_id"]
 
             result = await providers_collection.insert_one(provider_data)
+            await self._dual_write_config_document(
+                "llm_providers",
+                {**provider_data, "_id": result.inserted_id},
+            )
             return str(result.inserted_id)
         except Exception as e:
             print(f"添加厂家失败: {e}")
@@ -2990,6 +3077,11 @@ class ConfigService:
             # 修复：matched_count > 0 表示找到了记录（即使没有修改）
             # modified_count > 0 只有在实际修改了字段时才为真
             # 如果记录存在但值相同，modified_count 为 0，但这不应该返回 404
+            if result.matched_count > 0:
+                await self._dual_write_config_document(
+                    "llm_providers",
+                    {"_id": provider_id, **update_data},
+                )
             return result.matched_count > 0
         except Exception as e:
             print(f"更新厂家失败: {e}")
@@ -3039,6 +3131,8 @@ class ConfigService:
                 result = await providers_collection.delete_one({"_id": provider_id})
 
             success = result.deleted_count > 0
+            if success:
+                await self._dual_write_config_tombstone("llm_providers", existing)
 
             print(f"🗑️ 删除结果: {success}, deleted_count: {result.deleted_count}")
             return success
@@ -3076,6 +3170,11 @@ class ConfigService:
                     {"$set": {"is_active": is_active, "updated_at": now_tz()}}
                 )
 
+            if result.matched_count > 0:
+                await self._dual_write_config_document(
+                    "llm_providers",
+                    {"_id": provider_id, "is_active": is_active, "updated_at": now_tz()},
+                )
             return result.matched_count > 0
         except Exception as e:
             print(f"切换厂家状态失败: {e}")
@@ -3117,6 +3216,10 @@ class ConfigService:
                             {"name": provider_name},
                             {"$set": update_data}
                         )
+                        await self._dual_write_config_document(
+                            "llm_providers",
+                            {"name": provider_name, **update_data},
+                        )
                         updated_count += 1
                         print(f"✅ 更新聚合渠道 {config['display_name']} 的 API Key")
                     else:
@@ -3153,6 +3256,7 @@ class ConfigService:
                 if "_id" in insert_data:
                     del insert_data["_id"]
                 await providers_collection.insert_one(insert_data)
+                await self._dual_write_config_document("llm_providers", insert_data)
                 added_count += 1
 
                 if api_key:
@@ -3259,6 +3363,10 @@ class ConfigService:
                             {"name": provider_config["name"]},
                             {"$set": update_data}
                         )
+                        await self._dual_write_config_document(
+                            "llm_providers",
+                            {"name": provider_config["name"], **update_data},
+                        )
                         updated_count += 1
                         print(f"✅ 更新厂家 {provider_config['display_name']} 的API密钥")
                     else:
@@ -3276,7 +3384,11 @@ class ConfigService:
                     "updated_at": now_tz()
                 }
 
-                await providers_collection.insert_one(provider_data)
+                result = await providers_collection.insert_one(provider_data)
+                await self._dual_write_config_document(
+                    "llm_providers",
+                    {**provider_data, "_id": result.inserted_id},
+                )
                 migrated_count += 1
                 print(f"✅ 创建厂家 {provider_config['display_name']}")
 

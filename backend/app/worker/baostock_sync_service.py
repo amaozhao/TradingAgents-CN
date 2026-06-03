@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 from app.core.config import get_settings
 from app.core.database import get_database
+from app.db.dual_write import dual_write_hot_document
 from app.services.historical_data_service import get_historical_data_service
 from tradingagents.dataflows.providers.china.baostock import BaoStockProvider
 
@@ -246,6 +247,7 @@ class BaoStockSyncService:
                 {"$set": basic_info},
                 upsert=True
             )
+            await dual_write_hot_document("stock_basic_info", basic_info)
 
         except Exception as e:
             logger.error(f"❌ 更新基础信息到数据库失败: {e}")
@@ -333,13 +335,16 @@ class BaoStockSyncService:
             code = quotes.get("code", "")
             if code and "symbol" not in quotes:
                 quotes["symbol"] = code
+            if "source" not in quotes:
+                quotes["source"] = "baostock"
 
             # 使用upsert更新或插入
             await collection.update_one(
-                {"code": code},
+                {"code": code, "source": "baostock"},
                 {"$set": quotes},
                 upsert=True
             )
+            await dual_write_hot_document("market_quotes", quotes)
 
         except Exception as e:
             logger.error(f"❌ 更新日K线到数据库失败: {e}")
@@ -473,16 +478,22 @@ class BaoStockSyncService:
             if self.db is not None:
                 collection = self.db.market_quotes
                 latest_record = hist_data.iloc[-1] if not hist_data.empty else None
+                updated_at = datetime.now()
+                quote_metadata = {
+                    "code": code,
+                    "symbol": code,
+                    "source": "baostock",
+                    "historical_data_updated": updated_at,
+                    "latest_historical_date": latest_record.get('date') if latest_record is not None else None,
+                    "historical_records_count": saved_count,
+                }
 
                 await collection.update_one(
                     {"code": code},
-                    {"$set": {
-                        "historical_data_updated": datetime.now(),
-                        "latest_historical_date": latest_record.get('date') if latest_record is not None else None,
-                        "historical_records_count": saved_count
-                    }},
+                    {"$set": quote_metadata},
                     upsert=True
                 )
+                await dual_write_hot_document("market_quotes", quote_metadata)
 
             return saved_count
 

@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from bson import ObjectId
 
 from app.core.database import get_mongo_db, get_redis_client
+from app.db.dual_write import dual_write_hot_document, dual_write_hot_documents
 from app.models.notification import (
     NotificationCreate, NotificationOut, NotificationList
 )
@@ -47,6 +48,8 @@ class NotificationsService:
             "metadata": payload.metadata or {},
         }
         res = await db[self.collection].insert_one(doc)
+        doc["_id"] = res.inserted_id
+        await self._dual_write_notification(doc)
         doc_id = str(res.inserted_id)
 
         payload_to_publish = {
@@ -70,19 +73,27 @@ class NotificationsService:
 
         # 清理策略：保留最近N天/最多M条
         try:
-            await db[self.collection].delete_many({
+            old_docs = await db[self.collection].find({
+                "user_id": payload.user_id,
+                "created_at": {"$lt": now_tz() - timedelta(days=self.retain_days)}
+            }).to_list(length=None)
+            delete_result = await db[self.collection].delete_many({
                 "user_id": payload.user_id,
                 "created_at": {"$lt": now_tz() - timedelta(days=self.retain_days)}
             })
+            if delete_result.deleted_count:
+                await self._dual_write_notification_tombstones(old_docs)
+
             # 超过配额按时间删旧
             count = await db[self.collection].count_documents({"user_id": payload.user_id})
             if count > self.max_per_user:
                 skip = count - self.max_per_user
-                ids = []
-                async for d in db[self.collection].find({"user_id": payload.user_id}, {"_id": 1}).sort("created_at", 1).limit(skip):
-                    ids.append(d["_id"])
+                docs_to_delete = await db[self.collection].find({"user_id": payload.user_id}).sort("created_at", 1).limit(skip).to_list(length=None)
+                ids = [d["_id"] for d in docs_to_delete]
                 if ids:
-                    await db[self.collection].delete_many({"_id": {"$in": ids}})
+                    delete_result = await db[self.collection].delete_many({"_id": {"$in": ids}})
+                    if delete_result.deleted_count:
+                        await self._dual_write_notification_tombstones(docs_to_delete)
         except Exception as e:
             logger.warning(f"通知清理失败(忽略): {e}")
 
@@ -122,12 +133,35 @@ class NotificationsService:
         except Exception:
             return False
         res = await db[self.collection].update_one({"_id": oid, "user_id": user_id}, {"$set": {"status": "read"}})
+        if res.modified_count:
+            await self._dual_write_notification({"_id": oid, "user_id": user_id, "status": "read"})
         return res.modified_count > 0
 
     async def mark_all_read(self, user_id: str) -> int:
         db = get_mongo_db()
+        unread_docs = await db[self.collection].find({"user_id": user_id, "status": "unread"}).to_list(length=None)
         res = await db[self.collection].update_many({"user_id": user_id, "status": "unread"}, {"$set": {"status": "read"}})
+        if res.modified_count:
+            await dual_write_hot_documents(
+                self.collection,
+                [{**doc, "status": "read"} for doc in unread_docs],
+            )
         return res.modified_count
+
+    async def _dual_write_notification(self, document: Dict[str, Any]) -> None:
+        result = await dual_write_hot_document(self.collection, document)
+        if result.status == "failed":
+            logger.warning("⚠️ 通知 PostgreSQL 双写失败: %s", result.reason)
+
+    async def _dual_write_notification_tombstones(self, documents: List[Dict[str, Any]]) -> None:
+        if not documents:
+            return
+        result = await dual_write_hot_documents(
+            self.collection,
+            [{**document, "deleted": True, "updated_at": now_tz()} for document in documents],
+        )
+        if result.status == "failed":
+            logger.warning("⚠️ 通知 PostgreSQL tombstone 双写失败: %s", result.reason)
 
 
 _notifications_service: Optional[NotificationsService] = None
@@ -138,4 +172,3 @@ def get_notifications_service() -> NotificationsService:
     if _notifications_service is None:
         _notifications_service = NotificationsService()
     return _notifications_service
-

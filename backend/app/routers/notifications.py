@@ -8,13 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.routers.auth_db import get_current_user
 from app.core.response import ok
 from app.core.database import get_redis_client
+from app.models.api_response import ApiResponse
 from app.services.notifications_service import get_notifications_service
 
 router = APIRouter()
 logger = logging.getLogger("webapi.notifications")
 
 
-@router.get("/notifications")
+@router.get("/notifications", response_model=ApiResponse)
 async def list_notifications(
     status: Optional[str] = Query(None, description="状态: unread|read|all"),
     type: Optional[str] = Query(None, description="类型: analysis|alert|system"),
@@ -29,14 +30,14 @@ async def list_notifications(
     return ok(data=data.model_dump(), message="ok")
 
 
-@router.get("/notifications/unread_count")
+@router.get("/notifications/unread_count", response_model=ApiResponse)
 async def get_unread_count(user: dict = Depends(get_current_user)):
     svc = get_notifications_service()
     cnt = await svc.unread_count(user_id=user["id"])
     return ok(data={"count": cnt})
 
 
-@router.post("/notifications/{notif_id}/read")
+@router.post("/notifications/{notif_id}/read", response_model=ApiResponse)
 async def mark_read(notif_id: str, user: dict = Depends(get_current_user)):
     svc = get_notifications_service()
     ok_flag = await svc.mark_read(user_id=user["id"], notif_id=notif_id)
@@ -45,14 +46,14 @@ async def mark_read(notif_id: str, user: dict = Depends(get_current_user)):
     return ok()
 
 
-@router.post("/notifications/read_all")
+@router.post("/notifications/read_all", response_model=ApiResponse)
 async def mark_all_read(user: dict = Depends(get_current_user)):
     svc = get_notifications_service()
     n = await svc.mark_all_read(user_id=user["id"])
     return ok(data={"updated": n})
 
 
-@router.get("/notifications/debug/redis_pool")
+@router.get("/notifications/debug/redis_pool", response_model=ApiResponse)
 async def debug_redis_pool(user: dict = Depends(get_current_user)):
     """调试端点：查看 Redis 连接池状态"""
     try:

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 import logging
 
+from app.models.api_response import ApiResponse
 from app.routers.auth_db import get_current_user
 from app.models.user import User, FavoriteStock
 from app.services.favorites_service import favorites_service
@@ -52,7 +53,7 @@ class FavoriteStockResponse(BaseModel):
     volume: Optional[int] = None
 
 
-@router.get("/", response_model=dict)
+@router.get("/", response_model=ApiResponse)
 async def get_favorites(
     current_user: dict = Depends(get_current_user)
 ):
@@ -67,7 +68,7 @@ async def get_favorites(
         )
 
 
-@router.post("/", response_model=dict)
+@router.post("/", response_model=ApiResponse)
 async def add_favorite(
     request: AddFavoriteRequest,
     current_user: dict = Depends(get_current_user)
@@ -124,7 +125,7 @@ async def add_favorite(
         )
 
 
-@router.put("/{stock_code}", response_model=dict)
+@router.put("/{stock_code}", response_model=ApiResponse)
 async def update_favorite(
     stock_code: str,
     request: UpdateFavoriteRequest,
@@ -158,7 +159,7 @@ async def update_favorite(
         )
 
 
-@router.delete("/{stock_code}", response_model=dict)
+@router.delete("/{stock_code}", response_model=ApiResponse)
 async def remove_favorite(
     stock_code: str,
     current_user: dict = Depends(get_current_user)
@@ -184,7 +185,7 @@ async def remove_favorite(
         )
 
 
-@router.get("/check/{stock_code}", response_model=dict)
+@router.get("/check/{stock_code}", response_model=ApiResponse)
 async def check_favorite(
     stock_code: str,
     current_user: dict = Depends(get_current_user)
@@ -200,7 +201,7 @@ async def check_favorite(
         )
 
 
-@router.get("/tags", response_model=dict)
+@router.get("/tags", response_model=ApiResponse)
 async def get_user_tags(
     current_user: dict = Depends(get_current_user)
 ):
@@ -220,7 +221,7 @@ class SyncFavoritesRequest(BaseModel):
     data_source: str = "tushare"  # tushare/akshare
 
 
-@router.post("/sync-realtime", response_model=dict)
+@router.post("/sync-realtime", response_model=ApiResponse)
 async def sync_favorites_realtime(
     request: SyncFavoritesRequest,
     current_user: dict = Depends(get_current_user)

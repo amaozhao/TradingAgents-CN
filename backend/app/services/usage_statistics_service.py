@@ -9,6 +9,7 @@ from typing import List, Dict, Any, Optional
 from collections import defaultdict
 
 from app.core.database import get_mongo_db
+from app.db.dual_write import dual_write_hot_document, dual_write_hot_documents
 from app.models.config import UsageRecord, UsageStatistics
 
 logger = logging.getLogger("app.services.usage_statistics_service")
@@ -29,6 +30,8 @@ class UsageStatisticsService:
 
             record_dict = record.model_dump(exclude={"id"})
             result = await collection.insert_one(record_dict)
+            record_dict["_id"] = result.inserted_id
+            await self._dual_write_usage(record_dict)
 
             logger.info(f"✅ 添加使用记录成功: {record.provider}/{record.model_name}")
             return True
@@ -218,6 +221,9 @@ class UsageStatisticsService:
             
             # 计算截止日期
             cutoff_date = datetime.now() - timedelta(days=days)
+            records_to_delete = await collection.find({
+                "timestamp": {"$lt": cutoff_date.isoformat()}
+            }).to_list(length=None)
             
             # 删除旧记录
             result = await collection.delete_many({
@@ -225,13 +231,29 @@ class UsageStatisticsService:
             })
             
             deleted_count = result.deleted_count
+            if deleted_count:
+                await self._dual_write_usage_tombstones(records_to_delete)
             logger.info(f"✅ 删除旧记录成功: {deleted_count} 条")
             return deleted_count
         except Exception as e:
             logger.error(f"❌ 删除旧记录失败: {e}")
             return 0
 
+    async def _dual_write_usage(self, document: Dict[str, Any]) -> None:
+        result = await dual_write_hot_document(self.collection_name, document)
+        if result.status == "failed":
+            logger.warning("⚠️ 使用统计 PostgreSQL 双写失败: %s", result.reason)
+
+    async def _dual_write_usage_tombstones(self, documents: List[Dict[str, Any]]) -> None:
+        if not documents:
+            return
+        result = await dual_write_hot_documents(
+            self.collection_name,
+            [{**document, "deleted": True, "updated_at": datetime.now()} for document in documents],
+        )
+        if result.status == "failed":
+            logger.warning("⚠️ 使用统计 PostgreSQL tombstone 双写失败: %s", result.reason)
+
 
 # 创建全局实例
 usage_statistics_service = UsageStatisticsService()
-

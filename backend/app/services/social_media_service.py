@@ -9,7 +9,9 @@ import logging
 from pymongo import ReplaceOne
 from pymongo.errors import BulkWriteError
 
+from app.core.config import settings
 from app.core.database import get_database
+from app.db.dual_write import dual_write_hot_documents
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +115,7 @@ class SocialMediaService:
             
             # 执行批量操作
             result = await collection.bulk_write(operations, ordered=False)
+            await self._dual_write_social_media_messages(messages)
             
             saved_count = result.upserted_count + result.modified_count
             self.logger.info(f"✅ 社媒消息批量保存完成: {saved_count}/{len(messages)}")
@@ -134,6 +137,11 @@ class SocialMediaService:
         except Exception as e:
             self.logger.error(f"❌ 社媒消息保存失败: {e}")
             return {"saved": 0, "failed": len(messages), "error": str(e)}
+
+    async def _dual_write_social_media_messages(self, messages: List[Dict[str, Any]]) -> None:
+        result = await dual_write_hot_documents("social_media_messages", messages)
+        if result.status == "failed":
+            self.logger.warning("⚠️ 社媒消息 PostgreSQL 双写失败: %s", result.reason)
     
     async def query_social_media_messages(
         self, 
@@ -149,6 +157,11 @@ class SocialMediaService:
             社媒消息列表
         """
         try:
+            if settings.POSTGRES_READ_ENABLED:
+                postgres_messages = await self._query_social_media_messages_from_postgres(params)
+                if postgres_messages:
+                    return postgres_messages
+
             collection = await self._get_collection()
             
             # 构建查询条件
@@ -212,6 +225,20 @@ class SocialMediaService:
         except Exception as e:
             self.logger.error(f"❌ 社媒消息查询失败: {e}")
             return []
+
+    async def _query_social_media_messages_from_postgres(
+        self,
+        params: SocialMediaQueryParams,
+    ) -> List[Dict[str, Any]]:
+        try:
+            from app.db.message_repository import query_social_media_messages
+            from app.db.session import get_session_factory
+
+            async with get_session_factory()() as session:
+                return await query_social_media_messages(session, params)
+        except Exception as e:
+            self.logger.warning(f"PostgreSQL社媒消息查询失败，回退MongoDB: {e}")
+            return []
     
     async def get_latest_messages(
         self, 
@@ -238,6 +265,16 @@ class SocialMediaService:
     ) -> List[Dict[str, Any]]:
         """全文搜索社媒消息"""
         try:
+            if settings.POSTGRES_READ_ENABLED:
+                postgres_messages = await self._search_messages_from_postgres(
+                    query,
+                    symbol=symbol,
+                    platform=platform,
+                    limit=limit,
+                )
+                if postgres_messages:
+                    return postgres_messages
+
             collection = await self._get_collection()
             
             # 构建搜索条件
@@ -265,6 +302,30 @@ class SocialMediaService:
         except Exception as e:
             self.logger.error(f"❌ 社媒消息搜索失败: {e}")
             return []
+
+    async def _search_messages_from_postgres(
+        self,
+        query: str,
+        *,
+        symbol: str = None,
+        platform: str = None,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        try:
+            from app.db.message_repository import search_social_media_messages
+            from app.db.session import get_session_factory
+
+            async with get_session_factory()() as session:
+                return await search_social_media_messages(
+                    session,
+                    query,
+                    symbol=symbol,
+                    platform=platform,
+                    limit=limit,
+                )
+        except Exception as e:
+            self.logger.warning(f"PostgreSQL社媒消息搜索失败，回退MongoDB: {e}")
+            return []
     
     async def get_social_media_statistics(
         self, 
@@ -274,6 +335,15 @@ class SocialMediaService:
     ) -> SocialMediaStats:
         """获取社媒消息统计信息"""
         try:
+            if settings.POSTGRES_READ_ENABLED:
+                postgres_stats = await self._get_social_media_statistics_from_postgres(
+                    symbol=symbol,
+                    start_time=start_time,
+                    end_time=end_time,
+                )
+                if postgres_stats and postgres_stats.total_count > 0:
+                    return postgres_stats
+
             collection = await self._get_collection()
             
             # 构建匹配条件
@@ -338,6 +408,29 @@ class SocialMediaService:
         except Exception as e:
             self.logger.error(f"❌ 社媒消息统计失败: {e}")
             return SocialMediaStats()
+
+    async def _get_social_media_statistics_from_postgres(
+        self,
+        *,
+        symbol: str = None,
+        start_time: datetime = None,
+        end_time: datetime = None,
+    ) -> Optional[SocialMediaStats]:
+        try:
+            from app.db.message_repository import get_social_media_stats
+            from app.db.session import get_session_factory
+
+            async with get_session_factory()() as session:
+                stats = await get_social_media_stats(
+                    session,
+                    symbol=symbol,
+                    start_time=start_time,
+                    end_time=end_time,
+                )
+            return SocialMediaStats(**stats)
+        except Exception as e:
+            self.logger.warning(f"PostgreSQL社媒消息统计失败，回退MongoDB: {e}")
+            return None
 
 
 # 全局服务实例

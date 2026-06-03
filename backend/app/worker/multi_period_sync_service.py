@@ -10,9 +10,6 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 
 from app.services.historical_data_service import get_historical_data_service
-from app.worker.tushare_sync_service import TushareSyncService
-from app.worker.akshare_sync_service import AKShareSyncService
-from app.worker.baostock_sync_service import BaoStockSyncService
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +43,11 @@ class MultiPeriodSyncService:
         """初始化服务"""
         try:
             self.historical_service = await get_historical_data_service()
-            
+
+            from app.worker.akshare_sync_service import AKShareSyncService
+            from app.worker.baostock_sync_service import BaoStockSyncService
+            from app.worker.tushare_sync_service import TushareSyncService
+
             # 初始化各数据源服务
             self.tushare_service = TushareSyncService()
             await self.tushare_service.initialize()

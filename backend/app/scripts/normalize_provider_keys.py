@@ -1,15 +1,26 @@
 import argparse
-from datetime import datetime
+import asyncio
+from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from pymongo import MongoClient
 
 from app.core.config import settings
+from app.db.dual_write import dual_write_hot_document, dual_write_hot_documents
 from tradingagents.llm_clients.provider_keys import canonical_aliases, normalize_provider_key
 
 
 def _now() -> str:
-    return datetime.utcnow().isoformat()
+    return datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
+
+
+def _dual_write_document(collection: str, document: Dict[str, Any]) -> None:
+    asyncio.run(dual_write_hot_document(collection, document))
+
+
+def _dual_write_documents(collection: str, documents: List[Dict[str, Any]]) -> None:
+    if documents:
+        asyncio.run(dual_write_hot_documents(collection, documents))
 
 
 def _merge_aliases(*values: Iterable[str]) -> List[str]:
@@ -94,9 +105,24 @@ def normalize_llm_providers(db, dry_run: bool = False, fix_indexes: bool = False
             renamed += 1
 
         if not dry_run:
-            coll.replace_one({"_id": preferred["_id"]}, {**preferred, **update_doc})
+            final_doc = {**preferred, **update_doc}
+            coll.replace_one({"_id": preferred["_id"]}, final_doc)
+            _dual_write_document("llm_providers", final_doc)
             duplicate_ids = [doc["_id"] for doc in items if doc["_id"] != preferred["_id"]]
             if duplicate_ids:
+                _dual_write_documents(
+                    "llm_providers",
+                    [
+                        {
+                            **doc,
+                            "deleted": True,
+                            "is_active": False,
+                            "updated_at": _now(),
+                        }
+                        for doc in items
+                        if doc["_id"] != preferred["_id"]
+                    ],
+                )
                 coll.delete_many({"_id": {"$in": duplicate_ids}})
 
     if not dry_run and fix_indexes:
@@ -128,9 +154,14 @@ def normalize_system_configs(db, dry_run: bool = False) -> Dict[str, Any]:
         if changed:
             changed_docs += 1
             if not dry_run:
+                updated_at = _now()
                 coll.update_one(
                     {"_id": doc["_id"]},
-                    {"$set": {"llm_configs": llm_configs, "updated_at": _now()}},
+                    {"$set": {"llm_configs": llm_configs, "updated_at": updated_at}},
+                )
+                _dual_write_document(
+                    "system_configs",
+                    {**doc, "llm_configs": llm_configs, "updated_at": updated_at},
                 )
 
     return {"system_configs_changed": changed_docs, "llm_config_entries_changed": changed_entries}
@@ -163,8 +194,21 @@ def normalize_model_catalog(db, dry_run: bool = False, fix_indexes: bool = False
 
         if not dry_run:
             coll.replace_one({"_id": preferred["_id"]}, updated)
+            _dual_write_document("model_catalog", updated)
             duplicate_ids = [doc["_id"] for doc in items if doc["_id"] != preferred["_id"]]
             if duplicate_ids:
+                _dual_write_documents(
+                    "model_catalog",
+                    [
+                        {
+                            **doc,
+                            "deleted": True,
+                            "updated_at": _now(),
+                        }
+                        for doc in items
+                        if doc["_id"] != preferred["_id"]
+                    ],
+                )
                 coll.delete_many({"_id": {"$in": duplicate_ids}})
 
         merged_catalogs += max(0, len(items) - 1)

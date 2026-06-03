@@ -11,8 +11,15 @@
 import sys
 from pathlib import Path
 
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+REPO_ROOT = BACKEND_DIR.parent
+
 # 添加项目根目录到 Python 路径
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(BACKEND_DIR))
+
+
+def read_repo_file(relative_path: str) -> str:
+    return (REPO_ROOT / relative_path).read_text(encoding="utf-8")
 
 
 def test_basics_sync_service_has_symbol_field():
@@ -21,16 +28,15 @@ def test_basics_sync_service_has_symbol_field():
     print("测试1: basics_sync_service.py 是否添加了 symbol 字段")
     print("=" * 60)
     
-    with open("backend/app/services/basics_sync_service.py", "r", encoding="utf-8") as f:
-        content = f.read()
+    content = read_repo_file("backend/app/services/basics_sync_service.py")
     
+    found = '"symbol": code' in content or "'symbol': code" in content
     # 检查是否有 "symbol": code 的代码
-    if '"symbol": code' in content or "'symbol': code" in content:
+    if found:
         print("✅ 发现 symbol 字段添加代码")
-        return True
     else:
         print("❌ 未发现 symbol 字段添加代码")
-        return False
+    assert found
 
 
 def test_multi_source_sync_service_has_symbol_field():
@@ -39,16 +45,15 @@ def test_multi_source_sync_service_has_symbol_field():
     print("测试2: multi_source_basics_sync_service.py 是否添加了 symbol 字段")
     print("=" * 60)
     
-    with open("backend/app/services/multi_source_basics_sync_service.py", "r", encoding="utf-8") as f:
-        content = f.read()
+    content = read_repo_file("backend/app/services/multi_source_basics_sync_service.py")
     
+    found = '"symbol": code' in content or "'symbol': code" in content
     # 检查是否有 "symbol": code 的代码
-    if '"symbol": code' in content or "'symbol': code" in content:
+    if found:
         print("✅ 发现 symbol 字段添加代码")
-        return True
     else:
         print("❌ 未发现 symbol 字段添加代码")
-        return False
+    assert found
 
 
 def test_baostock_sync_service_has_symbol_field():
@@ -57,16 +62,15 @@ def test_baostock_sync_service_has_symbol_field():
     print("测试3: baostock_sync_service.py 是否添加了 symbol 字段")
     print("=" * 60)
     
-    with open("backend/app/worker/baostock_sync_service.py", "r", encoding="utf-8") as f:
-        content = f.read()
+    content = read_repo_file("backend/app/worker/baostock_sync_service.py")
     
+    found = 'basic_info["symbol"]' in content or "basic_info['symbol']" in content
     # 检查是否有添加 symbol 字段的代码
-    if 'basic_info["symbol"]' in content or "basic_info['symbol']" in content:
+    if found:
         print("✅ 发现 symbol 字段添加代码")
-        return True
     else:
         print("❌ 未发现 symbol 字段添加代码")
-        return False
+    assert found
 
 
 def test_app_adapter_query_logic():
@@ -75,16 +79,15 @@ def test_app_adapter_query_logic():
     print("测试4: app_adapter.py 是否支持 symbol 字段查询")
     print("=" * 60)
     
-    with open("backend/tradingagents/dataflows/cache/app_adapter.py", "r", encoding="utf-8") as f:
-        content = f.read()
+    content = read_repo_file("backend/tradingagents/dataflows/cache/app_adapter.py")
     
+    found = '"$or"' in content and '"symbol"' in content and '"code"' in content
     # 检查是否有 $or 查询逻辑
-    if '"$or"' in content and '"symbol"' in content and '"code"' in content:
+    if found:
         print("✅ 发现 symbol 和 code 的 $or 查询逻辑")
-        return True
     else:
         print("❌ 未发现 $or 查询逻辑")
-        return False
+    assert found
 
 
 def test_migration_script_exists():
@@ -93,13 +96,21 @@ def test_migration_script_exists():
     print("测试5: 迁移脚本是否存在")
     print("=" * 60)
     
-    migration_script = Path("backend/scripts/migrations/add_symbol_field_to_stock_basic_info.py")
-    if migration_script.exists():
+    migration_script = REPO_ROOT / "backend/scripts/migrations/add_symbol_field_to_stock_basic_info.py"
+    found = migration_script.exists()
+    if found:
         print(f"✅ 迁移脚本存在: {migration_script}")
-        return True
     else:
         print(f"❌ 迁移脚本不存在: {migration_script}")
+    assert found
+
+
+def run_test_function(test_func) -> bool:
+    try:
+        test_func()
+    except AssertionError:
         return False
+    return True
 
 
 def main():
@@ -111,11 +122,11 @@ def main():
     results = []
     
     # 运行所有测试
-    results.append(("basics_sync_service", test_basics_sync_service_has_symbol_field()))
-    results.append(("multi_source_sync_service", test_multi_source_sync_service_has_symbol_field()))
-    results.append(("baostock_sync_service", test_baostock_sync_service_has_symbol_field()))
-    results.append(("app_adapter_query", test_app_adapter_query_logic()))
-    results.append(("migration_script", test_migration_script_exists()))
+    results.append(("basics_sync_service", run_test_function(test_basics_sync_service_has_symbol_field)))
+    results.append(("multi_source_sync_service", run_test_function(test_multi_source_sync_service_has_symbol_field)))
+    results.append(("baostock_sync_service", run_test_function(test_baostock_sync_service_has_symbol_field)))
+    results.append(("app_adapter_query", run_test_function(test_app_adapter_query_logic)))
+    results.append(("migration_script", run_test_function(test_migration_script_exists)))
     
     # 总结
     print("\n" + "=" * 60)

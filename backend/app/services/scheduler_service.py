@@ -18,6 +18,7 @@ from apscheduler.events import (
 )
 
 from app.core.database import get_mongo_db
+from app.db.dual_write import dual_write_hot_document
 from tradingagents.utils.logging_manager import get_logger
 from app.utils.timezone import now_tz
 
@@ -874,6 +875,10 @@ class SchedulerService:
                         {"_id": existing_record["_id"]},
                         {"$set": update_data}
                     )
+                    await self._dual_write_scheduler_document(
+                        "scheduler_executions",
+                        {**existing_record, **update_data},
+                    )
 
                     # 记录日志
                     if status == "success":
@@ -912,7 +917,9 @@ class SchedulerService:
             if progress is not None:
                 execution_record["progress"] = progress
 
-            await db.scheduler_executions.insert_one(execution_record)
+            result = await db.scheduler_executions.insert_one(execution_record)
+            execution_record["_id"] = result.inserted_id
+            await self._dual_write_scheduler_document("scheduler_executions", execution_record)
 
             # 记录日志
             if status == "success":
@@ -946,13 +953,16 @@ class SchedulerService:
         """
         try:
             db = self._get_db()
-            await db.scheduler_history.insert_one({
+            history_doc = {
                 "job_id": job_id,
                 "action": action,
                 "status": status,
                 "error_message": error_message,
                 "timestamp": get_utc8_now()
-            })
+            }
+            result = await db.scheduler_history.insert_one(history_doc)
+            history_doc["_id"] = result.inserted_id
+            await self._dual_write_scheduler_document("scheduler_history", history_doc)
         except Exception as e:
             logger.error(f"❌ 记录任务操作历史失败: {e}")
 
@@ -1018,12 +1028,18 @@ class SchedulerService:
                 {"$set": update_data},
                 upsert=True
             )
+            await self._dual_write_scheduler_document("scheduler_metadata", update_data)
 
             logger.info(f"✅ 任务 {job_id} 元数据已更新")
             return True
         except Exception as e:
             logger.error(f"❌ 更新任务 {job_id} 元数据失败: {e}")
             return False
+
+    async def _dual_write_scheduler_document(self, collection: str, document: Dict[str, Any]) -> None:
+        result = await dual_write_hot_document(collection, document)
+        if result.status == "failed":
+            logger.warning("⚠️ 调度器 PostgreSQL 双写失败: collection=%s reason=%s", collection, result.reason)
 
 
 # 全局服务实例
@@ -1157,4 +1173,3 @@ async def update_job_progress(
 
     except Exception as e:
         logger.error(f"❌ 更新任务进度失败: {e}")
-

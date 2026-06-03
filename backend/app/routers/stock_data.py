@@ -2,10 +2,12 @@
 股票数据API路由 - 基于扩展数据模型
 提供标准化的股票数据访问接口
 """
-from typing import Optional, List
+from typing import Any, Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import status
+from pydantic import BaseModel
 
+from app.models.api_response import ApiResponse
 from app.routers.auth_db import get_current_user
 from app.services.stock_data_service import get_stock_data_service
 from app.models import (
@@ -18,6 +20,16 @@ from app.models import (
 )
 
 router = APIRouter(prefix="/api/stock-data", tags=["股票数据"])
+
+
+class StockSearchResponse(BaseModel):
+    """股票搜索响应；保留历史顶层 total/keyword/source 字段。"""
+    success: bool
+    data: List[Any]
+    total: int
+    keyword: str
+    source: str
+    message: str
 
 
 @router.get("/basic-info/{symbol}", response_model=StockBasicInfoResponse)
@@ -142,7 +154,7 @@ async def get_stock_list(
         )
 
 
-@router.get("/combined/{symbol}")
+@router.get("/combined/{symbol}", response_model=ApiResponse)
 async def get_combined_stock_data(
     symbol: str,
     current_user: dict = Depends(get_current_user)
@@ -200,7 +212,7 @@ async def get_combined_stock_data(
         )
 
 
-@router.get("/search")
+@router.get("/search", response_model=StockSearchResponse)
 async def search_stocks(
     keyword: str = Query(..., min_length=1, description="搜索关键词"),
     limit: int = Query(10, ge=1, le=50, description="返回数量限制"),
@@ -287,7 +299,7 @@ async def search_stocks(
         )
 
 
-@router.get("/markets")
+@router.get("/markets", response_model=ApiResponse)
 async def get_market_summary(
     current_user: dict = Depends(get_current_user)
 ):
@@ -340,7 +352,7 @@ async def get_market_summary(
         )
 
 
-@router.get("/sync-status/quotes")
+@router.get("/sync-status/quotes", response_model=ApiResponse)
 async def get_quotes_sync_status(
     current_user: dict = Depends(get_current_user)
 ):

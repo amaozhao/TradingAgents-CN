@@ -29,6 +29,7 @@ sys.path.insert(0, str(project_root))
 from tradingagents.dataflows.providers.us.yfinance import YFinanceUtils
 from app.core.database import get_mongo_db
 from app.core.config import settings
+from app.db.dual_write import dual_write_hot_documents
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +206,7 @@ class USSyncService:
         logger.info(f"📊 待同步股票数量: {len(stock_list)}")
 
         operations = []
+        postgres_documents = []
         failed_count = 0
 
         for stock_code in stock_list:
@@ -231,6 +233,7 @@ class USSyncService:
                         upsert=True
                     )
                 )
+                postgres_documents.append(normalized_info)
                 
                 logger.debug(f"✅ 准备同步: {stock_code} ({stock_info.get('shortName')}) from {source}")
                 
@@ -246,6 +249,7 @@ class USSyncService:
                 bulk_result = await self.db.stock_basic_info_us.bulk_write(operations)
                 result["updated"] = bulk_result.modified_count
                 result["inserted"] = bulk_result.upserted_count
+                await dual_write_hot_documents("stock_basic_info", postgres_documents)
                 
                 logger.info(
                     f"✅ 美股基础信息同步完成 ({source}): "
@@ -313,6 +317,7 @@ class USSyncService:
         logger.info(f"🇺🇸 开始同步美股实时行情 (数据源: {source})")
         
         operations = []
+        postgres_documents = []
         failed_count = 0
         
         for stock_code in self.us_stock_list:
@@ -338,6 +343,7 @@ class USSyncService:
                     "low": float(latest['Low']),
                     "volume": int(latest['Volume']),
                     "currency": "USD",
+                    "source": source,
                     "updated_at": datetime.now()
                 }
                 
@@ -348,11 +354,12 @@ class USSyncService:
                 
                 operations.append(
                     UpdateOne(
-                        {"code": normalized_quote["code"]},
+                        {"code": normalized_quote["code"], "source": source},
                         {"$set": normalized_quote},
                         upsert=True
                     )
                 )
+                postgres_documents.append(normalized_quote)
                 
                 logger.debug(f"✅ 准备同步行情: {stock_code} (价格: {normalized_quote['close']} USD)")
                 
@@ -368,6 +375,7 @@ class USSyncService:
                 bulk_result = await self.db.market_quotes_us.bulk_write(operations)
                 result["updated"] = bulk_result.modified_count
                 result["inserted"] = bulk_result.upserted_count
+                await dual_write_hot_documents("market_quotes", postgres_documents)
                 
                 logger.info(
                     f"✅ 美股行情同步完成: "
@@ -440,4 +448,3 @@ async def run_us_status_check():
     except Exception as e:
         logger.error(f"❌ 美股状态检查失败: {e}")
         return {"status": "error", "error": str(e)}
-

@@ -32,6 +32,16 @@ services:
       TRADINGAGENTS_MONGODB_URL: mongodb://admin:tradingagents123@mongodb:27017/tradingagents?authSource=admin
       TRADINGAGENTS_REDIS_URL: redis://:tradingagents123@redis:6379
       TRADINGAGENTS_CACHE_TYPE: redis
+      # PostgreSQL 迁移配置：默认不切读/不双写，由 cutover runbook 分阶段开启
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: tradingagents_pg123
+      POSTGRES_DB: tradingagentscn
+      POSTGRES_DUAL_WRITE_ENABLED: "${POSTGRES_DUAL_WRITE_ENABLED:-false}"
+      POSTGRES_READ_ENABLED: "${POSTGRES_READ_ENABLED:-false}"
+      POSTGRES_DUAL_WRITE_FAIL_OPEN: "${POSTGRES_DUAL_WRITE_FAIL_OPEN:-true}"
+      SYNC_STOCK_BASICS_ENABLED: "${SYNC_STOCK_BASICS_ENABLED:-true}"
       # Docker环境标识
       DOCKER_CONTAINER: "true"
       # API配置
@@ -41,6 +51,8 @@ services:
       CORS_ORIGINS: "http://localhost:3000,http://localhost:8080,http://localhost:5173"
     depends_on:
       mongodb:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -145,6 +157,34 @@ services:
         max-size: "50m"
         max-file: "2"
 
+  # PostgreSQL 数据库服务（Mongo -> PostgreSQL 迁移目标）
+  postgres:
+    image: postgres:16-alpine
+    container_name: tradingagents-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: tradingagents_pg123
+      POSTGRES_DB: tradingagentscn
+      TZ: "Asia/Shanghai"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - tradingagents-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tradingagentscn"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "2"
+
   # Redis Commander 管理界面（可选）
   redis-commander:
     image: ghcr.io/joeferner/redis-commander:latest
@@ -197,6 +237,9 @@ volumes:
   redis_data:
     driver: local
     name: tradingagents_redis_data
+  postgres_data:
+    driver: local
+    name: tradingagents_postgres_data
 
 # 网络定义
 networks:

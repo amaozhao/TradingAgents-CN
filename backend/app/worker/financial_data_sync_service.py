@@ -11,9 +11,6 @@ from dataclasses import dataclass, field
 
 from app.core.database import get_mongo_db
 from app.services.financial_data_service import get_financial_data_service
-from tradingagents.dataflows.providers.china.tushare import get_tushare_provider
-from tradingagents.dataflows.providers.china.akshare import get_akshare_provider
-from tradingagents.dataflows.providers.china.baostock import get_baostock_provider
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +55,11 @@ class FinancialDataSyncService:
         try:
             self.db = get_mongo_db()
             self.financial_service = await get_financial_data_service()
-            
+
+            from tradingagents.dataflows.providers.china.akshare import get_akshare_provider
+            from tradingagents.dataflows.providers.china.baostock import get_baostock_provider
+            from tradingagents.dataflows.providers.china.tushare import get_tushare_provider
+
             # 初始化数据源提供者
             self.providers = {
                 "tushare": get_tushare_provider(),

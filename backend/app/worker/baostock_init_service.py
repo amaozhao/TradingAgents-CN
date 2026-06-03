@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 
 from app.core.config import get_settings
 from app.core.database import get_database
-from app.worker.baostock_sync_service import BaoStockSyncService, BaoStockSyncStats
+from app.db.dual_write import dual_write_hot_document
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +57,8 @@ class BaoStockInitService:
         try:
             self.settings = get_settings()
             self.db = None  # 🔥 延迟初始化
+            from app.worker.baostock_sync_service import BaoStockSyncService
+
             self.sync_service = BaoStockSyncService()
             logger.info("✅ BaoStock初始化服务初始化成功")
         except Exception as e:
@@ -251,13 +253,25 @@ class BaoStockInitService:
                 try:
                     financial_data = await self.sync_service.provider.get_financial_data(code)
                     if financial_data:
+                        updated_at = datetime.now()
                         # 更新到数据库
                         await collection.update_one(
                             {"code": code},
                             {"$set": {
                                 "financial_data": financial_data,
-                                "financial_data_updated": datetime.now()
+                                "financial_data_updated": updated_at
                             }}
+                        )
+                        await dual_write_hot_document(
+                            "stock_basic_info",
+                            {
+                                "code": code,
+                                "symbol": code,
+                                "source": "baostock",
+                                "data_source": "baostock",
+                                "financial_data": financial_data,
+                                "financial_data_updated": updated_at,
+                            },
                         )
                         financial_count += 1
                     

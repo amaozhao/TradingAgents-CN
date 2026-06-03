@@ -8,6 +8,7 @@ from pymongo import UpdateOne
 
 from app.core.config import settings
 from app.core.database import get_mongo_db
+from app.db.dual_write import dual_write_hot_document, dual_write_hot_documents
 from app.services.data_sources.manager import DataSourceManager
 
 logger = logging.getLogger(__name__)
@@ -132,6 +133,7 @@ class QuotesIngestionService:
                 {"$set": status_doc},
                 upsert=True
             )
+            await self._dual_write_sync_status(status_doc)
 
         except Exception as e:
             logger.warning(f"记录同步状态失败（忽略）: {e}")
@@ -368,6 +370,7 @@ class QuotesIngestionService:
         db = get_mongo_db()
         coll = db[self.collection_name]
         ops = []
+        postgres_documents = []
         updated_at = datetime.now(self.tz)
         for code, q in quotes_map.items():
             if not code:
@@ -402,13 +405,42 @@ class QuotesIngestionService:
                     upsert=True,
                 )
             )
+            postgres_documents.append(
+                {
+                    "code": code6,
+                    "symbol": code6,
+                    "source": source or "",
+                    "data_source": source or "",
+                    "close": q.get("close"),
+                    "pct_chg": q.get("pct_chg"),
+                    "amount": q.get("amount"),
+                    "volume": volume,
+                    "open": q.get("open"),
+                    "high": q.get("high"),
+                    "low": q.get("low"),
+                    "pre_close": q.get("pre_close"),
+                    "trade_date": trade_date,
+                    "updated_at": updated_at,
+                }
+            )
         if not ops:
             logger.info("无可写入的数据，跳过")
             return
         result = await coll.bulk_write(ops, ordered=False)
+        await self._dual_write_market_quotes(postgres_documents)
         logger.info(
             f"✅ 行情入库完成 source={source}, matched={result.matched_count}, upserted={len(result.upserted_ids) if result.upserted_ids else 0}, modified={result.modified_count}"
         )
+
+    async def _dual_write_market_quotes(self, documents: List[Dict]) -> None:
+        result = await dual_write_hot_documents("market_quotes", documents)
+        if result.status == "failed":
+            logger.warning("⚠️ 实时行情 PostgreSQL 双写失败: %s", result.reason)
+
+    async def _dual_write_sync_status(self, document: Dict) -> None:
+        result = await dual_write_hot_document("quotes_ingestion_status", document)
+        if result.status == "failed":
+            logger.warning("⚠️ 实时行情同步状态 PostgreSQL 双写失败: %s", result.reason)
 
     async def backfill_from_historical_data(self) -> None:
         """

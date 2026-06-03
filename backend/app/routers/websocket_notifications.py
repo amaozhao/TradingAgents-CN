@@ -8,6 +8,7 @@ import logging
 from typing import Dict, Set
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, HTTPException
 from datetime import datetime
+from pydantic import BaseModel
 
 from app.services.auth_service import AuthService
 
@@ -104,6 +105,12 @@ class ConnectionManager:
 
 # 全局连接管理器实例
 manager = ConnectionManager()
+
+
+class WebSocketStatsResponse(BaseModel):
+    total_users: int
+    total_connections: int
+    users: Dict[str, int]
 
 
 @router.websocket("/ws/notifications")
@@ -262,7 +269,7 @@ async def websocket_task_progress_endpoint(
         logger.info(f"🔌 [WS-Task] 断开连接: task={task_id}")
 
 
-@router.get("/ws/stats")
+@router.get("/ws/stats", response_model=WebSocketStatsResponse)
 async def get_websocket_stats():
     """获取 WebSocket 连接统计"""
     return manager.get_stats()
@@ -301,4 +308,3 @@ async def send_task_progress_via_websocket(task_id: str, progress_data: dict):
     }
     # 广播给所有连接（生产环境应该只发给任务所属用户）
     await manager.broadcast(message)
-

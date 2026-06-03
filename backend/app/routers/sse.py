@@ -221,7 +221,7 @@ async def batch_progress_generator(batch_id: str, user_id: str):
         yield f"event: error\ndata: {{\"error\": \"连接异常: {str(e)}\"}}\n\n"
 
 
-@router.get("/tasks/{task_id}")
+@router.get("/tasks/{task_id}", response_model=None)
 async def stream_task_progress(task_id: str, user: dict = Depends(get_current_user), svc: QueueService = Depends(get_queue_service)):
     """Stream real-time progress updates for a specific task"""
     # Verify task exists and belongs to user
@@ -240,7 +240,7 @@ async def stream_task_progress(task_id: str, user: dict = Depends(get_current_us
     )
 
 
-@router.get("/batches/{batch_id}")
+@router.get("/batches/{batch_id}", response_model=None)
 async def stream_batch_progress(batch_id: str, user: dict = Depends(get_current_user), svc: QueueService = Depends(get_queue_service)):
     """Stream real-time progress updates for a batch"""
     # Verify batch exists and belongs to user

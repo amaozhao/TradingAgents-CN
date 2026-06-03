@@ -7,7 +7,9 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 from bson import ObjectId
 
+from app.core.config import settings
 from app.core.database import get_mongo_db
+from app.db.dual_write import dual_write_hot_document, dual_write_hot_documents
 from app.models.operation_log import (
     OperationLogCreate,
     OperationLogResponse,
@@ -26,6 +28,22 @@ class OperationLogService:
     
     def __init__(self):
         self.collection_name = "operation_logs"
+
+    async def _dual_write_log(self, document: Dict[str, Any]) -> None:
+        result = await dual_write_hot_document(self.collection_name, document)
+        if result.status == "failed":
+            logger.warning("⚠️ 操作日志 PostgreSQL 双写失败: %s", result.reason)
+
+    async def _dual_write_log_tombstones(self, documents: List[Dict[str, Any]]) -> None:
+        if not documents:
+            return
+        tombstones = [
+            {**document, "deleted": True, "updated_at": now_tz().replace(tzinfo=None)}
+            for document in documents
+        ]
+        result = await dual_write_hot_documents(self.collection_name, tombstones)
+        if result.status == "failed":
+            logger.warning("⚠️ 操作日志 PostgreSQL tombstone 双写失败: %s", result.reason)
     
     async def create_log(
         self,
@@ -60,6 +78,8 @@ class OperationLogService:
             
             # 插入数据库
             result = await db[self.collection_name].insert_one(log_doc)
+            log_doc["_id"] = result.inserted_id
+            await self._dual_write_log(log_doc)
             
             logger.info(f"📝 操作日志已记录: {username} - {log_data.action}")
             return str(result.inserted_id)
@@ -71,6 +91,11 @@ class OperationLogService:
     async def get_logs(self, query: OperationLogQuery) -> Tuple[List[OperationLogResponse], int]:
         """获取操作日志列表"""
         try:
+            if settings.POSTGRES_READ_ENABLED:
+                postgres_logs = await self._get_logs_from_postgres(query)
+                if postgres_logs is not None and postgres_logs[1] > 0:
+                    return postgres_logs
+
             db = get_mongo_db()
             
             # 构建查询条件
@@ -127,10 +152,27 @@ class OperationLogService:
         except Exception as e:
             logger.error(f"获取操作日志失败: {e}")
             raise Exception(f"获取操作日志失败: {str(e)}")
+
+    async def _get_logs_from_postgres(self, query: OperationLogQuery) -> Optional[Tuple[List[OperationLogResponse], int]]:
+        try:
+            from app.db.operation_log_repository import list_operation_logs
+            from app.db.session import get_session_factory
+
+            async with get_session_factory()() as session:
+                documents, total = await list_operation_logs(session, query)
+            return [OperationLogResponse(**document) for document in documents], total
+        except Exception as e:
+            logger.warning(f"PostgreSQL操作日志查询失败，回退MongoDB: {e}")
+            return None
     
     async def get_stats(self, days: int = 30) -> OperationLogStats:
         """获取操作日志统计"""
         try:
+            if settings.POSTGRES_READ_ENABLED:
+                postgres_stats = await self._get_stats_from_postgres(days)
+                if postgres_stats and postgres_stats.total_logs > 0:
+                    return postgres_stats
+
             db = get_mongo_db()
             
             # 时间范围（使用中国时区）
@@ -193,6 +235,17 @@ class OperationLogService:
         except Exception as e:
             logger.error(f"获取操作日志统计失败: {e}")
             raise Exception(f"获取操作日志统计失败: {str(e)}")
+
+    async def _get_stats_from_postgres(self, days: int) -> Optional[OperationLogStats]:
+        try:
+            from app.db.operation_log_repository import get_operation_log_stats
+            from app.db.session import get_session_factory
+
+            async with get_session_factory()() as session:
+                return await get_operation_log_stats(session, days)
+        except Exception as e:
+            logger.warning(f"PostgreSQL操作日志统计失败，回退MongoDB: {e}")
+            return None
     
     async def clear_logs(self, days: Optional[int] = None, action_type: Optional[str] = None) -> Dict[str, Any]:
         """清空操作日志"""
@@ -211,8 +264,12 @@ class OperationLogService:
                 # 只删除指定类型的日志
                 delete_filter["action_type"] = action_type
             
+            documents_to_delete = await db[self.collection_name].find(delete_filter).to_list(length=None)
+
             # 执行删除
             result = await db[self.collection_name].delete_many(delete_filter)
+            if result.deleted_count:
+                await self._dual_write_log_tombstones(documents_to_delete)
             
             logger.info(f"🗑️ 清空操作日志: 删除了 {result.deleted_count} 条记录")
             

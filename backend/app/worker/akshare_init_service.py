@@ -9,7 +9,6 @@ from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 
 from app.core.database import get_mongo_db
-from app.worker.akshare_sync_service import get_akshare_sync_service
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +55,8 @@ class AKShareInitService:
     
     async def initialize(self):
         """初始化服务"""
+        from app.worker.akshare_sync_service import get_akshare_sync_service
+
         self.db = get_mongo_db()
         self.sync_service = await get_akshare_sync_service()
         logger.info("✅ AKShare初始化服务准备完成")

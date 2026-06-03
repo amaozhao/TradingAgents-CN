@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from app.routers.auth_db import get_current_user
 from app.core.database import get_mongo_db, get_redis_client
+from app.models.api_response import ApiResponse
 from app.services.database_service import DatabaseService
 
 router = APIRouter(prefix="/database", tags=["数据库管理"])
@@ -60,7 +61,7 @@ class BackupResponse(BaseModel):
 # 数据库服务实例
 database_service = DatabaseService()
 
-@router.get("/status")
+@router.get("/status", response_model=ApiResponse)
 async def get_database_status(
     current_user: dict = Depends(get_current_user)
 ):
@@ -80,7 +81,7 @@ async def get_database_status(
             detail=f"获取数据库状态失败: {str(e)}"
         )
 
-@router.get("/stats")
+@router.get("/stats", response_model=ApiResponse)
 async def get_database_stats(
     current_user: dict = Depends(get_current_user)
 ):
@@ -100,7 +101,7 @@ async def get_database_stats(
             detail=f"获取数据库统计失败: {str(e)}"
         )
 
-@router.post("/test")
+@router.post("/test", response_model=ApiResponse)
 async def test_database_connections(
     current_user: dict = Depends(get_current_user)
 ):
@@ -120,7 +121,7 @@ async def test_database_connections(
             detail=f"测试数据库连接失败: {str(e)}"
         )
 
-@router.post("/backup")
+@router.post("/backup", response_model=ApiResponse)
 async def create_backup(
     request: BackupRequest,
     current_user: dict = Depends(get_current_user)
@@ -145,7 +146,7 @@ async def create_backup(
             detail=f"创建备份失败: {str(e)}"
         )
 
-@router.get("/backups")
+@router.get("/backups", response_model=ApiResponse)
 async def list_backups(
     current_user: dict = Depends(get_current_user)
 ):
@@ -164,7 +165,7 @@ async def list_backups(
             detail=f"获取备份列表失败: {str(e)}"
         )
 
-@router.post("/import")
+@router.post("/import", response_model=ApiResponse)
 async def import_data(
     file: UploadFile = File(...),
     collection: str = "imported_data",
@@ -207,7 +208,7 @@ async def import_data(
             detail=f"导入数据失败: {str(e)}"
         )
 
-@router.post("/export")
+@router.post("/export", response_model=None)
 async def export_data(
     request: ExportRequest,
     current_user: dict = Depends(get_current_user)
@@ -235,7 +236,7 @@ async def export_data(
             detail=f"导出数据失败: {str(e)}"
         )
 
-@router.delete("/backups/{backup_id}")
+@router.delete("/backups/{backup_id}", response_model=ApiResponse)
 async def delete_backup(
     backup_id: str,
     current_user: dict = Depends(get_current_user)
@@ -255,7 +256,7 @@ async def delete_backup(
             detail=f"删除备份失败: {str(e)}"
         )
 
-@router.post("/cleanup")
+@router.post("/cleanup", response_model=ApiResponse)
 async def cleanup_old_data(
     days: int = 30,
     current_user: dict = Depends(get_current_user)
@@ -276,7 +277,7 @@ async def cleanup_old_data(
             detail=f"清理数据失败: {str(e)}"
         )
 
-@router.post("/cleanup/analysis")
+@router.post("/cleanup/analysis", response_model=ApiResponse)
 async def cleanup_analysis_results(
     days: int = 30,
     current_user: dict = Depends(get_current_user)
@@ -297,7 +298,7 @@ async def cleanup_analysis_results(
             detail=f"清理分析结果失败: {str(e)}"
         )
 
-@router.post("/cleanup/logs")
+@router.post("/cleanup/logs", response_model=ApiResponse)
 async def cleanup_operation_logs(
     days: int = 90,
     current_user: dict = Depends(get_current_user)

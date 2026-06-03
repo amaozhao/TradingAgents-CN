@@ -4,19 +4,23 @@
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import time
 import uuid
 import asyncio
 
 from app.routers.auth_db import get_current_user
+from app.core.config import settings
+from app.core.database import get_mongo_db
+from app.db.dual_write import dual_write_hot_document
 from app.services.queue_service import get_queue_service, QueueService
 from app.services.analysis_service import get_analysis_service
 from app.services.simple_analysis_service import get_simple_analysis_service
 from app.services.websocket_manager import get_websocket_manager
+from app.models.api_response import ApiResponse
 from app.models.analysis import (
     SingleAnalysisRequest, BatchAnalysisRequest, AnalysisParameters,
     AnalysisTaskResponse, AnalysisBatchResponse, AnalysisHistoryQuery
@@ -24,6 +28,81 @@ from app.models.analysis import (
 
 router = APIRouter()
 logger = logging.getLogger("webapi")
+
+
+def _coerce_datetime(value: Any) -> Optional[datetime]:
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, str):
+        text = value.strip()
+        if text.endswith("Z"):
+            text = f"{text[:-1]}+00:00"
+        try:
+            parsed = datetime.fromisoformat(text)
+        except ValueError:
+            return None
+    else:
+        return None
+
+    if parsed.tzinfo is not None:
+        return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed
+
+
+async def _get_analysis_task_for_read(task_id: str) -> Optional[Dict[str, Any]]:
+    if settings.POSTGRES_READ_ENABLED:
+        try:
+            from app.db.analysis_repository import get_analysis_task_by_task_id
+            from app.db.session import get_session_factory
+
+            async with get_session_factory()() as session:
+                document = await get_analysis_task_by_task_id(session, task_id)
+            if document:
+                return document
+        except Exception as e:
+            logger.warning("PostgreSQL分析任务查询失败，回退MongoDB: %s", e)
+
+    from app.core.database import get_mongo_db
+    db = get_mongo_db()
+    return await db.analysis_tasks.find_one({"task_id": task_id})
+
+
+async def _get_analysis_report_by_task_id_for_read(task_id: str) -> Optional[Dict[str, Any]]:
+    if settings.POSTGRES_READ_ENABLED:
+        try:
+            from app.db.analysis_repository import get_analysis_report_by_task_id
+            from app.db.session import get_session_factory
+
+            async with get_session_factory()() as session:
+                document = await get_analysis_report_by_task_id(session, task_id)
+            if document:
+                return document
+        except Exception as e:
+            logger.warning("PostgreSQL分析报告按task_id查询失败，回退MongoDB: %s", e)
+
+    from app.core.database import get_mongo_db
+    db = get_mongo_db()
+    return await db.analysis_reports.find_one({"task_id": task_id})
+
+
+async def _get_analysis_report_by_analysis_id_for_read(analysis_id: str) -> Optional[Dict[str, Any]]:
+    if settings.POSTGRES_READ_ENABLED:
+        try:
+            from app.db.analysis_repository import get_analysis_report_by_analysis_id
+            from app.db.session import get_session_factory
+
+            async with get_session_factory()() as session:
+                document = await get_analysis_report_by_analysis_id(session, analysis_id)
+            if document:
+                return document
+        except Exception as e:
+            logger.warning("PostgreSQL分析报告按analysis_id查询失败，回退MongoDB: %s", e)
+
+    from app.core.database import get_mongo_db
+    db = get_mongo_db()
+    return await db.analysis_reports.find_one({"analysis_id": analysis_id})
 
 # 兼容性：保留原有的请求模型
 class SingleAnalyzeRequest(BaseModel):
@@ -36,8 +115,46 @@ class BatchAnalyzeRequest(BaseModel):
     title: str = Field(default="批量分析", description="批次标题")
     description: Optional[str] = Field(None, description="批次描述")
 
+
+class AnalysisTestRouteResponse(BaseModel):
+    message: str
+    timestamp: float
+
+
+class AnalysisQueueTaskResponse(BaseModel):
+    task_id: str
+    status: str
+
+
+class AnalysisQueueBatchResponse(BaseModel):
+    batch_id: str
+    submitted: int
+
+
+class AnalysisLooseObjectResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+
+class AnalysisOperationResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class AnalysisDataResponse(BaseModel):
+    success: bool
+    data: Any
+    message: Optional[str] = None
+
+
+class ZombieTasksResponse(BaseModel):
+    success: bool
+    data: List[Dict[str, Any]]
+    total: int
+    max_running_hours: int
+
+
 # 新版API端点
-@router.post("/single", response_model=Dict[str, Any])
+@router.post("/single", response_model=ApiResponse)
 async def submit_single_analysis(
     request: SingleAnalysisRequest,
     background_tasks: BackgroundTasks,
@@ -96,13 +213,13 @@ async def submit_single_analysis(
 
 
 # 测试路由 - 验证路由是否被正确注册
-@router.get("/test-route")
+@router.get("/test-route", response_model=AnalysisTestRouteResponse)
 async def test_route():
     """测试路由是否工作"""
     logger.info("🧪 测试路由被调用了！")
     return {"message": "测试路由工作正常", "timestamp": time.time()}
 
-@router.get("/tasks/{task_id}/status", response_model=Dict[str, Any])
+@router.get("/tasks/{task_id}/status", response_model=ApiResponse)
 async def get_task_status_new(
     task_id: str,
     user: dict = Depends(get_current_user)
@@ -128,11 +245,8 @@ async def get_task_status_new(
             # 内存中没有找到，尝试从MongoDB中查找
             logger.info(f"📊 [STATUS] 内存中未找到，尝试从MongoDB查找: {task_id}")
 
-            from app.core.database import get_mongo_db
-            db = get_mongo_db()
-
             # 首先从analysis_tasks集合中查找（正在进行的任务）
-            task_result = await db.analysis_tasks.find_one({"task_id": task_id})
+            task_result = await _get_analysis_task_for_read(task_id)
 
             if task_result:
                 logger.info(f"✅ [STATUS] 从analysis_tasks找到任务: {task_id}")
@@ -142,7 +256,7 @@ async def get_task_status_new(
                 progress = task_result.get("progress", 0)
 
                 # 计算时间信息
-                start_time = task_result.get("started_at") or task_result.get("created_at")
+                start_time = _coerce_datetime(task_result.get("started_at") or task_result.get("created_at"))
                 current_time = datetime.utcnow()
                 elapsed_time = 0
                 if start_time:
@@ -172,15 +286,15 @@ async def get_task_status_new(
                 }
 
             # 如果analysis_tasks中没有找到，再从analysis_reports集合中查找（已完成的任务）
-            mongo_result = await db.analysis_reports.find_one({"task_id": task_id})
+            mongo_result = await _get_analysis_report_by_task_id_for_read(task_id)
 
             if mongo_result:
                 logger.info(f"✅ [STATUS] 从analysis_reports找到任务: {task_id}")
 
                 # 构造状态响应（模拟已完成的任务）
                 # 计算已完成任务的时间信息
-                start_time = mongo_result.get("created_at")
-                end_time = mongo_result.get("updated_at")
+                start_time = _coerce_datetime(mongo_result.get("created_at"))
+                end_time = _coerce_datetime(mongo_result.get("updated_at"))
                 elapsed_time = 0
                 if start_time and end_time:
                     elapsed_time = (end_time - start_time).total_seconds()
@@ -218,7 +332,7 @@ async def get_task_status_new(
         logger.error(f"❌ 获取任务状态失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/tasks/{task_id}/result", response_model=Dict[str, Any])
+@router.get("/tasks/{task_id}/result", response_model=ApiResponse)
 async def get_task_result(
     task_id: str,
     user: dict = Depends(get_current_user)
@@ -254,19 +368,16 @@ async def get_task_result(
             # 内存中没有找到，尝试从MongoDB中查找
             logger.info(f"📊 [RESULT] 内存中未找到，尝试从MongoDB查找: {task_id}")
 
-            from app.core.database import get_mongo_db
-            db = get_mongo_db()
-
             # 从analysis_reports集合中查找（优先使用 task_id 匹配）
-            mongo_result = await db.analysis_reports.find_one({"task_id": task_id})
+            mongo_result = await _get_analysis_report_by_task_id_for_read(task_id)
 
             if not mongo_result:
                 # 兼容旧数据：旧记录可能没有 task_id，但 analysis_id 存在于 analysis_tasks.result
-                tasks_doc_for_id = await db.analysis_tasks.find_one({"task_id": task_id}, {"result.analysis_id": 1})
+                tasks_doc_for_id = await _get_analysis_task_for_read(task_id)
                 analysis_id = tasks_doc_for_id.get("result", {}).get("analysis_id") if tasks_doc_for_id else None
                 if analysis_id:
                     logger.info(f"🔎 [RESULT] 按analysis_id兜底查询 analysis_reports: {analysis_id}")
-                    mongo_result = await db.analysis_reports.find_one({"analysis_id": analysis_id})
+                    mongo_result = await _get_analysis_report_by_analysis_id_for_read(analysis_id)
 
             if mongo_result:
                 logger.info(f"✅ [RESULT] 从MongoDB找到结果: {task_id}")
@@ -304,10 +415,7 @@ async def get_task_result(
                     logger.info(f"📊 [RESULT] MongoDB decision内容: action={decision.get('action')}, target_price={decision.get('target_price')}, confidence={decision.get('confidence')}")
             else:
                 # 兜底：analysis_tasks 集合中的 result 字段
-                tasks_doc = await db.analysis_tasks.find_one(
-                    {"task_id": task_id},
-                    {"result": 1, "symbol": 1, "stock_code": 1, "created_at": 1, "completed_at": 1}
-                )
+                tasks_doc = await _get_analysis_task_for_read(task_id)
                 if tasks_doc and tasks_doc.get("result"):
                     r = tasks_doc["result"] or {}
                     logger.info("✅ [RESULT] 从analysis_tasks.result 找到结果")
@@ -703,7 +811,7 @@ async def get_task_result(
         logger.error(f"❌ [RESULT] 获取任务结果失败: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/tasks/all", response_model=Dict[str, Any])
+@router.get("/tasks/all", response_model=ApiResponse)
 async def list_all_tasks(
     user: dict = Depends(get_current_user),
     status: Optional[str] = Query(None, description="任务状态过滤"),
@@ -735,7 +843,7 @@ async def list_all_tasks(
         logger.error(f"❌ 获取任务列表失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/tasks", response_model=Dict[str, Any])
+@router.get("/tasks", response_model=ApiResponse)
 async def list_user_tasks(
     user: dict = Depends(get_current_user),
     status: Optional[str] = Query(None, description="任务状态过滤"),
@@ -768,7 +876,7 @@ async def list_user_tasks(
         logger.error(f"❌ 获取任务列表失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/batch", response_model=Dict[str, Any])
+@router.post("/batch", response_model=ApiResponse)
 async def submit_batch_analysis(
     request: BatchAnalysisRequest,
     user: dict = Depends(get_current_user)
@@ -872,7 +980,7 @@ async def submit_batch_analysis(
         raise HTTPException(status_code=400, detail=str(e))
 
 # 兼容性：保留原有端点
-@router.post("/analyze")
+@router.post("/analyze", response_model=AnalysisQueueTaskResponse)
 async def analyze_single(
     req: SingleAnalyzeRequest,
     user: dict = Depends(get_current_user),
@@ -889,7 +997,7 @@ async def analyze_single(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/analyze/batch")
+@router.post("/analyze/batch", response_model=AnalysisQueueBatchResponse)
 async def analyze_batch(
     req: BatchAnalyzeRequest,
     user: dict = Depends(get_current_user),
@@ -906,7 +1014,7 @@ async def analyze_batch(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/batches/{batch_id}")
+@router.get("/batches/{batch_id}", response_model=AnalysisLooseObjectResponse)
 async def get_batch(batch_id: str, user: dict = Depends(get_current_user), svc: QueueService = Depends(get_queue_service)):
     b = await svc.get_batch(batch_id)
     if not b or b.get("user") != user["id"]:
@@ -945,7 +1053,7 @@ async def get_batch(batch_id: str, user: dict = Depends(get_current_user), svc: 
 #     except Exception as e:
 #         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/tasks/{task_id}/cancel")
+@router.post("/tasks/{task_id}/cancel", response_model=AnalysisOperationResponse)
 async def cancel_task(
     task_id: str,
     user: dict = Depends(get_current_user),
@@ -966,7 +1074,7 @@ async def cancel_task(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/user/queue-status")
+@router.get("/user/queue-status", response_model=AnalysisDataResponse)
 async def get_user_queue_status(
     user: dict = Depends(get_current_user),
     svc: QueueService = Depends(get_queue_service)
@@ -981,7 +1089,7 @@ async def get_user_queue_status(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/user/history")
+@router.get("/user/history", response_model=AnalysisDataResponse)
 async def get_user_analysis_history(
     user: dict = Depends(get_current_user),
     status: Optional[str] = Query(None, description="任务状态过滤"),
@@ -1096,7 +1204,7 @@ async def websocket_task_progress(websocket: WebSocket, task_id: str):
         await websocket_manager.disconnect(websocket, task_id)
 
 # 任务详情查询路由（放在最后避免与 /tasks/{task_id}/status 冲突）
-@router.get("/tasks/{task_id}/details")
+@router.get("/tasks/{task_id}/details", response_model=AnalysisLooseObjectResponse)
 async def get_task_details(
     task_id: str,
     user: dict = Depends(get_current_user),
@@ -1111,7 +1219,7 @@ async def get_task_details(
 
 # ==================== 僵尸任务管理 ====================
 
-@router.get("/admin/zombie-tasks")
+@router.get("/admin/zombie-tasks", response_model=ZombieTasksResponse)
 async def get_zombie_tasks(
     max_running_hours: int = Query(default=2, ge=1, le=72, description="最大运行时长（小时）"),
     user: dict = Depends(get_current_user)
@@ -1139,7 +1247,7 @@ async def get_zombie_tasks(
         raise HTTPException(status_code=500, detail=f"获取僵尸任务失败: {str(e)}")
 
 
-@router.post("/admin/cleanup-zombie-tasks")
+@router.post("/admin/cleanup-zombie-tasks", response_model=ApiResponse)
 async def cleanup_zombie_tasks(
     max_running_hours: int = Query(default=2, ge=1, le=72, description="最大运行时长（小时）"),
     user: dict = Depends(get_current_user)
@@ -1166,7 +1274,7 @@ async def cleanup_zombie_tasks(
         raise HTTPException(status_code=500, detail=f"清理僵尸任务失败: {str(e)}")
 
 
-@router.post("/tasks/{task_id}/mark-failed")
+@router.post("/tasks/{task_id}/mark-failed", response_model=AnalysisOperationResponse)
 async def mark_task_as_failed(
     task_id: str,
     user: dict = Depends(get_current_user)
@@ -1188,21 +1296,24 @@ async def mark_task_as_failed(
         )
 
         # 更新 MongoDB 中的任务状态
-        from app.core.database import get_mongo_db
-        from datetime import datetime
         db = get_mongo_db()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        update_data = {
+            "task_id": task_id,
+            "status": "failed",
+            "last_error": "用户手动标记为失败",
+            "completed_at": now,
+            "updated_at": now,
+        }
 
         result = await db.analysis_tasks.update_one(
             {"task_id": task_id},
             {
-                "$set": {
-                    "status": "failed",
-                    "last_error": "用户手动标记为失败",
-                    "completed_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow()
-                }
+                "$set": update_data
             }
         )
+        if result.modified_count > 0:
+            await dual_write_hot_document("analysis_tasks", update_data)
 
         if result.modified_count > 0:
             logger.info(f"✅ 任务 {task_id} 已标记为失败")
@@ -1221,7 +1332,7 @@ async def mark_task_as_failed(
         raise HTTPException(status_code=500, detail=f"标记任务失败: {str(e)}")
 
 
-@router.delete("/tasks/{task_id}")
+@router.delete("/tasks/{task_id}", response_model=AnalysisOperationResponse)
 async def delete_task(
     task_id: str,
     user: dict = Depends(get_current_user)
@@ -1237,10 +1348,20 @@ async def delete_task(
         await svc.memory_manager.remove_task(task_id)
 
         # 从 MongoDB 中删除任务
-        from app.core.database import get_mongo_db
         db = get_mongo_db()
+        task_document = await db.analysis_tasks.find_one({"task_id": task_id})
 
         result = await db.analysis_tasks.delete_one({"task_id": task_id})
+        if result.deleted_count > 0:
+            await dual_write_hot_document(
+                "analysis_tasks",
+                {
+                    **(task_document or {"task_id": task_id}),
+                    "task_id": task_id,
+                    "deleted": True,
+                    "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
+                },
+            )
 
         if result.deleted_count > 0:
             logger.info(f"✅ 任务 {task_id} 已删除")

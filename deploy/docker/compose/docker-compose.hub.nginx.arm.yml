@@ -60,6 +60,30 @@ services:
       retries: 5
       start_period: 5s
 
+  # PostgreSQL数据库（Mongo -> PostgreSQL 迁移目标）
+  postgres:
+    image: postgres:16-alpine
+    platform: linux/arm64  # 显式指定 ARM64 平台
+    container_name: tradingagents-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - tradingagents_postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: tradingagents_pg123
+      POSTGRES_DB: tradingagentscn
+      TZ: "Asia/Shanghai"
+    networks:
+      - tradingagents-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tradingagentscn"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   # FastAPI后端服务
   backend:
     image: hsliup/tradingagents-backend:v1.0.1
@@ -94,6 +118,16 @@ services:
       REDIS_PORT: "6379"
       REDIS_PASSWORD: "tradingagents123"
       REDIS_URL: "redis://:tradingagents123@redis:6379/0"
+      # PostgreSQL迁移配置：默认不切读/不双写
+      POSTGRES_HOST: "postgres"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "tradingagents_pg123"
+      POSTGRES_DB: "tradingagentscn"
+      POSTGRES_DUAL_WRITE_ENABLED: "${POSTGRES_DUAL_WRITE_ENABLED:-false}"
+      POSTGRES_READ_ENABLED: "${POSTGRES_READ_ENABLED:-false}"
+      POSTGRES_DUAL_WRITE_FAIL_OPEN: "${POSTGRES_DUAL_WRITE_FAIL_OPEN:-true}"
+      SYNC_STOCK_BASICS_ENABLED: "${SYNC_STOCK_BASICS_ENABLED:-true}"
       DOCKER_CONTAINER: "true"
       # 安全配置
       JWT_SECRET: "docker-jwt-secret-key-change-in-production-2024"
@@ -126,6 +160,8 @@ services:
       FINNHUB_ENABLED: "${FINNHUB_ENABLED:-false}"
     depends_on:
       mongodb:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -187,6 +223,8 @@ volumes:
   tradingagents_mongodb_data:
     driver: local
   tradingagents_redis_data:
+    driver: local
+  tradingagents_postgres_data:
     driver: local
 
 networks:

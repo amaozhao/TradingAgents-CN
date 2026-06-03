@@ -15,6 +15,7 @@ from typing import List, Dict, Any, Optional
 import os
 from app.services.stock_data_service import get_stock_data_service
 from app.core.database import get_mongo_db
+from app.db.dual_write import dual_write_hot_document
 from tradingagents.dataflows.providers.examples.example_sdk import ExampleSDKProvider
 
 logger = logging.getLogger(__name__)
@@ -245,6 +246,8 @@ class ExampleSDKSyncService:
                 # 构建更新数据
                 update_data = {
                     "code": code,
+                    "data_source": "example_sdk",
+                    "report_period": financial_data.get("report_period", "latest") if isinstance(financial_data, dict) else "latest",
                     "financial_data": financial_data,
                     "updated_at": datetime.utcnow()
                 }
@@ -255,6 +258,7 @@ class ExampleSDKSyncService:
                     {"$set": update_data},
                     upsert=True
                 )
+                await dual_write_hot_document("stock_financial_data", update_data)
                 
                 self.sync_stats["financial"]["success"] += 1
                 logger.debug(f"✅ 更新{code}财务数据成功")
@@ -286,6 +290,7 @@ class ExampleSDKSyncService:
                 {"$set": sync_record},
                 upsert=True
             )
+            await dual_write_hot_document("sync_status", sync_record)
             
         except Exception as e:
             logger.error(f"❌ 记录同步状态失败: {e}")

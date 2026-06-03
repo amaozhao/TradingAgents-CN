@@ -11,8 +11,8 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 
 from app.core.database import get_mongo_db
+from app.models.api_response import ApiResponse
 from app.worker.akshare_init_service import get_akshare_init_service
-from app.worker.akshare_sync_service import get_akshare_sync_service
 from app.routers.auth_db import get_current_user
 from app.utils.timezone import now_tz
 
@@ -43,7 +43,7 @@ class SyncRequest(BaseModel):
     symbols: Optional[list] = Field(default=None, description="指定股票代码列表")
 
 
-@router.get("/status")
+@router.get("/status", response_model=ApiResponse)
 async def get_database_status():
     """
     获取数据库状态
@@ -105,7 +105,7 @@ async def get_database_status():
         raise HTTPException(status_code=500, detail=f"获取数据库状态失败: {str(e)}")
 
 
-@router.get("/connection-test")
+@router.get("/connection-test", response_model=ApiResponse)
 async def test_akshare_connection():
     """
     测试AKShare连接状态
@@ -114,6 +114,8 @@ async def test_akshare_connection():
         连接测试结果
     """
     try:
+        from app.worker.akshare_sync_service import get_akshare_sync_service
+
         service = await get_akshare_sync_service()
         connected = await service.provider.test_connection()
         
@@ -142,7 +144,7 @@ async def test_akshare_connection():
         raise HTTPException(status_code=500, detail=f"连接测试失败: {str(e)}")
 
 
-@router.post("/start-full")
+@router.post("/start-full", response_model=ApiResponse)
 async def start_full_initialization(
     request: InitializationRequest,
     background_tasks: BackgroundTasks,
@@ -200,7 +202,7 @@ async def start_full_initialization(
         raise HTTPException(status_code=500, detail=f"启动初始化失败: {str(e)}")
 
 
-@router.post("/start-basic-sync")
+@router.post("/start-basic-sync", response_model=ApiResponse)
 async def start_basic_sync(
     request: SyncRequest,
     background_tasks: BackgroundTasks,
@@ -256,7 +258,7 @@ async def start_basic_sync(
         raise HTTPException(status_code=500, detail=f"启动同步失败: {str(e)}")
 
 
-@router.get("/initialization-status")
+@router.get("/initialization-status", response_model=ApiResponse)
 async def get_initialization_status():
     """
     获取初始化任务状态
@@ -283,7 +285,7 @@ async def get_initialization_status():
     }
 
 
-@router.post("/stop")
+@router.post("/stop", response_model=ApiResponse)
 async def stop_initialization(current_user: dict = Depends(get_current_user)):
     """
     停止当前初始化任务
@@ -354,6 +356,8 @@ async def _run_basic_sync_background(force_update: bool):
     global _initialization_status
     
     try:
+        from app.worker.akshare_sync_service import get_akshare_sync_service
+
         service = await get_akshare_sync_service()
         result = await service.sync_stock_basic_info(force_update=force_update)
         

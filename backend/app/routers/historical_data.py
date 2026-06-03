@@ -128,7 +128,7 @@ async def query_historical_data(request: HistoricalDataQuery):
         raise HTTPException(status_code=500, detail=f"查询失败: {e}")
 
 
-@router.get("/latest-date/{symbol}")
+@router.get("/latest-date/{symbol}", response_model=HistoricalDataResponse)
 async def get_latest_date(
     symbol: str,
     data_source: str = Query(..., description="数据源 (tushare/akshare/baostock)")
@@ -153,7 +153,7 @@ async def get_latest_date(
         raise HTTPException(status_code=500, detail=f"查询失败: {e}")
 
 
-@router.get("/statistics")
+@router.get("/statistics", response_model=HistoricalDataResponse)
 async def get_data_statistics():
     """获取历史数据统计信息"""
     try:
@@ -171,7 +171,7 @@ async def get_data_statistics():
         raise HTTPException(status_code=500, detail=f"获取统计信息失败: {e}")
 
 
-@router.get("/compare/{symbol}")
+@router.get("/compare/{symbol}", response_model=HistoricalDataResponse)
 async def compare_data_sources(
     symbol: str,
     trade_date: str = Query(..., description="交易日期 (YYYY-MM-DD)")
@@ -216,7 +216,7 @@ async def compare_data_sources(
         raise HTTPException(status_code=500, detail=f"数据对比失败: {e}")
 
 
-@router.get("/health")
+@router.get("/health", response_model=HistoricalDataResponse)
 async def health_check():
     """健康检查"""
     try:

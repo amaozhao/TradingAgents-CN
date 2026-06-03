@@ -31,6 +31,7 @@ from tradingagents.dataflows.providers.hk.hk_stock import HKStockProvider
 from tradingagents.dataflows.providers.hk.improved_hk import ImprovedHKStockProvider
 from app.core.database import get_mongo_db
 from app.core.config import settings
+from app.db.dual_write import dual_write_hot_documents
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +179,7 @@ class HKDataService:
         logger.info(f"📊 待同步股票数量: {len(stock_list)}")
 
         operations = []
+        postgres_documents = []
         failed_count = 0
 
         for stock_code in stock_list:
@@ -204,6 +206,7 @@ class HKDataService:
                         upsert=True
                     )
                 )
+                postgres_documents.append(normalized_info)
 
                 logger.debug(f"✅ 准备同步: {stock_code} ({stock_info.get('name')}) from {source}")
 
@@ -219,6 +222,7 @@ class HKDataService:
                 bulk_result = await self.db.stock_basic_info_hk.bulk_write(operations)
                 result["updated"] = bulk_result.modified_count
                 result["inserted"] = bulk_result.upserted_count
+                await dual_write_hot_documents("stock_basic_info", postgres_documents)
 
                 logger.info(
                     f"✅ 港股基础信息同步完成 ({source}): "
@@ -259,6 +263,7 @@ class HKDataService:
             logger.info(f"📊 获取到 {len(df)} 只港股数据")
 
             operations = []
+            postgres_documents = []
             failed_count = 0
 
             for _, row in df.iterrows():
@@ -309,6 +314,7 @@ class HKDataService:
                             upsert=True
                         )
                     )
+                    postgres_documents.append(stock_info)
 
                 except Exception as e:
                     logger.debug(f"⚠️ 处理股票数据失败: {stock_code}: {e}")
@@ -322,6 +328,7 @@ class HKDataService:
                     bulk_result = await self.db.stock_basic_info_hk.bulk_write(operations)
                     result["updated"] = bulk_result.modified_count
                     result["inserted"] = bulk_result.upserted_count
+                    await dual_write_hot_documents("stock_basic_info", postgres_documents)
 
                     logger.info(
                         f"✅ 港股基础信息批量同步完成 (akshare): "
@@ -394,6 +401,7 @@ class HKDataService:
         logger.info(f"🇭🇰 开始同步港股实时行情 (数据源: {source})")
         
         operations = []
+        postgres_documents = []
         failed_count = 0
         
         for stock_code in self.hk_stock_list:
@@ -415,6 +423,7 @@ class HKDataService:
                     "low": float(quote.get('low', 0)),
                     "volume": int(quote.get('volume', 0)),
                     "currency": "HKD",
+                    "source": source,
                     "updated_at": datetime.now()
                 }
                 
@@ -425,11 +434,12 @@ class HKDataService:
                 
                 operations.append(
                     UpdateOne(
-                        {"code": normalized_quote["code"]},
+                        {"code": normalized_quote["code"], "source": source},
                         {"$set": normalized_quote},
                         upsert=True
                     )
                 )
+                postgres_documents.append(normalized_quote)
                 
                 logger.debug(f"✅ 准备同步行情: {stock_code} (价格: {normalized_quote['close']} HKD)")
                 
@@ -445,6 +455,7 @@ class HKDataService:
                 bulk_result = await self.db.market_quotes_hk.bulk_write(operations)
                 result["updated"] = bulk_result.modified_count
                 result["inserted"] = bulk_result.upserted_count
+                await dual_write_hot_documents("market_quotes", postgres_documents)
                 
                 logger.info(
                     f"✅ 港股行情同步完成: "
@@ -460,6 +471,8 @@ class HKDataService:
 
 
 # ==================== 全局服务实例 ====================
+
+HKSyncService = HKDataService
 
 _hk_sync_service = None
 
@@ -529,4 +542,3 @@ async def run_hk_status_check():
     except Exception as e:
         logger.error(f"❌ 港股状态检查失败: {e}")
         return {"status": "error", "error": str(e)}
-

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Any, Dict
+from typing import Any, Dict, Mapping
 import re
 import logging
+from pydantic import BaseModel, ConfigDict
 
 from app.core.config import settings
 from app.routers.auth_db import get_current_user
@@ -19,6 +20,18 @@ SENSITIVE_KEYS = {
 }
 
 MASK = "***"
+
+
+class ConfigSummaryResponse(BaseModel):
+    settings: Mapping[str, Any]
+
+
+class ConfigValidationResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    success: bool
+    data: Any = None
+    message: str
 
 
 def _mask_value(key: str, value: Any) -> Any:
@@ -51,7 +64,12 @@ def _build_summary() -> Dict[str, Any]:
     return summary
 
 
-@router.get("/config/summary", tags=["system"], summary="配置概要（已屏蔽敏感项，需管理员）")
+@router.get(
+    "/config/summary",
+    response_model=ConfigSummaryResponse,
+    tags=["system"],
+    summary="配置概要（已屏蔽敏感项，需管理员）",
+)
 async def get_config_summary(current_user: dict = Depends(get_current_user)) -> Dict[str, Any]:
     """
     返回当前生效的设置概要。敏感字段将以 *** 掩码显示。
@@ -62,7 +80,12 @@ async def get_config_summary(current_user: dict = Depends(get_current_user)) -> 
     return {"settings": _build_summary()}
 
 
-@router.get("/config/validate", tags=["system"], summary="验证配置完整性")
+@router.get(
+    "/config/validate",
+    response_model=ConfigValidationResponse,
+    tags=["system"],
+    summary="验证配置完整性",
+)
 async def validate_config():
     """
     验证系统配置的完整性和有效性。

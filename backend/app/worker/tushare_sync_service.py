@@ -15,6 +15,7 @@ from app.services.news_data_service import get_news_data_service
 from app.core.database import get_mongo_db
 from app.core.config import settings
 from app.core.rate_limiter import get_tushare_rate_limiter
+from app.db.dual_write import dual_write_hot_document
 from app.utils.timezone import now_tz
 
 logger = logging.getLogger(__name__)
@@ -1295,6 +1296,15 @@ class TushareSyncService:
                         "updated_at": get_utc8_now()
                     }
                 }
+            )
+            await dual_write_hot_document(
+                "scheduler_executions",
+                {
+                    **execution,
+                    "progress": progress,
+                    "progress_message": message,
+                    "updated_at": get_utc8_now(),
+                },
             )
 
             logger.info(f"📊 [进度更新] 更新结果: matched={result.matched_count}, modified={result.modified_count}")

@@ -17,6 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 import uvicorn
 import logging
 import time
@@ -40,26 +41,6 @@ from app.routers import scheduler as scheduler_router
 from app.services.basics_sync_service import get_basics_sync_service
 from app.services.multi_source_basics_sync_service import MultiSourceBasicsSyncService
 from app.services.scheduler_service import set_scheduler_instance
-from app.worker.tushare_sync_service import (
-    run_tushare_basic_info_sync,
-    run_tushare_quotes_sync,
-    run_tushare_historical_sync,
-    run_tushare_financial_sync,
-    run_tushare_status_check
-)
-from app.worker.akshare_sync_service import (
-    run_akshare_basic_info_sync,
-    run_akshare_quotes_sync,
-    run_akshare_historical_sync,
-    run_akshare_financial_sync,
-    run_akshare_status_check
-)
-from app.worker.baostock_sync_service import (
-    run_baostock_basic_info_sync,
-    run_baostock_daily_quotes_sync,
-    run_baostock_historical_sync,
-    run_baostock_status_check
-)
 # 港股和美股改为按需获取+缓存模式，不再需要定时同步任务
 # from app.worker.hk_sync_service import ...
 # from app.worker.us_sync_service import ...
@@ -69,6 +50,102 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from app.services.quotes_ingestion_service import QuotesIngestionService
 from app.routers import paper as paper_router
+
+
+class TestLogResponse(BaseModel):
+    message: str
+    timestamp: float
+
+
+class RootResponse(BaseModel):
+    name: str
+    version: str
+    status: str
+    docs_url: str | None = None
+
+
+async def run_tushare_basic_info_sync(*args, **kwargs):
+    from app.worker.tushare_sync_service import run_tushare_basic_info_sync as _run
+
+    return await _run(*args, **kwargs)
+
+
+async def run_tushare_quotes_sync(*args, **kwargs):
+    from app.worker.tushare_sync_service import run_tushare_quotes_sync as _run
+
+    return await _run(*args, **kwargs)
+
+
+async def run_tushare_historical_sync(*args, **kwargs):
+    from app.worker.tushare_sync_service import run_tushare_historical_sync as _run
+
+    return await _run(*args, **kwargs)
+
+
+async def run_tushare_financial_sync(*args, **kwargs):
+    from app.worker.tushare_sync_service import run_tushare_financial_sync as _run
+
+    return await _run(*args, **kwargs)
+
+
+async def run_tushare_status_check(*args, **kwargs):
+    from app.worker.tushare_sync_service import run_tushare_status_check as _run
+
+    return await _run(*args, **kwargs)
+
+
+async def run_akshare_basic_info_sync(*args, **kwargs):
+    from app.worker.akshare_sync_service import run_akshare_basic_info_sync as _run
+
+    return await _run(*args, **kwargs)
+
+
+async def run_akshare_quotes_sync(*args, **kwargs):
+    from app.worker.akshare_sync_service import run_akshare_quotes_sync as _run
+
+    return await _run(*args, **kwargs)
+
+
+async def run_akshare_historical_sync(*args, **kwargs):
+    from app.worker.akshare_sync_service import run_akshare_historical_sync as _run
+
+    return await _run(*args, **kwargs)
+
+
+async def run_akshare_financial_sync(*args, **kwargs):
+    from app.worker.akshare_sync_service import run_akshare_financial_sync as _run
+
+    return await _run(*args, **kwargs)
+
+
+async def run_akshare_status_check(*args, **kwargs):
+    from app.worker.akshare_sync_service import run_akshare_status_check as _run
+
+    return await _run(*args, **kwargs)
+
+
+async def run_baostock_basic_info_sync(*args, **kwargs):
+    from app.worker.baostock_sync_service import run_baostock_basic_info_sync as _run
+
+    return await _run(*args, **kwargs)
+
+
+async def run_baostock_daily_quotes_sync(*args, **kwargs):
+    from app.worker.baostock_sync_service import run_baostock_daily_quotes_sync as _run
+
+    return await _run(*args, **kwargs)
+
+
+async def run_baostock_historical_sync(*args, **kwargs):
+    from app.worker.baostock_sync_service import run_baostock_historical_sync as _run
+
+    return await _run(*args, **kwargs)
+
+
+async def run_baostock_status_check(*args, **kwargs):
+    from app.worker.baostock_sync_service import run_baostock_status_check as _run
+
+    return await _run(*args, **kwargs)
 
 
 def get_version() -> str:
@@ -294,14 +371,14 @@ async def lifespan(app: FastAPI):
             preferred_sources = ["akshare", "baostock"]
             logger.info(f"📊 股票基础信息同步优先数据源: AKShare > BaoStock (Tushare已禁用)")
 
-        # 立即在启动后尝试一次（不阻塞）
-        async def run_sync_with_sources():
-            await multi_source_service.run_full_sync(force=False, preferred_sources=preferred_sources)
-
-        asyncio.create_task(run_sync_with_sources())
-
         # 配置调度：优先使用 CRON，其次使用 HH:MM
         if settings.SYNC_STOCK_BASICS_ENABLED:
+            # 立即在启动后尝试一次（不阻塞）
+            async def run_sync_with_sources():
+                await multi_source_service.run_full_sync(force=False, preferred_sources=preferred_sources)
+
+            asyncio.create_task(run_sync_with_sources())
+
             if settings.SYNC_STOCK_BASICS_CRON:
                 # 如果提供了cron表达式
                 scheduler.add_job(
@@ -320,6 +397,8 @@ async def lifespan(app: FastAPI):
                     name="股票基础信息同步（多数据源）"
                 )
                 logger.info(f"📅 Stock basics sync scheduled daily at {settings.SYNC_STOCK_BASICS_TIME} ({settings.TIMEZONE})")
+        else:
+            logger.info("⏸️ 股票基础信息启动同步已禁用: SYNC_STOCK_BASICS_ENABLED=false")
 
         # 实时行情入库任务（每N秒），内部自判交易时段
         if settings.QUOTES_INGEST_ENABLED:
@@ -682,7 +761,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # 测试端点 - 验证中间件是否工作
-@app.get("/api/test-log")
+@app.get("/api/test-log", response_model=TestLogResponse)
 async def test_log():
     """测试日志中间件是否工作"""
     print("🧪 测试端点被调用 - 这条消息应该出现在控制台")
@@ -736,7 +815,7 @@ app.include_router(social_media.router, tags=["social-media"])
 app.include_router(internal_messages.router, tags=["internal-messages"])
 
 
-@app.get("/")
+@app.get("/", response_model=RootResponse)
 async def root():
     """根路径，返回API信息"""
     print("🏠 根路径被访问")

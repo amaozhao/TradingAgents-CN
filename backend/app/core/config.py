@@ -6,6 +6,9 @@ import warnings
 import re
 import getpass
 from pathlib import Path
+from urllib.parse import quote
+
+from app.core.runtime_env import apply_runtime_env
 
 # Legacy env var aliases (deprecated): map API_HOST/PORT/DEBUG -> HOST/PORT/DEBUG
 _LEGACY_ENV_ALIASES = {
@@ -46,6 +49,32 @@ class Settings(BaseSettings):
     MONGO_CONNECT_TIMEOUT_MS: int = Field(default=30000)  # 连接超时：30秒（原为10秒）
     MONGO_SOCKET_TIMEOUT_MS: int = Field(default=60000)   # 套接字超时：60秒（原为20秒）
     MONGO_SERVER_SELECTION_TIMEOUT_MS: int = Field(default=5000)  # 服务器选择超时：5秒
+
+    # PostgreSQL配置
+    DATABASE_URL: str = Field(default="")
+    POSTGRES_HOST: str = Field(default="localhost")
+    POSTGRES_PORT: int = Field(default=5432)
+    POSTGRES_USER: str = Field(default="postgres")
+    POSTGRES_PASSWORD: str = Field(default="postgres")
+    POSTGRES_DB: str = Field(default="tradingagentscn")
+    POSTGRES_POOL_SIZE: int = Field(default=10)
+    POSTGRES_MAX_OVERFLOW: int = Field(default=20)
+    POSTGRES_POOL_TIMEOUT: int = Field(default=30)
+    POSTGRES_POOL_RECYCLE: int = Field(default=1800)
+    POSTGRES_ECHO: bool = Field(default=False)
+    POSTGRES_READ_ENABLED: bool = Field(default=False)
+    POSTGRES_DUAL_WRITE_ENABLED: bool = Field(default=False)
+    POSTGRES_DUAL_WRITE_FAIL_OPEN: bool = Field(default=True)
+
+    @property
+    def POSTGRES_URL(self) -> str:
+        """构建PostgreSQL SQLAlchemy async URL"""
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+
+        user = quote(self.POSTGRES_USER, safe="")
+        password = quote(self.POSTGRES_PASSWORD, safe="")
+        return f"postgresql+asyncpg://{user}:{password}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     @property
     def MONGO_URI(self) -> str:
@@ -369,12 +398,13 @@ def _sanitize_mongo_db_name(name: str) -> str:
 
 # 自动将代理配置设置到环境变量
 # 这样 requests 库可以直接读取 os.environ['NO_PROXY']
-if settings.HTTP_PROXY:
-    os.environ['HTTP_PROXY'] = settings.HTTP_PROXY
-if settings.HTTPS_PROXY:
-    os.environ['HTTPS_PROXY'] = settings.HTTPS_PROXY
-if settings.NO_PROXY:
-    os.environ['NO_PROXY'] = settings.NO_PROXY
+apply_runtime_env(
+    {
+        "HTTP_PROXY": settings.HTTP_PROXY,
+        "HTTPS_PROXY": settings.HTTPS_PROXY,
+        "NO_PROXY": settings.NO_PROXY,
+    }
+)
 
 
 def get_settings() -> Settings:

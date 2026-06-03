@@ -244,7 +244,7 @@ async def start_incremental_sync(
         raise HTTPException(status_code=500, detail=f"启动增量同步失败: {e}")
 
 
-@router.get("/statistics")
+@router.get("/statistics", response_model=MultiPeriodSyncResponse)
 async def get_sync_statistics():
     """获取多周期同步统计信息"""
     try:
@@ -262,7 +262,7 @@ async def get_sync_statistics():
         raise HTTPException(status_code=500, detail=f"获取统计信息失败: {e}")
 
 
-@router.get("/period-comparison/{symbol}")
+@router.get("/period-comparison/{symbol}", response_model=MultiPeriodSyncResponse)
 async def compare_period_data(
     symbol: str,
     trade_date: str,
@@ -310,7 +310,7 @@ async def compare_period_data(
         raise HTTPException(status_code=500, detail=f"周期数据对比失败: {e}")
 
 
-@router.get("/supported-periods")
+@router.get("/supported-periods", response_model=MultiPeriodSyncResponse)
 async def get_supported_periods():
     """获取支持的数据周期"""
     return {
@@ -361,7 +361,7 @@ async def get_supported_periods():
     }
 
 
-@router.get("/health")
+@router.get("/health", response_model=MultiPeriodSyncResponse)
 async def health_check():
     """健康检查"""
     try:

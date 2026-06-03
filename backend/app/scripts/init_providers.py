@@ -6,14 +6,19 @@
 import asyncio
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 # 添加项目根目录到Python路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from app.core.database import init_db, get_mongo_db
+from app.db.dual_write import dual_write_hot_document, dual_write_hot_documents
 from app.models.config import LLMProvider
 from tradingagents.llm_clients.provider_keys import canonical_aliases
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 async def init_providers():
     """初始化大模型厂家数据"""
@@ -121,15 +126,31 @@ async def init_providers():
     ]
     
     # 清除现有数据
+    existing_providers = await providers_collection.find({}).to_list(length=None)
+    if existing_providers:
+        await dual_write_hot_documents(
+            "llm_providers",
+            [
+                {
+                    **provider,
+                    "deleted": True,
+                    "is_active": False,
+                    "updated_at": _utc_now(),
+                }
+                for provider in existing_providers
+            ],
+        )
     await providers_collection.delete_many({})
     print("🧹 清除现有厂家数据")
     
     # 插入新数据
     for provider_data in providers_data:
-        provider_data["created_at"] = datetime.utcnow()
-        provider_data["updated_at"] = datetime.utcnow()
+        now = _utc_now()
+        provider_data["created_at"] = now
+        provider_data["updated_at"] = now
         
         result = await providers_collection.insert_one(provider_data)
+        await dual_write_hot_document("llm_providers", provider_data)
         print(f"✅ 添加厂家: {provider_data['display_name']} (ID: {result.inserted_id})")
     
     print(f"🎉 成功初始化 {len(providers_data)} 个厂家数据")

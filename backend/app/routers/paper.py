@@ -6,8 +6,11 @@ import logging
 import re
 
 from app.routers.auth_db import get_current_user
+from app.core.config import settings
 from app.core.database import get_mongo_db
 from app.core.response import ok
+from app.db.dual_write import dual_write_hot_document
+from app.models.api_response import ApiResponse
 
 router = APIRouter(prefix="/paper", tags=["paper"])
 logger = logging.getLogger("webapi")
@@ -19,6 +22,12 @@ INITIAL_CASH_BY_MARKET = {
     "HKD": 1_000_000.0,   # 港股：100万港币
     "USD": 100_000.0      # 美股：10万美元
 }
+
+
+async def _dual_write_paper(collection: str, document: Dict[str, Any]) -> None:
+    result = await dual_write_hot_document(collection, document)
+    if result.status == "failed":
+        logger.warning("⚠️ 纸上交易 PostgreSQL 双写失败: collection=%s reason=%s", collection, result.reason)
 
 
 class PlaceOrderRequest(BaseModel):
@@ -90,7 +99,9 @@ async def _get_or_create_account(user_id: str) -> Dict[str, Any]:
             "created_at": now,
             "updated_at": now,
         }
-        await db["paper_accounts"].insert_one(acc)
+        result = await db["paper_accounts"].insert_one(acc)
+        acc["_id"] = result.inserted_id
+        await _dual_write_paper("paper_accounts", acc)
     else:
         # 兼容旧账户结构：如果 cash 或 realized_pnl 仍为标量，迁移为多货币对象
         updates: Dict[str, Any] = {}
@@ -108,11 +119,75 @@ async def _get_or_create_account(user_id: str) -> Dict[str, Any]:
             if updates:
                 updates["updated_at"] = datetime.utcnow().isoformat()
                 await db["paper_accounts"].update_one({"user_id": user_id}, {"$set": updates})
+                await _dual_write_paper("paper_accounts", {**acc, **updates})
                 # 重新读取迁移后的账户
                 acc = await db["paper_accounts"].find_one({"user_id": user_id})
         except Exception as e:
             logger.error(f"❌ 账户结构迁移失败 user_id={user_id}: {e}")
     return acc
+
+
+async def _get_account_for_read(user_id: str) -> Dict[str, Any]:
+    if settings.POSTGRES_READ_ENABLED:
+        account = await _get_paper_account_from_postgres(user_id)
+        if account:
+            return account
+    return await _get_or_create_account(user_id)
+
+
+async def _list_positions_for_read(user_id: str) -> List[Dict[str, Any]]:
+    if settings.POSTGRES_READ_ENABLED:
+        positions = await _list_paper_positions_from_postgres(user_id)
+        if positions:
+            return positions
+    db = get_mongo_db()
+    return await db["paper_positions"].find({"user_id": user_id}).to_list(None)
+
+
+async def _list_orders_for_read(user_id: str, *, limit: int) -> List[Dict[str, Any]]:
+    if settings.POSTGRES_READ_ENABLED:
+        orders = await _list_paper_orders_from_postgres(user_id, limit=limit)
+        if orders:
+            return orders
+    db = get_mongo_db()
+    cursor = db["paper_orders"].find({"user_id": user_id}).sort("created_at", -1).limit(limit)
+    return await cursor.to_list(None)
+
+
+async def _get_paper_account_from_postgres(user_id: str) -> Optional[Dict[str, Any]]:
+    try:
+        from app.db.paper_repository import get_paper_account
+        from app.db.session import get_session_factory
+
+        async with get_session_factory()() as session:
+            return await get_paper_account(session, user_id)
+    except Exception as e:
+        logger.warning("PostgreSQL纸上账户查询失败，回退MongoDB: %s", e)
+        return None
+
+
+async def _list_paper_positions_from_postgres(user_id: str) -> Optional[List[Dict[str, Any]]]:
+    try:
+        from app.db.paper_repository import list_paper_positions
+        from app.db.session import get_session_factory
+
+        async with get_session_factory()() as session:
+            return await list_paper_positions(session, user_id)
+    except Exception as e:
+        logger.warning("PostgreSQL纸上持仓查询失败，回退MongoDB: %s", e)
+        return None
+
+
+async def _list_paper_orders_from_postgres(user_id: str, *, limit: int) -> Optional[List[Dict[str, Any]]]:
+    try:
+        from app.db.paper_repository import list_paper_orders
+        from app.db.session import get_session_factory
+
+        async with get_session_factory()() as session:
+            return await list_paper_orders(session, user_id, limit=limit)
+    except Exception as e:
+        logger.warning("PostgreSQL纸上订单查询失败，回退MongoDB: %s", e)
+        return None
 
 
 async def _get_market_rules(market: str) -> Optional[Dict[str, Any]]:
@@ -267,14 +342,13 @@ def _zfill_code(code: str) -> str:
     return s.zfill(6)
 
 
-@router.get("/account", response_model=dict)
+@router.get("/account", response_model=ApiResponse)
 async def get_account(current_user: dict = Depends(get_current_user)):
     """获取或创建纸上账户，返回资金与持仓估值汇总（支持多市场）"""
-    db = get_mongo_db()
-    acc = await _get_or_create_account(current_user["id"])
+    acc = await _get_account_for_read(current_user["id"])
 
     # 聚合持仓估值（按货币分类）
-    positions = await db["paper_positions"].find({"user_id": current_user["id"]}).to_list(None)
+    positions = await _list_positions_for_read(current_user["id"])
 
     positions_value_by_currency = {
         "CNY": 0.0,
@@ -341,7 +415,7 @@ async def get_account(current_user: dict = Depends(get_current_user)):
     return ok({"account": summary, "positions": detailed_positions})
 
 
-@router.post("/order", response_model=dict)
+@router.post("/order", response_model=ApiResponse)
 async def place_order(payload: PlaceOrderRequest, current_user: dict = Depends(get_current_user)):
     """提交市价单，按最新价即时成交（支持多市场）"""
     db = get_mongo_db()
@@ -408,10 +482,13 @@ async def place_order(payload: PlaceOrderRequest, current_user: dict = Depends(g
 
         # 扣除资金（从对应货币账户）
         new_cash = round(available_cash - total_cost, 2)
+        account_cash = cash.copy() if isinstance(cash, dict) else {"CNY": float(cash), "HKD": 0.0, "USD": 0.0}
+        account_cash[currency] = new_cash
         await db["paper_accounts"].update_one(
             {"user_id": current_user["id"]},
             {"$set": {f"cash.{currency}": new_cash, "updated_at": now_iso}}
         )
+        await _dual_write_paper("paper_accounts", {**acc, "cash": account_cash, "updated_at": now_iso})
 
         # 更新/创建持仓：加权平均成本
         if not pos:
@@ -426,7 +503,9 @@ async def place_order(payload: PlaceOrderRequest, current_user: dict = Depends(g
                 "avg_cost": price,
                 "updated_at": now_iso
             }
-            await db["paper_positions"].insert_one(new_pos)
+            result = await db["paper_positions"].insert_one(new_pos)
+            new_pos["_id"] = result.inserted_id
+            await _dual_write_paper("paper_positions", new_pos)
         else:
             old_qty = int(pos.get("quantity", 0))
             old_cost = float(pos.get("avg_cost", 0.0))
@@ -439,15 +518,17 @@ async def place_order(payload: PlaceOrderRequest, current_user: dict = Depends(g
             else:
                 new_available = new_qty  # 港股/美股T+0，全部可用
 
+            position_update = {
+                "quantity": new_qty,
+                "available_qty": new_available,
+                "avg_cost": new_avg,
+                "updated_at": now_iso
+            }
             await db["paper_positions"].update_one(
                 {"_id": pos["_id"]},
-                {"$set": {
-                    "quantity": new_qty,
-                    "available_qty": new_available,
-                    "avg_cost": new_avg,
-                    "updated_at": now_iso
-                }}
+                {"$set": position_update}
             )
+            await _dual_write_paper("paper_positions", {**pos, **position_update})
 
     else:  # sell
         # 检查可用数量（考虑T+1）
@@ -466,6 +547,10 @@ async def place_order(payload: PlaceOrderRequest, current_user: dict = Depends(g
 
         # 卖出收入（加到对应货币账户，扣除手续费）
         net_proceeds = notional - commission
+        account_cash = acc.get("cash", {}).copy() if isinstance(acc.get("cash"), dict) else {"CNY": float(acc.get("cash", 0.0)), "HKD": 0.0, "USD": 0.0}
+        account_pnl = acc.get("realized_pnl", {}).copy() if isinstance(acc.get("realized_pnl"), dict) else {"CNY": float(acc.get("realized_pnl", 0.0)), "HKD": 0.0, "USD": 0.0}
+        account_cash[currency] = round(float(account_cash.get(currency, 0.0)) + net_proceeds, 2)
+        account_pnl[currency] = round(float(account_pnl.get(currency, 0.0)) + realized_pnl_delta, 2)
         await db["paper_accounts"].update_one(
             {"user_id": current_user["id"]},
             {
@@ -476,20 +561,24 @@ async def place_order(payload: PlaceOrderRequest, current_user: dict = Depends(g
                 "$set": {"updated_at": now_iso}
             }
         )
+        await _dual_write_paper("paper_accounts", {**acc, "cash": account_cash, "realized_pnl": account_pnl, "updated_at": now_iso})
 
         # 更新持仓
         if new_qty == 0:
             await db["paper_positions"].delete_one({"_id": pos["_id"]})
+            await _dual_write_paper("paper_positions", {**pos, "quantity": 0, "deleted": True, "updated_at": now_iso})
         else:
             new_available = max(0, pos.get("available_qty", old_qty) - qty)
+            position_update = {
+                "quantity": new_qty,
+                "available_qty": new_available,
+                "updated_at": now_iso
+            }
             await db["paper_positions"].update_one(
                 {"_id": pos["_id"]},
-                {"$set": {
-                    "quantity": new_qty,
-                    "available_qty": new_available,
-                    "updated_at": now_iso
-                }}
+                {"$set": position_update}
             )
+            await _dual_write_paper("paper_positions", {**pos, **position_update})
 
     # 9. 记录订单与成交（即成）
     order_doc = {
@@ -508,7 +597,9 @@ async def place_order(payload: PlaceOrderRequest, current_user: dict = Depends(g
     }
     if analysis_id:
         order_doc["analysis_id"] = analysis_id
-    await db["paper_orders"].insert_one(order_doc)
+    order_result = await db["paper_orders"].insert_one(order_doc)
+    order_doc["_id"] = order_result.inserted_id
+    await _dual_write_paper("paper_orders", order_doc)
 
     trade_doc = {
         "user_id": current_user["id"],
@@ -525,16 +616,17 @@ async def place_order(payload: PlaceOrderRequest, current_user: dict = Depends(g
     }
     if analysis_id:
         trade_doc["analysis_id"] = analysis_id
-    await db["paper_trades"].insert_one(trade_doc)
+    trade_result = await db["paper_trades"].insert_one(trade_doc)
+    trade_doc["_id"] = trade_result.inserted_id
+    await _dual_write_paper("paper_trades", trade_doc)
 
     return ok({"order": {k: v for k, v in order_doc.items() if k != "_id"}})
 
 
-@router.get("/positions", response_model=dict)
+@router.get("/positions", response_model=ApiResponse)
 async def list_positions(current_user: dict = Depends(get_current_user)):
     """获取持仓列表（支持多市场）"""
-    db = get_mongo_db()
-    items = await db["paper_positions"].find({"user_id": current_user["id"]}).to_list(None)
+    items = await _list_positions_for_read(current_user["id"])
     enriched: List[Dict[str, Any]] = []
     for p in items:
         code = p.get("code")
@@ -560,26 +652,39 @@ async def list_positions(current_user: dict = Depends(get_current_user)):
     return ok({"items": enriched})
 
 
-@router.get("/orders", response_model=dict)
+@router.get("/orders", response_model=ApiResponse)
 async def list_orders(limit: int = Query(50, ge=1, le=200), current_user: dict = Depends(get_current_user)):
-    db = get_mongo_db()
-    cursor = db["paper_orders"].find({"user_id": current_user["id"]}).sort("created_at", -1).limit(limit)
-    items = await cursor.to_list(None)
+    items = await _list_orders_for_read(current_user["id"], limit=limit)
     # 去除 _id
     cleaned = [{k: v for k, v in it.items() if k != "_id"} for it in items]
     return ok({"items": cleaned})
 
 
-@router.post("/reset", response_model=dict)
+@router.post("/reset", response_model=ApiResponse)
 async def reset_account(confirm: bool = Query(False), current_user: dict = Depends(get_current_user)):
     """重置账户（支持多货币）"""
     if not confirm:
         raise HTTPException(status_code=400, detail="请设置 confirm=true 以确认重置")
     db = get_mongo_db()
+    user_id = current_user["id"]
+    existing_accounts = await db["paper_accounts"].find({"user_id": user_id}).to_list(None)
+    existing_positions = await db["paper_positions"].find({"user_id": user_id}).to_list(None)
+    existing_orders = await db["paper_orders"].find({"user_id": user_id}).to_list(None)
+    existing_trades = await db["paper_trades"].find({"user_id": user_id}).to_list(None)
+
     await db["paper_accounts"].delete_many({"user_id": current_user["id"]})
     await db["paper_positions"].delete_many({"user_id": current_user["id"]})
     await db["paper_orders"].delete_many({"user_id": current_user["id"]})
     await db["paper_trades"].delete_many({"user_id": current_user["id"]})
+    reset_at = datetime.utcnow().isoformat()
+    for account in existing_accounts:
+        await _dual_write_paper("paper_accounts", {**account, "deleted": True, "updated_at": reset_at})
+    for position in existing_positions:
+        await _dual_write_paper("paper_positions", {**position, "deleted": True, "updated_at": reset_at})
+    for order in existing_orders:
+        await _dual_write_paper("paper_orders", {**order, "deleted": True, "updated_at": reset_at})
+    for trade in existing_trades:
+        await _dual_write_paper("paper_trades", {**trade, "deleted": True, "updated_at": reset_at})
     # 重新创建账户
     acc = await _get_or_create_account(current_user["id"])
     return ok({"message": "账户已重置", "cash": acc.get("cash", {})})

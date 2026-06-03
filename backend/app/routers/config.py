@@ -5,8 +5,9 @@
 import logging
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
+from app.models.api_response import ApiResponse
 from app.routers.auth_db import get_current_user
 from app.models.user import User
 from app.models.config import (
@@ -33,9 +34,15 @@ router = APIRouter(prefix="/config", tags=["配置管理"])
 logger = logging.getLogger("webapi")
 
 
+class ConfigApiResponse(ApiResponse):
+    """配置接口响应模型；允许 /settings 保留历史顶层透传字段。"""
+
+    model_config = ConfigDict(extra="allow")
+
+
 # ===== 配置重载端点 =====
 
-@router.post("/reload", summary="重新加载配置")
+@router.post("/reload", response_model=ConfigApiResponse, summary="重新加载配置")
 async def reload_config(current_user: dict = Depends(get_current_user)):
     """
     重新加载配置并桥接到环境变量
@@ -207,7 +214,46 @@ class FetchProviderModelsRequest(BaseModel):
     exclude_preview: bool = True
 
 
-@router.get("/system", response_model=dict)
+class ToggleProviderRequest(BaseModel):
+    """厂家启停请求。"""
+
+    is_active: bool = True
+
+
+class MarketCategoryUpdateRequest(BaseModel):
+    """市场分类局部更新请求，保留额外字段兼容旧前端。"""
+
+    model_config = ConfigDict(extra="allow")
+
+    name: str | None = None
+    display_name: str | None = None
+    description: str | None = None
+    enabled: bool | None = None
+    sort_order: int | None = None
+
+
+class DataSourceGroupingUpdateRequest(BaseModel):
+    """数据源分组局部更新请求，保留额外字段兼容旧前端。"""
+
+    model_config = ConfigDict(extra="allow")
+
+    priority: int | None = None
+    enabled: bool | None = None
+
+
+class SystemSettingsUpdateRequest(BaseModel):
+    """系统设置更新请求；设置项是动态 key，但入口仍由 Pydantic 校验为对象。"""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class ImportConfigRequest(BaseModel):
+    """配置导入请求；导入内容是动态结构，保留原 payload 兼容。"""
+
+    model_config = ConfigDict(extra="allow")
+
+
+@router.get("/system", response_model=ConfigApiResponse)
 async def get_system_config(
     current_user: User = Depends(get_current_user)
 ):
@@ -243,7 +289,7 @@ async def get_system_config(
 
 # ========== 大模型厂家管理 ==========
 
-@router.get("/llm/providers", response_model=dict)
+@router.get("/llm/providers", response_model=ConfigApiResponse)
 async def get_llm_providers(
     current_user: User = Depends(get_current_user)
 ):
@@ -314,7 +360,7 @@ async def get_llm_providers(
         )
 
 
-@router.post("/llm/providers", response_model=dict)
+@router.post("/llm/providers", response_model=ConfigApiResponse)
 async def add_llm_provider(
     request: LLMProviderRequest,
     current_user: User = Depends(get_current_user)
@@ -357,7 +403,7 @@ async def add_llm_provider(
         )
 
 
-@router.put("/llm/providers/{provider_id}", response_model=dict)
+@router.put("/llm/providers/{provider_id}", response_model=ConfigApiResponse)
 async def update_llm_provider(
     provider_id: str,
     request: LLMProviderRequest,
@@ -407,7 +453,7 @@ async def update_llm_provider(
         )
 
 
-@router.delete("/llm/providers/{provider_id}", response_model=dict)
+@router.delete("/llm/providers/{provider_id}", response_model=ConfigApiResponse)
 async def delete_llm_provider(
     provider_id: str,
     current_user: User = Depends(get_current_user)
@@ -444,15 +490,15 @@ async def delete_llm_provider(
         )
 
 
-@router.patch("/llm/providers/{provider_id}/toggle", response_model=dict)
+@router.patch("/llm/providers/{provider_id}/toggle", response_model=ConfigApiResponse)
 async def toggle_llm_provider(
     provider_id: str,
-    request: dict,
+    request: ToggleProviderRequest,
     current_user: User = Depends(get_current_user)
 ):
     """切换大模型厂家状态"""
     try:
-        is_active = request.get("is_active", True)
+        is_active = request.is_active
         success = await config_service.toggle_llm_provider(provider_id, is_active)
 
         if success:
@@ -483,7 +529,7 @@ async def toggle_llm_provider(
         )
 
 
-@router.post("/llm/providers/{provider_id}/fetch-models", response_model=dict)
+@router.post("/llm/providers/{provider_id}/fetch-models", response_model=ConfigApiResponse)
 async def fetch_provider_models(
     provider_id: str,
     request: FetchProviderModelsRequest | None = None,
@@ -519,7 +565,7 @@ async def fetch_provider_models(
         )
 
 
-@router.post("/llm/providers/migrate-env", response_model=dict)
+@router.post("/llm/providers/migrate-env", response_model=ConfigApiResponse)
 async def migrate_env_to_providers(
     current_user: User = Depends(get_current_user)
 ):
@@ -559,7 +605,7 @@ async def migrate_env_to_providers(
         )
 
 
-@router.post("/llm/providers/init-aggregators", response_model=dict)
+@router.post("/llm/providers/init-aggregators", response_model=ConfigApiResponse)
 async def init_aggregator_providers(
     current_user: User = Depends(get_current_user)
 ):
@@ -601,7 +647,7 @@ async def init_aggregator_providers(
         )
 
 
-@router.post("/llm/providers/{provider_id}/test", response_model=dict)
+@router.post("/llm/providers/{provider_id}/test", response_model=ConfigApiResponse)
 async def test_provider_api(
     provider_id: str,
     current_user: User = Depends(get_current_user)
@@ -622,7 +668,7 @@ async def test_provider_api(
 
 # ========== 大模型配置管理 ==========
 
-@router.post("/llm", response_model=dict)
+@router.post("/llm", response_model=ConfigApiResponse)
 async def add_llm_config(
     request: LLMConfigRequest,
     current_user: User = Depends(get_current_user)
@@ -731,7 +777,7 @@ async def add_llm_config(
         )
 
 
-@router.post("/datasource", response_model=dict)
+@router.post("/datasource", response_model=ConfigApiResponse)
 async def add_data_source_config(
     request: DataSourceConfigRequest,
     current_user: User = Depends(get_current_user)
@@ -834,7 +880,7 @@ async def add_data_source_config(
         )
 
 
-@router.post("/database", response_model=dict)
+@router.post("/database", response_model=ConfigApiResponse, operation_id="add_database_config_legacy")
 async def add_database_config(
     request: DatabaseConfigRequest,
     current_user: User = Depends(get_current_user)
@@ -886,7 +932,7 @@ async def add_database_config(
         )
 
 
-@router.post("/test", response_model=dict)
+@router.post("/test", response_model=ConfigApiResponse)
 async def test_config(
     request: ConfigTestRequest,
     current_user: User = Depends(get_current_user)
@@ -919,7 +965,7 @@ async def test_config(
         )
 
 
-@router.post("/database/{db_name}/test", response_model=dict)
+@router.post("/database/{db_name}/test", response_model=ConfigApiResponse)
 async def test_saved_database_config(
     db_name: str,
     current_user: dict = Depends(get_current_user)
@@ -969,7 +1015,7 @@ async def test_saved_database_config(
         )
 
 
-@router.get("/llm", response_model=dict)
+@router.get("/llm", response_model=ConfigApiResponse)
 async def get_llm_configs(
     current_user: User = Depends(get_current_user)
 ):
@@ -1013,7 +1059,7 @@ async def get_llm_configs(
         )
 
 
-@router.delete("/llm/{provider}/{model_name}")
+@router.delete("/llm/{provider}/{model_name}", response_model=ConfigApiResponse)
 async def delete_llm_config(
     provider: str,
     model_name: str,
@@ -1064,7 +1110,7 @@ async def delete_llm_config(
         )
 
 
-@router.post("/llm/set-default")
+@router.post("/llm/set-default", response_model=ConfigApiResponse)
 async def set_default_llm(
     request: SetDefaultRequest,
     current_user: User = Depends(get_current_user)
@@ -1100,7 +1146,7 @@ async def set_default_llm(
         )
 
 
-@router.get("/datasource", response_model=dict)
+@router.get("/datasource", response_model=ConfigApiResponse)
 async def get_data_source_configs(
     current_user: User = Depends(get_current_user)
 ):
@@ -1117,7 +1163,7 @@ async def get_data_source_configs(
         )
 
 
-@router.put("/datasource/{name}", response_model=dict)
+@router.put("/datasource/{name}", response_model=ConfigApiResponse)
 async def update_data_source_config(
     name: str,
     request: DataSourceConfigRequest,
@@ -1327,7 +1373,7 @@ async def update_data_source_config(
         )
 
 
-@router.delete("/datasource/{name}", response_model=dict)
+@router.delete("/datasource/{name}", response_model=ConfigApiResponse)
 async def delete_data_source_config(
     name: str,
     current_user: User = Depends(get_current_user)
@@ -1383,7 +1429,7 @@ async def delete_data_source_config(
 
 # ==================== 市场分类管理 ====================
 
-@router.get("/market-categories", response_model=dict)
+@router.get("/market-categories", response_model=ConfigApiResponse)
 async def get_market_categories(
     current_user: User = Depends(get_current_user)
 ):
@@ -1398,7 +1444,7 @@ async def get_market_categories(
         )
 
 
-@router.post("/market-categories", response_model=dict)
+@router.post("/market-categories", response_model=ConfigApiResponse)
 async def add_market_category(
     request: MarketCategoryRequest,
     current_user: User = Depends(get_current_user)
@@ -1436,15 +1482,16 @@ async def add_market_category(
         )
 
 
-@router.put("/market-categories/{category_id}", response_model=dict)
+@router.put("/market-categories/{category_id}", response_model=ConfigApiResponse)
 async def update_market_category(
     category_id: str,
-    request: Dict[str, Any],
+    request: MarketCategoryUpdateRequest,
     current_user: User = Depends(get_current_user)
 ):
     """更新市场分类"""
     try:
-        success = await config_service.update_market_category(category_id, request)
+        request_data = request.model_dump(exclude_unset=True)
+        success = await config_service.update_market_category(category_id, request_data)
 
         if success:
             # 审计日志（忽略异常）
@@ -1454,7 +1501,7 @@ async def update_market_category(
                     username=getattr(current_user, "username", "unknown"),
                     action_type=ActionType.CONFIG_MANAGEMENT,
                     action="update_market_category",
-                    details={"category_id": category_id, "changed_keys": list(request.keys())},
+                    details={"category_id": category_id, "changed_keys": list(request_data.keys())},
                     success=True,
                 )
             except Exception:
@@ -1474,7 +1521,7 @@ async def update_market_category(
         )
 
 
-@router.delete("/market-categories/{category_id}", response_model=dict)
+@router.delete("/market-categories/{category_id}", response_model=ConfigApiResponse)
 async def delete_market_category(
     category_id: str,
     current_user: User = Depends(get_current_user)
@@ -1513,7 +1560,7 @@ async def delete_market_category(
 
 # ==================== 数据源分组管理 ====================
 
-@router.get("/datasource-groupings", response_model=dict)
+@router.get("/datasource-groupings", response_model=ConfigApiResponse)
 async def get_datasource_groupings(
     current_user: User = Depends(get_current_user)
 ):
@@ -1528,7 +1575,7 @@ async def get_datasource_groupings(
         )
 
 
-@router.post("/datasource-groupings", response_model=dict)
+@router.post("/datasource-groupings", response_model=ConfigApiResponse)
 async def add_datasource_to_category(
     request: DataSourceGroupingRequest,
     current_user: User = Depends(get_current_user)
@@ -1566,7 +1613,7 @@ async def add_datasource_to_category(
         )
 
 
-@router.delete("/datasource-groupings/{data_source_name}/{category_id}", response_model=dict)
+@router.delete("/datasource-groupings/{data_source_name}/{category_id}", response_model=ConfigApiResponse)
 async def remove_datasource_from_category(
     data_source_name: str,
     category_id: str,
@@ -1604,16 +1651,17 @@ async def remove_datasource_from_category(
         )
 
 
-@router.put("/datasource-groupings/{data_source_name}/{category_id}", response_model=dict)
+@router.put("/datasource-groupings/{data_source_name}/{category_id}", response_model=ConfigApiResponse)
 async def update_datasource_grouping(
     data_source_name: str,
     category_id: str,
-    request: Dict[str, Any],
+    request: DataSourceGroupingUpdateRequest,
     current_user: User = Depends(get_current_user)
 ):
     """更新数据源分组关系"""
     try:
-        success = await config_service.update_datasource_grouping(data_source_name, category_id, request)
+        request_data = request.model_dump(exclude_unset=True)
+        success = await config_service.update_datasource_grouping(data_source_name, category_id, request_data)
 
         if success:
             # 审计日志（忽略异常）
@@ -1623,7 +1671,7 @@ async def update_datasource_grouping(
                     username=getattr(current_user, "username", "unknown"),
                     action_type=ActionType.CONFIG_MANAGEMENT,
                     action="update_datasource_grouping",
-                    details={"data_source_name": data_source_name, "category_id": category_id, "changed_keys": list(request.keys())},
+                    details={"data_source_name": data_source_name, "category_id": category_id, "changed_keys": list(request_data.keys())},
                     success=True,
                 )
             except Exception:
@@ -1643,7 +1691,7 @@ async def update_datasource_grouping(
         )
 
 
-@router.put("/market-categories/{category_id}/datasource-order", response_model=dict)
+@router.put("/market-categories/{category_id}/datasource-order", response_model=ConfigApiResponse)
 async def update_category_datasource_order(
     category_id: str,
     request: DataSourceOrderRequest,
@@ -1681,7 +1729,7 @@ async def update_category_datasource_order(
         )
 
 
-@router.post("/datasource/set-default")
+@router.post("/datasource/set-default", response_model=ConfigApiResponse)
 async def set_default_data_source(
     request: SetDefaultRequest,
     current_user: User = Depends(get_current_user)
@@ -1717,7 +1765,7 @@ async def set_default_data_source(
         )
 
 
-@router.get("/settings", response_model=dict)
+@router.get("/settings", response_model=ConfigApiResponse)
 async def get_system_settings(
     current_user: User = Depends(get_current_user)
 ):
@@ -1738,7 +1786,7 @@ async def get_system_settings(
         )
 
 
-@router.get("/settings/meta", response_model=dict)
+@router.get("/settings/meta", response_model=ConfigApiResponse)
 async def get_system_settings_meta(
     current_user: User = Depends(get_current_user)
 ):
@@ -1758,25 +1806,26 @@ async def get_system_settings_meta(
         )
 
 
-@router.put("/settings", response_model=dict)
+@router.put("/settings", response_model=ConfigApiResponse)
 async def update_system_settings(
-    settings: Dict[str, Any],
+    settings: SystemSettingsUpdateRequest,
     current_user: User = Depends(get_current_user)
 ):
     """更新系统设置"""
+    settings_data = settings.model_dump()
     try:
         # 打印接收到的设置（用于调试）
-        logger.info(f"📝 接收到的系统设置更新请求，包含 {len(settings)} 项")
-        if 'quick_analysis_model' in settings:
-            logger.info(f"  ✓ quick_analysis_model: {settings['quick_analysis_model']}")
+        logger.info(f"📝 接收到的系统设置更新请求，包含 {len(settings_data)} 项")
+        if 'quick_analysis_model' in settings_data:
+            logger.info(f"  ✓ quick_analysis_model: {settings_data['quick_analysis_model']}")
         else:
             logger.warning(f"  ⚠️  未包含 quick_analysis_model")
-        if 'deep_analysis_model' in settings:
-            logger.info(f"  ✓ deep_analysis_model: {settings['deep_analysis_model']}")
+        if 'deep_analysis_model' in settings_data:
+            logger.info(f"  ✓ deep_analysis_model: {settings_data['deep_analysis_model']}")
         else:
             logger.warning(f"  ⚠️  未包含 deep_analysis_model")
 
-        success = await config_service.update_system_settings(settings)
+        success = await config_service.update_system_settings(settings_data)
         if success:
             # 审计日志（忽略日志异常，不影响主流程）
             try:
@@ -1785,7 +1834,7 @@ async def update_system_settings(
                     username=getattr(current_user, "username", "unknown"),
                     action_type=ActionType.CONFIG_MANAGEMENT,
                     action="update_system_settings",
-                    details={"changed_keys": list(settings.keys())},
+                    details={"changed_keys": list(settings_data.keys())},
                     success=True,
                 )
             except Exception:
@@ -1811,7 +1860,7 @@ async def update_system_settings(
                 username=getattr(current_user, "username", "unknown"),
                 action_type=ActionType.CONFIG_MANAGEMENT,
                 action="update_system_settings",
-                details={"changed_keys": list(settings.keys())},
+                details={"changed_keys": list(settings_data.keys())},
                 success=False,
                 error_message=str(e),
             )
@@ -1823,7 +1872,7 @@ async def update_system_settings(
         )
 
 
-@router.post("/export", response_model=dict)
+@router.post("/export", response_model=ConfigApiResponse)
 async def export_config(
     current_user: User = Depends(get_current_user)
 ):
@@ -1857,14 +1906,15 @@ async def export_config(
         )
 
 
-@router.post("/import", response_model=dict)
+@router.post("/import", response_model=ConfigApiResponse)
 async def import_config(
-    config_data: Dict[str, Any],
+    config_data: ImportConfigRequest,
     current_user: User = Depends(get_current_user)
 ):
     """导入配置"""
     try:
-        success = await config_service.import_config(config_data)
+        import_data = config_data.model_dump()
+        success = await config_service.import_config(import_data)
         if success:
             # 审计日志（忽略异常）
             try:
@@ -1873,7 +1923,7 @@ async def import_config(
                     username=getattr(current_user, "username", "unknown"),
                     action_type=ActionType.DATA_IMPORT,
                     action="import_config",
-                    details={"keys": list(config_data.keys())[:10]},
+                    details={"keys": list(import_data.keys())[:10]},
                     success=True,
                 )
             except Exception:
@@ -1893,7 +1943,7 @@ async def import_config(
         )
 
 
-@router.post("/migrate-legacy", response_model=dict)
+@router.post("/migrate-legacy", response_model=ConfigApiResponse)
 async def migrate_legacy_config(
     current_user: User = Depends(get_current_user)
 ):
@@ -1928,7 +1978,7 @@ async def migrate_legacy_config(
         )
 
 
-@router.post("/default/llm", response_model=dict)
+@router.post("/default/llm", response_model=ConfigApiResponse)
 async def set_default_llm(
     request: SetDefaultRequest,
     current_user: User = Depends(get_current_user)
@@ -1966,7 +2016,7 @@ async def set_default_llm(
         )
 
 
-@router.post("/default/datasource", response_model=dict)
+@router.post("/default/datasource", response_model=ConfigApiResponse)
 async def set_default_data_source(
     request: SetDefaultRequest,
     current_user: User = Depends(get_current_user)
@@ -2004,7 +2054,7 @@ async def set_default_data_source(
         )
 
 
-@router.get("/models", response_model=dict)
+@router.get("/models", response_model=ConfigApiResponse)
 async def get_available_models(
     current_user: User = Depends(get_current_user)
 ):
@@ -2021,7 +2071,7 @@ async def get_available_models(
 
 # ========== 模型目录管理 ==========
 
-@router.get("/model-catalog", response_model=dict)
+@router.get("/model-catalog", response_model=ConfigApiResponse)
 async def get_model_catalog(
     current_user: User = Depends(get_current_user)
 ):
@@ -2039,7 +2089,7 @@ async def get_model_catalog(
         )
 
 
-@router.get("/model-catalog/{provider}", response_model=dict)
+@router.get("/model-catalog/{provider}", response_model=ConfigApiResponse)
 async def get_provider_model_catalog(
     provider: str,
     current_user: User = Depends(get_current_user)
@@ -2069,7 +2119,7 @@ class ModelCatalogRequest(BaseModel):
     models: List[Dict[str, Any]]
 
 
-@router.post("/model-catalog", response_model=dict)
+@router.post("/model-catalog", response_model=ConfigApiResponse)
 async def save_model_catalog(
     request: ModelCatalogRequest,
     current_user: User = Depends(get_current_user)
@@ -2119,7 +2169,7 @@ async def save_model_catalog(
         )
 
 
-@router.delete("/model-catalog/{provider}", response_model=dict)
+@router.delete("/model-catalog/{provider}", response_model=ConfigApiResponse)
 async def delete_model_catalog(
     provider: str,
     current_user: User = Depends(get_current_user)
@@ -2152,7 +2202,7 @@ async def delete_model_catalog(
         )
 
 
-@router.post("/model-catalog/init", response_model=dict)
+@router.post("/model-catalog/init", response_model=ConfigApiResponse)
 async def init_model_catalog(
     current_user: User = Depends(get_current_user)
 ):
@@ -2177,7 +2227,7 @@ async def init_model_catalog(
 
 # ===== 数据库配置管理端点 =====
 
-@router.get("/database", response_model=dict)
+@router.get("/database", response_model=ConfigApiResponse)
 async def get_database_configs(
     current_user: dict = Depends(get_current_user)
 ):
@@ -2195,7 +2245,7 @@ async def get_database_configs(
         )
 
 
-@router.get("/database/{db_name}", response_model=dict)
+@router.get("/database/{db_name}", response_model=ConfigApiResponse)
 async def get_database_config(
     db_name: str,
     current_user: dict = Depends(get_current_user)
@@ -2222,7 +2272,7 @@ async def get_database_config(
         )
 
 
-@router.post("/database", response_model=dict)
+@router.post("/database", response_model=ConfigApiResponse, operation_id="add_database_config")
 async def add_database_config(
     request: DatabaseConfigRequest,
     current_user: dict = Depends(get_current_user)
@@ -2264,7 +2314,7 @@ async def add_database_config(
         )
 
 
-@router.put("/database/{db_name}", response_model=dict)
+@router.put("/database/{db_name}", response_model=ConfigApiResponse)
 async def update_database_config(
     db_name: str,
     request: DatabaseConfigRequest,
@@ -2314,7 +2364,7 @@ async def update_database_config(
         )
 
 
-@router.delete("/database/{db_name}", response_model=dict)
+@router.delete("/database/{db_name}", response_model=ConfigApiResponse)
 async def delete_database_config(
     db_name: str,
     current_user: dict = Depends(get_current_user)

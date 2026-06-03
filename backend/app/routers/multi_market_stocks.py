@@ -13,6 +13,7 @@ from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 import logging
 
+from app.models.api_response import ApiResponse
 from app.routers.auth_db import get_current_user
 from app.core.database import get_mongo_db
 from app.core.response import ok
@@ -23,7 +24,7 @@ logger = logging.getLogger("webapi")
 router = APIRouter(prefix="/markets", tags=["multi-market"])
 
 
-@router.get("", response_model=dict)
+@router.get("", response_model=ApiResponse)
 async def get_supported_markets(current_user: dict = Depends(get_current_user)):
     """
     获取支持的市场列表
@@ -75,7 +76,7 @@ async def get_supported_markets(current_user: dict = Depends(get_current_user)):
     return ok(data={"markets": markets})
 
 
-@router.get("/{market}/stocks/search", response_model=dict)
+@router.get("/{market}/stocks/search", response_model=ApiResponse)
 async def search_stocks(
     market: str,
     q: str = Query(..., description="搜索关键词（代码或名称）"),
@@ -132,7 +133,7 @@ async def search_stocks(
         )
 
 
-@router.get("/{market}/stocks/{code}/info", response_model=dict)
+@router.get("/{market}/stocks/{code}/info", response_model=ApiResponse)
 async def get_stock_info(
     market: str,
     code: str,
@@ -195,7 +196,7 @@ async def get_stock_info(
         )
 
 
-@router.get("/{market}/stocks/{code}/quote", response_model=dict)
+@router.get("/{market}/stocks/{code}/quote", response_model=ApiResponse)
 async def get_stock_quote(
     market: str,
     code: str,
@@ -256,7 +257,7 @@ async def get_stock_quote(
         )
 
 
-@router.get("/{market}/stocks/{code}/daily", response_model=dict)
+@router.get("/{market}/stocks/{code}/daily", response_model=ApiResponse)
 async def get_stock_daily_quotes(
     market: str,
     code: str,
@@ -324,4 +325,3 @@ async def get_stock_daily_quotes(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"获取历史K线失败: {str(e)}"
         )
-

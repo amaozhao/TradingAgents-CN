@@ -201,6 +201,9 @@ async def init_database():
         redis_client = db_manager.redis_client
         redis_pool = db_manager.redis_pool
 
+        # 初始化PostgreSQL（仅在PG读或双写开关开启时）
+        await init_postgres_if_enabled()
+
         logger.info("🎉 所有数据库连接初始化完成")
 
         # 🔥 初始化数据库视图和索引
@@ -209,6 +212,15 @@ async def init_database():
     except Exception as e:
         logger.error(f"💥 数据库初始化失败: {e}")
         raise
+
+
+async def init_mongodb_only():
+    """Initialize only MongoDB for offline migration/consistency tools."""
+    global mongo_client, mongo_db
+
+    await db_manager.init_mongodb()
+    mongo_client = db_manager.mongo_client
+    mongo_db = db_manager.mongo_db
 
 
 async def init_database_views_and_indexes():
@@ -373,12 +385,45 @@ async def close_database():
     global mongo_client, mongo_db, redis_client, redis_pool
 
     await db_manager.close_connections()
+    await close_postgres_if_enabled()
 
     # 清空全局变量
     mongo_client = None
     mongo_db = None
     redis_client = None
     redis_pool = None
+
+
+async def close_mongodb_only():
+    """Close only MongoDB connections used by offline migration/consistency tools."""
+    global mongo_client, mongo_db
+
+    if db_manager.mongo_client:
+        db_manager.mongo_client.close()
+        db_manager.mongo_client = None
+        db_manager.mongo_db = None
+        db_manager._mongo_healthy = False
+    mongo_client = None
+    mongo_db = None
+
+
+def postgres_runtime_enabled() -> bool:
+    return settings.POSTGRES_READ_ENABLED or settings.POSTGRES_DUAL_WRITE_ENABLED
+
+
+async def init_postgres_if_enabled() -> None:
+    if not postgres_runtime_enabled():
+        return
+
+    from app.db.session import init_postgres
+
+    await init_postgres()
+
+
+async def close_postgres_if_enabled() -> None:
+    from app.db.session import close_postgres
+
+    await close_postgres()
 
 
 def get_mongo_client() -> AsyncIOMotorClient:

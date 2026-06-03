@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any
 
 from app.core.database import get_mongo_db
 from app.core.redis_client import get_redis_service, RedisKeys
+from app.db.dual_write import dual_write_hot_document
 from app.models.analysis import AnalysisStatus, AnalysisResult
 
 
@@ -40,6 +41,7 @@ async def perform_update_task_status(
             update_data["result"] = result.dict()
 
     await db.analysis_tasks.update_one({"task_id": task_id}, {"$set": update_data})
+    await dual_write_hot_document("analysis_tasks", {"task_id": task_id, **update_data})
 
     progress_key = RedisKeys.TASK_PROGRESS.format(task_id=task_id)
     await redis_service.set_json(
@@ -85,6 +87,7 @@ async def perform_update_task_status_with_tracker(
             update_data["result"] = result.dict()
 
     await db.analysis_tasks.update_one({"task_id": task_id}, {"$set": update_data})
+    await dual_write_hot_document("analysis_tasks", {"task_id": task_id, **update_data})
 
     progress_key = RedisKeys.TASK_PROGRESS.format(task_id=task_id)
     await redis_service.set_json(
@@ -102,4 +105,3 @@ async def perform_update_task_status_with_tracker(
         },
         ttl=3600,
     )
-

@@ -10,7 +10,9 @@ from pymongo import ReplaceOne
 from pymongo.errors import BulkWriteError
 from bson import ObjectId
 
+from app.core.config import settings
 from app.core.database import get_database
+from app.db.dual_write import dual_write_hot_documents
 
 logger = logging.getLogger(__name__)
 
@@ -178,6 +180,7 @@ class NewsDataService:
             
             # 准备批量操作
             operations = []
+            postgres_documents = []
 
             for i, news in enumerate(news_list):
                 # 标准化新闻数据
@@ -207,11 +210,13 @@ class NewsDataService:
                         upsert=True
                     )
                 )
+                postgres_documents.append(standardized_news)
             
             # 执行批量操作
             if operations:
                 result = await collection.bulk_write(operations)
                 saved_count = result.upserted_count + result.modified_count
+                await self._dual_write_news(postgres_documents)
                 
                 self.logger.info(f"💾 新闻数据保存完成: {saved_count}条记录 (数据源: {data_source})")
                 return saved_count
@@ -465,6 +470,11 @@ class NewsDataService:
             新闻数据列表
         """
         try:
+            if settings.POSTGRES_READ_ENABLED:
+                postgres_results = await self._query_news_from_postgres(params)
+                if postgres_results:
+                    return postgres_results
+
             collection = self._get_collection()
 
             self.logger.info(f"🔍 [query_news] 开始查询新闻数据")
@@ -547,6 +557,17 @@ class NewsDataService:
 
         except Exception as e:
             self.logger.error(f"❌ 查询新闻数据失败: {e}", exc_info=True)
+            return []
+
+    async def _query_news_from_postgres(self, params: NewsQueryParams) -> List[Dict[str, Any]]:
+        try:
+            from app.db.news_repository import query_news
+            from app.db.session import get_session_factory
+
+            async with get_session_factory()() as session:
+                return await query_news(session, params)
+        except Exception as e:
+            self.logger.warning(f"PostgreSQL新闻查询失败，回退MongoDB: {e}")
             return []
     
     async def get_latest_news(
@@ -694,12 +715,17 @@ class NewsDataService:
             collection = self._get_collection()
             
             cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
+            documents_to_delete = await collection.find({
+                "publish_time": {"$lt": cutoff_date}
+            }).to_list(length=None)
             
             result = await collection.delete_many({
                 "publish_time": {"$lt": cutoff_date}
             })
             
             deleted_count = result.deleted_count
+            if deleted_count:
+                await self._dual_write_news_tombstones(documents_to_delete)
             self.logger.info(f"🗑️ 删除过期新闻: {deleted_count}条记录")
             
             return deleted_count
@@ -707,6 +733,24 @@ class NewsDataService:
         except Exception as e:
             self.logger.error(f"❌ 删除过期新闻失败: {e}")
             return 0
+
+    async def _dual_write_news(self, documents: List[Dict[str, Any]]) -> None:
+        if not documents:
+            return
+        result = await dual_write_hot_documents("stock_news", documents)
+        if result.status == "failed":
+            self.logger.warning("⚠️ 新闻数据 PostgreSQL 双写失败: %s", result.reason)
+
+    async def _dual_write_news_tombstones(self, documents: List[Dict[str, Any]]) -> None:
+        if not documents:
+            return
+        tombstones = [
+            {**document, "deleted": True, "updated_at": datetime.utcnow()}
+            for document in documents
+        ]
+        result = await dual_write_hot_documents("stock_news", tombstones)
+        if result.status == "failed":
+            self.logger.warning("⚠️ 新闻数据 PostgreSQL tombstone 双写失败: %s", result.reason)
 
     async def search_news(
         self,

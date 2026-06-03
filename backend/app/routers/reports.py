@@ -3,7 +3,7 @@
 """
 import os
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 
@@ -12,7 +12,9 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from .auth_db import get_current_user
+from ..models.api_response import ApiResponse
 from ..core.database import get_mongo_db
+from ..db.dual_write import dual_write_hot_document
 from ..utils.timezone import to_config_tz
 import logging
 
@@ -116,7 +118,7 @@ class ReportListResponse(BaseModel):
     page: int
     page_size: int
 
-@router.get("/list", response_model=Dict[str, Any])
+@router.get("/list", response_model=ApiResponse)
 async def get_reports_list(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
@@ -235,7 +237,7 @@ async def get_reports_list(
         logger.error(f"❌ 获取报告列表失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{report_id}/detail")
+@router.get("/{report_id}/detail", response_model=ApiResponse)
 async def get_report_detail(
     report_id: str,
     user: dict = Depends(get_current_user)
@@ -352,7 +354,7 @@ async def get_report_detail(
         logger.error(f"❌ 获取报告详情失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{report_id}/content/{module}")
+@router.get("/{report_id}/content/{module}", response_model=ApiResponse)
 async def get_report_module_content(
     report_id: str,
     module: str,
@@ -394,7 +396,7 @@ async def get_report_module_content(
         logger.error(f"❌ 获取报告模块内容失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/{report_id}")
+@router.delete("/{report_id}", response_model=ApiResponse)
 async def delete_report(
     report_id: str,
     user: dict = Depends(get_current_user)
@@ -407,10 +409,20 @@ async def delete_report(
 
         # 查询报告（支持多种ID）
         query = _build_report_query(report_id)
+        report_document = await db.analysis_reports.find_one(query)
         result = await db.analysis_reports.delete_one(query)
 
         if result.deleted_count == 0:
             raise HTTPException(status_code=404, detail="报告不存在")
+
+        await dual_write_hot_document(
+            "analysis_reports",
+            {
+                **(report_document or {"analysis_id": report_id}),
+                "deleted": True,
+                "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            },
+        )
 
         logger.info(f"✅ 报告删除成功: {report_id}")
 
@@ -425,7 +437,7 @@ async def delete_report(
         logger.error(f"❌ 删除报告失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{report_id}/download")
+@router.get("/{report_id}/download", response_model=None)
 async def download_report(
     report_id: str,
     format: str = Query("markdown", description="下载格式: markdown, json, pdf, docx"),

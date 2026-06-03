@@ -11,6 +11,7 @@ import pandas as pd
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.database import get_database
+from app.db.dual_write import dual_write_hot_documents
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +130,7 @@ class HistoricalDataService:
             prepare_start = datetime.now()
             # 准备批量操作
             operations = []
+            postgres_documents = []
             saved_count = 0
             batch_size = 200  # 进一步减小批量大小，避免超时（从500改为200）
 
@@ -151,15 +153,21 @@ class HistoricalDataService:
                         replacement=doc,
                         upsert=True
                     ))
+                    postgres_documents.append(doc)
 
                     # 批量执行（每200条）
                     if len(operations) >= batch_size:
                         batch_write_start = datetime.now()
-                        batch_saved = await self._execute_bulk_write_with_retry(symbol, operations)
+                        batch_saved = await self._execute_bulk_write_with_retry(
+                            symbol,
+                            operations,
+                            postgres_documents,
+                        )
                         batch_write_duration = (datetime.now() - batch_write_start).total_seconds()
                         logger.debug(f"   批量写入 {len(operations)} 条，耗时 {batch_write_duration:.2f}秒")
                         saved_count += batch_saved
                         operations = []
+                        postgres_documents = []
 
                 except Exception as e:
                     # 获取日期信息用于错误日志
@@ -174,7 +182,9 @@ class HistoricalDataService:
             # 执行剩余操作
             if operations:
                 saved_count += await self._execute_bulk_write_with_retry(
-                    symbol, operations
+                    symbol,
+                    operations,
+                    postgres_documents,
                 )
             final_write_duration = (datetime.now() - final_write_start).total_seconds()
 
@@ -194,6 +204,7 @@ class HistoricalDataService:
         self,
         symbol: str,
         operations: List,
+        postgres_documents: List[Dict[str, Any]] | None = None,
         max_retries: int = 5  # 增加重试次数：从3次改为5次
     ) -> int:
         """
@@ -214,6 +225,7 @@ class HistoricalDataService:
             try:
                 result = await self.collection.bulk_write(operations, ordered=False)
                 saved_count = result.upserted_count + result.modified_count
+                await self._dual_write_historical_quotes(postgres_documents or [])
                 logger.debug(f"✅ {symbol} 批量保存 {len(operations)} 条记录成功 (新增: {result.upserted_count}, 更新: {result.modified_count})")
                 return saved_count
 
@@ -244,6 +256,14 @@ class HistoricalDataService:
                     return 0
 
         return saved_count
+
+    async def _dual_write_historical_quotes(self, documents: List[Dict[str, Any]]) -> None:
+        if not documents:
+            return
+
+        result = await dual_write_hot_documents("stock_daily_quotes", documents)
+        if result.status == "failed":
+            logger.warning("⚠️ 历史行情 PostgreSQL 双写失败: %s", result.reason)
 
     def _standardize_record(
         self,

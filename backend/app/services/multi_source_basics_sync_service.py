@@ -19,6 +19,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import UpdateOne
 
 from app.core.database import get_mongo_db
+from app.db.dual_write import dual_write_hot_document, dual_write_hot_documents
 from app.services.basics_sync import add_financial_metrics as _add_financial_metrics_util
 
 
@@ -92,6 +93,9 @@ class MultiSourceBasicsSyncService:
             {"$set": stats},
             upsert=True
         )
+        result = await dual_write_hot_document(STATUS_COLLECTION, stats)
+        if result.status not in {"written", "skipped"}:
+            logger.warning("PostgreSQL dual-write failed for %s: %s", STATUS_COLLECTION, result.reason)
 
         self._last_status = {k: v for k, v in stats.items() if k != "_id"}
 
@@ -99,6 +103,7 @@ class MultiSourceBasicsSyncService:
         self,
         db: AsyncIOMotorDatabase,
         operations: List,
+        documents: Optional[List[Dict[str, Any]]] = None,
         max_retries: int = 3
     ) -> Tuple[int, int]:
         """
@@ -119,6 +124,10 @@ class MultiSourceBasicsSyncService:
         while retry_count < max_retries:
             try:
                 result = await db[COLLECTION_NAME].bulk_write(operations, ordered=False)
+                if documents:
+                    dual_result = await dual_write_hot_documents(COLLECTION_NAME, documents)
+                    if dual_result.status not in {"written", "skipped"}:
+                        logger.warning("PostgreSQL dual-write failed for %s: %s", COLLECTION_NAME, dual_result.reason)
                 inserted = result.upserted_count
                 updated = result.modified_count
                 logger.debug(f"✅ 批量写入成功: 新增 {inserted}, 更新 {updated}")
@@ -206,6 +215,7 @@ class MultiSourceBasicsSyncService:
 
             # Step 5: 处理和更新数据（分批处理）
             ops = []
+            postgres_docs = []
             inserted = updated = errors = 0
             batch_size = 500  # 🔥 每批处理 500 只股票，避免超时
             total_stocks = len(stock_df)
@@ -282,6 +292,7 @@ class MultiSourceBasicsSyncService:
 
                     # 🔥 使用 (code, source) 联合查询条件
                     ops.append(UpdateOne({"code": code, "source": data_source}, {"$set": doc}, upsert=True))
+                    postgres_docs.append(doc)
 
                 except Exception as e:
                     logger.error(f"Error processing stock {row.get('ts_code', 'unknown')}: {e}")
@@ -293,7 +304,7 @@ class MultiSourceBasicsSyncService:
                         progress_pct = (idx / total_stocks) * 100
                         logger.info(f"📝 执行批量写入: {len(ops)} 条记录 ({idx}/{total_stocks}, {progress_pct:.1f}%)")
 
-                        batch_inserted, batch_updated = await self._execute_bulk_write_with_retry(db, ops)
+                        batch_inserted, batch_updated = await self._execute_bulk_write_with_retry(db, ops, postgres_docs)
 
                         if batch_inserted > 0 or batch_updated > 0:
                             inserted += batch_inserted
@@ -304,6 +315,7 @@ class MultiSourceBasicsSyncService:
                             logger.warning(f"⚠️ 批量写入失败，标记 {len(ops)} 条记录为错误")
 
                         ops = []  # 清空操作列表
+                        postgres_docs = []
 
             # Step 7: 更新统计信息
             stats.total = total_stocks  # 🔥 使用总股票数

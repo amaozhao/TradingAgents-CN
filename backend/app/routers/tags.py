@@ -5,6 +5,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from app.models.api_response import ApiResponse
 from app.routers.auth_db import get_current_user
 from app.core.response import ok
 from app.services.tags_service import tags_service
@@ -33,7 +34,7 @@ class TagResponse(BaseModel):
     updated_at: str
 
 
-@router.get("/", response_model=dict)
+@router.get("/", response_model=ApiResponse)
 async def list_tags(current_user: dict = Depends(get_current_user)):
     try:
         tags = await tags_service.list_tags(current_user["id"])
@@ -42,7 +43,7 @@ async def list_tags(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"获取标签失败: {e}")
 
 
-@router.post("/", response_model=dict)
+@router.post("/", response_model=ApiResponse)
 async def create_tag(payload: TagCreate, current_user: dict = Depends(get_current_user)):
     try:
         tag = await tags_service.create_tag(
@@ -57,7 +58,7 @@ async def create_tag(payload: TagCreate, current_user: dict = Depends(get_curren
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"创建标签失败: {e}")
 
 
-@router.put("/{tag_id}", response_model=dict)
+@router.put("/{tag_id}", response_model=ApiResponse)
 async def update_tag(tag_id: str, payload: TagUpdate, current_user: dict = Depends(get_current_user)):
     try:
         success = await tags_service.update_tag(
@@ -76,7 +77,7 @@ async def update_tag(tag_id: str, payload: TagUpdate, current_user: dict = Depen
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"更新标签失败: {e}")
 
 
-@router.delete("/{tag_id}", response_model=dict)
+@router.delete("/{tag_id}", response_model=ApiResponse)
 async def delete_tag(tag_id: str, current_user: dict = Depends(get_current_user)):
     try:
         success = await tags_service.delete_tag(current_user["id"], tag_id)
@@ -87,4 +88,3 @@ async def delete_tag(tag_id: str, current_user: dict = Depends(get_current_user)
         raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"删除标签失败: {e}")
-

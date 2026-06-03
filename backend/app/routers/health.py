@@ -2,7 +2,30 @@ from fastapi import APIRouter
 import time
 from pathlib import Path
 
+from pydantic import BaseModel
+
 router = APIRouter()
+
+
+class HealthData(BaseModel):
+    status: str
+    version: str
+    timestamp: int
+    service: str
+
+
+class HealthResponse(BaseModel):
+    success: bool
+    data: HealthData
+    message: str
+
+
+class HealthzResponse(BaseModel):
+    status: str
+
+
+class ReadyzResponse(BaseModel):
+    ready: bool
 
 
 def get_version() -> str:
@@ -17,7 +40,7 @@ def get_version() -> str:
     return "0.1.16"  # 默认版本号
 
 
-@router.get("/health")
+@router.get("/health", response_model=HealthResponse)
 async def health():
     """健康检查接口 - 前端使用"""
     return {
@@ -31,12 +54,12 @@ async def health():
         "message": "服务运行正常"
     }
 
-@router.get("/healthz")
+@router.get("/healthz", response_model=HealthzResponse)
 async def healthz():
     """Kubernetes健康检查"""
     return {"status": "ok"}
 
-@router.get("/readyz")
+@router.get("/readyz", response_model=ReadyzResponse)
 async def readyz():
     """Kubernetes就绪检查"""
     return {"ready": True}

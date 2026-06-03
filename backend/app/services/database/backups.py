@@ -17,9 +17,42 @@ from bson import ObjectId
 
 from app.core.database import get_mongo_db
 from app.core.config import settings
+from app.db.dual_write import dual_write_hot_document, dual_write_hot_documents, log_mongo_only_write
+from app.db.mongo_to_postgres_migrator import HOT_COLLECTIONS
 from .serialization import serialize_document
 
 logger = logging.getLogger(__name__)
+
+
+async def _dual_write_backup(document: Dict[str, Any]) -> None:
+    result = await dual_write_hot_document("database_backups", document)
+    if result.status == "failed":
+        logger.warning("⚠️ 数据库备份 PostgreSQL 双写失败: %s", result.reason)
+
+
+async def _dual_write_imported_documents(collection: str, documents: List[Dict[str, Any]]) -> None:
+    if not documents:
+        return
+    if collection not in HOT_COLLECTIONS:
+        log_mongo_only_write(collection, "database_import_unsupported_collection")
+        return
+
+    result = await dual_write_hot_documents(collection, documents)
+    if result.status == "failed":
+        logger.warning("⚠️ 导入集合 %s PostgreSQL 双写失败: %s", collection, result.reason)
+
+
+async def _dual_write_import_overwrite_tombstones(collection: str, collection_obj) -> None:
+    if collection not in HOT_COLLECTIONS:
+        return
+
+    existing = await collection_obj.find({}).to_list(length=None)
+    if not existing:
+        return
+
+    now = datetime.utcnow()
+    tombstones = [{**doc, "deleted": True, "updated_at": now} for doc in existing]
+    await _dual_write_imported_documents(collection, tombstones)
 
 
 def _check_mongodump_available() -> bool:
@@ -121,6 +154,7 @@ async def create_backup_native(name: str, backup_dir: str, collections: Optional
     }
 
     await db.database_backups.insert_one(backup_meta)
+    await _dual_write_backup(backup_meta)
 
     return {
         "id": backup_id,
@@ -188,6 +222,7 @@ async def create_backup(name: str, backup_dir: str, collections: Optional[List[s
     }
 
     await db.database_backups.insert_one(backup_meta)
+    await _dual_write_backup(backup_meta)
 
     return {
         "id": backup_id,
@@ -231,6 +266,7 @@ async def delete_backup(backup_id: str) -> None:
             # Python 备份是单个文件
             await asyncio.to_thread(os.remove, backup["file_path"])
     await db.database_backups.delete_one({"_id": ObjectId(backup_id)})
+    await _dual_write_backup({**backup, "deleted": True, "updated_at": datetime.utcnow()})
 
 
 def _convert_date_fields(doc: dict) -> dict:
@@ -320,6 +356,7 @@ async def import_data(content: bytes, collection: str, *, format: str = "json", 
             collection_obj = db[coll_name]
 
             if overwrite:
+                await _dual_write_import_overwrite_tombstones(coll_name, collection_obj)
                 deleted_count = await collection_obj.delete_many({})
                 logger.info(f"🗑️ 清空集合 {coll_name}：删除 {deleted_count.deleted_count} 条文档")
 
@@ -341,6 +378,7 @@ async def import_data(content: bytes, collection: str, *, format: str = "json", 
                 inserted_count = len(res.inserted_ids)
                 total_inserted += inserted_count
                 imported_collections.append(coll_name)
+                await _dual_write_imported_documents(coll_name, documents)
                 logger.info(f"✅ 导入集合 {coll_name}：{inserted_count} 条文档")
 
         return {
@@ -370,6 +408,7 @@ async def import_data(content: bytes, collection: str, *, format: str = "json", 
         logger.info(f"🔍 [单集合模式] 准备插入 {len(data)} 条文档")
 
         if overwrite:
+            await _dual_write_import_overwrite_tombstones(collection, collection_obj)
             deleted_count = await collection_obj.delete_many({})
             logger.info(f"🗑️ 清空集合 {collection}：删除 {deleted_count.deleted_count} 条文档")
 
@@ -388,6 +427,7 @@ async def import_data(content: bytes, collection: str, *, format: str = "json", 
         if data:
             res = await collection_obj.insert_many(data)
             inserted_count = len(res.inserted_ids)
+            await _dual_write_imported_documents(collection, data)
 
         return {
             "mode": "single_collection",
@@ -534,4 +574,3 @@ async def export_data(collections: Optional[List[str]] = None, *, export_dir: st
         return file_path
 
     raise Exception(f"不支持的导出格式: {format}")
-

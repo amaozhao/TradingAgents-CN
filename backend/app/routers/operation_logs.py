@@ -17,6 +17,7 @@ from app.models.operation_log import (
     ClearLogsResponse,
     OperationLogCreate
 )
+from app.models.api_response import ApiResponse
 
 router = APIRouter(prefix="/logs", tags=["操作日志"])
 logger = logging.getLogger("webapi")
@@ -96,7 +97,7 @@ async def get_operation_log_stats(
         )
 
 
-@router.get("/{log_id}")
+@router.get("/{log_id}", response_model=ApiResponse)
 async def get_operation_log_detail(
     log_id: str,
     current_user: dict = Depends(get_current_user)
@@ -165,7 +166,7 @@ async def clear_operation_logs(
         )
 
 
-@router.post("/create")
+@router.post("/create", response_model=ApiResponse)
 async def create_operation_log(
     log_data: OperationLogCreate,
     request: Request,
@@ -203,7 +204,7 @@ async def create_operation_log(
         )
 
 
-@router.get("/export/csv")
+@router.get("/export/csv", response_model=None)
 async def export_logs_csv(
     start_date: str = Query(None, description="开始日期"),
     end_date: str = Query(None, description="结束日期"),

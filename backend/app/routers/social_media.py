@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
 from pydantic import BaseModel, Field
 
+from app.models.api_response import ApiResponse
 from app.services.social_media_service import (
     get_social_media_service,
     SocialMediaQueryParams,
@@ -65,7 +66,7 @@ class SocialMediaQueryRequest(BaseModel):
     skip: int = Field(0, ge=0)
 
 
-@router.post("/save", response_model=dict)
+@router.post("/save", response_model=ApiResponse)
 async def save_social_media_messages(request: SocialMediaBatchRequest):
     """批量保存社媒消息"""
     try:
@@ -90,7 +91,7 @@ async def save_social_media_messages(request: SocialMediaBatchRequest):
         raise HTTPException(status_code=500, detail=f"保存社媒消息失败: {str(e)}")
 
 
-@router.post("/query", response_model=dict)
+@router.post("/query", response_model=ApiResponse)
 async def query_social_media_messages(request: SocialMediaQueryRequest):
     """查询社媒消息"""
     try:
@@ -131,7 +132,7 @@ async def query_social_media_messages(request: SocialMediaQueryRequest):
         raise HTTPException(status_code=500, detail=f"查询社媒消息失败: {str(e)}")
 
 
-@router.get("/latest/{symbol}", response_model=dict)
+@router.get("/latest/{symbol}", response_model=ApiResponse)
 async def get_latest_messages(
     symbol: str,
     platform: Optional[str] = Query(None, description="平台类型"),
@@ -155,7 +156,7 @@ async def get_latest_messages(
         raise HTTPException(status_code=500, detail=f"获取最新消息失败: {str(e)}")
 
 
-@router.get("/search", response_model=dict)
+@router.get("/search", response_model=ApiResponse)
 async def search_messages(
     query: str = Query(..., description="搜索关键词"),
     symbol: Optional[str] = Query(None, description="股票代码"),
@@ -182,7 +183,7 @@ async def search_messages(
         raise HTTPException(status_code=500, detail=f"搜索消息失败: {str(e)}")
 
 
-@router.get("/statistics", response_model=dict)
+@router.get("/statistics", response_model=ApiResponse)
 async def get_statistics(
     symbol: Optional[str] = Query(None, description="股票代码"),
     hours_back: int = Query(24, ge=1, le=168, description="回溯小时数")
@@ -213,7 +214,7 @@ async def get_statistics(
         raise HTTPException(status_code=500, detail=f"获取统计信息失败: {str(e)}")
 
 
-@router.get("/platforms", response_model=dict)
+@router.get("/platforms", response_model=ApiResponse)
 async def get_supported_platforms():
     """获取支持的社媒平台列表"""
     platforms = [
@@ -262,7 +263,7 @@ async def get_supported_platforms():
     )
 
 
-@router.get("/sentiment-analysis/{symbol}", response_model=dict)
+@router.get("/sentiment-analysis/{symbol}", response_model=ApiResponse)
 async def get_sentiment_analysis(
     symbol: str,
     platform: Optional[str] = Query(None, description="平台类型"),
@@ -336,7 +337,7 @@ async def get_sentiment_analysis(
         raise HTTPException(status_code=500, detail=f"情绪分析失败: {str(e)}")
 
 
-@router.get("/health", response_model=dict)
+@router.get("/health", response_model=ApiResponse)
 async def health_check():
     """健康检查"""
     try:

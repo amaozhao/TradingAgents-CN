@@ -4,10 +4,11 @@
 """
 
 import time
-from typing import Optional
+from typing import Any, Dict, Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Header, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.services.auth_service import AuthService
 from app.services.user_service import user_service
@@ -67,6 +68,16 @@ class CreateUserRequest(BaseModel):
     password: str
     is_admin: bool = False
 
+
+class UpdateMeRequest(BaseModel):
+    """当前用户资料更新请求，保留额外字段兼容旧前端 payload。"""
+
+    model_config = ConfigDict(extra="allow")
+
+    email: Optional[str] = None
+    preferences: Optional[Dict[str, Any]] = None
+    language: Optional[str] = None
+
 async def get_current_user(authorization: Optional[str] = Header(default=None)) -> dict:
     """获取当前用户信息"""
     logger.debug(f"🔐 认证检查开始")
@@ -125,7 +136,7 @@ async def get_current_user(authorization: Optional[str] = Header(default=None)) 
         "preferences": user.preferences.model_dump() if user.preferences else {}
     }
 
-@router.post("/login")
+@router.post("/login", response_model=ApiResponse)
 async def login(payload: LoginRequest, request: Request):
     """用户登录"""
     start_time = time.time()
@@ -228,7 +239,7 @@ async def login(payload: LoginRequest, request: Request):
         )
         raise HTTPException(status_code=500, detail="登录过程中发生系统错误")
 
-@router.post("/refresh")
+@router.post("/refresh", response_model=ApiResponse)
 async def refresh_token(payload: RefreshTokenRequest):
     """刷新访问令牌"""
     try:
@@ -276,7 +287,7 @@ async def refresh_token(payload: RefreshTokenRequest):
         logger.error(f"❌ Refresh token处理异常: {str(e)}")
         raise HTTPException(status_code=401, detail=f"Token refresh failed: {str(e)}")
 
-@router.post("/logout")
+@router.post("/logout", response_model=ApiResponse)
 async def logout(request: Request, user: dict = Depends(get_current_user)):
     """用户登出"""
     start_time = time.time()
@@ -312,7 +323,7 @@ async def logout(request: Request, user: dict = Depends(get_current_user)):
             "message": "登出成功"
         }
 
-@router.get("/me")
+@router.get("/me", response_model=ApiResponse)
 async def me(user: dict = Depends(get_current_user)):
     """获取当前用户信息"""
     return {
@@ -321,40 +332,42 @@ async def me(user: dict = Depends(get_current_user)):
         "message": "获取用户信息成功"
     }
 
-@router.put("/me")
+@router.put("/me", response_model=ApiResponse)
 async def update_me(
-    payload: dict,
+    payload: UpdateMeRequest,
     user: dict = Depends(get_current_user)
 ):
     """更新当前用户信息"""
     try:
         from app.models.user import UserUpdate, UserPreferences
 
+        payload_data = payload.model_dump(exclude_unset=True)
+
         # 构建更新数据
         update_data = {}
 
         # 更新邮箱
-        if "email" in payload:
-            update_data["email"] = payload["email"]
+        if "email" in payload_data:
+            update_data["email"] = payload_data["email"]
 
         # 更新偏好设置（支持部分更新）
-        if "preferences" in payload:
+        if "preferences" in payload_data:
             # 获取当前偏好
             current_prefs = user.get("preferences", {})
 
             # 合并新的偏好设置
-            merged_prefs = {**current_prefs, **payload["preferences"]}
+            merged_prefs = {**current_prefs, **payload_data["preferences"]}
 
             # 创建 UserPreferences 对象
             update_data["preferences"] = UserPreferences(**merged_prefs)
 
         # 如果有语言设置，更新到偏好中
-        if "language" in payload:
+        if "language" in payload_data:
             if "preferences" not in update_data:
                 # 获取当前偏好
                 current_prefs = user.get("preferences", {})
                 update_data["preferences"] = UserPreferences(**current_prefs)
-            update_data["preferences"].language = payload["language"]
+            update_data["preferences"].language = payload_data["language"]
 
         # 如果有时区设置，更新到偏好中（如果需要）
         # 注意：时区通常是系统级设置，不是用户级设置
@@ -378,7 +391,7 @@ async def update_me(
         logger.error(f"更新用户信息失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"更新用户信息失败: {str(e)}")
 
-@router.post("/change-password")
+@router.post("/change-password", response_model=ApiResponse)
 async def change_password(
     payload: ChangePasswordRequest,
     request: Request,
@@ -407,7 +420,7 @@ async def change_password(
         logger.error(f"修改密码失败: {e}")
         raise HTTPException(status_code=500, detail=f"修改密码失败: {str(e)}")
 
-@router.post("/reset-password")
+@router.post("/reset-password", response_model=ApiResponse)
 async def reset_password(
     payload: ResetPasswordRequest,
     request: Request,
@@ -436,7 +449,7 @@ async def reset_password(
         logger.error(f"重置密码失败: {e}")
         raise HTTPException(status_code=500, detail=f"重置密码失败: {str(e)}")
 
-@router.post("/create-user")
+@router.post("/create-user", response_model=ApiResponse)
 async def create_user(
     payload: CreateUserRequest,
     request: Request,
@@ -462,13 +475,21 @@ async def create_user(
 
         # 如果需要设置为管理员
         if payload.is_admin:
-            from pymongo import MongoClient
-            from app.core.config import settings
-            client = MongoClient(settings.MONGO_URI)
-            db = client[settings.MONGO_DB]
+            db = user_service.db
             db.users.update_one(
                 {"username": payload.username},
                 {"$set": {"is_admin": True}}
+            )
+            await user_service._dual_write_user(
+                {
+                    "_id": new_user.id,
+                    "username": new_user.username,
+                    "email": new_user.email,
+                    "is_active": new_user.is_active,
+                    "is_verified": new_user.is_verified,
+                    "is_admin": True,
+                    "updated_at": datetime.utcnow(),
+                }
             )
 
         return {
@@ -487,7 +508,7 @@ async def create_user(
         logger.error(f"创建用户失败: {e}")
         raise HTTPException(status_code=500, detail=f"创建用户失败: {str(e)}")
 
-@router.get("/users")
+@router.get("/users", response_model=ApiResponse)
 async def list_users(
     skip: int = 0,
     limit: int = 100,

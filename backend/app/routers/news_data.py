@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 import logging
 
+from app.models.api_response import ApiResponse
 from app.routers.auth_db import get_current_user
 from app.core.response import ok
 from app.services.news_data_service import get_news_data_service, NewsQueryParams
@@ -40,7 +41,7 @@ class NewsSyncRequest(BaseModel):
     max_news_per_source: int = Field(50, description="每个数据源最大新闻数量")
 
 
-@router.get("/query/{symbol}", response_model=dict)
+@router.get("/query/{symbol}", response_model=ApiResponse)
 async def query_stock_news(
     symbol: str,
     hours_back: int = Query(24, description="回溯小时数"),
@@ -130,7 +131,7 @@ async def query_stock_news(
         )
 
 
-@router.post("/query", response_model=dict)
+@router.post("/query", response_model=ApiResponse)
 async def query_news_advanced(
     request: NewsQueryRequest,
     current_user: dict = Depends(get_current_user)
@@ -180,7 +181,7 @@ async def query_news_advanced(
         )
 
 
-@router.get("/latest", response_model=dict)
+@router.get("/latest", response_model=ApiResponse)
 async def get_latest_news(
     symbol: Optional[str] = Query(None, description="股票代码，为空则获取所有新闻"),
     limit: int = Query(10, description="返回数量限制"),
@@ -225,7 +226,7 @@ async def get_latest_news(
         )
 
 
-@router.get("/search", response_model=dict)
+@router.get("/search", response_model=ApiResponse)
 async def search_news(
     query: str = Query(..., description="搜索关键词"),
     symbol: Optional[str] = Query(None, description="股票代码过滤"),
@@ -269,7 +270,7 @@ async def search_news(
         )
 
 
-@router.get("/statistics", response_model=dict)
+@router.get("/statistics", response_model=ApiResponse)
 async def get_news_statistics(
     symbol: Optional[str] = Query(None, description="股票代码"),
     days_back: int = Query(7, description="回溯天数"),
@@ -326,7 +327,7 @@ async def get_news_statistics(
         )
 
 
-@router.post("/sync/start", response_model=dict)
+@router.post("/sync/start", response_model=ApiResponse)
 async def start_news_sync(
     request: NewsSyncRequest,
     background_tasks: BackgroundTasks,
@@ -378,7 +379,7 @@ async def start_news_sync(
         )
 
 
-@router.post("/sync/single", response_model=dict)
+@router.post("/sync/single", response_model=ApiResponse)
 async def sync_single_stock_news(
     symbol: str,
     data_sources: Optional[List[str]] = None,
@@ -431,7 +432,7 @@ async def sync_single_stock_news(
         )
 
 
-@router.delete("/cleanup", response_model=dict)
+@router.delete("/cleanup", response_model=ApiResponse)
 async def cleanup_old_news(
     days_to_keep: int = Query(90, description="保留天数"),
     current_user: dict = Depends(get_current_user)
@@ -465,7 +466,7 @@ async def cleanup_old_news(
         )
 
 
-@router.get("/health", response_model=dict)
+@router.get("/health", response_model=ApiResponse)
 async def health_check():
     """健康检查"""
     try:

@@ -19,6 +19,8 @@ import logging
 from typing import Dict, List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.config import settings
+
 logger = logging.getLogger("webapi")
 
 
@@ -70,6 +72,11 @@ class UnifiedStockService:
         Returns:
             股票基础信息字典
         """
+        if settings.POSTGRES_READ_ENABLED:
+            pg_doc = await self._get_stock_info_from_postgres(code, source)
+            if pg_doc:
+                return pg_doc
+
         collection_name = self.collection_map[market]["basic_info"]
         collection = self.db[collection_name]
         
@@ -152,9 +159,36 @@ class UnifiedStockService:
         Returns:
             实时行情字典
         """
+        if settings.POSTGRES_READ_ENABLED:
+            pg_doc = await self._get_stock_quote_from_postgres(code)
+            if pg_doc:
+                return pg_doc
+
         collection_name = self.collection_map[market]["quotes"]
         collection = self.db[collection_name]
         return await collection.find_one({"code": code}, {"_id": 0})
+
+    async def _get_stock_info_from_postgres(self, code: str, source: Optional[str]) -> Optional[Dict]:
+        try:
+            from app.db.session import get_session_factory
+            from app.db.stock_repository import get_stock_basic_info
+
+            async with get_session_factory()() as session:
+                return await get_stock_basic_info(session, code, source)
+        except Exception as e:
+            logger.warning(f"PostgreSQL多市场股票信息查询失败，回退MongoDB code={code}: {e}")
+            return None
+
+    async def _get_stock_quote_from_postgres(self, code: str) -> Optional[Dict]:
+        try:
+            from app.db.session import get_session_factory
+            from app.db.stock_repository import get_market_quote
+
+            async with get_session_factory()() as session:
+                return await get_market_quote(session, code)
+        except Exception as e:
+            logger.warning(f"PostgreSQL多市场行情查询失败，回退MongoDB code={code}: {e}")
+            return None
 
     async def search_stocks(
         self, 
@@ -173,6 +207,11 @@ class UnifiedStockService:
         Returns:
             股票列表
         """
+        if settings.POSTGRES_READ_ENABLED:
+            pg_docs = await self._search_stocks_from_postgres(query, limit=limit)
+            if pg_docs:
+                return pg_docs
+
         collection_name = self.collection_map[market]["basic_info"]
         collection = self.db[collection_name]
 
@@ -214,9 +253,20 @@ class UnifiedStockService:
                     pass
         
         # 返回前 limit 条
-        result_list = list(unique_results.values())[:limit]
+        result_list = [_strip_mongo_id(doc) for doc in list(unique_results.values())[:limit]]
         logger.info(f"🔍 搜索 {market} 市场: '{query}' -> {len(result_list)} 条结果（已去重）")
         return result_list
+
+    async def _search_stocks_from_postgres(self, query: str, *, limit: int) -> List[Dict]:
+        try:
+            from app.db.session import get_session_factory
+            from app.db.stock_repository import search_stocks
+
+            async with get_session_factory()() as session:
+                return await search_stocks(session, query, limit=limit)
+        except Exception as e:
+            logger.warning(f"PostgreSQL多市场股票搜索失败，回退MongoDB query={query}: {e}")
+            return []
 
     async def get_daily_quotes(
         self,
@@ -239,6 +289,17 @@ class UnifiedStockService:
         Returns:
             K线数据列表
         """
+        if settings.POSTGRES_READ_ENABLED:
+            pg_docs = await self._get_daily_quotes_from_postgres(
+                market=market,
+                code=code,
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
+            )
+            if pg_docs:
+                return pg_docs
+
         collection_name = self.collection_map[market]["daily"]
         collection = self.db[collection_name]
         
@@ -252,6 +313,33 @@ class UnifiedStockService:
         
         cursor = collection.find(query, {"_id": 0}).sort("trade_date", -1).limit(limit)
         return await cursor.to_list(length=limit)
+
+    async def _get_daily_quotes_from_postgres(
+        self,
+        *,
+        market: str,
+        code: str,
+        start_date: Optional[str],
+        end_date: Optional[str],
+        limit: int,
+    ) -> List[Dict]:
+        try:
+            from app.db.session import get_session_factory
+            from app.db.stock_repository import list_stock_daily_quotes
+
+            async with get_session_factory()() as session:
+                return await list_stock_daily_quotes(
+                    session,
+                    market=market,
+                    code=code,
+                    start_date=start_date,
+                    end_date=end_date,
+                    period="daily",
+                    limit=limit,
+                )
+        except Exception as e:
+            logger.warning(f"PostgreSQL历史K线查询失败，回退MongoDB market={market}, code={code}: {e}")
+            return []
 
     async def get_supported_markets(self) -> List[Dict]:
         """
@@ -284,3 +372,6 @@ class UnifiedStockService:
             }
         ]
 
+
+def _strip_mongo_id(document: Dict) -> Dict:
+    return {key: value for key, value in document.items() if key != "_id"}

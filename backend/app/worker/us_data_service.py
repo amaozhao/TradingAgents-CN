@@ -28,6 +28,7 @@ sys.path.insert(0, str(project_root))
 from tradingagents.dataflows.providers.us.optimized import OptimizedUSDataProvider
 from app.core.database import get_mongo_db
 from app.core.config import settings
+from app.db.dual_write import dual_write_hot_document
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +139,7 @@ class USDataService:
                 {"$set": stock_info},
                 upsert=True
             )
+            await dual_write_hot_document("stock_basic_info", stock_info)
             return True
             
         except Exception as e:
@@ -189,4 +191,3 @@ async def get_us_data_service() -> USDataService:
         _us_data_service = USDataService()
         await _us_data_service.initialize()
     return _us_data_service
-

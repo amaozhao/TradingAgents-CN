@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 from app.routers.auth_db import get_current_user
 from app.core.response import ok
+from app.models.api_response import ApiResponse
 from tradingagents.utils.logging_manager import get_logger
 
 logger = get_logger(__name__)
@@ -15,7 +16,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/cache", tags=["cache"])
 
 
-@router.get("/stats")
+@router.get("/stats", response_model=ApiResponse)
 async def get_cache_stats(current_user: dict = Depends(get_current_user)):
     """
     获取缓存统计信息
@@ -53,7 +54,7 @@ async def get_cache_stats(current_user: dict = Depends(get_current_user)):
         )
 
 
-@router.delete("/cleanup")
+@router.delete("/cleanup", response_model=ApiResponse)
 async def cleanup_old_cache(
     days: int = Query(7, ge=1, le=30, description="清理多少天前的缓存"),
     current_user: dict = Depends(get_current_user)
@@ -90,7 +91,7 @@ async def cleanup_old_cache(
         )
 
 
-@router.delete("/clear")
+@router.delete("/clear", response_model=ApiResponse)
 async def clear_all_cache(current_user: dict = Depends(get_current_user)):
     """
     清空所有缓存
@@ -122,7 +123,7 @@ async def clear_all_cache(current_user: dict = Depends(get_current_user)):
         )
 
 
-@router.get("/details")
+@router.get("/details", response_model=ApiResponse)
 async def get_cache_details(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
@@ -171,7 +172,7 @@ async def get_cache_details(
         )
 
 
-@router.get("/backend-info")
+@router.get("/backend-info", response_model=ApiResponse)
 async def get_cache_backend_info(current_user: dict = Depends(get_current_user)):
     """
     获取缓存后端信息
@@ -208,4 +209,3 @@ async def get_cache_backend_info(current_user: dict = Depends(get_current_user))
             status_code=500,
             detail=f"获取缓存后端信息失败: {str(e)}"
         )
-

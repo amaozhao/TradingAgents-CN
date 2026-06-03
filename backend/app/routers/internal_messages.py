@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
 from pydantic import BaseModel, Field
 
+from app.models.api_response import ApiResponse
 from app.services.internal_message_service import (
     get_internal_message_service,
     InternalMessageQueryParams,
@@ -74,7 +75,7 @@ class InternalMessageQueryRequest(BaseModel):
     skip: int = Field(0, ge=0)
 
 
-@router.post("/save", response_model=dict)
+@router.post("/save", response_model=ApiResponse)
 async def save_internal_messages(request: InternalMessageBatchRequest):
     """批量保存内部消息"""
     try:
@@ -98,7 +99,7 @@ async def save_internal_messages(request: InternalMessageBatchRequest):
         raise HTTPException(status_code=500, detail=f"保存内部消息失败: {str(e)}")
 
 
-@router.post("/query", response_model=dict)
+@router.post("/query", response_model=ApiResponse)
 async def query_internal_messages(request: InternalMessageQueryRequest):
     """查询内部消息"""
     try:
@@ -140,7 +141,7 @@ async def query_internal_messages(request: InternalMessageQueryRequest):
         raise HTTPException(status_code=500, detail=f"查询内部消息失败: {str(e)}")
 
 
-@router.get("/latest/{symbol}", response_model=dict)
+@router.get("/latest/{symbol}", response_model=ApiResponse)
 async def get_latest_messages(
     symbol: str,
     message_type: Optional[str] = Query(None, description="消息类型"),
@@ -166,7 +167,7 @@ async def get_latest_messages(
         raise HTTPException(status_code=500, detail=f"获取最新消息失败: {str(e)}")
 
 
-@router.get("/search", response_model=dict)
+@router.get("/search", response_model=ApiResponse)
 async def search_messages(
     query: str = Query(..., description="搜索关键词"),
     symbol: Optional[str] = Query(None, description="股票代码"),
@@ -192,7 +193,7 @@ async def search_messages(
         raise HTTPException(status_code=500, detail=f"搜索消息失败: {str(e)}")
 
 
-@router.get("/research-reports/{symbol}", response_model=dict)
+@router.get("/research-reports/{symbol}", response_model=ApiResponse)
 async def get_research_reports(
     symbol: str,
     department: Optional[str] = Query(None, description="部门"),
@@ -216,7 +217,7 @@ async def get_research_reports(
         raise HTTPException(status_code=500, detail=f"获取研究报告失败: {str(e)}")
 
 
-@router.get("/analyst-notes/{symbol}", response_model=dict)
+@router.get("/analyst-notes/{symbol}", response_model=ApiResponse)
 async def get_analyst_notes(
     symbol: str,
     author: Optional[str] = Query(None, description="分析师"),
@@ -240,7 +241,7 @@ async def get_analyst_notes(
         raise HTTPException(status_code=500, detail=f"获取分析师笔记失败: {str(e)}")
 
 
-@router.get("/statistics", response_model=dict)
+@router.get("/statistics", response_model=ApiResponse)
 async def get_statistics(
     symbol: Optional[str] = Query(None, description="股票代码"),
     hours_back: int = Query(24, ge=1, le=168, description="回溯小时数")
@@ -271,7 +272,7 @@ async def get_statistics(
         raise HTTPException(status_code=500, detail=f"获取统计信息失败: {str(e)}")
 
 
-@router.get("/message-types", response_model=dict)
+@router.get("/message-types", response_model=ApiResponse)
 async def get_message_types():
     """获取支持的消息类型列表"""
     message_types = [
@@ -310,7 +311,7 @@ async def get_message_types():
     )
 
 
-@router.get("/categories", response_model=dict)
+@router.get("/categories", response_model=ApiResponse)
 async def get_categories():
     """获取支持的分类列表"""
     categories = [
@@ -344,7 +345,7 @@ async def get_categories():
     )
 
 
-@router.get("/health", response_model=dict)
+@router.get("/health", response_model=ApiResponse)
 async def health_check():
     """健康检查"""
     try:

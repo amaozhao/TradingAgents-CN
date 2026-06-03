@@ -6,7 +6,9 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from bson import ObjectId
 
+from app.core.config import settings
 from app.core.database import get_mongo_db
+from app.db.dual_write import dual_write_hot_document
 from app.models.user import FavoriteStock
 from app.services.quotes_service import get_quotes_service
 
@@ -22,6 +24,12 @@ class FavoritesService:
         if self.db is None:
             self.db = get_mongo_db()
         return self.db
+
+    async def _dual_write_favorite(self, document: Dict[str, Any]) -> None:
+        result = await dual_write_hot_document("user_favorites", document)
+        if result.status == "failed":
+            import logging
+            logging.getLogger("webapi").warning("⚠️ 自选股 PostgreSQL 双写失败: %s", result.reason)
 
     def _is_valid_object_id(self, user_id: str) -> bool:
         """
@@ -59,7 +67,12 @@ class FavoritesService:
         db = await self._get_db()
 
         favorites: List[Dict[str, Any]] = []
-        if self._is_valid_object_id(user_id):
+        if settings.POSTGRES_READ_ENABLED:
+            favorites = await self._get_user_favorites_from_postgres(user_id)
+
+        if favorites:
+            pass
+        elif self._is_valid_object_id(user_id):
             # 先尝试使用 ObjectId 查询
             user = await db.users.find_one({"_id": ObjectId(user_id)})
             # 如果 ObjectId 查询失败，尝试使用字符串查询
@@ -151,6 +164,16 @@ class FavoritesService:
 
         return items
 
+    async def _get_user_favorites_from_postgres(self, user_id: str) -> List[Dict[str, Any]]:
+        try:
+            from app.db.session import get_session_factory
+            from app.db.user_preferences_repository import list_user_favorites
+
+            async with get_session_factory()() as session:
+                return await list_user_favorites(session, user_id)
+        except Exception:
+            return []
+
     async def add_favorite(
         self,
         user_id: str,
@@ -226,6 +249,7 @@ class FavoritesService:
                     },
                     upsert=True
                 )
+                await self._dual_write_favorite({"user_id": user_id, **favorite_stock, "updated_at": datetime.utcnow()})
                 logger.info(f"🔧 [add_favorite] 更新结果: matched_count={result.matched_count}, modified_count={result.modified_count}, upserted_id={result.upserted_id}")
                 logger.info(f"🔧 [add_favorite] 返回结果: True")
                 return True
@@ -258,6 +282,15 @@ class FavoritesService:
                     "$set": {"updated_at": datetime.utcnow()}
                 }
             )
+            if result.modified_count > 0:
+                await self._dual_write_favorite(
+                    {
+                        "user_id": user_id,
+                        "stock_code": stock_code,
+                        "deleted": True,
+                        "updated_at": datetime.utcnow(),
+                    }
+                )
             return result.modified_count > 0
 
     async def update_favorite(
@@ -310,6 +343,21 @@ class FavoritesService:
                     }
                 }
             )
+            if result.modified_count > 0:
+                favorite_update: Dict[str, Any] = {
+                    "user_id": user_id,
+                    "stock_code": stock_code,
+                    "updated_at": datetime.utcnow(),
+                }
+                if tags is not None:
+                    favorite_update["tags"] = tags
+                if notes is not None:
+                    favorite_update["notes"] = notes
+                if alert_price_high is not None:
+                    favorite_update["alert_price_high"] = alert_price_high
+                if alert_price_low is not None:
+                    favorite_update["alert_price_low"] = alert_price_low
+                await self._dual_write_favorite(favorite_update)
             return result.modified_count > 0
 
     async def is_favorite(self, user_id: str, stock_code: str) -> bool:

@@ -11,7 +11,6 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 
 from app.worker.baostock_init_service import BaoStockInitService
-from app.worker.baostock_sync_service import BaoStockSyncService
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +40,14 @@ class InitializationResponse(BaseModel):
     data: Optional[Dict[str, Any]] = None
 
 
-@router.get("/status", response_model=Dict[str, Any])
+class BaoStockApiResponse(BaseModel):
+    """BaoStock通用API响应模型。"""
+    success: bool
+    message: str
+    data: Optional[Dict[str, Any]] = None
+
+
+@router.get("/status", response_model=BaoStockApiResponse)
 async def get_database_status():
     """获取数据库状态"""
     try:
@@ -59,10 +65,12 @@ async def get_database_status():
         raise HTTPException(status_code=500, detail=f"获取数据库状态失败: {e}")
 
 
-@router.get("/connection-test", response_model=Dict[str, Any])
+@router.get("/connection-test", response_model=BaoStockApiResponse)
 async def test_baostock_connection():
     """测试BaoStock连接"""
     try:
+        from app.worker.baostock_sync_service import BaoStockSyncService
+
         service = BaoStockSyncService()
         connected = await service.provider.test_connection()
         
@@ -174,7 +182,7 @@ async def start_basic_initialization(background_tasks: BackgroundTasks):
         raise HTTPException(status_code=500, detail=f"启动初始化失败: {e}")
 
 
-@router.get("/initialization-status", response_model=Dict[str, Any])
+@router.get("/initialization-status", response_model=BaoStockApiResponse)
 async def get_initialization_status():
     """获取初始化状态"""
     global _initialization_status
@@ -218,7 +226,7 @@ async def get_initialization_status():
         raise HTTPException(status_code=500, detail=f"获取状态失败: {e}")
 
 
-@router.post("/stop", response_model=Dict[str, Any])
+@router.post("/stop", response_model=BaoStockApiResponse)
 async def stop_initialization():
     """停止初始化任务"""
     global _initialization_status
@@ -312,10 +320,12 @@ async def _run_basic_initialization_task(task_id: str):
         })
 
 
-@router.get("/service-status", response_model=Dict[str, Any])
+@router.get("/service-status", response_model=BaoStockApiResponse)
 async def get_service_status():
     """获取BaoStock服务状态"""
     try:
+        from app.worker.baostock_sync_service import BaoStockSyncService
+
         service = BaoStockSyncService()
         status = await service.check_service_status()
         

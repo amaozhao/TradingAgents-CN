@@ -10,8 +10,12 @@ import logging
 import re
 
 from app.routers.auth_db import get_current_user
+from app.core.config import settings
 from app.core.database import get_mongo_db
 from app.core.response import ok
+from app.models.api_response import ApiResponse
+from app.services.financial_data_service import FinancialDataService
+from app.services.stock_data_service import StockDataService
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +67,46 @@ def _detect_market_and_code(code: str) -> Tuple[str, str]:
     return ('CN', _zfill_code(code))
 
 
-@router.get("/{code}/quote", response_model=dict)
+def _dump_model_or_dict(value: Any) -> Optional[Dict[str, Any]]:
+    if value is None:
+        return None
+    if hasattr(value, "model_dump"):
+        return value.model_dump(exclude_none=True)
+    if hasattr(value, "dict"):
+        return value.dict(exclude_none=True)
+    if isinstance(value, dict):
+        return value
+    return None
+
+
+async def _get_cn_quote_and_basic_from_service(code: str) -> tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    if not settings.POSTGRES_READ_ENABLED:
+        return None, None
+
+    service = StockDataService()
+    quote = _dump_model_or_dict(await service.get_market_quotes(code))
+    basic = _dump_model_or_dict(await service.get_stock_basic_info(code))
+    return quote, basic
+
+
+async def _get_cn_basic_from_service(code: str, source: Optional[str]) -> Optional[Dict[str, Any]]:
+    if not settings.POSTGRES_READ_ENABLED:
+        return None
+
+    service = StockDataService()
+    return _dump_model_or_dict(await service.get_stock_basic_info(code, source=source))
+
+
+async def _get_cn_financial_from_service(code: str, source: Optional[str]) -> Optional[Dict[str, Any]]:
+    if not settings.POSTGRES_READ_ENABLED:
+        return None
+
+    service = FinancialDataService()
+    results = await service.get_financial_data(code, data_source=source, limit=1)
+    return results[0] if results else None
+
+
+@router.get("/{code}/quote", response_model=ApiResponse)
 async def get_quote(
     code: str,
     force_refresh: bool = Query(False, description="是否强制刷新（跳过缓存）"),
@@ -111,8 +154,11 @@ async def get_quote(
     db = get_mongo_db()
     code6 = normalized_code
 
+    q, b = await _get_cn_quote_and_basic_from_service(code6)
+
     # 行情
-    q = await db["market_quotes"].find_one({"code": code6}, {"_id": 0})
+    if q is None:
+        q = await db["market_quotes"].find_one({"code": code6}, {"_id": 0})
 
     # 🔥 调试日志：查看查询结果
     logger.info(f"🔍 查询 market_quotes: code={code6}")
@@ -135,16 +181,16 @@ async def get_quote(
     if not enabled_sources:
         enabled_sources = ['tushare', 'akshare', 'baostock']
 
-    # 按优先级查询基础信息
-    b = None
-    for src in enabled_sources:
-        b = await db["stock_basic_info"].find_one({"code": code6, "source": src}, {"_id": 0})
-        if b:
-            break
+    if b is None:
+        # 按优先级查询基础信息
+        for src in enabled_sources:
+            b = await db["stock_basic_info"].find_one({"code": code6, "source": src}, {"_id": 0})
+            if b:
+                break
 
-    # 如果所有数据源都没有，尝试不带 source 条件查询（兼容旧数据）
-    if not b:
-        b = await db["stock_basic_info"].find_one({"code": code6}, {"_id": 0})
+        # 如果所有数据源都没有，尝试不带 source 条件查询（兼容旧数据）
+        if not b:
+            b = await db["stock_basic_info"].find_one({"code": code6}, {"_id": 0})
 
     if not q and not b:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="未找到该股票的任何信息")
@@ -212,7 +258,7 @@ async def get_quote(
     return ok(data)
 
 
-@router.get("/{code}/fundamentals", response_model=dict)
+@router.get("/{code}/fundamentals", response_model=ApiResponse)
 async def get_fundamentals(
     code: str,
     source: Optional[str] = Query(None, description="数据源 (tushare/akshare/baostock/multi_source)"),
@@ -257,8 +303,9 @@ async def get_fundamentals(
 
     # 1. 获取基础信息（支持数据源筛选）
     query = {"code": code6}
+    b = await _get_cn_basic_from_service(code6, source)
 
-    if source:
+    if source and not b:
         # 指定数据源
         query["source"] = source
         b = await db["stock_basic_info"].find_one(query, {"_id": 0})
@@ -267,7 +314,7 @@ async def get_fundamentals(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"未找到该股票在数据源 {source} 中的基础信息"
             )
-    else:
+    elif not b:
         # 🔥 未指定数据源，按优先级查询
         source_priority = ["tushare", "multi_source", "akshare", "baostock"]
         b = None
@@ -290,7 +337,7 @@ async def get_fundamentals(
 
     # 2. 尝试从 stock_financial_data 获取最新财务指标
     # 🔥 按数据源优先级查询，而不是按时间戳，避免混用不同数据源的数据
-    financial_data = None
+    financial_data = await _get_cn_financial_from_service(code6, source)
     try:
         # 获取数据源优先级配置
         from app.core.unified_config import UnifiedConfigManager
@@ -306,16 +353,17 @@ async def get_fundamentals(
         if not enabled_sources:
             enabled_sources = ['tushare', 'akshare', 'baostock']
 
-        # 按数据源优先级查询财务数据
-        for data_source in enabled_sources:
-            financial_data = await db["stock_financial_data"].find_one(
-                {"$or": [{"symbol": code6}, {"code": code6}], "data_source": data_source},
-                {"_id": 0},
-                sort=[("report_period", -1)]  # 按报告期降序，获取该数据源的最新数据
-            )
-            if financial_data:
-                logger.info(f"✅ 使用数据源 {data_source} 的财务数据 (报告期: {financial_data.get('report_period')})")
-                break
+        if not financial_data:
+            # 按数据源优先级查询财务数据
+            for data_source in enabled_sources:
+                financial_data = await db["stock_financial_data"].find_one(
+                    {"$or": [{"symbol": code6}, {"code": code6}], "data_source": data_source},
+                    {"_id": 0},
+                    sort=[("report_period", -1)]  # 按报告期降序，获取该数据源的最新数据
+                )
+                if financial_data:
+                    logger.info(f"✅ 使用数据源 {data_source} 的财务数据 (报告期: {financial_data.get('report_period')})")
+                    break
 
         if not financial_data:
             logger.warning(f"⚠️ 未找到 {code6} 的财务数据")
@@ -418,7 +466,7 @@ async def get_fundamentals(
     return ok(data)
 
 
-@router.get("/{code}/kline", response_model=dict)
+@router.get("/{code}/kline", response_model=ApiResponse)
 async def get_kline(
     code: str,
     period: str = "day",
@@ -621,7 +669,7 @@ async def get_kline(
     return ok(data)
 
 
-@router.get("/{code}/news", response_model=dict)
+@router.get("/{code}/news", response_model=ApiResponse)
 async def get_news(code: str, days: int = 30, limit: int = 50, include_announcements: bool = True, current_user: dict = Depends(get_current_user)):
     """获取新闻与公告（支持A股、港股、美股）"""
     from app.services.foreign_stock_service import ForeignStockService

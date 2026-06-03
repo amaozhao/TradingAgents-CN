@@ -9,7 +9,9 @@ from typing import Dict, Any, List, Optional
 import pandas as pd
 from pymongo import ReplaceOne
 
+from app.core.config import settings
 from app.core.database import get_mongo_db
+from app.db.dual_write import dual_write_hot_documents
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +153,12 @@ class FinancialDataService:
             if operations:
                 result = await collection.bulk_write(operations)
                 actual_saved = result.upserted_count + result.modified_count
+                postgres_documents = (
+                    standardized_data
+                    if isinstance(standardized_data, list)
+                    else [standardized_data]
+                )
+                await dual_write_hot_documents("stock_financial_data", postgres_documents)
                 
                 logger.info(f"✅ {symbol} 财务数据保存完成: {actual_saved}条记录")
                 return actual_saved
@@ -182,6 +190,18 @@ class FinancialDataService:
         Returns:
             财务数据列表
         """
+        if settings.POSTGRES_READ_ENABLED:
+            postgres_results = await self._get_financial_data_from_postgres(
+                symbol=symbol,
+                report_period=report_period,
+                data_source=data_source,
+                report_type=report_type,
+                limit=limit,
+            )
+            if postgres_results:
+                logger.info(f"📊 PostgreSQL查询财务数据: {symbol} 返回 {len(postgres_results)} 条记录")
+                return postgres_results
+
         if self.db is None:
             await self.initialize()
         
@@ -213,6 +233,32 @@ class FinancialDataService:
             
         except Exception as e:
             logger.error(f"❌ 查询财务数据失败 {symbol}: {e}")
+            return []
+
+    async def _get_financial_data_from_postgres(
+        self,
+        *,
+        symbol: str,
+        report_period: str | None,
+        data_source: str | None,
+        report_type: str | None,
+        limit: int | None,
+    ) -> List[Dict[str, Any]]:
+        try:
+            from app.db.financial_repository import get_financial_data
+            from app.db.session import get_session_factory
+
+            async with get_session_factory()() as session:
+                return await get_financial_data(
+                    session,
+                    symbol=symbol,
+                    report_period=report_period,
+                    data_source=data_source,
+                    report_type=report_type,
+                    limit=limit,
+                )
+        except Exception as e:
+            logger.warning(f"PostgreSQL财务数据查询失败，回退MongoDB symbol={symbol}: {e}")
             return []
     
     async def get_latest_financial_data(

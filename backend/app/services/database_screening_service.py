@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
 
 from app.core.database import get_mongo_db
+from app.core.config import settings
 # from app.models.screening import ScreeningCondition  # 避免循环导入
 
 logger = logging.getLogger(__name__)
@@ -115,6 +116,19 @@ class DatabaseScreeningService:
             Tuple[List[Dict], int]: (筛选结果, 总数量)
         """
         try:
+            if settings.POSTGRES_READ_ENABLED:
+                try:
+                    pg_results, pg_total = await self._screen_with_postgres(
+                        conditions=conditions,
+                        limit=limit,
+                        offset=offset,
+                        order_by=order_by,
+                        source=source,
+                    )
+                    return [self._format_result(item) for item in pg_results], pg_total
+                except Exception as pg_error:
+                    logger.warning(f"⚠️ PostgreSQL筛选失败，回退MongoDB: {pg_error}")
+
             db = get_mongo_db()
             collection = db[self.collection_name]
 
@@ -187,6 +201,35 @@ class DatabaseScreeningService:
         except Exception as e:
             logger.error(f"❌ 数据库筛选失败: {e}")
             raise Exception(f"数据库筛选失败: {str(e)}")
+
+    async def _screen_with_postgres(
+        self,
+        *,
+        conditions: List[Dict[str, Any]],
+        limit: int,
+        offset: int,
+        order_by: Optional[List[Dict[str, str]]],
+        source: Optional[str],
+    ) -> Tuple[List[Dict[str, Any]], int]:
+        from app.db.screening_repository import screen_stocks as pg_screen_stocks
+        from app.db.session import get_session_factory
+
+        effective_source = source or "tushare"
+        normalized_conditions = [
+            condition.model_dump() if hasattr(condition, "model_dump") else condition
+            for condition in conditions
+        ]
+
+        session_factory = get_session_factory()
+        async with session_factory() as session:
+            return await pg_screen_stocks(
+                session,
+                conditions=normalized_conditions,
+                limit=limit,
+                offset=offset,
+                order_by=order_by,
+                source=effective_source,
+            )
     
     async def _build_query(self, conditions: List[Dict[str, Any]]) -> Dict[str, Any]:
         """构建MongoDB查询条件"""

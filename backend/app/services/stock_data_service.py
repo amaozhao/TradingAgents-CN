@@ -7,7 +7,9 @@ from datetime import datetime, date
 from typing import Optional, Dict, Any, List
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.config import settings
 from app.core.database import get_mongo_db
+from app.db.dual_write import dual_write_hot_document
 from app.models.stock_models import (
     StockBasicInfoExtended, 
     MarketQuotesExtended,
@@ -44,6 +46,11 @@ class StockDataService:
             StockBasicInfoExtended: 扩展的股票基础信息
         """
         try:
+            if settings.POSTGRES_READ_ENABLED:
+                pg_doc = await self._get_stock_basic_info_from_postgres(symbol, source)
+                if pg_doc:
+                    return StockBasicInfoExtended(**self._standardize_basic_info(pg_doc))
+
             db = get_mongo_db()
             symbol6 = str(symbol).zfill(6)
 
@@ -97,6 +104,11 @@ class StockDataService:
             MarketQuotesExtended: 扩展的实时行情数据
         """
         try:
+            if settings.POSTGRES_READ_ENABLED:
+                pg_doc = await self._get_market_quotes_from_postgres(symbol)
+                if pg_doc:
+                    return MarketQuotesExtended(**self._standardize_market_quotes(pg_doc))
+
             db = get_mongo_db()
             symbol6 = str(symbol).zfill(6)
 
@@ -138,6 +150,20 @@ class StockDataService:
             List[StockBasicInfoExtended]: 股票列表
         """
         try:
+            if settings.POSTGRES_READ_ENABLED:
+                pg_docs = await self._get_stock_list_from_postgres(
+                    market=market,
+                    industry=industry,
+                    page=page,
+                    page_size=page_size,
+                    source=source,
+                )
+                if pg_docs:
+                    return [
+                        StockBasicInfoExtended(**self._standardize_basic_info(doc))
+                        for doc in pg_docs
+                    ]
+
             db = get_mongo_db()
 
             # 🔥 获取数据源优先级配置
@@ -184,6 +210,72 @@ class StockDataService:
         except Exception as e:
             logger.error(f"获取股票列表失败: {e}")
             return []
+
+    async def _get_stock_basic_info_from_postgres(
+        self,
+        symbol: str,
+        source: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
+        try:
+            from app.db.session import get_session_factory
+            from app.db.stock_repository import get_stock_basic_info
+
+            async with get_session_factory()() as session:
+                return await get_stock_basic_info(session, symbol, source)
+        except Exception as e:
+            logger.warning(f"PostgreSQL股票基础信息查询失败，回退MongoDB symbol={symbol}: {e}")
+            return None
+
+    async def _get_market_quotes_from_postgres(self, symbol: str) -> Optional[Dict[str, Any]]:
+        try:
+            from app.db.session import get_session_factory
+            from app.db.stock_repository import get_market_quote
+
+            async with get_session_factory()() as session:
+                return await get_market_quote(session, symbol)
+        except Exception as e:
+            logger.warning(f"PostgreSQL行情查询失败，回退MongoDB symbol={symbol}: {e}")
+            return None
+
+    async def _get_stock_list_from_postgres(
+        self,
+        *,
+        market: Optional[str],
+        industry: Optional[str],
+        page: int,
+        page_size: int,
+        source: Optional[str],
+    ) -> List[Dict[str, Any]]:
+        try:
+            from app.db.session import get_session_factory
+            from app.db.stock_repository import list_stocks
+
+            effective_source = source or await self._get_preferred_source()
+            async with get_session_factory()() as session:
+                return await list_stocks(
+                    session,
+                    source=effective_source,
+                    market=market,
+                    industry=industry,
+                    page=page,
+                    page_size=page_size,
+                )
+        except Exception as e:
+            logger.warning(f"PostgreSQL股票列表查询失败，回退MongoDB: {e}")
+            return []
+
+    async def _get_preferred_source(self) -> str:
+        from app.core.unified_config import UnifiedConfigManager
+
+        config = UnifiedConfigManager()
+        data_source_configs = await config.get_data_source_configs_async()
+        enabled_sources = [
+            ds.type.lower() for ds in data_source_configs
+            if ds.enabled and ds.type.lower() in ['tushare', 'akshare', 'baostock']
+        ]
+        if not enabled_sources:
+            enabled_sources = ['tushare', 'akshare', 'baostock']
+        return enabled_sources[0] if enabled_sources else 'tushare'
     
     async def update_stock_basic_info(
         self,
@@ -225,6 +317,7 @@ class StockDataService:
                 {"$set": update_data},
                 upsert=True
             )
+            await dual_write_hot_document("stock_basic_info", update_data)
 
             return result.modified_count > 0 or result.upserted_id is not None
 
@@ -257,6 +350,8 @@ class StockDataService:
                 quote_data["symbol"] = symbol6
             if "code" not in quote_data:
                 quote_data["code"] = symbol6  # code 和 symbol 使用相同的值
+            if "source" not in quote_data:
+                quote_data["source"] = "tushare"
 
             # 执行更新 (使用symbol字段作为查询条件)
             result = await db[self.market_quotes_collection].update_one(
@@ -264,6 +359,7 @@ class StockDataService:
                 {"$set": quote_data},
                 upsert=True
             )
+            await dual_write_hot_document("market_quotes", quote_data)
 
             return result.modified_count > 0 or result.upserted_id is not None
 

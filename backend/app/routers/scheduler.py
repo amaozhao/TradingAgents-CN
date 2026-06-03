@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from app.routers.auth_db import get_current_user
 from app.services.scheduler_service import get_scheduler_service, SchedulerService
 from app.core.response import ok
+from app.models.api_response import ApiResponse
 
 router = APIRouter(prefix="/api/scheduler", tags=["scheduler"])
 
@@ -36,7 +37,7 @@ class JobMetadataUpdateRequest(BaseModel):
     description: Optional[str] = None
 
 
-@router.get("/jobs")
+@router.get("/jobs", response_model=ApiResponse)
 async def list_jobs(
     user: dict = Depends(get_current_user),
     service: SchedulerService = Depends(get_scheduler_service)
@@ -54,7 +55,7 @@ async def list_jobs(
         raise HTTPException(status_code=500, detail=f"获取任务列表失败: {str(e)}")
 
 
-@router.put("/jobs/{job_id}/metadata")
+@router.put("/jobs/{job_id}/metadata", response_model=ApiResponse)
 async def update_job_metadata_route(
     job_id: str,
     request: JobMetadataUpdateRequest,
@@ -91,7 +92,7 @@ async def update_job_metadata_route(
         raise HTTPException(status_code=500, detail=f"更新任务元数据失败: {str(e)}")
 
 
-@router.get("/jobs/{job_id}")
+@router.get("/jobs/{job_id}", response_model=ApiResponse)
 async def get_job_detail(
     job_id: str,
     user: dict = Depends(get_current_user),
@@ -117,7 +118,7 @@ async def get_job_detail(
         raise HTTPException(status_code=500, detail=f"获取任务详情失败: {str(e)}")
 
 
-@router.post("/jobs/{job_id}/pause")
+@router.post("/jobs/{job_id}/pause", response_model=ApiResponse)
 async def pause_job(
     job_id: str,
     user: dict = Depends(get_current_user),
@@ -148,7 +149,7 @@ async def pause_job(
         raise HTTPException(status_code=500, detail=f"暂停任务失败: {str(e)}")
 
 
-@router.post("/jobs/{job_id}/resume")
+@router.post("/jobs/{job_id}/resume", response_model=ApiResponse)
 async def resume_job(
     job_id: str,
     user: dict = Depends(get_current_user),
@@ -179,7 +180,7 @@ async def resume_job(
         raise HTTPException(status_code=500, detail=f"恢复任务失败: {str(e)}")
 
 
-@router.post("/jobs/{job_id}/trigger")
+@router.post("/jobs/{job_id}/trigger", response_model=ApiResponse)
 async def trigger_job(
     job_id: str,
     user: dict = Depends(get_current_user),
@@ -220,7 +221,7 @@ async def trigger_job(
         raise HTTPException(status_code=500, detail=f"触发任务失败: {str(e)}")
 
 
-@router.get("/jobs/{job_id}/history")
+@router.get("/jobs/{job_id}/history", response_model=ApiResponse)
 async def get_job_history(
     job_id: str,
     limit: int = Query(20, ge=1, le=100, description="返回数量限制"),
@@ -256,7 +257,7 @@ async def get_job_history(
         raise HTTPException(status_code=500, detail=f"获取执行历史失败: {str(e)}")
 
 
-@router.get("/history")
+@router.get("/history", response_model=ApiResponse)
 async def get_all_history(
     limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
     offset: int = Query(0, ge=0, description="偏移量"),
@@ -299,7 +300,7 @@ async def get_all_history(
         raise HTTPException(status_code=500, detail=f"获取执行历史失败: {str(e)}")
 
 
-@router.get("/stats")
+@router.get("/stats", response_model=ApiResponse)
 async def get_scheduler_stats(
     user: dict = Depends(get_current_user),
     service: SchedulerService = Depends(get_scheduler_service)
@@ -317,7 +318,7 @@ async def get_scheduler_stats(
         raise HTTPException(status_code=500, detail=f"获取统计信息失败: {str(e)}")
 
 
-@router.get("/health")
+@router.get("/health", response_model=ApiResponse)
 async def scheduler_health_check(
     user: dict = Depends(get_current_user),
     service: SchedulerService = Depends(get_scheduler_service)
@@ -335,7 +336,7 @@ async def scheduler_health_check(
         raise HTTPException(status_code=500, detail=f"健康检查失败: {str(e)}")
 
 
-@router.get("/executions")
+@router.get("/executions", response_model=ApiResponse)
 async def get_job_executions(
     user: dict = Depends(get_current_user),
     service: SchedulerService = Depends(get_scheduler_service),
@@ -377,7 +378,7 @@ async def get_job_executions(
         raise HTTPException(status_code=500, detail=f"获取执行历史失败: {str(e)}")
 
 
-@router.get("/jobs/{job_id}/executions")
+@router.get("/jobs/{job_id}/executions", response_model=ApiResponse)
 async def get_single_job_executions(
     job_id: str,
     user: dict = Depends(get_current_user),
@@ -419,7 +420,7 @@ async def get_single_job_executions(
         raise HTTPException(status_code=500, detail=f"获取执行历史失败: {str(e)}")
 
 
-@router.get("/jobs/{job_id}/execution-stats")
+@router.get("/jobs/{job_id}/execution-stats", response_model=ApiResponse)
 async def get_job_execution_stats(
     job_id: str,
     user: dict = Depends(get_current_user),
@@ -441,7 +442,7 @@ async def get_job_execution_stats(
         raise HTTPException(status_code=500, detail=f"获取统计信息失败: {str(e)}")
 
 
-@router.post("/executions/{execution_id}/cancel")
+@router.post("/executions/{execution_id}/cancel", response_model=ApiResponse)
 async def cancel_execution(
     execution_id: str,
     user: dict = Depends(get_current_user),
@@ -471,7 +472,7 @@ async def cancel_execution(
         raise HTTPException(status_code=500, detail=f"取消任务失败: {str(e)}")
 
 
-@router.post("/executions/{execution_id}/mark-failed")
+@router.post("/executions/{execution_id}/mark-failed", response_model=ApiResponse)
 async def mark_execution_failed(
     execution_id: str,
     reason: str = Query("用户手动标记为失败", description="失败原因"),
@@ -502,7 +503,7 @@ async def mark_execution_failed(
         raise HTTPException(status_code=500, detail=f"标记失败: {str(e)}")
 
 
-@router.delete("/executions/{execution_id}")
+@router.delete("/executions/{execution_id}", response_model=ApiResponse)
 async def delete_execution(
     execution_id: str,
     user: dict = Depends(get_current_user),
