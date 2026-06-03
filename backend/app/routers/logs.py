@@ -9,8 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from app.routers.authdb import get_current_user
-from app.services.logexportservice import get_log_export_service
+from app.routers.account import get_current_user
+from app.services.export import get_log_export_service
 
 router = APIRouter(prefix="/system-logs", tags=["系统日志"])
 logger = logging.getLogger("webapi")
@@ -75,17 +75,17 @@ async def list_log_files(
 ):
     """
     获取所有日志文件列表
-    
+
     返回日志文件的基本信息，包括文件名、大小、修改时间等
     """
     try:
         logger.info(f"📋 用户 {current_user['username']} 查询日志文件列表")
-        
+
         service = get_log_export_service()
         files = service.list_log_files()
-        
+
         return files
-        
+
     except Exception as e:
         logger.error(f"❌ 获取日志文件列表失败: {e}")
         raise HTTPException(status_code=500, detail=f"获取日志文件列表失败: {str(e)}")
@@ -98,7 +98,7 @@ async def read_log_file(
 ):
     """
     读取日志文件内容
-    
+
     支持过滤条件：
     - lines: 读取的行数（从末尾开始）
     - level: 日志级别（ERROR, WARNING, INFO, DEBUG）
@@ -107,7 +107,7 @@ async def read_log_file(
     """
     try:
         logger.info(f"📖 用户 {current_user['username']} 读取日志文件: {request.filename}")
-        
+
         service = get_log_export_service()
         content = service.read_log_file(
             filename=request.filename,
@@ -117,9 +117,9 @@ async def read_log_file(
             start_time=request.start_time,
             end_time=request.end_time
         )
-        
+
         return content
-        
+
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -134,11 +134,11 @@ async def export_logs(
 ):
     """
     导出日志文件
-    
+
     支持导出格式：
     - zip: 压缩包（推荐）
     - txt: 合并的文本文件
-    
+
     支持过滤条件：
     - filenames: 指定要导出的文件
     - level: 日志级别过滤
@@ -146,7 +146,7 @@ async def export_logs(
     """
     try:
         logger.info(f"📤 用户 {current_user['username']} 导出日志文件")
-        
+
         service = get_log_export_service()
         export_path = service.export_logs(
             filenames=request.filenames,
@@ -155,19 +155,19 @@ async def export_logs(
             end_time=request.end_time,
             format=request.format
         )
-        
+
         # 返回文件下载
         import os
         filename = os.path.basename(export_path)
         media_type = "application/zip" if request.format == "zip" else "text/plain"
-        
+
         return FileResponse(
             path=export_path,
             filename=filename,
             media_type=media_type,
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -182,7 +182,7 @@ async def get_log_statistics(
 ):
     """
     获取日志统计信息
-    
+
     返回最近N天的日志统计，包括：
     - 文件数量和总大小
     - 错误日志数量
@@ -191,12 +191,12 @@ async def get_log_statistics(
     """
     try:
         logger.info(f"📊 用户 {current_user['username']} 查询日志统计信息")
-        
+
         service = get_log_export_service()
         stats = service.get_log_statistics(days=days)
-        
+
         return stats
-        
+
     except Exception as e:
         logger.error(f"❌ 获取日志统计失败: {e}")
         raise HTTPException(status_code=500, detail=f"获取日志统计失败: {str(e)}")
@@ -209,29 +209,29 @@ async def delete_log_file(
 ):
     """
     删除日志文件
-    
+
     注意：此操作不可恢复，请谨慎使用
     """
     try:
         logger.warning(f"🗑️ 用户 {current_user['username']} 删除日志文件: {filename}")
-        
+
         service = get_log_export_service()
         file_path = service.log_dir / filename
-        
+
         if not file_path.exists():
             raise HTTPException(status_code=404, detail="日志文件不存在")
-        
+
         # 安全检查：只允许删除 .log 文件
         if not filename.endswith('.log') and not '.log.' in filename:
             raise HTTPException(status_code=400, detail="只能删除日志文件")
-        
+
         file_path.unlink()
-        
+
         return {
             "success": True,
             "message": f"日志文件已删除: {filename}"
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:

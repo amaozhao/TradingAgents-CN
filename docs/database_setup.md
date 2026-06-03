@@ -50,8 +50,8 @@ python -m streamlit run app.py
 ### 认证信息
 
 - **用户名**: admin
-- **密码**: tradingagents123
-- **数据库**: tradingagents
+- **密码**: trading_agents123
+- **数据库**: trading_agents
 
 ## 📊 数据库结构
 
@@ -59,19 +59,19 @@ python -m streamlit run app.py
 
 1. **stock_data** - 股票历史数据
    - 索引: (symbol, market_type), created_at, updated_at
-   
+
 2. **analysis_results** - 分析结果
    - 索引: (symbol, analysis_type), created_at
-   
+
 3. **user_sessions** - 用户会话
    - 索引: session_id, created_at, last_activity
-   
+
 4. **configurations** - 系统配置
    - 索引: (config_type, config_name), updated_at
 
 ### Redis缓存结构
 
-- **键前缀**: `tradingagents:`
+- **键前缀**: `trading_agents:`
 - **TTL配置**:
   - 美股数据: 2小时
   - A股数据: 1小时
@@ -97,13 +97,13 @@ python -m streamlit run app.py
 MONGODB_HOST=localhost
 MONGODB_PORT=27018
 MONGODB_USERNAME=admin
-MONGODB_PASSWORD=tradingagents123
-MONGODB_DATABASE=tradingagents
+MONGODB_PASSWORD=trading_agents123
+MONGODB_DATABASE=trading_agents
 
 # Redis配置
 REDIS_HOST=localhost
 REDIS_PORT=6380
-REDIS_PASSWORD=tradingagents123
+REDIS_PASSWORD=trading_agents123
 REDIS_DB=0
 ```
 
@@ -125,28 +125,28 @@ REDIS_DB=0
 2. **连接失败**
    ```bash
    # 检查Docker容器状态
-   docker ps --filter "name=tradingagents-"
-   
+   docker ps --filter "name=trading-agents-"
+
    # 查看容器日志
-   docker logs tradingagents-mongodb
-   docker logs tradingagents-redis
+   docker logs trading-agents-mongodb
+   docker logs trading-agents-redis
    ```
 
 3. **权限问题**
    ```bash
    # 重启容器
-   docker restart tradingagents-mongodb tradingagents-redis
+   docker restart trading-agents-mongodb trading-agents-redis
    ```
 
 ### 重置数据库
 
 ```bash
 # 停止并删除容器
-docker stop tradingagents-mongodb tradingagents-redis tradingagents-redis-commander
-docker rm tradingagents-mongodb tradingagents-redis tradingagents-redis-commander
+docker stop trading-agents-mongodb trading-agents-redis trading-agents-redis-commander
+docker rm trading-agents-mongodb trading-agents-redis trading-agents-redis-commander
 
 # 删除数据卷（可选，会丢失所有数据）
-docker volume rm tradingagents_mongodb_data tradingagents_redis_data
+docker volume rm trading_agents_mongodb_data trading_agents_redis_data
 
 # 重新启动
 scripts\start_services_alt_ports.bat
@@ -184,7 +184,7 @@ python scripts/init_database.py
 ### Python代码示例
 
 ```python
-from tradingagents.config.database_manager import get_database_manager
+from trader.config.database_manager import get_database_manager
 
 # 获取数据库管理器
 db_manager = get_database_manager()

@@ -6,7 +6,7 @@
 
 ```text
 TradingAgents-CN/
-  backend/        FastAPI 后端、tradingagents 包、后端 CLI、后端测试
+  backend/        FastAPI 后端、trader 包、后端 CLI、后端测试
   frontend/       Vue 3 / Vite 前端应用
   deploy/         Docker、Nginx、部署环境样例
   config/         可版本控制的默认配置

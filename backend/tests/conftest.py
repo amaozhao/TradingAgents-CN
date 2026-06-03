@@ -6,7 +6,7 @@ import inspect
 import pytest
 
 # 将仓库根目录和 backend 源码目录加入 sys.path，确保迁移后仍可使用
-# 原有的 `import app` / `import tradingagents` 包名。
+# 原有的 `import app` / `import trader` 包名。
 BACKEND_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 PROJECT_ROOT = os.path.abspath(os.path.join(BACKEND_ROOT, '..'))
 if PROJECT_ROOT not in sys.path:
@@ -18,9 +18,9 @@ os.environ.setdefault("GOOGLE_API_KEY", "test-google-api-key")
 os.environ.setdefault("OPENAI_API_KEY", "test-openai-api-key")
 os.environ.setdefault("MONGODB_HOST", "localhost")
 os.environ.setdefault("MONGODB_PORT", "27017")
-os.environ.setdefault("MONGODB_DATABASE", "tradingagentscn")
+os.environ.setdefault("MONGODB_DATABASE", "trading_agents_cn")
 os.environ.setdefault("MONGODB_USERNAME", "admin")
-os.environ.setdefault("MONGODB_PASSWORD", "tradingagents123")
+os.environ.setdefault("MONGODB_PASSWORD", "trading_agents123")
 os.environ.setdefault("MONGODB_AUTH_SOURCE", "admin")
 os.environ.setdefault("REDIS_HOST", "localhost")
 os.environ.setdefault("REDIS_PORT", "6379")
@@ -62,7 +62,7 @@ def pytest_pyfunc_call(pyfuncitem):
 
 
 def pytest_collection_modifyitems(config, items):
-    if os.getenv("TRADINGAGENTS_RUN_LIVE_TESTS"):
+    if os.getenv("TRADING_AGENTS_RUN_LIVE_TESTS"):
         return
 
     live_files = {
@@ -85,7 +85,7 @@ def pytest_collection_modifyitems(config, items):
         "test_sanitize_real_data.py",
         "test_simple_depth_check.py",
     }
-    skip_live = pytest.mark.skip(reason="requires a running local backend; set TRADINGAGENTS_RUN_LIVE_TESTS=1 to run")
+    skip_live = pytest.mark.skip(reason="requires a running local backend; set TRADING_AGENTS_RUN_LIVE_TESTS=1 to run")
     skip_helper = pytest.mark.skip(reason="script helper, not a standalone pytest test")
 
     for item in items:

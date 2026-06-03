@@ -4,7 +4,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from typing import Optional
 
-from app.core.coreconfig import settings
+from app.core.config import settings
 
 
 def get_tz_name() -> str:
@@ -14,7 +14,7 @@ def get_tz_name() -> str:
     """
     try:
         # Lazy import to avoid circular imports
-        from app.services.configprovider import provider as cfgprov  # type: ignore
+        from app.services.provider import provider as cfgprov  # type: ignore
         cached = getattr(cfgprov, "_cache_settings", None)
         if isinstance(cached, dict):
             tz = cached.get("app_timezone") or cached.get("APP_TIMEZONE")
@@ -54,4 +54,3 @@ def ensure_timezone(dt: Optional[datetime]) -> Optional[datetime]:
         # 如果没有时区信息，假定为配置的时区
         return dt.replace(tzinfo=get_tz())
     return dt
-

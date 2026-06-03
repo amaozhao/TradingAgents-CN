@@ -1,8 +1,8 @@
 # 多智能体系统详解
 
-**分类**: AI分析股票原理  
-**难度**: 进阶  
-**阅读时间**: 15分钟  
+**分类**: AI分析股票原理
+**难度**: 进阶
+**阅读时间**: 15分钟
 **更新日期**: 2025-11-14
 
 ---
@@ -366,19 +366,19 @@ class MultiAgentSystem:
     def analyze(self, stock_code):
         # 第1步：研究员收集信息
         info = researcher.collect(stock_code)
-        
+
         # 第2步：并行分析
         technical = technical_analyst.analyze(info)
         fundamental = fundamental_analyst.analyze(info)
-        
+
         # 第3步：风险评估
         risk = risk_manager.assess(technical, fundamental)
-        
+
         # 第4步：综合决策
         decision = portfolio_manager.decide(
             technical, fundamental, risk
         )
-        
+
         return decision
 ```
 
@@ -427,5 +427,5 @@ class MultiAgentSystem:
 
 ## 🔗 相关资源
 
-- 📖 [TradingAgents项目介绍](../06-resources/tradingagents-intro.md)
+- 📖 [TradingAgents项目介绍](../06-resources/trading_agents_intro.md)
 - 📖 [快速开始](../../overview/quick-start.md)

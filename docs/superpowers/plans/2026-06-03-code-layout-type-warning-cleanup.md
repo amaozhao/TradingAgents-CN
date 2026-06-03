@@ -12,8 +12,8 @@
 
 ### In Scope
 
-- Backend source: `backend/app`, `backend/tradingagents`, `backend/cli`.
-- Backend tests: `backend/tests`, with migrated historical script-style tests stored in `backend/testsupport` and exposed as integration import-smoke wrappers.
+- Backend source: `backend/app`, `backend/trader`, `backend/cli`.
+- Backend tests: `backend/tests`, with migrated historical script-style tests stored in `backend/support` and exposed as integration import-smoke wrappers.
 - Backend imports, lazy imports, package exports, fixture references, path references, and string module references inside the in-scope trees.
 - Type hints and Pyright diagnostics for all backend Python files in scope.
 - Warnings emitted by backend test commands.
@@ -29,8 +29,8 @@
 - Source directories must be a single lowercase word: no `_`, `-`, spaces, or CamelCase.
 - Source files must be a single lowercase word before the extension: no `_`, `-`, spaces, or CamelCase.
 - Python magic files are language-required exceptions: `__init__.py`, `__main__.py`, and pytest `conftest.py`.
-- Backend tests use `test_` plus the exact source filename stem, for example source `stockdata.py` maps to test `test_stockdata.py`.
-- Backend tests mirror source under `backend/tests/app`, `backend/tests/tradingagents`, and `backend/tests/cli`.
+- Backend tests use `test_` plus the exact source filename stem, for example source `data.py` maps to test `test_data.py`.
+- Backend tests mirror source under `backend/tests/app`, `backend/tests/trader`, and `backend/tests/cli`.
 - Global source basename uniqueness is required. If two source files would have the same basename after normalization, do not keep both unchanged; rename by responsibility or merge/split the code boundary.
 - Do not use warning filters or type ignores as a substitute for fixing warnings/types. Temporary suppressions are allowed only while identifying root causes and must be removed before completion.
 
@@ -67,7 +67,7 @@ conda run -n trader python tools/auditnames.py --format markdown --output runtim
 - [x] Run:
 
 ```bash
-cd backend && conda run -n trader python -m compileall app tradingagents cli tests -q
+cd backend && conda run -n trader python -m compileall app trader cli tests -q
 cd backend && conda run -n trader pytest --collect-only -q
 ```
 
@@ -78,14 +78,14 @@ cd backend && conda run -n trader pytest --collect-only -q
 **Purpose:** Normalize source file names without hiding poor boundaries.
 
 - [x] Generate a file rename map from the audit output.
-- [x] For mechanical one-to-one cases, remove separators and lowercase the stem, for example `stock_data.py` -> `stockdata.py`.
+- [x] For mechanical one-to-one cases, remove separators and lowercase the stem, for example `stock_data.py` -> `data.py`.
 - [x] For global duplicate basenames, review each duplicate class and decide whether to merge, move, rename more specifically with one word, or delete dead code.
 - [x] Apply source file moves with `git mv`.
 - [x] Update all imports and package exports after each batch.
 - [x] Run after each batch:
 
 ```bash
-cd backend && conda run -n trader python -m compileall app tradingagents cli -q
+cd backend && conda run -n trader python -m compileall app trader cli -q
 cd backend && conda run -n trader pytest --collect-only -q
 ```
 
@@ -155,14 +155,14 @@ Run these from a clean shell, with no background pytest workers from earlier att
 
 ```bash
 conda run -n trader python tools/auditnames.py --check
-cd backend && conda run -n trader python -m compileall app tradingagents cli tests testsupport scripts web -q
+cd backend && conda run -n trader python -m compileall app trader cli tests support scripts web -q
 cd backend && conda run -n trader python -m pyright
 cd backend && timeout 300 conda run -n trader pytest -q -W error
-cd backend && conda run -n trader python -c "from app.appmain import app; print(app.title)"
-cd backend && conda run -n trader python -m cli.climain --help
+cd backend && conda run -n trader python -c "from app.main import app; print(app.title)"
+cd backend && conda run -n trader python -m cli.main --help
 ```
 
-Default pytest deselects migrated historical script/API probes through the `integration` marker. Those files are preserved under `backend/testsupport` and exposed by mirrored wrappers, but are not part of the deterministic warning-clean default suite.
+Default pytest deselects migrated historical script/API probes through the `integration` marker. Those files are preserved under `backend/support` and exposed by mirrored wrappers, but are not part of the deterministic warning-clean default suite.
 
 Optional full integration gate after file/import migration:
 

@@ -34,7 +34,7 @@ assignees: ''
 
 **系统环境 / System:**
 - 操作系统 / OS: [Windows/macOS/Linux]
-- Python版本 / Python Version: 
+- Python版本 / Python Version:
 - 项目版本 / Project Version:
 
 **安装方式 / Installation:**
@@ -80,8 +80,8 @@ Error messages here
 如果相关，请分享您的配置（请隐藏敏感信息如API密钥）。
 ```bash
 # 示例配置（请隐藏敏感信息）
-TRADINGAGENTS_CHINA_DATA_SOURCE=tushare
-TRADINGAGENTS_US_DATA_SOURCE=finnhub
+TRADING_AGENTS_CHINA_DATA_SOURCE=tushare
+TRADING_AGENTS_US_DATA_SOURCE=finnhub
 # ... 其他配置
 ```
 

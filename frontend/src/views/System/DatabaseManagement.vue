@@ -18,14 +18,14 @@
           <template #header>
             <h3>🍃 MongoDB 连接状态</h3>
           </template>
-          
+
           <div class="connection-status">
             <div class="status-indicator">
               <el-tag :type="mongoStatus.connected ? 'success' : 'danger'" size="large">
                 {{ mongoStatus.connected ? '已连接' : '未连接' }}
               </el-tag>
             </div>
-            
+
             <div v-if="mongoStatus.connected" class="connection-info">
               <p><strong>服务器:</strong> {{ mongoStatus.host }}:{{ mongoStatus.port }}</p>
               <p><strong>数据库:</strong> {{ mongoStatus.database }}</p>
@@ -33,7 +33,7 @@
               <p v-if="mongoStatus.connected_at"><strong>连接时间:</strong> {{ formatDateTime(mongoStatus.connected_at) }}</p>
               <p v-if="mongoStatus.uptime"><strong>运行时间:</strong> {{ formatUptime(mongoStatus.uptime) }}</p>
             </div>
-            
+
             <div class="connection-actions">
               <el-button @click="testConnections" :loading="testing">
                 测试连接
@@ -51,14 +51,14 @@
           <template #header>
             <h3>🔴 Redis 连接状态</h3>
           </template>
-          
+
           <div class="connection-status">
             <div class="status-indicator">
               <el-tag :type="redisStatus.connected ? 'success' : 'danger'" size="large">
                 {{ redisStatus.connected ? '已连接' : '未连接' }}
               </el-tag>
             </div>
-            
+
             <div v-if="redisStatus.connected" class="connection-info">
               <p><strong>服务器:</strong> {{ redisStatus.host }}:{{ redisStatus.port }}</p>
               <p><strong>数据库:</strong> {{ redisStatus.database }}</p>
@@ -66,7 +66,7 @@
               <p v-if="redisStatus.memory_used"><strong>内存使用:</strong> {{ formatBytes(redisStatus.memory_used) }}</p>
               <p v-if="redisStatus.connected_clients"><strong>连接数:</strong> {{ redisStatus.connected_clients }}</p>
             </div>
-            
+
             <div class="connection-actions">
               <el-button @click="testConnections" :loading="testing">
                 测试连接
@@ -113,7 +113,7 @@
       <template #header>
         <h3>🛠️ 数据管理操作</h3>
       </template>
-      
+
       <!-- 第一行：数据导入和导出 -->
       <el-row :gutter="24">
         <!-- 数据导出 -->
@@ -213,11 +213,11 @@
                   <div style="background: #f5f7fa; padding: 12px; border-radius: 4px; margin: 8px 0;">
                     <p style="margin: 4px 0; font-weight: bold;">📦 备份命令：</p>
                     <code style="display: block; margin: 4px 0; color: #409eff;">
-                      mongodump --uri="mongodb://localhost:27017" --db=tradingagents --out=./backup --gzip
+                      mongodump --uri="mongodb://localhost:27017" --db=trading_agents --out=./backup --gzip
                     </code>
                     <p style="margin: 12px 0 4px 0; font-weight: bold;">🔄 还原命令：</p>
                     <code style="display: block; margin: 4px 0; color: #409eff;">
-                      mongorestore --uri="mongodb://localhost:27017" --db=tradingagents --gzip ./backup/tradingagents
+                      mongorestore --uri="mongodb://localhost:27017" --db=trading_agents --gzip ./backup/trading_agents
                     </code>
                   </div>
                   <p style="margin: 8px 0; font-size: 12px; color: #909399;">
@@ -240,7 +240,7 @@
       <template #header>
         <h3>🧹 数据清理</h3>
       </template>
-      
+
       <el-alert
         title="危险操作"
         type="warning"
@@ -248,7 +248,7 @@
         :closable="false"
         style="margin-bottom: 16px"
       />
-      
+
       <el-row :gutter="24">
         <el-col :span="12">
           <div class="cleanup-section">
@@ -262,7 +262,7 @@
             </el-button>
           </div>
         </el-col>
-        
+
         <el-col :span="12">
           <div class="cleanup-section">
             <h4>清理操作日志</h4>
@@ -275,7 +275,7 @@
             </el-button>
           </div>
         </el-col>
-        
+
 
       </el-row>
     </el-card>
@@ -326,7 +326,7 @@ const mongoStatus = computed(() => databaseStatus.value?.mongodb || {
   connected: false,
   host: 'localhost',
   port: 27017,
-  database: 'tradingagents'
+  database: 'trading_agents'
 })
 
 const redisStatus = computed(() => databaseStatus.value?.redis || {
@@ -653,16 +653,16 @@ onMounted(async () => {
         text-align: center;
         margin-bottom: 16px;
       }
-      
+
       .connection-info {
         margin-bottom: 16px;
-        
+
         p {
           margin: 4px 0;
           font-size: 14px;
         }
       }
-      
+
       .connection-actions {
         display: flex;
         gap: 8px;
@@ -674,14 +674,14 @@ onMounted(async () => {
   .stat-card {
     .stat-content {
       text-align: center;
-      
+
       .stat-value {
         font-size: 24px;
         font-weight: 600;
         color: var(--el-color-primary);
         margin-bottom: 8px;
       }
-      
+
       .stat-label {
         font-size: 14px;
         color: var(--el-text-color-regular);
@@ -695,16 +695,16 @@ onMounted(async () => {
         margin: 0 0 8px 0;
         font-size: 16px;
       }
-      
+
       p {
         margin: 0 0 16px 0;
         font-size: 14px;
         color: var(--el-text-color-regular);
       }
-      
+
       .file-info {
         margin-top: 12px;
-        
+
         p {
           margin: 0 0 8px 0;
           font-size: 14px;
@@ -721,7 +721,7 @@ onMounted(async () => {
         margin: 0 0 8px 0;
         font-size: 16px;
       }
-      
+
       p {
         margin: 0 0 12px 0;
         font-size: 14px;

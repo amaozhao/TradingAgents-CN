@@ -12,7 +12,7 @@ This audit maps the migration task plan to current implementation evidence. It i
 | PostgreSQL dependencies and settings | passed | `backend/pyproject.toml`; `Settings.POSTGRES_URL`; `backend/tests/config/test_settings.py`. |
 | SQLAlchemy/Alembic foundation | passed | `backend/app/db/session.py`; `backend/alembic`; offline SQL generation produces 624 lines. |
 | ObjectId and JSONB compatibility | passed | `JsonbLegacyMixin`; mapper tests for ObjectId, JSON payload normalization, and stable fallback `legacy_id`. |
-| Hot field split and indexes | passed | `backend/app/db/models.py`; `backend/tests/db/test_models.py`; query plan checker. |
+| Hot field split and indexes | passed | `backend/app/db/model.py`; `backend/support/db/models/module.py`; query plan checker. |
 | Mongo to PostgreSQL migrator | passed | `HOT_COLLECTIONS` covers 35 configured collections; migrator and local seeded migration passed. |
 | Worker and scheduled-write dual-write | passed locally | `worker_dual_write_coverage.md` covers 18 worker writes across 9 files; startup sync gate verified locally. |
 | PostgreSQL read repositories | passed locally | PG-first repository/service tests and live API smoke cover hot read paths with Mongo fallback. |
@@ -31,7 +31,7 @@ This audit maps the migration task plan to current implementation evidence. It i
 Status: passed locally for legacy dict blockers and explicit response model coverage.
 
 Implementation:
-- `backend/scripts/postgres_migration_inventory.py`
+- `backend/scripts/postgres/migration/inventory/script.py`
 - `docs/migration/postgres_inventory.json`
 
 Evidence:
@@ -71,26 +71,26 @@ Implementation:
 - `backend/app/db/base.py`
 - `backend/alembic.ini`
 - `backend/alembic/env.py`
-- `backend/alembic/versions/0001_initial_postgres_jsonb.py`
+- `backend/alembic/versions/initial.py`
 
 Evidence:
 - Session lifecycle tests: `backend/tests/db/test_session.py`, `backend/tests/db/test_database_lifecycle.py`, `backend/tests/db/test_alembic_foundation.py`.
 - Offline SQL generation passed:
-  - `cd backend && alembic -c alembic.ini upgrade head --sql >/tmp/tradingagents_postgres_offline.sql`
-  - `wc -l /tmp/tradingagents_postgres_offline.sql` returned `624`.
+  - `cd backend && alembic -c alembic.ini upgrade head --sql >/tmp/trading_agents_postgres_offline.sql`
+  - `wc -l /tmp/trading_agents_postgres_offline.sql` returned `624`.
 
 ### T3. ObjectId Compatibility And JSONB Mapping
 
 Status: passed.
 
 Implementation:
-- `backend/app/db/models.py`
+- `backend/app/db/model.py`
 - `backend/app/db/document_mapper.py`
 - `backend/app/db/postgres_writes.py`
 
 Evidence:
 - Every migrated table uses `legacy_id` plus `payload JSONB`.
-- `backend/tests/db/test_models.py` asserts `legacy_id` and `payload JSONB` across migrated tables.
+- `backend/support/db/models/module.py` asserts `legacy_id` and `payload JSONB` across migrated tables.
 - `backend/tests/db/test_document_mapper.py` covers ObjectId string conversion, datetime JSON normalization, Decimal handling, and stable fallback `legacy_id`.
 
 ### T4. Hot Query Field Splitting
@@ -98,12 +98,12 @@ Evidence:
 Status: passed.
 
 Implementation:
-- Split columns and indexes in `backend/app/db/models.py`.
+- Split columns and indexes in `backend/app/db/model.py`.
 - PostgreSQL upsert mappers in `backend/app/db/document_mapper.py` and `backend/app/db/postgres_writes.py`.
 - Hot-field cutover checklist in `docs/migration/postgres_hot_field_matrix.md`.
 
 Evidence:
-- `backend/tests/db/test_models.py` asserts split hot fields, uniqueness, and expected indexes.
+- `backend/support/db/models/module.py` asserts split hot fields, uniqueness, and expected indexes.
 - Query plan compile check confirms representative filters use columns rather than JSONB payload.
 - The cutover runbook references `docs/migration/postgres_hot_field_matrix.md`; document integrity tests verify the reference exists.
 
@@ -113,7 +113,7 @@ Status: passed.
 
 Implementation:
 - `backend/app/db/mongo_to_postgres_migrator.py`
-- `backend/scripts/postgres_consistency_check.py`
+- `backend/scripts/postgres/consistency/check/script.py`
 
 Evidence:
 - `HOT_COLLECTIONS` covers the configured first-wave collection set, including `quotes_ingestion_status` normalized into `sync_status`.
@@ -194,14 +194,14 @@ Boundary retained:
 Status: passed locally; target cutover pending target environment.
 
 Implementation:
-- `backend/scripts/postgres_consistency_check.py`
-- `backend/scripts/postgres_cutover_smoke.py`
-- `backend/scripts/postgres_api_smoke.py`
-- `backend/scripts/postgres_cutover_gate.py`
-- `backend/scripts/postgres_cutover_evidence_check.py`
-- `backend/scripts/postgres_rollback_check.py`
-- `backend/scripts/postgres_local_cutover_verify.py`
-- `backend/scripts/postgres_runtime_log_check.py`
+- `backend/scripts/postgres/consistency/check/script.py`
+- `backend/scripts/postgres/cutover/smoke/script.py`
+- `backend/scripts/postgres/api/smoke/script.py`
+- `backend/scripts/postgres/cutover/gate/script.py`
+- `backend/scripts/postgres/cutover/evidence/check/script.py`
+- `backend/scripts/postgres/rollback/check/script.py`
+- `backend/scripts/postgres/local/cutover/verify/script.py`
+- `backend/scripts/postgres/runtime/log/check/script.py`
 - `docs/migration/postgres_cutover_runbook.md`
 - `docs/migration/postgres_local_verification.md`
 
@@ -213,11 +213,11 @@ Evidence:
 - Repeatable local verification script can optionally pass a real backend log through the nested cutover gate with `--runtime-log`, so `gate/summary.json` records the runtime log step; it does not fabricate log evidence when no service log is supplied.
 - Repeatable local verification script passes `--target-env local-seeded` and phase-specific `--target-phase` into the nested cutover gate, so local evidence bundles include `gate/00_target_manifest.json` and can be checked with `--require-target-manifest`.
 - Cutover gate can include runtime log validation directly with `--runtime-log`, so local and target evidence bundles share the same runtime log shape instead of relying on an out-of-band command.
-- Latest local orchestration run passed at `/tmp/tradingagents_postgres_local_cutover_manifest_current` with `all_passed=true`: `alembic_upgrade`, `mongo_to_postgres_migrator`, nested cutover gate, and nested evidence bundle check.
+- Latest local orchestration run passed at `/tmp/trading_agents_postgres_local_cutover_manifest_current` with `all_passed=true`: `alembic_upgrade`, `mongo_to_postgres_migrator`, nested cutover gate, and nested evidence bundle check.
 - Nested local cutover gate passed inventory, Alembic offline SQL, consistency over `28` collection groups, query-plan checks over `9` representative queries, and data-path smoke over `13` check groups.
 - Nested evidence bundle check enforces `--require-target-manifest --expected-phase pre-read` for local seeded verification.
 - Local verifier cleanup now runs even when container startup fails, preventing partial Mongo/PostgreSQL test containers from remaining after a port conflict or Docker startup error.
-- Evidence bundle checker validates saved `summary.json`, required output files, step statuses, and semantic JSON fields; it passed against `/tmp/tradingagents_postgres_local_cutover_current/gate`.
+- Evidence bundle checker validates saved `summary.json`, required output files, step statuses, and semantic JSON fields; it passed against `/tmp/trading_agents_postgres_local_cutover_current/gate`.
 - Target evidence bundles can include `00_target_manifest.json`; evidence checks can require it with `--require-target-manifest --expected-phase <phase>` so pre-read, post-read, and rollback evidence cannot be accepted without a target environment label and phase.
 - Evidence bundle checker can require `api_smoke.json` to contain a passed `migration_state` check with `--require-api-migration-state`, proving the running service exposes the expected PostgreSQL read/write switches.
 - Evidence bundle checker can require `runtime_log_check.json` with `--require-runtime-log-check` and semantically validate runtime log check JSON when the step is included in `summary.json`.
@@ -260,7 +260,7 @@ Status: passed locally.
 
 Implementation:
 - `backend/app/db/query_plan_checker.py`
-- `backend/scripts/postgres_query_plan_check.py`
+- `backend/scripts/postgres/query/plan/check/script.py`
 - `docs/migration/postgres_hot_field_matrix.md`
 
 Evidence:
@@ -277,11 +277,11 @@ Status: passed locally; target runtime evidence pending.
 
 Implementation:
 - `backend/app/db/dual_write.py`
-- `backend/scripts/postgres_cutover_gate.py`
-- `backend/scripts/postgres_consistency_check.py`
-- `backend/scripts/postgres_migration_inventory.py`
-- `backend/scripts/postgres_runtime_log_check.py`
-- `backend/scripts/postgres_rollback_check.py`
+- `backend/scripts/postgres/cutover/gate/script.py`
+- `backend/scripts/postgres/consistency/check/script.py`
+- `backend/scripts/postgres/migration/inventory/script.py`
+- `backend/scripts/postgres/runtime/log/check/script.py`
+- `backend/scripts/postgres/rollback/check/script.py`
 - `docs/migration/postgres_cutover_runbook.md`
 
 Evidence:
@@ -308,18 +308,18 @@ Target cutover requirement:
 Latest scoped local gates for migration iteration:
 
 ```bash
-python backend/scripts/postgres_test_gate.py --scope quick
-python backend/scripts/postgres_test_gate.py --scope api-contract
-python backend/scripts/postgres_test_gate.py --scope cutover
-python backend/scripts/postgres_test_gate.py --scope rollback
-python backend/scripts/postgres_test_gate.py --scope docs
-python backend/scripts/postgres_test_gate.py --scope db
+python backend/scripts/postgres/gate/script.py --scope quick
+python backend/scripts/postgres/gate/script.py --scope api-contract
+python backend/scripts/postgres/gate/script.py --scope cutover
+python backend/scripts/postgres/gate/script.py --scope rollback
+python backend/scripts/postgres/gate/script.py --scope docs
+python backend/scripts/postgres/gate/script.py --scope db
 ```
 
 Final local acceptance gate before handoff or target cutover:
 
 ```bash
-python backend/scripts/postgres_test_gate.py --scope full
+python backend/scripts/postgres/gate/script.py --scope full
 ```
 
 Additional previously used focused commands:
@@ -329,20 +329,20 @@ python -m py_compile backend/app/main.py backend/app/routers/screening.py backen
 python -m pytest backend/tests/db backend/tests/config backend/tests/test_postgres_migration_inventory.py backend/tests/test_analysis_time_coercion.py backend/tests/test_openapi_import_boundary.py -q
 python -m pytest backend/tests/test_migration_docs_integrity.py -q
 python -m pytest backend/tests/test_normalize_provider_keys_script.py backend/tests/test_init_providers_dual_write.py -q
-python backend/scripts/postgres_migration_inventory.py --output docs/migration/postgres_inventory.json
-python backend/scripts/postgres_query_plan_check.py --compile-only
-cd backend && alembic -c alembic.ini upgrade head --sql >/tmp/tradingagents_postgres_offline.sql
+python backend/scripts/postgres/migration/inventory/script.py --output docs/migration/postgres_inventory.json
+python backend/scripts/postgres/query/plan/check/script.py --compile-only
+cd backend && alembic -c alembic.ini upgrade head --sql >/tmp/trading_agents_postgres_offline.sql
 cd backend && python -W error::UserWarning -c 'from app.main import app; app.openapi()'
 cd backend && python -m pytest tests/config/test_logging_config.py tests/config/test_logging_json.py tests/db/test_dual_write.py -q
 python -m pytest backend/tests/test_postgres_cutover_gate.py -q
 python -m pytest backend/tests/test_postgres_cutover_script_exit_gates.py -q
 python -m pytest backend/tests/test_postgres_local_cutover_verify.py backend/tests/test_postgres_cutover_gate.py backend/tests/test_postgres_cutover_evidence_check.py backend/tests/test_postgres_runtime_log_check.py backend/tests/test_migration_docs_integrity.py backend/tests/test_postgres_deploy_config.py -q
 python -m pytest backend/tests/db/test_postgres_api_smoke.py backend/tests/test_postgres_rollback_check.py backend/tests/test_postgres_cutover_evidence_check.py backend/tests/test_postgres_deploy_config.py backend/tests/test_migration_docs_integrity.py backend/tests/test_postgres_migration_inventory.py -q
-python backend/scripts/postgres_cutover_gate.py --dry-run --compile-only-query-plan --skip-api-smoke --output-dir /tmp/tradingagents_cutover_gate_dry_run
-python backend/scripts/postgres_local_cutover_verify.py --output-dir /tmp/tradingagents_postgres_local_cutover_manifest_current --postgres-port 55433
-python backend/scripts/postgres_cutover_evidence_check.py --require-target-manifest --expected-phase pre-read /tmp/tradingagents_postgres_local_cutover_manifest_current/gate
-POSTGRES_READ_ENABLED=false POSTGRES_DUAL_WRITE_ENABLED=true python backend/scripts/postgres_rollback_check.py --api-smoke-json <rollback-api-smoke.json> --consistency-json <rollback-consistency.json>
-python backend/scripts/postgres_cutover_evidence_check.py --rollback-only --require-rollback-check <rollback-evidence-dir>
+python backend/scripts/postgres/cutover/gate/script.py --dry-run --compile-only-query-plan --skip-api-smoke --output-dir /tmp/trading_agents_cutover_gate_dry_run
+python backend/scripts/postgres/local/cutover/verify/script.py --output-dir /tmp/trading_agents_postgres_local_cutover_manifest_current --postgres-port 55433
+python backend/scripts/postgres/cutover/evidence/check/script.py --require-target-manifest --expected-phase pre-read /tmp/trading_agents_postgres_local_cutover_manifest_current/gate
+POSTGRES_READ_ENABLED=false POSTGRES_DUAL_WRITE_ENABLED=true python backend/scripts/postgres/rollback/check/script.py --api-smoke-json <rollback-api-smoke.json> --consistency-json <rollback-consistency.json>
+python backend/scripts/postgres/cutover/evidence/check/script.py --rollback-only --require-rollback-check <rollback-evidence-dir>
 cd backend && python -m pytest -q
 ```
 
@@ -369,12 +369,12 @@ Latest local results:
 - Runtime log and evidence-bundle gate tests: included in `45 passed`.
 - Target evidence manifest gate tests are included in the `cutover` and `rollback` scoped gates; manifest generation redacts secrets and phase mismatch fails evidence validation.
 - Rollback evidence, migration-state API smoke, and post-read evidence-state tests are covered by the `rollback` scoped gate (`42 passed`).
-- Scoped migration test gate: `backend/scripts/postgres_test_gate.py` with `--dry-run` and `--list-scopes` passed; `backend/tests/test_postgres_test_gate.py` passed with `5 passed`.
+- Scoped migration test gate: `backend/scripts/postgres/gate/script.py` with `--dry-run` and `--list-scopes` passed; `backend/tests/test_postgres_test_gate.py` passed with `5 passed`.
 - Post-read evidence CLI smoke: `postgres_cutover_evidence_check.py --require-api-smoke --require-api-migration-state` returned `all_passed=true` on a synthetic bundle containing a passed `migration_state` API check.
 - Rollback evidence CLI smoke: `postgres_rollback_check.py` plus `postgres_cutover_evidence_check.py --rollback-only --require-rollback-check` returned `all_passed=true` on a synthetic rollback bundle containing a passed `migration_state` API check.
 - Cutover gate dry-run: `all_passed=true`.
-- Repeatable local cutover verification: `all_passed=true` at `/tmp/tradingagents_postgres_local_cutover_manifest_current`; nested gate writes `gate/00_target_manifest.json` with `target_env=local-seeded`.
-- Evidence bundle verification: `all_passed=true` at `/tmp/tradingagents_postgres_local_cutover_manifest_current/gate`; local evidence can be checked with `--require-target-manifest --expected-phase pre-read`.
+- Repeatable local cutover verification: `all_passed=true` at `/tmp/trading_agents_postgres_local_cutover_manifest_current`; nested gate writes `gate/00_target_manifest.json` with `target_env=local-seeded`.
+- Evidence bundle verification: `all_passed=true` at `/tmp/trading_agents_postgres_local_cutover_manifest_current/gate`; local evidence can be checked with `--require-target-manifest --expected-phase pre-read`.
 - Backend default test suite: `1291 passed, 31 skipped, 1 deselected, 515 warnings, 64 subtests passed`.
 
 ## Remaining Completion Conditions

@@ -1,8 +1,8 @@
 # 什么是大语言模型（LLM）？
 
-**分类**: AI基础知识  
-**难度**: 入门  
-**阅读时间**: 8分钟  
+**分类**: AI基础知识
+**难度**: 入门
+**阅读时间**: 8分钟
 **更新日期**: 2025-11-14
 
 ---
@@ -220,4 +220,4 @@ A: 需要考虑多个因素：任务需求、成本预算、响应速度、准�
 **相关资源**：
 - [OpenAI GPT系列](https://openai.com/research/gpt-4)
 - [Transformer论文](https://arxiv.org/abs/1706.03762)
-- [TradingAgents项目](../06-resources/tradingagents-intro.md)
+- [TradingAgents项目](../06-resources/trading_agents_intro.md)

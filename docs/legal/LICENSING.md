@@ -9,7 +9,7 @@ TradingAgents-CN 项目采用**混合许可证策略**，不同组件使用不�
 以下组件继续使用 Apache License 2.0，保持开源：
 
 ```
-├── backend/tradingagents/  # 核心交易智能体库
+├── backend/trader/  # 核心交易智能体库
 ├── backend/cli/            # 命令行工具
 ├── backend/scripts/        # 运维脚本
 ├── docs/                   # 文档

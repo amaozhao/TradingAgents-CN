@@ -26,13 +26,13 @@ max_size = "100MB"
 backup_count = 5
 directory = "/app/logs"
 
-# 主日志文件（tradingagents.log）
+# 主日志文件（trading_agents.log）
 [logging.handlers.main]
 enabled = true
 level = "INFO"
 max_size = "100MB"
 backup_count = 5
-filename = "/app/logs/tradingagents.log"
+filename = "/app/logs/trading_agents.log"
 
 # WebAPI日志文件
 [logging.handlers.webapi]
@@ -65,7 +65,7 @@ level = "INFO"
 directory = "/app/logs"
 
 [logging.loggers]
-[logging.loggers.tradingagents]
+[logging.loggers.trading_agents]
 level = "INFO"
 
 [logging.loggers.web]
@@ -103,7 +103,7 @@ disable_file_logging = false  # 启用文件日志
 
 [logging.development]
 enabled = false
-debug_modules = ["tradingagents.graph", "tradingagents.llm_adapters"]
+debug_modules = ["trader.graph", "trader.llm.adapters"]
 save_debug_files = true
 
 [logging.production]

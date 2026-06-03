@@ -2,8 +2,8 @@
 
 ## 📋 测试概述
 
-**测试时间**: 2025-10-07 09:28-09:30  
-**测试环境**: Windows 11, Python 3.11, MongoDB + Redis  
+**测试时间**: 2025-10-07 09:28-09:30
+**测试环境**: Windows 11, Python 3.11, MongoDB + Redis
 **测试方式**: 启动后端服务，观察配置桥接日志
 
 ## ✅ 测试结果
@@ -89,9 +89,9 @@ AttributeError: 'DataSourceConfig' object has no attribute 'source_type'
 
 | 环境变量 | 值 | 来源 |
 |---------|---|------|
-| `TRADINGAGENTS_DEFAULT_MODEL` | `qwen-turbo` | 统一配置 |
-| `TRADINGAGENTS_QUICK_MODEL` | `qwen-turbo` | 统一配置 |
-| `TRADINGAGENTS_DEEP_MODEL` | `qwen-max` | 统一配置 |
+| `TRADING_AGENTS_DEFAULT_MODEL` | `qwen-turbo` | 统一配置 |
+| `TRADING_AGENTS_QUICK_MODEL` | `qwen-turbo` | 统一配置 |
+| `TRADING_AGENTS_DEEP_MODEL` | `qwen-max` | 统一配置 |
 | 数据源细节配置 | 2 项 | 统一配置 |
 
 ### 待验证
@@ -251,4 +251,3 @@ AttributeError: 'DataSourceConfig' object has no attribute 'source_type'
 2. 添加更详细的日志输出
 3. 测试配置热重载功能
 4. 测试实际的股票分析是否使用桥接的配置
-

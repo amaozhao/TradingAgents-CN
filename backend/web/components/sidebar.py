@@ -13,7 +13,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from web.utils.persistence import load_model_selection, save_model_selection
-from web.utils.auth_manager import auth_manager
+from web.utils.auth import auth
 
 logger = logging.getLogger(__name__)
 
@@ -37,13 +37,13 @@ def render_sidebar():
     <script>
     // 保存到localStorage
     function saveToLocalStorage(key, value) {
-        localStorage.setItem('tradingagents_' + key, value);
+        localStorage.setItem('trading_agents_' + key, value);
         console.log('Saved to localStorage:', key, value);
     }
 
     // 从localStorage读取
     function loadFromLocalStorage(key, defaultValue) {
-        const value = localStorage.getItem('tradingagents_' + key);
+        const value = localStorage.getItem('trading_agents_' + key);
         console.log('Loaded from localStorage:', key, value || defaultValue);
         return value || defaultValue;
     }
@@ -341,14 +341,14 @@ def render_sidebar():
 
         elif llm_provider == "google":
             google_options = [
-                "gemini-2.5-pro", 
+                "gemini-2.5-pro",
                 "gemini-2.5-flash",
                 "gemini-2.5-flash-lite",
                 "gemini-2.5-pro-002",
                 "gemini-2.5-flash-002",
                 "gemini-2.0-flash",
-                "gemini-2.5-flash-lite-preview-06-17", 
-                "gemini-1.5-pro", 
+                "gemini-2.5-flash-lite-preview-06-17",
+                "gemini-1.5-pro",
                 "gemini-1.5-flash"
             ]
 
@@ -447,7 +447,7 @@ def render_sidebar():
 
              # 快速选择按钮
              st.markdown("**快速选择:**")
-             
+
              col1, col2 = st.columns(2)
              with col1:
                  if st.button("🚀 GPT-4o", key="quick_gpt4o", use_container_width=True):
@@ -456,7 +456,7 @@ def render_sidebar():
                      save_model_selection(st.session_state.llm_provider, st.session_state.model_category, model_id)
                      logger.debug(f"💾 [Persistence] 快速选择GPT-4o: {model_id}")
                      st.rerun()
-             
+
              with col2:
                  if st.button("⚡ GPT-4o Mini", key="quick_gpt4o_mini", use_container_width=True):
                      model_id = "gpt-4o-mini"
@@ -478,13 +478,13 @@ def render_sidebar():
              st.info("💡 **OpenAI配置**: 在.env文件中设置OPENAI_API_KEY")
         elif llm_provider == "custom_openai":
             st.markdown("### 🔧 自定义OpenAI端点配置")
-            
+
             # 初始化session state
             if 'custom_openai_base_url' not in st.session_state:
                 st.session_state.custom_openai_base_url = "https://api.openai.com/v1"
             if 'custom_openai_api_key' not in st.session_state:
                 st.session_state.custom_openai_api_key = ""
-            
+
             # API端点URL配置
             base_url = st.text_input(
                 "API端点URL",
@@ -493,10 +493,10 @@ def render_sidebar():
                 help="输入OpenAI兼容的API端点URL，例如中转服务或本地部署的API",
                 key="custom_openai_base_url_input"
             )
-            
+
             # 更新session state
             st.session_state.custom_openai_base_url = base_url
-            
+
             # API密钥配置
             api_key = st.text_input(
                 "API密钥",
@@ -506,14 +506,14 @@ def render_sidebar():
                 help="输入API密钥，也可以在.env文件中设置CUSTOM_OPENAI_API_KEY",
                 key="custom_openai_api_key_input"
             )
-            
+
             # 更新session state
             st.session_state.custom_openai_api_key = api_key
-            
+
             # 模型选择
             custom_openai_options = [
                 "gpt-4o",
-                "gpt-4o-mini", 
+                "gpt-4o-mini",
                 "gpt-4-turbo",
                 "gpt-4",
                 "gpt-3.5-turbo",
@@ -528,12 +528,12 @@ def render_sidebar():
                 "llama-3.1-405b",
                 "custom-model"
             ]
-            
+
             # 获取当前选择的索引
             current_index = 0
             if st.session_state.llm_model in custom_openai_options:
                 current_index = custom_openai_options.index(st.session_state.llm_model)
-            
+
             llm_model = st.selectbox(
                 "选择模型",
                 options=custom_openai_options,
@@ -558,7 +558,7 @@ def render_sidebar():
                 help="选择要使用的模型，支持各种OpenAI兼容的模型",
                 key="custom_openai_model_select"
             )
-            
+
             # 如果选择了自定义模型，显示输入框
             if llm_model == "custom-model":
                 custom_model_name = st.text_input(
@@ -570,38 +570,38 @@ def render_sidebar():
                 )
                 if custom_model_name:
                     llm_model = custom_model_name
-            
+
             # 更新session state和持久化存储
             if st.session_state.llm_model != llm_model:
                 logger.debug(f"🔄 [Persistence] 自定义OpenAI模型变更: {st.session_state.llm_model} → {llm_model}")
             st.session_state.llm_model = llm_model
             logger.debug(f"💾 [Persistence] 自定义OpenAI模型已保存: {llm_model}")
-            
+
             # 保存到持久化存储
             save_model_selection(st.session_state.llm_provider, st.session_state.model_category, llm_model)
-            
+
             # 常用端点快速配置
             st.markdown("**🚀 常用端点快速配置:**")
-            
+
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("🌐 OpenAI官方", key="quick_openai_official", use_container_width=True):
                     st.session_state.custom_openai_base_url = "https://api.openai.com/v1"
                     st.rerun()
-                
+
                 if st.button("🇨🇳 OpenAI中转1", key="quick_openai_relay1", use_container_width=True):
                     st.session_state.custom_openai_base_url = "https://api.openai-proxy.com/v1"
                     st.rerun()
-            
+
             with col2:
                 if st.button("🏠 本地部署", key="quick_local_deploy", use_container_width=True):
                     st.session_state.custom_openai_base_url = "http://localhost:8000/v1"
                     st.rerun()
-                
+
                 if st.button("🇨🇳 OpenAI中转2", key="quick_openai_relay2", use_container_width=True):
                     st.session_state.custom_openai_base_url = "https://api.openai-sb.com/v1"
                     st.rerun()
-            
+
             # 配置验证
             if base_url and api_key:
                 st.success(f"✅ 配置完成")
@@ -611,14 +611,14 @@ def render_sidebar():
                 st.warning("⚠️ 请输入API密钥")
             else:
                 st.warning("⚠️ 请配置API端点URL和密钥")
-            
+
             # 配置说明
             st.markdown("""
             **📖 配置说明:**
             - **API端点URL**: OpenAI兼容的API服务地址
             - **API密钥**: 对应服务的API密钥
             - **模型**: 选择或自定义模型名称
-            
+
             **🔧 支持的服务类型:**
             - OpenAI官方API
             - OpenAI中转服务
@@ -933,7 +933,7 @@ def render_sidebar():
 
             # OpenRouter特殊提示
             st.info("💡 **OpenRouter配置**: 在.env文件中设置OPENROUTER_API_KEY，或者如果只用OpenRouter可以设置OPENAI_API_KEY")
-        
+
         # 高级设置
         with st.expander("⚙️ 高级设置"):
             enable_memory = st.checkbox(
@@ -941,13 +941,13 @@ def render_sidebar():
                 value=False,
                 help="启用智能体记忆功能（可能影响性能）"
             )
-            
+
             enable_debug = st.checkbox(
                 "调试模式",
                 value=False,
                 help="启用详细的调试信息输出"
             )
-            
+
             max_tokens = st.slider(
                 "最大输出长度",
                 min_value=1000,
@@ -956,7 +956,7 @@ def render_sidebar():
                 step=500,
                 help="AI模型的最大输出token数量"
             )
-        
+
         st.markdown("---")
 
         # 系统配置
@@ -1067,35 +1067,35 @@ def render_sidebar():
 
         # 系统信息
         st.markdown("**ℹ️ 系统信息**")
-        
+
         st.info(f"""
         **版本**: {get_version()}
         **框架**: Streamlit + LangGraph
         **AI模型**: {st.session_state.llm_provider.upper()} - {st.session_state.llm_model}
         **数据源**: Tushare + FinnHub API
         """)
-        
+
         # 管理员功能
-        if auth_manager and auth_manager.check_permission("admin"):
+        if auth and auth.check_permission("admin"):
             st.markdown("---")
             st.markdown("### 🔧 管理功能")
-            
+
             if st.button("📊 用户活动记录", key="user_activity_btn", use_container_width=True):
                 st.session_state.page = "user_activity"
-            
+
             if st.button("⚙️ 系统设置", key="system_settings_btn", use_container_width=True):
                 st.session_state.page = "system_settings"
-        
+
         # 帮助链接
         st.markdown("**📚 帮助资源**")
-        
+
         st.markdown("""
         - [📖 使用文档](https://github.com/TauricResearch/TradingAgents)
         - [🐛 问题反馈](https://github.com/TauricResearch/TradingAgents/issues)
         - [💬 讨论社区](https://github.com/TauricResearch/TradingAgents/discussions)
         - [🔧 API密钥配置](../docs/configuration/google-ai-setup.md)
         """)
-    
+
     # 确保返回session state中的值，而不是局部变量
     final_provider = st.session_state.llm_provider
     final_model = st.session_state.llm_model

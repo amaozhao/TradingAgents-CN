@@ -5,12 +5,12 @@ from datetime import datetime
 import logging
 import re
 
-from app.routers.authdb import get_current_user
-from app.core.coreconfig import settings
-from app.core.coredatabase import get_mongo_db
+from app.routers.account import get_current_user
+from app.core.config import settings
+from app.core.database import get_mongo_db
 from app.core.response import ok
-from app.db.dualwrite import dual_write_hot_document
-from app.models.apiresponse import ApiResponse
+from app.db.dual import dual_write_hot_document
+from app.models.response import ApiResponse
 
 router = APIRouter(prefix="/paper", tags=["paper"])
 logger = logging.getLogger("webapi")
@@ -156,7 +156,7 @@ async def _list_orders_for_read(user_id: str, *, limit: int) -> List[Dict[str, A
 
 async def _get_paper_account_from_postgres(user_id: str) -> Optional[Dict[str, Any]]:
     try:
-        from app.db.paperrepository import get_paper_account
+        from app.db.paper import get_paper_account
         from app.db.session import get_session_factory
 
         async with get_session_factory()() as session:
@@ -168,7 +168,7 @@ async def _get_paper_account_from_postgres(user_id: str) -> Optional[Dict[str, A
 
 async def _list_paper_positions_from_postgres(user_id: str) -> Optional[List[Dict[str, Any]]]:
     try:
-        from app.db.paperrepository import list_paper_positions
+        from app.db.paper import list_paper_positions
         from app.db.session import get_session_factory
 
         async with get_session_factory()() as session:
@@ -180,7 +180,7 @@ async def _list_paper_positions_from_postgres(user_id: str) -> Optional[List[Dic
 
 async def _list_paper_orders_from_postgres(user_id: str, *, limit: int) -> Optional[List[Dict[str, Any]]]:
     try:
-        from app.db.paperrepository import list_paper_orders
+        from app.db.paper import list_paper_orders
         from app.db.session import get_session_factory
 
         async with get_session_factory()() as session:
@@ -315,7 +315,7 @@ async def _get_last_price(code: str, market: str) -> Optional[float]:
     # 港股/美股：使用 ForeignStockService
     elif market in ['HK', 'US']:
         try:
-            from app.services.foreignstockservice import ForeignStockService
+            from app.services.stocks.foreign import ForeignStockService
             db = get_mongo_db()
             service = ForeignStockService(db=db)
 

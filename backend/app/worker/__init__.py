@@ -1,14 +1,14 @@
 """Worker package for analysis and related background jobs."""
 
-from . import aksharesyncservice as akshare_sync_service
-from . import baostockinitservice as baostock_init_service
-from . import baostocksyncservice as baostock_sync_service
-from . import examplesdksyncservice as example_sdk_sync_service
-from . import hkdataservice as hk_data_service
-from . import hksyncservice as hk_sync_service
-from . import tusharesyncservice as tushare_sync_service
-from . import usdataservice as us_data_service
-from . import ussyncservice as us_sync_service
+from . import examples as example_sdk_sync_service
+from .akshare import sync as akshare_sync_service
+from .baostock import init as baostock_init_service
+from .baostock import sync as baostock_sync_service
+from .hk import data as hk_data_service
+from .hk import sync as hk_sync_service
+from .tushare import sync as tushare_sync_service
+from .us import data as us_data_service
+from .us import sync as us_sync_service
 
 __all__ = [
     "akshare_sync_service",

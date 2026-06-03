@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.core.coreconfig import settings
+from app.core.config import settings
 
 _postgres_engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
@@ -21,7 +21,7 @@ async def init_postgres(database_url: str | None = None) -> None:
         return
 
     _postgres_engine = create_async_engine(
-        database_url or settings.POSTGRES_URL,
+        database_url or settings.postgres_url,
         pool_pre_ping=True,
         pool_size=settings.POSTGRES_POOL_SIZE,
         max_overflow=settings.POSTGRES_MAX_OVERFLOW,

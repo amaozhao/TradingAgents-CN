@@ -211,10 +211,10 @@
 - 分阶段开关：`mongo`、`dual_write`、`postgres_read_mongo_fallback`、`postgres`。
 - 切换前后运行数据一致性校验。
 - 保留回滚到 Mongo read 的开关，直到核心接口稳定。
-- 提供 `backend/scripts/postgres_consistency_check.py`，比较热点集合 Mongo/PostgreSQL 总数与抽样业务键差异。
-- 提供 `backend/scripts/postgres_cutover_gate.py`，编排 inventory、Alembic offline SQL、一致性、查询计划、数据路径 smoke、API smoke、可选 runtime log check，并保存带 `00_target_manifest.json` 的目标环境证据包。
+- 提供 `backend/scripts/postgres/consistency/check/script.py`，比较热点集合 Mongo/PostgreSQL 总数与抽样业务键差异。
+- 提供 `backend/scripts/postgres/cutover/gate/script.py`，编排 inventory、Alembic offline SQL、一致性、查询计划、数据路径 smoke、API smoke、可选 runtime log check，并保存带 `00_target_manifest.json` 的目标环境证据包。
 - `postgres_cutover_evidence_check.py --require-api-migration-state` 可强制 post-read API smoke 证据包含 `/api/system/config/summary` 的 `migration_state` 运行态开关校验，避免只凭 HTTP 成功误判切读状态。
-- 提供 `backend/scripts/postgres_rollback_check.py`，验证 rollback 演练证据：`POSTGRES_READ_ENABLED=false`、API smoke 通过、API smoke 包含 `/api/system/config/summary` 的 `migration_state` 运行态开关校验、回滚后一致性结果已保存；`postgres_cutover_evidence_check.py --rollback-only --require-rollback-check` 可验证独立 rollback evidence bundle。
+- 提供 `backend/scripts/postgres/rollback/check/script.py`，验证 rollback 演练证据：`POSTGRES_READ_ENABLED=false`、API smoke 通过、API smoke 包含 `/api/system/config/summary` 的 `migration_state` 运行态开关校验、回滚后一致性结果已保存；`postgres_cutover_evidence_check.py --rollback-only --require-rollback-check` 可验证独立 rollback evidence bundle。
 - 一致性校验覆盖行情/基础/财务热点表和历史行情表，以及 `stock_news`、`analysis_tasks`、`analysis_reports`、`analysis_batches`、`analysis_results`、`sync_status`/`quotes_ingestion_status` alias、`scheduler_executions`、`scheduler_history`、`scheduler_metadata`、`users`/`users_collection` alias、`user_sessions`、`login_attempts`、`user_favorites`、`user_tags`、`paper_accounts`、`paper_positions`、`paper_orders`、`paper_trades`、`operation_logs`、`database_backups`、`notifications`、`token_usage`、`internal_messages`、`social_media_messages`。
 - 当前本地验证：`docs/migration/postgres_local_verification.md` 记录了隔离 Docker Mongo/PostgreSQL 上的 schema、迁移器、一致性检查和 EXPLAIN 采样；目标环境切换前必须复跑同一组命令。
 
@@ -224,12 +224,12 @@
 
 验收标准：
 - 迁移器重复执行无重复数据。
-- `python backend/scripts/postgres_consistency_check.py --sample-limit 500` 输出 `all_consistent=true` 后才允许切 PostgreSQL 主读。
+- `python backend/scripts/postgres/consistency/check/script.py --sample-limit 500` 输出 `all_consistent=true` 后才允许切 PostgreSQL 主读。
 - `postgres_consistency_check.py` 默认在 `all_consistent=false` 时退出非零；只允许诊断场景使用 `--allow-inconsistent`。
-- `python backend/scripts/postgres_cutover_gate.py --dry-run --compile-only-query-plan --skip-api-smoke` 可在无目标环境时生成 dry-run 证据摘要；真实目标环境运行不带 dry-run，并通过 `--runtime-log` 把 backend 日志纳入 `summary.json` 和证据包。
+- `python backend/scripts/postgres/cutover/gate/script.py --dry-run --compile-only-query-plan --skip-api-smoke` 可在无目标环境时生成 dry-run 证据摘要；真实目标环境运行不带 dry-run，并通过 `--runtime-log` 把 backend 日志纳入 `summary.json` 和证据包。
 - target evidence bundle 必须包含 `00_target_manifest.json`，记录非敏感的目标环境标签和阶段；pre-read/post-read/rollback 验收必须使用 `--require-target-manifest --expected-phase <phase>`。
 - post-read evidence bundle 必须用 `--require-target-manifest --expected-phase post-read --require-api-smoke --require-api-migration-state` 校验，证明服务真实处于 PostgreSQL-read 状态。
-- rollback 演练必须保存 `rollback_check.json` 并通过 `python backend/scripts/postgres_cutover_evidence_check.py --rollback-only --require-target-manifest --expected-phase rollback --require-rollback-check <rollback-evidence-dir>`；rollback API smoke 必须用 `TRADINGAGENTS_EXPECT_POSTGRES_READ_ENABLED=false` 证明服务实际运行在 Mongo-read 状态。
+- rollback 演练必须保存 `rollback_check.json` 并通过 `python backend/scripts/postgres/cutover/evidence/check/script.py --rollback-only --require-target-manifest --expected-phase rollback --require-rollback-check <rollback-evidence-dir>`；rollback API smoke 必须用 `TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED=false` 证明服务实际运行在 Mongo-read 状态。
 - 核心接口 contract test 通过。
 - worker 不再产生只存在于 Mongo 的新热点数据。
 - PostgreSQL 索引命中可以通过 explain 或查询计划抽样确认。
@@ -268,7 +268,7 @@
 - 对已拆列字段建立 representative 查询用例：股票筛选、行情分页、财务筛选、操作日志按时间/用户/动作筛选、用户偏好查询、纸上交易持仓/订单查询。
 - 使用 PostgreSQL `EXPLAIN` 或本地 SQL 编译检查确认过滤条件走拆列字段，不依赖 JSONB 全表扫描。
 - 对 JSONB payload 只做响应结构还原和低频兼容查询。
-- 提供 `backend/scripts/postgres_query_plan_check.py`：真实 PostgreSQL 环境执行 `EXPLAIN (FORMAT JSON)`；无 PG 时可用 `--compile-only` 生成待执行计划 SQL。
+- 提供 `backend/scripts/postgres/query/plan/check/script.py`：真实 PostgreSQL 环境执行 `EXPLAIN (FORMAT JSON)`；无 PG 时可用 `--compile-only` 生成待执行计划 SQL。
 
 边界：
 - 不要求在迁移第一阶段完成所有复杂报表关系化。
@@ -278,7 +278,7 @@
 - 每个主读接口有对应 repository 测试和 contract test。
 - 高频查询过滤字段在 SQL 中来自拆列字段。
 - 切换前记录查询计划样本，发现 JSONB 全表扫描必须补列或补索引。
-- `python backend/scripts/postgres_query_plan_check.py --compile-only` 能通过静态门禁；真实环境必须运行不带 `--compile-only` 的 EXPLAIN 采样。
+- `python backend/scripts/postgres/query/plan/check/script.py --compile-only` 能通过静态门禁；真实环境必须运行不带 `--compile-only` 的 EXPLAIN 采样。
 - `docs/migration/postgres_hot_field_matrix.md` 与查询计划脚本保持一致，作为 runbook 的 worker/status 和热点字段验收入口。
 
 ## T13. 回滚和运行期观测
@@ -288,9 +288,9 @@
 - 为迁移器和一致性检查提供可重复运行命令。
 - 保留 `mongo`、`dual_write`、`postgres_read_mongo_fallback`、`postgres` 四态开关，并为每态定义允许的读写行为。
 - 提供 `docs/migration/postgres_cutover_runbook.md`，覆盖 preflight、schema、迁移、双写、校验、EXPLAIN、切读、回滚和观测证据。
-- 提供 `backend/scripts/postgres_cutover_gate.py`，降低目标环境漏跑门禁或漏保存证据的风险；目标环境可用 `--runtime-log` 把运行期日志校验纳入同一个 gate summary。
-- 提供 `backend/scripts/postgres_runtime_log_check.py`，对目标 backend 日志中的启动 worker gate、双写成功事件、双写失败和 Mongo-only 警告做机器校验。
-- 提供 `backend/scripts/postgres_rollback_check.py`，对 rollback 演练的 Mongo 主读开关、API smoke、一致性证据做机器校验。
+- 提供 `backend/scripts/postgres/cutover/gate/script.py`，降低目标环境漏跑门禁或漏保存证据的风险；目标环境可用 `--runtime-log` 把运行期日志校验纳入同一个 gate summary。
+- 提供 `backend/scripts/postgres/runtime/log/check/script.py`，对目标 backend 日志中的启动 worker gate、双写成功事件、双写失败和 Mongo-only 警告做机器校验。
+- 提供 `backend/scripts/postgres/rollback/check/script.py`，对 rollback 演练的 Mongo 主读开关、API smoke、一致性证据做机器校验。
 
 边界：
 - 不在一致性未通过时关闭 Mongo read fallback。
@@ -308,4 +308,4 @@
 - rollback 阶段的 `00_target_manifest.json` 必须由 `postgres_rollback_check.py --output-dir --target-env` 生成，避免手写 JSON 造成阶段、时间或目标环境标签错误；缺少目标环境标签时必须 fail fast 并输出结构化失败 JSON。
 - rollback drill 通过 `postgres_rollback_check.py`，且 evidence checker 在 `--rollback-only --require-target-manifest --expected-phase rollback --require-rollback-check` 下能强制要求 `rollback_check.json`；`api_smoke.json` 必须包含通过的 `migration_state` 检查。
 - inventory 和 consistency 单脚本默认 fail closed，避免逐条执行 runbook 时只看 stdout 而漏掉 stop condition。
-- `backend/scripts/postgres_test_gate.py` 提供 `quick`、`api-contract`、`cutover`、`rollback`、`db`、`docs`、`full` 分层门禁；迁移迭代默认按修改范围运行小门禁，只有最终本地验收或目标环境 cutover 前才运行 `full`，避免每次小改都触发耗时全量测试。
+- `backend/scripts/postgres/gate/script.py` 提供 `quick`、`api-contract`、`cutover`、`rollback`、`db`、`docs`、`full` 分层门禁；迁移迭代默认按修改范围运行小门禁，只有最终本地验收或目标环境 cutover 前才运行 `full`，避免每次小改都触发耗时全量测试。

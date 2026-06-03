@@ -5,17 +5,17 @@
 
 ### 专有组件 / Proprietary Components
 
-**版权所有者 / Copyright Owner**: hsliuping  
-**版权年份 / Copyright Year**: 2025  
+**版权所有者 / Copyright Owner**: hsliuping
+**版权年份 / Copyright Year**: 2025
 **适用组件 / Applicable Components**:
 - `backend/app/` - FastAPI 后端应用 / FastAPI Backend Application
 - `frontend/` - Vue.js 前端应用 / Vue.js Frontend Application
 
 ### 开源组件 / Open Source Components
 
-**许可证 / License**: Apache License 2.0  
+**许可证 / License**: Apache License 2.0
 **适用组件 / Applicable Components**:
-- `backend/tradingagents/` - 核心交易智能体库 / Core Trading Agents Library
+- `backend/trader/` - 核心交易智能体库 / Core Trading Agents Library
 - `backend/cli/` - 命令行工具 / Command Line Tools
 - `backend/scripts/` - 运维脚本 / Operational Scripts
 - `docs/` - 文档 / Documentation
@@ -30,14 +30,14 @@
 
 ## 📞 联系信息 / Contact Information
 
-**版权所有者 / Copyright Owner**: hsliuping  
-**邮箱 / Email**: hsliup@163.com  
-**GitHub**: https://github.com/hsliuping/TradingAgents-CN  
-**QQ群 / QQ Group**: 782124367  
+**版权所有者 / Copyright Owner**: hsliuping
+**邮箱 / Email**: hsliup@163.com
+**GitHub**: https://github.com/hsliuping/TradingAgents-CN
+**QQ群 / QQ Group**: 782124367
 
 ## 💼 商业许可 / Commercial Licensing
 
-如需获得专有组件的商业使用许可，请联系版权所有者。  
+如需获得专有组件的商业使用许可，请联系版权所有者。
 For commercial licensing of proprietary components, please contact the copyright owner.
 
 **商业许可包含 / Commercial License Includes**:
@@ -72,14 +72,14 @@ For commercial licensing of proprietary components, please contact the copyright
 
 ## 🔍 许可证验证 / License Verification
 
-运行以下命令检查许可证状态：  
+运行以下命令检查许可证状态：
 Run the following command to check license status:
 
 ```bash
-python backend/scripts/check_license.py
+python backend/scripts/check/license/script.py
 ```
 
 ---
 
-**最后更新 / Last Updated**: 2025年10月 / October 2025  
+**最后更新 / Last Updated**: 2025年10月 / October 2025
 **版本 / Version**: v1.0

@@ -1,7 +1,7 @@
 # 会议纪要：数据一致性、回测与模拟交易架构与合规
 
-日期：2025-10-19  
-项目：TradingAgents-CN  
+日期：2025-10-19
+项目：TradingAgents-CN
 用途：技术回顾与工程/合规指南
 
 ## 1. 数据一致性（Point-in-Time, PIT）与时间线
@@ -47,9 +47,9 @@
   - `GET /data/candles`、`GET /data/calendar`、`GET /data/corp_actions`、`GET /data/constraints`、`GET /features/{name}`、`GET /stream/ticks`
 
 ## 8. 集成与目录建议（现有项目）
-- 后端：`app/routers/paper.py`（已有）、扩展 `sse.py`（已有）与新增 `data.py`；`app/services/paper/` 实现 `BrokerSim/OMS/Portfolio`；`tradingagents/backtest/` 放统一接口与适配器。
+- 后端：`app/routers/paper.py`（已有）、扩展 `sse.py`（已有）与新增 `data.py`；`app/services/paper/` 实现 `BrokerSim/OMS/Portfolio`；`trader/backtest/` 放统一接口与适配器。
 - 数据与特征：`dataflows/features/` 与 `dataflows/labels/`；版本冻结与缓存策略。
-- 测试：`backend/tests/tradingagents/paper/` 单元与集成测试；回放与再现性用例。
+- 测试：`backend/tests/trader/paper/` 单元与集成测试；回放与再现性用例。
 - 前端：订单簿/持仓/交易与绩效面板、风险与告警卡片、会话控制。
 
 ## 9. 许可与商业化策略

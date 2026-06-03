@@ -106,7 +106,7 @@ $appTest = docker exec TradingAgents-web python -c "
 import sys
 sys.path.insert(0, '/app')
 try:
-    from tradingagents.utils.logginginit import setup_web_logging
+    from trader.utils.logginginit import setup_web_logging
     logger = setup_web_logging()
     logger.info('🧪 应用日志测试成功')
     print('✅ 应用日志测试完成')
@@ -129,7 +129,7 @@ if (Test-Path "logs") {
             $size = [math]::Round($file.Length / 1KB, 2)
             $lastWrite = $file.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
             Write-Host "   📄 $($file.Name) ($size KB) - 最后修改: $lastWrite" -ForegroundColor Gray
-            
+
             # 显示最后几行
             if ($file.Length -gt 0) {
                 Write-Host "   📋 最后3行内容:" -ForegroundColor Cyan
@@ -146,7 +146,7 @@ Write-Host ""
 Write-Host "🎉 测试完成！" -ForegroundColor Green
 Write-Host ""
 Write-Host "💡 常用命令:" -ForegroundColor Yellow
-Write-Host "   实时查看日志: Get-Content logs\tradingagents.log -Wait" -ForegroundColor Gray
+Write-Host "   实时查看日志: Get-Content logs\trader.log -Wait" -ForegroundColor Gray
 Write-Host "   查看Docker日志: docker compose -f $ComposeFile logs -f backend" -ForegroundColor Gray
 Write-Host "   重启服务: docker compose -f $ComposeFile restart backend" -ForegroundColor Gray
 Write-Host "   进入容器: docker exec -it TradingAgents-web bash" -ForegroundColor Gray

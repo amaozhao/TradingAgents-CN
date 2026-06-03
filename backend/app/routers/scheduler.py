@@ -10,10 +10,10 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel
 
-from app.routers.authdb import get_current_user
-from app.services.schedulerservice import get_scheduler_service, SchedulerService
+from app.routers.account import get_current_user
+from app.services.scheduler import get_scheduler_service, SchedulerService
 from app.core.response import ok
-from app.models.apiresponse import ApiResponse
+from app.models.response import ApiResponse
 
 router = APIRouter(prefix="/api/scheduler", tags=["scheduler"])
 
@@ -44,7 +44,7 @@ async def list_jobs(
 ):
     """
     获取所有定时任务列表
-    
+
     Returns:
         任务列表，包含任务ID、名称、状态、下次执行时间等信息
     """
@@ -126,17 +126,17 @@ async def pause_job(
 ):
     """
     暂停任务
-    
+
     Args:
         job_id: 任务ID
-        
+
     Returns:
         操作结果
     """
     # 检查管理员权限
     if not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="仅管理员可以暂停任务")
-    
+
     try:
         success = await service.pause_job(job_id)
         if success:
@@ -157,17 +157,17 @@ async def resume_job(
 ):
     """
     恢复任务
-    
+
     Args:
         job_id: 任务ID
-        
+
     Returns:
         操作结果
     """
     # 检查管理员权限
     if not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="仅管理员可以恢复任务")
-    
+
     try:
         success = await service.resume_job(job_id)
         if success:
@@ -231,19 +231,19 @@ async def get_job_history(
 ):
     """
     获取任务执行历史
-    
+
     Args:
         job_id: 任务ID
         limit: 返回数量限制
         offset: 偏移量
-        
+
     Returns:
         任务执行历史记录
     """
     try:
         history = await service.get_job_history(job_id, limit=limit, offset=offset)
         total = await service.count_job_history(job_id)
-        
+
         return ok(
             data={
                 "history": history,
@@ -268,13 +268,13 @@ async def get_all_history(
 ):
     """
     获取所有任务执行历史
-    
+
     Args:
         limit: 返回数量限制
         offset: 偏移量
         job_id: 任务ID过滤
         status: 状态过滤
-        
+
     Returns:
         所有任务执行历史记录
     """
@@ -286,7 +286,7 @@ async def get_all_history(
             status=status
         )
         total = await service.count_all_history(job_id=job_id, status=status)
-        
+
         return ok(
             data={
                 "history": history,
@@ -307,7 +307,7 @@ async def get_scheduler_stats(
 ):
     """
     获取调度器统计信息
-    
+
     Returns:
         调度器统计信息，包括任务总数、运行中任务数、暂停任务数等
     """

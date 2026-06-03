@@ -9,12 +9,12 @@ db = db.getSiblingDB('admin');
 // 创建应用用户
 try {
   db.createUser({
-    user: 'tradingagents',
-    pwd: 'tradingagents123',
+    user: 'trading_agents',
+    pwd: 'trading_agents123',
     roles: [
       {
         role: 'readWrite',
-        db: 'tradingagents'
+        db: 'trading_agents'
       }
     ]
   });
@@ -24,7 +24,7 @@ try {
 }
 
 // 切换到应用数据库
-db = db.getSiblingDB('tradingagents');
+db = db.getSiblingDB('trading_agents');
 
 // ===== 创建集合 =====
 
@@ -205,9 +205,9 @@ print('✓ 系统配置数量: ' + configCount);
 print('\n========================================');
 print('TradingAgents数据库初始化完成！');
 print('========================================');
-print('数据库: tradingagents');
-print('用户: tradingagents');
-print('密码: tradingagents123');
+print('数据库: trading_agents');
+print('用户: trading_agents');
+print('密码: trading_agents123');
 print('集合数: ' + collections.length);
 print('索引数: ' + indexes);
 print('========================================');

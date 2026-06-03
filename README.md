@@ -136,7 +136,7 @@
 
 本仓库已按前后端和部署资产拆分：
 
-- `backend/`：FastAPI 后端和 `tradingagents` Python 包
+- `backend/`：FastAPI 后端和 `trader` Python 包
 - `frontend/`：Vue 3 / Vite 前端
 - `deploy/`：Docker Compose、Dockerfile、Nginx 配置和 Docker 环境样例
 - `runtime/`：本地运行数据、日志、缓存和导出产物（不提交）
@@ -146,7 +146,7 @@
 ```bash
 cd backend
 mkdir -p ../runtime/logs ../runtime/data
-TRADINGAGENTS_LOG_DIR=../runtime/logs PYTHONPATH=. python -m uvicorn app.appmain:app --host 0.0.0.0 --port 8000
+TRADING_AGENTS_LOG_DIR=../runtime/logs PYTHONPATH=. python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 本地前端开发启动：

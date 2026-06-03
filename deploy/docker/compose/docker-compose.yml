@@ -7,8 +7,8 @@ services:
     build:
       context: ../../..
       dockerfile: deploy/docker/backend.Dockerfile
-    image: tradingagents-backend:v1.0.1
-    container_name: tradingagents-backend
+    image: trading-agents-backend:v1.0.1
+    container_name: trading-agents-backend
     ports:
       - "8000:8000"
     volumes:
@@ -25,19 +25,19 @@ services:
       PYTHONDONTWRITEBYTECODE: 1
       TZ: "Asia/Shanghai"
       # 日志配置
-      TRADINGAGENTS_LOG_LEVEL: "INFO"
-      TRADINGAGENTS_LOG_DIR: "/app/logs"
-      TRADINGAGENTS_LOG_FILE: "/app/logs/tradingagents.log"
+      TRADING_AGENTS_LOG_LEVEL: "INFO"
+      TRADING_AGENTS_LOG_DIR: "/app/logs"
+      TRADING_AGENTS_LOG_FILE: "/app/logs/trading_agents.log"
       # Docker专用数据库配置
-      TRADINGAGENTS_MONGODB_URL: mongodb://admin:tradingagents123@mongodb:27017/tradingagents?authSource=admin
-      TRADINGAGENTS_REDIS_URL: redis://:tradingagents123@redis:6379
-      TRADINGAGENTS_CACHE_TYPE: redis
+      TRADING_AGENTS_MONGODB_URL: mongodb://admin:trading_agents123@mongodb:27017/trading_agents?authSource=admin
+      TRADING_AGENTS_REDIS_URL: redis://:trading_agents123@redis:6379
+      TRADING_AGENTS_CACHE_TYPE: redis
       # PostgreSQL 迁移配置：默认不切读/不双写，由 cutover runbook 分阶段开启
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: tradingagents_pg123
-      POSTGRES_DB: tradingagentscn
+      POSTGRES_PASSWORD: trading_agents_pg123
+      POSTGRES_DB: trading_agents_cn
       POSTGRES_DUAL_WRITE_ENABLED: "${POSTGRES_DUAL_WRITE_ENABLED:-false}"
       POSTGRES_READ_ENABLED: "${POSTGRES_READ_ENABLED:-false}"
       POSTGRES_DUAL_WRITE_FAIL_OPEN: "${POSTGRES_DUAL_WRITE_FAIL_OPEN:-true}"
@@ -57,7 +57,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - tradingagents-network
+      - trading-agents-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
@@ -76,8 +76,8 @@ services:
     build:
       context: ../../..
       dockerfile: deploy/docker/frontend.Dockerfile
-    image: tradingagents-frontend:v1.0.1
-    container_name: tradingagents-frontend
+    image: trading-agents-frontend:v1.0.1
+    container_name: trading-agents-frontend
     ports:
       - "3000:80"
     environment:
@@ -88,7 +88,7 @@ services:
       backend:
         condition: service_healthy
     networks:
-      - tradingagents-network
+      - trading-agents-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost"]
       interval: 30s
@@ -105,20 +105,20 @@ services:
   # MongoDB 数据库服务
   mongodb:
     image: mongo:latest
-    container_name: tradingagents-mongodb
+    container_name: trading-agents-mongodb
     restart: unless-stopped
     ports:
       - "27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: tradingagents123
-      MONGO_INITDB_DATABASE: tradingagents
+      MONGO_INITDB_ROOT_PASSWORD: trading_agents123
+      MONGO_INITDB_DATABASE: trading_agents
       TZ: "Asia/Shanghai"
     volumes:
       - mongodb_data:/data/db
       - ../../../backend/scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
-      - tradingagents-network
+      - trading-agents-network
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 30s
@@ -134,19 +134,20 @@ services:
   # Redis 缓存服务
   redis:
     image: redis:latest
-    container_name: tradingagents-redis
+    container_name: trading-agents-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
     environment:
       TZ: "Asia/Shanghai"
-    command: redis-server --appendonly yes --requirepass tradingagents123
+      REDIS_PASSWORD: "trading_agents123"
+    command: sh -c 'redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"'
     volumes:
       - redis_data:/data
     networks:
-      - tradingagents-network
+      - trading-agents-network
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" --no-auth-warning ping | grep -q PONG"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -160,21 +161,21 @@ services:
   # PostgreSQL 数据库服务（Mongo -> PostgreSQL 迁移目标）
   postgres:
     image: postgres:16-alpine
-    container_name: tradingagents-postgres
+    container_name: trading-agents-postgres
     restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: tradingagents_pg123
-      POSTGRES_DB: tradingagentscn
+      POSTGRES_PASSWORD: trading_agents_pg123
+      POSTGRES_DB: trading_agents_cn
       TZ: "Asia/Shanghai"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - tradingagents-network
+      - trading-agents-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d tradingagentscn"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d trading_agents_cn"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -188,14 +189,14 @@ services:
   # Redis Commander 管理界面（可选）
   redis-commander:
     image: ghcr.io/joeferner/redis-commander:latest
-    container_name: tradingagents-redis-commander
+    container_name: trading-agents-redis-commander
     restart: unless-stopped
     ports:
       - "8081:8081"
     environment:
-      - REDIS_HOSTS=local:redis:6379:0:tradingagents123
+      - REDIS_HOSTS=local:redis:6379:0:trading_agents123
     networks:
-      - tradingagents-network
+      - trading-agents-network
     depends_on:
       redis:
         condition: service_healthy
@@ -211,18 +212,18 @@ services:
   # Mongo Express 管理界面（可选）
   mongo-express:
     image: mongo-express:latest
-    container_name: tradingagents-mongo-express
+    container_name: trading-agents-mongo-express
     restart: unless-stopped
     ports:
       - "8082:8081"
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: admin
-      ME_CONFIG_MONGODB_ADMINPASSWORD: tradingagents123
-      ME_CONFIG_MONGODB_URL: mongodb://admin:tradingagents123@mongodb:27017/
+      ME_CONFIG_MONGODB_ADMINPASSWORD: trading_agents123
+      ME_CONFIG_MONGODB_URL: mongodb://admin:trading_agents123@mongodb:27017/
       ME_CONFIG_BASICAUTH_USERNAME: admin
-      ME_CONFIG_BASICAUTH_PASSWORD: tradingagents123
+      ME_CONFIG_BASICAUTH_PASSWORD: trading_agents123
     networks:
-      - tradingagents-network
+      - trading-agents-network
     depends_on:
       mongodb:
         condition: service_healthy
@@ -233,16 +234,16 @@ services:
 volumes:
   mongodb_data:
     driver: local
-    name: tradingagents_mongodb_data
+    name: trading_agents_mongodb_data
   redis_data:
     driver: local
-    name: tradingagents_redis_data
+    name: trading_agents_redis_data
   postgres_data:
     driver: local
-    name: tradingagents_postgres_data
+    name: trading_agents_postgres_data
 
 # 网络定义
 networks:
-  tradingagents-network:
+  trading-agents-network:
     driver: bridge
-    name: tradingagents-network
+    name: trading-agents-network

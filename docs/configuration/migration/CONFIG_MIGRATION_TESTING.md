@@ -37,9 +37,9 @@ DASHSCOPE_API_KEY
 QIANFAN_API_KEY
 
 # 默认模型
-TRADINGAGENTS_DEFAULT_MODEL
-TRADINGAGENTS_QUICK_MODEL
-TRADINGAGENTS_DEEP_MODEL
+TRADING_AGENTS_DEFAULT_MODEL
+TRADING_AGENTS_QUICK_MODEL
+TRADING_AGENTS_DEEP_MODEL
 
 # 数据源基础配置
 TUSHARE_TOKEN
@@ -185,7 +185,7 @@ CURRENCY_PREFERENCE
 3. **检查后端日志**
    ```
    🔄 重新加载配置桥接...
-     清除环境变量: TRADINGAGENTS_DEFAULT_MODEL
+     清除环境变量: TRADING_AGENTS_DEFAULT_MODEL
      清除环境变量: DEEPSEEK_API_KEY
    🔧 开始桥接配置到环境变量...
      ✓ 桥接 OPENAI_API_KEY (长度: 51)
@@ -215,7 +215,7 @@ CURRENCY_PREFERENCE
    ```powershell
    # 停止服务
    Ctrl+C
-   
+
    # 启动服务
    cd app
    uvicorn main:app --reload
@@ -342,7 +342,7 @@ CURRENCY_PREFERENCE
 ```python
 import os
 print(f"DEEPSEEK_API_KEY: {os.environ.get('DEEPSEEK_API_KEY', 'NOT SET')[:20]}...")
-print(f"TRADINGAGENTS_DEFAULT_MODEL: {os.environ.get('TRADINGAGENTS_DEFAULT_MODEL', 'NOT SET')}")
+print(f"TRADING_AGENTS_DEFAULT_MODEL: {os.environ.get('TRADING_AGENTS_DEFAULT_MODEL', 'NOT SET')}")
 ```
 
 ### 2. 检查配置桥接日志
@@ -355,7 +355,7 @@ grep "桥接" app.log
 
 ### 3. 检查 TradingAgents 使用的配置
 
-在 `tradingagents/graph/trading_graph.py` 中添加日志：
+在 `trader/graph/trading_graph.py` 中添加日志：
 
 ```python
 logger.info(f"使用的 API 密钥: {api_key[:20]}...")
@@ -437,4 +437,3 @@ curl -X POST http://localhost:8000/api/config/reload \
 - [配置向导使用说明](./CONFIG_WIZARD.md)
 - [配置向导 vs 配置管理](./CONFIG_WIZARD_VS_CONFIG_MANAGEMENT.md)
 - [配置向导后端集成](./CONFIG_WIZARD_BACKEND_INTEGRATION.md)
-

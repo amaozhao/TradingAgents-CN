@@ -166,7 +166,7 @@ const articlesDatabase: Record<string, any[]> = {
   ],
   'resources': [
     {
-      id: 'tradingagents-intro',
+      id: 'trading_agents_intro',
       title: 'TradingAgents项目介绍',
       description: '了解TradingAgents-CN的源项目TradingAgents的架构和特性',
       readTime: '15分钟',
@@ -368,4 +368,3 @@ const openArticle = (articleId: string) => {
   }
 }
 </style>
-

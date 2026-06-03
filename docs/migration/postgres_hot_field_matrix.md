@@ -56,8 +56,8 @@ Current local verification is covered by:
 
 - `backend/tests/db/test_models.py`
 - `backend/tests/db/test_query_plan_checker.py`
-- `backend/scripts/postgres_query_plan_check.py`
+- `backend/scripts/postgres/query/plan/check/script.py`
 - `docs/migration/worker_dual_write_coverage.md`
 - `docs/migration/postgres_long_tail_coverage.md`
 
-Target-environment verification must re-run `backend/scripts/postgres_query_plan_check.py` without `--compile-only` and save the JSON output before entering `postgres_read_mongo_fallback`.
+Target-environment verification must re-run `backend/scripts/postgres/query/plan/check/script.py` without `--compile-only` and save the JSON output before entering `postgres_read_mongo_fallback`.

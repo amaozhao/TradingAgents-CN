@@ -67,7 +67,7 @@
             <el-form-item label="数据库名">
               <el-input
                 v-model="wizardData.mongodb.database"
-                placeholder="tradingagents"
+                placeholder="trading_agents"
               />
             </el-form-item>
 
@@ -374,7 +374,7 @@ const wizardData = ref<WizardData>({
   mongodb: {
     host: 'localhost',
     port: 27017,
-    database: 'tradingagents'
+    database: 'trading_agents'
   },
   redis: {
     host: 'localhost',

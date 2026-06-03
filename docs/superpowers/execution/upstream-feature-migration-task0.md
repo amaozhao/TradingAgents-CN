@@ -34,14 +34,14 @@ Existing modified files before this migration execution:
 
 Existing untracked migration-related files before this execution:
 
-- `tradingagents/agents/managers/portfolio_manager.py`
-- `tradingagents/agents/schemas.py`
-- `tradingagents/agents/utils/structured.py`
-- `tradingagents/graph/analyst_execution.py`
-- `tradingagents/graph/checkpointer.py`
-- `tradingagents/llm_clients/api_key_env.py`
-- `tradingagents/llm_clients/azure_client.py`
-- `tradingagents/llm_clients/capabilities.py`
+- `trader/agents/managers/portfolio_manager.py`
+- `trader/agents/schemas.py`
+- `trader/agents/utils/structured.py`
+- `trader/graph/analyst_execution.py`
+- `trader/graph/checkpointer.py`
+- `trader/llm_clients/api_key_env.py`
+- `trader/llm_clients/azure_client.py`
+- `trader/llm_clients/capabilities.py`
 
 These files match upstream byte-for-byte at baseline and are classified as
 `keep-and-adapt`, not as completed migration.
@@ -56,54 +56,54 @@ conda run -n trader python -c "import importlib; ..."
 
 Results:
 
-- OK: `tradingagents.agents.schemas`
-- OK: `tradingagents.agents.utils.structured`
-- OK: `tradingagents.graph.analyst_execution`
-- FAIL: `tradingagents.graph.checkpointer`
+- OK: `trader.agents.schemas`
+- OK: `trader.agents.utils.structured`
+- OK: `trader.graph.analyst_execution`
+- FAIL: `trader.graph.checkpointer`
   - `ModuleNotFoundError: No module named 'langgraph.checkpoint.sqlite'`
   - Expected until `langgraph-checkpoint-sqlite` is installed/declared.
-- OK: `tradingagents.llm_clients.api_key_env`
-- OK: `tradingagents.llm_clients.azure_client`
-- OK: `tradingagents.llm_clients.capabilities`
-- FAIL: `tradingagents.agents.managers.portfolio_manager`
-  - `ImportError: cannot import name 'get_instrument_context_from_state' from 'tradingagents.agents.utils.agent_utils'`
+- OK: `trader.llm.clients.api_key_env`
+- OK: `trader.llm.clients.azure_client`
+- OK: `trader.llm.clients.capabilities`
+- FAIL: `trader.agents.managers.portfolio_manager`
+  - `ImportError: cannot import name 'get_instrument_context_from_state' from 'trader.agents.utils.agent_utils'`
   - Expected until CN `agent_utils` exposes upstream-compatible instrument context helpers.
 
 ## Upstream-Only Backend/Core Files
 
 The tracked upstream files missing from current tracked CN files include:
 
-- `tradingagents/agents/analysts/sentiment_analyst.py`
-- `tradingagents/agents/managers/portfolio_manager.py`
-- `tradingagents/agents/risk_mgmt/aggressive_debator.py`
-- `tradingagents/agents/schemas.py`
-- `tradingagents/agents/utils/core_stock_tools.py`
-- `tradingagents/agents/utils/fundamental_data_tools.py`
-- `tradingagents/agents/utils/market_data_validation_tools.py`
-- `tradingagents/agents/utils/news_data_tools.py`
-- `tradingagents/agents/utils/rating.py`
-- `tradingagents/agents/utils/structured.py`
-- `tradingagents/agents/utils/technical_indicators_tools.py`
-- `tradingagents/dataflows/alpha_vantage.py`
-- `tradingagents/dataflows/alpha_vantage_common.py`
-- `tradingagents/dataflows/alpha_vantage_fundamentals.py`
-- `tradingagents/dataflows/alpha_vantage_indicator.py`
-- `tradingagents/dataflows/alpha_vantage_news.py`
-- `tradingagents/dataflows/alpha_vantage_stock.py`
-- `tradingagents/dataflows/config.py`
-- `tradingagents/dataflows/market_data_validator.py`
-- `tradingagents/dataflows/reddit.py`
-- `tradingagents/dataflows/stockstats_utils.py`
-- `tradingagents/dataflows/stocktwits.py`
-- `tradingagents/dataflows/symbol_utils.py`
-- `tradingagents/dataflows/utils.py`
-- `tradingagents/dataflows/y_finance.py`
-- `tradingagents/dataflows/yfinance_news.py`
-- `tradingagents/graph/analyst_execution.py`
-- `tradingagents/graph/checkpointer.py`
-- `tradingagents/llm_clients/api_key_env.py`
-- `tradingagents/llm_clients/azure_client.py`
-- `tradingagents/llm_clients/capabilities.py`
+- `trader/agents/analysts/sentiment_analyst.py`
+- `trader/agents/managers/portfolio_manager.py`
+- `trader/agents/risk_mgmt/aggressive_debator.py`
+- `trader/agents/schemas.py`
+- `trader/agents/utils/core_stock_tools.py`
+- `trader/agents/utils/fundamental_data_tools.py`
+- `trader/agents/utils/market_data_validation_tools.py`
+- `trader/agents/utils/news_data_tools.py`
+- `trader/agents/utils/rating.py`
+- `trader/agents/utils/structured.py`
+- `trader/agents/utils/technical_indicators_tools.py`
+- `trader/dataflows/alpha_vantage.py`
+- `trader/dataflows/alpha_vantage_common.py`
+- `trader/dataflows/alpha_vantage_fundamentals.py`
+- `trader/dataflows/alpha_vantage_indicator.py`
+- `trader/dataflows/alpha_vantage_news.py`
+- `trader/dataflows/alpha_vantage_stock.py`
+- `trader/dataflows/config.py`
+- `trader/dataflows/market_data_validator.py`
+- `trader/dataflows/reddit.py`
+- `trader/dataflows/stockstats_utils.py`
+- `trader/dataflows/stocktwits.py`
+- `trader/dataflows/symbol_utils.py`
+- `trader/dataflows/utils.py`
+- `trader/dataflows/y_finance.py`
+- `trader/dataflows/yfinance_news.py`
+- `trader/graph/analyst_execution.py`
+- `trader/graph/checkpointer.py`
+- `trader/llm_clients/api_key_env.py`
+- `trader/llm_clients/azure_client.py`
+- `trader/llm_clients/capabilities.py`
 
 Upstream test files are tracked in the migration plan Task 14 and will be
 ported/adapted after runtime compatibility work.

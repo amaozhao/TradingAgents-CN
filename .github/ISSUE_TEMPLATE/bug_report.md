@@ -88,7 +88,7 @@ Please paste the complete error message and stack trace
 # If logging is enabled, please provide relevant logs
 
 # Web应用日志 / Web app logs
-tail -n 50 logs/tradingagents.log
+tail -n 50 logs/trader.log
 
 # Docker日志 / Docker logs
 docker-compose logs web

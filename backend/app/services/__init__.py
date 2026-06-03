@@ -1,10 +1,10 @@
 """Service layer for business logic and integrations."""
 
-from . import historicaldataservice as historical_data_service
-from . import internalmessageservice as internal_message_service
-from . import notificationsservice as notifications_service
-from . import socialmediaservice as social_media_service
-from . import usagestatisticsservice as usage_statistics_service
+from . import message as internal_message_service
+from . import notification as notifications_service
+from . import social as social_media_service
+from . import usage as usage_statistics_service
+from .market import historical as historical_data_service
 
 __all__ = [
     "historical_data_service",

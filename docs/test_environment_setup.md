@@ -18,9 +18,9 @@
 | 项目 | 生产环境 | 测试环境 |
 |------|---------|---------|
 | **Docker Compose 文件** | `docker-compose.hub.yml` | `docker-compose.hub.test.yml` |
-| **容器名称** | `tradingagents-*` | `tradingagents-*-test` |
-| **数据卷名称** | `tradingagents_mongodb_data`<br>`tradingagents_redis_data` | `tradingagents_test_mongodb_data`<br>`tradingagents_test_redis_data` |
-| **网络名称** | `tradingagents-network` | `tradingagents-test-network` |
+| **容器名称** | `trading-agents-*` | `trading-agents-*-test` |
+| **数据卷名称** | `trading_agents_mongodb_data`<br>`trading_agents_redis_data` | `trading_agents_test_mongodb_data`<br>`trading_agents_test_redis_data` |
+| **网络名称** | `trading-agents-network` | `trading-agents-test-network` |
 | **日志目录** | `logs/` | `logs-test/` |
 | **配置目录** | `config/` | `config-test/` |
 | **数据目录** | `data/` | `data-test/` |
@@ -51,14 +51,14 @@
 ======================================================================
 
 [INFO] Test containers:
-  - tradingagents-mongodb-test
-  - tradingagents-redis-test
-  - tradingagents-backend-test
-  - tradingagents-frontend-test
+  - trading-agents-mongodb-test
+  - trading-agents-redis-test
+  - trading-agents-backend-test
+  - trading-agents-frontend-test
 
 [INFO] Test data volumes:
-  - tradingagents_test_mongodb_data
-  - tradingagents_test_redis_data
+  - trading_agents_test_mongodb_data
+  - trading_agents_test_redis_data
 
 [INFO] Access URLs:
   - Frontend: http://localhost:3000
@@ -79,30 +79,30 @@ docker ps
 **预期输出**：
 ```
 CONTAINER ID   IMAGE                                  STATUS         PORTS                      NAMES
-xxxxxxxxxx     hsliup/tradingagents-frontend:latest   Up 2 minutes   0.0.0.0:3000->80/tcp       tradingagents-frontend-test
-xxxxxxxxxx     hsliup/tradingagents-backend:latest    Up 2 minutes   0.0.0.0:8000->8000/tcp     tradingagents-backend-test
-xxxxxxxxxx     redis:7-alpine                         Up 2 minutes   0.0.0.0:6379->6379/tcp     tradingagents-redis-test
-xxxxxxxxxx     mongo:4.4                              Up 2 minutes   0.0.0.0:27017->27017/tcp   tradingagents-mongodb-test
+xxxxxxxxxx     hsliup/trading-agents-frontend:latest   Up 2 minutes   0.0.0.0:3000->80/tcp       trading-agents-frontend-test
+xxxxxxxxxx     hsliup/trading-agents-backend:latest    Up 2 minutes   0.0.0.0:8000->8000/tcp     trading-agents-backend-test
+xxxxxxxxxx     redis:7-alpine                         Up 2 minutes   0.0.0.0:6379->6379/tcp     trading-agents-redis-test
+xxxxxxxxxx     mongo:4.4                              Up 2 minutes   0.0.0.0:27017->27017/tcp   trading-agents-mongodb-test
 ```
 
 #### 检查数据卷
 
 ```powershell
-docker volume ls | Select-String "tradingagents"
+docker volume ls | Select-String "trading_agents"
 ```
 
 **预期输出**：
 ```
-local     tradingagents_mongodb_data           # 生产数据卷（保留）
-local     tradingagents_redis_data             # 生产数据卷（保留）
-local     tradingagents_test_mongodb_data      # 测试数据卷（新建）
-local     tradingagents_test_redis_data        # 测试数据卷（新建）
+local     trading_agents_mongodb_data           # 生产数据卷（保留）
+local     trading_agents_redis_data             # 生产数据卷（保留）
+local     trading_agents_test_mongodb_data      # 测试数据卷（新建）
+local     trading_agents_test_redis_data        # 测试数据卷（新建）
 ```
 
 #### 查看后端日志
 
 ```powershell
-docker logs -f tradingagents-backend-test
+docker logs -f trading-agents-backend-test
 ```
 
 **预期输出**：
@@ -199,14 +199,14 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ======================================================================
 
 [INFO] Production containers:
-  - tradingagents-mongodb
-  - tradingagents-redis
-  - tradingagents-backend
-  - tradingagents-frontend
+  - trading-agents-mongodb
+  - trading-agents-redis
+  - trading-agents-backend
+  - trading-agents-frontend
 
 [INFO] Production data volumes:
-  - tradingagents_mongodb_data
-  - tradingagents_redis_data
+  - trading_agents_mongodb_data
+  - trading_agents_redis_data
 ```
 
 ---
@@ -243,7 +243,7 @@ docker-compose -f docker-compose.hub.yml down
 docker-compose -f docker-compose.hub.test.yml up -d
 
 # 查看日志
-docker logs -f tradingagents-backend-test
+docker logs -f trading-agents-backend-test
 ```
 
 ### 切换回生产环境
@@ -256,7 +256,7 @@ docker-compose -f docker-compose.hub.test.yml down
 docker-compose -f docker-compose.hub.yml up -d
 
 # 查看日志
-docker logs -f tradingagents-backend
+docker logs -f trading-agents-backend
 ```
 
 ### 清理测试环境
@@ -281,29 +281,29 @@ Remove-Item -Path data-test -Recurse -Force
 
 ### Q2: 测试数据会影响生产数据吗？
 
-**A**: 不会。测试环境使用独立的数据卷（`tradingagents_test_*`），与生产数据卷（`tradingagents_*`）完全隔离。
+**A**: 不会。测试环境使用独立的数据卷（`trading_agents_test_*`），与生产数据卷（`trading_agents_*`）完全隔离。
 
 ### Q3: 如何查看测试环境的日志？
 
 **A**: 使用以下命令：
 ```powershell
 # 后端日志
-docker logs -f tradingagents-backend-test
+docker logs -f trading-agents-backend-test
 
 # 前端日志
-docker logs -f tradingagents-frontend-test
+docker logs -f trading-agents-frontend-test
 
 # MongoDB 日志
-docker logs -f tradingagents-mongodb-test
+docker logs -f trading-agents-mongodb-test
 
 # Redis 日志
-docker logs -f tradingagents-redis-test
+docker logs -f trading-agents-redis-test
 ```
 
 ### Q4: 测试环境的数据存储在哪里？
 
-**A**: 
-- **数据卷**：Docker 管理的卷（`tradingagents_test_mongodb_data`, `tradingagents_test_redis_data`）
+**A**:
+- **数据卷**：Docker 管理的卷（`trading_agents_test_mongodb_data`, `trading_agents_test_redis_data`）
 - **日志文件**：`logs-test/` 目录
 - **配置文件**：`config-test/` 目录
 - **数据文件**：`data-test/` 目录
@@ -316,8 +316,8 @@ docker logs -f tradingagents-redis-test
 docker-compose -f docker-compose.hub.test.yml down
 
 # 删除测试数据卷
-docker volume rm tradingagents_test_mongodb_data
-docker volume rm tradingagents_test_redis_data
+docker volume rm trading_agents_test_mongodb_data
+docker volume rm trading_agents_test_redis_data
 ```
 
 或者使用清理脚本：
@@ -331,10 +331,10 @@ docker volume rm tradingagents_test_redis_data
 
 使用独立测试环境的优势：
 
-✅ **安全**：不影响生产数据  
-✅ **灵活**：可以随时切换  
-✅ **完整**：完全模拟真实部署  
-✅ **易用**：一键启动和清理  
+✅ **安全**：不影响生产数据
+✅ **灵活**：可以随时切换
+✅ **完整**：完全模拟真实部署
+✅ **易用**：一键启动和清理
 
 推荐在以下场景使用测试环境：
 
@@ -347,4 +347,3 @@ docker volume rm tradingagents_test_redis_data
 ---
 
 **祝测试顺利！** 🎉
-

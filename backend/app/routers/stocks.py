@@ -9,13 +9,13 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 import logging
 import re
 
-from app.routers.authdb import get_current_user
-from app.core.coreconfig import settings
-from app.core.coredatabase import get_mongo_db
+from app.routers.account import get_current_user
+from app.core.config import settings
+from app.core.database import get_mongo_db
 from app.core.response import ok
-from app.models.apiresponse import ApiResponse
-from app.services.financialdataservice import FinancialDataService
-from app.services.appstockdataservice import StockDataService
+from app.models.response import ApiResponse
+from app.services.market.financial import FinancialDataService
+from app.services.stocks.service import StockDataService
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +135,7 @@ async def get_quote(
 
     # 港股和美股：使用新服务
     if market in ['HK', 'US']:
-        from app.services.foreignstockservice import ForeignStockService
+        from app.services.stocks.foreign import ForeignStockService
 
         db = get_mongo_db()  # 不需要 await，直接返回数据库对象
         service = ForeignStockService(db=db)
@@ -168,7 +168,7 @@ async def get_quote(
         logger.info(f"  ❌ 未找到数据")
 
     # 🔥 基础信息 - 按数据源优先级查询
-    from app.core.unifiedconfig import UnifiedConfigManager
+    from app.core.unified import UnifiedConfigManager
     config = UnifiedConfigManager()
     data_source_configs = await config.get_data_source_configs_async()
 
@@ -282,7 +282,7 @@ async def get_fundamentals(
 
     # 港股和美股：使用新服务
     if market in ['HK', 'US']:
-        from app.services.foreignstockservice import ForeignStockService
+        from app.services.stocks.foreign import ForeignStockService
 
         db = get_mongo_db()  # 不需要 await，直接返回数据库对象
         service = ForeignStockService(db=db)
@@ -340,7 +340,7 @@ async def get_fundamentals(
     financial_data = await _get_cn_financial_from_service(code6, source)
     try:
         # 获取数据源优先级配置
-        from app.core.unifiedconfig import UnifiedConfigManager
+        from app.core.unified import UnifiedConfigManager
         config = UnifiedConfigManager()
         data_source_configs = await config.get_data_source_configs_async()
 
@@ -371,7 +371,7 @@ async def get_fundamentals(
         logger.error(f"获取财务数据失败: {e}")
 
     # 3. 获取实时PE/PB（优先使用实时计算）
-    from tradingagents.dataflows.realtimemetrics import get_pe_pb_with_fallback
+    from trader.flows.metrics import get_pe_pb_with_fallback
     import asyncio
 
     # 在线程池中执行同步的实时计算
@@ -500,7 +500,7 @@ async def get_kline(
 
     # 港股和美股：使用新服务
     if market in ['HK', 'US']:
-        from app.services.foreignstockservice import ForeignStockService
+        from app.services.stocks.foreign import ForeignStockService
 
         db = get_mongo_db()  # 不需要 await，直接返回数据库对象
         service = ForeignStockService(db=db)
@@ -539,7 +539,7 @@ async def get_kline(
     mongodb_period = period_map.get(period, "daily")
 
     # 获取当前时间（北京时间）
-    from app.core.coreconfig import settings
+    from app.core.config import settings
     tz = ZoneInfo(settings.TIMEZONE)
     now = datetime.now(tz)
     today_str_yyyymmdd = now.strftime("%Y%m%d")  # 格式：20251028（用于查询）
@@ -547,7 +547,7 @@ async def get_kline(
 
     # 1. 优先从 MongoDB 缓存获取
     try:
-        from tradingagents.dataflows.cache.mongodbcacheadapter import get_mongodb_cache_adapter
+        from trader.flows.cache.mongodb import get_mongodb_cache_adapter
         adapter = get_mongodb_cache_adapter()
 
         # 计算日期范围
@@ -580,7 +580,7 @@ async def get_kline(
         logger.info(f"📡 MongoDB 无数据，降级到外部 API")
         try:
             import asyncio
-            from app.services.datasources.manager import DataSourceManager
+            from app.services.sources.manager import DataSourceManager
 
             mgr = DataSourceManager()
             # 添加 10 秒超时保护
@@ -672,8 +672,8 @@ async def get_kline(
 @router.get("/{code}/news", response_model=ApiResponse)
 async def get_news(code: str, days: int = 30, limit: int = 50, include_announcements: bool = True, current_user: dict = Depends(get_current_user)):
     """获取新闻与公告（支持A股、港股、美股）"""
-    from app.services.foreignstockservice import ForeignStockService
-    from app.services.newsdataservice import get_news_data_service, NewsQueryParams
+    from app.services.stocks.foreign import ForeignStockService
+    from app.services.market.news import get_news_data_service, NewsQueryParams
 
     # 检测股票类型
     market, normalized_code = _detect_market_and_code(code)
@@ -700,9 +700,9 @@ async def get_news(code: str, days: int = 30, limit: int = 50, include_announcem
             logger.info(f"📰 开始获取新闻: code={code}, normalized_code={normalized_code}, days={days}, limit={limit}")
 
             # 直接使用 news_data 路由的查询逻辑
-            from app.services.newsdataservice import get_news_data_service, NewsQueryParams
+            from app.services.market.news import get_news_data_service, NewsQueryParams
             from datetime import datetime, timedelta
-            from app.worker.aksharesyncservice import get_akshare_sync_service
+            from app.worker.akshare.sync import get_akshare_sync_service
 
             service = await get_news_data_service()
             sync_service = await get_akshare_sync_service()
@@ -774,7 +774,7 @@ async def get_news(code: str, days: int = 30, limit: int = 50, include_announcem
             if not items:
                 logger.info(f"🔄 数据库/同步服务无新闻，尝试统一数据源兜底: {normalized_code}")
                 try:
-                    from app.services.datasources.manager import DataSourceManager
+                    from app.services.sources.manager import DataSourceManager
 
                     fallback_items, fallback_source = DataSourceManager().get_news_with_fallback(
                         normalized_code,
@@ -805,7 +805,7 @@ async def get_news(code: str, days: int = 30, limit: int = 50, include_announcem
         except Exception as e:
             logger.error(f"❌ 获取新闻失败: {e}", exc_info=True)
             try:
-                from app.services.datasources.manager import DataSourceManager
+                from app.services.sources.manager import DataSourceManager
 
                 fallback_items, fallback_source = DataSourceManager().get_news_with_fallback(
                     normalized_code,

@@ -63,34 +63,34 @@ docker compose -f <compose-file> logs --no-color backend \
   > runtime/logs/postgres-cutover/pre-read/backend.log
 
 docker compose -f <compose-file> exec backend sh -lc \
-  'cd /app && python backend/scripts/postgres_cutover_gate.py --require-explicit-env --target-env <target-env> --target-phase pre-read --skip-api-smoke --runtime-log /app/logs/postgres-cutover/pre-read/backend.log --output-dir /app/logs/postgres-cutover/pre-read'
+  'cd /app && python backend/scripts/postgres/cutover/gate/script.py --require-explicit-env --target-env <target-env> --target-phase pre-read --skip-api-smoke --runtime-log /app/logs/postgres-cutover/pre-read/backend.log --output-dir /app/logs/postgres-cutover/pre-read'
 
 docker compose -f <compose-file> exec backend sh -lc \
-  'cd /app && python backend/scripts/postgres_cutover_evidence_check.py --require-target-manifest --expected-phase pre-read --require-runtime-log-check /app/logs/postgres-cutover/pre-read'
+  'cd /app && python backend/scripts/postgres/cutover/evidence/check/script.py --require-target-manifest --expected-phase pre-read --require-runtime-log-check /app/logs/postgres-cutover/pre-read'
 ```
 
 Recommended evidence-bundle command for target environments:
 
 ```bash
-mkdir -p /tmp/tradingagents_postgres_cutover_evidence/pre-read
+mkdir -p /tmp/trading_agents_postgres_cutover_evidence/pre-read
 docker compose -f <compose-file> logs --no-color backend \
-  > /tmp/tradingagents_postgres_cutover_evidence/pre-read/backend.log
+  > /tmp/trading_agents_postgres_cutover_evidence/pre-read/backend.log
 
 # Copy and fill the non-secret pre-read template outside git:
 # cp deploy/env-templates/postgres-pre-read-evidence.env.example /secure/path/postgres-pre-read-evidence.env
 set -a; . /secure/path/postgres-pre-read-evidence.env; set +a
 
-python backend/scripts/postgres_cutover_gate.py \
+python backend/scripts/postgres/cutover/gate/script.py \
   --require-explicit-env \
   --skip-api-smoke \
-  --runtime-log /tmp/tradingagents_postgres_cutover_evidence/pre-read/backend.log \
-  --output-dir /tmp/tradingagents_postgres_cutover_evidence/pre-read
+  --runtime-log /tmp/trading_agents_postgres_cutover_evidence/pre-read/backend.log \
+  --output-dir /tmp/trading_agents_postgres_cutover_evidence/pre-read
 
-python backend/scripts/postgres_cutover_evidence_check.py \
+python backend/scripts/postgres/cutover/evidence/check/script.py \
   --require-target-manifest \
   --expected-phase pre-read \
   --require-runtime-log-check \
-  /tmp/tradingagents_postgres_cutover_evidence/pre-read
+  /tmp/trading_agents_postgres_cutover_evidence/pre-read
 ```
 
 Runtime log evidence should be saved beside the bundle and passed to
@@ -112,8 +112,8 @@ The gate runner saves command output plus `summary.json` without writing secrets
 `--require-explicit-env` is recommended for target environments. It fails before
 running any gate when MongoDB, PostgreSQL, or required API smoke credentials are
 missing. It also requires an explicit target environment label and cutover
-phase via `--target-env/--target-phase` or `TRADINGAGENTS_TARGET_ENV` /
-`TRADINGAGENTS_CUTOVER_PHASE`, and writes only redacted environment state to the
+phase via `--target-env/--target-phase` or `TRADING_AGENTS_TARGET_ENV` /
+`TRADING_AGENTS_CUTOVER_PHASE`, and writes only redacted environment state to the
 evidence bundle.
 With `--require-explicit-env`, the gate also enforces phase shape: `pre-read`
 must use `--skip-api-smoke`, `post-read` must include API smoke, and `rollback`
@@ -122,8 +122,8 @@ must use `postgres_rollback_check.py` instead of `postgres_cutover_gate.py`.
 For repeatable local seeded verification before touching a target environment:
 
 ```bash
-python backend/scripts/postgres_local_cutover_verify.py \
-  --output-dir /tmp/tradingagents_postgres_local_cutover
+python backend/scripts/postgres/local/cutover/verify/script.py \
+  --output-dir /tmp/trading_agents_postgres_local_cutover
 ```
 
 This local script creates disposable Docker MongoDB/PostgreSQL containers, seeds one
@@ -137,25 +137,25 @@ also runs `postgres_cutover_evidence_check.py` as its final step, so the command
 fails if the nested gate bundle is incomplete.
 
 ```bash
-python backend/scripts/postgres_cutover_evidence_check.py \
+python backend/scripts/postgres/cutover/evidence/check/script.py \
   --require-target-manifest \
   --expected-phase pre-read \
-  /tmp/tradingagents_postgres_local_cutover/gate
+  /tmp/trading_agents_postgres_local_cutover/gate
 ```
 
 If a real backend log is available, pass it through the nested cutover gate
 without fabricating log content:
 
 ```bash
-python backend/scripts/postgres_local_cutover_verify.py \
-  --output-dir /tmp/tradingagents_postgres_local_cutover \
+python backend/scripts/postgres/local/cutover/verify/script.py \
+  --output-dir /tmp/trading_agents_postgres_local_cutover \
   --runtime-log /path/to/backend.log
 ```
 
 1. Confirm dependencies and static migration inventory:
 
 ```bash
-python backend/scripts/postgres_migration_inventory.py
+python backend/scripts/postgres/migration/inventory/script.py
 ```
 
 Required:
@@ -169,14 +169,14 @@ Required:
 
 ```bash
 cd backend
-alembic -c alembic.ini upgrade head --sql > /tmp/tradingagents_postgres_offline.sql
-wc -l /tmp/tradingagents_postgres_offline.sql
+alembic -c alembic.ini upgrade head --sql > /tmp/trading_agents_postgres_offline.sql
+wc -l /tmp/trading_agents_postgres_offline.sql
 ```
 
 3. Confirm tests:
 
 ```bash
-python backend/scripts/postgres_test_gate.py --scope quick
+python backend/scripts/postgres/gate/script.py --scope quick
 ```
 
 Use scoped gates during migration work instead of running the whole backend test
@@ -184,26 +184,26 @@ suite after every small edit:
 
 ```bash
 # Router/OpenAPI/Pydantic contract changes
-python backend/scripts/postgres_test_gate.py --scope api-contract
+python backend/scripts/postgres/gate/script.py --scope api-contract
 
 # Cutover/evidence/runtime-log script changes
-python backend/scripts/postgres_test_gate.py --scope cutover
+python backend/scripts/postgres/gate/script.py --scope cutover
 
 # Rollback/API-smoke migration-state changes
-python backend/scripts/postgres_test_gate.py --scope rollback
+python backend/scripts/postgres/gate/script.py --scope rollback
 
 # DB/session/migrator/repository changes
-python backend/scripts/postgres_test_gate.py --scope db
+python backend/scripts/postgres/gate/script.py --scope db
 
 # Documentation/runbook/deploy-template changes
-python backend/scripts/postgres_test_gate.py --scope docs
+python backend/scripts/postgres/gate/script.py --scope docs
 ```
 
 Run the expensive full backend suite only as the final local gate before
 handing off or accepting the migration branch:
 
 ```bash
-python backend/scripts/postgres_test_gate.py --scope full
+python backend/scripts/postgres/gate/script.py --scope full
 ```
 
 4. Confirm startup workers and scheduled jobs are explicitly gated for the cutover state.
@@ -254,7 +254,7 @@ docker compose --env-file .env --env-file deploy/env/postgres-dual-write.env \
 6. Run consistency check:
 
 ```bash
-python backend/scripts/postgres_consistency_check.py --sample-limit 500
+python backend/scripts/postgres/consistency/check/script.py --sample-limit 500
 ```
 
 Required before read cutover:
@@ -268,7 +268,7 @@ Required before read cutover:
 7. Collect representative query plans:
 
 ```bash
-python backend/scripts/postgres_query_plan_check.py
+python backend/scripts/postgres/query/plan/check/script.py
 ```
 
 Required:
@@ -280,13 +280,13 @@ Required:
 Use this when PostgreSQL is not reachable yet:
 
 ```bash
-python backend/scripts/postgres_query_plan_check.py --compile-only
+python backend/scripts/postgres/query/plan/check/script.py --compile-only
 ```
 
 8. Run PostgreSQL data-path smoke against the migrated target database:
 
 ```bash
-python backend/scripts/postgres_cutover_smoke.py --pretty
+python backend/scripts/postgres/cutover/smoke/script.py --pretty
 ```
 
 Required:
@@ -316,18 +316,18 @@ docker compose --env-file .env --env-file deploy/env/postgres-read.env \
 # cp deploy/env-templates/postgres-post-read-smoke.env.example /secure/path/postgres-post-read-smoke.env
 # set -a; . /secure/path/postgres-post-read-smoke.env; set +a
 
-TRADINGAGENTS_API_BASE_URL=https://<target-host> \
-TRADINGAGENTS_API_USERNAME=<smoke-user> \
-TRADINGAGENTS_API_PASSWORD=<smoke-password> \
-TRADINGAGENTS_SMOKE_STOCK_CODE=000001 \
-TRADINGAGENTS_SMOKE_SYMBOL=000001 \
-TRADINGAGENTS_SMOKE_TASK_ID=<optional-existing-task-id> \
-TRADINGAGENTS_EXPECT_POSTGRES_READ_ENABLED=true \
-TRADINGAGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED=true \
-python backend/scripts/postgres_api_smoke.py --pretty
+TRADING_AGENTS_API_BASE_URL=https://<target-host> \
+TRADING_AGENTS_API_USERNAME=<smoke-user> \
+TRADING_AGENTS_API_PASSWORD=<smoke-password> \
+TRADING_AGENTS_SMOKE_STOCK_CODE=000001 \
+TRADING_AGENTS_SMOKE_SYMBOL=000001 \
+TRADING_AGENTS_SMOKE_TASK_ID=<optional-existing-task-id> \
+TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED=true \
+TRADING_AGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED=true \
+python backend/scripts/postgres/api/smoke/script.py --pretty
 ```
 
-Alternatively provide `TRADINGAGENTS_API_TOKEN` instead of username/password.
+Alternatively provide `TRADING_AGENTS_API_TOKEN` instead of username/password.
 The smoke identity must be allowed to call `/api/system/config/summary`; the
 optional migration-state check uses that endpoint to prove the deployed service
 is running with the expected PostgreSQL read/write switches.
@@ -339,22 +339,22 @@ To append API smoke into a final cutover evidence bundle after PostgreSQL read i
 # and expected migration switches stay consistent across commands.
 set -a; . /secure/path/postgres-post-read-smoke.env; set +a
 
-TRADINGAGENTS_EXPECT_POSTGRES_READ_ENABLED=true \
-TRADINGAGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED=true \
-python backend/scripts/postgres_cutover_gate.py \
+TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED=true \
+TRADING_AGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED=true \
+python backend/scripts/postgres/cutover/gate/script.py \
   --require-explicit-env \
   --target-env <target-env> \
   --target-phase post-read \
-  --runtime-log /tmp/tradingagents_postgres_cutover_evidence/post-read/backend.log \
-  --output-dir /tmp/tradingagents_postgres_cutover_evidence/post-read
+  --runtime-log /tmp/trading_agents_postgres_cutover_evidence/post-read/backend.log \
+  --output-dir /tmp/trading_agents_postgres_cutover_evidence/post-read
 
-python backend/scripts/postgres_cutover_evidence_check.py \
+python backend/scripts/postgres/cutover/evidence/check/script.py \
   --require-target-manifest \
   --expected-phase post-read \
   --require-api-smoke \
   --require-api-migration-state \
   --require-runtime-log-check \
-  /tmp/tradingagents_postgres_cutover_evidence/post-read
+  /tmp/trading_agents_postgres_cutover_evidence/post-read
 ```
 
 Docker Compose equivalent:
@@ -365,27 +365,27 @@ docker compose -f <compose-file> logs --no-color backend \
   > runtime/logs/postgres-cutover/post-read/backend.log
 
 docker compose -f <compose-file> exec backend sh -lc \
-  'cd /app && python backend/scripts/postgres_cutover_gate.py --require-explicit-env --target-env <target-env> --target-phase post-read --runtime-log /app/logs/postgres-cutover/post-read/backend.log --output-dir /app/logs/postgres-cutover/post-read'
+  'cd /app && python backend/scripts/postgres/cutover/gate/script.py --require-explicit-env --target-env <target-env> --target-phase post-read --runtime-log /app/logs/postgres-cutover/post-read/backend.log --output-dir /app/logs/postgres-cutover/post-read'
 
 docker compose -f <compose-file> exec backend sh -lc \
-  'cd /app && python backend/scripts/postgres_cutover_evidence_check.py --require-target-manifest --expected-phase post-read --require-api-smoke --require-api-migration-state --require-runtime-log-check /app/logs/postgres-cutover/post-read'
+  'cd /app && python backend/scripts/postgres/cutover/evidence/check/script.py --require-target-manifest --expected-phase post-read --require-api-smoke --require-api-migration-state --require-runtime-log-check /app/logs/postgres-cutover/post-read'
 ```
 
 If runtime logs must be checked independently for diagnostics, use the same
 strict script and still require the generated file in the evidence checker:
 
 ```bash
-python backend/scripts/postgres_runtime_log_check.py \
-  /tmp/tradingagents_postgres_cutover_evidence/post-read/backend.log \
-  > /tmp/tradingagents_postgres_cutover_evidence/post-read/runtime_log_check.json
+python backend/scripts/postgres/runtime/log/check/script.py \
+  /tmp/trading_agents_postgres_cutover_evidence/post-read/backend.log \
+  > /tmp/trading_agents_postgres_cutover_evidence/post-read/runtime_log_check.json
 
-python backend/scripts/postgres_cutover_evidence_check.py \
+python backend/scripts/postgres/cutover/evidence/check/script.py \
   --require-target-manifest \
   --expected-phase post-read \
   --require-api-smoke \
   --require-api-migration-state \
   --require-runtime-log-check \
-  /tmp/tradingagents_postgres_cutover_evidence/post-read
+  /tmp/trading_agents_postgres_cutover_evidence/post-read
 ```
 
 Required:
@@ -395,7 +395,7 @@ Required:
 - auth login or bearer token validates `/api/auth/me`
 - public health/model/data endpoints pass
 - authenticated stock, market, financial, favorites, tags, paper, operation log, news, config endpoints pass
-- analysis task API checks pass when `TRADINGAGENTS_SMOKE_TASK_ID` is provided; otherwise the analysis task check is recorded as `skipped`
+- analysis task API checks pass when `TRADING_AGENTS_SMOKE_TASK_ID` is provided; otherwise the analysis task check is recorded as `skipped`
 - MongoDB counts for seeded smoke collections do not unexpectedly grow from startup-only background imports when those imports are disabled.
 
 The checked endpoint groups are:
@@ -431,40 +431,40 @@ POSTGRES_DUAL_WRITE_ENABLED=true
 5. Re-run:
 
 ```bash
-mkdir -p /tmp/tradingagents_postgres_cutover_evidence/rollback
+mkdir -p /tmp/trading_agents_postgres_cutover_evidence/rollback
 
 # Copy and fill the non-secret rollback template outside git with target credentials:
 # cp deploy/env-templates/postgres-rollback-smoke.env.example /secure/path/postgres-rollback-smoke.env
 set -a; . /secure/path/postgres-rollback-smoke.env; set +a
 # The rollback template must keep these expected runtime switches unless
 # postgres_rollback_check.py --allow-dual-write-disabled is explicitly used:
-# TRADINGAGENTS_EXPECT_POSTGRES_READ_ENABLED=false
-# TRADINGAGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED=true
+# TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED=false
+# TRADING_AGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED=true
 
-python backend/scripts/postgres_api_smoke.py --pretty \
-  > /tmp/tradingagents_postgres_cutover_evidence/rollback/api_smoke.json
+python backend/scripts/postgres/api/smoke/script.py --pretty \
+  > /tmp/trading_agents_postgres_cutover_evidence/rollback/api_smoke.json
 
-python backend/scripts/postgres_consistency_check.py --sample-limit 500 \
-  > /tmp/tradingagents_postgres_cutover_evidence/rollback/consistency.json
+python backend/scripts/postgres/consistency/check/script.py --sample-limit 500 \
+  > /tmp/trading_agents_postgres_cutover_evidence/rollback/consistency.json
 
 POSTGRES_READ_ENABLED=false \
 POSTGRES_DUAL_WRITE_ENABLED=true \
-python backend/scripts/postgres_rollback_check.py \
-  --api-smoke-json /tmp/tradingagents_postgres_cutover_evidence/rollback/api_smoke.json \
-  --consistency-json /tmp/tradingagents_postgres_cutover_evidence/rollback/consistency.json \
-  --output-dir /tmp/tradingagents_postgres_cutover_evidence/rollback \
-  --target-env "$TRADINGAGENTS_TARGET_ENV" \
-  > /tmp/tradingagents_postgres_cutover_evidence/rollback/rollback_check.json
+python backend/scripts/postgres/rollback/check/script.py \
+  --api-smoke-json /tmp/trading_agents_postgres_cutover_evidence/rollback/api_smoke.json \
+  --consistency-json /tmp/trading_agents_postgres_cutover_evidence/rollback/consistency.json \
+  --output-dir /tmp/trading_agents_postgres_cutover_evidence/rollback \
+  --target-env "$TRADING_AGENTS_TARGET_ENV" \
+  > /tmp/trading_agents_postgres_cutover_evidence/rollback/rollback_check.json
 
 # The rollback check fails with structured JSON when neither --target-env nor
-# TRADINGAGENTS_TARGET_ENV is present.
+# TRADING_AGENTS_TARGET_ENV is present.
 
-python backend/scripts/postgres_cutover_evidence_check.py \
+python backend/scripts/postgres/cutover/evidence/check/script.py \
   --rollback-only \
   --require-target-manifest \
   --expected-phase rollback \
   --require-rollback-check \
-  /tmp/tradingagents_postgres_cutover_evidence/rollback
+  /tmp/trading_agents_postgres_cutover_evidence/rollback
 ```
 
 If PostgreSQL writes are unhealthy and dual-write must be disabled during
@@ -478,7 +478,7 @@ Do not drop PostgreSQL tables during rollback. Schema rollback is not required t
 ## Observability Requirements
 
 - Dual-write failures must log collection, legacy/business key, status, and reason.
-- Runtime log checking with `backend/scripts/postgres_runtime_log_check.py` must pass in the target evidence bundle; strict mode requires startup sync-disable evidence, at least one successful dual-write event, zero dual-write failures, and zero Mongo-only migration warnings.
+- Runtime log checking with `backend/scripts/postgres/runtime/log/check/script.py` must pass in the target evidence bundle; strict mode requires startup sync-disable evidence, at least one successful dual-write event, zero dual-write failures, and zero Mongo-only migration warnings.
 - Consistency output must be saved with deployment evidence.
 - Query plan output must be saved before entering `postgres_read_mongo_fallback`.
 - PostgreSQL data-path smoke output must be saved before entering `postgres_read_mongo_fallback`.

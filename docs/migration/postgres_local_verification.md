@@ -8,8 +8,8 @@ Isolated local Docker containers were used, not the developer's existing MongoDB
 
 | Service | Container | Port | Database |
 | --- | --- | ---: | --- |
-| MongoDB | `ta_mongo_migration_test` | `27019` | `tradingagentscn` |
-| PostgreSQL | `ta_pg_migration_test` | `55432` | `tradingagentscn` |
+| MongoDB | `ta_mongo_migration_test` | `27019` | `trading_agents_cn` |
+| PostgreSQL | `ta_pg_migration_test` | `55432` | `trading_agents_cn` |
 | Redis | `ta_redis_migration_test` | `56379` | n/a |
 
 The MongoDB test database was seeded with one representative document for each configured migration collection.
@@ -20,8 +20,8 @@ The FastAPI service was started against the same isolated services with `POSTGRE
 Repeatable local orchestration:
 
 ```bash
-python backend/scripts/postgres_local_cutover_verify.py \
-  --output-dir /tmp/tradingagents_postgres_local_cutover
+python backend/scripts/postgres/local/cutover/verify/script.py \
+  --output-dir /tmp/trading_agents_postgres_local_cutover
 ```
 
 The script starts isolated Docker MongoDB/PostgreSQL containers, seeds representative
@@ -39,10 +39,10 @@ Validate the saved local evidence bundle with the same manifest requirement used
 for target environments:
 
 ```bash
-python backend/scripts/postgres_cutover_evidence_check.py \
+python backend/scripts/postgres/cutover/evidence/check/script.py \
   --require-target-manifest \
   --expected-phase pre-read \
-  /tmp/tradingagents_postgres_local_cutover/gate
+  /tmp/trading_agents_postgres_local_cutover/gate
 ```
 
 Schema:
@@ -57,13 +57,13 @@ Migration:
 ```bash
 MONGODB_HOST=localhost \
 MONGODB_PORT=27019 \
-MONGODB_DATABASE=tradingagentscn \
+MONGODB_DATABASE=trading_agents_cn \
 MONGODB_DATABASE_SCOPE=explicit \
 POSTGRES_HOST=localhost \
 POSTGRES_PORT=55432 \
 POSTGRES_USER=postgres \
 POSTGRES_PASSWORD=postgres \
-POSTGRES_DB=tradingagentscn \
+POSTGRES_DB=trading_agents_cn \
 python -m app.db.mongo_to_postgres_migrator --batch-size 5
 ```
 
@@ -72,14 +72,14 @@ Consistency:
 ```bash
 MONGODB_HOST=localhost \
 MONGODB_PORT=27019 \
-MONGODB_DATABASE=tradingagentscn \
+MONGODB_DATABASE=trading_agents_cn \
 MONGODB_DATABASE_SCOPE=explicit \
 POSTGRES_HOST=localhost \
 POSTGRES_PORT=55432 \
 POSTGRES_USER=postgres \
 POSTGRES_PASSWORD=postgres \
-POSTGRES_DB=tradingagentscn \
-python backend/scripts/postgres_consistency_check.py --sample-limit 500
+POSTGRES_DB=trading_agents_cn \
+python backend/scripts/postgres/consistency/check/script.py --sample-limit 500
 ```
 
 Query plans:
@@ -89,8 +89,8 @@ POSTGRES_HOST=localhost \
 POSTGRES_PORT=55432 \
 POSTGRES_USER=postgres \
 POSTGRES_PASSWORD=postgres \
-POSTGRES_DB=tradingagentscn \
-python backend/scripts/postgres_query_plan_check.py
+POSTGRES_DB=trading_agents_cn \
+python backend/scripts/postgres/query/plan/check/script.py
 ```
 
 Data-path smoke:
@@ -100,33 +100,33 @@ POSTGRES_HOST=localhost \
 POSTGRES_PORT=55432 \
 POSTGRES_USER=postgres \
 POSTGRES_PASSWORD=postgres \
-POSTGRES_DB=tradingagentscn \
-python backend/scripts/postgres_cutover_smoke.py --pretty
+POSTGRES_DB=trading_agents_cn \
+python backend/scripts/postgres/cutover/smoke/script.py --pretty
 ```
 
 API smoke:
 
 ```bash
-TRADINGAGENTS_API_BASE_URL=http://127.0.0.1:18080 \
-TRADINGAGENTS_API_TOKEN=<smoke-jwt> \
-TRADINGAGENTS_SMOKE_STOCK_CODE=000001 \
-TRADINGAGENTS_SMOKE_SYMBOL=000001 \
-TRADINGAGENTS_SMOKE_SEARCH_QUERY=000001 \
-TRADINGAGENTS_SMOKE_TASK_ID=task-1 \
-python backend/scripts/postgres_api_smoke.py --pretty
+TRADING_AGENTS_API_BASE_URL=http://127.0.0.1:18080 \
+TRADING_AGENTS_API_TOKEN=<smoke-jwt> \
+TRADING_AGENTS_SMOKE_STOCK_CODE=000001 \
+TRADING_AGENTS_SMOKE_SYMBOL=000001 \
+TRADING_AGENTS_SMOKE_SEARCH_QUERY=000001 \
+TRADING_AGENTS_SMOKE_TASK_ID=task-1 \
+python backend/scripts/postgres/api/smoke/script.py --pretty
 ```
 
 ## Results
 
 Repeatable local orchestration summary:
 
-- Command: `python backend/scripts/postgres_local_cutover_verify.py --output-dir /tmp/tradingagents_postgres_local_cutover_manifest_current --postgres-port 55433`
+- Command: `python backend/scripts/postgres/local/cutover/verify/script.py --output-dir /tmp/trading_agents_postgres_local_cutover_manifest_current --postgres-port 55433`
 - Result: `all_passed=true`
 - Steps passed: `alembic_upgrade`, `mongo_to_postgres_migrator`, `cutover_gate`, `evidence_bundle_check`
 - Nested cutover gate passed: inventory, Alembic offline SQL, consistency, query plan, and data-path smoke.
 - Nested evidence bundle check passed with `--require-target-manifest --expected-phase pre-read`.
-- Output bundle: `/tmp/tradingagents_postgres_local_cutover_manifest_current`
-- Target manifest: `/tmp/tradingagents_postgres_local_cutover_manifest_current/gate/00_target_manifest.json`
+- Output bundle: `/tmp/trading_agents_postgres_local_cutover_manifest_current`
+- Target manifest: `/tmp/trading_agents_postgres_local_cutover_manifest_current/gate/00_target_manifest.json`
 - The script cleaned up disposable local containers after completion.
 
 Migration summary:
@@ -155,7 +155,7 @@ Data-path smoke summary:
 
 Deployment API smoke:
 
-- Script: `backend/scripts/postgres_api_smoke.py`
+- Script: `backend/scripts/postgres/api/smoke/script.py`
 - Scope: local live FastAPI service after `POSTGRES_DUAL_WRITE_ENABLED=true` and `POSTGRES_READ_ENABLED=true`
 - Result: `all_passed=true`
 - Checks passed: `27`

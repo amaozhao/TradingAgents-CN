@@ -7,10 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 import logging
 
-from app.models.apiresponse import ApiResponse
-from app.routers.authdb import get_current_user
+from app.models.response import ApiResponse
+from app.routers.account import get_current_user
 from app.models.user import User, FavoriteStock
-from app.services.favoritesservice import favorites_service
+from app.services.favorite import favorites_service
 from app.core.response import ok
 
 logger = logging.getLogger("webapi")
@@ -254,10 +254,10 @@ async def sync_favorites_realtime(
 
         # 根据数据源选择同步服务
         if request.data_source == "tushare":
-            from app.worker.tusharesyncservice import get_tushare_sync_service
+            from app.worker.tushare.sync import get_tushare_sync_service
             service = await get_tushare_sync_service()
         elif request.data_source == "akshare":
-            from app.worker.aksharesyncservice import get_akshare_sync_service
+            from app.worker.akshare.sync import get_akshare_sync_service
             service = await get_akshare_sync_service()
         else:
             raise HTTPException(

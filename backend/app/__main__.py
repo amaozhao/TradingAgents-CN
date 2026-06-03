@@ -43,7 +43,7 @@ def check_env_file():
     """检查并打印.env文件加载信息"""
     import logging
     logger = logging.getLogger("app.startup")
-    
+
     logger.info("🔍 检查环境配置文件...")
 
     # 检查当前工作目录
@@ -52,7 +52,7 @@ def check_env_file():
 
     # 检查项目根目录
     logger.info(f"📂 项目根目录: {project_root}")
-    
+
     # 检查可能的.env文件位置（按优先级排序）
     env_locations = [
         project_root / ".env",          # 优先：项目根目录（标准位置）
@@ -94,12 +94,12 @@ def check_env_file():
     if not env_found:
         logger.warning("⚠️ 未找到.env文件，将使用默认配置")
         logger.info(f"💡 提示: 请在项目根目录 ({project_root}) 创建 .env 文件")
-    
+
     logger.info("-" * 50)
 
 try:
-    from app.core.coreconfig import settings
-    from app.core.devconfig import DEV_CONFIG
+    from app.core.config import settings
+    from app.core.dev import DEV_CONFIG
 except Exception as e:
     import traceback
     print(f"❌ 导入配置模块失败: {e}")
@@ -114,35 +114,35 @@ def main():
     """主启动函数"""
     import logging
     logger = logging.getLogger("app.startup")
-    
+
     logger.info("🚀 Starting TradingAgents-CN Backend...")
     logger.info(f"📍 Host: {settings.HOST}")
     logger.info(f"🔌 Port: {settings.PORT}")
     logger.info(f"🐛 Debug Mode: {settings.DEBUG}")
     logger.info(f"📚 API Docs: http://{settings.HOST}:{settings.PORT}/docs" if settings.DEBUG else "📚 API Docs: Disabled in production")
-    
+
     # 打印关键配置信息
     logger.info("🔧 关键配置信息:")
     logger.info(f"  📊 MongoDB: {settings.MONGODB_HOST}:{settings.MONGODB_PORT}/{settings.MONGODB_DATABASE}")
     logger.info(f"  🔴 Redis: {settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}")
     logger.info(f"  🔐 JWT Secret: {'已配置' if settings.JWT_SECRET != 'change-me-in-production' else '⚠️ 使用默认值'}")
     logger.info(f"  📝 日志级别: {settings.LOG_LEVEL}")
-    
+
     # 检查环境变量加载状态
     logger.info("🌍 环境变量加载状态:")
     env_vars_to_check = [
         ('MONGODB_HOST', settings.MONGODB_HOST, 'localhost'),
         ('MONGODB_PORT', str(settings.MONGODB_PORT), '27017'),
-        ('MONGODB_DATABASE', settings.MONGODB_DATABASE, 'tradingagents'),
+        ('MONGODB_DATABASE', settings.MONGODB_DATABASE, 'trading_agents'),
         ('REDIS_HOST', settings.REDIS_HOST, 'localhost'),
         ('REDIS_PORT', str(settings.REDIS_PORT), '6379'),
         ('JWT_SECRET', '***' if settings.JWT_SECRET != 'change-me-in-production' else settings.JWT_SECRET, 'change-me-in-production')
     ]
-    
+
     for env_name, current_value, default_value in env_vars_to_check:
         status = "✅ 已设置" if current_value != default_value else "⚠️ 默认值"
         logger.info(f"  {env_name}: {current_value} ({status})")
-    
+
     logger.info("-" * 50)
 
     # 获取uvicorn配置
@@ -151,7 +151,7 @@ def main():
     # 设置简化的日志配置
     logger.info("🔧 正在设置日志配置...")
     try:
-        from app.core.loggingconfig import setup_logging as app_setup_logging
+        from app.core.logs import setup_logging as app_setup_logging
         app_setup_logging(settings.LOG_LEVEL)
     except Exception:
         # 回退到开发环境简化日志配置
@@ -164,7 +164,7 @@ def main():
 
     try:
         uvicorn.run(
-            "app.appmain:app",
+            "app.main:app",
             host=settings.HOST,
             port=settings.PORT,
             **uvicorn_config

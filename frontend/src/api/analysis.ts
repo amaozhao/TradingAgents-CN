@@ -319,7 +319,7 @@ export const ANALYSIS_TYPES = {
  * 数据源常量
  *
  * 注意：这些常量与后端 DataSourceType 枚举保持同步
- * 添加新数据源时，请先在后端 tradingagents/constants/data_sources.py 中注册
+ * 添加新数据源时，请先在后端 trader/constants/data_sources.py 中注册
  */
 export const DATA_SOURCES = {
   // 缓存数据源
@@ -476,7 +476,3 @@ export const getStockPlaceholder = (market: string): string => {
   }
   return placeholders[market] ?? '输入股票代码'
 }
-
-
-
-

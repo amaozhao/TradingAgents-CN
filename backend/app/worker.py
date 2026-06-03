@@ -18,9 +18,9 @@ from typing import Optional
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.core.loggingconfig import setup_logging
-from app.core.coredatabase import init_db, close_db, get_redis_client
-from app.core.coreconfig import settings
+from app.core.logs import setup_logging
+from app.core.database import init_db, close_db, get_redis_client
+from app.core.config import settings
 
 # Redis keys (must match queue_service)
 READY_LIST = "qa:ready"
@@ -82,7 +82,7 @@ async def process_task(task_id: str) -> None:
         # Extract analysis parameters with defaults
         analysts = params.get("analysts", ["Bull Analyst", "Bear Analyst", "Research Manager"])
         research_depth = params.get("research_depth", 2)
-        from tradingagents.llmclients.providerkeys import normalize_provider_key
+        from trader.llm.clients.providers import normalize_provider_key
 
         llm_provider = normalize_provider_key(params.get("llm_provider", "dashscope"))
         llm_model = params.get("llm_model", "qwen-plus")
@@ -97,7 +97,7 @@ async def process_task(task_id: str) -> None:
 
         # Import and call the actual analysis function
         try:
-            from web.utils.analysis_runner import run_stock_analysis
+            from web.utils.analysis import run_stock_analysis
 
             loop = asyncio.get_running_loop()
 
@@ -208,7 +208,7 @@ async def main():
     await init_db()
     # Apply dynamic log level from system settings
     try:
-        from app.services.configprovider import provider as config_provider
+        from app.services.provider import provider as config_provider
         eff = await config_provider.get_effective_system_settings()
         desired_level = str(eff.get("log_level", "INFO")).upper()
         setup_logging(desired_level)

@@ -15,7 +15,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # 容器名称
-CONTAINER_NAME="tradingagents-backend"
+CONTAINER_NAME="trading-agents-backend"
 
 # 检查容器是否运行
 echo "1. 检查容器状态..."
@@ -125,7 +125,7 @@ else
 fi
 echo ""
 echo "如需重新构建镜像："
-echo "  docker build -t hsliup/tradingagents-backend:latest -f deploy/docker/backend.Dockerfile ."
-echo "  docker push hsliup/tradingagents-backend:latest"
+echo "  docker build -t hsliup/trading-agents-backend:latest -f deploy/docker/backend.Dockerfile ."
+echo "  docker push hsliup/trading-agents-backend:latest"
 echo ""
 echo "=========================================="

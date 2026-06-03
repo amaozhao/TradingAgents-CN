@@ -86,7 +86,7 @@ const registry: Record<string, ArticleInfo> = {
   'model-comparison': { title: '大语言模型对比与选择', loader: () => import('../../../../docs/learning/03-model-selection/model-comparison.md?raw'), category: '模型选择指南', categoryType: 'warning', readTime: '15分钟' },
   'multi-agent-system': { title: '多智能体系统详解', loader: () => import('../../../../docs/learning/04-analysis-principles/multi-agent-system.md?raw'), category: 'AI分析原理', categoryType: 'info', readTime: '15分钟' },
   'risk-warnings': { title: 'AI股票分析的风险与局限性', loader: () => import('../../../../docs/learning/05-risks-limitations/risk-warnings.md?raw'), category: '风险与局限性', categoryType: 'danger', readTime: '12分钟' },
-  'tradingagents-intro': { title: 'TradingAgents项目介绍', loader: () => import('../../../../docs/learning/06-resources/tradingagents-intro.md?raw'), category: '源项目与论文', categoryType: 'primary', readTime: '15分钟' },
+  'trading_agents_intro': { title: 'TradingAgents项目介绍', loader: () => import('../../../../docs/learning/06-resources/trading_agents_intro.md?raw'), category: '源项目与论文', categoryType: 'primary', readTime: '15分钟' },
   'paper-guide': { title: 'TradingAgents论文解读', loader: () => import('../../../../docs/learning/06-resources/paper-guide.md?raw'), category: '源项目与论文', categoryType: 'primary', readTime: '20分钟' },
   'TradingAgents_论文中文版': { title: 'TradingAgents 论文中文版', loader: () => import('../../../../docs/paper/TradingAgents_论文中文版.md?raw'), category: '源项目与论文', categoryType: 'primary', readTime: '40分钟' },
   // 快速入门改为外链，点击后直接跳转到微信文章
@@ -104,7 +104,7 @@ const articleOrder = [
   'model-comparison',
   'multi-agent-system',
   'risk-warnings',
-  'tradingagents-intro',
+  'trading_agents_intro',
   'paper-guide',
   'TradingAgents_论文中文版',
   'getting-started',
@@ -718,4 +718,3 @@ watch(articleId, (id) => {
   }
 }
 </style>
-

@@ -1,8 +1,8 @@
-from tradingagents.graph.graphtradinggraph import TradingAgentsGraph
-from tradingagents.default_config import DEFAULT_CONFIG
+from trader.graph.trading import TradingAgentsGraph
+from trader.default import DEFAULT_CONFIG
 
 # 导入日志模块
-from tradingagents.utils.logging_manager import get_logger
+from trader.utils.logging import get_logger
 logger = get_logger('default')
 
 

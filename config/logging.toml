@@ -49,7 +49,7 @@ directory = "./logs"
 [logging.loggers]
 
 # 主应用日志
-[logging.loggers.tradingagents]
+[logging.loggers.trading_agents]
 level = "INFO"
 
 # Web界面日志
@@ -89,7 +89,7 @@ disable_file_logging = true  # Docker环境禁用文件日志
 # 开发环境配置
 [logging.development]
 enabled = false  # 开发模式
-debug_modules = ["tradingagents.graph", "tradingagents.llm_adapters"]  # 开发时详细日志的模块
+debug_modules = ["trader.graph", "trader.llm.adapters"]  # 开发时详细日志的模块
 save_debug_files = true  # 保存调试文件
 
 # 生产环境配置

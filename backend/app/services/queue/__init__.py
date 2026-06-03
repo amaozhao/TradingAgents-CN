@@ -1,9 +1,9 @@
 """
 Queue 子包
-- keys: Redis 键名与常量
-- helpers: 队列相关的 Redis 操作辅助函数
+- key: Redis 键名与常量
+- helper: 队列相关的 Redis 操作辅助函数
 """
-from .keys import (
+from .key import (
     READY_LIST,
     TASK_PREFIX,
     BATCH_PREFIX,
@@ -19,7 +19,7 @@ from .keys import (
     VISIBILITY_TIMEOUT_SECONDS,
 )
 
-from .helpers import (
+from .helper import (
     check_user_concurrent_limit,
     check_global_concurrent_limit,
     mark_task_processing,
@@ -27,4 +27,3 @@ from .helpers import (
     set_visibility_timeout,
     clear_visibility_timeout,
 )
-

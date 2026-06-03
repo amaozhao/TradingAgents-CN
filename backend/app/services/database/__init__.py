@@ -1,9 +1,8 @@
-from . import statuschecks, backups, cleanup, serialization
+from . import backup, cleanup, serialization, status
 
 __all__ = [
-    "status_checks",
-    "backups",
+    "backup",
     "cleanup",
     "serialization",
+    "status",
 ]
-

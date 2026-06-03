@@ -555,7 +555,7 @@ export const CONFIG_PROVIDERS = {
  * 数据源类型常量
  *
  * 注意：这些常量与后端 DataSourceType 枚举保持同步
- * 添加新数据源时，请先在后端 tradingagents/constants/data_sources.py 中注册
+ * 添加新数据源时，请先在后端 trader/constants/data_sources.py 中注册
  */
 export const DATA_SOURCE_TYPES = {
   // 缓存数据源

@@ -8,7 +8,7 @@ TradingAgents-CN v0.1.2新增了对Google AI的完整支持，包括：
 
 - **Gemini 2.5 Pro** - 🚀 最新旗舰模型，推荐使用
 - **Gemini 2.0 Flash** - 最新模型，推荐使用
-- **Gemini 1.5 Pro** - 强大性能，适合深度分析  
+- **Gemini 1.5 Pro** - 强大性能，适合深度分析
 - **Gemini 1.5 Flash** - 快速响应，适合简单分析
 - **智能混合嵌入** - Google AI推理 + 阿里百炼嵌入
 
@@ -44,7 +44,7 @@ GOOGLE_API_KEY=your_google_api_key_here
 - **模型名称**: `gemini-2.5-pro`
 - **特点**: Google最新旗舰模型，性能卓越
 - **适用场景**: 复杂股票分析，重要投资决策
-- **优势**: 
+- **优势**:
   - 🧠 最强的推理能力
   - 🌍 优秀的中文理解
   - 🔧 完美的LangChain集成
@@ -81,7 +81,7 @@ GOOGLE_API_KEY=your_google_api_key_here
 - **模型名称**: `gemini-2.0-flash`
 - **特点**: 最新版本，性能优秀，LangChain集成稳定
 - **适用场景**: 日常股票分析，推荐首选
-- **优势**: 
+- **优势**:
   - 🧠 优秀的推理能力
   - 🌍 完美的中文支持
   - 🔧 稳定的LangChain集成
@@ -95,7 +95,7 @@ GOOGLE_API_KEY=your_google_api_key_here
 - **适用场景**: 深度分析，重要投资决策
 - **优势**: 功能强大，分析深度高
 
-#### Gemini 1.5 Flash  
+#### Gemini 1.5 Flash
 - **模型名称**: `gemini-1.5-flash`
 - **特点**: 快速响应，成本较低
 - **适用场景**: 快速查询，批量分析
@@ -133,8 +133,8 @@ python -m cli.main --llm-provider google --model gemini-1.5-pro --stock TSLA --a
 ### 3. Python API配置
 
 ```python
-from tradingagents.graph.trading_graph import TradingAgentsGraph
-from tradingagents.default_config import DEFAULT_CONFIG
+from trader.graph.trading_graph import TradingAgentsGraph
+from trader.default import DEFAULT_CONFIG
 
 # 配置Google AI
 config = DEFAULT_CONFIG.copy()
@@ -159,7 +159,7 @@ TradingAgents-CN的一个独特功能是智能混合嵌入服务：
 🧠 Google Gemini (主要推理)
     ↓
 🔍 阿里百炼嵌入 (向量化和记忆)
-    ↓  
+    ↓
 💾 ChromaDB (向量数据库)
     ↓
 🎯 中文股票分析结果

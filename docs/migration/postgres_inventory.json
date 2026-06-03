@@ -758,13 +758,13 @@
       "names": [
         "get_mongo_db_sync"
       ],
-      "path": "app/services/data_sources/manager.py",
+      "path": "app/services/sources/manager.py",
       "symbol": "app.core.database"
     },
     {
       "kind": "helper_call",
       "line": 49,
-      "path": "app/services/data_sources/manager.py",
+      "path": "app/services/sources/manager.py",
       "symbol": "get_mongo_db_sync"
     },
     {
@@ -773,43 +773,43 @@
       "names": [
         "get_mongo_db"
       ],
-      "path": "app/services/database/backups.py",
+      "path": "app/services/database/backup.py",
       "symbol": "app.core.database"
     },
     {
       "kind": "helper_call",
       "line": 80,
-      "path": "app/services/database/backups.py",
+      "path": "app/services/database/backup.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 177,
-      "path": "app/services/database/backups.py",
+      "path": "app/services/database/backup.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 239,
-      "path": "app/services/database/backups.py",
+      "path": "app/services/database/backup.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 255,
-      "path": "app/services/database/backups.py",
+      "path": "app/services/database/backup.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 309,
-      "path": "app/services/database/backups.py",
+      "path": "app/services/database/backup.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 492,
-      "path": "app/services/database/backups.py",
+      "path": "app/services/database/backup.py",
       "symbol": "get_mongo_db"
     },
     {
@@ -846,19 +846,19 @@
         "get_mongo_db",
         "get_redis_client"
       ],
-      "path": "app/services/database/status_checks.py",
+      "path": "app/services/database/status.py",
       "symbol": "app.core.database"
     },
     {
       "kind": "helper_call",
       "line": 15,
-      "path": "app/services/database/status_checks.py",
+      "path": "app/services/database/status.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 77,
-      "path": "app/services/database/status_checks.py",
+      "path": "app/services/database/status.py",
       "symbol": "get_mongo_db"
     },
     {
@@ -867,43 +867,43 @@
       "names": [
         "get_mongo_db"
       ],
-      "path": "app/services/database_screening_service.py",
+      "path": "app/services/screening/database.py",
       "symbol": "app.core.database"
     },
     {
       "kind": "helper_call",
       "line": 132,
-      "path": "app/services/database_screening_service.py",
+      "path": "app/services/screening/database.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 305,
-      "path": "app/services/database_screening_service.py",
+      "path": "app/services/screening/database.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 448,
-      "path": "app/services/database_screening_service.py",
+      "path": "app/services/screening/database.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 525,
-      "path": "app/services/database_screening_service.py",
+      "path": "app/services/screening/database.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 615,
-      "path": "app/services/database_screening_service.py",
+      "path": "app/services/screening/database.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "import",
       "line": 14,
-      "path": "app/services/database_service.py",
+      "path": "app/services/database/service.py",
       "symbol": "motor.motor_asyncio"
     },
     {
@@ -914,13 +914,13 @@
         "get_redis_client",
         "db_manager"
       ],
-      "path": "app/services/database_service.py",
+      "path": "app/services/database/service.py",
       "symbol": "app.core.database"
     },
     {
       "kind": "helper_call",
       "line": 55,
-      "path": "app/services/database_service.py",
+      "path": "app/services/database/service.py",
       "symbol": "get_mongo_db"
     },
     {
@@ -944,13 +944,13 @@
       "names": [
         "get_mongo_db"
       ],
-      "path": "app/services/favorites_service.py",
+      "path": "app/services/favorite.py",
       "symbol": "app.core.database"
     },
     {
       "kind": "helper_call",
       "line": 25,
-      "path": "app/services/favorites_service.py",
+      "path": "app/services/favorite.py",
       "symbol": "get_mongo_db"
     },
     {
@@ -1128,43 +1128,43 @@
         "get_mongo_db",
         "get_redis_client"
       ],
-      "path": "app/services/notifications_service.py",
+      "path": "app/services/notification.py",
       "symbol": "app.core.database"
     },
     {
       "kind": "helper_call",
       "line": 29,
-      "path": "app/services/notifications_service.py",
+      "path": "app/services/notification.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 37,
-      "path": "app/services/notifications_service.py",
+      "path": "app/services/notification.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 103,
-      "path": "app/services/notifications_service.py",
+      "path": "app/services/notification.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 107,
-      "path": "app/services/notifications_service.py",
+      "path": "app/services/notification.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 130,
-      "path": "app/services/notifications_service.py",
+      "path": "app/services/notification.py",
       "symbol": "get_mongo_db"
     },
     {
       "kind": "helper_call",
       "line": 141,
-      "path": "app/services/notifications_service.py",
+      "path": "app/services/notification.py",
       "symbol": "get_mongo_db"
     },
     {
@@ -1500,13 +1500,13 @@
       "names": [
         "get_mongo_db"
       ],
-      "path": "app/services/tags_service.py",
+      "path": "app/services/tag.py",
       "symbol": "app.core.database"
     },
     {
       "kind": "helper_call",
       "line": 21,
-      "path": "app/services/tags_service.py",
+      "path": "app/services/tag.py",
       "symbol": "get_mongo_db"
     },
     {
@@ -2256,43 +2256,43 @@
       "collection": "database_backups",
       "line": 156,
       "operation": "insert_one",
-      "path": "app/services/database/backups.py"
+      "path": "app/services/database/backup.py"
     },
     {
       "collection": "database_backups",
       "line": 224,
       "operation": "insert_one",
-      "path": "app/services/database/backups.py"
+      "path": "app/services/database/backup.py"
     },
     {
       "collection": "database_backups",
       "line": 268,
       "operation": "delete_one",
-      "path": "app/services/database/backups.py"
+      "path": "app/services/database/backup.py"
     },
     {
       "collection": null,
       "line": 360,
       "operation": "delete_many",
-      "path": "app/services/database/backups.py"
+      "path": "app/services/database/backup.py"
     },
     {
       "collection": null,
       "line": 377,
       "operation": "insert_many",
-      "path": "app/services/database/backups.py"
+      "path": "app/services/database/backup.py"
     },
     {
       "collection": null,
       "line": 412,
       "operation": "delete_many",
-      "path": "app/services/database/backups.py"
+      "path": "app/services/database/backup.py"
     },
     {
       "collection": null,
       "line": 428,
       "operation": "insert_many",
-      "path": "app/services/database/backups.py"
+      "path": "app/services/database/backup.py"
     },
     {
       "collection": "analysis_tasks",
@@ -2346,49 +2346,49 @@
       "collection": "users",
       "line": 218,
       "operation": "update_one",
-      "path": "app/services/favorites_service.py"
+      "path": "app/services/favorite.py"
     },
     {
       "collection": "users",
       "line": 230,
       "operation": "update_one",
-      "path": "app/services/favorites_service.py"
+      "path": "app/services/favorite.py"
     },
     {
       "collection": "user_favorites",
       "line": 243,
       "operation": "update_one",
-      "path": "app/services/favorites_service.py"
+      "path": "app/services/favorite.py"
     },
     {
       "collection": "users",
       "line": 266,
       "operation": "update_one",
-      "path": "app/services/favorites_service.py"
+      "path": "app/services/favorite.py"
     },
     {
       "collection": "users",
       "line": 272,
       "operation": "update_one",
-      "path": "app/services/favorites_service.py"
+      "path": "app/services/favorite.py"
     },
     {
       "collection": "user_favorites",
       "line": 278,
       "operation": "update_one",
-      "path": "app/services/favorites_service.py"
+      "path": "app/services/favorite.py"
     },
     {
       "collection": "users",
       "line": 325,
       "operation": "update_one",
-      "path": "app/services/favorites_service.py"
+      "path": "app/services/favorite.py"
     },
     {
       "collection": "user_favorites",
       "line": 334,
       "operation": "update_one",
-      "path": "app/services/favorites_service.py"
+      "path": "app/services/favorite.py"
     },
     {
       "collection": "stock_financial_data",
@@ -2442,31 +2442,31 @@
       "collection": "notifications",
       "line": 50,
       "operation": "insert_one",
-      "path": "app/services/notifications_service.py"
+      "path": "app/services/notification.py"
     },
     {
       "collection": "notifications",
       "line": 80,
       "operation": "delete_many",
-      "path": "app/services/notifications_service.py"
+      "path": "app/services/notification.py"
     },
     {
       "collection": "notifications",
       "line": 94,
       "operation": "delete_many",
-      "path": "app/services/notifications_service.py"
+      "path": "app/services/notification.py"
     },
     {
       "collection": "notifications",
       "line": 135,
       "operation": "update_one",
-      "path": "app/services/notifications_service.py"
+      "path": "app/services/notification.py"
     },
     {
       "collection": "notifications",
       "line": 143,
       "operation": "update_many",
-      "path": "app/services/notifications_service.py"
+      "path": "app/services/notification.py"
     },
     {
       "collection": "operation_logs",
@@ -2634,19 +2634,19 @@
       "collection": "user_tags",
       "line": 89,
       "operation": "insert_one",
-      "path": "app/services/tags_service.py"
+      "path": "app/services/tag.py"
     },
     {
       "collection": "user_tags",
       "line": 109,
       "operation": "update_one",
-      "path": "app/services/tags_service.py"
+      "path": "app/services/tag.py"
     },
     {
       "collection": "user_tags",
       "line": 123,
       "operation": "delete_one",
-      "path": "app/services/tags_service.py"
+      "path": "app/services/tag.py"
     },
     {
       "collection": "token_usage",

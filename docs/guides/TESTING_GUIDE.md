@@ -63,7 +63,7 @@ python backend/tests/test_deepseek_token_tracking.py
 ```bash
 # 测试基本连接
 python -c "
-from tradingagents.llm_adapters.deepseek_adapter import ChatDeepSeek
+from trader.llm.adapters.deepseek_adapter import ChatDeepSeek
 llm = ChatDeepSeek(model='deepseek-chat', temperature=0.1)
 response = llm.invoke('你好，请简单介绍一下股票投资')
 print('响应:', response.content[:100] + '...')
@@ -79,7 +79,7 @@ print('响应:', response.content[:100] + '...')
 #### 1.2 Token统计测试
 ```bash
 # 测试Token使用统计
-python examples/demo_deepseek_analysis.py
+python examples/demo/deepseek/analysis/example.py
 ```
 
 **测试要点**：
@@ -94,8 +94,8 @@ python examples/demo_deepseek_analysis.py
 ```bash
 # 测试A股基本面分析
 python -c "
-from tradingagents.graph.trading_graph import TradingAgentsGraph
-from tradingagents.default_config import DEFAULT_CONFIG
+from trader.graph.trading_graph import TradingAgentsGraph
+from trader.default import DEFAULT_CONFIG
 
 config = DEFAULT_CONFIG.copy()
 config.update({
@@ -118,7 +118,7 @@ print('分析结果:', result)
 
 **测试股票建议**：
 - `000001` - 平安银行
-- `600519` - 贵州茅台  
+- `600519` - 贵州茅台
 - `000858` - 五粮液
 - `002594` - 比亚迪
 - `300750` - 宁德时代
@@ -209,7 +209,7 @@ python -m cli.main
 **排查方法**：
 ```bash
 # 启用调试模式
-export TRADINGAGENTS_LOG_LEVEL=DEBUG
+export TRADING_AGENTS_LOG_LEVEL=DEBUG
 python backend/tests/test_deepseek_token_tracking.py
 ```
 
@@ -222,7 +222,7 @@ python backend/tests/test_deepseek_token_tracking.py
 ```bash
 # 测试数据获取
 python -c "
-from tradingagents.dataflows.tdx_utils import get_china_stock_data
+from trader.flows.tdx_utils import get_china_stock_data
 data = get_china_stock_data('000001', '2025-01-01', '2025-01-08')
 print('数据获取结果:', data[:200] if data else '获取失败')
 "

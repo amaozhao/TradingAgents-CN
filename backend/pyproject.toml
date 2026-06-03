@@ -3,7 +3,7 @@ requires = ["setuptools>=82.0.1", "wheel>=0.47.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tradingagents"
+name = "trading-agents"
 version = "1.0.1"
 description = "Add your description here"
 readme = { text = "TradingAgents-CN backend package", content-type = "text/plain" }
@@ -19,6 +19,7 @@ dependencies = [
     # 数据库和缓存
     "alembic>=1.17.2",
     "asyncpg>=0.31.0",
+    "greenlet>=3.3.0",
     "motor>=3.7.1",
     "pymongo>=4.17.0",
     "redis>=8.0.0",
@@ -104,16 +105,17 @@ qianfan = ["qianfan>=0.4.12.3"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "-m \"not integration\" -k \"not (test_server_config or test_stock_codes)\""
+python_files = ["test.py"]
+addopts = "--import-mode=importlib -m \"not integration\" -k \"not (test_server_config or test_stock_codes)\""
 markers = [
     "integration: 标记集成/端到端测试（默认跳过）",
     "unit: 标记单元测试",
 ]
 
 [project.scripts]
-tradingagents = "cli.climain:main"
+trading_agents = "cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["app*", "cli*", "tradingagents*"]
+include = ["app*", "cli*", "trader*"]
 exclude = ["tests*", "docs*", "scripts*", "data*", "logs*", "reports*", "results*", "eval_results*", "upstream_contribution*"]

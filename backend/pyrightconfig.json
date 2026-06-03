@@ -1,23 +1,9 @@
 {
   "include": [
     "app",
-    "tradingagents",
+    "trader",
     "cli",
     "tests"
-  ],
-  "exclude": [
-    "**/__pycache__",
-    ".pytest_cache",
-    "runtime",
-    "data",
-    "logs",
-    "reports",
-    "results",
-    "eval_results",
-    "testsupport",
-    "web",
-    "scripts",
-    "alembic"
   ],
   "pythonVersion": "3.13",
   "typeCheckingMode": "basic",

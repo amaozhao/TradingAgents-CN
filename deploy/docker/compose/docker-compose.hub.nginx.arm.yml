@@ -16,21 +16,21 @@ services:
   mongodb:
     image: mongo:4.4
     platform: linux/arm64  # 显式指定 ARM64 平台
-    container_name: tradingagents-mongodb
+    container_name: trading-agents-mongodb
     restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
-      - tradingagents_mongodb_data:/data/db
+      - trading_agents_mongodb_data:/data/db
       # 注意：不挂载初始化脚本，使用 MongoDB 自动创建的 root 用户
       # 应用会在首次运行时自动创建所需的集合和索引
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: tradingagents123
-      MONGO_INITDB_DATABASE: tradingagentscn
+      MONGO_INITDB_ROOT_PASSWORD: trading_agents123
+      MONGO_INITDB_DATABASE: trading_agents_cn
       TZ: "Asia/Shanghai"
     networks:
-      - tradingagents-network
+      - trading-agents-network
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
       interval: 10s
@@ -42,19 +42,19 @@ services:
   redis:
     image: redis:7-alpine
     platform: linux/arm64  # 显式指定 ARM64 平台
-    container_name: tradingagents-redis
+    container_name: trading-agents-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
-      - tradingagents_redis_data:/data
+      - trading_agents_redis_data:/data
     environment:
       TZ: "Asia/Shanghai"
-    command: redis-server --appendonly yes --requirepass tradingagents123
+    command: redis-server --appendonly yes --requirepass trading_agents123
     networks:
-      - tradingagents-network
+      - trading-agents-network
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "tradingagents123", "ping"]
+      test: ["CMD", "redis-cli", "-a", "trading_agents123", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -64,21 +64,21 @@ services:
   postgres:
     image: postgres:16-alpine
     platform: linux/arm64  # 显式指定 ARM64 平台
-    container_name: tradingagents-postgres
+    container_name: trading-agents-postgres
     restart: unless-stopped
     ports:
       - "5432:5432"
     volumes:
-      - tradingagents_postgres_data:/var/lib/postgresql/data
+      - trading_agents_postgres_data:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: tradingagents_pg123
-      POSTGRES_DB: tradingagentscn
+      POSTGRES_PASSWORD: trading_agents_pg123
+      POSTGRES_DB: trading_agents_cn
       TZ: "Asia/Shanghai"
     networks:
-      - tradingagents-network
+      - trading-agents-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d tradingagentscn"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d trading_agents_cn"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -86,9 +86,9 @@ services:
 
   # FastAPI后端服务
   backend:
-    image: hsliup/tradingagents-backend:v1.0.1
+    image: hsliup/trading-agents-backend:v1.0.1
     platform: linux/arm64  # 显式指定 ARM64 平台
-    container_name: tradingagents-backend
+    container_name: trading-agents-backend
     restart: unless-stopped
     expose:
       - "8000"
@@ -100,30 +100,30 @@ services:
       - ../../../deploy/env/docker.env
     environment:
       TZ: "Asia/Shanghai"
-      TRADINGAGENTS_LOG_LEVEL: "INFO"
-      TRADINGAGENTS_LOG_DIR: "/app/logs"
-      TRADINGAGENTS_LOG_FILE: "/app/logs/tradingagents.log"
+      TRADING_AGENTS_LOG_LEVEL: "INFO"
+      TRADING_AGENTS_LOG_DIR: "/app/logs"
+      TRADING_AGENTS_LOG_FILE: "/app/logs/trading_agents.log"
       # MongoDB配置（使用 root 用户）
       MONGODB_HOST: "mongodb"
       MONGODB_PORT: "27017"
       MONGODB_USERNAME: "admin"
-      MONGODB_PASSWORD: "tradingagents123"
-      MONGODB_DATABASE: "tradingagentscn"
+      MONGODB_PASSWORD: "trading_agents123"
+      MONGODB_DATABASE: "trading_agents_cn"
       MONGODB_AUTH_SOURCE: "admin"
       # 注意：authSource=admin 表示在 admin 数据库中验证用户
-      MONGODB_URL: "mongodb://admin:tradingagents123@mongodb:27017/tradingagentscn?authSource=admin"
-      MONGODB_CONNECTION_STRING: "mongodb://admin:tradingagents123@mongodb:27017/tradingagentscn?authSource=admin"
+      MONGODB_URL: "mongodb://admin:trading_agents123@mongodb:27017/trading_agents_cn?authSource=admin"
+      MONGODB_CONNECTION_STRING: "mongodb://admin:trading_agents123@mongodb:27017/trading_agents_cn?authSource=admin"
       # Redis配置
       REDIS_HOST: "redis"
       REDIS_PORT: "6379"
-      REDIS_PASSWORD: "tradingagents123"
-      REDIS_URL: "redis://:tradingagents123@redis:6379/0"
+      REDIS_PASSWORD: "trading_agents123"
+      REDIS_URL: "redis://:trading_agents123@redis:6379/0"
       # PostgreSQL迁移配置：默认不切读/不双写
       POSTGRES_HOST: "postgres"
       POSTGRES_PORT: "5432"
       POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "tradingagents_pg123"
-      POSTGRES_DB: "tradingagentscn"
+      POSTGRES_PASSWORD: "trading_agents_pg123"
+      POSTGRES_DB: "trading_agents_cn"
       POSTGRES_DUAL_WRITE_ENABLED: "${POSTGRES_DUAL_WRITE_ENABLED:-false}"
       POSTGRES_READ_ENABLED: "${POSTGRES_READ_ENABLED:-false}"
       POSTGRES_DUAL_WRITE_FAIL_OPEN: "${POSTGRES_DUAL_WRITE_FAIL_OPEN:-true}"
@@ -166,7 +166,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - tradingagents-network
+      - trading-agents-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
@@ -176,9 +176,9 @@ services:
 
   # Vue 3前端服务
   frontend:
-    image: hsliup/tradingagents-frontend:v1.0.1
+    image: hsliup/trading-agents-frontend:v1.0.1
     platform: linux/arm64  # 显式指定 ARM64 平台
-    container_name: tradingagents-frontend
+    container_name: trading-agents-frontend
     restart: unless-stopped
     expose:
       - "80"
@@ -189,7 +189,7 @@ services:
     depends_on:
       - backend
     networks:
-      - tradingagents-network
+      - trading-agents-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
       interval: 30s
@@ -201,7 +201,7 @@ services:
   nginx:
     image: nginx:alpine
     platform: linux/arm64  # 显式指定 ARM64 平台
-    container_name: tradingagents-nginx
+    container_name: trading-agents-nginx
     restart: unless-stopped
     ports:
       - "80:80"
@@ -211,7 +211,7 @@ services:
       - frontend
       - backend
     networks:
-      - tradingagents-network
+      - trading-agents-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
       interval: 30s
@@ -220,13 +220,13 @@ services:
       start_period: 10s
 
 volumes:
-  tradingagents_mongodb_data:
+  trading_agents_mongodb_data:
     driver: local
-  tradingagents_redis_data:
+  trading_agents_redis_data:
     driver: local
-  tradingagents_postgres_data:
+  trading_agents_postgres_data:
     driver: local
 
 networks:
-  tradingagents-network:
+  trading-agents-network:
     driver: bridge

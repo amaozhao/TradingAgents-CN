@@ -34,7 +34,7 @@ jobs:
         id: meta-backend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/tradingagents-backend
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/trading_agents-backend
           tags: |
             type=ref,event=tag
             type=raw,value=latest
@@ -57,7 +57,7 @@ jobs:
         id: meta-frontend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/tradingagents-frontend
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/trading_agents-frontend
           tags: |
             type=ref,event=tag
             type=raw,value=latest
@@ -97,8 +97,8 @@ jobs:
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo "# Pull images (Docker will automatically select the correct architecture)" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tradingagents-backend:latest" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tradingagents-frontend:latest" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ secrets.DOCKERHUB_USERNAME }}/trading_agents-backend:latest" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ secrets.DOCKERHUB_USERNAME }}/trading_agents-frontend:latest" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "# Run with docker-compose" >> $GITHUB_STEP_SUMMARY
           echo "docker compose -f deploy/docker/compose/docker-compose.hub.nginx.yml up -d" >> $GITHUB_STEP_SUMMARY
@@ -106,5 +106,5 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Verify Architecture" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "docker buildx imagetools inspect ${{ secrets.DOCKERHUB_USERNAME }}/tradingagents-backend:latest" >> $GITHUB_STEP_SUMMARY
+          echo "docker buildx imagetools inspect ${{ secrets.DOCKERHUB_USERNAME }}/trading_agents-backend:latest" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY

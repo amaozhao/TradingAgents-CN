@@ -17,7 +17,7 @@
 - [模型对比与选择](./learning/03-model-selection/model-comparison.md)
 - [多智能体系统详解](./learning/04-analysis-principles/multi-agent-system.md)
 - [风险与局限性](./learning/05-risks-limitations/risk-warnings.md)
-- [TradingAgents 项目介绍](./learning/06-resources/tradingagents-intro.md)
+- [TradingAgents 项目介绍](./learning/06-resources/trading_agents_intro.md)
 - [TradingAgents 论文解读](./learning/06-resources/paper-guide.md)
 - [常见问题解答](./learning/08-faq/general-questions.md)
 

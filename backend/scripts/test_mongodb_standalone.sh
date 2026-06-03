@@ -50,7 +50,7 @@ docker logs mongodb-test 2>&1 | grep -A 20 "mongo-init.js" || echo "⚠️  未�
 echo ""
 
 echo "🔍 查找 TradingAgents 相关日志..."
-docker logs mongodb-test 2>&1 | grep -i "tradingagents" || echo "⚠️  未找到 TradingAgents 相关日志"
+docker logs mongodb-test 2>&1 | grep -i "trading_agents" || echo "⚠️  未找到 TradingAgents 相关日志"
 echo ""
 
 # 测试连接（不使用认证）
@@ -66,14 +66,14 @@ echo ""
 # 测试连接（使用 admin 用户）
 echo "📋 步骤 7: 测试连接（使用 admin 用户）"
 echo "--------------------------------------------------------------------------------"
-if docker exec -it mongodb-test mongo -u admin -p tradingagents123 --authenticationDatabase admin --eval "db.version()" 2>/dev/null; then
+if docker exec -it mongodb-test mongo -u admin -p trading_agents123 --authenticationDatabase admin --eval "db.version()" 2>/dev/null; then
     echo "✅ admin 用户认证成功"
     echo ""
-    
+
     # 查看用户列表
     echo "📋 步骤 8: 查看用户列表"
     echo "--------------------------------------------------------------------------------"
-    docker exec -it mongodb-test mongo -u admin -p tradingagents123 --authenticationDatabase admin --eval "
+    docker exec -it mongodb-test mongo -u admin -p trading_agents123 --authenticationDatabase admin --eval "
         use admin;
         print('=== Admin 数据库用户 ===');
         db.getUsers().forEach(function(user) {
@@ -83,23 +83,23 @@ if docker exec -it mongodb-test mongo -u admin -p tradingagents123 --authenticat
         });
     "
     echo ""
-    
+
     # 查看数据库列表
     echo "📋 步骤 9: 查看数据库列表"
     echo "--------------------------------------------------------------------------------"
-    docker exec -it mongodb-test mongo -u admin -p tradingagents123 --authenticationDatabase admin --eval "
+    docker exec -it mongodb-test mongo -u admin -p trading_agents123 --authenticationDatabase admin --eval "
         print('=== 数据库列表 ===');
         db.adminCommand('listDatabases').databases.forEach(function(db) {
             print(db.name + ' (' + (db.sizeOnDisk / 1024 / 1024).toFixed(2) + ' MB)');
         });
     "
     echo ""
-    
-    # 查看 tradingagents 数据库
-    echo "📋 步骤 10: 查看 tradingagents 数据库"
+
+    # 查看 trading_agents 数据库
+    echo "📋 步骤 10: 查看 trading_agents 数据库"
     echo "--------------------------------------------------------------------------------"
-    docker exec -it mongodb-test mongo -u admin -p tradingagents123 --authenticationDatabase admin --eval "
-        use tradingagents;
+    docker exec -it mongodb-test mongo -u admin -p trading_agents123 --authenticationDatabase admin --eval "
+        use trading_agents;
         print('=== TradingAgents 数据库 ===');
         print('集合数量: ' + db.getCollectionNames().length);
         print('集合列表:');
@@ -108,7 +108,7 @@ if docker exec -it mongodb-test mongo -u admin -p tradingagents123 --authenticat
         });
     "
     echo ""
-    
+
     # 测试 Python 连接
     echo "📋 步骤 11: 测试 Python 连接"
     echo "--------------------------------------------------------------------------------"
@@ -118,26 +118,26 @@ import sys
 
 try:
     # 测试连接
-    uri = 'mongodb://admin:tradingagents123@localhost:27017/tradingagents?authSource=admin'
+    uri = 'mongodb://admin:trading_agents123@localhost:27017/trading_agents?authSource=admin'
     client = MongoClient(uri, serverSelectionTimeoutMS=5000)
-    
+
     # 测试 ping
     client.admin.command('ping')
     print('✅ Python 连接成功')
-    
+
     # 获取服务器信息
     info = client.server_info()
     print(f'   MongoDB 版本: {info[\"version\"]}')
-    
+
     # 列出数据库
     dbs = client.list_database_names()
     print(f'   数据库数量: {len(dbs)}')
-    
+
     # 列出集合
-    db = client['tradingagents']
+    db = client['trading_agents']
     collections = db.list_collection_names()
     print(f'   集合数量: {len(collections)}')
-    
+
     client.close()
     sys.exit(0)
 except Exception as e:
@@ -145,7 +145,7 @@ except Exception as e:
     sys.exit(1)
 "
     echo ""
-    
+
 else
     echo "❌ admin 用户认证失败"
     echo ""
@@ -170,4 +170,3 @@ echo "   2. 如果测试失败，查看上面的日志找出原因"
 echo "   3. 测试完成后，运行以下命令清理："
 echo "      docker-compose -f docker-compose.mongodb-test.yml down -v"
 echo ""
-

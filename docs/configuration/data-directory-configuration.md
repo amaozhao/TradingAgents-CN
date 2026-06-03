@@ -48,40 +48,40 @@ python -m cli.main data-config --reset
 #### Windows
 ```cmd
 # 设置数据目录
-set TRADINGAGENTS_DATA_DIR=C:\MyTradingData
+set TRADING_AGENTS_DATA_DIR=C:\MyTradingData
 
 # 设置缓存目录
-set TRADINGAGENTS_CACHE_DIR=C:\MyTradingData\cache
+set TRADING_AGENTS_CACHE_DIR=C:\MyTradingData\cache
 
 # 设置结果目录
-set TRADINGAGENTS_RESULTS_DIR=C:\MyTradingData\results
+set TRADING_AGENTS_RESULTS_DIR=C:\MyTradingData\results
 ```
 
 #### Linux/macOS
 ```bash
 # 设置数据目录
-export TRADINGAGENTS_DATA_DIR="/home/user/trading-data"
+export TRADING_AGENTS_DATA_DIR="/home/user/trading-data"
 
 # 设置缓存目录
-export TRADINGAGENTS_CACHE_DIR="/home/user/trading-data/cache"
+export TRADING_AGENTS_CACHE_DIR="/home/user/trading-data/cache"
 
 # 设置结果目录
-export TRADINGAGENTS_RESULTS_DIR="/home/user/trading-data/results"
+export TRADING_AGENTS_RESULTS_DIR="/home/user/trading-data/results"
 ```
 
 #### .env文件配置 | .env File Configuration
 ```env
 # 在项目根目录创建.env文件
-TRADINGAGENTS_DATA_DIR=/path/to/your/data
-TRADINGAGENTS_CACHE_DIR=/path/to/your/cache
-TRADINGAGENTS_RESULTS_DIR=/path/to/your/results
+TRADING_AGENTS_DATA_DIR=/path/to/your/data
+TRADING_AGENTS_CACHE_DIR=/path/to/your/cache
+TRADING_AGENTS_RESULTS_DIR=/path/to/your/results
 ```
 
 ### 3. 程序化配置 | Programmatic Configuration
 
 ```python
-from tradingagents.dataflows.config import set_data_dir, get_data_dir
-from tradingagents.config.config_manager import config_manager
+from trader.flows.config import set_data_dir, get_data_dir
+from trader.config.config_manager import config_manager
 
 # 设置数据目录
 set_data_dir("/path/to/custom/data")
@@ -175,7 +175,7 @@ python test_data_config_cli.py
 
 ### 3. 使用演示脚本验证 | Verify Using Demo Script
 ```bash
-python backend/examples/data_dir_config_demo.py
+python backend/examples/data/dir/config/demo/example.py
 ```
 
 ## 最佳实践 | Best Practices
@@ -201,7 +201,7 @@ python backend/examples/data_dir_config_demo.py
 ### 自定义子目录结构 | Custom Subdirectory Structure
 
 ```python
-from tradingagents.config.config_manager import config_manager
+from trader.config.config_manager import config_manager
 
 # 自定义目录结构
 custom_dirs = {
@@ -229,10 +229,10 @@ print(f"新数据目录: {config_manager.get_data_dir()}")
 
 ## 相关文件 | Related Files
 
-- `backend/tradingagents/config/config_manager.py` - 配置管理器
-- `backend/tradingagents/dataflows/config.py` - 数据流配置
+- `backend/trader/config/config_manager.py` - 配置管理器
+- `backend/trader/flows/config.py` - 数据流配置
 - `backend/cli/main.py` - CLI命令实现
-- `backend/examples/data_dir_config_demo.py` - 配置演示脚本
+- `backend/examples/data/dir/config/demo/example.py` - 配置演示脚本
 - `test_data_config_cli.py` - 配置测试脚本
 
 ## 技术支持 | Technical Support

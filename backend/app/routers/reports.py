@@ -11,10 +11,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
-from .authdb import get_current_user
-from ..models.apiresponse import ApiResponse
-from ..core.coredatabase import get_mongo_db
-from ..db.dualwrite import dual_write_hot_document
+from .account import get_current_user
+from ..models.response import ApiResponse
+from ..core.database import get_mongo_db
+from ..db.dual import dual_write_hot_document
 from ..utils.timezone import to_config_tz
 import logging
 
@@ -36,8 +36,8 @@ def get_stock_name(stock_code: str) -> str:
 
     try:
         # 从 MongoDB 获取股票名称
-        from ..core.coredatabase import get_mongo_db_sync
-        from ..core.unifiedconfig import UnifiedConfigManager
+        from ..core.database import get_mongo_db_sync
+        from ..core.unified import UnifiedConfigManager
 
         db = get_mongo_db_sync()
         code6 = str(stock_code).zfill(6)
@@ -184,7 +184,7 @@ async def get_reports_list(
             # 🔥 获取市场类型，如果没有则根据股票代码推断
             market_type = doc.get("market_type")
             if not market_type:
-                from tradingagents.utils.stockutils import StockUtils
+                from trader.utils.stocks import StockUtils
                 market_info = StockUtils.get_market_info(stock_code)
                 market_type_map = {
                     "china_a": "A股",
@@ -523,9 +523,9 @@ async def download_report(
 
         elif format == "docx":
             # Word 文档格式下载
-            from app.utils.reportexporter import report_exporter
+            from app.utils.reports import reports
 
-            if not report_exporter.pandoc_available:
+            if not reports.pandoc_available:
                 raise HTTPException(
                     status_code=400,
                     detail="Word 导出功能不可用。请安装 pandoc: pip install pypandoc"
@@ -533,7 +533,7 @@ async def download_report(
 
             try:
                 # 生成 Word 文档
-                docx_content = report_exporter.generate_docx_report(doc)
+                docx_content = reports.generate_docx_report(doc)
                 filename = f"{stock_symbol}_{analysis_date}_report.docx"
 
                 # 返回文件流
@@ -551,9 +551,9 @@ async def download_report(
 
         elif format == "pdf":
             # PDF 格式下载
-            from app.utils.reportexporter import report_exporter
+            from app.utils.reports import reports
 
-            if not report_exporter.pandoc_available:
+            if not reports.pandoc_available:
                 raise HTTPException(
                     status_code=400,
                     detail="PDF 导出功能不可用。请安装 pandoc 和 PDF 引擎（wkhtmltopdf 或 LaTeX）"
@@ -561,7 +561,7 @@ async def download_report(
 
             try:
                 # 生成 PDF 文档
-                pdf_content = report_exporter.generate_pdf_report(doc)
+                pdf_content = reports.generate_pdf_report(doc)
                 filename = f"{stock_symbol}_{analysis_date}_report.pdf"
 
                 # 返回文件流

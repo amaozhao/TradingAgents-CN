@@ -14,8 +14,8 @@ Write-Host "WARNING: Cleanup Test Environment" -ForegroundColor Red
 Write-Host "======================================================================" -ForegroundColor Red
 Write-Host ""
 Write-Host "[WARN] This will remove:" -ForegroundColor Yellow
-Write-Host "  - Test containers (tradingagents-*-test)" -ForegroundColor White
-Write-Host "  - Test data volumes (tradingagents_test_*)" -ForegroundColor White
+Write-Host "  - Test containers (trading_agents-*-test)" -ForegroundColor White
+Write-Host "  - Test data volumes (trading_agents_test_*)" -ForegroundColor White
 Write-Host "  - Test directories (logs-test/, config-test/, data-test/)" -ForegroundColor White
 Write-Host ""
 
@@ -64,6 +64,5 @@ Write-Host "[OK] Test environment cleaned up!" -ForegroundColor Green
 Write-Host "======================================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "[INFO] Remaining volumes:" -ForegroundColor Cyan
-docker volume ls --format "table {{.Name}}\t{{.Driver}}" | Select-String "tradingagents"
+docker volume ls --format "table {{.Name}}\t{{.Driver}}" | Select-String "trading_agents"
 Write-Host ""
-

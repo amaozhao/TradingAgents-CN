@@ -1,8 +1,8 @@
 {
-  "project_dir": "./backend/tradingagents",
+  "project_dir": "./backend/trader",
   "results_dir": "./results",
   "data_dir": "./data",
-  "data_cache_dir": "./backend/tradingagents/dataflows/data_cache",
+  "data_cache_dir": "./backend/trader/flows/data/cache",
   "memory_log_path": "./data/memory/trading_memory.md",
   "memory_log_max_entries": null,
   "llm_provider": "dashscope",

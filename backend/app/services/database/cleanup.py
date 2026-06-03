@@ -6,8 +6,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any, Dict
 
-from app.core.coredatabase import get_mongo_db
-from app.db.dualwrite import dual_write_hot_documents
+from app.core.database import get_mongo_db
+from app.db.dual import dual_write_hot_documents
 
 
 async def _dual_write_tombstones(collection: str, documents: list[dict], deleted_at: datetime) -> None:
@@ -63,7 +63,7 @@ async def cleanup_old_data(days: int) -> Dict[str, Any]:
     }
 
 
-async def cleanup_analysis_results(days: int) -> Dict[str, Any]:
+async def cleanup_analysis(days: int) -> Dict[str, Any]:
     db = get_mongo_db()
     cutoff_date = datetime.utcnow() - timedelta(days=days)
 
@@ -83,12 +83,12 @@ async def cleanup_analysis_results(days: int) -> Dict[str, Any]:
         deleted_count += res.deleted_count
         cleaned_collections.append(f"analysis_tasks: {res.deleted_count}")
 
-    analysis_results_to_delete = await db.analysis_results.find({"created_at": {"$lt": cutoff_date}}).to_list(length=None)
-    res = await db.analysis_results.delete_many({"created_at": {"$lt": cutoff_date}})
+    analysis_to_delete = await db.analysis.find({"created_at": {"$lt": cutoff_date}}).to_list(length=None)
+    res = await db.analysis.delete_many({"created_at": {"$lt": cutoff_date}})
     if res.deleted_count:
-        await _dual_write_tombstones("analysis_results", analysis_results_to_delete, datetime.utcnow())
+        await _dual_write_tombstones("analysis", analysis_to_delete, datetime.utcnow())
         deleted_count += res.deleted_count
-        cleaned_collections.append(f"analysis_results: {res.deleted_count}")
+        cleaned_collections.append(f"analysis: {res.deleted_count}")
 
     return {
         "deleted_count": deleted_count,
@@ -97,7 +97,7 @@ async def cleanup_analysis_results(days: int) -> Dict[str, Any]:
     }
 
 
-async def cleanup_operation_logs(days: int) -> Dict[str, Any]:
+async def cleanup_operations(days: int) -> Dict[str, Any]:
     db = get_mongo_db()
     cutoff_date = datetime.utcnow() - timedelta(days=days)
 
@@ -118,12 +118,12 @@ async def cleanup_operation_logs(days: int) -> Dict[str, Any]:
         deleted_count += res.deleted_count
         cleaned_collections.append(f"login_attempts: {res.deleted_count}")
 
-    old_operation_logs = await db.operation_logs.find({"timestamp": {"$lt": cutoff_date}}).to_list(length=None)
-    res = await db.operation_logs.delete_many({"timestamp": {"$lt": cutoff_date}})
+    old_operations = await db.operations.find({"timestamp": {"$lt": cutoff_date}}).to_list(length=None)
+    res = await db.operations.delete_many({"timestamp": {"$lt": cutoff_date}})
     if res.deleted_count:
-        await _dual_write_tombstones("operation_logs", old_operation_logs, datetime.utcnow())
+        await _dual_write_tombstones("operations", old_operations, datetime.utcnow())
         deleted_count += res.deleted_count
-        cleaned_collections.append(f"operation_logs: {res.deleted_count}")
+        cleaned_collections.append(f"operations: {res.deleted_count}")
 
     return {
         "deleted_count": deleted_count,
