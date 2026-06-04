@@ -227,14 +227,14 @@ frontend-next/
 - Create: `frontend-next/features/learning/markdown-renderer.tsx`
 - Create: `frontend-next/features/learning/mermaid-renderer.tsx`
 
-- [ ] Implement `DataTable` with TanStack Table, loading, empty, pagination, sorting, filtering, row actions, selection, and column visibility.
-- [ ] Implement `EChartPanel` with loading, empty, resize, theme, and dark-mode handling.
-- [ ] Implement shared PageHeader, AsyncButton, EmptyState, ErrorState, and ConfirmDialog patterns.
-- [ ] Implement Markdown and Mermaid renderers with dark-mode compatible styling.
-- [ ] Add component tests for DataTable empty/loading/rendered rows.
-- [ ] Add component tests for Zod form error display using shadcn Form.
-- [ ] Verify `pnpm test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
-- [ ] Commit shared components with a Lore commit.
+- [x] Implement `DataTable` with TanStack Table, loading, empty, pagination, sorting, filtering, row actions, selection, and column visibility.
+- [x] Implement `EChartPanel` with loading, empty, resize, theme, and dark-mode handling.
+- [x] Implement shared PageHeader, AsyncButton, EmptyState, ErrorState, and ConfirmDialog patterns.
+- [x] Implement Markdown and Mermaid renderers with dark-mode compatible styling.
+- [x] Add component tests for DataTable empty/loading/rendered rows.
+- [x] Add component tests for Zod form error display using shadcn Form.
+- [x] Verify `pnpm test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
+- [x] Commit shared components with a Lore commit.
 
 ## Task 5: Migrate API Modules
 
