@@ -24,15 +24,26 @@ __pycache__/
 .env.mongodb*
 frontend/dist
 frontend/node_modules
+frontend/.next
 frontend/.env*
-!frontend/src/**
+frontend/playwright-report/
+frontend/test-results/
+frontend-vue/dist
+frontend-vue/node_modules
+frontend-vue/.vite
 !frontend/public/**
-!frontend/index.html
-!frontend/vite.config.*
+!frontend/app/**
+!frontend/components/**
+!frontend/features/**
+!frontend/libs/**
+!frontend/stores/**
+!frontend/types/**
+!frontend/next.config.*
 !frontend/package*.json
 !frontend/tsconfig*.json
-!frontend/.eslintrc*
-!frontend/.prettier*
+!frontend/eslint.config.*
+!frontend/tailwind.config.*
+!frontend/postcss.config.*
 
 # 系统文件
 .DS_Store
@@ -71,7 +82,7 @@ eval_data/
 results/
 logs/
 temp/
-# 忽略根目录的 src/，但不影响 frontend/src/
+# 忽略根目录的 src/，但不影响前端应用目录
 /src/
 
 # 数据缓存目录 (不纳入版本控制)
@@ -180,9 +191,10 @@ COMMIT_SUMMARY.md
 node_modules/
 *.tsbuildinfo
 frontend/.vite
-frontend-next/.next/
-frontend-next/playwright-report/
-frontend-next/test-results/
+frontend/.next/
+frontend/playwright-report/
+frontend/test-results/
+frontend-vue/dist/
 
 # Installers and archives
 *.deb

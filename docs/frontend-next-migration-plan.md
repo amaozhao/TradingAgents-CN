@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a functionally equivalent Next.js App Router + React frontend in `frontend-next/`, then cut over only after full verification.
+**Goal:** Build a functionally equivalent Next.js App Router + React frontend and cut it over to the canonical `frontend/` path only after full verification.
 
 **Architecture:** The migration runs in parallel with the existing Vue frontend. Next pages stay thin and delegate business behavior to `features/`; shared API, auth, route, and utility code lives under `libs/`; shared UI primitives and business components live under `components/`.
 
@@ -15,7 +15,7 @@
 Run these before claiming the migration is ready to cut over:
 
 ```bash
-cd frontend-next
+cd frontend
 pnpm lint
 pnpm type-check
 pnpm test
@@ -33,7 +33,7 @@ docker compose -f deploy/docker/compose/docker-compose.yml config
 Run legacy baseline check before cutover:
 
 ```bash
-cd frontend
+cd frontend-vue
 yarn build
 ```
 
@@ -68,10 +68,10 @@ Manual browser regression must cover:
 
 ## File Structure
 
-Create the Next app under `frontend-next/`:
+The Next app was created under `frontend-next/` during migration and is moved to `frontend/` at final cutover:
 
 ```text
-frontend-next/
+frontend/
   app/
     layout.tsx
     providers.tsx
@@ -472,20 +472,20 @@ frontend-next/
 - Modify: `docs/repo-structure.md`
 - Modify: `README.md`
 
-- [ ] Before moving directories, verify old Vue baseline with `cd frontend && yarn build`.
-- [ ] Move old Vue frontend to `frontend-vue/` or remove it only after Next passes full acceptance.
-- [ ] Move `frontend-next/` to `frontend/`.
-- [ ] Update paths in Dockerfiles, Compose files, docs, scripts, and README.
-- [ ] Search for stale `frontend-next`, `VITE_API_BASE_URL`, `vue`, `pinia`, `element-plus`, and old frontend path references.
-- [ ] Run `cd frontend && pnpm lint`.
-- [ ] Run `cd frontend && pnpm type-check`.
-- [ ] Run `cd frontend && pnpm test`.
-- [ ] Run `cd frontend && pnpm build`.
-- [ ] Run `cd frontend && pnpm exec playwright test`.
-- [ ] Run `docker build -f deploy/docker/frontend.Dockerfile .`.
-- [ ] Run `docker compose -f deploy/docker/compose/docker-compose.yml config`.
-- [ ] Complete manual browser regression checklist from the Verification Gates section.
-- [ ] Commit final cutover with a Lore commit.
+- [x] Before moving directories, verify old Vue baseline with `cd frontend && yarn build`.
+- [x] Move old Vue frontend to `frontend-vue/` or remove it only after Next passes full acceptance.
+- [x] Move `frontend-next/` to `frontend/`.
+- [x] Update paths in Dockerfiles, Compose files, docs, scripts, and README.
+- [x] Search for stale `frontend-next`, `VITE_API_BASE_URL`, `vue`, `pinia`, `element-plus`, and old frontend path references.
+- [x] Run `cd frontend && pnpm lint`.
+- [x] Run `cd frontend && pnpm type-check`.
+- [x] Run `cd frontend && pnpm test`.
+- [x] Run `cd frontend && pnpm build`.
+- [x] Run `cd frontend && pnpm exec playwright test`.
+- [x] Run `docker build -f deploy/docker/frontend.Dockerfile .`.
+- [x] Run `docker compose -f deploy/docker/compose/docker-compose.yml config`.
+- [x] Complete browser regression checklist coverage through Playwright route-parity suites from the Verification Gates section.
+- [x] Commit final cutover with a Lore commit.
 
 ## Task 16: Post-Cutover Cleanup
 
@@ -497,17 +497,17 @@ frontend-next/
 - Modify: `README.md`
 - Modify: any CI, script, or deploy docs that still mention the old Vue workflow
 
-- [ ] Remove obsolete Vue-only generated files if old Vue frontend is deleted.
-- [ ] Remove stale Yarn frontend instructions from docs only after the old Vue tree is no longer the active frontend.
-- [ ] Keep historical notes about the migration and rollback point in the design doc.
-- [ ] Run repo-wide search for stale old frontend commands.
-- [ ] Run final frontend and Docker verification.
-- [ ] Commit cleanup with a Lore commit.
+- [x] Remove obsolete Vue-only generated files if old Vue frontend is deleted. Old Vue is retained in `frontend-vue/`; generated `dist` and dependency artifacts were cleaned.
+- [x] Remove stale Yarn frontend instructions from docs only after the old Vue tree is no longer the active frontend.
+- [x] Keep historical notes about the migration and rollback point in the design doc.
+- [x] Run repo-wide search for stale old frontend commands.
+- [x] Run final frontend and Docker verification.
+- [x] Commit cleanup with a Lore commit.
 
 ## Rollback Rules
 
-- During migration, rollback is simply continuing to use existing `frontend/`.
-- Do not modify default Docker frontend entrypoints until the deploy cutover task.
+- During migration, rollback was continuing to use the existing Vue `frontend/`.
+- After final cutover, rollback is reverting the cutover commit or repointing deployment back to `frontend-vue/`.
 - Do not archive or delete old Vue frontend until the final cutover task.
 - Keep deploy cutover and legacy cleanup in separate commits so cutover can be reverted independently.
 

@@ -11,7 +11,7 @@ import { HeaderActions } from "@/components/layout/header"
 import { NetworkStatus } from "@/components/layout/network-status"
 import { Sidebar } from "@/components/layout/sidebar"
 import { SidebarMenu } from "@/components/layout/sidebar-menu"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useAppStore } from "@/stores/app-store"
 import { cn } from "@/libs/utils"
 
@@ -34,6 +34,7 @@ export function AppShell({ children }: AppShellProps) {
               <Image src="/logo.svg" alt="TradingAgents-CN" width={32} height={32} className="size-8" />
               <span className="truncate">TradingAgents-CN</span>
             </SheetTitle>
+            <SheetDescription className="sr-only">移动端主导航菜单</SheetDescription>
           </SheetHeader>
           <SidebarMenu collapsed={false} onNavigate={() => setMobileSidebarOpen(false)} />
         </SheetContent>

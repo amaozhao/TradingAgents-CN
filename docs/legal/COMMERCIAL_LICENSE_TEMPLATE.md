@@ -15,7 +15,7 @@
 
 1.1 **许可软件**: 本协议涵盖 TradingAgents-CN 项目中的以下组件：
 - FastAPI 后端应用 (`backend/app/` 目录)
-- Vue.js 前端应用 (`frontend/` 目录)
+- Next.js / React 前端应用 (`frontend/` 目录)
 - 相关文档和配置文件
 
 1.2 **许可类型**: [选择一项]

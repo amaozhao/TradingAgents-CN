@@ -299,7 +299,7 @@ graph TD
 
 - **测试方法**：`app/services/config_service.py` → `test_llm_config()`
 - **API端点**：`app/routers/config.py` → `POST /api/config/test`
-- **前端调用**：`frontend/src/views/Settings/ConfigManagement.vue` → `testLLMConfig()`
+- **前端调用**：`frontend-vue/src/views/Settings/ConfigManagement.vue` → `testLLMConfig()`
 
 ---
 

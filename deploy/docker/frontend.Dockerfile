@@ -6,14 +6,14 @@ ARG NEXT_PUBLIC_API_BASE_URL=""
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 
-WORKDIR /app/frontend-next
+WORKDIR /app/frontend
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-COPY frontend-next/package.json frontend-next/pnpm-lock.yaml ./
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
-COPY frontend-next/. ./
+COPY frontend/. ./
 COPY docs /app/docs
 
 RUN pnpm build
@@ -29,9 +29,9 @@ WORKDIR /app
 
 RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
 
-COPY --from=build --chown=nextjs:nextjs /app/frontend-next/.next/standalone ./
-COPY --from=build --chown=nextjs:nextjs /app/frontend-next/.next/static ./.next/static
-COPY --from=build --chown=nextjs:nextjs /app/frontend-next/public ./public
+COPY --from=build --chown=nextjs:nextjs /app/frontend/.next/standalone ./
+COPY --from=build --chown=nextjs:nextjs /app/frontend/.next/static ./.next/static
+COPY --from=build --chown=nextjs:nextjs /app/frontend/public ./public
 COPY --from=build --chown=nextjs:nextjs /app/docs ./docs
 
 USER nextjs

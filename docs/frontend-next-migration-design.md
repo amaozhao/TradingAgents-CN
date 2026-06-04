@@ -2,9 +2,9 @@
 
 ## 目标
 
-将当前 `frontend/` 的 Vue 3 + Vite 前端迁移为 Next.js App Router + React 前端。迁移目标是功能等价，不借迁移机会重做产品流程、后端接口、URL 结构或权限模型。
+将原 `frontend/` 的 Vue 3 + Vite 前端迁移为 Next.js App Router + React 前端。迁移目标是功能等价，不借迁移机会重做产品流程、后端接口、URL 结构或权限模型。
 
-首版迁移完成前，现有 Vue 前端继续作为生产基线和回滚基线。Next 版本在 `frontend-next/` 中并行开发，达到全量功能等价并通过验收后再整体切流。
+切流完成后，Next 版本位于正式 `frontend/` 目录，旧 Vue 版本保留在 `frontend-vue/` 作为回滚基线。
 
 ## 已确认决策
 
@@ -27,8 +27,8 @@
 | 路由保护 | 客户端保护 |
 | 图表 | 保留 ECharts，React 侧使用薄封装或 `echarts-for-react` |
 | Markdown/Mermaid | 保持现有内容、渲染能力和路径兼容 |
-| 包管理器 | `frontend-next/` 使用 pnpm |
-| 目录策略 | 迁移期 `frontend-next/`，切流后重命名为 `frontend/` |
+| 包管理器 | `frontend/` 使用 pnpm |
+| 目录策略 | `frontend/` 为 Next 正式前端，`frontend-vue/` 为旧 Vue 回滚基线 |
 | 验证 | 完整验收门槛 |
 | 表格 | TanStack Table + shadcn Table 自封装 `DataTable` |
 | 表单 | React Hook Form + Zod + shadcn Form |
@@ -40,7 +40,7 @@
 | 代码结构 | 使用 `libs/`，不使用 `lib/` |
 | shadcn 落地 | CLI 生成组件源码到 `components/ui` |
 | shadcn 配置 | `new-york`、`slate`、CSS variables、lucide、RSC yes |
-| 老 Vue | 只做必要 bugfix，不做新功能 |
+| 老 Vue | 保留在 `frontend-vue/`，只做必要 bugfix，不做新功能 |
 | 提交方式 | 多阶段提交或 PR |
 
 ## 非目标
@@ -56,20 +56,20 @@
 
 ## 当前迁移输入
 
-当前前端位于 `frontend/`，技术形态为 Vite + Vue 3 + Pinia + Vue Router + Element Plus。主要耦合点包括：
+迁移输入来自旧 Vue 前端，现保留在 `frontend-vue/`。其技术形态为 Vite + Vue 3 + Pinia + Vue Router + Element Plus。主要耦合点包括：
 
-- 路由、菜单、页面标题、认证守卫集中在 `frontend/src/router/index.ts`。
-- API 请求层在 `frontend/src/api/request.ts`，依赖 axios、Pinia、Vue Router 和 Element Plus message。
-- 认证状态在 `frontend/src/stores/auth.ts`，使用 localStorage 中的 `auth-token`、`refresh-token`、`user-info`。
-- 通知 WebSocket 在 `frontend/src/stores/notifications.ts`，连接当前 host 下的 `/api/ws/notifications?token=...`。
-- 当前 Docker 前端构建为静态文件，由 Nginx 服务；Next 切流后会改为 standalone Node runtime。
+- 路由、菜单、页面标题、认证守卫集中在 `frontend-vue/src/router/index.ts`。
+- API 请求层在 `frontend-vue/src/api/request.ts`，依赖 axios、Pinia、Vue Router 和 Element Plus message。
+- 认证状态在 `frontend-vue/src/stores/auth.ts`，使用 localStorage 中的 `auth-token`、`refresh-token`、`user-info`。
+- 通知 WebSocket 在 `frontend-vue/src/stores/notifications.ts`，连接当前 host 下的 `/api/ws/notifications?token=...`。
+- 旧 Docker 前端构建为静态文件，由 Nginx 服务；Next 切流后改为 standalone Node runtime。
 
 ## 目标架构
 
-`frontend-next/` 使用 Next App Router。`app/` 只负责路由入口和轻量 page 组装，业务逻辑下沉到 `features/`，通用基础能力放到 `libs/`、`stores/`、`hooks/` 和 `components/`。
+`frontend/` 使用 Next App Router。`app/` 只负责路由入口和轻量 page 组装，业务逻辑下沉到 `features/`，通用基础能力放到 `libs/`、`stores/`、`hooks/` 和 `components/`。
 
 ```text
-frontend-next/
+frontend/
   app/
     layout.tsx
     providers.tsx
@@ -165,7 +165,7 @@ export interface ApiResponse<T = unknown> {
 }
 ```
 
-API 模块按当前 `frontend/src/api/*` 迁移到 `frontend-next/libs/api/*`。迁移时去掉 Vue Router、Pinia、Element Plus 直接依赖。页面和业务 feature 通过 TanStack Query 调用 API 函数。
+API 模块按旧 `frontend-vue/src/api/*` 迁移到 `frontend/libs/api/*`。迁移时去掉 Vue Router、Pinia、Element Plus 直接依赖。页面和业务 feature 通过 TanStack Query 调用 API 函数。
 
 ### State
 
@@ -246,7 +246,7 @@ Next Docker 构建必须保留当前前端读取 `docs/` 内容的能力。Markd
 
 ### Deployment
 
-`frontend-next` 使用 pnpm 和 Next standalone：
+`frontend/` 使用 pnpm 和 Next standalone：
 
 - `next.config.ts` 配置 `output: 'standalone'`
 - 开发环境使用 Next rewrites 代理 `/api` 到本地 FastAPI
@@ -254,7 +254,7 @@ Next Docker 构建必须保留当前前端读取 `docs/` 内容的能力。Markd
 - Next 容器监听 `3000`
 - 切流时 Compose 从旧的 `3000:80` 静态 Nginx 前端改为 Next server runtime
 
-切流前不改变现有 `frontend/` 的默认职责。
+旧 Vue 前端保留在 `frontend-vue/`，不再作为默认 Docker 前端入口。
 
 ## 风险
 
@@ -265,11 +265,11 @@ Next Docker 构建必须保留当前前端读取 `docs/` 内容的能力。Markd
 | 页面数量大，功能遗漏风险高 | 切流后用户遇到缺页或缺操作 | 使用路由清单和功能域清单逐项验收 |
 | WebSocket 长连接代理差异 | 通知不可用或重连异常 | 保持协议不变，生产继续 Nginx 代理，Playwright/手工验证连接 |
 | Markdown/docs 资源路径遗漏 | 学习中心或论文链接失效 | Docker build 阶段显式复制并验证 docs 读取 |
-| 双包管理器并存 | 开发者在错误目录用错命令 | 文档和脚本明确 `frontend` 用 Yarn，`frontend-next` 用 pnpm |
+| 双包管理器并存 | 开发者在错误目录用错命令 | 文档和脚本明确 `frontend` 用 pnpm，`frontend-vue` 用 Yarn |
 | 切流 diff 大 | 审查和回滚困难 | 多阶段提交，最终切流单独提交 |
 
 ## 回滚
 
-迁移期回滚方式是继续使用现有 `frontend/`。
+切流后的回滚方式是将部署配置回退到 `frontend-vue/` 的 Vue 静态构建路径，或 revert 最终切流提交。
 
-切流后如果 Next 前端出现阻塞问题，优先回退部署配置到老 Vue 前端镜像或老 `frontend/` 构建路径。切流提交必须保持可单独 revert，老 Vue 目录归档或删除必须放在最后阶段，不能早于 Next 完整验收。
+如果 Next 前端出现阻塞问题，优先回退部署配置到老 Vue 前端镜像或 `frontend-vue/` 构建路径。切流提交必须保持可单独 revert。

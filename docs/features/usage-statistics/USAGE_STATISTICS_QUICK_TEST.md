@@ -261,7 +261,7 @@ if __name__ == "__main__":
 **原因**: 路由未正确注册
 
 **解决**:
-1. 检查 `frontend/src/router/index.ts`
+1. 检查 `frontend-vue/src/router/index.ts`
 2. 确认 `UsageStatistics` 路由已添加
 3. 重启前端服务
 

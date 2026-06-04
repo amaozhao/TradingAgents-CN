@@ -38,10 +38,10 @@ TradingAgents-CN 项目采用**混合许可证策略**，不同组件使用不�
 │   ├── services/          # 业务服务
 │   ├── middleware/        # 中间件
 │   └── worker/            # 后台任务
-└── frontend/              # Vue.js 前端应用
-    ├── src/               # 源代码
+└── frontend/              # Next.js / React 前端应用
+    ├── app/               # App Router 路由
     ├── components/        # 组件
-    └── views/             # 页面视图
+    └── features/          # 业务功能模块
 ```
 
 **限制**：

@@ -16,18 +16,18 @@ Date: 2026-06-02
 Existing modified files before this migration execution:
 
 - `frontend/package.json`
-- `frontend/src/layouts/BasicLayout.vue`
-- `frontend/src/stores/auth.ts`
-- `frontend/src/views/Dashboard/index.vue`
-- `frontend/src/views/Favorites/index.vue`
-- `frontend/src/views/Reports/TokenStatistics.vue`
-- `frontend/src/views/Reports/index.vue`
-- `frontend/src/views/Screening/index.vue`
-- `frontend/src/views/Settings/ConfigManagement.vue`
-- `frontend/src/views/Settings/components/MarketCategoryManagement.vue`
-- `frontend/src/views/System/LogManagement.vue`
-- `frontend/src/views/System/MultiSourceSync.vue`
-- `frontend/src/views/System/SchedulerManagement.vue`
+- `frontend-vue/src/layouts/BasicLayout.vue`
+- `frontend-vue/src/stores/auth.ts`
+- `frontend-vue/src/views/Dashboard/index.vue`
+- `frontend-vue/src/views/Favorites/index.vue`
+- `frontend-vue/src/views/Reports/TokenStatistics.vue`
+- `frontend-vue/src/views/Reports/index.vue`
+- `frontend-vue/src/views/Screening/index.vue`
+- `frontend-vue/src/views/Settings/ConfigManagement.vue`
+- `frontend-vue/src/views/Settings/components/MarketCategoryManagement.vue`
+- `frontend-vue/src/views/System/LogManagement.vue`
+- `frontend-vue/src/views/System/MultiSourceSync.vue`
+- `frontend-vue/src/views/System/SchedulerManagement.vue`
 - `frontend/tsconfig.json`
 - `frontend/yarn.lock`
 - `backend/pyproject.toml`

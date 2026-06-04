@@ -42,7 +42,7 @@
 
 本项目采用**混合许可证**模式：
 - 🔓 **开源部分**（Apache 2.0）：除 `backend/app/` 和 `frontend/` 外的所有文件
-- 🔒 **专有部分**（需商业授权）：`backend/app/`（FastAPI后端）和 `frontend/`（Vue前端）目录
+- 🔒 **专有部分**（需商业授权）：`backend/app/`（FastAPI后端）和 `frontend/`（Next.js 前端）目录
 
 详细说明请查看：[版权声明](./docs/legal/COPYRIGHT.md) | [许可证文件](./LICENSE)
 
@@ -137,8 +137,8 @@
 本仓库已按前后端和部署资产拆分：
 
 - `backend/`：FastAPI 后端和 `trader` Python 包
-- `frontend/`：Vue 3 / Vite 旧前端基线
-- `frontend-next/`：Next.js App Router + React 前端，Docker 前端镜像使用该目录构建
+- `frontend/`：Next.js App Router + React 前端，Docker 前端镜像使用该目录构建
+- `frontend-vue/`：Vue 3 / Vite 旧前端回滚基线
 - `deploy/`：Docker Compose、Dockerfile、Nginx 配置和 Docker 环境样例
 - `runtime/`：本地运行数据、日志、缓存和导出产物（不提交）
 
@@ -153,7 +153,7 @@ TRADING_AGENTS_LOG_DIR=../runtime/logs PYTHONPATH=. python -m uvicorn app.main:a
 本地前端开发启动：
 
 ```bash
-cd frontend-next
+cd frontend
 pnpm dev --hostname 0.0.0.0 --port 3000
 ```
 
@@ -250,7 +250,7 @@ Docker 默认读取 `deploy/env/docker.env`。配置真实密钥时，可以先�
 - **条件**：保留版权声明 ❗ | 包含许可证副本 ❗
 
 ### 🔒 专有部分（需商业授权）
-- **适用范围**：`backend/app/`（FastAPI后端）和 `frontend/`（Vue前端）目录
+- **适用范围**：`backend/app/`（FastAPI后端）和 `frontend/`（Next.js 前端）目录
 - **商业使用**：需要单独许可协议
 - **联系授权**：[hsliup@163.com](mailto:hsliup@163.com)
 

@@ -9,7 +9,7 @@
 **版权年份 / Copyright Year**: 2025
 **适用组件 / Applicable Components**:
 - `backend/app/` - FastAPI 后端应用 / FastAPI Backend Application
-- `frontend/` - Vue.js 前端应用 / Vue.js Frontend Application
+- `frontend/` - Next.js / React 前端应用 / Next.js / React Frontend Application
 
 ### 开源组件 / Open Source Components
 
