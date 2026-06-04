@@ -304,13 +304,13 @@ frontend-next/
 - Create: `frontend-next/features/analysis/batch-analysis-page.tsx`
 - Create: `frontend-next/features/tasks/task-center-page.tsx`
 
-- [ ] Migrate single analysis page with equivalent inputs, model/deep model selectors, analyst selection, submit behavior, task creation, progress, and result navigation.
-- [ ] Migrate batch analysis page with equivalent upload/input behavior and batch task handling.
-- [ ] Migrate task center with active/completed tabs, polling/refetch behavior, actions, and result/report dialogs.
-- [ ] Preserve `/analysis/history -> /tasks?tab=completed`.
-- [ ] Add Playwright tests for navigation to analysis pages and task center tab behavior.
-- [ ] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
-- [ ] Commit analysis and tasks migration with a Lore commit.
+- [x] Migrate single analysis page with equivalent inputs, model/deep model selectors, analyst selection, submit behavior, task creation, progress, and result navigation.
+- [x] Migrate batch analysis page with equivalent upload/input behavior and batch task handling.
+- [x] Migrate task center with active/completed tabs, polling/refetch behavior, actions, and result/report dialogs.
+- [x] Preserve `/analysis/history -> /tasks?tab=completed`.
+- [x] Add Playwright tests for navigation to analysis pages and task center tab behavior.
+- [x] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
+- [x] Commit analysis and tasks migration with a Lore commit.
 
 ## Task 8: Migrate Reports
 
