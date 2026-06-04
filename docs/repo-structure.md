@@ -7,7 +7,8 @@
 ```text
 TradingAgents-CN/
   backend/        FastAPI 后端、trader 包、后端 CLI、后端测试
-  frontend/       Vue 3 / Vite 前端应用
+  frontend/       Vue 3 / Vite 旧前端基线
+  frontend-next/  Next.js App Router + React 前端
   deploy/         Docker、Nginx、部署环境样例
   config/         可版本控制的默认配置
   docs/           项目文档
@@ -34,7 +35,7 @@ deploy/
     docker.env
 ```
 
-Compose 文件位于 `deploy/docker/compose/`，其中 `build.context` 明确指向仓库根目录，保证镜像仍能复制 `backend/`、`frontend/`、`config/` 和 `docs/`。
+Compose 文件位于 `deploy/docker/compose/`，其中 `build.context` 明确指向仓库根目录，保证镜像仍能复制 `backend/`、`frontend-next/`、`config/` 和 `docs/`。旧 Vue 前端在最终切流前仍保留在 `frontend/` 作为回滚基线。
 
 ## 运行生成物
 

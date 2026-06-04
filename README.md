@@ -137,7 +137,8 @@
 本仓库已按前后端和部署资产拆分：
 
 - `backend/`：FastAPI 后端和 `trader` Python 包
-- `frontend/`：Vue 3 / Vite 前端
+- `frontend/`：Vue 3 / Vite 旧前端基线
+- `frontend-next/`：Next.js App Router + React 前端，Docker 前端镜像使用该目录构建
 - `deploy/`：Docker Compose、Dockerfile、Nginx 配置和 Docker 环境样例
 - `runtime/`：本地运行数据、日志、缓存和导出产物（不提交）
 
@@ -152,8 +153,8 @@ TRADING_AGENTS_LOG_DIR=../runtime/logs PYTHONPATH=. python -m uvicorn app.main:a
 本地前端开发启动：
 
 ```bash
-cd frontend
-yarn dev --host 0.0.0.0
+cd frontend-next
+pnpm dev --hostname 0.0.0.0 --port 3000
 ```
 
 Docker 一体化启动：

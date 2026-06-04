@@ -1,44 +1,41 @@
-# Frontend Dockerfile for Vue 3 + Vite app (TradingAgents-CN v1.0.1)
-# 前后端分离架构 - 前端服务
+# Frontend Dockerfile for Next.js App Router standalone runtime.
 
-# 构建阶段：使用Node.js 22.x（与项目开发环境一致）
 FROM node:22-alpine AS build
 
-ENV NODE_ENV=production
-WORKDIR /app/frontend
+ARG NEXT_PUBLIC_API_BASE_URL=""
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# 启用Corepack并使用Yarn 1.22.22（项目使用的包管理器）
-RUN corepack enable && corepack prepare yarn@1.22.22 --activate
+WORKDIR /app/frontend-next
 
-# 复制package.json、yarn.lock和.yarnrc（配置国内镜像源）
-COPY frontend/package.json frontend/yarn.lock frontend/.yarnrc ./
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# 安装依赖（使用yarn.lock确保版本一致）
-# 增加网络超时时间到5分钟，适应跨平台构建的网络延迟
-RUN yarn install --frozen-lockfile --production=false --network-timeout 300000
+COPY frontend-next/package.json frontend-next/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
-# 复制前端源代码
-COPY frontend/. ./
-
-# 复制前端学习中心通过 ?raw 引用的 Markdown 文档
+COPY frontend-next/. ./
 COPY docs /app/docs
 
-# 构建生产版本（跳过类型检查以加快构建速度）
-RUN yarn vite build
+RUN pnpm build
 
-# 运行阶段：使用Nginx提供静态文件服务
-FROM nginx:alpine AS runtime
+FROM node:22-alpine AS runtime
 
-WORKDIR /usr/share/nginx/html
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 
-# 从构建阶段复制构建产物
-COPY --from=build /app/frontend/dist .
+WORKDIR /app
 
-# 复制Nginx配置（支持SPA路由）
-COPY deploy/docker/nginx/frontend.conf /etc/nginx/conf.d/default.conf
+RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
 
-# 暴露端口80
-EXPOSE 80
+COPY --from=build --chown=nextjs:nextjs /app/frontend-next/.next/standalone ./
+COPY --from=build --chown=nextjs:nextjs /app/frontend-next/.next/static ./.next/static
+COPY --from=build --chown=nextjs:nextjs /app/frontend-next/public ./public
+COPY --from=build --chown=nextjs:nextjs /app/docs ./docs
 
-# 启动Nginx
-CMD ["nginx", "-g", "daemon off;"]
+USER nextjs
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]

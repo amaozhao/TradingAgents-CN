@@ -449,15 +449,15 @@ frontend-next/
 - Modify: `docs/repo-structure.md`
 - Modify: `README.md` if startup commands are documented there
 
-- [ ] Update frontend Dockerfile to build `frontend-next` with pnpm and run Next standalone server.
-- [ ] Ensure Docker build copies `.next/standalone`, `.next/static`, `public`, and required docs assets.
-- [ ] Change frontend service port mapping from `3000:80` to `3000:3000` where appropriate.
-- [ ] Keep production `/api` and WebSocket proxying at the outer Nginx layer.
-- [ ] Update CORS origins only if runtime evidence shows the backend rejects the new frontend origin.
-- [ ] Run `docker build -f deploy/docker/frontend.Dockerfile .`.
-- [ ] Run `docker compose -f deploy/docker/compose/docker-compose.yml config`.
-- [ ] Verify `cd frontend-next && pnpm build`.
-- [ ] Commit deployment cutover with a Lore commit.
+- [x] Update frontend Dockerfile to build `frontend-next` with pnpm and run Next standalone server.
+- [x] Ensure Docker build copies `.next/standalone`, `.next/static`, `public`, and required docs assets.
+- [x] Change frontend service port mapping from `3000:80` to `3000:3000` where appropriate.
+- [x] Keep production `/api` and WebSocket proxying at the outer Nginx layer.
+- [x] Update CORS origins only if runtime evidence shows the backend rejects the new frontend origin.
+- [x] Run `docker build -f deploy/docker/frontend.Dockerfile .`.
+- [x] Run `docker compose -f deploy/docker/compose/docker-compose.yml config`.
+- [x] Verify `cd frontend-next && pnpm build`.
+- [x] Commit deployment cutover with a Lore commit.
 
 ## Task 15: Final Cutover and Legacy Frontend Handling
 

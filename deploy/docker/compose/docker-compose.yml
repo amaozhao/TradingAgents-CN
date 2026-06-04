@@ -67,26 +67,28 @@ services:
         max-size: "100m"
         max-file: "3"
 
-  # Vue 3 前端服务
+  # Next.js 前端服务
   frontend:
     build:
       context: ../../..
       dockerfile: deploy/docker/frontend.Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: "http://localhost:8000"
     image: trading-agents-frontend:v1.0.1
     container_name: trading-agents-frontend
     ports:
-      - "3000:80"
+      - "3000:3000"
     environment:
       TZ: "Asia/Shanghai"
-      # 后端API地址
-      VITE_API_BASE_URL: "http://localhost:8000"
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
     depends_on:
       backend:
         condition: service_healthy
     networks:
       - trading-agents-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 3

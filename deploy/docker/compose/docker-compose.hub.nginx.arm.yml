@@ -135,24 +135,24 @@ services:
       retries: 3
       start_period: 40s
 
-  # Vue 3前端服务
+  # Next.js前端服务
   frontend:
     image: hsliup/trading-agents-frontend:v1.0.1
     platform: linux/arm64  # 显式指定 ARM64 平台
     container_name: trading-agents-frontend
     restart: unless-stopped
     expose:
-      - "80"
+      - "3000"
     environment:
       TZ: "Asia/Shanghai"
-      # 前端通过 Nginx 代理访问后端，使用相对路径
-      VITE_API_BASE_URL: "/api"
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
     depends_on:
       - backend
     networks:
       - trading-agents-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 3

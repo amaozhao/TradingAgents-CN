@@ -70,6 +70,11 @@ frontend/dist/
 frontend/node_modules/
 frontend/.vite/
 frontend/coverage/
+frontend-next/.next/
+frontend-next/node_modules/
+frontend-next/coverage/
+frontend-next/test-results/
+frontend-next/playwright-report/
 
 # IDE和编辑器
 .vscode/
