@@ -1,4 +1,43 @@
-# ruff: noqa: F401,F403,F405,F821
+from __future__ import annotations
+
+import importlib
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+
+from app.core.database import get_postgres_db
+from app.core.response import ok
+from app.db.dual import dual_write_hot_document
+from app.routers.account import get_current_user
+from app.schemas.response import ApiResponse
+from app.schemas.stocks import BatchStockSyncRequest
+
+logger = logging.getLogger("webapi")
+
+router = APIRouter(prefix="/api/stock-sync", tags=["股票数据同步"])
+get_tushare_sync_service = getattr(
+    importlib.import_module("app.worker.tushare.sync"), "get_tushare_sync_service"
+)
+get_akshare_sync_service = getattr(
+    importlib.import_module("app.worker.akshare.sync"), "get_akshare_sync_service"
+)
+get_financial_sync_service = getattr(
+    importlib.import_module("app.worker.financial"), "get_financial_sync_service"
+)
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+async def _dual_write_stock_basic_info(document: dict[str, Any]) -> None:
+    await dual_write_hot_document(
+        "stock_basic_info", document, enabled=True, fail_open=True
+    )
+
+
 @router.post("/batch", response_model=ApiResponse)
 async def sync_batch_stocks(
     request: BatchStockSyncRequest,

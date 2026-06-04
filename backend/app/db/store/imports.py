@@ -1,23 +1,9 @@
-# ruff: noqa: F401,F403,F405,F821
 from __future__ import annotations
 
 import asyncio
-import atexit
-import copy
-import importlib
-import re
 import threading
-import uuid
-from collections.abc import Awaitable, Callable, Coroutine, Iterable, Iterator
-from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
-from decimal import Decimal
-from typing import Any, Self, cast
+from typing import Any
 
-from sqlalchemy import delete, select
-from sqlalchemy.dialects.postgresql import insert
-
-from app.db.document import normalize_payload
 from app.models.table import (
     AnalysisBatchDocument,
     AnalysisReport,
@@ -33,7 +19,6 @@ from app.models.table import (
     PaperOrder,
     PaperPosition,
     PaperTrade,
-    PostgresDocument,
     SchedulerExecution,
     SchedulerHistoryDocument,
     SchedulerMetadataDocument,
@@ -43,14 +28,12 @@ from app.models.table import (
     StockFinancialData,
     StockNewsDocument,
     SyncStatusDocument,
-    SystemConfigDocument,
     TokenUsageDocument,
     UserAccount,
     UserFavorite,
     UserSessionDocument,
     UserTag,
 )
-from app.core.session import get_session_factory, init_postgres
 
 _sync_loop: asyncio.AbstractEventLoop | None = None
 _sync_loop_thread: threading.Thread | None = None
