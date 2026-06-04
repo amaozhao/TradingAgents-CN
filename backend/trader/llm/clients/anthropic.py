@@ -17,6 +17,10 @@ class NormalizedChatAnthropic(ChatAnthropic):
 class AnthropicClient(BaseLLMClient):
     """Client for Anthropic Claude models."""
 
+    def __init__(self, model: str, base_url: str | None = None, **kwargs):
+        self.provider = str(kwargs.pop("provider", "anthropic"))
+        super().__init__(model, base_url, **kwargs)
+
     @staticmethod
     def _supports_effort(model: str) -> bool:
         normalized = str(model).lower()
@@ -45,6 +49,9 @@ class AnthropicClient(BaseLLMClient):
             if key in self.kwargs:
                 llm_kwargs[key] = self.kwargs[key]
 
+        if "max_completion_tokens" in self.kwargs and "max_tokens" not in llm_kwargs:
+            llm_kwargs["max_tokens"] = self.kwargs["max_completion_tokens"]
+
         if "effort" in self.kwargs and self._supports_effort(self.model):
             llm_kwargs["effort"] = self.kwargs["effort"]
 
@@ -55,4 +62,4 @@ class AnthropicClient(BaseLLMClient):
         return NormalizedChatAnthropic(**llm_kwargs)
 
     def validate_model(self) -> bool:
-        return validate_model("anthropic", self.model)
+        return validate_model(self.provider, self.model)

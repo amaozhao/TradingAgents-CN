@@ -53,6 +53,7 @@ export interface IndustryOption {
 export interface IndustriesResponse {
   industries: IndustryOption[]
   total: number
+  source?: string
 }
 
 export const screeningApi = {
@@ -61,4 +62,3 @@ export const screeningApi = {
   getFields: () => ApiClient.get<FieldConfigResponse>('/api/screening/fields'),
   getIndustries: () => ApiClient.get<IndustriesResponse>('/api/screening/industries')
 }
-

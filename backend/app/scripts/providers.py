@@ -60,6 +60,21 @@ async def init_providers():
             ],
         },
         {
+            "name": "minimax-token-plan",
+            "display_name": "MiniMax Token Plan",
+            "description": "MiniMax Token Plan subscription key via Anthropic-compatible API",
+            "website": "https://platform.minimaxi.com",
+            "api_doc_url": "https://platform.minimaxi.com/docs/token-plan/quickstart",
+            "default_base_url": "https://api.minimaxi.com/anthropic",
+            "is_active": True,
+            "supported_features": [
+                "chat",
+                "completion",
+                "function_calling",
+                "streaming",
+            ],
+        },
+        {
             "name": "google",
             "display_name": "Google AI",
             "description": "Google的人工智能平台，提供Gemini系列模型",

@@ -21,10 +21,18 @@ class ProviderKeysTests(unittest.TestCase):
         self.assertEqual(env_key_for_provider("qwen"), "DASHSCOPE_API_KEY")
         self.assertEqual(env_key_for_provider("dashscope"), "DASHSCOPE_API_KEY")
         self.assertEqual(env_key_for_provider("glm"), "ZHIPU_API_KEY")
+        self.assertEqual(
+            env_key_for_provider("minimax-token-plan"),
+            "MINIMAX_TOKEN_PLAN_API_KEY",
+        )
 
     def test_default_backend_url_mapping(self):
         self.assertIn("dashscope.aliyuncs.com", default_backend_url("qwen"))
         self.assertIn("open.bigmodel.cn", default_backend_url("glm"))
+        self.assertEqual(
+            default_backend_url("minimax-token-plan"),
+            "https://api.minimaxi.com/anthropic",
+        )
 
     def test_canonical_aliases(self):
         self.assertIn("dashscope", canonical_aliases("qwen"))

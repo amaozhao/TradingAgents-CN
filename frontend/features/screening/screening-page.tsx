@@ -17,8 +17,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { screeningApi, type ScreeningRunItem } from "@/libs/api/screening"
 import { getCurrentDataSource } from "@/libs/api/sync"
 
-function unwrap<T>(response: { data: T }) {
-  return response.data
+function unwrap<T>(response: T | { data: T }): T {
+  return response && typeof response === "object" && "data" in response ? response.data : response
 }
 
 export function ScreeningPage() {

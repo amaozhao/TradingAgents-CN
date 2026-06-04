@@ -60,11 +60,11 @@ def create_llm_client(
 
         return GoogleClient(model, base_url, **kwargs)
 
-    if provider_lower == "anthropic":
+    if provider_lower in {"anthropic", "minimax-token-plan"}:
         AnthropicClient = getattr(
             importlib.import_module("trader.llm.clients.anthropic"), "AnthropicClient"
         )
 
-        return AnthropicClient(model, base_url, **kwargs)
+        return AnthropicClient(model, base_url, provider=provider_lower, **kwargs)
 
     raise ValueError(f"Unsupported LLM provider: {provider}")

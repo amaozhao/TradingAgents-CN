@@ -51,6 +51,19 @@ _MINIMAX_MODELS = {
     ],
 }
 
+_MINIMAX_TOKEN_PLAN_MODELS = {
+    "quick": [
+        ("MiniMax-M3", "MiniMax-M3"),
+        ("MiniMax-M2.7-highspeed", "MiniMax-M2.7-highspeed"),
+        ("Custom model ID", "custom"),
+    ],
+    "deep": [
+        ("MiniMax-M3", "MiniMax-M3"),
+        ("MiniMax-M2.7", "MiniMax-M2.7"),
+        ("Custom model ID", "custom"),
+    ],
+}
+
 
 MODEL_OPTIONS: ProviderModeOptions = {
     "openai": {
@@ -154,6 +167,7 @@ MODEL_OPTIONS: ProviderModeOptions = {
     "glm-cn": _GLM_MODELS,
     "minimax": _MINIMAX_MODELS,
     "minimax-cn": _MINIMAX_MODELS,
+    "minimax-token-plan": _MINIMAX_TOKEN_PLAN_MODELS,
     "qianfan": {
         "quick": [
             ("ERNIE Speed", "ernie-speed-128k"),

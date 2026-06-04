@@ -30,6 +30,7 @@ def test_every_select_llm_provider_choice_has_an_entry():
         "glm-cn",
         "minimax",
         "minimax-cn",
+        "minimax-token-plan",
         "openrouter",
         "azure",
         "ollama",
@@ -52,6 +53,7 @@ def test_every_select_llm_provider_choice_has_an_entry():
         ("glm-cn", "ZHIPU_CN_API_KEY"),
         ("minimax", "MINIMAX_API_KEY"),
         ("minimax-cn", "MINIMAX_CN_API_KEY"),
+        ("minimax-token-plan", "MINIMAX_TOKEN_PLAN_API_KEY"),
         ("openrouter", "OPENROUTER_API_KEY"),
     ],
 )

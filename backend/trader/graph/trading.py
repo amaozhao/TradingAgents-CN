@@ -54,7 +54,9 @@ def _configured_provider_kwargs(
         "openai_reasoning_effort"
     ):
         provider_kwargs["reasoning_effort"] = config["openai_reasoning_effort"]
-    if normalized_provider == "anthropic" and config.get("anthropic_effort"):
+    if normalized_provider in {"anthropic", "minimax-token-plan"} and config.get(
+        "anthropic_effort"
+    ):
         provider_kwargs["effort"] = config["anthropic_effort"]
 
     return provider_kwargs
@@ -156,9 +158,13 @@ def create_llm_by_provider(
         )
         return client.get_llm()
 
-    elif normalized_provider == "anthropic":
+    elif normalized_provider in {"anthropic", "minimax-token-plan"}:
+        if not api_key:
+            env_key = env_key_for_provider(normalized_provider)
+            api_key = os.getenv(env_key) or os.getenv("ANTHROPIC_API_KEY") or ""
+
         client = create_llm_client(
-            provider="anthropic",
+            provider=normalized_provider,
             model=model,
             base_url=backend_url,
             api_key=api_key,
@@ -411,7 +417,7 @@ class TradingAgentsGraph:
                 backend_url=self.config["backend_url"],
                 api_key=api_key,
             )
-        elif normalized_provider == "anthropic":
+        elif normalized_provider in {"anthropic", "minimax-token-plan"}:
             logger.info(
                 f"🔧 [Anthropic-快速模型] max_tokens={quick_max_tokens}, temperature={quick_temperature}, timeout={quick_timeout}s"
             )
@@ -422,10 +428,11 @@ class TradingAgentsGraph:
             anthropic_api_key = (
                 self.config.get("quick_api_key")
                 or self.config.get("deep_api_key")
+                or os.getenv(env_key_for_provider(normalized_provider))
                 or os.getenv("ANTHROPIC_API_KEY")
             )
             self.deep_thinking_llm, self.quick_thinking_llm = _create_provider_pair(
-                provider="anthropic",
+                provider=normalized_provider,
                 config=self.config,
                 quick_temperature=quick_temperature,
                 quick_max_tokens=quick_max_tokens,

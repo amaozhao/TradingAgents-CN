@@ -147,18 +147,20 @@ function numberFrom(value: unknown, key: string): number {
 function GenericTable<T>({
   rows,
   emptyText,
-  children
+  children,
+  tableClassName
 }: {
   rows: T[]
   emptyText: string
   children: React.ReactNode
+  tableClassName?: string
 }) {
   if (!rows.length) {
     return <EmptyState title={emptyText} className="rounded-md border p-8" />
   }
   return (
     <div className="overflow-x-auto rounded-md border">
-      <Table>{children}</Table>
+      <Table className={tableClassName}>{children}</Table>
     </div>
   )
 }
@@ -276,37 +278,44 @@ export function ConfigManagementPage() {
 
         <TabsContent value="providers">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle>大模型厂家</CardTitle>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.migrateEnvToProviders())}>迁移环境变量</Button>
                 <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.initAggregatorProviders())}>初始化聚合渠道</Button>
               </div>
             </CardHeader>
             <CardContent>
-              <GenericTable<LLMProvider> rows={providers} emptyText="暂无厂家配置">
+              <GenericTable<LLMProvider> rows={providers} emptyText="暂无厂家配置" tableClassName="min-w-[1100px] table-fixed">
+                <colgroup>
+                  <col className="w-[58%]" />
+                  <col className="w-[96px]" />
+                  <col className="w-[88px]" />
+                  <col className="w-[96px]" />
+                  <col className="w-[210px]" />
+                </colgroup>
                 <TableHeader>
                   <TableRow>
                     <TableHead>厂家</TableHead>
-                    <TableHead>密钥</TableHead>
-                    <TableHead>模型数</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead>操作</TableHead>
+                    <TableHead className="whitespace-nowrap">密钥</TableHead>
+                    <TableHead className="whitespace-nowrap text-center">模型数</TableHead>
+                    <TableHead className="whitespace-nowrap">状态</TableHead>
+                    <TableHead className="whitespace-nowrap text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {providers.map((provider) => (
                     <TableRow key={provider.id}>
-                      <TableCell>
+                      <TableCell className="pr-6">
                         <div className="font-medium">{provider.display_name || provider.name}</div>
                         <div className="text-xs text-muted-foreground">{provider.name}</div>
-                        <div className="text-xs text-muted-foreground">{provider.description || "暂无描述"}</div>
+                        <div className="mt-1 line-clamp-2 max-w-[920px] text-xs leading-5 text-muted-foreground">{provider.description || "暂无描述"}</div>
                       </TableCell>
-                      <TableCell>{provider.extra_config?.has_api_key ? "已配置" : "未配置"}</TableCell>
-                      <TableCell>{providerModelCount.get(provider.name) || 0}</TableCell>
-                      <TableCell>{boolBadge(provider.is_active)}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-2">
+                      <TableCell className="whitespace-nowrap">{provider.extra_config?.has_api_key ? "已配置" : "未配置"}</TableCell>
+                      <TableCell className="text-center tabular-nums">{providerModelCount.get(provider.name) || 0}</TableCell>
+                      <TableCell className="whitespace-nowrap">{boolBadge(provider.is_active)}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.testProviderAPI(provider.id))}>测试</Button>
                           <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.toggleLLMProvider(provider.id, !provider.is_active))}>
                             {provider.is_active ? "停用" : "启用"}

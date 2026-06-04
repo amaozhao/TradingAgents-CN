@@ -2812,6 +2812,33 @@ class ConfigService:
                 ],
             },
             {
+                "provider": "minimax-token-plan",
+                "provider_name": "MiniMax Token Plan",
+                "models": [
+                    {
+                        "name": "MiniMax-M3",
+                        "display_name": "MiniMax-M3 - Token Plan",
+                        "context_length": 1000000,
+                        "currency": "CNY",
+                        "description": "MiniMax M3 via Token Plan Anthropic-compatible endpoint",
+                    },
+                    {
+                        "name": "MiniMax-M2.7",
+                        "display_name": "MiniMax-M2.7 - Token Plan",
+                        "context_length": 1000000,
+                        "currency": "CNY",
+                        "description": "MiniMax M2.7 via Token Plan Anthropic-compatible endpoint",
+                    },
+                    {
+                        "name": "MiniMax-M2.7-highspeed",
+                        "display_name": "MiniMax-M2.7-highspeed - Token Plan",
+                        "context_length": 1000000,
+                        "currency": "CNY",
+                        "description": "MiniMax M2.7 highspeed via Token Plan Anthropic-compatible endpoint",
+                    },
+                ],
+            },
+            {
                 "provider": "qianfan",
                 "provider_name": "百度千帆",
                 "models": [
@@ -3090,6 +3117,7 @@ class ConfigService:
         env_key_mapping = {
             "openai": "OPENAI_API_KEY",
             "anthropic": "ANTHROPIC_API_KEY",
+            "minimax-token-plan": "MINIMAX_TOKEN_PLAN_API_KEY",
             "google": "GOOGLE_API_KEY",
             "zhipu": "ZHIPU_API_KEY",
             "glm": "ZHIPU_API_KEY",
@@ -3457,6 +3485,20 @@ class ConfigService:
                     ],
                 },
                 {
+                    "name": "minimax-token-plan",
+                    "display_name": "MiniMax Token Plan",
+                    "description": "MiniMax Token Plan subscription key via Anthropic-compatible API",
+                    "website": "https://platform.minimaxi.com",
+                    "api_doc_url": "https://platform.minimaxi.com/docs/token-plan/quickstart",
+                    "default_base_url": "https://api.minimaxi.com/anthropic",
+                    "supported_features": [
+                        "chat",
+                        "completion",
+                        "function_calling",
+                        "streaming",
+                    ],
+                },
+                {
                     "name": "qwen",
                     "display_name": "阿里云百炼",
                     "description": "阿里云百炼大模型服务平台，提供通义千问等模型",
@@ -3692,9 +3734,21 @@ class ConfigService:
                 return await asyncio.get_event_loop().run_in_executor(
                     None, self._test_openai_api, api_key, display_name
                 )
-            elif provider_name == "anthropic":
+            elif provider_name in {"anthropic", "minimax-token-plan"}:
+                base_url = None
+                if provider_name == "minimax-token-plan":
+                    db = await self._get_db()
+                    providers_collection = db.llm_providers
+                    provider_data = await providers_collection.find_one(
+                        {"name": provider_name}
+                    )
+                    base_url = (
+                        provider_data.get("default_base_url")
+                        if provider_data
+                        else "https://api.minimaxi.com/anthropic"
+                    )
                 return await asyncio.get_event_loop().run_in_executor(
-                    None, self._test_anthropic_api, api_key, display_name
+                    None, self._test_anthropic_api, api_key, display_name, base_url
                 )
             elif provider_name == "qianfan":
                 return await asyncio.get_event_loop().run_in_executor(
@@ -4160,12 +4214,15 @@ class ConfigService:
                 "message": f"{display_name} API测试异常: {str(e)}",
             }
 
-    def _test_anthropic_api(self, api_key: str, display_name: str) -> dict:
+    def _test_anthropic_api(
+        self, api_key: str, display_name: str, base_url: Optional[str] = None
+    ) -> dict:
         """测试Anthropic API"""
         try:
             requests = importlib.import_module("requests")
 
-            url = "https://api.anthropic.com/v1/messages"
+            root_url = (base_url or "https://api.anthropic.com").rstrip("/")
+            url = f"{root_url}/v1/messages"
 
             headers = {
                 "Content-Type": "application/json",
@@ -4174,7 +4231,11 @@ class ConfigService:
             }
 
             data = {
-                "model": "claude-3-haiku-20240307",
+                "model": (
+                    "MiniMax-M3"
+                    if "minimax" in root_url.lower()
+                    else "claude-3-haiku-20240307"
+                ),
                 "max_tokens": 50,
                 "messages": [
                     {"role": "user", "content": "你好，请简单介绍一下你自己。"}

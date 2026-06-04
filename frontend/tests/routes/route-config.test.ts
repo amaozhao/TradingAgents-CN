@@ -83,5 +83,29 @@ describe("route config", () => {
       "/analysis/batch",
       "/reports"
     ])
+    expect(menuRoutes.find((route) => route.path === "/settings")?.children?.map((route) => route.title)).toEqual([
+      "个人设置",
+      "系统配置",
+      "系统管理"
+    ])
+    expect(menuRoutes.find((route) => route.path === "/settings")?.children?.[0]?.children?.map((route) => route.title)).toEqual([
+      "通用设置",
+      "外观设置",
+      "分析偏好",
+      "通知设置",
+      "安全设置"
+    ])
+    expect(menuRoutes.find((route) => route.path === "/settings")?.children?.[1]?.children?.map((route) => route.path)).toEqual([
+      "/settings/config",
+      "/settings/cache"
+    ])
+    expect(menuRoutes.find((route) => route.path === "/settings")?.children?.[2]?.children?.map((route) => route.path)).toEqual([
+      "/settings/database",
+      "/settings/logs",
+      "/settings/system-logs",
+      "/settings/sync",
+      "/settings/scheduler",
+      "/settings/usage"
+    ])
   })
 })

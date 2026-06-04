@@ -24,6 +24,7 @@ export interface AppRoute {
   title: string
   icon?: LucideIcon
   requiresAuth: boolean
+  href?: string
   hideInMenu?: boolean
   children?: AppRoute[]
 }
@@ -69,6 +70,7 @@ export const menuRoutes: AppRoute[] = [
     title: "股票分析",
     icon: ChartNoAxesCombined,
     requiresAuth: true,
+    href: "/analysis/single",
     children: [
       getRequiredRoute("/analysis/single"),
       getRequiredRoute("/analysis/batch"),
@@ -84,16 +86,45 @@ export const menuRoutes: AppRoute[] = [
     title: "设置",
     icon: Settings,
     requiresAuth: true,
+    href: "/settings",
     children: [
-      getRequiredRoute("/settings"),
-      getRequiredRoute("/settings/config"),
-      getRequiredRoute("/settings/cache"),
-      getRequiredRoute("/settings/database"),
-      getRequiredRoute("/settings/logs"),
-      getRequiredRoute("/settings/system-logs"),
-      getRequiredRoute("/settings/sync"),
-      getRequiredRoute("/settings/scheduler"),
-      getRequiredRoute("/settings/usage")
+      {
+        path: "/settings-personal",
+        title: "个人设置",
+        requiresAuth: true,
+        href: "/settings",
+        children: [
+          { ...getRequiredRoute("/settings"), title: "通用设置" },
+          { ...getRequiredRoute("/settings"), path: "/settings?tab=appearance", title: "外观设置" },
+          { ...getRequiredRoute("/settings"), path: "/settings?tab=analysis", title: "分析偏好" },
+          { ...getRequiredRoute("/settings"), path: "/settings?tab=notifications", title: "通知设置" },
+          { ...getRequiredRoute("/settings"), path: "/settings?tab=security", title: "安全设置" }
+        ]
+      },
+      {
+        path: "/settings-config",
+        title: "系统配置",
+        requiresAuth: true,
+        href: "/settings/config",
+        children: [
+          getRequiredRoute("/settings/config"),
+          getRequiredRoute("/settings/cache")
+        ]
+      },
+      {
+        path: "/settings-admin",
+        title: "系统管理",
+        requiresAuth: true,
+        href: "/settings/database",
+        children: [
+          getRequiredRoute("/settings/database"),
+          getRequiredRoute("/settings/logs"),
+          getRequiredRoute("/settings/system-logs"),
+          getRequiredRoute("/settings/sync"),
+          getRequiredRoute("/settings/scheduler"),
+          getRequiredRoute("/settings/usage")
+        ]
+      }
     ]
   },
   getRequiredRoute("/about")
