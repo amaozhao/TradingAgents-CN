@@ -370,14 +370,14 @@ frontend-next/
 - Create: `frontend-next/features/favorites/favorites-page.tsx`
 - Create: `frontend-next/features/paper/paper-trading-page.tsx`
 
-- [ ] Migrate stock detail page and preserve `/stocks/:code`.
-- [ ] Migrate multi-market stock search and market utilities.
-- [ ] Migrate screening filters, results table, tags, and saved/favorite actions.
-- [ ] Migrate favorites list, actions, and navigation.
-- [ ] Migrate paper trading page with equivalent forms, analysis integration, and tables.
-- [ ] Add Playwright tests for stock dynamic route and screening page load.
-- [ ] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
-- [ ] Commit market-related pages with a Lore commit.
+- [x] Migrate stock detail page and preserve `/stocks/:code`.
+- [x] Migrate multi-market stock search and market utilities.
+- [x] Migrate screening filters, results table, tags, and saved/favorite actions.
+- [x] Migrate favorites list, actions, and navigation.
+- [x] Migrate paper trading page with equivalent forms, analysis integration, and tables.
+- [x] Add Playwright tests for stock dynamic route and screening page load.
+- [x] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
+- [x] Commit market-related pages with a Lore commit.
 
 ## Task 11: Migrate Learning and About
 
