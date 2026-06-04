@@ -29,6 +29,7 @@ TEST_MIRROR_ROOTS = {
 }
 
 MAGIC_PYTHON_FILES = {"__init__.py", "__main__.py", "conftest.py"}
+MAX_PYTHON_LINES = 800
 SKIP_DIR_NAMES = {
     ".git",
     ".mypy_cache",
@@ -40,9 +41,7 @@ SKIP_DIR_NAMES = {
     "node_modules",
     "runtime",
 }
-SKIP_SUBTREES = (
-    Path("backend/trader/flows/cache/data/cache"),
-)
+SKIP_SUBTREES = (Path("backend/trader/flows/cache/data/cache"),)
 
 DB_SINGULAR_MODULES = {
     "accounts": "account",
@@ -75,7 +74,9 @@ FORBIDDEN_SERVICE_DIRS = {
     Path("backend/app/services/data"): Path("backend/app/services/market"),
 }
 FORBIDDEN_SERVICE_FILES = {
-    Path("backend/app/services/stocks/data.py"): Path("backend/app/services/stocks/service.py"),
+    Path("backend/app/services/stocks/data.py"): Path(
+        "backend/app/services/stocks/service.py"
+    ),
 }
 GLUED_TRADING_AGENTS = "trading" + "agents"
 GLUED_TRADING_AGENTS_RUNTIME_SETTINGS = GLUED_TRADING_AGENTS + "runtimesettings"
@@ -96,17 +97,33 @@ FORBIDDEN_DIRECTORIES = {
     Path("backend/trader") / SNAKE_LLM_CLIENTS: Path("backend/trader/llm/clients"),
     Path("backend/trader") / GLUED_LLM_ADAPTERS: Path("backend/trader/llm/adapters"),
     Path("backend/trader") / SNAKE_LLM_ADAPTERS: Path("backend/trader/llm/adapters"),
-    Path("backend/trader/agents") / GLUED_RISK_MANAGEMENT: Path("backend/trader/agents/risk/management"),
-    Path("backend/trader/agents") / SNAKE_RISK_MANAGEMENT: Path("backend/trader/agents/risk/management"),
+    Path("backend/trader/agents") / GLUED_RISK_MANAGEMENT: Path(
+        "backend/trader/agents/risk/management"
+    ),
+    Path("backend/trader/agents") / SNAKE_RISK_MANAGEMENT: Path(
+        "backend/trader/agents/risk/management"
+    ),
     Path("backend/tests/trader") / GLUED_DATA_FLOWS: Path("backend/tests/trader/flows"),
-    Path("backend/tests/trader") / GLUED_LLM_CLIENTS: Path("backend/tests/trader/llm/clients"),
-    Path("backend/tests/trader") / GLUED_LLM_ADAPTERS: Path("backend/tests/trader/llm/adapters"),
-    Path("backend/support") / GLUED_TRADING_AGENTS: Path("backend/support/trading/agents"),
-    Path("backend/support") / GLUED_TRADING_AGENTS_RUNTIME_SETTINGS: Path("backend/support/trading/agents/runtime/settings"),
-    Path("backend/support") / GLUED_PYPANDOC_FUNCTIONALITY: Path("backend/support/pypandoc/functionality"),
+    Path("backend/tests/trader") / GLUED_LLM_CLIENTS: Path(
+        "backend/tests/trader/llm/clients"
+    ),
+    Path("backend/tests/trader") / GLUED_LLM_ADAPTERS: Path(
+        "backend/tests/trader/llm/adapters"
+    ),
+    Path("backend/support") / GLUED_TRADING_AGENTS: Path(
+        "backend/support/trading/agents"
+    ),
+    Path("backend/support") / GLUED_TRADING_AGENTS_RUNTIME_SETTINGS: Path(
+        "backend/support/trading/agents/runtime/settings"
+    ),
+    Path("backend/support") / GLUED_PYPANDOC_FUNCTIONALITY: Path(
+        "backend/support/pypandoc/functionality"
+    ),
 }
 FORBIDDEN_FILES = {
-    Path("backend/web/components/operations.py"): Path("backend/web/components/operation.py"),
+    Path("backend/web/components/operations.py"): Path(
+        "backend/web/components/operation.py"
+    ),
     Path("backend/web/components/results.py"): Path("backend/web/components/result.py"),
 }
 ALLOWED_CAMELCASE_IDENTIFIERS = {
@@ -412,21 +429,21 @@ KNOWN_CODE_WORDS.update(
         "pandoc",
         "pb",
         "pypandoc",
-    "react",
-    "real",
-    "reasoning",
-    "removal",
-    "resume",
+        "react",
+        "real",
+        "reasoning",
+        "removal",
+        "resume",
         "safe",
         "scenario",
         "skip",
         "steps",
         "symbol",
-    "thread",
-    "ticket",
-    "ticker",
-    "time",
-    "timezone",
+        "thread",
+        "ticket",
+        "ticker",
+        "time",
+        "timezone",
         "token",
         "volume",
         "workflow",
@@ -491,7 +508,9 @@ class AuditRecord:
     kind: RecordKind
     current_basename: str
     proposed_basename: str
+    line_count: int
     violates_name: bool
+    violates_size: bool
     proposed_collision: bool
     mirror_valid: bool | None
     collision_key: str
@@ -603,6 +622,15 @@ def _validate_python_identifiers(path: Path) -> list[str]:
     return violations
 
 
+def _line_count(path: Path) -> int:
+    absolute = ROOT / path
+    try:
+        source = absolute.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        source = absolute.read_text(encoding="utf-8-sig")
+    return len(source.splitlines())
+
+
 def _is_dunder_name(name: str) -> bool:
     return len(name) > 4 and name.startswith("__") and name.endswith("__")
 
@@ -665,7 +693,9 @@ class _IdentifierStyleVisitor(ast.NodeVisitor):
         self._add(lineno, kind, name, "snake_case or UPPER_SNAKE_CASE")
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
-        if node.name not in ALLOWED_CAMELCASE_IDENTIFIERS and not _is_pascal_name(node.name):
+        if node.name not in ALLOWED_CAMELCASE_IDENTIFIERS and not _is_pascal_name(
+            node.name
+        ):
             self._add(node.lineno, "type", node.name, "PascalCase")
         self.generic_visit(node)
 
@@ -685,9 +715,13 @@ class _IdentifierStyleVisitor(ast.NodeVisitor):
         ):
             self._check_snake_or_constant(arg.lineno, "argument", arg.arg)
         if node.args.vararg is not None:
-            self._check_snake_or_constant(node.args.vararg.lineno, "argument", node.args.vararg.arg)
+            self._check_snake_or_constant(
+                node.args.vararg.lineno, "argument", node.args.vararg.arg
+            )
         if node.args.kwarg is not None:
-            self._check_snake_or_constant(node.args.kwarg.lineno, "argument", node.args.kwarg.arg)
+            self._check_snake_or_constant(
+                node.args.kwarg.lineno, "argument", node.args.kwarg.arg
+            )
         self.generic_visit(node)
 
     def visit_Assign(self, node: ast.Assign) -> None:
@@ -771,6 +805,13 @@ def _validate_python_identifier_styles(path: Path) -> list[str]:
 
 
 def _record_file(path: Path) -> AuditRecord:
+    line_count = _line_count(path)
+    size_reasons = []
+    if line_count > MAX_PYTHON_LINES:
+        size_reasons.append(
+            f"python file has {line_count} lines; maximum is {MAX_PYTHON_LINES}"
+        )
+
     directory_reasons: list[str] = []
     directory_proposed = path.name
     for forbidden, replacement in FORBIDDEN_DIRECTORIES.items():
@@ -782,30 +823,40 @@ def _record_file(path: Path) -> AuditRecord:
 
     if path.name in MAGIC_PYTHON_FILES:
         directory_reasons.extend(_validate_directory_parts(path))
+        reasons = [*directory_reasons, *size_reasons]
         return AuditRecord(
             path=path.as_posix(),
             kind="magic",
             current_basename=path.name,
             proposed_basename=directory_proposed,
+            line_count=line_count,
             violates_name=bool(directory_reasons),
+            violates_size=bool(size_reasons),
             proposed_collision=False,
             mirror_valid=None,
             collision_key="",
-            reasons=directory_reasons,
+            reasons=reasons,
         )
 
-    kind: RecordKind = "test" if any(_is_relative_to(path, root) for root in TEST_ROOTS) else "source"
+    kind: RecordKind = (
+        "test" if any(_is_relative_to(path, root) for root in TEST_ROOTS) else "source"
+    )
     stem = path.stem
     reasons: list[str]
 
-    reasons = [
+    name_reasons = [
         *directory_reasons,
         *_validate_directory_parts(path),
         *_validate_single_word_stem(stem),
         *_validate_python_identifiers(path),
         *_validate_python_identifier_styles(path),
     ]
-    proposed_basename = "<move context into directories; choose one word>.py" if reasons else path.name
+    reasons = [*name_reasons, *size_reasons]
+    proposed_basename = (
+        "<move context into directories; choose one word>.py"
+        if name_reasons
+        else path.name
+    )
     if directory_reasons:
         proposed_basename = directory_proposed
     mirror_valid: bool | None = None
@@ -814,7 +865,10 @@ def _record_file(path: Path) -> AuditRecord:
             f"db module filenames use singular domain nouns; use {DB_SINGULAR_MODULES[stem]}.py"
         )
         proposed_basename = f"{DB_SINGULAR_MODULES[stem]}.py"
-    if _is_relative_to(path, Path("backend/app/services")) and stem in SERVICE_SINGULAR_MODULES:
+    if (
+        _is_relative_to(path, Path("backend/app/services"))
+        and stem in SERVICE_SINGULAR_MODULES
+    ):
         reasons.append(
             f"service module filenames use singular domain nouns; use {SERVICE_SINGULAR_MODULES[stem]}.py"
         )
@@ -833,18 +887,24 @@ def _record_file(path: Path) -> AuditRecord:
         proposed_basename = replacement.name
     if path in FORBIDDEN_FILES:
         replacement = FORBIDDEN_FILES[path]
-        reasons.append(f"source file {path.as_posix()} is forbidden; use {replacement.as_posix()}")
+        reasons.append(
+            f"source file {path.as_posix()} is forbidden; use {replacement.as_posix()}"
+        )
         proposed_basename = replacement.name
     if path.name == "test.py":
         for test_root, source_root in TEST_MIRROR_ROOTS.items():
             if not _is_relative_to(path, test_root):
                 continue
             source_path = source_root / path.relative_to(test_root).parent
-            source_path = source_path.with_suffix(".py")
-            mirror_valid = (ROOT / source_path).exists()
+            source_file_path = source_path.with_suffix(".py")
+            source_package_path = source_path / "__init__.py"
+            mirror_valid = (ROOT / source_file_path).exists() or (
+                ROOT / source_package_path
+            ).exists()
             if not mirror_valid:
                 reasons.append(
-                    f"test path must mirror an existing source file; expected {source_path.as_posix()}"
+                    "test path must mirror an existing source file or package; "
+                    f"expected {source_file_path.as_posix()} or {source_package_path.as_posix()}"
                 )
             break
 
@@ -853,7 +913,9 @@ def _record_file(path: Path) -> AuditRecord:
         kind=kind,
         current_basename=path.name,
         proposed_basename=proposed_basename,
-        violates_name=bool(reasons),
+        line_count=line_count,
+        violates_name=bool(name_reasons),
+        violates_size=bool(size_reasons),
         proposed_collision=False,
         mirror_valid=mirror_valid,
         collision_key="",
@@ -872,6 +934,7 @@ def _summary(records: list[AuditRecord]) -> dict[str, int]:
         "tests": sum(record.kind == "test" for record in records),
         "magic": sum(record.kind == "magic" for record in records),
         "name_violations": sum(record.violates_name for record in records),
+        "size_violations": sum(record.violates_size for record in records),
         "collisions": 0,
         "mirror_violations": sum(record.mirror_valid is False for record in records),
     }
@@ -896,7 +959,11 @@ def _to_markdown(records: list[AuditRecord]) -> str:
     for key, value in summary.items():
         lines.append(f"- {key}: {value}")
 
-    problem_records = [record for record in records if record.violates_name or record.mirror_valid is False]
+    problem_records = [
+        record
+        for record in records
+        if record.violates_name or record.violates_size or record.mirror_valid is False
+    ]
     lines.extend(["", "## Problems", ""])
     if not problem_records:
         lines.append("No naming violations found.")
@@ -926,7 +993,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--format", choices=("json", "markdown"), default="markdown")
     parser.add_argument("--output")
-    parser.add_argument("--check", action="store_true", help="Exit non-zero when any violation is present.")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Exit non-zero when any violation is present.",
+    )
     parser.add_argument(
         "--include-tests",
         action="store_true",

@@ -1,0 +1,269 @@
+# ruff: noqa: F401,F403,F405,F821
+@router.post("/batch", response_model=ApiResponse)
+async def sync_batch_stocks(
+    request: BatchStockSyncRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    批量同步多个股票的历史数据和财务数据
+
+    - **symbols**: 股票代码列表
+    - **sync_historical**: 是否同步历史数据
+    - **sync_financial**: 是否同步财务数据
+    - **data_source**: 数据源（tushare/akshare）
+    - **days**: 历史数据天数
+    """
+    try:
+        logger.info(
+            f"📊 开始批量同步 {len(request.symbols)} 只股票 (数据源: {request.data_source})"
+        )
+
+        result = {
+            "total": len(request.symbols),
+            "symbols": request.symbols,
+            "historical_sync": None,
+            "financial_sync": None,
+            "basic_sync": None,
+        }
+
+        # 同步历史数据
+        if request.sync_historical:
+            try:
+                if request.data_source == "tushare":
+                    service = await get_tushare_sync_service()
+                elif request.data_source == "akshare":
+                    service = await get_akshare_sync_service()
+                else:
+                    raise ValueError(f"不支持的数据源: {request.data_source}")
+
+                # 计算日期范围
+                end_date = datetime.now().strftime("%Y-%m-%d")
+                start_date = (datetime.now() - timedelta(days=request.days)).strftime(
+                    "%Y-%m-%d"
+                )
+
+                # 批量同步历史数据
+                hist_result = await service.sync_historical_data(
+                    symbols=request.symbols,
+                    start_date=start_date,
+                    end_date=end_date,
+                    incremental=False,
+                )
+
+                result["historical_sync"] = {
+                    "success_count": hist_result.get("success_count", 0),
+                    "error_count": hist_result.get("error_count", 0),
+                    "total_records": hist_result.get("total_records", 0),
+                    "message": f"成功同步 {hist_result.get('success_count', 0)}/{len(request.symbols)} 只股票，共 {hist_result.get('total_records', 0)} 条记录",
+                }
+                logger.info(
+                    f"✅ 批量历史数据同步完成: {hist_result.get('success_count', 0)}/{len(request.symbols)}"
+                )
+
+            except Exception as e:
+                logger.error(f"❌ 批量历史数据同步失败: {e}")
+                result["historical_sync"] = {
+                    "success_count": 0,
+                    "error_count": len(request.symbols),
+                    "error": str(e),
+                }
+
+        # 同步财务数据
+        if request.sync_financial:
+            try:
+                financial_service = await get_financial_sync_service()
+
+                # 批量同步财务数据
+                fin_results = await financial_service.sync_financial_data(
+                    symbols=request.symbols,
+                    data_sources=[request.data_source],
+                    batch_size=10,
+                )
+
+                source_stats = fin_results.get(request.data_source)
+                if source_stats:
+                    result["financial_sync"] = {
+                        "success_count": source_stats.success_count,
+                        "error_count": source_stats.error_count,
+                        "total_symbols": source_stats.total_symbols,
+                        "message": f"成功同步 {source_stats.success_count}/{source_stats.total_symbols} 只股票的财务数据",
+                    }
+                else:
+                    result["financial_sync"] = {
+                        "success_count": 0,
+                        "error_count": len(request.symbols),
+                        "message": "财务数据同步失败",
+                    }
+
+                logger.info(
+                    f"✅ 批量财务数据同步完成: {result['financial_sync']['success_count']}/{len(request.symbols)}"
+                )
+
+            except Exception as e:
+                logger.error(f"❌ 批量财务数据同步失败: {e}")
+                result["financial_sync"] = {
+                    "success_count": 0,
+                    "error_count": len(request.symbols),
+                    "error": str(e),
+                }
+
+        # 同步基础数据
+        if request.sync_basic:
+            try:
+                # 🔥 批量同步基础数据
+                # 注意：基础数据同步服务目前只支持 Tushare 数据源
+                if request.data_source == "tushare":
+                    TushareProvider = getattr(
+                        importlib.import_module("trader.flows.providers.china.tushare"),
+                        "TushareProvider",
+                    )
+
+                    tushare_provider = TushareProvider()
+                    if tushare_provider.is_available():
+                        success_count = 0
+                        error_count = 0
+
+                        for symbol in request.symbols:
+                            try:
+                                basic_info = (
+                                    await tushare_provider.get_stock_basic_info(symbol)
+                                )
+
+                                if isinstance(basic_info, dict):
+                                    # 保存到 PostgreSQL
+                                    db = get_postgres_db()
+                                    symbol6 = str(symbol).zfill(6)
+
+                                    # 添加必要字段
+                                    basic_info["code"] = symbol6
+                                    basic_info["source"] = "tushare"
+                                    basic_info["updated_at"] = _utc_now()
+
+                                    await db.stock_basic_info.update_one(
+                                        {"code": symbol6, "source": "tushare"},
+                                        {"$set": basic_info},
+                                        upsert=True,
+                                    )
+                                    await _dual_write_stock_basic_info(basic_info)
+
+                                    success_count += 1
+                                    logger.info(f"✅ {symbol} 基础数据同步成功")
+                                else:
+                                    error_count += 1
+                                    logger.warning(f"⚠️ {symbol} 未获取到基础数据")
+                            except Exception as e:
+                                error_count += 1
+                                logger.error(f"❌ {symbol} 基础数据同步失败: {e}")
+
+                        result["basic_sync"] = {
+                            "success_count": success_count,
+                            "error_count": error_count,
+                            "total_symbols": len(request.symbols),
+                            "message": f"成功同步 {success_count}/{len(request.symbols)} 只股票的基础数据",
+                        }
+                        logger.info(
+                            f"✅ 批量基础数据同步完成: {success_count}/{len(request.symbols)}"
+                        )
+                    else:
+                        result["basic_sync"] = {
+                            "success_count": 0,
+                            "error_count": len(request.symbols),
+                            "error": "Tushare 数据源不可用",
+                        }
+                else:
+                    result["basic_sync"] = {
+                        "success_count": 0,
+                        "error_count": len(request.symbols),
+                        "error": f"基础数据同步仅支持 Tushare 数据源，当前数据源: {request.data_source}",
+                    }
+
+            except Exception as e:
+                logger.error(f"❌ 批量基础数据同步失败: {e}")
+                result["basic_sync"] = {
+                    "success_count": 0,
+                    "error_count": len(request.symbols),
+                    "error": str(e),
+                }
+
+        # 判断整体是否成功
+        hist_success = (
+            result["historical_sync"].get("success_count", 0)
+            if request.sync_historical
+            else 0
+        )
+        fin_success = (
+            result["financial_sync"].get("success_count", 0)
+            if request.sync_financial
+            else 0
+        )
+        basic_success = (
+            result["basic_sync"].get("success_count", 0) if request.sync_basic else 0
+        )
+        total_success = max(hist_success, fin_success, basic_success)
+
+        # 添加统计信息到结果中
+        result["total_success"] = total_success
+        result["total_symbols"] = len(request.symbols)
+
+        return ok(
+            data=result,
+            message=f"批量同步完成: {total_success}/{len(request.symbols)} 只股票成功",
+        )
+
+    except Exception as e:
+        logger.error(f"❌ 批量同步失败: {e}")
+        raise HTTPException(status_code=500, detail=f"批量同步失败: {str(e)}")
+
+
+@router.get("/status/{symbol}", response_model=ApiResponse)
+async def get_sync_status(symbol: str, current_user: dict = Depends(get_current_user)):
+    """
+    获取股票的同步状态
+
+    返回最后同步时间、数据条数等信息
+    """
+    try:
+        get_postgres_db = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db"
+        )
+
+        db = get_postgres_db()
+
+        # 查询历史数据最后同步时间
+        hist_doc = await db.historical_data.find_one(
+            {"symbol": symbol}, sort=[("date", -1)]
+        )
+
+        # 查询财务数据最后同步时间
+        fin_doc = await db.stock_financial_data.find_one(
+            {"symbol": symbol}, sort=[("updated_at", -1)]
+        )
+
+        # 统计历史数据条数
+        hist_count = await db.historical_data.count_documents({"symbol": symbol})
+
+        # 统计财务数据条数
+        fin_count = await db.stock_financial_data.count_documents({"symbol": symbol})
+
+        return ok(
+            data={
+                "symbol": symbol,
+                "historical_data": {
+                    "last_sync": hist_doc.get("updated_at") if hist_doc else None,
+                    "last_date": hist_doc.get("date") if hist_doc else None,
+                    "total_records": hist_count,
+                },
+                "financial_data": {
+                    "last_sync": fin_doc.get("updated_at") if fin_doc else None,
+                    "last_report_period": fin_doc.get("report_period")
+                    if fin_doc
+                    else None,
+                    "total_records": fin_count,
+                },
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"❌ 获取同步状态失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取同步状态失败: {str(e)}")

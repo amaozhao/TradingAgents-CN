@@ -1,3 +1,4 @@
+# ruff: noqa: F722
 import os
 from typing import Annotated
 

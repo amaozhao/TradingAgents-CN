@@ -1,3 +1,4 @@
+# ruff: noqa: F722
 """
 Alpha Vantage 新闻数据提供者
 

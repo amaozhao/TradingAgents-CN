@@ -1,3 +1,4 @@
+# ruff: noqa: F722
 import importlib
 from datetime import datetime
 from functools import wraps
