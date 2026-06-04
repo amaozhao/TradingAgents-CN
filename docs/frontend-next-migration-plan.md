@@ -150,14 +150,14 @@ frontend-next/
 - Create: `frontend-next/app/globals.css`
 - Create: `frontend-next/libs/utils/cn.ts`
 
-- [ ] Create the Next app in `frontend-next/` with TypeScript, App Router, Tailwind, ESLint, and pnpm.
-- [ ] Initialize shadcn with `new-york`, `slate`, CSS variables, lucide icons, RSC enabled, and aliases using `@/libs/utils`.
-- [ ] Add baseline shadcn components: button, input, label, form, dialog, alert-dialog, dropdown-menu, select, tabs, table, tooltip, badge, card, separator, sheet, skeleton, command, popover, toast/sonner.
-- [ ] Set `next.config.ts` to `output: 'standalone'`.
-- [ ] Add development rewrites for `/api/:path*` to `http://localhost:8000/api/:path*`.
-- [ ] Add scripts: `dev`, `build`, `start`, `lint`, `type-check`, `test`, `test:e2e`.
-- [ ] Verify `pnpm lint`, `pnpm type-check`, and `pnpm build`.
-- [ ] Commit scaffold with a Lore commit.
+- [x] Create the Next app in `frontend-next/` with TypeScript, App Router, Tailwind, ESLint, and pnpm.
+- [x] Initialize shadcn with `new-york`, `slate`, CSS variables, lucide icons, RSC enabled, and aliases using `@/libs/utils`.
+- [x] Add baseline shadcn components: button, input, label, form, dialog, alert-dialog, dropdown-menu, select, tabs, table, tooltip, badge, card, separator, sheet, skeleton, command, popover, toast/sonner.
+- [x] Set `next.config.ts` to `output: 'standalone'`.
+- [x] Add development rewrites for `/api/:path*` to `http://localhost:8000/api/:path*`.
+- [x] Add scripts: `dev`, `build`, `start`, `lint`, `type-check`, `test`, `test:e2e`.
+- [x] Verify `pnpm lint`, `pnpm type-check`, and `pnpm build`.
+- [x] Commit scaffold with a Lore commit.
 
 ## Task 2: Build Foundation Providers
 

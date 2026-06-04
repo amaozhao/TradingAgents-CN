@@ -1,0 +1,6 @@
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
+peerDependencyRules:
+  allowedVersions:
+    tailwindcss: 3.4.19

@@ -180,6 +180,7 @@ COMMIT_SUMMARY.md
 node_modules/
 *.tsbuildinfo
 frontend/.vite
+frontend-next/.next/
 
 # Installers and archives
 *.deb
