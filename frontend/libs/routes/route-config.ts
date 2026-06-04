@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react"
 import {
   BarChart3,
+  Bell,
   BookOpen,
   ChartNoAxesCombined,
   ClipboardList,
@@ -11,9 +12,12 @@ import {
   Info,
   LayoutDashboard,
   ListChecks,
+  LockKeyhole,
+  Palette,
   ScrollText,
   Search,
   Settings,
+  SlidersHorizontal,
   Star,
   Timer,
   Trash2
@@ -94,11 +98,11 @@ export const menuRoutes: AppRoute[] = [
         requiresAuth: true,
         href: "/settings",
         children: [
-          { ...getRequiredRoute("/settings"), title: "通用设置" },
-          { ...getRequiredRoute("/settings"), path: "/settings?tab=appearance", title: "外观设置" },
-          { ...getRequiredRoute("/settings"), path: "/settings?tab=analysis", title: "分析偏好" },
-          { ...getRequiredRoute("/settings"), path: "/settings?tab=notifications", title: "通知设置" },
-          { ...getRequiredRoute("/settings"), path: "/settings?tab=security", title: "安全设置" }
+          { ...getRequiredRoute("/settings"), title: "通用设置", icon: SlidersHorizontal },
+          { ...getRequiredRoute("/settings"), path: "/settings?tab=appearance", title: "外观设置", icon: Palette },
+          { ...getRequiredRoute("/settings"), path: "/settings?tab=analysis", title: "分析偏好", icon: ChartNoAxesCombined },
+          { ...getRequiredRoute("/settings"), path: "/settings?tab=notifications", title: "通知设置", icon: Bell },
+          { ...getRequiredRoute("/settings"), path: "/settings?tab=security", title: "安全设置", icon: LockKeyhole }
         ]
       },
       {

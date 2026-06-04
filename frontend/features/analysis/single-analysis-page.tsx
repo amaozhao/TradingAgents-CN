@@ -9,6 +9,7 @@ import { z } from "zod"
 import { AsyncButton } from "@/components/feedback/async-button"
 import { PageHeader } from "@/components/feedback/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -103,7 +104,7 @@ export function SingleAnalysisPage() {
                   <FormItem>
                     <FormLabel>分析日期</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <DatePicker value={field.value} onChange={field.onChange} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

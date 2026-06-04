@@ -108,4 +108,16 @@ describe("route config", () => {
       "/settings/usage"
     ])
   })
+
+  it("keeps personal settings group icon-free while entries use distinct semantic icons", () => {
+    const personalSettings = menuRoutes
+      .find((route) => route.path === "/settings")
+      ?.children?.find((route) => route.path === "/settings-personal")
+    const personalEntries = personalSettings?.children ?? []
+    const personalIcons = personalEntries.map((route) => route.icon)
+
+    expect(personalSettings?.icon).toBeUndefined()
+    expect(personalIcons.every(Boolean)).toBe(true)
+    expect(new Set(personalIcons).size).toBe(personalIcons.length)
+  })
 })
