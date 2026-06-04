@@ -411,14 +411,15 @@ frontend-next/
 - Modify: `frontend-next/stores/notification-store.ts`
 - Modify: `frontend-next/components/layout/header.tsx`
 
-- [ ] Connect WebSocket to `ws(s)://<current-host>/api/ws/notifications?token=<token>`.
-- [ ] Preserve reconnect backoff and max attempts.
-- [ ] Preserve unread count refresh, mark read, mark all read, and notification insertion behavior.
-- [ ] Disconnect WebSocket on logout.
-- [ ] Add unit tests for notification reducer/store behavior.
-- [ ] Add manual verification step for WebSocket connect and reconnect.
-- [ ] Verify `pnpm test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
-- [ ] Commit notification migration with a Lore commit.
+- [x] Connect WebSocket to `ws(s)://<current-host>/api/ws/notifications?token=<token>`.
+- [x] Preserve reconnect backoff and max attempts.
+- [x] Preserve unread count refresh, mark read, mark all read, and notification insertion behavior.
+- [x] Disconnect WebSocket on logout.
+- [x] Add unit tests for notification reducer/store behavior.
+- [x] Add manual verification step for WebSocket connect and reconnect.
+- [x] Manual verification step: log in, open DevTools Network WS, confirm `/api/ws/notifications?token=<token>` connects; stop or block the backend WS endpoint, confirm exponential reconnect attempts up to the store cap, restore backend, and confirm a notification frame appears at the top of the drawer with unread count incremented.
+- [x] Verify `pnpm test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
+- [x] Commit notification migration with a Lore commit.
 
 ## Task 13: Complete Visual and Behavior Parity Pass
 

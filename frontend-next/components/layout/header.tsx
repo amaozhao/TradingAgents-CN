@@ -1,10 +1,11 @@
 "use client"
 
-import { Bell, HelpCircle, Maximize, Moon, Sun } from "lucide-react"
+import { HelpCircle, Maximize, Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 
 import { Button } from "@/components/ui/button"
 import { UserMenu } from "@/components/layout/user-menu"
+import { NotificationBell } from "@/features/notifications/notification-bell"
 
 export function HeaderActions() {
   const { resolvedTheme, setTheme } = useTheme()
@@ -31,9 +32,7 @@ export function HeaderActions() {
       >
         <Maximize />
       </Button>
-      <Button variant="ghost" size="icon" aria-label="通知">
-        <Bell />
-      </Button>
+      <NotificationBell />
       <Button
         variant="ghost"
         size="icon"
