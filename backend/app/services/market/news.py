@@ -2,26 +2,26 @@
 新闻数据服务
 提供统一的新闻数据存储、查询和管理功能
 """
-import importlib
 
+import importlib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Union, cast
 
-from pymongo import ReplaceOne
-from pymongo.errors import BulkWriteError
-
 from app.core.config import settings
 from app.core.database import get_database
+from app.db.documentstore import BulkWriteError, ReplaceOne
 from app.db.dual import dual_write_hot_documents
 
 logger = logging.getLogger(__name__)
 
 
-def convert_objectid_to_str(data: Union[Dict, List[Dict]]) -> Union[Dict, List[Dict]]:
+def convert_document_id_to_str(
+    data: Union[Dict, List[Dict]],
+) -> Union[Dict, List[Dict]]:
     """
-    转换 MongoDB ObjectId 为字符串，避免 JSON 序列化错误
+    转换 PostgreSQL DocumentId 为字符串，避免 JSON 序列化错误
 
     Args:
         data: 单个文档或文档列表
@@ -102,33 +102,51 @@ class NewsDataService:
             )
 
             # 2. 股票代码索引（查询单只股票的新闻）
-            await collection.create_index([("symbol", 1)], name="symbol_index", background=True)
+            await collection.create_index(
+                [("symbol", 1)], name="symbol_index", background=True
+            )
 
             # 3. 多股票代码索引（查询涉及多只股票的新闻）
-            await collection.create_index([("symbols", 1)], name="symbols_index", background=True)
+            await collection.create_index(
+                [("symbols", 1)], name="symbols_index", background=True
+            )
 
             # 4. 发布时间索引（按时间范围查询）
-            await collection.create_index([("publish_time", -1)], name="publish_time_desc", background=True)
+            await collection.create_index(
+                [("publish_time", -1)], name="publish_time_desc", background=True
+            )
 
             # 5. 复合索引：股票代码+发布时间（常用查询）
             await collection.create_index(
-                [("symbol", 1), ("publish_time", -1)], name="symbol_time_index", background=True
+                [("symbol", 1), ("publish_time", -1)],
+                name="symbol_time_index",
+                background=True,
             )
 
             # 6. 数据源索引（按数据源筛选）
-            await collection.create_index([("data_source", 1)], name="data_source_index", background=True)
+            await collection.create_index(
+                [("data_source", 1)], name="data_source_index", background=True
+            )
 
             # 7. 分类索引（按新闻类别筛选）
-            await collection.create_index([("category", 1)], name="category_index", background=True)
+            await collection.create_index(
+                [("category", 1)], name="category_index", background=True
+            )
 
             # 8. 情感索引（按情感筛选）
-            await collection.create_index([("sentiment", 1)], name="sentiment_index", background=True)
+            await collection.create_index(
+                [("sentiment", 1)], name="sentiment_index", background=True
+            )
 
             # 9. 重要性索引（按重要性筛选）
-            await collection.create_index([("importance", 1)], name="importance_index", background=True)
+            await collection.create_index(
+                [("importance", 1)], name="importance_index", background=True
+            )
 
             # 10. 更新时间索引（数据维护）
-            await collection.create_index([("updated_at", -1)], name="updated_at_index", background=True)
+            await collection.create_index(
+                [("updated_at", -1)], name="updated_at_index", background=True
+            )
 
             self._indexes_ensured = True
             self.logger.info("✅ 新闻数据索引检查完成")
@@ -144,7 +162,10 @@ class NewsDataService:
         return self._collection
 
     async def save_news_data(
-        self, news_data: Union[Dict[str, Any], List[Dict[str, Any]]], data_source: str, market: str = "CN"
+        self,
+        news_data: Union[Dict[str, Any], List[Dict[str, Any]]],
+        data_source: str,
+        market: str = "CN",
     ) -> int:
         """
         保存新闻数据
@@ -179,17 +200,23 @@ class NewsDataService:
 
             for i, news in enumerate(news_list):
                 # 标准化新闻数据
-                standardized_news = self._standardize_news_data(news, data_source, market, now)
+                standardized_news = self._standardize_news_data(
+                    news, data_source, market, now
+                )
 
                 # 🔍 记录前3条数据的详细信息
                 if i < 3:
                     self.logger.info(f"   📝 标准化后的新闻 {i + 1}:")
                     self.logger.info(f"      symbol: {standardized_news.get('symbol')}")
-                    self.logger.info(f"      title: {standardized_news.get('title', '')[:50]}...")
+                    self.logger.info(
+                        f"      title: {standardized_news.get('title', '')[:50]}..."
+                    )
                     self.logger.info(
                         f"      publish_time: {standardized_news.get('publish_time')} (type: {type(standardized_news.get('publish_time'))})"
                     )
-                    self.logger.info(f"      url: {standardized_news.get('url', '')[:80]}...")
+                    self.logger.info(
+                        f"      url: {standardized_news.get('url', '')[:80]}..."
+                    )
 
                 # 使用URL、标题和发布时间作为唯一标识
                 filter_query = {
@@ -198,7 +225,9 @@ class NewsDataService:
                     "publish_time": standardized_news["publish_time"],
                 }
 
-                operations.append(ReplaceOne(filter_query, standardized_news, upsert=True))
+                operations.append(
+                    ReplaceOne(filter_query, standardized_news, upsert=True)
+                )
                 postgres_documents.append(standardized_news)
 
             # 执行批量操作
@@ -207,7 +236,9 @@ class NewsDataService:
                 saved_count = result.upserted_count + result.modified_count
                 await self._dual_write_news(postgres_documents)
 
-                self.logger.info(f"💾 新闻数据保存完成: {saved_count}条记录 (数据源: {data_source})")
+                self.logger.info(
+                    f"💾 新闻数据保存完成: {saved_count}条记录 (数据源: {data_source})"
+                )
                 return saved_count
 
             return 0
@@ -236,11 +267,14 @@ class NewsDataService:
             return 0
 
     def save_news_data_sync(
-        self, news_data: Union[Dict[str, Any], List[Dict[str, Any]]], data_source: str, market: str = "CN"
+        self,
+        news_data: Union[Dict[str, Any], List[Dict[str, Any]]],
+        data_source: str,
+        market: str = "CN",
     ) -> int:
         """
         保存新闻数据（同步版本）
-        用于非异步上下文，使用同步的 PyMongo 客户端
+        用于非异步上下文，使用同步的 PostgreSQL document store 客户端
 
         Args:
             news_data: 新闻数据（单条或多条）
@@ -251,10 +285,12 @@ class NewsDataService:
             保存的记录数量
         """
         try:
-            get_mongo_db_sync = getattr(importlib.import_module('app.core.database'), 'get_mongo_db_sync')
+            get_postgres_db_sync = getattr(
+                importlib.import_module("app.core.database"), "get_postgres_db_sync"
+            )
 
             # 获取同步数据库连接
-            db = get_mongo_db_sync()
+            db = get_postgres_db_sync()
             collection = db.stock_news
             now = datetime.utcnow()
 
@@ -274,16 +310,24 @@ class NewsDataService:
 
             for i, news in enumerate(news_list, 1):
                 # 标准化新闻数据
-                standardized_news = self._standardize_news_data(news, data_source, market, now)
+                standardized_news = self._standardize_news_data(
+                    news, data_source, market, now
+                )
 
                 # 记录前3条新闻的详细信息
                 if i <= 3:
                     self.logger.info(f"   📝 标准化后的新闻 {i}:")
                     self.logger.info(f"      symbol: {standardized_news.get('symbol')}")
-                    self.logger.info(f"      title: {standardized_news.get('title', '')[:50]}...")
+                    self.logger.info(
+                        f"      title: {standardized_news.get('title', '')[:50]}..."
+                    )
                     publish_time = standardized_news.get("publish_time")
-                    self.logger.info(f"      publish_time: {publish_time} (type: {type(publish_time)})")
-                    self.logger.info(f"      url: {standardized_news.get('url', '')[:60]}...")
+                    self.logger.info(
+                        f"      publish_time: {publish_time} (type: {type(publish_time)})"
+                    )
+                    self.logger.info(
+                        f"      url: {standardized_news.get('url', '')[:60]}..."
+                    )
 
                 # 使用URL+标题+发布时间作为唯一标识
                 filter_query = {
@@ -292,14 +336,18 @@ class NewsDataService:
                     "publish_time": standardized_news.get("publish_time"),
                 }
 
-                operations.append(ReplaceOne(filter_query, standardized_news, upsert=True))
+                operations.append(
+                    ReplaceOne(filter_query, standardized_news, upsert=True)
+                )
 
             # 执行批量操作（同步方式）
             if operations:
                 result = collection.bulk_write(operations)
                 saved_count = result.upserted_count + result.modified_count
 
-                self.logger.info(f"💾 新闻数据保存完成: {saved_count}条记录 (数据源: {data_source})")
+                self.logger.info(
+                    f"💾 新闻数据保存完成: {saved_count}条记录 (数据源: {data_source})"
+                )
                 return saved_count
 
             return 0
@@ -325,7 +373,7 @@ class NewsDataService:
 
         except Exception as e:
             self.logger.error(f"❌ 保存新闻数据失败: {e}")
-            traceback = importlib.import_module('traceback')
+            traceback = importlib.import_module("traceback")
 
             self.logger.error(traceback.format_exc())
             return 0
@@ -365,7 +413,7 @@ class NewsDataService:
             "sentiment_score": self._safe_float(news_data.get("sentiment_score")),
             "keywords": news_data.get("keywords", []),
             "importance": news_data.get("importance", "medium"),
-            # 注意：不包含 language 字段，避免与 MongoDB 文本索引冲突
+            # 注意：不包含 language 字段，避免与 PostgreSQL 文本索引冲突
             # 元数据
             "data_source": data_source,
             "created_at": now,
@@ -450,7 +498,7 @@ class NewsDataService:
 
             collection = self._get_collection()
 
-            self.logger.info(f"🔍 [query_news] 开始查询新闻数据")
+            self.logger.info("🔍 [query_news] 开始查询新闻数据")
             self.logger.info(
                 f"   参数: symbol={params.symbol}, start_time={params.start_time}, end_time={params.end_time}, limit={params.limit}"
             )
@@ -473,7 +521,9 @@ class NewsDataService:
                 if params.end_time:
                     time_query["$lte"] = params.end_time
                 query["publish_time"] = time_query
-                self.logger.info(f"   添加查询条件: publish_time between {params.start_time} and {params.end_time}")
+                self.logger.info(
+                    f"   添加查询条件: publish_time between {params.start_time} and {params.end_time}"
+                )
 
             if params.category:
                 query["category"] = params.category
@@ -517,17 +567,17 @@ class NewsDataService:
             results = await cursor.to_list(length=None)
             self.logger.info(f"   查询返回: {len(results)} 条记录")
 
-            # 🔧 转换 ObjectId 为字符串，避免 JSON 序列化错误
-            results = convert_objectid_to_str(results)
+            # 🔧 转换 DocumentId 为字符串，避免 JSON 序列化错误
+            results = convert_document_id_to_str(results)
 
             if results:
-                self.logger.info(f"   前3条预览:")
+                self.logger.info("   前3条预览:")
                 for i, r in enumerate(results[:3], 1):
                     self.logger.info(
                         f"      {i}. symbol={r.get('symbol')}, title={r.get('title', 'N/A')[:50]}..., publish_time={r.get('publish_time')}"
                     )
             else:
-                self.logger.warning(f"   ⚠️ 查询结果为空")
+                self.logger.warning("   ⚠️ 查询结果为空")
 
             self.logger.info(f"✅ [query_news] 查询完成，返回 {len(results)} 条记录")
             return cast(List[Dict[str, Any]], results)
@@ -536,15 +586,19 @@ class NewsDataService:
             self.logger.error(f"❌ 查询新闻数据失败: {e}", exc_info=True)
             return []
 
-    async def _query_news_from_postgres(self, params: NewsQueryParams) -> List[Dict[str, Any]]:
+    async def _query_news_from_postgres(
+        self, params: NewsQueryParams
+    ) -> List[Dict[str, Any]]:
         try:
-            query_news = getattr(importlib.import_module('app.db.news'), 'query_news')
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            query_news = getattr(importlib.import_module("app.db.news"), "query_news")
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
 
             async with get_session_factory()() as session:
                 return await query_news(session, params)
         except Exception as e:
-            self.logger.warning(f"PostgreSQL新闻查询失败，回退MongoDB: {e}")
+            self.logger.warning(f"PostgreSQL新闻查询失败，回退PostgreSQL: {e}")
             return []
 
     async def get_latest_news(
@@ -564,7 +618,11 @@ class NewsDataService:
         start_time = datetime.utcnow() - timedelta(hours=hours_back)
 
         params = NewsQueryParams(
-            symbol=symbol, start_time=start_time, limit=limit, sort_by="publish_time", sort_order=-1
+            symbol=symbol,
+            start_time=start_time,
+            limit=limit,
+            sort_by="publish_time",
+            sort_order=-1,
         )
 
         return await self.query_news(params)
@@ -609,22 +667,48 @@ class NewsDataService:
             if match_stage:
                 pipeline.append({"$match": match_stage})
 
-            pipeline.extend([
-                {
-                    "$group": {
-                        "_id": None,
-                        "total_count": {"$sum": 1},
-                        "positive_count": {"$sum": {"$cond": [{"$eq": ["$sentiment", "positive"]}, 1, 0]}},
-                        "negative_count": {"$sum": {"$cond": [{"$eq": ["$sentiment", "negative"]}, 1, 0]}},
-                        "neutral_count": {"$sum": {"$cond": [{"$eq": ["$sentiment", "neutral"]}, 1, 0]}},
-                        "high_importance_count": {"$sum": {"$cond": [{"$eq": ["$importance", "high"]}, 1, 0]}},
-                        "medium_importance_count": {"$sum": {"$cond": [{"$eq": ["$importance", "medium"]}, 1, 0]}},
-                        "low_importance_count": {"$sum": {"$cond": [{"$eq": ["$importance", "low"]}, 1, 0]}},
-                        "categories": {"$push": "$category"},
-                        "sources": {"$push": "$data_source"},
+            pipeline.extend(
+                [
+                    {
+                        "$group": {
+                            "_id": None,
+                            "total_count": {"$sum": 1},
+                            "positive_count": {
+                                "$sum": {
+                                    "$cond": [{"$eq": ["$sentiment", "positive"]}, 1, 0]
+                                }
+                            },
+                            "negative_count": {
+                                "$sum": {
+                                    "$cond": [{"$eq": ["$sentiment", "negative"]}, 1, 0]
+                                }
+                            },
+                            "neutral_count": {
+                                "$sum": {
+                                    "$cond": [{"$eq": ["$sentiment", "neutral"]}, 1, 0]
+                                }
+                            },
+                            "high_importance_count": {
+                                "$sum": {
+                                    "$cond": [{"$eq": ["$importance", "high"]}, 1, 0]
+                                }
+                            },
+                            "medium_importance_count": {
+                                "$sum": {
+                                    "$cond": [{"$eq": ["$importance", "medium"]}, 1, 0]
+                                }
+                            },
+                            "low_importance_count": {
+                                "$sum": {
+                                    "$cond": [{"$eq": ["$importance", "low"]}, 1, 0]
+                                }
+                            },
+                            "categories": {"$push": "$category"},
+                            "sources": {"$push": "$data_source"},
+                        }
                     }
-                }
-            ])
+                ]
+            )
 
             # 执行聚合
             result = await collection.aggregate(pipeline).to_list(length=1)
@@ -673,9 +757,13 @@ class NewsDataService:
             collection = self._get_collection()
 
             cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
-            documents_to_delete = await collection.find({"publish_time": {"$lt": cutoff_date}}).to_list(length=None)
+            documents_to_delete = await collection.find(
+                {"publish_time": {"$lt": cutoff_date}}
+            ).to_list(length=None)
 
-            result = await collection.delete_many({"publish_time": {"$lt": cutoff_date}})
+            result = await collection.delete_many(
+                {"publish_time": {"$lt": cutoff_date}}
+            )
 
             deleted_count = result.deleted_count
             if deleted_count:
@@ -695,13 +783,20 @@ class NewsDataService:
         if result.status == "failed":
             self.logger.warning("⚠️ 新闻数据 PostgreSQL 双写失败: %s", result.reason)
 
-    async def _dual_write_news_tombstones(self, documents: List[Dict[str, Any]]) -> None:
+    async def _dual_write_news_tombstones(
+        self, documents: List[Dict[str, Any]]
+    ) -> None:
         if not documents:
             return
-        tombstones = [{**document, "deleted": True, "updated_at": datetime.utcnow()} for document in documents]
+        tombstones = [
+            {**document, "deleted": True, "updated_at": datetime.utcnow()}
+            for document in documents
+        ]
         result = await dual_write_hot_documents("stock_news", tombstones)
         if result.status == "failed":
-            self.logger.warning("⚠️ 新闻数据 PostgreSQL tombstone 双写失败: %s", result.reason)
+            self.logger.warning(
+                "⚠️ 新闻数据 PostgreSQL tombstone 双写失败: %s", result.reason
+            )
 
     async def search_news(
         self, query_text: str, symbol: Optional[str] = None, limit: int = 20
@@ -727,13 +822,15 @@ class NewsDataService:
                 query["symbol"] = symbol
 
             # 执行搜索，按相关性排序
-            cursor = collection.find(query, {"score": {"$meta": "textScore"}}).sort([("score", {"$meta": "textScore"})])
+            cursor = collection.find(query, {"score": {"$meta": "textScore"}}).sort(
+                [("score", {"$meta": "textScore"})]
+            )
 
             cursor = cursor.limit(limit)
             results = await cursor.to_list(length=None)
 
-            # 🔧 转换 ObjectId 为字符串，避免 JSON 序列化错误
-            results = cast(List[Dict[str, Any]], convert_objectid_to_str(results))
+            # 🔧 转换 DocumentId 为字符串，避免 JSON 序列化错误
+            results = cast(List[Dict[str, Any]], convert_document_id_to_str(results))
 
             self.logger.info(f"🔍 全文搜索返回 {len(results)} 条结果")
             return results

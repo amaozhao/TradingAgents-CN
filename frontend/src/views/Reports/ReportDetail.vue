@@ -988,7 +988,7 @@ watch(
       animation: fadeInDown 0.5s ease-out;
     }
 
-    .risk-disclaimer :deep(.el-alert) {
+    .risk-disclaimer .el-alert {
       background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
       border: 2px solid #ffc107;
       border-radius: 12px;
@@ -996,7 +996,7 @@ watch(
       box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
     }
 
-    .risk-disclaimer :deep(.el-alert__icon) {
+    .risk-disclaimer .el-alert__icon {
       font-size: 24px;
       color: #ff6b00;
     }

@@ -3,16 +3,10 @@
 Tushare集成测试
 验证Tushare数据源的集成功能，包括数据获取、缓存、接口调用等
 """
+
 import importlib
-
 import os
-import sys
-import pandas as pd
 from datetime import datetime, timedelta
-
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
 
 
 def test_tushare_provider():
@@ -21,7 +15,9 @@ def test_tushare_provider():
     print("=" * 60)
 
     try:
-        get_tushare_provider = getattr(importlib.import_module('trader.flows.tushare'), 'get_tushare_provider')
+        get_tushare_provider = getattr(
+            importlib.import_module("trader.flows.tushare"), "get_tushare_provider"
+        )
 
         print("✅ Tushare工具库加载成功")
 
@@ -37,7 +33,9 @@ def test_tushare_provider():
 
             if not stock_list.empty:
                 print(f"✅ 获取股票列表成功: {len(stock_list)}条")
-                print(f"📊 示例股票: {stock_list.head(3)[['ts_code', 'name']].to_string(index=False)}")
+                print(
+                    f"📊 示例股票: {stock_list.head(3)[['ts_code', 'name']].to_string(index=False)}"
+                )
             else:
                 print("❌ 获取股票列表失败")
 
@@ -45,15 +43,15 @@ def test_tushare_provider():
             print("🔄 测试获取股票信息...")
             stock_info = provider.get_stock_info("000001")
 
-            if stock_info and stock_info.get('name'):
+            if stock_info and stock_info.get("name"):
                 print(f"✅ 获取股票信息成功: {stock_info['name']}")
             else:
                 print("❌ 获取股票信息失败")
 
             # 测试获取股票数据
             print("🔄 测试获取股票数据...")
-            end_date = datetime.now().strftime('%Y-%m-%d')
-            start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+            end_date = datetime.now().strftime("%Y-%m-%d")
+            start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
 
             stock_data = provider.get_stock_daily("000001", start_date, end_date)
 
@@ -66,7 +64,7 @@ def test_tushare_provider():
 
     except Exception as e:
         print(f"❌ Tushare提供器测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 
@@ -76,7 +74,9 @@ def test_tushare_adapter():
     print("=" * 60)
 
     try:
-        get_tushare_adapter = getattr(importlib.import_module('trader.flows.adapter'), 'get_tushare_adapter')
+        get_tushare_adapter = getattr(
+            importlib.import_module("trader.flows.adapter"), "get_tushare_adapter"
+        )
 
         print("✅ Tushare适配器库加载成功")
 
@@ -85,8 +85,8 @@ def test_tushare_adapter():
 
         # 测试获取股票数据
         print("🔄 测试获取股票数据...")
-        end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
 
         stock_data = adapter.get_stock_data("000001", start_date, end_date)
 
@@ -100,7 +100,7 @@ def test_tushare_adapter():
         print("🔄 测试获取股票信息...")
         stock_info = adapter.get_stock_info("000001")
 
-        if stock_info and stock_info.get('name'):
+        if stock_info and stock_info.get("name"):
             print(f"✅ 获取股票信息成功: {stock_info['name']}")
         else:
             print("❌ 获取股票信息失败")
@@ -125,7 +125,7 @@ def test_tushare_adapter():
 
     except Exception as e:
         print(f"❌ Tushare适配器测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 
@@ -135,17 +135,29 @@ def test_tushare_interface():
     print("=" * 60)
 
     try:
-        get_china_stock_data_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_tushare')
-        search_china_stocks_tushare = getattr(importlib.import_module('trader.flows.interface'), 'search_china_stocks_tushare')
-        get_china_stock_fundamentals_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_fundamentals_tushare')
-        get_china_stock_info_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_tushare')
+        get_china_stock_data_tushare = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "get_china_stock_data_tushare",
+        )
+        search_china_stocks_tushare = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "search_china_stocks_tushare",
+        )
+        get_china_stock_fundamentals_tushare = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "get_china_stock_fundamentals_tushare",
+        )
+        get_china_stock_info_tushare = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "get_china_stock_info_tushare",
+        )
 
         print("✅ Tushare接口函数加载成功")
 
         # 测试获取股票数据接口
         print("🔄 测试股票数据接口...")
-        end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
 
         data_result = get_china_stock_data_tushare("000001", start_date, end_date)
 
@@ -183,7 +195,7 @@ def test_tushare_interface():
 
     except Exception as e:
         print(f"❌ Tushare接口函数测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 
@@ -193,7 +205,9 @@ def test_tushare_cache():
     print("=" * 60)
 
     try:
-        get_tushare_adapter = getattr(importlib.import_module('trader.flows.adapter'), 'get_tushare_adapter')
+        get_tushare_adapter = getattr(
+            importlib.import_module("trader.flows.adapter"), "get_tushare_adapter"
+        )
 
         adapter = get_tushare_adapter()
 
@@ -205,8 +219,8 @@ def test_tushare_cache():
 
         # 第一次获取数据（应该从API获取）
         print("🔄 第一次获取数据（从API）...")
-        end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=10)).strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d")
 
         data1 = adapter.get_stock_data("000001", start_date, end_date)
 
@@ -233,7 +247,7 @@ def test_tushare_cache():
 
     except Exception as e:
         print(f"❌ Tushare缓存测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 
@@ -244,7 +258,7 @@ def check_tushare_environment():
 
     # 检查Tushare库
     try:
-        ts = importlib.import_module('tushare')
+        ts = importlib.import_module("tushare")
         print("✅ Tushare库已安装")
         print(f"📦 Tushare版本: {ts.__version__}")
     except ImportError:
@@ -252,7 +266,7 @@ def check_tushare_environment():
         return False
 
     # 检查API Token
-    token = os.getenv('TUSHARE_TOKEN')
+    token = os.getenv("TUSHARE_TOKEN")
     if token:
         print("✅ TUSHARE_TOKEN环境变量已设置")
         print(f"🔑 Token长度: {len(token)}字符")
@@ -263,8 +277,8 @@ def check_tushare_environment():
 
     # 检查缓存目录
     try:
-        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
-        cache = get_cache()
+        get_cache = getattr(importlib.import_module("trader.flows.cache"), "get_cache")
+        get_cache()
         print("✅ 缓存管理器可用")
     except Exception as e:
         print(f"⚠️ 缓存管理器不可用: {e}")

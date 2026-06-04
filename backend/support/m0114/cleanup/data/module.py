@@ -2,14 +2,10 @@
 """
 清理测试数据
 """
-import importlib
 
-import sys
-import os
+import importlib
 from pathlib import Path
 
-# 添加项目路径
-sys.path.append(os.path.join(os.path.dirname(__file__), 'web'))
 
 def cleanup_test_files():
     """清理测试文件"""
@@ -20,25 +16,28 @@ def cleanup_test_files():
     test_dir = project_root / "data" / "analysis_results" / "TEST123"
 
     if test_dir.exists():
-        shutil = importlib.import_module('shutil')
+        shutil = importlib.import_module("shutil")
         shutil.rmtree(test_dir)
         print(f"✅ 已删除测试目录: {test_dir}")
     else:
         print(f"⚠️ 测试目录不存在: {test_dir}")
 
-def cleanup_mongodb_test_data():
-    """清理MongoDB测试数据"""
-    print("🗄️ 清理MongoDB测试数据...")
+
+def cleanup_postgres_test_data():
+    """清理PostgreSQL测试数据"""
+    print("🗄️ 清理PostgreSQL测试数据...")
 
     try:
-        mongodb_report_manager = getattr(importlib.import_module('web.utils.mongodb'), 'mongodb_report_manager')
+        postgres_report_manager = getattr(
+            importlib.import_module("web.utils.postgres"), "postgres_report_manager"
+        )
 
-        if not mongodb_report_manager.connected:
-            print("❌ MongoDB未连接")
+        if not postgres_report_manager.connected:
+            print("❌ PostgreSQL未连接")
             return
 
         # 删除测试数据
-        collection = mongodb_report_manager.collection
+        collection = postgres_report_manager.collection
         result = collection.delete_many({"stock_symbol": "TEST123"})
 
         print(f"✅ 已删除 {result.deleted_count} 条TEST123相关记录")
@@ -48,7 +47,8 @@ def cleanup_mongodb_test_data():
         print(f"✅ 已删除 {result2.deleted_count} 条TEST001相关记录")
 
     except Exception as e:
-        print(f"❌ MongoDB清理失败: {e}")
+        print(f"❌ PostgreSQL清理失败: {e}")
+
 
 def main():
     """主函数"""
@@ -56,9 +56,10 @@ def main():
     print("=" * 30)
 
     cleanup_test_files()
-    cleanup_mongodb_test_data()
+    cleanup_postgres_test_data()
 
     print("\n🎉 清理完成")
+
 
 if __name__ == "__main__":
     main()

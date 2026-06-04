@@ -5,7 +5,7 @@
 
 功能：
 1. 按需从数据源获取港股信息（yfinance/akshare）
-2. 自动缓存到 MongoDB，避免重复请求
+2. 自动缓存到 PostgreSQL，避免重复请求
 3. 支持多数据源：同一股票可有多个数据源记录
 4. 使用 (code, source) 联合查询进行 upsert 操作
 
@@ -14,25 +14,20 @@
 - 参考A股数据源管理方式（Tushare/AKShare/BaoStock）
 - 缓存时长可配置（默认24小时）
 """
-import importlib
 
-import asyncio
+import importlib
 import logging
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Any
-from pymongo import UpdateOne
 
 # 导入港股数据提供器
-import sys
-from pathlib import Path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+from datetime import datetime
+from typing import Any, Dict, List
 
-from trader.flows.providers.hk.stock import HKStockProvider
-from trader.flows.providers.hk.improved import ImprovedHKStockProvider
-from app.core.database import get_mongo_db
 from app.core.config import settings
+from app.core.database import get_postgres_db
+from app.db.documentstore import UpdateOne
 from app.db.dual import dual_write_hot_documents
+from trader.flows.providers.hk.improved import ImprovedHKStockProvider
+from trader.flows.providers.hk.stock import HKStockProvider
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +36,7 @@ class HKDataService:
     """港股数据服务（按需获取+缓存模式）"""
 
     def __init__(self):
-        self.db = get_mongo_db()
+        self.db = get_postgres_db()
         self.settings = settings
 
         # 数据提供器映射
@@ -51,8 +46,8 @@ class HKDataService:
         }
 
         # 缓存配置
-        self.cache_hours = getattr(settings, 'HK_DATA_CACHE_HOURS', 24)
-        self.default_source = getattr(settings, 'HK_DEFAULT_DATA_SOURCE', 'yfinance')
+        self.cache_hours = getattr(settings, "HK_DATA_CACHE_HOURS", 24)
+        self.default_source = getattr(settings, "HK_DEFAULT_DATA_SOURCE", "yfinance")
 
         # 港股列表缓存（从 AKShare 动态获取）
         self.hk_stock_list = []
@@ -71,13 +66,17 @@ class HKDataService:
             List[str]: 港股代码列表
         """
         try:
-            ak = importlib.import_module('akshare')
-            datetime = getattr(importlib.import_module('datetime'), 'datetime')
-            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
+            ak = importlib.import_module("akshare")
+            datetime = getattr(importlib.import_module("datetime"), "datetime")
+            timedelta = getattr(importlib.import_module("datetime"), "timedelta")
 
             # 检查缓存是否有效
-            if (self.hk_stock_list and self._stock_list_cache_time and
-                datetime.now() - self._stock_list_cache_time < timedelta(seconds=self._stock_list_cache_ttl)):
+            if (
+                self.hk_stock_list
+                and self._stock_list_cache_time
+                and datetime.now() - self._stock_list_cache_time
+                < timedelta(seconds=self._stock_list_cache_ttl)
+            ):
                 logger.debug(f"📦 使用缓存的港股列表: {len(self.hk_stock_list)} 只")
                 return self.hk_stock_list
 
@@ -92,7 +91,7 @@ class HKDataService:
                 return self._get_fallback_stock_list()
 
             # 提取股票代码列表
-            stock_codes = df['代码'].tolist()
+            stock_codes = df["代码"].tolist()
 
             # 标准化代码格式（确保是5位数字）
             stock_codes = [code.zfill(5) for code in stock_codes if code]
@@ -141,9 +140,7 @@ class HKDataService:
         ]
 
     async def sync_basic_info_from_source(
-        self,
-        source: str,
-        force_update: bool = False
+        self, source: str, force_update: bool = False
     ) -> Dict[str, int]:
         """
         从指定数据源同步港股基础信息
@@ -189,28 +186,35 @@ class HKDataService:
                 # 从数据源获取数据
                 stock_info = provider.get_stock_info(stock_code)
 
-                if not stock_info or not stock_info.get('name'):
+                if not stock_info or not stock_info.get("name"):
                     logger.warning(f"⚠️ 跳过无效数据: {stock_code}")
                     failed_count += 1
                     continue
 
                 # 标准化数据格式
                 normalized_info = self._normalize_stock_info(stock_info, source)
-                normalized_info["code"] = stock_code.lstrip('0').zfill(5)  # 标准化为5位代码
+                normalized_info["code"] = stock_code.lstrip("0").zfill(
+                    5
+                )  # 标准化为5位代码
                 normalized_info["source"] = source
                 normalized_info["updated_at"] = datetime.now()
 
                 # 批量更新操作
                 operations.append(
                     UpdateOne(
-                        {"code": normalized_info["code"], "source": source},  # 🔥 联合查询条件
+                        {
+                            "code": normalized_info["code"],
+                            "source": source,
+                        },  # 🔥 联合查询条件
                         {"$set": normalized_info},
-                        upsert=True
+                        upsert=True,
                     )
                 )
                 postgres_documents.append(normalized_info)
 
-                logger.debug(f"✅ 准备同步: {stock_code} ({stock_info.get('name')}) from {source}")
+                logger.debug(
+                    f"✅ 准备同步: {stock_code} ({stock_info.get('name')}) from {source}"
+                )
 
             except Exception as e:
                 logger.error(f"❌ 同步失败: {stock_code} from {source}: {e}")
@@ -238,7 +242,9 @@ class HKDataService:
 
         return result
 
-    async def _sync_basic_info_from_akshare_batch(self, force_update: bool = False) -> Dict[str, int]:
+    async def _sync_basic_info_from_akshare_batch(
+        self, force_update: bool = False
+    ) -> Dict[str, int]:
         """
         从 AKShare 批量同步港股基础信息（一次 API 调用获取所有数据）
 
@@ -249,8 +255,8 @@ class HKDataService:
             Dict: 同步统计信息 {updated: int, inserted: int, failed: int}
         """
         try:
-            ak = importlib.import_module('akshare')
-            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+            ak = importlib.import_module("akshare")
+            datetime = getattr(importlib.import_module("datetime"), "datetime")
 
             logger.info("🇭🇰 开始批量同步港股基础信息 (数据源: akshare)")
 
@@ -271,16 +277,16 @@ class HKDataService:
             for _, row in df.iterrows():
                 try:
                     # 提取股票代码和名称
-                    stock_code = str(row.get('代码', '')).strip()
+                    stock_code = str(row.get("代码", "")).strip()
                     # 新浪接口的列名是 '中文名称'
-                    stock_name = str(row.get('中文名称', '')).strip()
+                    stock_name = str(row.get("中文名称", "")).strip()
 
                     if not stock_code or not stock_name:
                         failed_count += 1
                         continue
 
                     # 标准化代码格式（确保是5位数字）
-                    normalized_code = stock_code.lstrip('0').zfill(5)
+                    normalized_code = stock_code.lstrip("0").zfill(5)
 
                     # 构建基础信息
                     stock_info = {
@@ -291,24 +297,24 @@ class HKDataService:
                         "market": "香港交易所",
                         "area": "香港",
                         "source": "akshare",
-                        "updated_at": datetime.now()
+                        "updated_at": datetime.now(),
                     }
 
                     # 可选字段：提取行情数据中的其他信息
-                    latest_price: Any = row['最新价'] if '最新价' in row else None
+                    latest_price: Any = row["最新价"] if "最新价" in row else None
                     if latest_price:
                         stock_info["latest_price"] = float(latest_price)
 
-                    change_percent: Any = row['涨跌幅'] if '涨跌幅' in row else None
+                    change_percent: Any = row["涨跌幅"] if "涨跌幅" in row else None
                     if change_percent:
                         stock_info["change_percent"] = float(change_percent)
 
-                    total_mv: Any = row['总市值'] if '总市值' in row else None
+                    total_mv: Any = row["总市值"] if "总市值" in row else None
                     if total_mv:
                         # 转换为亿港币
                         stock_info["total_mv"] = float(total_mv) / 100000000
 
-                    pe: Any = row['市盈率'] if '市盈率' in row else None
+                    pe: Any = row["市盈率"] if "市盈率" in row else None
                     if pe:
                         stock_info["pe"] = float(pe)
 
@@ -317,7 +323,7 @@ class HKDataService:
                         UpdateOne(
                             {"code": normalized_code, "source": "akshare"},
                             {"$set": stock_info},
-                            upsert=True
+                            upsert=True,
                         )
                     )
                     postgres_documents.append(stock_info)
@@ -331,10 +337,14 @@ class HKDataService:
 
             if operations:
                 try:
-                    bulk_result = await self.db.stock_basic_info_hk.bulk_write(operations)
+                    bulk_result = await self.db.stock_basic_info_hk.bulk_write(
+                        operations
+                    )
                     result["updated"] = bulk_result.modified_count
                     result["inserted"] = bulk_result.upserted_count
-                    await dual_write_hot_documents("stock_basic_info", postgres_documents)
+                    await dual_write_hot_documents(
+                        "stock_basic_info", postgres_documents
+                    )
 
                     logger.info(
                         f"✅ 港股基础信息批量同步完成 (akshare): "
@@ -386,10 +396,7 @@ class HKDataService:
 
         return normalized
 
-    async def sync_quotes_from_source(
-        self,
-        source: str = "yfinance"
-    ) -> Dict[str, int]:
+    async def sync_quotes_from_source(self, source: str = "yfinance") -> Dict[str, int]:
         """
         从指定数据源同步港股实时行情
 
@@ -415,39 +422,44 @@ class HKDataService:
                 # 获取实时价格
                 quote = provider.get_real_time_price(stock_code)
 
-                if not quote or not quote.get('price'):
+                if not quote or not quote.get("price"):
                     logger.warning(f"⚠️ 跳过无效行情: {stock_code}")
                     failed_count += 1
                     continue
 
                 # 标准化行情数据
                 normalized_quote = {
-                    "code": stock_code.lstrip('0').zfill(5),
-                    "close": float(quote.get('price', 0)),
-                    "open": float(quote.get('open', 0)),
-                    "high": float(quote.get('high', 0)),
-                    "low": float(quote.get('low', 0)),
-                    "volume": int(quote.get('volume', 0)),
+                    "code": stock_code.lstrip("0").zfill(5),
+                    "close": float(quote.get("price", 0)),
+                    "open": float(quote.get("open", 0)),
+                    "high": float(quote.get("high", 0)),
+                    "low": float(quote.get("low", 0)),
+                    "volume": int(quote.get("volume", 0)),
                     "currency": "HKD",
                     "source": source,
-                    "updated_at": datetime.now()
+                    "updated_at": datetime.now(),
                 }
 
                 # 计算涨跌幅
                 if normalized_quote["open"] > 0:
-                    pct_chg = ((normalized_quote["close"] - normalized_quote["open"]) / normalized_quote["open"]) * 100
+                    pct_chg = (
+                        (normalized_quote["close"] - normalized_quote["open"])
+                        / normalized_quote["open"]
+                    ) * 100
                     normalized_quote["pct_chg"] = round(pct_chg, 2)
 
                 operations.append(
                     UpdateOne(
                         {"code": normalized_quote["code"], "source": source},
                         {"$set": normalized_quote},
-                        upsert=True
+                        upsert=True,
                     )
                 )
                 postgres_documents.append(normalized_quote)
 
-                logger.debug(f"✅ 准备同步行情: {stock_code} (价格: {normalized_quote['close']} HKD)")
+                logger.debug(
+                    f"✅ 准备同步行情: {stock_code} (价格: {normalized_quote['close']} HKD)"
+                )
 
             except Exception as e:
                 logger.error(f"❌ 同步行情失败: {stock_code}: {e}")
@@ -482,6 +494,7 @@ HKSyncService = HKDataService
 
 _hk_sync_service = None
 
+
 async def get_hk_sync_service() -> HKSyncService:
     """获取港股同步服务实例"""
     global _hk_sync_service
@@ -492,6 +505,7 @@ async def get_hk_sync_service() -> HKSyncService:
 
 
 # ==================== APScheduler 兼容的任务函数 ====================
+
 
 async def run_hk_yfinance_basic_info_sync(force_update: bool = False):
     """APScheduler任务：港股基础信息同步（yfinance）"""
@@ -541,7 +555,7 @@ async def run_hk_status_check():
             "status": "ok",
             "stock_count": len(stock_list),
             "data_sources": list(service.providers.keys()),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
         logger.info(f"✅ 港股状态检查完成: {result}")
         return result

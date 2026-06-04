@@ -1,12 +1,11 @@
-from typing import Annotated, Sequence
-from datetime import date, timedelta, datetime
-from typing_extensions import TypedDict, Optional
-from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import ToolNode
-from langgraph.graph import END, StateGraph, START, MessagesState
+from typing import Annotated
+
+from langgraph.graph import MessagesState
+from typing_extensions import TypedDict
 
 # 导入统一日志系统
 from trader.utils.logging.init import get_logger
+
 logger = get_logger("default")
 
 
@@ -65,7 +64,9 @@ class RiskDebateState(TypedDict):
 class AgentState(MessagesState):
     company_of_interest: Annotated[str, "Company that we are interested in trading"]
     asset_type: Annotated[str, "Asset type under analysis such as stock or crypto"]
-    instrument_context: Annotated[str, "Deterministic ticker identity resolved at run start"]
+    instrument_context: Annotated[
+        str, "Deterministic ticker identity resolved at run start"
+    ]
     trade_date: Annotated[str, "What date we are trading at"]
 
     sender: Annotated[str, "Agent that sent this message"]
@@ -82,7 +83,9 @@ class AgentState(MessagesState):
     market_tool_call_count: Annotated[int, "Market analyst tool call counter"]
     news_tool_call_count: Annotated[int, "News analyst tool call counter"]
     sentiment_tool_call_count: Annotated[int, "Social media analyst tool call counter"]
-    fundamentals_tool_call_count: Annotated[int, "Fundamentals analyst tool call counter"]
+    fundamentals_tool_call_count: Annotated[
+        int, "Fundamentals analyst tool call counter"
+    ]
 
     # researcher team discussion step
     investment_debate_state: Annotated[

@@ -2,14 +2,14 @@
 AKShare数据初始化服务
 用于首次部署时的完整数据初始化，包括基础数据、历史数据、财务数据等
 """
-import importlib
-import asyncio
-import logging
-from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List
-from dataclasses import dataclass, field
 
-from app.core.database import get_mongo_db
+import importlib
+import logging
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
+from app.core.database import get_postgres_db
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AKShareInitializationStats:
     """AKShare初始化统计信息"""
+
     started_at: datetime
     finished_at: Optional[datetime] = None
     total_steps: int = 0
@@ -52,9 +53,12 @@ class AKShareInitService:
 
     async def initialize(self):
         """初始化服务"""
-        get_akshare_sync_service = getattr(importlib.import_module('app.worker.akshare.sync'), 'get_akshare_sync_service')
+        get_akshare_sync_service = getattr(
+            importlib.import_module("app.worker.akshare.sync"),
+            "get_akshare_sync_service",
+        )
 
-        self.db = get_mongo_db()
+        self.db = get_postgres_db()
         self.sync_service = await get_akshare_sync_service()
         logger.info("✅ AKShare初始化服务准备完成")
 
@@ -64,7 +68,7 @@ class AKShareInitService:
         skip_if_exists: bool = True,
         batch_size: int = 100,
         enable_multi_period: bool = False,
-        sync_items: Optional[List[str]] = None
+        sync_items: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         运行完整的数据初始化
@@ -89,9 +93,9 @@ class AKShareInitService:
         """
         # 如果未指定sync_items，则同步所有数据
         if sync_items is None:
-            sync_items = ['basic_info', 'historical', 'financial', 'quotes']
+            sync_items = ["basic_info", "historical", "financial", "quotes"]
             if enable_multi_period:
-                sync_items.extend(['weekly', 'monthly'])
+                sync_items.extend(["weekly", "monthly"])
 
         logger.info("🚀 开始AKShare数据完整初始化...")
         logger.info(f"📋 同步项目: {', '.join(sync_items)}")
@@ -100,14 +104,13 @@ class AKShareInitService:
         total_steps = 1 + len(sync_items) + 1
 
         self.stats = AKShareInitializationStats(
-            started_at=datetime.utcnow(),
-            total_steps=total_steps
+            started_at=datetime.utcnow(), total_steps=total_steps
         )
 
         try:
             # 步骤1: 检查数据库状态
             # 只有在同步 basic_info 时才检查是否跳过
-            if 'basic_info' in sync_items:
+            if "basic_info" in sync_items:
                 await self._step_check_database_status(skip_if_exists)
             else:
                 logger.info("📊 检查数据库状态...")
@@ -117,43 +120,43 @@ class AKShareInitService:
                     logger.warning("⚠️ 数据库中没有股票基础信息，建议先同步 basic_info")
 
             # 步骤2: 初始化股票基础信息
-            if 'basic_info' in sync_items:
+            if "basic_info" in sync_items:
                 await self._step_initialize_basic_info()
             else:
                 logger.info("⏭️ 跳过股票基础信息同步")
 
             # 步骤3: 同步历史数据（日线）
-            if 'historical' in sync_items:
+            if "historical" in sync_items:
                 await self._step_initialize_historical_data(historical_days)
             else:
                 logger.info("⏭️ 跳过历史数据（日线）同步")
 
             # 步骤4: 同步周线数据
-            if 'weekly' in sync_items:
+            if "weekly" in sync_items:
                 await self._step_initialize_weekly_data(historical_days)
             else:
                 logger.info("⏭️ 跳过周线数据同步")
 
             # 步骤5: 同步月线数据
-            if 'monthly' in sync_items:
+            if "monthly" in sync_items:
                 await self._step_initialize_monthly_data(historical_days)
             else:
                 logger.info("⏭️ 跳过月线数据同步")
 
             # 步骤6: 同步财务数据
-            if 'financial' in sync_items:
+            if "financial" in sync_items:
                 await self._step_initialize_financial_data()
             else:
                 logger.info("⏭️ 跳过财务数据同步")
 
             # 步骤7: 同步最新行情
-            if 'quotes' in sync_items:
+            if "quotes" in sync_items:
                 await self._step_initialize_quotes()
             else:
                 logger.info("⏭️ 跳过最新行情同步")
 
             # 步骤8: 同步新闻数据
-            if 'news' in sync_items:
+            if "news" in sync_items:
                 await self._step_initialize_news_data()
             else:
                 logger.info("⏭️ 跳过新闻数据同步")
@@ -170,11 +173,13 @@ class AKShareInitService:
 
         except Exception as e:
             logger.error(f"❌ AKShare数据初始化失败: {e}")
-            self.stats.errors.append({
-                "step": self.stats.current_step,
-                "error": str(e),
-                "timestamp": datetime.utcnow()
-            })
+            self.stats.errors.append(
+                {
+                    "step": self.stats.current_step,
+                    "error": str(e),
+                    "timestamp": datetime.utcnow(),
+                }
+            )
             return self._get_initialization_summary()
 
     async def _step_check_database_status(self, skip_if_exists: bool):
@@ -186,12 +191,14 @@ class AKShareInitService:
         basic_count = await self.db.stock_basic_info.count_documents({})
         quotes_count = await self.db.market_quotes.count_documents({})
 
-        logger.info(f"  当前数据状态:")
+        logger.info("  当前数据状态:")
         logger.info(f"    股票基础信息: {basic_count}条")
         logger.info(f"    行情数据: {quotes_count}条")
 
         if skip_if_exists and basic_count > 0:
-            logger.info("⚠️ 检测到已有数据，跳过初始化（可通过skip_if_exists=False强制初始化）")
+            logger.info(
+                "⚠️ 检测到已有数据，跳过初始化（可通过skip_if_exists=False强制初始化）"
+            )
             raise Exception("数据已存在，跳过初始化")
 
         self.stats.completed_steps += 1
@@ -219,21 +226,23 @@ class AKShareInitService:
         logger.info(f"📊 {self.stats.current_step}...")
 
         # 计算日期范围
-        end_date = datetime.now().strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime("%Y-%m-%d")
 
         # 如果 historical_days 大于等于10年（3650天），则同步全历史
         if historical_days >= 3650:
             start_date = "1990-01-01"  # 全历史同步
             logger.info(f"  历史数据范围: 全历史（从1990-01-01到{end_date}）")
         else:
-            start_date = (datetime.now() - timedelta(days=historical_days)).strftime('%Y-%m-%d')
+            start_date = (datetime.now() - timedelta(days=historical_days)).strftime(
+                "%Y-%m-%d"
+            )
             logger.info(f"  历史数据范围: {start_date} 到 {end_date}")
 
         # 同步历史数据
         result = await self.sync_service.sync_historical_data(
             start_date=start_date,
             end_date=end_date,
-            incremental=False  # 全量同步
+            incremental=False,  # 全量同步
         )
 
         if result:
@@ -250,14 +259,16 @@ class AKShareInitService:
         logger.info(f"📊 {self.stats.current_step}...")
 
         # 计算日期范围
-        end_date = datetime.now().strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime("%Y-%m-%d")
 
         # 如果 historical_days 大于等于10年（3650天），则同步全历史
         if historical_days >= 3650:
             start_date = "1990-01-01"  # 全历史同步
             logger.info(f"  周线数据范围: 全历史（从1990-01-01到{end_date}）")
         else:
-            start_date = (datetime.now() - timedelta(days=historical_days)).strftime('%Y-%m-%d')
+            start_date = (datetime.now() - timedelta(days=historical_days)).strftime(
+                "%Y-%m-%d"
+            )
             logger.info(f"  周线数据范围: {start_date} 到 {end_date}")
 
         try:
@@ -266,7 +277,7 @@ class AKShareInitService:
                 start_date=start_date,
                 end_date=end_date,
                 incremental=False,
-                period="weekly"  # 指定周线
+                period="weekly",  # 指定周线
             )
 
             if result:
@@ -286,14 +297,16 @@ class AKShareInitService:
         logger.info(f"📊 {self.stats.current_step}...")
 
         # 计算日期范围
-        end_date = datetime.now().strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime("%Y-%m-%d")
 
         # 如果 historical_days 大于等于10年（3650天），则同步全历史
         if historical_days >= 3650:
             start_date = "1990-01-01"  # 全历史同步
             logger.info(f"  月线数据范围: 全历史（从1990-01-01到{end_date}）")
         else:
-            start_date = (datetime.now() - timedelta(days=historical_days)).strftime('%Y-%m-%d')
+            start_date = (datetime.now() - timedelta(days=historical_days)).strftime(
+                "%Y-%m-%d"
+            )
             logger.info(f"  月线数据范围: {start_date} 到 {end_date}")
 
         try:
@@ -302,7 +315,7 @@ class AKShareInitService:
                 start_date=start_date,
                 end_date=end_date,
                 incremental=False,
-                period="monthly"  # 指定月线
+                period="monthly",  # 指定月线
             )
 
             if result:
@@ -326,7 +339,9 @@ class AKShareInitService:
 
             if result:
                 self.stats.financial_records = result.get("success_count", 0)
-                logger.info(f"✅ 财务数据初始化完成: {self.stats.financial_records}条记录")
+                logger.info(
+                    f"✅ 财务数据初始化完成: {self.stats.financial_records}条记录"
+                )
             else:
                 logger.warning("⚠️ 财务数据初始化失败")
         except Exception as e:
@@ -358,9 +373,7 @@ class AKShareInitService:
         logger.info(f"📰 {self.stats.current_step}...")
 
         try:
-            result = await self.sync_service.sync_news_data(
-                max_news_per_stock=20
-            )
+            result = await self.sync_service.sync_news_data(max_news_per_stock=20)
 
             if result:
                 self.stats.news_count = result.get("news_count", 0)
@@ -382,14 +395,15 @@ class AKShareInitService:
         quotes_count = await self.db.market_quotes.count_documents({})
 
         # 检查数据质量
-        extended_count = await self.db.stock_basic_info.count_documents({
-            "full_symbol": {"$exists": True},
-            "market_info": {"$exists": True}
-        })
+        extended_count = await self.db.stock_basic_info.count_documents(
+            {"full_symbol": {"$exists": True}, "market_info": {"$exists": True}}
+        )
 
-        logger.info(f"  数据完整性验证:")
+        logger.info("  数据完整性验证:")
         logger.info(f"    股票基础信息: {basic_count}条")
-        logger.info(f"    扩展字段覆盖: {extended_count}条 ({extended_count/basic_count*100:.1f}%)")
+        logger.info(
+            f"    扩展字段覆盖: {extended_count}条 ({extended_count / basic_count * 100:.1f}%)"
+        )
         logger.info(f"    行情数据: {quotes_count}条")
 
         if basic_count == 0:
@@ -422,15 +436,16 @@ class AKShareInitService:
                 "monthly_records": self.stats.monthly_records,
                 "financial_records": self.stats.financial_records,
                 "quotes_count": self.stats.quotes_count,
-                "news_count": self.stats.news_count
+                "news_count": self.stats.news_count,
             },
             "errors": self.stats.errors,
-            "current_step": self.stats.current_step
+            "current_step": self.stats.current_step,
         }
 
 
 # 全局初始化服务实例
 _akshare_init_service = None
+
 
 async def get_akshare_init_service() -> AKShareInitService:
     """获取AKShare初始化服务实例"""
@@ -443,15 +458,13 @@ async def get_akshare_init_service() -> AKShareInitService:
 
 # APScheduler兼容的初始化任务函数
 async def run_akshare_full_initialization(
-    historical_days: int = 365,
-    skip_if_exists: bool = True
+    historical_days: int = 365, skip_if_exists: bool = True
 ):
     """APScheduler任务：运行完整的AKShare数据初始化"""
     try:
         service = await get_akshare_init_service()
         result = await service.run_full_initialization(
-            historical_days=historical_days,
-            skip_if_exists=skip_if_exists
+            historical_days=historical_days, skip_if_exists=skip_if_exists
         )
         logger.info(f"✅ AKShare完整初始化完成: {result}")
         return result

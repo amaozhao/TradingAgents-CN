@@ -2,19 +2,13 @@
 """
 测试队列系统的脚本
 """
-import importlib
 
 import asyncio
-import sys
+import importlib
 import json
-from pathlib import Path
 
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from app.core.database import init_database, close_database
-from app.core.redis import init_redis, close_redis
+from app.core.database import close_database, init_database
+from app.core.redis import close_redis, init_redis
 from app.services.queue.service import get_queue_service
 
 
@@ -35,7 +29,7 @@ async def test_queue_operations():
             user_id="test_user_1",
             symbol="AAPL",
             params={"analysis_type": "deep"},
-            priority=1
+            priority=1,
         )
         print(f"✅ 任务1已入队: {task_id1}")
 
@@ -43,7 +37,7 @@ async def test_queue_operations():
             user_id="test_user_1",
             symbol="TSLA",
             params={"analysis_type": "quick"},
-            priority=2  # 更高优先级
+            priority=2,  # 更高优先级
         )
         print(f"✅ 任务2已入队: {task_id2} (高优先级)")
 
@@ -67,7 +61,7 @@ async def test_queue_operations():
             await asyncio.sleep(1)
 
             # 确认任务完成
-            await queue_service.ack_task(task_data['id'], success=True)
+            await queue_service.ack_task(task_data["id"], success=True)
             print(f"✅ 任务已确认完成: {task_data['id']}")
         else:
             print("❌ 没有可用任务")
@@ -93,7 +87,7 @@ async def test_queue_operations():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
     finally:
@@ -121,12 +115,12 @@ async def test_concurrent_limits():
                 task_id = await queue_service.enqueue_task(
                     user_id="test_user_concurrent",
                     symbol=f"STOCK{i:02d}",
-                    params={"test": True}
+                    params={"test": True},
                 )
                 tasks.append(task_id)
-                print(f"✅ 任务{i+1}已入队: {task_id}")
+                print(f"✅ 任务{i + 1}已入队: {task_id}")
             except ValueError as e:
-                print(f"❌ 任务{i+1}入队失败: {e}")
+                print(f"❌ 任务{i + 1}入队失败: {e}")
 
         print(f"\n📈 成功入队任务数: {len(tasks)}")
 
@@ -143,7 +137,7 @@ async def test_concurrent_limits():
 
     except Exception as e:
         print(f"❌ 并发测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
     finally:

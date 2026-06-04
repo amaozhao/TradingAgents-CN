@@ -2,12 +2,12 @@
 错误处理中间件
 """
 
+import logging
+from typing import Callable
+
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-import logging
-import traceback
-from typing import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             f"路径: {request.url.path}, "
             f"方法: {request.method}, "
             f"异常: {str(exc)}",
-            exc_info=True
+            exc_info=True,
         )
 
         # 根据异常类型返回不同的错误响应
@@ -45,9 +45,9 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                     "error": {
                         "code": "VALIDATION_ERROR",
                         "message": str(exc),
-                        "request_id": request_id
+                        "request_id": request_id,
                     }
-                }
+                },
             )
 
         elif isinstance(exc, PermissionError):
@@ -57,9 +57,9 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                     "error": {
                         "code": "PERMISSION_DENIED",
                         "message": "权限不足",
-                        "request_id": request_id
+                        "request_id": request_id,
                     }
-                }
+                },
             )
 
         elif isinstance(exc, FileNotFoundError):
@@ -69,9 +69,9 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                     "error": {
                         "code": "RESOURCE_NOT_FOUND",
                         "message": "请求的资源不存在",
-                        "request_id": request_id
+                        "request_id": request_id,
                     }
-                }
+                },
             )
 
         else:
@@ -82,7 +82,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                     "error": {
                         "code": "INTERNAL_SERVER_ERROR",
                         "message": "服务器内部错误，请稍后重试",
-                        "request_id": request_id
+                        "request_id": request_id,
                     }
-                }
+                },
             )

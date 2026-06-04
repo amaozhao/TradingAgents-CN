@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.routers import stock
+from app.routers import stock as stock_sync
 
 
 @pytest.mark.asyncio
@@ -27,7 +27,7 @@ async def test_sync_latest_to_market_quotes_dual_writes_postgres(monkeypatch):
         dual_write_calls.append((collection, document))
         return SimpleNamespace(status="success", reason=None)
 
-    monkeypatch.setattr(stock_sync, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(stock_sync, "get_postgres_db", lambda: fake_db)
     monkeypatch.setattr(stock_sync, "dual_write_hot_document", fake_dual_write)
 
     await stock_sync._sync_latest_to_market_quotes("1")
@@ -56,7 +56,12 @@ async def test_stock_sync_basic_info_helper_dual_writes_postgres(monkeypatch):
     assert dual_write_calls == [
         (
             "stock_basic_info",
-            {"code": "000001", "symbol": "000001", "source": "tushare", "name": "平安银行"},
+            {
+                "code": "000001",
+                "symbol": "000001",
+                "source": "tushare",
+                "name": "平安银行",
+            },
         )
     ]
 

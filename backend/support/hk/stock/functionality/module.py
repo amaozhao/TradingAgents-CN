@@ -2,15 +2,10 @@
 测试港股功能
 验证港股代码识别、数据获取和处理功能
 """
+
 import importlib
-
 import sys
-import os
 import traceback
-
-# 添加项目根目录到路径
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
 
 
 def test_stock_utils():
@@ -18,7 +13,9 @@ def test_stock_utils():
     print("\n🧪 测试股票工具类...")
 
     try:
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
 
         # 测试港股代码识别
         test_cases = [
@@ -29,20 +26,22 @@ def test_stock_utils():
             ("600036", "中国A股"),
             ("AAPL", "美股"),
             ("TSLA", "美股"),
-            ("invalid", "未知市场")
+            ("invalid", "未知市场"),
         ]
 
         for ticker, expected in test_cases:
             market_info = StockUtils.get_market_info(ticker)
-            print(f"  {ticker}: {market_info['market_name']} ({market_info['currency_name']}) - {'✅' if expected in market_info['market_name'] else '❌'}")
+            print(
+                f"  {ticker}: {market_info['market_name']} ({market_info['currency_name']}) - {'✅' if expected in market_info['market_name'] else '❌'}"
+            )
 
-            if expected == "港股" and not market_info['is_hk']:
+            if expected == "港股" and not market_info["is_hk"]:
                 print(f"❌ {ticker} 应该被识别为港股")
                 return False
-            elif expected == "中国A股" and not market_info['is_china']:
+            elif expected == "中国A股" and not market_info["is_china"]:
                 print(f"❌ {ticker} 应该被识别为中国A股")
                 return False
-            elif expected == "美股" and not market_info['is_us']:
+            elif expected == "美股" and not market_info["is_us"]:
                 print(f"❌ {ticker} 应该被识别为美股")
                 return False
 
@@ -60,7 +59,10 @@ def test_hk_stock_provider():
     print("\n🧪 测试港股数据提供器...")
 
     try:
-        get_hk_stock_provider = getattr(importlib.import_module('trader.flows.providers.hk.stock'), 'get_hk_stock_provider')
+        get_hk_stock_provider = getattr(
+            importlib.import_module("trader.flows.providers.hk.stock"),
+            "get_hk_stock_provider",
+        )
 
         provider = get_hk_stock_provider()
 
@@ -69,15 +71,19 @@ def test_hk_stock_provider():
             ("0700", "0700.HK"),
             ("0700.HK", "0700.HK"),
             ("9988", "9988.HK"),
-            ("3690.HK", "3690.HK")
+            ("3690.HK", "3690.HK"),
         ]
 
         for input_symbol, expected in test_symbols:
             normalized = provider._normalize_hk_symbol(input_symbol)
-            print(f"  标准化: {input_symbol} -> {normalized} {'✅' if normalized == expected else '❌'}")
+            print(
+                f"  标准化: {input_symbol} -> {normalized} {'✅' if normalized == expected else '❌'}"
+            )
 
             if normalized != expected:
-                print(f"❌ 港股代码标准化失败: {input_symbol} -> {normalized}, 期望: {expected}")
+                print(
+                    f"❌ 港股代码标准化失败: {input_symbol} -> {normalized}, 期望: {expected}"
+                )
                 return False
 
         print("✅ 港股数据提供器测试通过")
@@ -94,7 +100,10 @@ def test_hk_stock_info():
     print("\n🧪 测试港股信息获取...")
 
     try:
-        get_hk_stock_info = getattr(importlib.import_module('trader.flows.providers.hk.stock'), 'get_hk_stock_info')
+        get_hk_stock_info = getattr(
+            importlib.import_module("trader.flows.providers.hk.stock"),
+            "get_hk_stock_info",
+        )
 
         # 测试腾讯港股信息
         hk_symbol = "0700.HK"
@@ -102,7 +111,7 @@ def test_hk_stock_info():
 
         info = get_hk_stock_info(hk_symbol)
 
-        if info and 'symbol' in info:
+        if info and "symbol" in info:
             print(f"  ✅ 股票代码: {info['symbol']}")
             print(f"  ✅ 股票名称: {info['name']}")
             print(f"  ✅ 货币: {info['currency']}")
@@ -110,10 +119,10 @@ def test_hk_stock_info():
             print(f"  ✅ 数据源: {info['source']}")
 
             # 验证基本字段
-            if info['currency'] != 'HKD':
+            if info["currency"] != "HKD":
                 print(f"⚠️ 港股货币应为HKD，实际为: {info['currency']}")
 
-            if info['exchange'] != 'HKG':
+            if info["exchange"] != "HKG":
                 print(f"⚠️ 港股交易所应为HKG，实际为: {info['exchange']}")
 
             print("✅ 港股信息获取测试通过")
@@ -133,13 +142,16 @@ def test_hk_stock_data():
     print("\n🧪 测试港股数据获取...")
 
     try:
-        get_hk_stock_data = getattr(importlib.import_module('trader.flows.providers.hk.stock'), 'get_hk_stock_data')
-        datetime = getattr(importlib.import_module('datetime'), 'datetime')
-        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
+        get_hk_stock_data = getattr(
+            importlib.import_module("trader.flows.providers.hk.stock"),
+            "get_hk_stock_data",
+        )
+        datetime = getattr(importlib.import_module("datetime"), "datetime")
+        timedelta = getattr(importlib.import_module("datetime"), "timedelta")
 
         # 设置测试日期范围（最近30天）
-        end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
 
         # 测试腾讯港股数据
         hk_symbol = "0700.HK"
@@ -178,13 +190,16 @@ def test_optimized_us_data_hk_support():
     print("\n🧪 测试优化数据模块港股支持...")
 
     try:
-        get_us_stock_data_cached = getattr(importlib.import_module('trader.flows.providers.us.optimized'), 'get_us_stock_data_cached')
-        datetime = getattr(importlib.import_module('datetime'), 'datetime')
-        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
+        get_us_stock_data_cached = getattr(
+            importlib.import_module("trader.flows.providers.us.optimized"),
+            "get_us_stock_data_cached",
+        )
+        datetime = getattr(importlib.import_module("datetime"), "datetime")
+        timedelta = getattr(importlib.import_module("datetime"), "timedelta")
 
         # 设置测试日期范围
-        end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
 
         # 测试港股数据获取
         hk_symbol = "0700.HK"
@@ -194,7 +209,7 @@ def test_optimized_us_data_hk_support():
             symbol=hk_symbol,
             start_date=start_date,
             end_date=end_date,
-            force_refresh=True
+            force_refresh=True,
         )
 
         if data_text and "数据分析" in data_text:
@@ -231,7 +246,7 @@ def main():
         test_hk_stock_provider,
         test_hk_stock_info,
         test_hk_stock_data,
-        test_optimized_us_data_hk_support
+        test_optimized_us_data_hk_support,
     ]
 
     passed = 0

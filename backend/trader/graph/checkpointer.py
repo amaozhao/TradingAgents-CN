@@ -31,7 +31,9 @@ def thread_id(ticker: str, date: str) -> str:
 
 
 @contextmanager
-def get_checkpointer(data_dir: str | Path, ticker: str) -> Generator[SqliteSaver, None, None]:
+def get_checkpointer(
+    data_dir: str | Path, ticker: str
+) -> Generator[SqliteSaver, None, None]:
     """Context manager yielding a SqliteSaver backed by a per-ticker DB."""
     db = _db_path(data_dir, ticker)
     conn = sqlite3.connect(str(db), check_same_thread=False)

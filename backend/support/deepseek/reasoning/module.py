@@ -24,7 +24,6 @@ from trader.llm.clients.openai import (
     _input_to_messages,
 )
 
-
 # ---------------------------------------------------------------------------
 # _input_to_messages — the helper that handles list / ChatPromptValue / other
 # (Gemini bot review note: non-list inputs must also work)
@@ -81,11 +80,18 @@ class TestDeepSeekReasoningContent:
                         "finish_reason": "stop",
                     }
                 ],
-                "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                },
             }
         )
         ai = result.generations[0].message
-        assert ai.additional_kwargs["reasoning_content"] == "Step 1: trend is up. Step 2: ..."
+        assert (
+            ai.additional_kwargs["reasoning_content"]
+            == "Step 1: trend is up. Step 2: ..."
+        )
 
     def test_propagate_on_send(self):
         """When an outgoing AIMessage carries reasoning_content, the request
@@ -98,7 +104,9 @@ class TestDeepSeekReasoningContent:
         new_user = HumanMessage(content="Refine.")
         payload = client._get_request_payload([prior, new_user])
         # Find the assistant message in the payload
-        assistant_dicts = [m for m in payload["messages"] if m.get("role") == "assistant"]
+        assistant_dicts = [
+            m for m in payload["messages"] if m.get("role") == "assistant"
+        ]
         assert assistant_dicts, "assistant message missing from outgoing payload"
         assert assistant_dicts[0]["reasoning_content"] == "weighed bull case"
 
@@ -110,9 +118,13 @@ class TestDeepSeekReasoningContent:
             content="Plan",
             additional_kwargs={"reasoning_content": "weighed bull case"},
         )
-        prompt_value = ChatPromptValue(messages=[prior, HumanMessage(content="Refine.")])
+        prompt_value = ChatPromptValue(
+            messages=[prior, HumanMessage(content="Refine.")]
+        )
         payload = client._get_request_payload(prompt_value)
-        assistant_dicts = [m for m in payload["messages"] if m.get("role") == "assistant"]
+        assistant_dicts = [
+            m for m in payload["messages"] if m.get("role") == "assistant"
+        ]
         assert assistant_dicts[0]["reasoning_content"] == "weighed bull case"
 
 
@@ -139,7 +151,9 @@ class TestStructuredOutputCapabilityDispatch:
 
     def _client(self, model):
         return DeepSeekChatOpenAI(
-            model=model, api_key="placeholder", base_url="https://api.deepseek.com",
+            model=model,
+            api_key="placeholder",
+            base_url="https://api.deepseek.com",
         )
 
     def test_chat_sends_tool_choice(self):
@@ -150,24 +164,31 @@ class TestStructuredOutputCapabilityDispatch:
         bound = self._client("deepseek-reasoner").with_structured_output(self._Sample)
         # tool_choice is either absent or explicitly None — both are valid
         # signals that langchain's bind_tools will skip the parameter.
-        assert _bound_kwargs(bound).get("tool_choice") in (None, ...) or \
-            "tool_choice" not in _bound_kwargs(bound)
+        assert _bound_kwargs(bound).get("tool_choice") in (
+            None,
+            ...,
+        ) or "tool_choice" not in _bound_kwargs(bound)
 
     def test_v4_flash_suppresses_tool_choice(self):
         bound = self._client("deepseek-v4-flash").with_structured_output(self._Sample)
-        assert _bound_kwargs(bound).get("tool_choice") is None or \
-            "tool_choice" not in _bound_kwargs(bound)
+        assert _bound_kwargs(bound).get(
+            "tool_choice"
+        ) is None or "tool_choice" not in _bound_kwargs(bound)
 
     def test_v4_pro_suppresses_tool_choice(self):
         bound = self._client("deepseek-v4-pro").with_structured_output(self._Sample)
-        assert _bound_kwargs(bound).get("tool_choice") is None or \
-            "tool_choice" not in _bound_kwargs(bound)
+        assert _bound_kwargs(bound).get(
+            "tool_choice"
+        ) is None or "tool_choice" not in _bound_kwargs(bound)
 
     def test_future_v_variant_via_regex(self):
         """Forward-compat: unknown deepseek-v\\d-* IDs inherit V4 quirks."""
-        bound = self._client("deepseek-v5-hypothetical").with_structured_output(self._Sample)
-        assert _bound_kwargs(bound).get("tool_choice") is None or \
-            "tool_choice" not in _bound_kwargs(bound)
+        bound = self._client("deepseek-v5-hypothetical").with_structured_output(
+            self._Sample
+        )
+        assert _bound_kwargs(bound).get(
+            "tool_choice"
+        ) is None or "tool_choice" not in _bound_kwargs(bound)
 
     def test_schema_is_still_bound_as_tool(self):
         """tool_choice is suppressed, but the schema is still bound as a tool —
@@ -175,9 +196,9 @@ class TestStructuredOutputCapabilityDispatch:
         bound = self._client("deepseek-reasoner").with_structured_output(self._Sample)
         kwargs = _bound_kwargs(bound)
         tools = kwargs.get("tools", [])
-        assert any(
-            t.get("function", {}).get("name") == "_Sample" for t in tools
-        ), f"schema not bound as a tool: {tools}"
+        assert any(t.get("function", {}).get("name") == "_Sample" for t in tools), (
+            f"schema not bound as a tool: {tools}"
+        )
 
 
 # ---------------------------------------------------------------------------

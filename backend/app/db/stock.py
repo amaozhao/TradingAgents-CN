@@ -1,10 +1,9 @@
 from __future__ import annotations
-import importlib
 
+import importlib
+from datetime import date
 from decimal import Decimal
 from typing import Any
-
-from datetime import date
 
 from sqlalchemy import Select, desc, or_, select
 
@@ -47,8 +46,7 @@ def build_stock_list(
     if industry:
         statement = statement.where(StockBasicInfo.industry == industry)
     return (
-        statement
-        .order_by(desc(StockBasicInfo.total_mv))
+        statement.order_by(desc(StockBasicInfo.total_mv))
         .offset(max(page - 1, 0) * page_size)
         .limit(page_size)
     )
@@ -87,9 +85,13 @@ def build_list_stock_daily_quotes(
     if market:
         statement = statement.where(StockDailyQuote.market == market)
     if start_date:
-        statement = statement.where(StockDailyQuote.trade_date >= _date_from_string(start_date))
+        statement = statement.where(
+            StockDailyQuote.trade_date >= _date_from_string(start_date)
+        )
     if end_date:
-        statement = statement.where(StockDailyQuote.trade_date <= _date_from_string(end_date))
+        statement = statement.where(
+            StockDailyQuote.trade_date <= _date_from_string(end_date)
+        )
     if data_source:
         statement = statement.where(StockDailyQuote.data_source == data_source)
     if period:
@@ -97,7 +99,9 @@ def build_list_stock_daily_quotes(
     return statement.order_by(desc(StockDailyQuote.trade_date)).limit(limit)
 
 
-async def get_stock_basic_info(session, symbol: str, source: str | None = None) -> dict[str, Any] | None:
+async def get_stock_basic_info(
+    session, symbol: str, source: str | None = None
+) -> dict[str, Any] | None:
     result = await session.execute(build_get_stock_basic_info(symbol, source))
     row = result.scalar_one_or_none()
     return _basic_info_to_dict(row) if row else None
@@ -130,7 +134,9 @@ async def list_stocks(
     return [_basic_info_to_dict(row) for row in result.scalars()]
 
 
-async def search_stocks(session, query: str, *, limit: int = 20) -> list[dict[str, Any]]:
+async def search_stocks(
+    session, query: str, *, limit: int = 20
+) -> list[dict[str, Any]]:
     result = await session.execute(build_search_stocks(query, limit=limit))
     seen_codes: set[str] = set()
     documents: list[dict[str, Any]] = []
@@ -255,7 +261,7 @@ def _date_from_string(value: str) -> date:
 
 
 def _source_priority_case():
-    case = getattr(importlib.import_module('sqlalchemy'), 'case')
+    case = getattr(importlib.import_module("sqlalchemy"), "case")
 
     return case(
         {source: index for index, source in enumerate(SOURCE_PRIORITY)},

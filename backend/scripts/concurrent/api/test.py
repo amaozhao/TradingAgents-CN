@@ -1,10 +1,12 @@
 """
 测试并发API请求，验证数据源测试时其他接口是否会超时
 """
+
 import asyncio
-import aiohttp
 import time
 from datetime import datetime
+
+import aiohttp
 
 
 async def test_notifications_api(session: aiohttp.ClientSession, test_id: int):
@@ -16,14 +18,18 @@ async def test_notifications_api(session: aiohttp.ClientSession, test_id: int):
 
     start = time.time()
     try:
-        async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as response:
+        async with session.get(
+            url, headers=headers, timeout=aiohttp.ClientTimeout(total=5)
+        ) as response:
             elapsed = time.time() - start
             if response.status == 200:
                 data = await response.json()
                 print(f"  [{test_id:2d}] ✅ 通知接口响应成功 ({elapsed:.2f}秒): {data}")
                 return True
             else:
-                print(f"  [{test_id:2d}] ❌ 通知接口返回错误 ({elapsed:.2f}秒): {response.status}")
+                print(
+                    f"  [{test_id:2d}] ❌ 通知接口返回错误 ({elapsed:.2f}秒): {response.status}"
+                )
                 return False
     except asyncio.TimeoutError:
         elapsed = time.time() - start
@@ -41,7 +47,9 @@ async def test_data_sources_api(session: aiohttp.ClientSession):
 
     start = time.time()
     try:
-        async with session.post(url, timeout=aiohttp.ClientTimeout(total=60)) as response:
+        async with session.post(
+            url, timeout=aiohttp.ClientTimeout(total=60)
+        ) as response:
             elapsed = time.time() - start
             if response.status == 200:
                 data = await response.json()
@@ -98,14 +106,16 @@ async def concurrent_test():
         # 等待所有任务完成
         print("\n⏳ 等待所有任务完成...")
         all_results = await asyncio.gather(
-            data_source_task,
-            *notification_tasks,
-            return_exceptions=True
+            data_source_task, *notification_tasks, return_exceptions=True
         )
 
         # 统计结果
-        data_source_success = all_results[0] if not isinstance(all_results[0], Exception) else False
-        notification_results = [r for r in all_results[1:] if not isinstance(r, Exception)]
+        data_source_success = (
+            all_results[0] if not isinstance(all_results[0], Exception) else False
+        )
+        notification_results = [
+            r for r in all_results[1:] if not isinstance(r, Exception)
+        ]
         notification_success_count = sum(1 for r in notification_results if r)
         notification_total = len(notification_results)
 
@@ -116,13 +126,17 @@ async def concurrent_test():
         print(f"⏰ 结束时间: {datetime.now().strftime('%H:%M:%S')}")
         print()
         print(f"🧪 数据源测试: {'✅ 成功' if data_source_success else '❌ 失败'}")
-        print(f"📬 通知接口测试: {notification_success_count}/{notification_total} 成功")
+        print(
+            f"📬 通知接口测试: {notification_success_count}/{notification_total} 成功"
+        )
         print()
 
         if notification_success_count == notification_total:
             print("🎉 所有测试通过！数据源测试期间通知接口没有超时。")
         elif notification_success_count > 0:
-            print(f"⚠️  部分测试失败：{notification_total - notification_success_count} 个请求失败")
+            print(
+                f"⚠️  部分测试失败：{notification_total - notification_success_count} 个请求失败"
+            )
         else:
             print("❌ 所有通知接口请求都失败了！")
 
@@ -186,4 +200,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\n❌ 测试出错: {e}")
         import traceback
+
         traceback.print_exc()

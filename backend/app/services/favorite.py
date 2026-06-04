@@ -1,16 +1,15 @@
 """
 自选股服务
 """
-import importlib
 
-from typing import Any, Dict, List, Optional
+import importlib
 from datetime import datetime
-from bson import ObjectId
+from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
-from app.core.database import get_mongo_db
+from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document
-from app.models.user import FavoriteStock
+from app.db.ids import DocumentId
 from app.services.quotes.service import get_quotes_service
 
 
@@ -23,19 +22,21 @@ class FavoritesService:
     async def _get_db(self):
         """获取数据库连接"""
         if self.db is None:
-            self.db = get_mongo_db()
+            self.db = get_postgres_db()
         return self.db
 
     async def _dual_write_favorite(self, document: Dict[str, Any]) -> None:
         result = await dual_write_hot_document("user_favorites", document)
         if result.status == "failed":
-            logging = importlib.import_module('logging')
-            logging.getLogger("webapi").warning("⚠️ 自选股 PostgreSQL 双写失败: %s", result.reason)
+            logging = importlib.import_module("logging")
+            logging.getLogger("webapi").warning(
+                "⚠️ 自选股 PostgreSQL 双写失败: %s", result.reason
+            )
 
-    def _is_valid_object_id(self, user_id: str) -> bool:
+    def _is_valid_document_id(self, user_id: str) -> bool:
         """
-        检查是否是有效的ObjectId格式
-        注意：这里只检查格式，不代表数据库中实际存储的是ObjectId类型
+        检查是否是有效的DocumentId格式
+        注意：这里只检查格式，不代表数据库中实际存储的是DocumentId类型
         为了兼容性，我们统一使用 user_favorites 集合存储自选股
         """
         # 强制返回 False，统一使用 user_favorites 集合
@@ -64,7 +65,7 @@ class FavoritesService:
         }
 
     async def get_user_favorites(self, user_id: str) -> List[Dict[str, Any]]:
-        """获取用户自选股列表，并批量拉取实时行情进行富集（兼容字符串ID与ObjectId）。"""
+        """获取用户自选股列表，并批量拉取实时行情进行富集（兼容字符串ID与DocumentId）。"""
         db = await self._get_db()
 
         favorites: List[Dict[str, Any]] = []
@@ -73,10 +74,10 @@ class FavoritesService:
 
         if favorites:
             pass
-        elif self._is_valid_object_id(user_id):
-            # 先尝试使用 ObjectId 查询
-            user = await db.users.find_one({"_id": ObjectId(user_id)})
-            # 如果 ObjectId 查询失败，尝试使用字符串查询
+        elif self._is_valid_document_id(user_id):
+            # 先尝试使用 DocumentId 查询
+            user = await db.users.find_one({"_id": DocumentId(user_id)})
+            # 如果 DocumentId 查询失败，尝试使用字符串查询
             if user is None:
                 user = await db.users.find_one({"_id": user_id})
             favorites = (user or {}).get("favorite_stocks", [])
@@ -92,26 +93,33 @@ class FavoritesService:
         if codes:
             try:
                 # 🔥 获取数据源优先级配置
-                UnifiedConfigManager = getattr(importlib.import_module('app.core.unified'), 'UnifiedConfigManager')
+                UnifiedConfigManager = getattr(
+                    importlib.import_module("app.core.unified"), "UnifiedConfigManager"
+                )
                 config = UnifiedConfigManager()
                 data_source_configs = await config.get_data_source_configs_async()
 
                 # 提取启用的数据源，按优先级排序
                 enabled_sources = [
-                    ds.type.lower() for ds in data_source_configs
-                    if ds.enabled and ds.type.lower() in ['tushare', 'akshare', 'baostock']
+                    ds.type.lower()
+                    for ds in data_source_configs
+                    if ds.enabled
+                    and ds.type.lower() in ["tushare", "akshare", "baostock"]
                 ]
 
                 if not enabled_sources:
-                    enabled_sources = ['tushare', 'akshare', 'baostock']
+                    enabled_sources = ["tushare", "akshare", "baostock"]
 
-                preferred_source = enabled_sources[0] if enabled_sources else 'tushare'
+                preferred_source = enabled_sources[0] if enabled_sources else "tushare"
 
                 # 从 stock_basic_info 获取板块信息（只查询优先级最高的数据源）
                 basic_info_coll = db["stock_basic_info"]
                 cursor = basic_info_coll.find(
-                    {"code": {"$in": codes}, "source": preferred_source},  # 🔥 添加数据源筛选
-                    {"code": 1, "sse": 1, "market": 1, "_id": 0}
+                    {
+                        "code": {"$in": codes},
+                        "source": preferred_source,
+                    },  # 🔥 添加数据源筛选
+                    {"code": 1, "sse": 1, "market": 1, "_id": 0},
                 )
                 basic_docs = await cursor.to_list(length=None)
                 basic_map = {str(d.get("code")).zfill(6): d for d in (basic_docs or [])}
@@ -127,7 +135,7 @@ class FavoritesService:
                     else:
                         it["board"] = "-"
                         it["exchange"] = "-"
-            except Exception as e:
+            except Exception:
                 # 查询失败时设置默认值
                 for it in items:
                     it["board"] = "-"
@@ -137,7 +145,10 @@ class FavoritesService:
         if codes:
             try:
                 coll = db["market_quotes"]
-                cursor = coll.find({"code": {"$in": codes}}, {"code": 1, "close": 1, "pct_chg": 1, "amount": 1})
+                cursor = coll.find(
+                    {"code": {"$in": codes}},
+                    {"code": 1, "close": 1, "pct_chg": 1, "amount": 1},
+                )
                 docs = await cursor.to_list(length=None)
                 quotes_map = {str(d.get("code")).zfill(6): d for d in (docs or [])}
                 for it in items:
@@ -154,7 +165,9 @@ class FavoritesService:
                         for it in items:
                             code = str(it.get("stock_code") or "")
                             if it.get("current_price") is None:
-                                q2 = quotes_online.get(code, {}) if quotes_online else {}
+                                q2 = (
+                                    quotes_online.get(code, {}) if quotes_online else {}
+                                )
                                 it["current_price"] = q2.get("close")
                                 it["change_percent"] = q2.get("pct_chg")
                     except Exception:
@@ -165,10 +178,16 @@ class FavoritesService:
 
         return items
 
-    async def _get_user_favorites_from_postgres(self, user_id: str) -> List[Dict[str, Any]]:
+    async def _get_user_favorites_from_postgres(
+        self, user_id: str
+    ) -> List[Dict[str, Any]]:
         try:
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
-            list_user_favorites = getattr(importlib.import_module('app.db.preference'), 'list_user_favorites')
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
+            list_user_favorites = getattr(
+                importlib.import_module("app.db.preference"), "list_user_favorites"
+            )
 
             async with get_session_factory()() as session:
                 return await list_user_favorites(session, user_id)
@@ -184,17 +203,19 @@ class FavoritesService:
         tags: Optional[List[str]] = None,
         notes: str = "",
         alert_price_high: Optional[float] = None,
-        alert_price_low: Optional[float] = None
+        alert_price_low: Optional[float] = None,
     ) -> bool:
-        """添加股票到自选股（兼容字符串ID与ObjectId）"""
-        logging = importlib.import_module('logging')
+        """添加股票到自选股（兼容字符串ID与DocumentId）"""
+        logging = importlib.import_module("logging")
         logger = logging.getLogger("webapi")
 
         try:
-            logger.info(f"🔧 [add_favorite] 开始添加自选股: user_id={user_id}, stock_code={stock_code}")
+            logger.info(
+                f"🔧 [add_favorite] 开始添加自选股: user_id={user_id}, stock_code={stock_code}"
+            )
 
             db = await self._get_db()
-            logger.info(f"🔧 [add_favorite] 数据库连接获取成功")
+            logger.info("🔧 [add_favorite] 数据库连接获取成功")
 
             favorite_stock = {
                 "stock_code": stock_code,
@@ -204,75 +225,96 @@ class FavoritesService:
                 "tags": tags or [],
                 "notes": notes,
                 "alert_price_high": alert_price_high,
-                "alert_price_low": alert_price_low
+                "alert_price_low": alert_price_low,
             }
 
             logger.info(f"🔧 [add_favorite] 自选股数据构建完成: {favorite_stock}")
 
-            is_oid = self._is_valid_object_id(user_id)
-            logger.info(f"🔧 [add_favorite] 用户ID类型检查: is_valid_object_id={is_oid}")
+            is_document_id = self._is_valid_document_id(user_id)
+            logger.info(
+                f"🔧 [add_favorite] 用户ID类型检查: is_valid_document_id={is_document_id}"
+            )
 
-            if is_oid:
-                logger.info(f"🔧 [add_favorite] 使用 ObjectId 方式添加到 users 集合")
+            if is_document_id:
+                logger.info("🔧 [add_favorite] 使用 DocumentId 方式添加到 users 集合")
 
-                # 先尝试使用 ObjectId 查询
+                # 先尝试使用 DocumentId 查询
                 result = await db.users.update_one(
-                    {"_id": ObjectId(user_id)},
+                    {"_id": DocumentId(user_id)},
                     {
                         "$push": {"favorite_stocks": favorite_stock},
-                        "$setOnInsert": {"favorite_stocks": []}
-                    }
+                        "$setOnInsert": {"favorite_stocks": []},
+                    },
                 )
-                logger.info(f"🔧 [add_favorite] ObjectId查询结果: matched_count={result.matched_count}, modified_count={result.modified_count}")
+                logger.info(
+                    f"🔧 [add_favorite] DocumentId查询结果: matched_count={result.matched_count}, modified_count={result.modified_count}"
+                )
 
-                # 如果 ObjectId 查询失败，尝试使用字符串查询
+                # 如果 DocumentId 查询失败，尝试使用字符串查询
                 if result.matched_count == 0:
-                    logger.info(f"🔧 [add_favorite] ObjectId查询失败，尝试使用字符串ID查询")
-                    result = await db.users.update_one(
-                        {"_id": user_id},
-                        {
-                            "$push": {"favorite_stocks": favorite_stock}
-                        }
+                    logger.info(
+                        "🔧 [add_favorite] DocumentId查询失败，尝试使用字符串ID查询"
                     )
-                    logger.info(f"🔧 [add_favorite] 字符串ID查询结果: matched_count={result.matched_count}, modified_count={result.modified_count}")
+                    result = await db.users.update_one(
+                        {"_id": user_id}, {"$push": {"favorite_stocks": favorite_stock}}
+                    )
+                    logger.info(
+                        f"🔧 [add_favorite] 字符串ID查询结果: matched_count={result.matched_count}, modified_count={result.modified_count}"
+                    )
 
                 success = result.matched_count > 0
                 logger.info(f"🔧 [add_favorite] 返回结果: {success}")
                 return success
             else:
-                logger.info(f"🔧 [add_favorite] 使用字符串ID方式添加到 user_favorites 集合")
+                logger.info(
+                    "🔧 [add_favorite] 使用字符串ID方式添加到 user_favorites 集合"
+                )
                 result = await db.user_favorites.update_one(
                     {"user_id": user_id},
                     {
-                        "$setOnInsert": {"user_id": user_id, "created_at": datetime.utcnow()},
+                        "$setOnInsert": {
+                            "user_id": user_id,
+                            "created_at": datetime.utcnow(),
+                        },
                         "$push": {"favorites": favorite_stock},
-                        "$set": {"updated_at": datetime.utcnow()}
+                        "$set": {"updated_at": datetime.utcnow()},
                     },
-                    upsert=True
+                    upsert=True,
                 )
-                await self._dual_write_favorite({"user_id": user_id, **favorite_stock, "updated_at": datetime.utcnow()})
-                logger.info(f"🔧 [add_favorite] 更新结果: matched_count={result.matched_count}, modified_count={result.modified_count}, upserted_id={result.upserted_id}")
-                logger.info(f"🔧 [add_favorite] 返回结果: True")
+                await self._dual_write_favorite(
+                    {
+                        "user_id": user_id,
+                        **favorite_stock,
+                        "updated_at": datetime.utcnow(),
+                    }
+                )
+                logger.info(
+                    f"🔧 [add_favorite] 更新结果: matched_count={result.matched_count}, modified_count={result.modified_count}, upserted_id={result.upserted_id}"
+                )
+                logger.info("🔧 [add_favorite] 返回结果: True")
                 return True
         except Exception as e:
-            logger.error(f"❌ [add_favorite] 添加自选股异常: {type(e).__name__}: {str(e)}", exc_info=True)
+            logger.error(
+                f"❌ [add_favorite] 添加自选股异常: {type(e).__name__}: {str(e)}",
+                exc_info=True,
+            )
             raise
 
     async def remove_favorite(self, user_id: str, stock_code: str) -> bool:
-        """从自选股中移除股票（兼容字符串ID与ObjectId）"""
+        """从自选股中移除股票（兼容字符串ID与DocumentId）"""
         db = await self._get_db()
 
-        if self._is_valid_object_id(user_id):
-            # 先尝试使用 ObjectId 查询
+        if self._is_valid_document_id(user_id):
+            # 先尝试使用 DocumentId 查询
             result = await db.users.update_one(
-                {"_id": ObjectId(user_id)},
-                {"$pull": {"favorite_stocks": {"stock_code": stock_code}}}
+                {"_id": DocumentId(user_id)},
+                {"$pull": {"favorite_stocks": {"stock_code": stock_code}}},
             )
-            # 如果 ObjectId 查询失败，尝试使用字符串查询
+            # 如果 DocumentId 查询失败，尝试使用字符串查询
             if result.matched_count == 0:
                 result = await db.users.update_one(
                     {"_id": user_id},
-                    {"$pull": {"favorite_stocks": {"stock_code": stock_code}}}
+                    {"$pull": {"favorite_stocks": {"stock_code": stock_code}}},
                 )
             return result.modified_count > 0
         else:
@@ -280,8 +322,8 @@ class FavoritesService:
                 {"user_id": user_id},
                 {
                     "$pull": {"favorites": {"stock_code": stock_code}},
-                    "$set": {"updated_at": datetime.utcnow()}
-                }
+                    "$set": {"updated_at": datetime.utcnow()},
+                },
             )
             if result.modified_count > 0:
                 await self._dual_write_favorite(
@@ -301,14 +343,14 @@ class FavoritesService:
         tags: Optional[List[str]] = None,
         notes: Optional[str] = None,
         alert_price_high: Optional[float] = None,
-        alert_price_low: Optional[float] = None
+        alert_price_low: Optional[float] = None,
     ) -> bool:
-        """更新自选股信息（兼容字符串ID与ObjectId）"""
+        """更新自选股信息（兼容字符串ID与DocumentId）"""
         db = await self._get_db()
 
         # 统一构建更新字段（根据不同集合的字段路径设置前缀）
-        is_oid = self._is_valid_object_id(user_id)
-        prefix = "favorite_stocks.$." if is_oid else "favorites.$."
+        is_document_id = self._is_valid_document_id(user_id)
+        prefix = "favorite_stocks.$." if is_document_id else "favorites.$."
         update_fields: Dict[str, Any] = {}
         if tags is not None:
             update_fields[prefix + "tags"] = tags
@@ -322,27 +364,16 @@ class FavoritesService:
         if not update_fields:
             return True
 
-        if is_oid:
+        if is_document_id:
             result = await db.users.update_one(
-                {
-                    "_id": ObjectId(user_id),
-                    "favorite_stocks.stock_code": stock_code
-                },
-                {"$set": update_fields}
+                {"_id": DocumentId(user_id), "favorite_stocks.stock_code": stock_code},
+                {"$set": update_fields},
             )
             return result.modified_count > 0
         else:
             result = await db.user_favorites.update_one(
-                {
-                    "user_id": user_id,
-                    "favorites.stock_code": stock_code
-                },
-                {
-                    "$set": {
-                        **update_fields,
-                        "updated_at": datetime.utcnow()
-                    }
-                }
+                {"user_id": user_id, "favorites.stock_code": stock_code},
+                {"$set": {**update_fields, "updated_at": datetime.utcnow()}},
             )
             if result.modified_count > 0:
                 favorite_update: Dict[str, Any] = {
@@ -362,35 +393,38 @@ class FavoritesService:
             return result.modified_count > 0
 
     async def is_favorite(self, user_id: str, stock_code: str) -> bool:
-        """检查股票是否在自选股中（兼容字符串ID与ObjectId）"""
-        logging = importlib.import_module('logging')
+        """检查股票是否在自选股中（兼容字符串ID与DocumentId）"""
+        logging = importlib.import_module("logging")
         logger = logging.getLogger("webapi")
 
         try:
-            logger.info(f"🔧 [is_favorite] 检查自选股: user_id={user_id}, stock_code={stock_code}")
+            logger.info(
+                f"🔧 [is_favorite] 检查自选股: user_id={user_id}, stock_code={stock_code}"
+            )
 
             db = await self._get_db()
 
-            is_oid = self._is_valid_object_id(user_id)
-            logger.info(f"🔧 [is_favorite] 用户ID类型: is_valid_object_id={is_oid}")
+            is_document_id = self._is_valid_document_id(user_id)
+            logger.info(
+                f"🔧 [is_favorite] 用户ID类型: is_valid_document_id={is_document_id}"
+            )
 
-            if is_oid:
-                # 先尝试使用 ObjectId 查询
+            if is_document_id:
+                # 先尝试使用 DocumentId 查询
                 user = await db.users.find_one(
                     {
-                        "_id": ObjectId(user_id),
-                        "favorite_stocks.stock_code": stock_code
+                        "_id": DocumentId(user_id),
+                        "favorite_stocks.stock_code": stock_code,
                     }
                 )
 
-                # 如果 ObjectId 查询失败，尝试使用字符串查询
+                # 如果 DocumentId 查询失败，尝试使用字符串查询
                 if user is None:
-                    logger.info(f"🔧 [is_favorite] ObjectId查询未找到，尝试使用字符串ID查询")
+                    logger.info(
+                        "🔧 [is_favorite] DocumentId查询未找到，尝试使用字符串ID查询"
+                    )
                     user = await db.users.find_one(
-                        {
-                            "_id": user_id,
-                            "favorite_stocks.stock_code": stock_code
-                        }
+                        {"_id": user_id, "favorite_stocks.stock_code": stock_code}
                     )
 
                 result = user is not None
@@ -398,29 +432,29 @@ class FavoritesService:
                 return result
             else:
                 doc = await db.user_favorites.find_one(
-                    {
-                        "user_id": user_id,
-                        "favorites.stock_code": stock_code
-                    }
+                    {"user_id": user_id, "favorites.stock_code": stock_code}
                 )
                 result = doc is not None
                 logger.info(f"🔧 [is_favorite] 字符串ID查询结果: {result}")
                 return result
         except Exception as e:
-            logger.error(f"❌ [is_favorite] 检查自选股异常: {type(e).__name__}: {str(e)}", exc_info=True)
+            logger.error(
+                f"❌ [is_favorite] 检查自选股异常: {type(e).__name__}: {str(e)}",
+                exc_info=True,
+            )
             raise
 
     async def get_user_tags(self, user_id: str) -> List[str]:
-        """获取用户使用的所有标签（兼容字符串ID与ObjectId）"""
+        """获取用户使用的所有标签（兼容字符串ID与DocumentId）"""
         db = await self._get_db()
 
-        if self._is_valid_object_id(user_id):
+        if self._is_valid_document_id(user_id):
             pipeline = [
-                {"$match": {"_id": ObjectId(user_id)}},
+                {"$match": {"_id": DocumentId(user_id)}},
                 {"$unwind": "$favorite_stocks"},
                 {"$unwind": "$favorite_stocks.tags"},
                 {"$group": {"_id": "$favorite_stocks.tags"}},
-                {"$sort": {"_id": 1}}
+                {"$sort": {"_id": 1}},
             ]
             result = await db.users.aggregate(pipeline).to_list(None)
         else:
@@ -429,7 +463,7 @@ class FavoritesService:
                 {"$unwind": "$favorites"},
                 {"$unwind": "$favorites.tags"},
                 {"$group": {"_id": "$favorites.tags"}},
-                {"$sort": {"_id": 1}}
+                {"$sort": {"_id": 1}},
             ]
             result = await db.user_favorites.aggregate(pipeline).to_list(None)
 

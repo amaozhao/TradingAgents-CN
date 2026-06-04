@@ -40,7 +40,7 @@ class TestTemperatureForwarding:
 @pytest.mark.unit
 class TestTemperatureEnvOverlay:
     def test_env_sets_temperature(self, monkeypatch):
-        dc = importlib.import_module('trader.default')
+        dc = importlib.import_module("trader.default")
         monkeypatch.setenv("TRADING_AGENTS_TEMPERATURE", "0.2")
         importlib.reload(dc)
         # Stored on config (string from env is fine; consumed via float()).
@@ -50,7 +50,7 @@ class TestTemperatureEnvOverlay:
         importlib.reload(dc)
 
     def test_default_temperature_is_none(self, monkeypatch):
-        dc = importlib.import_module('trader.default')
+        dc = importlib.import_module("trader.default")
         monkeypatch.delenv("TRADING_AGENTS_TEMPERATURE", raising=False)
         importlib.reload(dc)
         assert dc.DEFAULT_CONFIG["temperature"] is None
@@ -61,7 +61,9 @@ class TestProviderKwargsTemperature:
     """_get_provider_kwargs float-coerces and forwards temperature, or omits it."""
 
     def _kwargs_for(self, temperature):
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        TradingAgentsGraph = getattr(
+            importlib.import_module("trader.graph.trading"), "TradingAgentsGraph"
+        )
         # Call the method without constructing the full graph.
         graph = TradingAgentsGraph.__new__(TradingAgentsGraph)
         graph.config = {"llm_provider": "openai", "temperature": temperature}

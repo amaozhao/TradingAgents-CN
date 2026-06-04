@@ -2,15 +2,16 @@
 会话持久化管理器 - 不依赖Cookie的解决方案
 使用Redis/文件存储 + 浏览器指纹来实现跨页面刷新的状态持久化
 """
-import importlib
 
-import streamlit as st
 import hashlib
-import time
+import importlib
 import json
 import os
-from typing import Optional, Dict, Any
-from pathlib import Path
+import time
+from typing import Any, Dict, Optional
+
+import streamlit as st
+
 
 class SessionPersistenceManager:
     """会话持久化管理器"""
@@ -23,7 +24,11 @@ class SessionPersistenceManager:
         """生成浏览器指纹（基于可用信息）"""
         try:
             # 获取Streamlit的session信息
-            session_id = st.runtime.get_instance().get_client(st.session_state._get_session_id()).session.id
+            session_id = (
+                st.runtime.get_instance()
+                .get_client(st.session_state._get_session_id())
+                .session.id
+            )
 
             # 使用session_id作为指纹
             fingerprint = hashlib.md5(session_id.encode()).hexdigest()[:12]
@@ -39,8 +44,13 @@ class SessionPersistenceManager:
         """获取会话文件路径"""
         return f"./data/{self.session_file_prefix}{fingerprint}.json"
 
-    def save_analysis_state(self, analysis_id: str, status: str = "running",
-                           stock_symbol: str = "", market_type: str = ""):
+    def save_analysis_state(
+        self,
+        analysis_id: str,
+        status: str = "running",
+        stock_symbol: str = "",
+        market_type: str = "",
+    ):
         """保存分析状态到持久化存储"""
         try:
             fingerprint = self._get_browser_fingerprint()
@@ -56,16 +66,16 @@ class SessionPersistenceManager:
                 "market_type": market_type,
                 "timestamp": time.time(),
                 "fingerprint": fingerprint,
-                "last_update": time.time()
+                "last_update": time.time(),
             }
 
             # 保存到文件
-            with open(session_file, 'w', encoding='utf-8') as f:
+            with open(session_file, "w", encoding="utf-8") as f:
                 json.dump(session_data, f, ensure_ascii=False, indent=2)
 
             # 同时保存到session state
             st.session_state.current_analysis_id = analysis_id
-            st.session_state.analysis_running = (status == 'running')
+            st.session_state.analysis_running = status == "running"
             st.session_state.last_stock_symbol = stock_symbol
             st.session_state.last_market_type = market_type
 
@@ -86,7 +96,7 @@ class SessionPersistenceManager:
                 return None
 
             # 读取会话数据
-            with open(session_file, 'r', encoding='utf-8') as f:
+            with open(session_file, "r", encoding="utf-8") as f:
                 session_data = json.load(f)
 
             # 检查是否过期
@@ -113,7 +123,12 @@ class SessionPersistenceManager:
                 os.remove(session_file)
 
             # 清除session state
-            keys_to_remove = ['current_analysis_id', 'analysis_running', 'last_stock_symbol', 'last_market_type']
+            keys_to_remove = [
+                "current_analysis_id",
+                "analysis_running",
+                "last_stock_symbol",
+                "last_market_type",
+            ]
             for key in keys_to_remove:
                 if key in st.session_state:
                     del st.session_state[key]
@@ -131,15 +146,19 @@ class SessionPersistenceManager:
                 "fingerprint": fingerprint,
                 "session_file": session_file,
                 "file_exists": os.path.exists(session_file),
-                "session_state_keys": [k for k in st.session_state.keys() if 'analysis' in k.lower()]
+                "session_state_keys": [
+                    k for k in st.session_state.keys() if "analysis" in k.lower()
+                ],
             }
 
             if os.path.exists(session_file):
                 try:
-                    with open(session_file, 'r', encoding='utf-8') as f:
+                    with open(session_file, "r", encoding="utf-8") as f:
                         session_data = json.load(f)
                     debug_info["session_data"] = session_data
-                    debug_info["age_hours"] = (time.time() - session_data.get("timestamp", 0)) / 3600
+                    debug_info["age_hours"] = (
+                        time.time() - session_data.get("timestamp", 0)
+                    ) / 3600
                 except Exception as e:
                     debug_info["file_error"] = str(e)
 
@@ -148,30 +167,38 @@ class SessionPersistenceManager:
         except Exception as e:
             return {"error": str(e)}
 
+
 # 全局会话持久化管理器实例
 sessions = SessionPersistenceManager()
+
 
 def get_persistent_analysis_id() -> Optional[str]:
     """获取持久化的分析ID（优先级：session state > 会话文件 > Redis/文件）"""
     try:
         # 1. 首先检查session state
-        if st.session_state.get('current_analysis_id'):
+        if st.session_state.get("current_analysis_id"):
             return st.session_state.current_analysis_id
 
         # 2. 检查会话文件
         session_data = sessions.load_analysis_state()
         if session_data:
-            analysis_id = session_data.get('analysis_id')
+            analysis_id = session_data.get("analysis_id")
             if analysis_id:
                 # 恢复到session state
                 st.session_state.current_analysis_id = analysis_id
-                st.session_state.analysis_running = (session_data.get('status') == 'running')
-                st.session_state.last_stock_symbol = session_data.get('stock_symbol', '')
-                st.session_state.last_market_type = session_data.get('market_type', '')
+                st.session_state.analysis_running = (
+                    session_data.get("status") == "running"
+                )
+                st.session_state.last_stock_symbol = session_data.get(
+                    "stock_symbol", ""
+                )
+                st.session_state.last_market_type = session_data.get("market_type", "")
                 return analysis_id
 
         # 3. 最后从Redis/文件恢复最新分析
-        get_latest_analysis_id = getattr(importlib.import_module('web.utils.progress'), 'get_latest_analysis_id')
+        get_latest_analysis_id = getattr(
+            importlib.import_module("web.utils.progress"), "get_latest_analysis_id"
+        )
         latest_id = get_latest_analysis_id()
         if latest_id:
             st.session_state.current_analysis_id = latest_id
@@ -183,13 +210,18 @@ def get_persistent_analysis_id() -> Optional[str]:
         st.warning(f"⚠️ 获取持久化分析ID失败: {e}")
         return None
 
-def set_persistent_analysis_id(analysis_id: str, status: str = "running",
-                              stock_symbol: str = "", market_type: str = ""):
+
+def set_persistent_analysis_id(
+    analysis_id: str,
+    status: str = "running",
+    stock_symbol: str = "",
+    market_type: str = "",
+):
     """设置持久化的分析ID"""
     try:
         # 设置到session state
         st.session_state.current_analysis_id = analysis_id
-        st.session_state.analysis_running = (status == 'running')
+        st.session_state.analysis_running = status == "running"
         st.session_state.last_stock_symbol = stock_symbol
         st.session_state.last_market_type = market_type
 

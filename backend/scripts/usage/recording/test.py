@@ -2,16 +2,10 @@
 测试使用统计记录功能
 模拟一次分析并检查是否正确记录
 """
-import importlib
 
 import asyncio
-import sys
-from pathlib import Path
+import importlib
 from datetime import datetime
-
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 
 async def test_usage_recording():
@@ -22,10 +16,12 @@ async def test_usage_recording():
     # 1. 初始化数据库
     print("\n1️⃣ 初始化数据库...")
     try:
-        init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
-        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
+        init_db = getattr(importlib.import_module("app.core.database"), "init_db")
+        get_postgres_db = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db"
+        )
         await init_db()
-        db = get_mongo_db()
+        db = get_postgres_db()
         print("✅ 数据库初始化成功")
     except Exception as e:
         print(f"❌ 数据库初始化失败: {e}")
@@ -34,8 +30,12 @@ async def test_usage_recording():
     # 2. 创建测试使用记录
     print("\n2️⃣ 创建测试使用记录...")
     try:
-        UsageStatisticsService = getattr(importlib.import_module('app.services.usage'), 'UsageStatisticsService')
-        UsageRecord = getattr(importlib.import_module('app.models.config'), 'UsageRecord')
+        UsageStatisticsService = getattr(
+            importlib.import_module("app.services.usage"), "UsageStatisticsService"
+        )
+        UsageRecord = getattr(
+            importlib.import_module("app.models.config"), "UsageRecord"
+        )
 
         usage_service = UsageStatisticsService()
 
@@ -50,10 +50,10 @@ async def test_usage_recording():
             currency="CNY",
             session_id="test_session_001",
             analysis_type="stock_analysis",
-            stock_code="600519"
+            stock_code="600519",
         )
 
-        print(f"   记录内容:")
+        print("   记录内容:")
         print(f"     Provider: {test_record.provider}")
         print(f"     Model: {test_record.model_name}")
         print(f"     Tokens: {test_record.input_tokens} + {test_record.output_tokens}")
@@ -70,7 +70,7 @@ async def test_usage_recording():
             return
     except Exception as e:
         print(f"❌ 创建记录失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return
 
@@ -84,10 +84,12 @@ async def test_usage_recording():
 
         if saved_record:
             print("✅ 记录已保存到数据库")
-            print(f"   MongoDB _id: {saved_record['_id']}")
+            print(f"   PostgreSQL _id: {saved_record['_id']}")
             print(f"   Provider: {saved_record.get('provider', 'N/A')}")
             print(f"   Model: {saved_record.get('model_name', 'N/A')}")
-            print(f"   Cost: {saved_record.get('currency', 'N/A')} {saved_record.get('cost', 0):.4f}")
+            print(
+                f"   Cost: {saved_record.get('currency', 'N/A')} {saved_record.get('cost', 0):.4f}"
+            )
         else:
             print("❌ 数据库中找不到记录")
             return
@@ -111,7 +113,7 @@ async def test_usage_recording():
             print("⚠️  统计查询返回空数据")
     except Exception as e:
         print(f"❌ 统计查询失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
     # 5. 清理测试数据
@@ -135,26 +137,34 @@ async def test_analysis_service_recording():
     print("=" * 80)
 
     try:
-        init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
-        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
+        init_db = getattr(importlib.import_module("app.core.database"), "init_db")
+        get_postgres_db = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db"
+        )
         await init_db()
-        db = get_mongo_db()
+        db = get_postgres_db()
 
-        AnalysisService = getattr(importlib.import_module('app.services.analysis.service'), 'AnalysisService')
-        AnalysisTask = getattr(importlib.import_module('app.models.analysis'), 'AnalysisTask')
-        AnalysisResult = getattr(importlib.import_module('app.models.analysis'), 'AnalysisResult')
-        ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
+        AnalysisService = getattr(
+            importlib.import_module("app.services.analysis.service"), "AnalysisService"
+        )
+        AnalysisTask = getattr(
+            importlib.import_module("app.models.analysis"), "AnalysisTask"
+        )
+        AnalysisResult = getattr(
+            importlib.import_module("app.models.analysis"), "AnalysisResult"
+        )
+        DocumentId = getattr(importlib.import_module("app.db.ids"), "DocumentId")
 
         # 创建模拟任务
         task = AnalysisTask(
             task_id="test_task_001",
-            user_id=ObjectId(),  # 添加必需的 user_id 字段
+            user_id=DocumentId(),  # 添加必需的 user_id 字段
             symbol="600519",
             market="CN",
             start_date="2024-01-01",
             end_date="2024-12-31",
             llm_provider="dashscope",
-            llm_model="qwen-plus"
+            llm_model="qwen-plus",
         )
 
         # 创建模拟结果
@@ -164,7 +174,7 @@ async def test_analysis_service_recording():
             market="CN",
             analysis_content="测试分析内容",
             tokens_used=3000,
-            status="completed"
+            status="completed",
         )
 
         # 测试记录方法
@@ -179,8 +189,12 @@ async def test_analysis_service_recording():
             print("✅ 分析服务记录功能正常")
             print(f"   Provider: {saved_record.get('provider', 'N/A')}")
             print(f"   Model: {saved_record.get('model_name', 'N/A')}")
-            print(f"   Tokens: {saved_record.get('input_tokens', 0)} + {saved_record.get('output_tokens', 0)}")
-            print(f"   Cost: {saved_record.get('currency', 'N/A')} {saved_record.get('cost', 0):.4f}")
+            print(
+                f"   Tokens: {saved_record.get('input_tokens', 0)} + {saved_record.get('output_tokens', 0)}"
+            )
+            print(
+                f"   Cost: {saved_record.get('currency', 'N/A')} {saved_record.get('cost', 0):.4f}"
+            )
 
             # 清理测试数据
             await collection.delete_many({"session_id": "test_task_001"})
@@ -190,7 +204,7 @@ async def test_analysis_service_recording():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 

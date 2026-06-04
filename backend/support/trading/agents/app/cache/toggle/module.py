@@ -1,21 +1,19 @@
 import importlib
 import os
-import types
-import builtins
+from typing import Any, Dict, Optional
+
 import pandas as pd
 import pytest
-
-from typing import Any, Dict, Optional
 
 
 class DummyDBManager:
     def __init__(self, available: bool = True):
         self._available = available
 
-    def is_mongodb_available(self) -> bool:
+    def is_postgres_available(self) -> bool:
         return self._available
 
-    def get_mongodb_client(self):
+    def get_postgres_client(self):
         return object()
 
 
@@ -36,10 +34,12 @@ def test_basics_prefers_app_cache_when_enabled(monkeypatch):
     os.environ["TA_USE_APP_CACHE"] = "true"
 
     # Ensure API branch is reachable in case of fallback
-    sds_mod = importlib.import_module('trader.flows.service')
+    sds_mod = importlib.import_module("trader.flows.service")
     monkeypatch.setattr(sds_mod, "ENHANCED_FETCHER_AVAILABLE", True, raising=False)
 
-    StockDataService = getattr(importlib.import_module('trader.flows.service'), 'StockDataService')
+    StockDataService = getattr(
+        importlib.import_module("trader.flows.service"), "StockDataService"
+    )
 
     svc = StockDataService()
     # Inject dummy db_manager
@@ -47,19 +47,25 @@ def test_basics_prefers_app_cache_when_enabled(monkeypatch):
 
     called = {"api": False}
 
-    def fake_from_mongo(stock_code: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        return {"code": stock_code or "000001", "name": "平安银行", "source": "mongo"}
+    def fake_from_postgres(
+        stock_code: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        return {
+            "code": stock_code or "000001",
+            "name": "平安银行",
+            "source": "postgres",
+        }
 
     def fake_from_api(stock_code: Optional[str] = None) -> Optional[Dict[str, Any]]:
         called["api"] = True
         return {"code": stock_code or "000001", "name": "平安银行", "source": "api"}
 
-    monkeypatch.setattr(svc, "_get_from_mongodb", fake_from_mongo)
+    monkeypatch.setattr(svc, "_get_from_postgres", fake_from_postgres)
     monkeypatch.setattr(svc, "_get_from_tdx_api", fake_from_api)
 
     res = svc.get_stock_basic_info("000001")
     assert isinstance(res, dict)
-    assert res.get("source") == "mongo"
+    assert res.get("source") == "postgres"
     assert called["api"] is False  # API should not be called when cache hits
 
 
@@ -67,27 +73,31 @@ def test_basics_fallback_to_api_when_cache_miss(monkeypatch):
     os.environ["TA_USE_APP_CACHE"] = "true"
 
     # Ensure API branch enabled
-    sds_mod = importlib.import_module('trader.flows.service')
+    sds_mod = importlib.import_module("trader.flows.service")
     monkeypatch.setattr(sds_mod, "ENHANCED_FETCHER_AVAILABLE", True, raising=False)
 
-    StockDataService = getattr(importlib.import_module('trader.flows.service'), 'StockDataService')
+    StockDataService = getattr(
+        importlib.import_module("trader.flows.service"), "StockDataService"
+    )
 
     svc = StockDataService()
     monkeypatch.setattr(svc, "db_manager", DummyDBManager(True))
 
     called = {"api": False}
 
-    def miss_from_mongo(stock_code: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def miss_from_postgres(
+        stock_code: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
         return None
 
     def fake_from_api(stock_code: Optional[str] = None) -> Optional[Dict[str, Any]]:
         called["api"] = True
         return {"code": stock_code or "000001", "name": "平安银行", "source": "api"}
 
-    monkeypatch.setattr(svc, "_get_from_mongodb", miss_from_mongo)
+    monkeypatch.setattr(svc, "_get_from_postgres", miss_from_postgres)
     monkeypatch.setattr(svc, "_get_from_tdx_api", fake_from_api)
-    # avoid cache-to-mongo side effect raising inside try
-    monkeypatch.setattr(svc, "_cache_to_mongodb", lambda data: True)
+    # avoid cache-to-postgres side effect raising inside try
+    monkeypatch.setattr(svc, "_cache_to_postgres", lambda data: True)
 
     res = svc.get_stock_basic_info("000001")
     assert isinstance(res, dict)
@@ -99,10 +109,12 @@ def test_basics_direct_first_when_disabled(monkeypatch):
     os.environ["TA_USE_APP_CACHE"] = "false"
 
     # Ensure API branch enabled
-    sds_mod = importlib.import_module('trader.flows.service')
+    sds_mod = importlib.import_module("trader.flows.service")
     monkeypatch.setattr(sds_mod, "ENHANCED_FETCHER_AVAILABLE", True, raising=False)
 
-    StockDataService = getattr(importlib.import_module('trader.flows.service'), 'StockDataService')
+    StockDataService = getattr(
+        importlib.import_module("trader.flows.service"), "StockDataService"
+    )
 
     svc = StockDataService()
     monkeypatch.setattr(svc, "db_manager", DummyDBManager(True))
@@ -113,14 +125,20 @@ def test_basics_direct_first_when_disabled(monkeypatch):
         order.append("api")
         return {"code": stock_code or "000001", "name": "平安银行", "source": "api"}
 
-    def fake_from_mongo(stock_code: Optional[str] = None) -> Optional[Dict[str, Any]]:
-        order.append("mongo")
-        return {"code": stock_code or "000001", "name": "平安银行", "source": "mongo"}
+    def fake_from_postgres(
+        stock_code: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        order.append("postgres")
+        return {
+            "code": stock_code or "000001",
+            "name": "平安银行",
+            "source": "postgres",
+        }
 
     monkeypatch.setattr(svc, "_get_from_tdx_api", fake_from_api)
-    monkeypatch.setattr(svc, "_get_from_mongodb", fake_from_mongo)
-    # avoid cache-to-mongo side effect raising inside try
-    monkeypatch.setattr(svc, "_cache_to_mongodb", lambda data: True)
+    monkeypatch.setattr(svc, "_get_from_postgres", fake_from_postgres)
+    # avoid cache-to-postgres side effect raising inside try
+    monkeypatch.setattr(svc, "_cache_to_postgres", lambda data: True)
 
     res = svc.get_stock_basic_info("000001")
     assert isinstance(res, dict)
@@ -132,35 +150,43 @@ def test_realtime_quotes_prefers_app_market_quotes(monkeypatch):
     os.environ["TA_USE_APP_CACHE"] = "true"
 
     # Patch the app_cache_adapter before TushareAdapter tries to import from it
-    app_cache_adapter = importlib.import_module('trader.flows.app')
+    app_cache_adapter = importlib.import_module("trader.flows.app")
 
     def fake_get_market_quote_dataframe(symbol: str):
         # Return a minimal dataframe resembling the adapter output
-        return pd.DataFrame([
-            {
-                "code": symbol,
-                "date": "20250101",
-                "open": 10.0,
-                "high": 11.0,
-                "low": 9.5,
-                "close": 10.5,
-                "volume": 1000000,
-                "amount": 5000000,
-                "pct_chg": 1.2,
-                "change": 0.12,
-            }
-        ])
+        return pd.DataFrame(
+            [
+                {
+                    "code": symbol,
+                    "date": "20250101",
+                    "open": 10.0,
+                    "high": 11.0,
+                    "low": 9.5,
+                    "close": 10.5,
+                    "volume": 1000000,
+                    "amount": 5000000,
+                    "pct_chg": 1.2,
+                    "change": 0.12,
+                }
+            ]
+        )
 
-    monkeypatch.setattr(app_cache_adapter, "get_market_quote_dataframe", fake_get_market_quote_dataframe)
+    monkeypatch.setattr(
+        app_cache_adapter, "get_market_quote_dataframe", fake_get_market_quote_dataframe
+    )
 
-    TushareDataAdapter = getattr(importlib.import_module('trader.flows.adapter'), 'TushareDataAdapter')
+    TushareDataAdapter = getattr(
+        importlib.import_module("trader.flows.adapter"), "TushareDataAdapter"
+    )
 
     # Create adapter and stub provider to avoid real Tushare calls
     ada = TushareDataAdapter(enable_cache=False)
+
     class DummyProvider:
         def get_stock_daily(self, symbol, start_date, end_date):
             # Should not be called because cache will be used
             return pd.DataFrame()
+
     ada.provider = DummyProvider()
 
     # Also make standardizer identity to simplify assertion

@@ -3,11 +3,13 @@
 BaoStock统一数据提供器
 实现BaseStockDataProvider接口，提供标准化的BaoStock数据访问
 """
-import importlib
+
 import asyncio
+import importlib
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, cast
+
 import pandas as pd
 
 from ..base import BaseStockDataProvider
@@ -28,7 +30,7 @@ class BaoStockProvider(BaseStockDataProvider):
     def _init_baostock(self):
         """初始化BaoStock连接"""
         try:
-            bs = importlib.import_module('baostock')
+            bs = importlib.import_module("baostock")
             self.bs = bs
             logger.info("🔧 BaoStock模块加载成功")
             self.connected = True
@@ -52,7 +54,7 @@ class BaoStockProvider(BaseStockDataProvider):
             # 异步测试登录
             def test_login():
                 lg = self.bs.login()
-                if lg.error_code != '0':
+                if lg.error_code != "0":
                     raise Exception(f"登录失败: {lg.error_msg}")
                 self.bs.logout()
                 return True
@@ -73,18 +75,18 @@ class BaoStockProvider(BaseStockDataProvider):
             logger.info("📋 获取BaoStock股票列表（同步）...")
 
             lg = self.bs.login()
-            if lg.error_code != '0':
+            if lg.error_code != "0":
                 logger.error(f"BaoStock登录失败: {lg.error_msg}")
                 return None
 
             try:
                 rs = self.bs.query_stock_basic()
-                if rs.error_code != '0':
+                if rs.error_code != "0":
                     logger.error(f"BaoStock查询失败: {rs.error_msg}")
                     return None
 
                 data_list = []
-                while (rs.error_code == '0') & rs.next():
+                while (rs.error_code == "0") & rs.next():
                     data_list.append(rs.get_row_data())
 
                 if not data_list:
@@ -95,7 +97,7 @@ class BaoStockProvider(BaseStockDataProvider):
                 df = pd.DataFrame(data_list, columns=rs.fields)
 
                 # 只保留股票类型（type=1）
-                df = df[df['type'] == '1']
+                df = df[df["type"] == "1"]
 
                 logger.info(f"✅ BaoStock股票列表获取成功: {len(df)}只股票")
                 return cast(pd.DataFrame, df)
@@ -122,16 +124,16 @@ class BaoStockProvider(BaseStockDataProvider):
 
             def fetch_stock_list():
                 lg = self.bs.login()
-                if lg.error_code != '0':
+                if lg.error_code != "0":
                     raise Exception(f"登录失败: {lg.error_msg}")
 
                 try:
                     rs = self.bs.query_stock_basic()
-                    if rs.error_code != '0':
+                    if rs.error_code != "0":
                         raise Exception(f"查询失败: {rs.error_msg}")
 
                     data_list = []
-                    while (rs.error_code == '0') & rs.next():
+                    while (rs.error_code == "0") & rs.next():
                         data_list.append(rs.get_row_data())
 
                     return data_list, rs.fields
@@ -150,18 +152,20 @@ class BaoStockProvider(BaseStockDataProvider):
                 if len(row) >= 6:
                     code = row[0]  # code
                     name = row[1]  # code_name
-                    stock_type = row[4] if len(row) > 4 else '0'  # type
-                    status = row[5] if len(row) > 5 else '0'  # status
+                    stock_type = row[4] if len(row) > 4 else "0"  # type
+                    status = row[5] if len(row) > 5 else "0"  # status
 
                     # 只保留A股股票 (type=1, status=1)
-                    if stock_type == '1' and status == '1':
+                    if stock_type == "1" and status == "1":
                         # 转换代码格式 sh.600000 -> 600000
-                        clean_code = code.replace('sh.', '').replace('sz.', '')
-                        stock_list.append({
-                            "code": clean_code,
-                            "name": str(name),
-                            "source": "baostock"
-                        })
+                        clean_code = code.replace("sh.", "").replace("sz.", "")
+                        stock_list.append(
+                            {
+                                "code": clean_code,
+                                "name": str(name),
+                                "source": "baostock",
+                            }
+                        )
 
             logger.info(f"✅ BaoStock股票列表获取成功: {len(stock_list)}只股票")
             return stock_list
@@ -198,14 +202,16 @@ class BaoStockProvider(BaseStockDataProvider):
                 "market_info": self._get_market_info(code),
                 "data_source": "baostock",
                 "last_sync": datetime.now(timezone.utc),
-                "sync_status": "success"
+                "sync_status": "success",
             }
 
         except Exception as e:
             logger.error(f"❌ BaoStock获取{code}基础信息失败: {e}")
             return {}
 
-    async def get_valuation_data(self, code: str, trade_date: Optional[str] = None) -> Dict[str, Any]:
+    async def get_valuation_data(
+        self, code: str, trade_date: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         获取股票估值数据（PE、PB、PS、PCF等）
 
@@ -222,8 +228,8 @@ class BaoStockProvider(BaseStockDataProvider):
         try:
             # 如果没有指定日期，使用最近5天（确保能获取到最新交易日数据）
             if not trade_date:
-                end_date = datetime.now().strftime('%Y-%m-%d')
-                start_date = (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d')
+                end_date = datetime.now().strftime("%Y-%m-%d")
+                start_date = (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d")
             else:
                 start_date = trade_date
                 end_date = trade_date
@@ -233,7 +239,7 @@ class BaoStockProvider(BaseStockDataProvider):
             def fetch_valuation_data():
                 bs_code = self._to_baostock_code(code)
                 lg = self.bs.login()
-                if lg.error_code != '0':
+                if lg.error_code != "0":
                     raise Exception(f"登录失败: {lg.error_msg}")
 
                 try:
@@ -244,14 +250,14 @@ class BaoStockProvider(BaseStockDataProvider):
                         start_date=start_date,
                         end_date=end_date,
                         frequency="d",
-                        adjustflag="3"  # 不复权
+                        adjustflag="3",  # 不复权
                     )
 
-                    if rs.error_code != '0':
+                    if rs.error_code != "0":
                         raise Exception(f"查询失败: {rs.error_msg}")
 
                     data_list = []
-                    while (rs.error_code == '0') & rs.next():
+                    while (rs.error_code == "0") & rs.next():
                         data_list.append(rs.get_row_data())
 
                     return data_list, rs.fields
@@ -271,14 +277,26 @@ class BaoStockProvider(BaseStockDataProvider):
             valuation_data = {
                 "date": latest_row[0] if len(latest_row) > 0 else None,
                 "code": code,
-                "close": self._safe_float(latest_row[2]) if len(latest_row) > 2 else None,
-                "pe_ttm": self._safe_float(latest_row[3]) if len(latest_row) > 3 else None,
-                "pb_mrq": self._safe_float(latest_row[4]) if len(latest_row) > 4 else None,
-                "ps_ttm": self._safe_float(latest_row[5]) if len(latest_row) > 5 else None,
-                "pcf_ttm": self._safe_float(latest_row[6]) if len(latest_row) > 6 else None,
+                "close": self._safe_float(latest_row[2])
+                if len(latest_row) > 2
+                else None,
+                "pe_ttm": self._safe_float(latest_row[3])
+                if len(latest_row) > 3
+                else None,
+                "pb_mrq": self._safe_float(latest_row[4])
+                if len(latest_row) > 4
+                else None,
+                "ps_ttm": self._safe_float(latest_row[5])
+                if len(latest_row) > 5
+                else None,
+                "pcf_ttm": self._safe_float(latest_row[6])
+                if len(latest_row) > 6
+                else None,
             }
 
-            logger.debug(f"✅ {code}估值数据获取成功: PE={valuation_data['pe_ttm']}, PB={valuation_data['pb_mrq']}")
+            logger.debug(
+                f"✅ {code}估值数据获取成功: PE={valuation_data['pe_ttm']}, PB={valuation_data['pb_mrq']}"
+            )
             return valuation_data
 
         except Exception as e:
@@ -288,19 +306,20 @@ class BaoStockProvider(BaseStockDataProvider):
     async def _get_stock_info_detail(self, code: str) -> Dict[str, Any]:
         """获取股票详细信息"""
         try:
+
             def fetch_stock_info():
                 bs_code = self._to_baostock_code(code)
                 lg = self.bs.login()
-                if lg.error_code != '0':
+                if lg.error_code != "0":
                     raise Exception(f"登录失败: {lg.error_msg}")
 
                 try:
                     rs = self.bs.query_stock_basic(code=bs_code)
-                    if rs.error_code != '0':
+                    if rs.error_code != "0":
                         return {"code": code, "name": f"股票{code}"}
 
                     data_list = []
-                    while (rs.error_code == '0') & rs.next():
+                    while (rs.error_code == "0") & rs.next():
                         data_list.append(rs.get_row_data())
 
                     if not data_list:
@@ -309,10 +328,12 @@ class BaoStockProvider(BaseStockDataProvider):
                     row = data_list[0]
                     return {
                         "code": code,
-                        "name": str(row[1]) if len(row) > 1 else f"股票{code}",  # code_name
+                        "name": str(row[1])
+                        if len(row) > 1
+                        else f"股票{code}",  # code_name
                         "list_date": str(row[2]) if len(row) > 2 else "",  # ipoDate
                         "industry": "未知",  # BaoStock基础信息不包含行业
-                        "area": "未知"  # BaoStock基础信息不包含地区
+                        "area": "未知",  # BaoStock基础信息不包含地区
                     }
                 finally:
                     self.bs.logout()
@@ -321,7 +342,12 @@ class BaoStockProvider(BaseStockDataProvider):
 
         except Exception as e:
             logger.debug(f"获取{code}详细信息失败: {e}")
-            return {"code": code, "name": f"股票{code}", "industry": "未知", "area": "未知"}
+            return {
+                "code": code,
+                "name": f"股票{code}",
+                "industry": "未知",
+                "area": "未知",
+            }
 
     async def get_stock_quotes(self, code: str) -> Dict[str, Any]:
         """
@@ -360,7 +386,7 @@ class BaoStockProvider(BaseStockDataProvider):
                 "market_info": self._get_market_info(code),
                 "data_source": "baostock",
                 "last_sync": datetime.now(timezone.utc),
-                "sync_status": "success"
+                "sync_status": "success",
             }
 
         except Exception as e:
@@ -370,16 +396,19 @@ class BaoStockProvider(BaseStockDataProvider):
     async def _get_latest_kline_data(self, code: str) -> Dict[str, Any]:
         """获取最新K线数据作为行情"""
         try:
+
             def fetch_latest_kline():
                 bs_code = self._to_baostock_code(code)
                 lg = self.bs.login()
-                if lg.error_code != '0':
+                if lg.error_code != "0":
                     raise Exception(f"登录失败: {lg.error_msg}")
 
                 try:
                     # 获取最近5天的数据
-                    end_date = datetime.now().strftime('%Y-%m-%d')
-                    start_date = (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d')
+                    end_date = datetime.now().strftime("%Y-%m-%d")
+                    start_date = (datetime.now() - timedelta(days=5)).strftime(
+                        "%Y-%m-%d"
+                    )
 
                     rs = self.bs.query_history_k_data_plus(
                         code=bs_code,
@@ -387,14 +416,14 @@ class BaoStockProvider(BaseStockDataProvider):
                         start_date=start_date,
                         end_date=end_date,
                         frequency="d",
-                        adjustflag="3"
+                        adjustflag="3",
                     )
 
-                    if rs.error_code != '0':
+                    if rs.error_code != "0":
                         return {}
 
                     data_list = []
-                    while (rs.error_code == '0') & rs.next():
+                    while (rs.error_code == "0") & rs.next():
                         data_list.append(rs.get_row_data())
 
                     if not data_list:
@@ -412,7 +441,8 @@ class BaoStockProvider(BaseStockDataProvider):
                         "volume": self._safe_int(latest_row[7]),
                         "amount": self._safe_float(latest_row[8]),
                         "change_percent": self._safe_float(latest_row[9]),
-                        "change": self._safe_float(latest_row[5]) - self._safe_float(latest_row[6])
+                        "change": self._safe_float(latest_row[5])
+                        - self._safe_float(latest_row[6]),
                     }
                 finally:
                     self.bs.logout()
@@ -427,22 +457,22 @@ class BaoStockProvider(BaseStockDataProvider):
         """转换为BaoStock代码格式"""
         s = str(symbol).strip().upper()
         # 处理 600519.SH / 000001.SZ / 600519 / 000001
-        if s.endswith('.SH') or s.endswith('.SZ'):
-            code, exch = s.split('.')
-            prefix = 'sh' if exch == 'SH' else 'sz'
+        if s.endswith(".SH") or s.endswith(".SZ"):
+            code, exch = s.split(".")
+            prefix = "sh" if exch == "SH" else "sz"
             return f"{prefix}.{code}"
         # 6 开头上交所，否则深交所（简化规则）
-        if len(s) >= 6 and s[0] == '6':
+        if len(s) >= 6 and s[0] == "6":
             return f"sh.{s[:6]}"
         return f"sz.{s[:6]}"
 
     def _determine_market(self, code: str) -> str:
         """确定股票所属市场"""
-        if code.startswith('6'):
+        if code.startswith("6"):
             return "上海证券交易所"
-        elif code.startswith('0') or code.startswith('3'):
+        elif code.startswith("0") or code.startswith("3"):
             return "深圳证券交易所"
-        elif code.startswith('8'):
+        elif code.startswith("8"):
             return "北京证券交易所"
         else:
             return "未知市场"
@@ -465,11 +495,11 @@ class BaoStockProvider(BaseStockDataProvider):
         code = str(code).strip()
 
         # 根据代码前缀判断交易所
-        if code.startswith(('6', '9')):  # 上海证券交易所（增加9开头的B股）
+        if code.startswith(("6", "9")):  # 上海证券交易所（增加9开头的B股）
             return f"{code}.SS"
-        elif code.startswith(('0', '3', '2')):  # 深圳证券交易所（增加2开头的B股）
+        elif code.startswith(("0", "3", "2")):  # 深圳证券交易所（增加2开头的B股）
             return f"{code}.SZ"
-        elif code.startswith(('8', '4')):  # 北京证券交易所（增加4开头的新三板）
+        elif code.startswith(("8", "4")):  # 北京证券交易所（增加4开头的新三板）
             return f"{code}.BJ"
         else:
             # 无法识别的代码，返回原始代码（确保不为空）
@@ -477,29 +507,29 @@ class BaoStockProvider(BaseStockDataProvider):
 
     def _get_market_info(self, code: str) -> Dict[str, Any]:
         """获取市场信息"""
-        if code.startswith('6'):
+        if code.startswith("6"):
             return {
                 "market_type": "CN",
                 "exchange": "SSE",
                 "exchange_name": "上海证券交易所",
                 "currency": "CNY",
-                "timezone": "Asia/Shanghai"
+                "timezone": "Asia/Shanghai",
             }
-        elif code.startswith('0') or code.startswith('3'):
+        elif code.startswith("0") or code.startswith("3"):
             return {
                 "market_type": "CN",
                 "exchange": "SZSE",
                 "exchange_name": "深圳证券交易所",
                 "currency": "CNY",
-                "timezone": "Asia/Shanghai"
+                "timezone": "Asia/Shanghai",
             }
-        elif code.startswith('8'):
+        elif code.startswith("8"):
             return {
                 "market_type": "CN",
                 "exchange": "BSE",
                 "exchange_name": "北京证券交易所",
                 "currency": "CNY",
-                "timezone": "Asia/Shanghai"
+                "timezone": "Asia/Shanghai",
             }
         else:
             return {
@@ -507,13 +537,13 @@ class BaoStockProvider(BaseStockDataProvider):
                 "exchange": "UNKNOWN",
                 "exchange_name": "未知交易所",
                 "currency": "CNY",
-                "timezone": "Asia/Shanghai"
+                "timezone": "Asia/Shanghai",
             }
 
     def _safe_float(self, value: Any) -> float:
         """安全转换为浮点数"""
         try:
-            if value is None or value == '' or value == 'None':
+            if value is None or value == "" or value == "None":
                 return 0.0
             return float(value)
         except (ValueError, TypeError):
@@ -522,7 +552,7 @@ class BaoStockProvider(BaseStockDataProvider):
     def _safe_int(self, value: Any) -> int:
         """安全转换为整数"""
         try:
-            if value is None or value == '' or value == 'None':
+            if value is None or value == "" or value == "None":
                 return 0
             return int(float(value))
         except (ValueError, TypeError):
@@ -534,11 +564,12 @@ class BaoStockProvider(BaseStockDataProvider):
             if value is None:
                 return ""
             return str(value)
-        except:
+        except Exception:
             return ""
 
-    async def get_historical_data(self, code: str, start_date: str, end_date: str,
-                                period: str = "daily") -> Optional[pd.DataFrame]:
+    async def get_historical_data(
+        self, code: str, start_date: str, end_date: str, period: str = "daily"
+    ) -> Optional[pd.DataFrame]:
         """
         获取历史数据
 
@@ -558,17 +589,13 @@ class BaoStockProvider(BaseStockDataProvider):
             logger.info(f"📊 获取BaoStock历史数据: {code} ({start_date} 到 {end_date})")
 
             # 转换周期参数
-            frequency_map = {
-                "daily": "d",
-                "weekly": "w",
-                "monthly": "m"
-            }
+            frequency_map = {"daily": "d", "weekly": "w", "monthly": "m"}
             bs_frequency = frequency_map.get(period, "d")
 
             def fetch_historical_data():
                 bs_code = self._to_baostock_code(code)
                 lg = self.bs.login()
-                if lg.error_code != '0':
+                if lg.error_code != "0":
                     raise Exception(f"登录失败: {lg.error_msg}")
 
                 try:
@@ -577,7 +604,9 @@ class BaoStockProvider(BaseStockDataProvider):
                         fields_str = "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,pctChg,isST"
                     else:
                         # 周线和月线只支持基础字段
-                        fields_str = "date,code,open,high,low,close,volume,amount,pctChg"
+                        fields_str = (
+                            "date,code,open,high,low,close,volume,amount,pctChg"
+                        )
 
                     rs = self.bs.query_history_k_data_plus(
                         code=bs_code,
@@ -585,14 +614,14 @@ class BaoStockProvider(BaseStockDataProvider):
                         start_date=start_date,
                         end_date=end_date,
                         frequency=bs_frequency,
-                        adjustflag="2"  # 前复权
+                        adjustflag="2",  # 前复权
                     )
 
-                    if rs.error_code != '0':
+                    if rs.error_code != "0":
                         raise Exception(f"查询失败: {rs.error_msg}")
 
                     data_list = []
-                    while (rs.error_code == '0') & rs.next():
+                    while (rs.error_code == "0") & rs.next():
                         data_list.append(rs.get_row_data())
 
                     return data_list, rs.fields
@@ -609,24 +638,32 @@ class BaoStockProvider(BaseStockDataProvider):
             df = pd.DataFrame(data_list, columns=fields)
 
             # 数据类型转换
-            numeric_cols = ['open', 'high', 'low', 'close', 'preclose', 'volume', 'amount', 'pctChg', 'turn']
+            numeric_cols = [
+                "open",
+                "high",
+                "low",
+                "close",
+                "preclose",
+                "volume",
+                "amount",
+                "pctChg",
+                "turn",
+            ]
             for col in numeric_cols:
                 if col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                    df[col] = pd.to_numeric(df[col], errors="coerce")
 
             # 如果没有preclose字段，使用前一日收盘价估算
-            if 'preclose' not in df.columns and len(df) > 0:
-                df['preclose'] = df['close'].shift(1)
-                df.loc[0, 'preclose'] = df.loc[0, 'close']  # 第一行使用当日收盘价
+            if "preclose" not in df.columns and len(df) > 0:
+                df["preclose"] = df["close"].shift(1)
+                df.loc[0, "preclose"] = df.loc[0, "close"]  # 第一行使用当日收盘价
 
             # 标准化列名
-            df = df.rename(columns={
-                'pctChg': 'change_percent'
-            })
+            df = df.rename(columns={"pctChg": "change_percent"})
 
             # 添加标准化字段
-            df['股票代码'] = code
-            df['full_symbol'] = self._get_full_symbol(code)
+            df["股票代码"] = code
+            df["full_symbol"] = self._get_full_symbol(code)
 
             logger.info(f"✅ BaoStock历史数据获取成功: {code}, {len(df)}条记录")
             return df
@@ -635,8 +672,9 @@ class BaoStockProvider(BaseStockDataProvider):
             logger.error(f"❌ BaoStock获取{code}历史数据失败: {e}")
             return None
 
-    async def get_financial_data(self, code: str, year: Optional[int] = None,
-                               quarter: Optional[int] = None) -> Dict[str, Any]:
+    async def get_financial_data(
+        self, code: str, year: Optional[int] = None, quarter: Optional[int] = None
+    ) -> Dict[str, Any]:
         """
         获取财务数据
 
@@ -667,7 +705,7 @@ class BaoStockProvider(BaseStockDataProvider):
             try:
                 profit_data = await self._get_profit_data(code, year, quarter)
                 if profit_data:
-                    financial_data['profit_data'] = profit_data
+                    financial_data["profit_data"] = profit_data
                     logger.debug(f"✅ {code}盈利能力数据获取成功")
             except Exception as e:
                 logger.debug(f"获取{code}盈利能力数据失败: {e}")
@@ -676,7 +714,7 @@ class BaoStockProvider(BaseStockDataProvider):
             try:
                 operation_data = await self._get_operation_data(code, year, quarter)
                 if operation_data:
-                    financial_data['operation_data'] = operation_data
+                    financial_data["operation_data"] = operation_data
                     logger.debug(f"✅ {code}营运能力数据获取成功")
             except Exception as e:
                 logger.debug(f"获取{code}营运能力数据失败: {e}")
@@ -685,7 +723,7 @@ class BaoStockProvider(BaseStockDataProvider):
             try:
                 growth_data = await self._get_growth_data(code, year, quarter)
                 if growth_data:
-                    financial_data['growth_data'] = growth_data
+                    financial_data["growth_data"] = growth_data
                     logger.debug(f"✅ {code}成长能力数据获取成功")
             except Exception as e:
                 logger.debug(f"获取{code}成长能力数据失败: {e}")
@@ -694,7 +732,7 @@ class BaoStockProvider(BaseStockDataProvider):
             try:
                 balance_data = await self._get_balance_data(code, year, quarter)
                 if balance_data:
-                    financial_data['balance_data'] = balance_data
+                    financial_data["balance_data"] = balance_data
                     logger.debug(f"✅ {code}偿债能力数据获取成功")
             except Exception as e:
                 logger.debug(f"获取{code}偿债能力数据失败: {e}")
@@ -703,13 +741,15 @@ class BaoStockProvider(BaseStockDataProvider):
             try:
                 cash_flow_data = await self._get_cash_flow_data(code, year, quarter)
                 if cash_flow_data:
-                    financial_data['cash_flow_data'] = cash_flow_data
+                    financial_data["cash_flow_data"] = cash_flow_data
                     logger.debug(f"✅ {code}现金流量数据获取成功")
             except Exception as e:
                 logger.debug(f"获取{code}现金流量数据失败: {e}")
 
             if financial_data:
-                logger.info(f"✅ BaoStock财务数据获取成功: {code}, {len(financial_data)}个数据集")
+                logger.info(
+                    f"✅ BaoStock财务数据获取成功: {code}, {len(financial_data)}个数据集"
+                )
             else:
                 logger.warning(f"⚠️ BaoStock财务数据为空: {code}")
 
@@ -719,22 +759,27 @@ class BaoStockProvider(BaseStockDataProvider):
             logger.error(f"❌ BaoStock获取{code}财务数据失败: {e}")
             return {}
 
-    async def _get_profit_data(self, code: str, year: int, quarter: int) -> Optional[Dict[str, Any]]:
+    async def _get_profit_data(
+        self, code: str, year: int, quarter: int
+    ) -> Optional[Dict[str, Any]]:
         """获取盈利能力数据"""
         try:
+
             def fetch_profit_data():
                 bs_code = self._to_baostock_code(code)
                 lg = self.bs.login()
-                if lg.error_code != '0':
+                if lg.error_code != "0":
                     raise Exception(f"登录失败: {lg.error_msg}")
 
                 try:
-                    rs = self.bs.query_profit_data(code=bs_code, year=year, quarter=quarter)
-                    if rs.error_code != '0':
+                    rs = self.bs.query_profit_data(
+                        code=bs_code, year=year, quarter=quarter
+                    )
+                    if rs.error_code != "0":
                         return None
 
                     data_list = []
-                    while (rs.error_code == '0') & rs.next():
+                    while (rs.error_code == "0") & rs.next():
                         data_list.append(rs.get_row_data())
 
                     return data_list, rs.fields
@@ -747,28 +792,33 @@ class BaoStockProvider(BaseStockDataProvider):
 
             data_list, fields = result
             df = pd.DataFrame(data_list, columns=fields)
-            return df.to_dict('records')[0] if not df.empty else None
+            return df.to_dict("records")[0] if not df.empty else None
 
         except Exception as e:
             logger.debug(f"获取{code}盈利能力数据失败: {e}")
             return None
 
-    async def _get_operation_data(self, code: str, year: int, quarter: int) -> Optional[Dict[str, Any]]:
+    async def _get_operation_data(
+        self, code: str, year: int, quarter: int
+    ) -> Optional[Dict[str, Any]]:
         """获取营运能力数据"""
         try:
+
             def fetch_operation_data():
                 bs_code = self._to_baostock_code(code)
                 lg = self.bs.login()
-                if lg.error_code != '0':
+                if lg.error_code != "0":
                     raise Exception(f"登录失败: {lg.error_msg}")
 
                 try:
-                    rs = self.bs.query_operation_data(code=bs_code, year=year, quarter=quarter)
-                    if rs.error_code != '0':
+                    rs = self.bs.query_operation_data(
+                        code=bs_code, year=year, quarter=quarter
+                    )
+                    if rs.error_code != "0":
                         return None
 
                     data_list = []
-                    while (rs.error_code == '0') & rs.next():
+                    while (rs.error_code == "0") & rs.next():
                         data_list.append(rs.get_row_data())
 
                     return data_list, rs.fields
@@ -781,28 +831,33 @@ class BaoStockProvider(BaseStockDataProvider):
 
             data_list, fields = result
             df = pd.DataFrame(data_list, columns=fields)
-            return df.to_dict('records')[0] if not df.empty else None
+            return df.to_dict("records")[0] if not df.empty else None
 
         except Exception as e:
             logger.debug(f"获取{code}营运能力数据失败: {e}")
             return None
 
-    async def _get_growth_data(self, code: str, year: int, quarter: int) -> Optional[Dict[str, Any]]:
+    async def _get_growth_data(
+        self, code: str, year: int, quarter: int
+    ) -> Optional[Dict[str, Any]]:
         """获取成长能力数据"""
         try:
+
             def fetch_growth_data():
                 bs_code = self._to_baostock_code(code)
                 lg = self.bs.login()
-                if lg.error_code != '0':
+                if lg.error_code != "0":
                     raise Exception(f"登录失败: {lg.error_msg}")
 
                 try:
-                    rs = self.bs.query_growth_data(code=bs_code, year=year, quarter=quarter)
-                    if rs.error_code != '0':
+                    rs = self.bs.query_growth_data(
+                        code=bs_code, year=year, quarter=quarter
+                    )
+                    if rs.error_code != "0":
                         return None
 
                     data_list = []
-                    while (rs.error_code == '0') & rs.next():
+                    while (rs.error_code == "0") & rs.next():
                         data_list.append(rs.get_row_data())
 
                     return data_list, rs.fields
@@ -815,28 +870,33 @@ class BaoStockProvider(BaseStockDataProvider):
 
             data_list, fields = result
             df = pd.DataFrame(data_list, columns=fields)
-            return df.to_dict('records')[0] if not df.empty else None
+            return df.to_dict("records")[0] if not df.empty else None
 
         except Exception as e:
             logger.debug(f"获取{code}成长能力数据失败: {e}")
             return None
 
-    async def _get_balance_data(self, code: str, year: int, quarter: int) -> Optional[Dict[str, Any]]:
+    async def _get_balance_data(
+        self, code: str, year: int, quarter: int
+    ) -> Optional[Dict[str, Any]]:
         """获取偿债能力数据"""
         try:
+
             def fetch_balance_data():
                 bs_code = self._to_baostock_code(code)
                 lg = self.bs.login()
-                if lg.error_code != '0':
+                if lg.error_code != "0":
                     raise Exception(f"登录失败: {lg.error_msg}")
 
                 try:
-                    rs = self.bs.query_balance_data(code=bs_code, year=year, quarter=quarter)
-                    if rs.error_code != '0':
+                    rs = self.bs.query_balance_data(
+                        code=bs_code, year=year, quarter=quarter
+                    )
+                    if rs.error_code != "0":
                         return None
 
                     data_list = []
-                    while (rs.error_code == '0') & rs.next():
+                    while (rs.error_code == "0") & rs.next():
                         data_list.append(rs.get_row_data())
 
                     return data_list, rs.fields
@@ -849,28 +909,33 @@ class BaoStockProvider(BaseStockDataProvider):
 
             data_list, fields = result
             df = pd.DataFrame(data_list, columns=fields)
-            return df.to_dict('records')[0] if not df.empty else None
+            return df.to_dict("records")[0] if not df.empty else None
 
         except Exception as e:
             logger.debug(f"获取{code}偿债能力数据失败: {e}")
             return None
 
-    async def _get_cash_flow_data(self, code: str, year: int, quarter: int) -> Optional[Dict[str, Any]]:
+    async def _get_cash_flow_data(
+        self, code: str, year: int, quarter: int
+    ) -> Optional[Dict[str, Any]]:
         """获取现金流量数据"""
         try:
+
             def fetch_cash_flow_data():
                 bs_code = self._to_baostock_code(code)
                 lg = self.bs.login()
-                if lg.error_code != '0':
+                if lg.error_code != "0":
                     raise Exception(f"登录失败: {lg.error_msg}")
 
                 try:
-                    rs = self.bs.query_cash_flow_data(code=bs_code, year=year, quarter=quarter)
-                    if rs.error_code != '0':
+                    rs = self.bs.query_cash_flow_data(
+                        code=bs_code, year=year, quarter=quarter
+                    )
+                    if rs.error_code != "0":
                         return None
 
                     data_list = []
-                    while (rs.error_code == '0') & rs.next():
+                    while (rs.error_code == "0") & rs.next():
                         data_list.append(rs.get_row_data())
 
                     return data_list, rs.fields
@@ -883,7 +948,7 @@ class BaoStockProvider(BaseStockDataProvider):
 
             data_list, fields = result
             df = pd.DataFrame(data_list, columns=fields)
-            return df.to_dict('records')[0] if not df.empty else None
+            return df.to_dict("records")[0] if not df.empty else None
 
         except Exception as e:
             logger.debug(f"获取{code}现金流量数据失败: {e}")

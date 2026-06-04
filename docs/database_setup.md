@@ -2,7 +2,7 @@
 
 ## 📋 概述
 
-TradingAgents现在支持MongoDB和Redis数据库，提供数据持久化存储和高性能缓存功能。
+TradingAgents现在支持PostgreSQL和Redis数据库，提供数据持久化存储和高性能缓存功能。
 
 ## 🚀 快速启动
 
@@ -19,7 +19,7 @@ scripts/start_services_alt_ports.sh
 ### 2. 安装Python依赖
 
 ```bash
-pip install pymongo redis
+pip install asyncpg psycopg redis
 ```
 
 ### 3. 初始化数据库
@@ -43,19 +43,19 @@ python -m streamlit run app.py
 
 | 服务 | 默认端口 | 实际端口 | 访问地址 |
 |------|----------|----------|----------|
-| MongoDB | 27017 | **27018** | localhost:27018 |
+| PostgreSQL | 5432 | **5432** | localhost:5432 |
 | Redis | 6379 | **6380** | localhost:6380 |
 | Redis Commander | 8081 | **8082** | http://localhost:8082 |
 
 ### 认证信息
 
-- **用户名**: admin
+- **用户名**: postgres
 - **密码**: trading_agents123
 - **数据库**: trading_agents
 
 ## 📊 数据库结构
 
-### MongoDB集合
+### PostgreSQL 表
 
 1. **stock_data** - 股票历史数据
    - 索引: (symbol, market_type), created_at, updated_at
@@ -93,12 +93,12 @@ python -m streamlit run app.py
 ### 环境变量 (.env)
 
 ```bash
-# MongoDB配置
-MONGODB_HOST=localhost
-MONGODB_PORT=27018
-MONGODB_USERNAME=admin
-MONGODB_PASSWORD=trading_agents123
-MONGODB_DATABASE=trading_agents
+# PostgreSQL配置
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=trading_agents123
+POSTGRES_DB=trading_agents_cn
 
 # Redis配置
 REDIS_HOST=localhost
@@ -118,7 +118,7 @@ REDIS_DB=0
 1. **端口冲突**
    ```bash
    # 检查端口占用
-   netstat -an | findstr :27018
+   netstat -an | findstr :5432
    netstat -an | findstr :6380
    ```
 
@@ -128,25 +128,25 @@ REDIS_DB=0
    docker ps --filter "name=trading-agents-"
 
    # 查看容器日志
-   docker logs trading-agents-mongodb
+   docker logs trading-agents-postgres
    docker logs trading-agents-redis
    ```
 
 3. **权限问题**
    ```bash
    # 重启容器
-   docker restart trading-agents-mongodb trading-agents-redis
+   docker restart trading-agents-postgres trading-agents-redis
    ```
 
 ### 重置数据库
 
 ```bash
 # 停止并删除容器
-docker stop trading-agents-mongodb trading-agents-redis trading-agents-redis-commander
-docker rm trading-agents-mongodb trading-agents-redis trading-agents-redis-commander
+docker stop trading-agents-postgres trading-agents-redis trading-agents-redis-commander
+docker rm trading-agents-postgres trading-agents-redis trading-agents-redis-commander
 
 # 删除数据卷（可选，会丢失所有数据）
-docker volume rm trading_agents_mongodb_data trading_agents_redis_data
+docker volume rm trading_agents_postgres_data trading_agents_redis_data
 
 # 重新启动
 scripts\start_services_alt_ports.bat
@@ -190,14 +190,14 @@ from trader.config.database_manager import get_database_manager
 db_manager = get_database_manager()
 
 # 检查数据库可用性
-if db_manager.is_mongodb_available():
-    print("MongoDB可用")
+if db_manager.is_postgres_available():
+    print("PostgreSQL可用")
 
 if db_manager.is_redis_available():
     print("Redis可用")
 
 # 获取数据库客户端
-mongodb_client = db_manager.get_mongodb_client()
+postgres_client = db_manager.get_postgres_client()
 redis_client = db_manager.get_redis_client()
 
 # 获取缓存统计
@@ -209,7 +209,7 @@ stats = db_manager.get_cache_stats()
 1. **数据同步**: 实现多实例数据同步
 2. **备份策略**: 自动备份和恢复
 3. **性能监控**: 集成监控仪表板
-4. **集群支持**: MongoDB和Redis集群配置
+4. **集群支持**: PostgreSQL和Redis集群配置
 5. **数据分析**: 内置数据分析工具
 
 ---

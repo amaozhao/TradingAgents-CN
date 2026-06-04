@@ -1,14 +1,9 @@
 """
 测试导入修复
 """
+
 import importlib
 
-import sys
-import os
-
-# 添加项目根目录到路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_fundamentals_analyst_import():
     """测试基本面分析师导入"""
@@ -16,11 +11,16 @@ def test_fundamentals_analyst_import():
 
     try:
         # 测试导入基本面分析师
-        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
+        getattr(
+            importlib.import_module("trader.agents.analysts.fundamentals"),
+            "create_fundamentals_analyst",
+        )
         print("  ✅ 基本面分析师导入成功")
 
         # 测试is_china_stock函数导入
-        is_china_stock = getattr(importlib.import_module('trader.utils.stocks'), 'is_china_stock')
+        is_china_stock = getattr(
+            importlib.import_module("trader.utils.stocks"), "is_china_stock"
+        )
         print("  ✅ is_china_stock函数导入成功")
 
         # 测试函数调用
@@ -34,19 +34,26 @@ def test_fundamentals_analyst_import():
 
     except Exception as e:
         print(f"❌ 基本面分析师导入失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_stock_utils_functions():
     """测试股票工具函数"""
     print("\n🧪 测试股票工具函数...")
 
     try:
-        is_china_stock = getattr(importlib.import_module('trader.utils.stocks'), 'is_china_stock')
-        is_hk_stock = getattr(importlib.import_module('trader.utils.stocks'), 'is_hk_stock')
-        is_us_stock = getattr(importlib.import_module('trader.utils.stocks'), 'is_us_stock')
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        is_china_stock = getattr(
+            importlib.import_module("trader.utils.stocks"), "is_china_stock"
+        )
+        is_hk_stock = getattr(
+            importlib.import_module("trader.utils.stocks"), "is_hk_stock"
+        )
+        is_us_stock = getattr(
+            importlib.import_module("trader.utils.stocks"), "is_us_stock"
+        )
+        getattr(importlib.import_module("trader.utils.stocks"), "StockUtils")
 
         # 测试各种股票代码
         test_cases = [
@@ -64,13 +71,17 @@ def test_stock_utils_functions():
             us_result = is_us_stock(ticker)
 
             print(f"  {ticker} ({market}):")
-            print(f"    中国A股: {china_result} {'✅' if china_result == expect_china else '❌'}")
+            print(
+                f"    中国A股: {china_result} {'✅' if china_result == expect_china else '❌'}"
+            )
             print(f"    港股: {hk_result} {'✅' if hk_result == expect_hk else '❌'}")
             print(f"    美股: {us_result} {'✅' if us_result == expect_us else '❌'}")
 
-            if (china_result != expect_china or
-                hk_result != expect_hk or
-                us_result != expect_us):
+            if (
+                china_result != expect_china
+                or hk_result != expect_hk
+                or us_result != expect_us
+            ):
                 print(f"❌ {ticker} 识别结果不正确")
                 return False
 
@@ -79,16 +90,19 @@ def test_stock_utils_functions():
 
     except Exception as e:
         print(f"❌ 股票工具函数测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_web_analysis_runner():
     """测试Web分析运行器"""
     print("\n🧪 测试Web分析运行器...")
 
     try:
-        validate_analysis_params = getattr(importlib.import_module('web.utils.analysis'), 'validate_analysis_params')
+        validate_analysis_params = getattr(
+            importlib.import_module("web.utils.analysis"), "validate_analysis_params"
+        )
 
         # 测试港股验证
         is_valid, errors = validate_analysis_params(
@@ -96,7 +110,7 @@ def test_web_analysis_runner():
             analysis_date="2025-07-14",
             analysts=["market", "fundamentals"],
             research_depth=3,
-            market_type="港股"
+            market_type="港股",
         )
 
         print(f"  港股验证结果: {'通过' if is_valid else '失败'}")
@@ -109,9 +123,10 @@ def test_web_analysis_runner():
 
     except Exception as e:
         print(f"❌ Web分析运行器测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_complete_analysis_flow():
     """测试完整分析流程（不实际运行）"""
@@ -119,16 +134,21 @@ def test_complete_analysis_flow():
 
     try:
         # 测试所有必要的导入
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
-        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
+        getattr(importlib.import_module("trader.graph.trading"), "TradingAgentsGraph")
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
+        getattr(
+            importlib.import_module("trader.agents.analysts.fundamentals"),
+            "create_fundamentals_analyst",
+        )
 
         print("  ✅ 交易图导入成功")
         print("  ✅ 默认配置导入成功")
         print("  ✅ 基本面分析师导入成功")
 
         # 测试配置创建
-        config = DEFAULT_CONFIG.copy()
+        DEFAULT_CONFIG.copy()
         print("  ✅ 配置创建成功")
 
         print("  ✅ 完整分析流程导入测试通过")
@@ -136,9 +156,10 @@ def test_complete_analysis_flow():
 
     except Exception as e:
         print(f"❌ 完整分析流程导入测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """运行所有导入测试"""
@@ -149,7 +170,7 @@ def main():
         test_fundamentals_analyst_import,
         test_stock_utils_functions,
         test_web_analysis_runner,
-        test_complete_analysis_flow
+        test_complete_analysis_flow,
     ]
 
     passed = 0
@@ -171,6 +192,7 @@ def main():
         print("建议重新启动Web应用并测试0700.HK分析")
     else:
         print("⚠️ 部分导入测试失败，请检查失败的测试")
+
 
 if __name__ == "__main__":
     main()

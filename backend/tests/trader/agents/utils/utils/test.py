@@ -1,5 +1,5 @@
-
 from support.registry import export_module as _export_module
+
 _export_module(globals(), "support.m0114.real.scenario.fi.module")
 _export_module(globals(), "support.m0114.us.stock.independence.module")
 _export_module(globals(), "support.m000002.valuation.module")

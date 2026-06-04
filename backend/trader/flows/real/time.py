@@ -5,13 +5,9 @@
 """
 
 from trader.flows.news.real.time import (
-    get_realtime_stock_news,
+    NewsItem,
     RealtimeNewsAggregator,
-    NewsItem
+    get_realtime_stock_news,
 )
 
-__all__ = [
-    'get_realtime_stock_news',
-    'RealtimeNewsAggregator',
-    'NewsItem'
-]
+__all__ = ["get_realtime_stock_news", "RealtimeNewsAggregator", "NewsItem"]

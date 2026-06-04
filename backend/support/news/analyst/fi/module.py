@@ -4,14 +4,8 @@
 验证强制调用和备用工具调用是否正确传递了所需参数
 """
 
-import sys
-import os
-from datetime import datetime
-
-# 添加项目路径
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 from trader.agents.utils.utils import Toolkit
+
 
 def test_tool_parameters():
     """测试工具参数是否正确"""
@@ -25,7 +19,7 @@ def test_tool_parameters():
     ticker = "600036"
     curr_date = "2025-07-28"
 
-    print(f"📊 测试参数:")
+    print("📊 测试参数:")
     print(f"   - ticker: {ticker}")
     print(f"   - curr_date: {curr_date}")
     print()
@@ -39,7 +33,7 @@ def test_tool_parameters():
 
         # 检查工具是否接受这些参数
         result = toolkit.get_realtime_stock_news.invoke(params)
-        print(f"   ✅ get_realtime_stock_news 调用成功")
+        print("   ✅ get_realtime_stock_news 调用成功")
         print(f"   📝 返回数据长度: {len(result) if result else 0} 字符")
 
     except Exception as e:
@@ -56,7 +50,7 @@ def test_tool_parameters():
 
         # 检查工具是否接受这些参数
         result = toolkit.get_google_news.invoke(params)
-        print(f"   ✅ get_google_news 调用成功")
+        print("   ✅ get_google_news 调用成功")
         print(f"   📝 返回数据长度: {len(result) if result else 0} 字符")
 
     except Exception as e:
@@ -71,7 +65,7 @@ def test_tool_parameters():
     try:
         params = {"ticker": ticker}  # 缺少 curr_date
         result = toolkit.get_realtime_stock_news.invoke(params)
-        print(f"   ⚠️ 意外成功（可能有默认值处理）")
+        print("   ⚠️ 意外成功（可能有默认值处理）")
     except Exception as e:
         print(f"   ✅ 正确失败: {e}")
 
@@ -79,7 +73,7 @@ def test_tool_parameters():
     try:
         params = {"ticker": ticker}  # 缺少 query 和 curr_date
         result = toolkit.get_google_news.invoke(params)
-        print(f"   ⚠️ 意外成功（可能有默认值处理）")
+        print("   ⚠️ 意外成功（可能有默认值处理）")
     except Exception as e:
         print(f"   ✅ 正确失败: {e}")
 
@@ -89,6 +83,7 @@ def test_tool_parameters():
     print("   2. ✅ get_google_news 现在正确传递 query 和 curr_date")
     print("   3. ✅ 修复了 Pydantic 验证错误")
     print("   4. ✅ 新闻分析师应该能够正常获取新闻数据")
+
 
 if __name__ == "__main__":
     test_tool_parameters()

@@ -19,12 +19,12 @@
 |------|---------|---------|
 | **Docker Compose 文件** | `docker-compose.hub.yml` | `docker-compose.hub.test.yml` |
 | **容器名称** | `trading-agents-*` | `trading-agents-*-test` |
-| **数据卷名称** | `trading_agents_mongodb_data`<br>`trading_agents_redis_data` | `trading_agents_test_mongodb_data`<br>`trading_agents_test_redis_data` |
+| **数据卷名称** | `trading_agents_postgres_data`<br>`trading_agents_redis_data` | `trading_agents_test_postgres_data`<br>`trading_agents_test_redis_data` |
 | **网络名称** | `trading-agents-network` | `trading-agents-test-network` |
 | **日志目录** | `logs/` | `logs-test/` |
 | **配置目录** | `config/` | `config-test/` |
 | **数据目录** | `data/` | `data-test/` |
-| **端口** | 3000, 8000, 27017, 6379 | 3000, 8000, 27017, 6379 |
+| **端口** | 3000, 8000, 5432, 6379 | 3000, 8000, 5432, 6379 |
 
 **注意**：测试环境和生产环境使用相同的端口，因此**不能同时运行**。
 
@@ -51,13 +51,13 @@
 ======================================================================
 
 [INFO] Test containers:
-  - trading-agents-mongodb-test
+  - trading-agents-postgres-test
   - trading-agents-redis-test
   - trading-agents-backend-test
   - trading-agents-frontend-test
 
 [INFO] Test data volumes:
-  - trading_agents_test_mongodb_data
+  - trading_agents_test_postgres_data
   - trading_agents_test_redis_data
 
 [INFO] Access URLs:
@@ -82,7 +82,7 @@ CONTAINER ID   IMAGE                                  STATUS         PORTS      
 xxxxxxxxxx     hsliup/trading-agents-frontend:latest   Up 2 minutes   0.0.0.0:3000->80/tcp       trading-agents-frontend-test
 xxxxxxxxxx     hsliup/trading-agents-backend:latest    Up 2 minutes   0.0.0.0:8000->8000/tcp     trading-agents-backend-test
 xxxxxxxxxx     redis:7-alpine                         Up 2 minutes   0.0.0.0:6379->6379/tcp     trading-agents-redis-test
-xxxxxxxxxx     mongo:4.4                              Up 2 minutes   0.0.0.0:27017->27017/tcp   trading-agents-mongodb-test
+xxxxxxxxxx     postgres:16-alpine                        Up 2 minutes   0.0.0.0:5432->5432/tcp     trading-agents-postgres-test
 ```
 
 #### 检查数据卷
@@ -93,9 +93,9 @@ docker volume ls | Select-String "trading_agents"
 
 **预期输出**：
 ```
-local     trading_agents_mongodb_data           # 生产数据卷（保留）
+local     trading_agents_postgres_data           # 生产数据卷（保留）
 local     trading_agents_redis_data             # 生产数据卷（保留）
-local     trading_agents_test_mongodb_data      # 测试数据卷（新建）
+local     trading_agents_test_postgres_data      # 测试数据卷（新建）
 local     trading_agents_test_redis_data        # 测试数据卷（新建）
 ```
 
@@ -199,13 +199,13 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ======================================================================
 
 [INFO] Production containers:
-  - trading-agents-mongodb
+  - trading-agents-postgres
   - trading-agents-redis
   - trading-agents-backend
   - trading-agents-frontend
 
 [INFO] Production data volumes:
-  - trading_agents_mongodb_data
+  - trading_agents_postgres_data
   - trading_agents_redis_data
 ```
 
@@ -277,7 +277,7 @@ Remove-Item -Path data-test -Recurse -Force
 
 ### Q1: 测试环境和生产环境可以同时运行吗？
 
-**A**: 不可以。因为它们使用相同的端口（3000, 8000, 27017, 6379），会发生端口冲突。
+**A**: 不可以。因为它们使用相同的端口（3000, 8000, 5432, 6379），会发生端口冲突。
 
 ### Q2: 测试数据会影响生产数据吗？
 
@@ -293,8 +293,8 @@ docker logs -f trading-agents-backend-test
 # 前端日志
 docker logs -f trading-agents-frontend-test
 
-# MongoDB 日志
-docker logs -f trading-agents-mongodb-test
+# PostgreSQL 日志
+docker logs -f trading-agents-postgres-test
 
 # Redis 日志
 docker logs -f trading-agents-redis-test
@@ -303,7 +303,7 @@ docker logs -f trading-agents-redis-test
 ### Q4: 测试环境的数据存储在哪里？
 
 **A**:
-- **数据卷**：Docker 管理的卷（`trading_agents_test_mongodb_data`, `trading_agents_test_redis_data`）
+- **数据卷**：Docker 管理的卷（`trading_agents_test_postgres_data`, `trading_agents_test_redis_data`）
 - **日志文件**：`logs-test/` 目录
 - **配置文件**：`config-test/` 目录
 - **数据文件**：`data-test/` 目录
@@ -316,7 +316,7 @@ docker logs -f trading-agents-redis-test
 docker-compose -f docker-compose.hub.test.yml down
 
 # 删除测试数据卷
-docker volume rm trading_agents_test_mongodb_data
+docker volume rm trading_agents_test_postgres_data
 docker volume rm trading_agents_test_redis_data
 ```
 

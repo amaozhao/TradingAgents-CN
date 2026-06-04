@@ -8,7 +8,7 @@ print("=" * 70)
 
 # 查看 AkShare 中所有包含 sina 的函数
 print("\n📋 AkShare 中包含 'sina' 的函数:")
-sina_functions = [func for func in dir(ak) if 'sina' in func.lower()]
+sina_functions = [func for func in dir(ak) if "sina" in func.lower()]
 for func in sina_functions:
     print(f"  - {func}")
 
@@ -16,9 +16,9 @@ print("\n" + "=" * 70)
 
 # 测试一些常用的新浪接口
 test_functions = [
-    ('stock_zh_a_spot', '沪深A股实时行情（新浪）'),
-    ('stock_hk_spot', '港股实时行情（新浪）'),
-    ('stock_us_spot', '美股实时行情（新浪）'),
+    ("stock_zh_a_spot", "沪深A股实时行情（新浪）"),
+    ("stock_hk_spot", "港股实时行情（新浪）"),
+    ("stock_us_spot", "美股实时行情（新浪）"),
 ]
 
 for func_name, description in test_functions:
@@ -31,10 +31,10 @@ for func_name, description in test_functions:
                 print(f"   ✅ 成功: {len(df)}条记录")
                 print(f"   列名: {list(df.columns)}")
                 if len(df) > 0:
-                    print(f"   前3条数据:")
+                    print("   前3条数据:")
                     print(df.head(3))
             else:
-                print(f"   ❌ 无数据")
+                print("   ❌ 无数据")
         except Exception as e:
             print(f"   ❌ 失败: {e}")
     else:

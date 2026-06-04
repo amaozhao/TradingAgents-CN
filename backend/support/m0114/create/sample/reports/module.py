@@ -3,14 +3,9 @@
 创建示例分析报告
 用于测试Web界面的报告显示功能
 """
+
 import importlib
 
-import sys
-import os
-from datetime import datetime
-
-# 添加项目路径
-sys.path.append(os.path.join(os.path.dirname(__file__), 'web'))
 
 def create_sample_report(stock_symbol: str, stock_name: str):
     """创建示例分析报告"""
@@ -18,7 +13,7 @@ def create_sample_report(stock_symbol: str, stock_name: str):
     # 分析结果数据
     analysis_results = {
         "summary": f"{stock_name}({stock_symbol}) 综合分析显示该股票具有良好的投资潜力，建议关注。",
-        "analysts": ["market_analyst", "fundamentals_analyst", "trader_agent"]
+        "analysts": ["market_analyst", "fundamentals_analyst", "trader_agent"],
     }
 
     # 报告内容
@@ -45,7 +40,6 @@ def create_sample_report(stock_symbol: str, stock_name: str):
 - 行业政策变化风险
 - 建议设置止损位
 """,
-
         "fundamentals_report": f"""# {stock_name}({stock_symbol}) 基本面分析报告
 
 ## 📈 财务指标分析
@@ -83,7 +77,6 @@ def create_sample_report(stock_symbol: str, stock_name: str):
 3. 估值合理，具有投资价值
 4. 分红政策稳定，股东回报良好
 """,
-
         "market_report": f"""# {stock_name}({stock_symbol}) 技术面分析报告
 
 ## 📈 价格趋势分析
@@ -130,20 +123,23 @@ def create_sample_report(stock_symbol: str, stock_name: str):
 - 注意大盘整体走势
 - 关注成交量变化
 - 设置合理止损位
-"""
+""",
     }
 
     return analysis_results, reports
+
 
 def main():
     """主函数"""
     print("🎨 创建示例分析报告...")
 
     try:
-        mongodb_report_manager = getattr(importlib.import_module('web.utils.mongodb'), 'mongodb_report_manager')
+        postgres_report_manager = getattr(
+            importlib.import_module("web.utils.postgres"), "postgres_report_manager"
+        )
 
-        if not mongodb_report_manager.connected:
-            print("❌ MongoDB未连接")
+        if not postgres_report_manager.connected:
+            print("❌ PostgreSQL未连接")
             return
 
         # 创建多个示例报告
@@ -152,7 +148,7 @@ def main():
             ("DEMO002", "示例银行股"),
             ("DEMO003", "示例消费股"),
             ("000001", "平安银行"),
-            ("000002", "万科A")
+            ("000002", "万科A"),
         ]
 
         success_count = 0
@@ -162,10 +158,10 @@ def main():
 
             analysis_results, reports = create_sample_report(stock_symbol, stock_name)
 
-            success = mongodb_report_manager.save_analysis_report(
+            success = postgres_report_manager.save_analysis_report(
                 stock_symbol=stock_symbol,
                 analysis_results=analysis_results,
-                reports=reports
+                reports=reports,
             )
 
             if success:
@@ -179,8 +175,9 @@ def main():
 
     except Exception as e:
         print(f"❌ 创建示例报告失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()

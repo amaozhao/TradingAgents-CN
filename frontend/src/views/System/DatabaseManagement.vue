@@ -7,7 +7,7 @@
         数据库管理
       </h1>
       <p class="page-description">
-        MongoDB + Redis 数据库管理和监控
+        PostgreSQL + Redis 数据库管理和监控
       </p>
     </div>
 
@@ -16,22 +16,22 @@
       <el-col :span="12">
         <el-card class="connection-card" shadow="never">
           <template #header>
-            <h3>🍃 MongoDB 连接状态</h3>
+            <h3>🍃 PostgreSQL 连接状态</h3>
           </template>
 
           <div class="connection-status">
             <div class="status-indicator">
-              <el-tag :type="mongoStatus.connected ? 'success' : 'danger'" size="large">
-                {{ mongoStatus.connected ? '已连接' : '未连接' }}
+              <el-tag :type="postgresStatus.connected ? 'success' : 'danger'" size="large">
+                {{ postgresStatus.connected ? '已连接' : '未连接' }}
               </el-tag>
             </div>
 
-            <div v-if="mongoStatus.connected" class="connection-info">
-              <p><strong>服务器:</strong> {{ mongoStatus.host }}:{{ mongoStatus.port }}</p>
-              <p><strong>数据库:</strong> {{ mongoStatus.database }}</p>
-              <p><strong>版本:</strong> {{ mongoStatus.version || 'Unknown' }}</p>
-              <p v-if="mongoStatus.connected_at"><strong>连接时间:</strong> {{ formatDateTime(mongoStatus.connected_at) }}</p>
-              <p v-if="mongoStatus.uptime"><strong>运行时间:</strong> {{ formatUptime(mongoStatus.uptime) }}</p>
+            <div v-if="postgresStatus.connected" class="connection-info">
+              <p><strong>服务器:</strong> {{ postgresStatus.host }}:{{ postgresStatus.port }}</p>
+              <p><strong>数据库:</strong> {{ postgresStatus.database }}</p>
+              <p><strong>版本:</strong> {{ postgresStatus.version || 'Unknown' }}</p>
+              <p v-if="postgresStatus.connected_at"><strong>连接时间:</strong> {{ formatDateTime(postgresStatus.connected_at) }}</p>
+              <p v-if="postgresStatus.uptime"><strong>运行时间:</strong> {{ formatUptime(postgresStatus.uptime) }}</p>
             </div>
 
             <div class="connection-actions">
@@ -86,7 +86,7 @@
         <el-card class="stat-card" shadow="never">
           <div class="stat-content">
             <div class="stat-value">{{ dbStats.totalCollections }}</div>
-            <div class="stat-label">MongoDB 集合数</div>
+            <div class="stat-label">PostgreSQL 集合数</div>
           </div>
         </el-card>
       </el-col>
@@ -209,19 +209,19 @@
             >
               <template #default>
                 <div style="line-height: 1.8;">
-                  <p style="margin: 8px 0;">由于数据量较大，Web 界面备份体验较差，建议使用 MongoDB 原生工具：</p>
+                  <p style="margin: 8px 0;">由于数据量较大，Web 界面备份体验较差，建议使用 PostgreSQL 原生工具：</p>
                   <div style="background: #f5f7fa; padding: 12px; border-radius: 4px; margin: 8px 0;">
                     <p style="margin: 4px 0; font-weight: bold;">📦 备份命令：</p>
                     <code style="display: block; margin: 4px 0; color: #409eff;">
-                      mongodump --uri="mongodb://localhost:27017" --db=trading_agents --out=./backup --gzip
+                      pg_dump postgresql://postgres:postgres@localhost:5432/trading_agents_cn --format=custom --file=./backup/trading_agents.dump
                     </code>
                     <p style="margin: 12px 0 4px 0; font-weight: bold;">🔄 还原命令：</p>
                     <code style="display: block; margin: 4px 0; color: #409eff;">
-                      mongorestore --uri="mongodb://localhost:27017" --db=trading_agents --gzip ./backup/trading_agents
+                      pg_restore --dbname=postgresql://postgres:postgres@localhost:5432/trading_agents_cn ./backup/trading_agents.dump
                     </code>
                   </div>
                   <p style="margin: 8px 0; font-size: 12px; color: #909399;">
-                    💡 提示：请根据实际的 MongoDB 连接信息修改命令中的 URI
+                    💡 提示：请根据实际的 PostgreSQL 连接信息修改命令中的 URI
                   </p>
                 </div>
               </template>
@@ -322,11 +322,11 @@ const databaseStatus = ref<DatabaseStatus | null>(null)
 const databaseStats = ref<DatabaseStats | null>(null)
 
 // 计算属性
-const mongoStatus = computed(() => databaseStatus.value?.mongodb || {
+const postgresStatus = computed(() => databaseStatus.value?.postgres || {
   connected: false,
   host: 'localhost',
-  port: 27017,
-  database: 'trading_agents'
+  port: 5432,
+  database: 'trading_agents_cn'
 })
 
 const redisStatus = computed(() => databaseStatus.value?.redis || {
@@ -381,11 +381,11 @@ const testConnections = async () => {
     }
 
     // 显示详细结果
-    const mongoMsg = `MongoDB: ${results.mongodb.message} (${results.mongodb.response_time_ms}ms)`
+    const postgresMsg = `PostgreSQL: ${results.postgres.message} (${results.postgres.response_time_ms}ms)`
     const redisMsg = `Redis: ${results.redis.message} (${results.redis.response_time_ms}ms)`
 
     ElMessage({
-      message: `${mongoMsg}\n${redisMsg}`,
+      message: `${postgresMsg}\n${redisMsg}`,
       type: results.overall ? 'success' : 'warning',
       duration: 5000
     })

@@ -5,7 +5,7 @@
 
 功能：
 1. 按需从数据源获取美股信息（yfinance/finnhub）
-2. 自动缓存到 MongoDB，避免重复请求
+2. 自动缓存到 PostgreSQL，避免重复请求
 3. 支持多数据源：同一股票可有多个数据源记录
 4. 使用 (code, source) 联合查询进行 upsert 操作
 
@@ -16,19 +16,15 @@
 """
 
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, Optional, Any, cast
 
 # 导入美股数据提供器
-import sys
-from pathlib import Path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+from datetime import datetime, timedelta
+from typing import Any, Dict, Optional, cast
 
-from trader.flows.providers.us.optimized import OptimizedUSDataProvider
-from app.core.database import get_mongo_db
 from app.core.config import settings
+from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document
+from trader.flows.providers.us.optimized import OptimizedUSDataProvider
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +33,7 @@ class USDataService:
     """美股数据服务（按需获取+缓存模式）"""
 
     def __init__(self):
-        self.db = get_mongo_db()
+        self.db = get_postgres_db()
         self.settings = settings
 
         # 数据提供器映射
@@ -47,18 +43,15 @@ class USDataService:
         }
 
         # 缓存配置
-        self.cache_hours = getattr(settings, 'US_DATA_CACHE_HOURS', 24)
-        self.default_source = getattr(settings, 'US_DEFAULT_DATA_SOURCE', 'yfinance')
+        self.cache_hours = getattr(settings, "US_DATA_CACHE_HOURS", 24)
+        self.default_source = getattr(settings, "US_DEFAULT_DATA_SOURCE", "yfinance")
 
     async def initialize(self):
         """初始化数据服务"""
         logger.info("✅ 美股数据服务初始化完成")
 
     async def get_stock_info(
-        self,
-        stock_code: str,
-        source: Optional[str] = None,
-        force_refresh: bool = False
+        self, stock_code: str, source: Optional[str] = None, force_refresh: bool = False
     ) -> Optional[Dict[str, Any]]:
         """
         获取美股基础信息（按需获取+缓存）
@@ -96,7 +89,7 @@ class USDataService:
             logger.info(f"🔄 从 {source} 获取美股信息: {stock_code}")
             stock_info = cast(Any, provider).get_stock_info(stock_code)
 
-            if not stock_info or not stock_info.get('name'):
+            if not stock_info or not stock_info.get("name"):
                 logger.warning(f"⚠️ 获取失败或数据无效: {stock_code} ({source})")
                 return None
 
@@ -108,23 +101,29 @@ class USDataService:
 
             await self._save_to_cache(normalized_info)
 
-            logger.info(f"✅ 获取成功: {normalized_code} - {stock_info.get('name')} ({source})")
+            logger.info(
+                f"✅ 获取成功: {normalized_code} - {stock_info.get('name')} ({source})"
+            )
             return normalized_info
 
         except Exception as e:
             logger.error(f"❌ 获取美股信息失败: {stock_code} ({source}): {e}")
             return None
 
-    async def _get_cached_info(self, code: str, source: str) -> Optional[Dict[str, Any]]:
+    async def _get_cached_info(
+        self, code: str, source: str
+    ) -> Optional[Dict[str, Any]]:
         """从缓存获取股票信息"""
         try:
             cache_expire_time = datetime.now() - timedelta(hours=self.cache_hours)
 
-            cached = await self.db.stock_basic_info_us.find_one({
-                "code": code,
-                "source": source,
-                "updated_at": {"$gte": cache_expire_time}
-            })
+            cached = await self.db.stock_basic_info_us.find_one(
+                {
+                    "code": code,
+                    "source": source,
+                    "updated_at": {"$gte": cache_expire_time},
+                }
+            )
 
             return cached
 
@@ -138,13 +137,15 @@ class USDataService:
             await self.db.stock_basic_info_us.update_one(
                 {"code": stock_info["code"], "source": stock_info["source"]},
                 {"$set": stock_info},
-                upsert=True
+                upsert=True,
             )
             await dual_write_hot_document("stock_basic_info", stock_info)
             return True
 
         except Exception as e:
-            logger.error(f"❌ 保存缓存失败: {stock_info.get('code')} ({stock_info.get('source')}): {e}")
+            logger.error(
+                f"❌ 保存缓存失败: {stock_info.get('code')} ({stock_info.get('source')}): {e}"
+            )
             return False
 
     def _normalize_stock_info(self, stock_info: Dict, source: str) -> Dict:
@@ -168,9 +169,21 @@ class USDataService:
 
         # 可选字段
         optional_fields = [
-            "industry", "sector", "list_date", "total_mv", "circ_mv",
-            "pe", "pb", "ps", "pcf", "market_cap", "shares_outstanding",
-            "float_shares", "employees", "website", "description"
+            "industry",
+            "sector",
+            "list_date",
+            "total_mv",
+            "circ_mv",
+            "pe",
+            "pb",
+            "ps",
+            "pcf",
+            "market_cap",
+            "shares_outstanding",
+            "float_shares",
+            "employees",
+            "website",
+            "description",
         ]
 
         for field in optional_fields:

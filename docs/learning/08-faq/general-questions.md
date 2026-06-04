@@ -61,7 +61,7 @@ TradingAgents-CN是**学习工具**，提供的分析仅供参考，不构成投
 - 📊 Tushare（主力专业数据，需密钥）
   - 股票列表、日线/分钟行情、`daily_basic`（PE/PB/市值等）、财务三表（利润/资产负债/现金流）
   - 框架内用于“动态PE/PB”与基本面分析的核心来源（见 `trader/dataflows/realtime_metrics.py`）
-  - 降级链首选：MongoDB → Tushare → 其他（见 `stock_data_service.py`）
+  - 降级链首选：PostgreSQL → Tushare → 其他（见 `stock_data_service.py`）
 - 📈 AKShare（开源免费补充）
   - 历史/实时行情、部分财务数据；港股数据优先走 AKShare（见 `dataflows/providers/hk`）
   - 新闻接口：东方财富个股新闻 `stock_news_em`、CCTV 市场新闻（见 `dataflows/akshare_utils.py`）
@@ -96,7 +96,7 @@ TradingAgents-CN是**学习工具**，提供的分析仅供参考，不构成投
 - `NEWSAPI_KEY`（可选，启用部分新闻聚合）
 
 **数据源选择与降级策略（内置）**：
-- A股：MongoDB → Tushare → AKShare → BaoStock（按优先级自动切换）
+- A股：PostgreSQL → Tushare → AKShare → BaoStock（按优先级自动切换）
 - 港股：AKShare → yfinance → Finnhub（失败时逐级降级）
 - 美股：Alpha Vantage → yfinance → Finnhub（按场景选择与降级）
 

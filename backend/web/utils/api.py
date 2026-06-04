@@ -4,6 +4,7 @@ API密钥检查工具
 
 import os
 
+
 def check_api_keys():
     """检查所有必要的API密钥是否已配置"""
 
@@ -15,44 +16,43 @@ def check_api_keys():
     google_key = os.getenv("GOOGLE_API_KEY")
     qianfan_key = os.getenv("QIANFAN_API_KEY")
 
-
     # 构建详细状态
     details = {
         "DASHSCOPE_API_KEY": {
             "configured": bool(dashscope_key),
             "display": f"{dashscope_key[:12]}..." if dashscope_key else "未配置",
             "required": True,
-            "description": "阿里百炼API密钥"
+            "description": "阿里百炼API密钥",
         },
         "FINNHUB_API_KEY": {
             "configured": bool(finnhub_key),
             "display": f"{finnhub_key[:12]}..." if finnhub_key else "未配置",
             "required": True,
-            "description": "金融数据API密钥"
+            "description": "金融数据API密钥",
         },
         "OPENAI_API_KEY": {
             "configured": bool(openai_key),
             "display": f"{openai_key[:12]}..." if openai_key else "未配置",
             "required": False,
-            "description": "OpenAI API密钥"
+            "description": "OpenAI API密钥",
         },
         "ANTHROPIC_API_KEY": {
             "configured": bool(anthropic_key),
             "display": f"{anthropic_key[:12]}..." if anthropic_key else "未配置",
             "required": False,
-            "description": "Anthropic API密钥"
+            "description": "Anthropic API密钥",
         },
         "GOOGLE_API_KEY": {
             "configured": bool(google_key),
             "display": f"{google_key[:12]}..." if google_key else "未配置",
             "required": False,
-            "description": "Google AI API密钥"
+            "description": "Google AI API密钥",
         },
         "QIANFAN_ACCESS_KEY": {
             "configured": bool(qianfan_key),
             "display": f"{qianfan_key[:16]}..." if qianfan_key else "未配置",
             "required": False,
-            "description": "文心一言（千帆）API Key（OpenAI兼容），一般以 bce-v3/ 开头"
+            "description": "文心一言（千帆）API Key（OpenAI兼容），一般以 bce-v3/ 开头",
         },
         # QIANFAN_SECRET_KEY 不再用于OpenAI兼容路径，仅保留给脚本示例使用
         # "QIANFAN_SECRET_KEY": {
@@ -76,9 +76,10 @@ def check_api_keys():
             "total": len(details),
             "configured": sum(1 for info in details.values() if info["configured"]),
             "required": len(required_keys),
-            "required_configured": len(required_keys) - len(missing_required)
-        }
+            "required_configured": len(required_keys) - len(missing_required),
+        },
     }
+
 
 def get_api_key_status_message():
     """获取API密钥状态消息"""
@@ -92,6 +93,7 @@ def get_api_key_status_message():
     else:
         missing = ", ".join(status["missing_required"])
         return f"❌ 缺少必需的API密钥: {missing}"
+
 
 def validate_api_key_format(key_type, api_key):
     """验证API密钥格式"""
@@ -115,6 +117,7 @@ def validate_api_key_format(key_type, api_key):
             return False, "千帆 API Key（OpenAI兼容）应以 'bce-v3/' 开头"
 
     return True, "API密钥格式正确"
+
 
 def test_api_connection(key_type, api_key):
     """测试API连接（简单验证）"""

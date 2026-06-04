@@ -3,8 +3,9 @@
 验证返回的数据结构是否正确
 """
 
-import requests
 import json
+
+import requests
 
 # 配置
 BASE_URL = "http://localhost:8000"
@@ -16,18 +17,17 @@ def login() -> str:
     """登录并获取 token"""
     print("🔐 正在登录...")
     response = requests.post(
-        f"{BASE_URL}/api/auth/login",
-        json={"username": USERNAME, "password": PASSWORD}
+        f"{BASE_URL}/api/auth/login", json={"username": USERNAME, "password": PASSWORD}
     )
 
     if response.status_code == 200:
         data = response.json()
         if data.get("success"):
             token = data["data"]["access_token"]
-            print(f"✅ 登录成功")
+            print("✅ 登录成功")
             return token
 
-    print(f"❌ 登录失败")
+    print("❌ 登录失败")
     return None
 
 
@@ -35,10 +35,7 @@ def test_jobs_response(token: str):
     """测试任务列表响应格式"""
     print("\n📋 测试任务列表响应格式...")
 
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
     response = requests.get(f"{BASE_URL}/api/scheduler/jobs", headers=headers)
 
@@ -47,20 +44,20 @@ def test_jobs_response(token: str):
 
     if response.status_code == 200:
         data = response.json()
-        print(f"\n响应体结构:")
+        print("\n响应体结构:")
         print(json.dumps(data, indent=2, ensure_ascii=False))
 
         # 检查响应格式
-        print(f"\n✅ 响应格式检查:")
+        print("\n✅ 响应格式检查:")
         print(f"  - success: {data.get('success')}")
         print(f"  - message: {data.get('message')}")
         print(f"  - data 类型: {type(data.get('data'))}")
 
-        if isinstance(data.get('data'), list):
+        if isinstance(data.get("data"), list):
             print(f"  - data 长度: {len(data.get('data'))}")
-            if len(data.get('data')) > 0:
-                print(f"\n第一个任务的结构:")
-                print(json.dumps(data['data'][0], indent=2, ensure_ascii=False))
+            if len(data.get("data")) > 0:
+                print("\n第一个任务的结构:")
+                print(json.dumps(data["data"][0], indent=2, ensure_ascii=False))
         else:
             print(f"  ⚠️ data 不是数组！实际类型: {type(data.get('data'))}")
             print(f"  实际内容: {data.get('data')}")
@@ -72,10 +69,7 @@ def test_stats_response(token: str):
     """测试统计信息响应格式"""
     print("\n📊 测试统计信息响应格式...")
 
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
     response = requests.get(f"{BASE_URL}/api/scheduler/stats", headers=headers)
 
@@ -83,17 +77,17 @@ def test_stats_response(token: str):
 
     if response.status_code == 200:
         data = response.json()
-        print(f"\n响应体结构:")
+        print("\n响应体结构:")
         print(json.dumps(data, indent=2, ensure_ascii=False))
 
         # 检查响应格式
-        print(f"\n✅ 响应格式检查:")
+        print("\n✅ 响应格式检查:")
         print(f"  - success: {data.get('success')}")
         print(f"  - message: {data.get('message')}")
         print(f"  - data 类型: {type(data.get('data'))}")
 
-        if isinstance(data.get('data'), dict):
-            stats = data.get('data')
+        if isinstance(data.get("data"), dict):
+            stats = data.get("data")
             print(f"  - total_jobs: {stats.get('total_jobs')}")
             print(f"  - running_jobs: {stats.get('running_jobs')}")
             print(f"  - paused_jobs: {stats.get('paused_jobs')}")

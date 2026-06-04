@@ -1,32 +1,37 @@
-"""测试查询"""
-from pymongo import MongoClient
+"""测试 Postgres document store 查询"""
 
-# 连接 MongoDB
-mongo_uri = "mongodb://admin:trading_agents123@localhost:27017/"
-client = MongoClient(mongo_uri)
+from app.db.documentstore import create_sync_client
 
-db = client["trading_agents"]
 
-print("=" * 60)
-print("🔍 测试查询 market_quotes")
-print("=" * 60)
+def main() -> None:
+    client = create_sync_client()
+    db = client["trading_agents"]
 
-# 测试不同的查询条件
-queries = [
-    {"code": "300750"},
-    {"symbol": "300750"},
-    {"code": "300750", "symbol": "300750"},
-]
+    print("=" * 60)
+    print("🔍 测试查询 market_quotes")
+    print("=" * 60)
 
-for query in queries:
-    print(f"\n查询条件: {query}")
-    result = db.market_quotes.find_one(query, {"_id": 0})
-    if result:
-        print(f"  ✅ 找到数据")
-        print(f"  - volume: {result.get('volume')}")
-        print(f"  - amount: {result.get('amount')}")
-        print(f"  - volume_ratio: {result.get('volume_ratio')}")
-    else:
-        print(f"  ❌ 未找到数据")
+    # 测试不同的查询条件
+    queries = [
+        {"code": "300750"},
+        {"symbol": "300750"},
+        {"code": "300750", "symbol": "300750"},
+    ]
 
-client.close()
+    try:
+        for query in queries:
+            print(f"\n查询条件: {query}")
+            result = db.market_quotes.find_one(query, {"_id": 0})
+            if result:
+                print("  ✅ 找到数据")
+                print(f"  - volume: {result.get('volume')}")
+                print(f"  - amount: {result.get('amount')}")
+                print(f"  - volume_ratio: {result.get('volume_ratio')}")
+            else:
+                print("  ❌ 未找到数据")
+    finally:
+        client.close()
+
+
+if __name__ == "__main__":
+    main()

@@ -2,15 +2,10 @@
 测试 AKShare 获取股票新闻数据
 测试 000002 万科的最新新闻时间
 """
-import importlib
-import asyncio
-import sys
-from pathlib import Path
-from datetime import datetime
 
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+import asyncio
+import importlib
+from datetime import datetime
 
 
 async def test_akshare_news():
@@ -24,15 +19,18 @@ async def test_akshare_news():
     try:
         # 1. 导入 AKShare Provider
         print("\n📦 步骤1: 导入 AKShare Provider...")
-        get_akshare_provider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'get_akshare_provider')
+        get_akshare_provider = getattr(
+            importlib.import_module("trader.flows.providers.china.akshare"),
+            "get_akshare_provider",
+        )
 
         provider = get_akshare_provider()
-        print(f"✅ AKShare Provider 初始化成功")
+        print("✅ AKShare Provider 初始化成功")
 
         # 2. 连接 Provider
         print("\n🔌 步骤2: 连接 Provider...")
         await provider.connect()
-        print(f"✅ Provider 连接成功")
+        print("✅ Provider 连接成功")
 
         # 3. 检查可用性
         print("\n🔍 步骤3: 检查 Provider 可用性...")
@@ -46,7 +44,7 @@ async def test_akshare_news():
         # 4. 获取新闻数据
         print(f"\n📰 步骤4: 获取 {test_symbol} 的新闻数据...")
         print(f"   股票代码: {test_symbol}")
-        print(f"   获取数量: 10条")
+        print("   获取数量: 10条")
 
         news_data = await provider.get_stock_news(symbol=test_symbol, limit=10)
 
@@ -67,28 +65,32 @@ async def test_akshare_news():
             print(f"  来源: {news.get('source', 'N/A')}")
 
             # 发布时间
-            publish_time = news.get('publish_time')
+            publish_time = news.get("publish_time")
             if publish_time:
                 if isinstance(publish_time, str):
                     print(f"  发布时间: {publish_time}")
                 elif isinstance(publish_time, datetime):
                     print(f"  发布时间: {publish_time.strftime('%Y-%m-%d %H:%M:%S')}")
                 else:
-                    print(f"  发布时间: {publish_time} (类型: {type(publish_time).__name__})")
+                    print(
+                        f"  发布时间: {publish_time} (类型: {type(publish_time).__name__})"
+                    )
             else:
-                print(f"  发布时间: N/A")
+                print("  发布时间: N/A")
 
             # URL
-            url = news.get('url', 'N/A')
+            url = news.get("url", "N/A")
             if len(url) > 80:
                 print(f"  链接: {url[:80]}...")
             else:
                 print(f"  链接: {url}")
 
             # 内容摘要
-            content = news.get('content', '')
+            content = news.get("content", "")
             if content:
-                content_preview = content[:100] + "..." if len(content) > 100 else content
+                content_preview = (
+                    content[:100] + "..." if len(content) > 100 else content
+                )
                 print(f"  内容: {content_preview}")
 
         # 6. 统计最新和最旧的新闻时间
@@ -98,18 +100,18 @@ async def test_akshare_news():
 
         times = []
         for news in news_data:
-            publish_time = news.get('publish_time')
+            publish_time = news.get("publish_time")
             if publish_time:
                 if isinstance(publish_time, str):
                     try:
                         # 尝试解析时间字符串
-                        dt = datetime.strptime(publish_time, '%Y-%m-%d %H:%M:%S')
+                        dt = datetime.strptime(publish_time, "%Y-%m-%d %H:%M:%S")
                         times.append(dt)
-                    except:
+                    except Exception:
                         try:
-                            dt = datetime.strptime(publish_time, '%Y-%m-%d')
+                            dt = datetime.strptime(publish_time, "%Y-%m-%d")
                             times.append(dt)
-                        except:
+                        except Exception:
                             print(f"⚠️ 无法解析时间: {publish_time}")
                 elif isinstance(publish_time, datetime):
                     times.append(publish_time)
@@ -127,7 +129,9 @@ async def test_akshare_news():
             # 计算距离现在的时间
             now = datetime.now()
             time_diff = now - latest_time
-            print(f"✅ 最新新闻距离现在: {time_diff.days} 天 {time_diff.seconds // 3600} 小时")
+            print(
+                f"✅ 最新新闻距离现在: {time_diff.days} 天 {time_diff.seconds // 3600} 小时"
+            )
         else:
             print("⚠️ 没有找到有效的时间信息")
 
@@ -151,7 +155,7 @@ async def test_akshare_news():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 

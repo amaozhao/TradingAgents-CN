@@ -3,15 +3,15 @@
 BaoStock数据初始化服务
 提供BaoStock数据的完整初始化功能
 """
-import importlib
+
 import asyncio
+import importlib
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from app.core.config import get_settings
-from app.core.database import get_database
 from app.db.dual import dual_write_hot_document
 
 logger = logging.getLogger(__name__)
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BaoStockInitializationStats:
     """BaoStock初始化统计"""
+
     completed_steps: int = 0
     total_steps: int = 6
     current_step: str = ""
@@ -58,7 +59,10 @@ class BaoStockInitService:
         try:
             self.settings = get_settings()
             self.db: Any = None  # 🔥 延迟初始化
-            BaoStockSyncService = getattr(importlib.import_module('app.worker.baostock.sync'), 'BaoStockSyncService')
+            BaoStockSyncService = getattr(
+                importlib.import_module("app.worker.baostock.sync"),
+                "BaoStockSyncService",
+            )
 
             self.sync_service = BaoStockSyncService()
             logger.info("✅ BaoStock初始化服务初始化成功")
@@ -70,8 +74,10 @@ class BaoStockInitService:
         """异步初始化服务"""
         try:
             # 🔥 初始化数据库连接
-            get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
-            self.db = get_mongo_db()
+            get_postgres_db = getattr(
+                importlib.import_module("app.core.database"), "get_postgres_db"
+            )
+            self.db = get_postgres_db()
 
             # 🔥 初始化同步服务
             await self.sync_service.initialize()
@@ -85,23 +91,25 @@ class BaoStockInitService:
         """检查数据库状态"""
         try:
             # 检查基础信息
-            basic_info_count = await self.db.stock_basic_info.count_documents({"data_source": "baostock"})
+            basic_info_count = await self.db.stock_basic_info.count_documents(
+                {"data_source": "baostock"}
+            )
             basic_info_latest = None
             if basic_info_count > 0:
                 latest_doc = await self.db.stock_basic_info.find_one(
-                    {"data_source": "baostock"},
-                    sort=[("last_sync", -1)]
+                    {"data_source": "baostock"}, sort=[("last_sync", -1)]
                 )
                 if latest_doc:
                     basic_info_latest = latest_doc.get("last_sync")
 
             # 检查行情数据
-            quotes_count = await self.db.market_quotes.count_documents({"data_source": "baostock"})
+            quotes_count = await self.db.market_quotes.count_documents(
+                {"data_source": "baostock"}
+            )
             quotes_latest = None
             if quotes_count > 0:
                 latest_doc = await self.db.market_quotes.find_one(
-                    {"data_source": "baostock"},
-                    sort=[("last_sync", -1)]
+                    {"data_source": "baostock"}, sort=[("last_sync", -1)]
                 )
                 if latest_doc:
                     quotes_latest = latest_doc.get("last_sync")
@@ -111,16 +119,19 @@ class BaoStockInitService:
                 "basic_info_latest": basic_info_latest,
                 "quotes_count": quotes_count,
                 "quotes_latest": quotes_latest,
-                "status": "ready" if basic_info_count > 0 else "empty"
+                "status": "ready" if basic_info_count > 0 else "empty",
             }
 
         except Exception as e:
             logger.error(f"❌ 检查数据库状态失败: {e}")
             return {"status": "error", "error": str(e)}
 
-    async def full_initialization(self, historical_days: int = 365,
-                                force: bool = False,
-                                enable_multi_period: bool = False) -> BaoStockInitializationStats:
+    async def full_initialization(
+        self,
+        historical_days: int = 365,
+        force: bool = False,
+        enable_multi_period: bool = False,
+    ) -> BaoStockInitializationStats:
         """
         完整数据初始化
 
@@ -168,7 +179,9 @@ class BaoStockInitService:
             stats.current_step = "同步历史数据（日线）"
             logger.info(f"3️⃣ {stats.current_step} (最近{historical_days}天)...")
 
-            historical_stats = await self.sync_service.sync_historical_data(days=historical_days, period="daily")
+            historical_stats = await self.sync_service.sync_historical_data(
+                days=historical_days, period="daily"
+            )
             stats.historical_records = historical_stats.historical_records
             stats.errors.extend(historical_stats.errors)
             stats.completed_steps += 1
@@ -179,7 +192,9 @@ class BaoStockInitService:
                 stats.current_step = "同步周线数据"
                 logger.info(f"4️⃣a {stats.current_step} (最近{historical_days}天)...")
                 try:
-                    weekly_stats = await self.sync_service.sync_historical_data(days=historical_days, period="weekly")
+                    weekly_stats = await self.sync_service.sync_historical_data(
+                        days=historical_days, period="weekly"
+                    )
                     stats.weekly_records = weekly_stats.historical_records
                     stats.errors.extend(weekly_stats.errors)
                     logger.info(f"✅ 周线数据同步完成: {stats.weekly_records}条记录")
@@ -191,7 +206,9 @@ class BaoStockInitService:
                 stats.current_step = "同步月线数据"
                 logger.info(f"4️⃣b {stats.current_step} (最近{historical_days}天)...")
                 try:
-                    monthly_stats = await self.sync_service.sync_historical_data(days=historical_days, period="monthly")
+                    monthly_stats = await self.sync_service.sync_historical_data(
+                        days=historical_days, period="monthly"
+                    )
                     stats.monthly_records = monthly_stats.historical_records
                     stats.errors.extend(monthly_stats.errors)
                     logger.info(f"✅ 月线数据同步完成: {stats.monthly_records}条记录")
@@ -252,16 +269,20 @@ class BaoStockInitService:
 
             for code in limited_codes:
                 try:
-                    financial_data = await self.sync_service.provider.get_financial_data(code)
+                    financial_data = (
+                        await self.sync_service.provider.get_financial_data(code)
+                    )
                     if financial_data:
                         updated_at = datetime.now()
                         # 更新到数据库
                         await collection.update_one(
                             {"code": code},
-                            {"$set": {
-                                "financial_data": financial_data,
-                                "financial_data_updated": updated_at
-                            }}
+                            {
+                                "$set": {
+                                    "financial_data": financial_data,
+                                    "financial_data_updated": updated_at,
+                                }
+                            },
                         )
                         await dual_write_hot_document(
                             "stock_basic_info",
@@ -294,14 +315,22 @@ class BaoStockInitService:
         """验证数据完整性"""
         try:
             # 检查基础信息
-            basic_count = await self.db.stock_basic_info.count_documents({"data_source": "baostock"})
+            basic_count = await self.db.stock_basic_info.count_documents(
+                {"data_source": "baostock"}
+            )
             if basic_count != stats.basic_info_count:
-                logger.warning(f"⚠️ 基础信息数量不匹配: 预期{stats.basic_info_count}, 实际{basic_count}")
+                logger.warning(
+                    f"⚠️ 基础信息数量不匹配: 预期{stats.basic_info_count}, 实际{basic_count}"
+                )
 
             # 检查行情数据
-            quotes_count = await self.db.market_quotes.count_documents({"data_source": "baostock"})
+            quotes_count = await self.db.market_quotes.count_documents(
+                {"data_source": "baostock"}
+            )
             if quotes_count != stats.quotes_count:
-                logger.warning(f"⚠️ 行情数据数量不匹配: 预期{stats.quotes_count}, 实际{quotes_count}")
+                logger.warning(
+                    f"⚠️ 行情数据数量不匹配: 预期{stats.quotes_count}, 实际{quotes_count}"
+                )
 
             logger.info("✅ 数据完整性验证完成")
 
@@ -363,7 +392,9 @@ async def run_baostock_full_initialization():
         service = BaoStockInitService()
         await service.initialize()  # 🔥 必须先初始化
         stats = await service.full_initialization()
-        logger.info(f"🎯 BaoStock完整初始化完成: {stats.progress}, 耗时: {stats.duration:.1f}秒")
+        logger.info(
+            f"🎯 BaoStock完整初始化完成: {stats.progress}, 耗时: {stats.duration:.1f}秒"
+        )
     except Exception as e:
         logger.error(f"❌ BaoStock完整初始化任务失败: {e}")
 
@@ -374,6 +405,8 @@ async def run_baostock_basic_initialization():
         service = BaoStockInitService()
         await service.initialize()  # 🔥 必须先初始化
         stats = await service.basic_initialization()
-        logger.info(f"🎯 BaoStock基础初始化完成: {stats.progress}, 耗时: {stats.duration:.1f}秒")
+        logger.info(
+            f"🎯 BaoStock基础初始化完成: {stats.progress}, 耗时: {stats.duration:.1f}秒"
+        )
     except Exception as e:
         logger.error(f"❌ BaoStock基础初始化任务失败: {e}")

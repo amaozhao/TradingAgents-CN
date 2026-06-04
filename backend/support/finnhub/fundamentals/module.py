@@ -2,21 +2,19 @@
 """
 测试Finnhub基本面数据获取功能、OpenAI fallback机制和缓存功能
 """
-import importlib
 
+import importlib
 import os
 import sys
 import time
 from datetime import datetime
 
-# 添加项目根目录到路径
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def test_finnhub_api_key():
     """测试Finnhub API密钥配置"""
     print("🔑 检查Finnhub API密钥...")
 
-    api_key = os.getenv('FINNHUB_API_KEY')
+    api_key = os.getenv("FINNHUB_API_KEY")
     if api_key:
         print(f"✅ Finnhub API密钥已配置: {api_key[:8]}...")
         return True
@@ -24,18 +22,22 @@ def test_finnhub_api_key():
         print("❌ 未配置FINNHUB_API_KEY环境变量")
         return False
 
+
 def test_finnhub_fundamentals_with_cache():
     """测试Finnhub基本面数据获取和缓存功能"""
     print("\n📊 测试Finnhub基本面数据获取和缓存功能...")
 
     try:
-        get_fundamentals_finnhub = getattr(importlib.import_module('trader.flows.interface'), 'get_fundamentals_finnhub')
-        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
+        get_fundamentals_finnhub = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "get_fundamentals_finnhub",
+        )
+        get_cache = getattr(importlib.import_module("trader.flows.cache"), "get_cache")
 
         # 清理可能存在的缓存
-        cache = get_cache()
+        get_cache()
         test_ticker = "AAPL"
-        curr_date = datetime.now().strftime('%Y-%m-%d')
+        curr_date = datetime.now().strftime("%Y-%m-%d")
 
         print(f"\n🔍 第一次获取 {test_ticker} 的基本面数据（从API获取）...")
         start_time = time.time()
@@ -57,10 +59,12 @@ def test_finnhub_fundamentals_with_cache():
 
             # 验证缓存效果
             if second_time < first_time and result1 == result2:
-                print(f"✅ 缓存功能正常！速度提升了 {((first_time - second_time) / first_time * 100):.1f}%")
+                print(
+                    f"✅ 缓存功能正常！速度提升了 {((first_time - second_time) / first_time * 100):.1f}%"
+                )
                 return True
             else:
-                print(f"⚠️ 缓存可能未生效")
+                print("⚠️ 缓存可能未生效")
                 return False
         else:
             print(f"❌ {test_ticker} 基本面数据获取失败或数据过短")
@@ -69,33 +73,38 @@ def test_finnhub_fundamentals_with_cache():
 
     except Exception as e:
         print(f"❌ Finnhub基本面数据测试失败: {str(e)}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_openai_fallback_with_cache():
     """测试OpenAI fallback机制和缓存功能"""
     print("\n🔄 测试OpenAI fallback机制和缓存功能...")
 
     try:
-        get_fundamentals_openai = getattr(importlib.import_module('trader.flows.interface'), 'get_fundamentals_openai')
+        get_fundamentals_openai = getattr(
+            importlib.import_module("trader.flows.interface"), "get_fundamentals_openai"
+        )
 
         # 临时移除OpenAI配置来测试fallback
-        original_backend_url = os.environ.get('BACKEND_URL')
-        original_quick_think_llm = os.environ.get('QUICK_THINK_LLM')
+        original_backend_url = os.environ.get("BACKEND_URL")
+        original_quick_think_llm = os.environ.get("QUICK_THINK_LLM")
 
         # 清除OpenAI配置
-        if 'BACKEND_URL' in os.environ:
-            del os.environ['BACKEND_URL']
-        if 'QUICK_THINK_LLM' in os.environ:
-            del os.environ['QUICK_THINK_LLM']
+        if "BACKEND_URL" in os.environ:
+            del os.environ["BACKEND_URL"]
+        if "QUICK_THINK_LLM" in os.environ:
+            del os.environ["QUICK_THINK_LLM"]
 
         print("🚫 已临时移除OpenAI配置，测试fallback到Finnhub...")
 
-        curr_date = datetime.now().strftime('%Y-%m-%d')
+        curr_date = datetime.now().strftime("%Y-%m-%d")
         test_ticker = "MSFT"
 
-        print(f"\n🔍 第一次通过OpenAI接口获取 {test_ticker} 数据（应fallback到Finnhub）...")
+        print(
+            f"\n🔍 第一次通过OpenAI接口获取 {test_ticker} 数据（应fallback到Finnhub）..."
+        )
         start_time = time.time()
         result1 = get_fundamentals_openai(test_ticker, curr_date)
         first_time = time.time() - start_time
@@ -106,7 +115,9 @@ def test_openai_fallback_with_cache():
             print(f"⏱️ 第一次获取耗时: {first_time:.2f}秒")
 
             # 第二次获取，应该从缓存读取
-            print(f"\n🔍 第二次通过OpenAI接口获取 {test_ticker} 数据（应从缓存获取）...")
+            print(
+                f"\n🔍 第二次通过OpenAI接口获取 {test_ticker} 数据（应从缓存获取）..."
+            )
             start_time = time.time()
             result2 = get_fundamentals_openai(test_ticker, curr_date)
             second_time = time.time() - start_time
@@ -115,10 +126,12 @@ def test_openai_fallback_with_cache():
 
             # 验证缓存效果
             if second_time < first_time and result1 == result2:
-                print(f"✅ fallback + 缓存功能正常！速度提升了 {((first_time - second_time) / first_time * 100):.1f}%")
+                print(
+                    f"✅ fallback + 缓存功能正常！速度提升了 {((first_time - second_time) / first_time * 100):.1f}%"
+                )
                 success = True
             else:
-                print(f"⚠️ 缓存可能未生效")
+                print("⚠️ 缓存可能未生效")
                 success = False
         else:
             print("❌ OpenAI fallback机制可能有问题")
@@ -127,24 +140,25 @@ def test_openai_fallback_with_cache():
 
         # 恢复原始配置
         if original_backend_url:
-            os.environ['BACKEND_URL'] = original_backend_url
+            os.environ["BACKEND_URL"] = original_backend_url
         if original_quick_think_llm:
-            os.environ['QUICK_THINK_LLM'] = original_quick_think_llm
+            os.environ["QUICK_THINK_LLM"] = original_quick_think_llm
 
         return success
 
     except Exception as e:
         print(f"❌ OpenAI fallback测试失败: {str(e)}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_cache_management():
     """测试缓存管理功能"""
     print("\n💾 测试缓存管理功能...")
 
     try:
-        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
+        get_cache = getattr(importlib.import_module("trader.flows.cache"), "get_cache")
 
         cache = get_cache()
 
@@ -153,18 +167,21 @@ def test_cache_management():
         print(f"📊 当前缓存统计: {stats}")
 
         # 检查缓存配置
-        print(f"\n⚙️ 基本面数据缓存配置:")
+        print("\n⚙️ 基本面数据缓存配置:")
         for cache_type, config in cache.cache_config.items():
-            if 'fundamentals' in cache_type:
-                print(f"  - {cache_type}: TTL={config['ttl_hours']}小时, 最大文件数={config['max_files']}, 描述={config['description']}")
+            if "fundamentals" in cache_type:
+                print(
+                    f"  - {cache_type}: TTL={config['ttl_hours']}小时, 最大文件数={config['max_files']}, 描述={config['description']}"
+                )
 
         return True
 
     except Exception as e:
         print(f"❌ 缓存管理测试失败: {str(e)}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主测试函数"""
@@ -185,7 +202,7 @@ def main():
 
     results = []
     for test_name, test_func in tests:
-        print(f"\n{'='*20} {test_name} {'='*20}")
+        print(f"\n{'=' * 20} {test_name} {'=' * 20}")
         try:
             result = test_func()
             results.append((test_name, result))
@@ -194,7 +211,7 @@ def main():
             results.append((test_name, False))
 
     # 输出测试结果
-    print(f"\n{'='*20} 测试结果汇总 {'='*20}")
+    print(f"\n{'=' * 20} 测试结果汇总 {'=' * 20}")
     for test_name, result in results:
         status = "✅ 通过" if result else "❌ 失败"
         print(f"{status} {test_name}")
@@ -214,6 +231,7 @@ def main():
         print("6. ✅ 自动检测缓存有效性，过期数据会重新获取")
     else:
         print("⚠️ 部分测试失败，请检查相关配置。")
+
 
 if __name__ == "__main__":
     main()

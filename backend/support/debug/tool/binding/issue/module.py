@@ -3,21 +3,30 @@
 调试工具绑定问题
 验证LLM是否能访问未绑定的工具
 """
-import importlib
 
+import importlib
 import os
 import sys
+
 
 def test_tool_isolation():
     """测试工具隔离机制"""
     print("🔧 测试工具隔离机制...")
 
     try:
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
-        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI"
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
+        getattr(importlib.import_module("langchain_core.tools"), "tool")
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
 
         # 检查API密钥
         api_key = os.getenv("DASHSCOPE_API_KEY")
@@ -31,96 +40,104 @@ def test_tool_isolation():
         toolkit = Toolkit(config)
 
         # 创建LLM
-        llm = ChatDashScopeOpenAI(
-            model="qwen-turbo",
-            temperature=0.1,
-            max_tokens=200
-        )
+        llm = ChatDashScopeOpenAI(model="qwen-turbo", temperature=0.1, max_tokens=200)
 
-        print(f"\n📋 工具包中的所有工具:")
+        print("\n📋 工具包中的所有工具:")
         all_tools = []
         for attr_name in dir(toolkit):
-            if not attr_name.startswith('_') and callable(getattr(toolkit, attr_name)):
+            if not attr_name.startswith("_") and callable(getattr(toolkit, attr_name)):
                 attr = getattr(toolkit, attr_name)
-                if hasattr(attr, 'name'):
+                if hasattr(attr, "name"):
                     all_tools.append(attr.name)
                     print(f"  - {attr.name}")
 
-        print(f"\n🔧 测试1: 只绑定港股工具")
+        print("\n🔧 测试1: 只绑定港股工具")
         hk_tools = [toolkit.get_hk_stock_data_unified]
         llm_hk = llm.bind_tools(hk_tools)
 
         print(f"  绑定的工具: {[tool.name for tool in hk_tools]}")
 
         # 测试是否能调用其他工具
-        test_message = HumanMessage(content="请调用get_fundamentals_openai工具获取0700.HK的数据")
+        test_message = HumanMessage(
+            content="请调用get_fundamentals_openai工具获取0700.HK的数据"
+        )
 
         try:
             response = llm_hk.invoke([test_message])
             print(f"  响应类型: {type(response)}")
             print(f"  工具调用数量: {len(getattr(response, 'tool_calls', []))}")
 
-            if hasattr(response, 'tool_calls') and response.tool_calls:
-                called_tools = [call.get('name', 'unknown') for call in response.tool_calls]
+            if hasattr(response, "tool_calls") and response.tool_calls:
+                called_tools = [
+                    call.get("name", "unknown") for call in response.tool_calls
+                ]
                 print(f"  实际调用的工具: {called_tools}")
 
                 # 检查是否调用了未绑定的工具
-                unexpected_tools = [tool for tool in called_tools if tool not in [t.name for t in hk_tools]]
+                unexpected_tools = [
+                    tool
+                    for tool in called_tools
+                    if tool not in [t.name for t in hk_tools]
+                ]
                 if unexpected_tools:
                     print(f"  ❌ 调用了未绑定的工具: {unexpected_tools}")
                     return False
                 else:
-                    print(f"  ✅ 只调用了绑定的工具")
+                    print("  ✅ 只调用了绑定的工具")
             else:
-                print(f"  ℹ️ 没有工具调用")
+                print("  ℹ️ 没有工具调用")
 
         except Exception as e:
             print(f"  ❌ 调用失败: {e}")
             return False
 
-        print(f"\n🔧 测试2: 创建新的LLM实例")
-        llm2 = ChatDashScopeOpenAI(
-            model="qwen-turbo",
-            temperature=0.1,
-            max_tokens=200
-        )
+        print("\n🔧 测试2: 创建新的LLM实例")
+        llm2 = ChatDashScopeOpenAI(model="qwen-turbo", temperature=0.1, max_tokens=200)
 
         china_tools = [toolkit.get_china_stock_data]
         llm2_china = llm2.bind_tools(china_tools)
 
         print(f"  绑定的工具: {[tool.name for tool in china_tools]}")
 
-        test_message2 = HumanMessage(content="请调用get_hk_stock_data_unified工具获取0700.HK的数据")
+        test_message2 = HumanMessage(
+            content="请调用get_hk_stock_data_unified工具获取0700.HK的数据"
+        )
 
         try:
             response2 = llm2_china.invoke([test_message2])
             print(f"  响应类型: {type(response2)}")
             print(f"  工具调用数量: {len(getattr(response2, 'tool_calls', []))}")
 
-            if hasattr(response2, 'tool_calls') and response2.tool_calls:
-                called_tools2 = [call.get('name', 'unknown') for call in response2.tool_calls]
+            if hasattr(response2, "tool_calls") and response2.tool_calls:
+                called_tools2 = [
+                    call.get("name", "unknown") for call in response2.tool_calls
+                ]
                 print(f"  实际调用的工具: {called_tools2}")
 
                 # 检查是否调用了未绑定的工具
-                unexpected_tools2 = [tool for tool in called_tools2 if tool not in [t.name for t in china_tools]]
+                unexpected_tools2 = [
+                    tool
+                    for tool in called_tools2
+                    if tool not in [t.name for t in china_tools]
+                ]
                 if unexpected_tools2:
                     print(f"  ❌ 调用了未绑定的工具: {unexpected_tools2}")
                     return False
                 else:
-                    print(f"  ✅ 只调用了绑定的工具")
+                    print("  ✅ 只调用了绑定的工具")
             else:
-                print(f"  ℹ️ 没有工具调用")
+                print("  ℹ️ 没有工具调用")
 
         except Exception as e:
             print(f"  ❌ 调用失败: {e}")
             return False
 
-        print(f"\n✅ 工具隔离测试完成")
+        print("\n✅ 工具隔离测试完成")
         return True
 
     except Exception as e:
         print(f"❌ 工具隔离测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -130,9 +147,15 @@ def test_llm_instance_reuse():
     print("\n🔧 测试LLM实例复用...")
 
     try:
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI"
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 创建工具包
         config = DEFAULT_CONFIG.copy()
@@ -140,7 +163,7 @@ def test_llm_instance_reuse():
         toolkit = Toolkit(config)
 
         # 检查是否存在全局LLM实例
-        print(f"  检查LLM实例创建...")
+        print("  检查LLM实例创建...")
 
         llm1 = ChatDashScopeOpenAI(model="qwen-turbo")
         llm2 = ChatDashScopeOpenAI(model="qwen-turbo")

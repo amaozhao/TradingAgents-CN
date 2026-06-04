@@ -9,20 +9,22 @@ Alpha Vantage 基本面数据提供者
 参考原版 TradingAgents 实现
 """
 
-from typing import Annotated, Optional
-import json
 from datetime import datetime
-
-from .common import _make_api_request, format_response_as_string
+from typing import Annotated, Optional
 
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
-logger = get_logger('agents')
+
+from .common import _make_api_request, format_response_as_string
+
+logger = get_logger("agents")
 
 
 def get_fundamentals(
     ticker: Annotated[str, "Ticker symbol of the company"],
-    curr_date: Annotated[Optional[str], "Current date (not used for Alpha Vantage)"] = None
+    curr_date: Annotated[
+        Optional[str], "Current date (not used for Alpha Vantage)"
+    ] = None,
 ) -> str:
     """
     获取公司综合基本面数据
@@ -57,7 +59,9 @@ def get_fundamentals(
         if isinstance(data, dict) and data:
             # 提取关键指标
             result = f"# Company Overview: {ticker.upper()}\n"
-            result += f"# Retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            result += (
+                f"# Retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            )
 
             # 基本信息
             result += "## Basic Information\n"
@@ -70,7 +74,7 @@ def get_fundamentals(
             result += f"**Industry**: {data.get('Industry', 'N/A')}\n\n"
 
             # 公司描述
-            description = data.get('Description', 'N/A')
+            description = data.get("Description", "N/A")
             if len(description) > 500:
                 description = description[:500] + "..."
             result += f"**Description**: {description}\n\n"
@@ -97,13 +101,21 @@ def get_fundamentals(
             # 盈利能力
             result += "## Profitability\n"
             result += f"**Profit Margin**: {data.get('ProfitMargin', 'N/A')}\n"
-            result += f"**Operating Margin TTM**: {data.get('OperatingMarginTTM', 'N/A')}\n"
-            result += f"**Return on Assets TTM**: {data.get('ReturnOnAssetsTTM', 'N/A')}\n"
-            result += f"**Return on Equity TTM**: {data.get('ReturnOnEquityTTM', 'N/A')}\n\n"
+            result += (
+                f"**Operating Margin TTM**: {data.get('OperatingMarginTTM', 'N/A')}\n"
+            )
+            result += (
+                f"**Return on Assets TTM**: {data.get('ReturnOnAssetsTTM', 'N/A')}\n"
+            )
+            result += (
+                f"**Return on Equity TTM**: {data.get('ReturnOnEquityTTM', 'N/A')}\n\n"
+            )
 
             # 股息信息
             result += "## Dividend Information\n"
-            result += f"**Dividend Per Share**: ${data.get('DividendPerShare', 'N/A')}\n"
+            result += (
+                f"**Dividend Per Share**: ${data.get('DividendPerShare', 'N/A')}\n"
+            )
             result += f"**Dividend Yield**: {data.get('DividendYield', 'N/A')}\n"
             result += f"**Dividend Date**: {data.get('DividendDate', 'N/A')}\n"
             result += f"**Ex-Dividend Date**: {data.get('ExDividendDate', 'N/A')}\n\n"
@@ -114,7 +126,9 @@ def get_fundamentals(
             result += f"**52 Week Low**: ${data.get('52WeekLow', 'N/A')}\n"
             result += f"**50 Day MA**: ${data.get('50DayMovingAverage', 'N/A')}\n"
             result += f"**200 Day MA**: ${data.get('200DayMovingAverage', 'N/A')}\n"
-            result += f"**Shares Outstanding**: {data.get('SharesOutstanding', 'N/A')}\n"
+            result += (
+                f"**Shares Outstanding**: {data.get('SharesOutstanding', 'N/A')}\n"
+            )
             result += f"**Beta**: {data.get('Beta', 'N/A')}\n\n"
 
             # 财务健康
@@ -126,17 +140,27 @@ def get_fundamentals(
 
             # 分析师目标价
             result += "## Analyst Targets\n"
-            result += f"**Analyst Target Price**: ${data.get('AnalystTargetPrice', 'N/A')}\n"
+            result += (
+                f"**Analyst Target Price**: ${data.get('AnalystTargetPrice', 'N/A')}\n"
+            )
             result += f"**Analyst Rating Strong Buy**: {data.get('AnalystRatingStrongBuy', 'N/A')}\n"
             result += f"**Analyst Rating Buy**: {data.get('AnalystRatingBuy', 'N/A')}\n"
-            result += f"**Analyst Rating Hold**: {data.get('AnalystRatingHold', 'N/A')}\n"
-            result += f"**Analyst Rating Sell**: {data.get('AnalystRatingSell', 'N/A')}\n"
+            result += (
+                f"**Analyst Rating Hold**: {data.get('AnalystRatingHold', 'N/A')}\n"
+            )
+            result += (
+                f"**Analyst Rating Sell**: {data.get('AnalystRatingSell', 'N/A')}\n"
+            )
             result += f"**Analyst Rating Strong Sell**: {data.get('AnalystRatingStrongSell', 'N/A')}\n\n"
 
             logger.info(f"✅ [Alpha Vantage] 成功获取基本面数据: {ticker}")
             return result
         else:
-            return format_response_as_string(data, f"Fundamentals for {ticker}") if isinstance(data, dict) else str(data)
+            return (
+                format_response_as_string(data, f"Fundamentals for {ticker}")
+                if isinstance(data, dict)
+                else str(data)
+            )
 
     except Exception as e:
         logger.error(f"❌ [Alpha Vantage] 获取基本面数据失败 {ticker}: {e}")
@@ -145,8 +169,10 @@ def get_fundamentals(
 
 def get_balance_sheet(
     ticker: Annotated[str, "Ticker symbol of the company"],
-    freq: Annotated[str, "Reporting frequency: annual/quarterly (not used)"] = "quarterly",
-    curr_date: Annotated[Optional[str], "Current date (not used)"] = None
+    freq: Annotated[
+        str, "Reporting frequency: annual/quarterly (not used)"
+    ] = "quarterly",
+    curr_date: Annotated[Optional[str], "Current date (not used)"] = None,
 ) -> str:
     """
     获取资产负债表数据
@@ -165,7 +191,11 @@ def get_balance_sheet(
         params = {"symbol": ticker.upper()}
         data = _make_api_request("BALANCE_SHEET", params)
 
-        return format_response_as_string(data, f"Balance Sheet for {ticker}") if isinstance(data, dict) else str(data)
+        return (
+            format_response_as_string(data, f"Balance Sheet for {ticker}")
+            if isinstance(data, dict)
+            else str(data)
+        )
 
     except Exception as e:
         logger.error(f"❌ [Alpha Vantage] 获取资产负债表失败 {ticker}: {e}")
@@ -174,8 +204,10 @@ def get_balance_sheet(
 
 def get_cashflow(
     ticker: Annotated[str, "Ticker symbol of the company"],
-    freq: Annotated[str, "Reporting frequency: annual/quarterly (not used)"] = "quarterly",
-    curr_date: Annotated[Optional[str], "Current date (not used)"] = None
+    freq: Annotated[
+        str, "Reporting frequency: annual/quarterly (not used)"
+    ] = "quarterly",
+    curr_date: Annotated[Optional[str], "Current date (not used)"] = None,
 ) -> str:
     """
     获取现金流量表数据
@@ -194,7 +226,11 @@ def get_cashflow(
         params = {"symbol": ticker.upper()}
         data = _make_api_request("CASH_FLOW", params)
 
-        return format_response_as_string(data, f"Cash Flow for {ticker}") if isinstance(data, dict) else str(data)
+        return (
+            format_response_as_string(data, f"Cash Flow for {ticker}")
+            if isinstance(data, dict)
+            else str(data)
+        )
 
     except Exception as e:
         logger.error(f"❌ [Alpha Vantage] 获取现金流量表失败 {ticker}: {e}")
@@ -203,8 +239,10 @@ def get_cashflow(
 
 def get_income_statement(
     ticker: Annotated[str, "Ticker symbol of the company"],
-    freq: Annotated[str, "Reporting frequency: annual/quarterly (not used)"] = "quarterly",
-    curr_date: Annotated[Optional[str], "Current date (not used)"] = None
+    freq: Annotated[
+        str, "Reporting frequency: annual/quarterly (not used)"
+    ] = "quarterly",
+    curr_date: Annotated[Optional[str], "Current date (not used)"] = None,
 ) -> str:
     """
     获取利润表数据
@@ -223,7 +261,11 @@ def get_income_statement(
         params = {"symbol": ticker.upper()}
         data = _make_api_request("INCOME_STATEMENT", params)
 
-        return format_response_as_string(data, f"Income Statement for {ticker}") if isinstance(data, dict) else str(data)
+        return (
+            format_response_as_string(data, f"Income Statement for {ticker}")
+            if isinstance(data, dict)
+            else str(data)
+        )
 
     except Exception as e:
         logger.error(f"❌ [Alpha Vantage] 获取利润表失败 {ticker}: {e}")

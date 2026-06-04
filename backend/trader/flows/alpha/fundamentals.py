@@ -1,5 +1,6 @@
-from .common import _make_api_request
 from typing import Any, Optional
+
+from .common import _make_api_request
 
 
 def _filter_reports_by_date(result: Any, curr_date: Optional[str]):
@@ -13,8 +14,7 @@ def _filter_reports_by_date(result: Any, curr_date: Optional[str]):
     for key in ("annualReports", "quarterlyReports"):
         if key in result:
             result[key] = [
-                r for r in result[key]
-                if r.get("fiscalDateEnding", "") <= curr_date
+                r for r in result[key] if r.get("fiscalDateEnding", "") <= curr_date
             ]
     return result
 
@@ -37,7 +37,9 @@ def get_fundamentals(ticker: str, curr_date: Optional[str] = None) -> str:
     return str(_make_api_request("OVERVIEW", params))
 
 
-def get_balance_sheet(ticker: str, freq: str = "quarterly", curr_date: Optional[str] = None):
+def get_balance_sheet(
+    ticker: str, freq: str = "quarterly", curr_date: Optional[str] = None
+):
     """Retrieve balance sheet data for a given ticker symbol using Alpha Vantage."""
     result = _make_api_request("BALANCE_SHEET", {"symbol": ticker})
     return _filter_reports_by_date(result, curr_date)
@@ -49,7 +51,9 @@ def get_cashflow(ticker: str, freq: str = "quarterly", curr_date: Optional[str] 
     return _filter_reports_by_date(result, curr_date)
 
 
-def get_income_statement(ticker: str, freq: str = "quarterly", curr_date: Optional[str] = None):
+def get_income_statement(
+    ticker: str, freq: str = "quarterly", curr_date: Optional[str] = None
+):
     """Retrieve income statement data for a given ticker symbol using Alpha Vantage."""
     result = _make_api_request("INCOME_STATEMENT", {"symbol": ticker})
     return _filter_reports_by_date(result, curr_date)

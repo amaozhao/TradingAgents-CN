@@ -11,13 +11,13 @@ back gracefully to free-text generation.
 from __future__ import annotations
 
 from trader.agents.schemas import PortfolioDecision, render_pm_decision
-from trader.agents.utils.utils import (
-    get_instrument_context_from_state,
-    get_language_instruction,
-)
 from trader.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
+)
+from trader.agents.utils.utils import (
+    get_instrument_context_from_state,
+    get_language_instruction,
 )
 
 

@@ -7,23 +7,19 @@
 - 配置提供者
 - 配置兼容层
 """
+
 import importlib
+import os
+from unittest.mock import patch
 
 import pytest
-import os
-import sys
-from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock
-
-# 添加项目根目录到 Python 路径
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.core.startup import (
-    StartupValidator,
     ConfigItem,
     ConfigLevel,
+    ConfigurationError,
+    StartupValidator,
     ValidationResult,
-    ConfigurationError
 )
 
 
@@ -36,7 +32,7 @@ class TestStartupValidator:
             key="TEST_KEY",
             level=ConfigLevel.REQUIRED,
             description="Test configuration",
-            example="test_value"
+            example="test_value",
         )
 
         assert config.key == "TEST_KEY"
@@ -51,7 +47,7 @@ class TestStartupValidator:
             missing_required=[],
             missing_recommended=[],
             invalid_configs=[],
-            warnings=[]
+            warnings=[],
         )
 
         assert result.success is True
@@ -69,18 +65,21 @@ class TestStartupValidator:
 
         # 检查是否包含必需的配置项
         required_keys = [config.key for config in result.missing_required]
-        assert "MONGODB_HOST" in required_keys
-        assert "MONGODB_PORT" in required_keys
+        assert "POSTGRES_HOST" in required_keys
+        assert "POSTGRES_PORT" in required_keys
         assert "JWT_SECRET" in required_keys
 
-    @patch.dict(os.environ, {
-        "MONGODB_HOST": "localhost",
-        "MONGODB_PORT": "27017",
-        "MONGODB_DATABASE": "test_db",
-        "REDIS_HOST": "localhost",
-        "REDIS_PORT": "6379",
-        "JWT_SECRET": "test-secret-key-with-enough-length"
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "POSTGRES_HOST": "localhost",
+            "POSTGRES_PORT": "5432",
+            "POSTGRES_DB": "test_db",
+            "REDIS_HOST": "localhost",
+            "REDIS_PORT": "6379",
+            "JWT_SECRET": "test-secret-key-with-enough-length",
+        },
+    )
     def test_validate_with_required_configs(self):
         """测试有必需配置的验证"""
         validator = StartupValidator()
@@ -89,14 +88,17 @@ class TestStartupValidator:
         assert result.success is True
         assert len(result.missing_required) == 0
 
-    @patch.dict(os.environ, {
-        "MONGODB_HOST": "localhost",
-        "MONGODB_PORT": "invalid_port",  # 无效端口
-        "MONGODB_DATABASE": "test_db",
-        "REDIS_HOST": "localhost",
-        "REDIS_PORT": "6379",
-        "JWT_SECRET": "test-secret-key-with-enough-length"
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "POSTGRES_HOST": "localhost",
+            "POSTGRES_PORT": "invalid_port",  # 无效端口
+            "POSTGRES_DB": "test_db",
+            "REDIS_HOST": "localhost",
+            "REDIS_PORT": "6379",
+            "JWT_SECRET": "test-secret-key-with-enough-length",
+        },
+    )
     def test_validate_invalid_port(self):
         """测试无效端口验证"""
         validator = StartupValidator()
@@ -105,14 +107,17 @@ class TestStartupValidator:
         assert result.success is False
         assert len(result.invalid_configs) > 0
 
-    @patch.dict(os.environ, {
-        "MONGODB_HOST": "localhost",
-        "MONGODB_PORT": "27017",
-        "MONGODB_DATABASE": "test_db",
-        "REDIS_HOST": "localhost",
-        "REDIS_PORT": "6379",
-        "JWT_SECRET": "short"  # 太短的密钥
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "POSTGRES_HOST": "localhost",
+            "POSTGRES_PORT": "5432",
+            "POSTGRES_DB": "test_db",
+            "REDIS_HOST": "localhost",
+            "REDIS_PORT": "6379",
+            "JWT_SECRET": "short",  # 太短的密钥
+        },
+    )
     def test_validate_short_jwt_secret(self):
         """测试过短的 JWT 密钥"""
         validator = StartupValidator()
@@ -121,14 +126,17 @@ class TestStartupValidator:
         assert result.success is False
         assert len(result.invalid_configs) > 0
 
-    @patch.dict(os.environ, {
-        "MONGODB_HOST": "localhost",
-        "MONGODB_PORT": "27017",
-        "MONGODB_DATABASE": "test_db",
-        "REDIS_HOST": "localhost",
-        "REDIS_PORT": "6379",
-        "JWT_SECRET": "your-super-secret-jwt-key-change-in-production"  # 默认值
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "POSTGRES_HOST": "localhost",
+            "POSTGRES_PORT": "5432",
+            "POSTGRES_DB": "test_db",
+            "REDIS_HOST": "localhost",
+            "REDIS_PORT": "6379",
+            "JWT_SECRET": "your-super-secret-jwt-key-change-in-production",  # 默认值
+        },
+    )
     def test_validate_default_jwt_secret_warning(self):
         """测试使用默认 JWT 密钥时的警告"""
         validator = StartupValidator()
@@ -138,14 +146,17 @@ class TestStartupValidator:
         assert len(result.warnings) > 0
         assert any("JWT_SECRET" in warning for warning in result.warnings)
 
-    @patch.dict(os.environ, {
-        "MONGODB_HOST": "localhost",
-        "MONGODB_PORT": "27017",
-        "MONGODB_DATABASE": "test_db",
-        "REDIS_HOST": "localhost",
-        "REDIS_PORT": "6379",
-        "JWT_SECRET": "test-secret-key-with-enough-length"
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "POSTGRES_HOST": "localhost",
+            "POSTGRES_PORT": "5432",
+            "POSTGRES_DB": "test_db",
+            "REDIS_HOST": "localhost",
+            "REDIS_PORT": "6379",
+            "JWT_SECRET": "test-secret-key-with-enough-length",
+        },
+    )
     def test_validate_missing_recommended_configs(self):
         """测试缺少推荐配置"""
         validator = StartupValidator()
@@ -156,7 +167,10 @@ class TestStartupValidator:
 
         # 检查推荐配置
         recommended_keys = [config.key for config in result.missing_recommended]
-        assert "DEEPSEEK_API_KEY" in recommended_keys or "DASHSCOPE_API_KEY" in recommended_keys
+        assert (
+            "DEEPSEEK_API_KEY" in recommended_keys
+            or "DASHSCOPE_API_KEY" in recommended_keys
+        )
 
     @patch.dict(os.environ, {}, clear=True)
     def test_raise_if_failed(self):
@@ -167,14 +181,17 @@ class TestStartupValidator:
         with pytest.raises(ConfigurationError):
             validator.raise_if_failed()
 
-    @patch.dict(os.environ, {
-        "MONGODB_HOST": "localhost",
-        "MONGODB_PORT": "27017",
-        "MONGODB_DATABASE": "test_db",
-        "REDIS_HOST": "localhost",
-        "REDIS_PORT": "6379",
-        "JWT_SECRET": "test-secret-key-with-enough-length"
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "POSTGRES_HOST": "localhost",
+            "POSTGRES_PORT": "5432",
+            "POSTGRES_DB": "test_db",
+            "REDIS_HOST": "localhost",
+            "REDIS_PORT": "6379",
+            "JWT_SECRET": "test-secret-key-with-enough-length",
+        },
+    )
     def test_raise_if_failed_success(self):
         """测试验证成功时不抛出异常"""
         validator = StartupValidator()
@@ -189,14 +206,18 @@ class TestConfigCompat:
 
     def test_config_manager_compat_creation(self):
         """测试配置管理器兼容层创建"""
-        ConfigManagerCompat = getattr(importlib.import_module('app.core.compat'), 'ConfigManagerCompat')
+        ConfigManagerCompat = getattr(
+            importlib.import_module("app.core.compat"), "ConfigManagerCompat"
+        )
 
         config_manager = ConfigManagerCompat()
         assert config_manager is not None
 
     def test_get_data_dir(self):
         """测试获取数据目录"""
-        ConfigManagerCompat = getattr(importlib.import_module('app.core.compat'), 'ConfigManagerCompat')
+        ConfigManagerCompat = getattr(
+            importlib.import_module("app.core.compat"), "ConfigManagerCompat"
+        )
 
         config_manager = ConfigManagerCompat()
         data_dir = config_manager.get_data_dir()
@@ -207,7 +228,9 @@ class TestConfigCompat:
     @patch.dict(os.environ, {"DATA_DIR": "/custom/data/dir"})
     def test_get_data_dir_from_env(self):
         """测试从环境变量获取数据目录"""
-        ConfigManagerCompat = getattr(importlib.import_module('app.core.compat'), 'ConfigManagerCompat')
+        ConfigManagerCompat = getattr(
+            importlib.import_module("app.core.compat"), "ConfigManagerCompat"
+        )
 
         config_manager = ConfigManagerCompat()
         data_dir = config_manager.get_data_dir()
@@ -216,7 +239,9 @@ class TestConfigCompat:
 
     def test_load_settings(self):
         """测试加载系统设置"""
-        ConfigManagerCompat = getattr(importlib.import_module('app.core.compat'), 'ConfigManagerCompat')
+        ConfigManagerCompat = getattr(
+            importlib.import_module("app.core.compat"), "ConfigManagerCompat"
+        )
 
         config_manager = ConfigManagerCompat()
         settings = config_manager.load_settings()
@@ -227,14 +252,18 @@ class TestConfigCompat:
 
     def test_token_tracker_compat_creation(self):
         """测试 Token 跟踪器兼容层创建"""
-        TokenTrackerCompat = getattr(importlib.import_module('app.core.compat'), 'TokenTrackerCompat')
+        TokenTrackerCompat = getattr(
+            importlib.import_module("app.core.compat"), "TokenTrackerCompat"
+        )
 
         tracker = TokenTrackerCompat()
         assert tracker is not None
 
     def test_track_usage(self):
         """测试记录 Token 使用量"""
-        TokenTrackerCompat = getattr(importlib.import_module('app.core.compat'), 'TokenTrackerCompat')
+        TokenTrackerCompat = getattr(
+            importlib.import_module("app.core.compat"), "TokenTrackerCompat"
+        )
 
         tracker = TokenTrackerCompat()
         tracker.track_usage(
@@ -242,7 +271,7 @@ class TestConfigCompat:
             model_name="test_model",
             input_tokens=100,
             output_tokens=50,
-            cost=0.01
+            cost=0.01,
         )
 
         summary = tracker.get_usage_summary()
@@ -253,7 +282,9 @@ class TestConfigCompat:
 
     def test_reset_usage(self):
         """测试重置使用统计"""
-        TokenTrackerCompat = getattr(importlib.import_module('app.core.compat'), 'TokenTrackerCompat')
+        TokenTrackerCompat = getattr(
+            importlib.import_module("app.core.compat"), "TokenTrackerCompat"
+        )
 
         tracker = TokenTrackerCompat()
         tracker.track_usage("test", "model", 100, 50, 0.01)
@@ -267,10 +298,7 @@ class TestConfigCompat:
 class TestConfigPriority:
     """测试配置优先级"""
 
-    @patch.dict(os.environ, {
-        "TEST_CONFIG": "from_env",
-        "MONGODB_HOST": "localhost"
-    })
+    @patch.dict(os.environ, {"TEST_CONFIG": "from_env", "POSTGRES_HOST": "localhost"})
     def test_env_priority(self):
         """测试环境变量优先级"""
         # 环境变量应该有最高优先级
@@ -278,7 +306,9 @@ class TestConfigPriority:
 
     def test_default_values(self):
         """测试默认值"""
-        ConfigManagerCompat = getattr(importlib.import_module('app.core.compat'), 'ConfigManagerCompat')
+        ConfigManagerCompat = getattr(
+            importlib.import_module("app.core.compat"), "ConfigManagerCompat"
+        )
 
         config_manager = ConfigManagerCompat()
         settings = config_manager._get_default_settings()

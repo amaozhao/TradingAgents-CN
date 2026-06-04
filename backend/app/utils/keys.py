@@ -39,15 +39,15 @@ def is_valid_api_key(api_key: Optional[str]) -> bool:
         return False
 
     # 3. 不能是占位符（前缀）
-    if api_key.startswith('your_') or api_key.startswith('your-'):
+    if api_key.startswith("your_") or api_key.startswith("your-"):
         return False
 
     # 4. 不能是占位符（后缀）
-    if api_key.endswith('_here') or api_key.endswith('-here'):
+    if api_key.endswith("_here") or api_key.endswith("-here"):
         return False
 
     # 5. 不能是截断的密钥（包含 '...'）
-    if '...' in api_key:
+    if "..." in api_key:
         return False
 
     return True
@@ -154,11 +154,11 @@ def should_skip_api_key_update(api_key: Optional[str]) -> bool:
     api_key = api_key.strip()
 
     # 1. 截断的密钥（包含 '...'）
-    if '...' in api_key:
+    if "..." in api_key:
         return True
 
     # 2. 占位符
-    if api_key.startswith('your_') or api_key.startswith('your-'):
+    if api_key.startswith("your_") or api_key.startswith("your-"):
         return True
 
     return False

@@ -2,34 +2,30 @@
 """
 测试中文输出功能
 """
-import importlib
 
+import importlib
 import os
-import sys
-from pathlib import Path
+
 from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
+from support.path import BACKEND_ROOT
 
 # 加载环境变量
-load_dotenv(project_root / ".env", override=True)
+load_dotenv(BACKEND_ROOT / ".env", override=True)
+
 
 def test_dashscope_chinese():
     """测试阿里百炼模型的中文输出"""
     try:
-        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
+        ChatDashScope = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScope"
+        )
 
         print("🧪 测试阿里百炼模型中文输出")
         print("=" * 50)
 
         # 创建模型实例
-        llm = ChatDashScope(
-            model="qwen-plus",
-            temperature=0.1,
-            max_tokens=500
-        )
+        llm = ChatDashScope(model="qwen-plus", temperature=0.1, max_tokens=500)
 
         # 测试中文提示词
         test_prompt = """你是一位专业的股票分析师。请用中文分析苹果公司(AAPL)的投资前景。
@@ -48,7 +44,9 @@ def test_dashscope_chinese():
         print(f"响应内容: {response.content[:200]}...")
 
         # 检查是否包含中文
-        chinese_chars = sum(1 for char in response.content if '\u4e00' <= char <= '\u9fff')
+        chinese_chars = sum(
+            1 for char in response.content if "\u4e00" <= char <= "\u9fff"
+        )
         total_chars = len(response.content)
         chinese_ratio = chinese_chars / total_chars if total_chars > 0 else 0
 
@@ -63,25 +61,26 @@ def test_dashscope_chinese():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         print(traceback.format_exc())
         return False
+
 
 def test_signal_processor_chinese():
     """测试信号处理器的中文输出"""
     try:
-        SignalProcessor = getattr(importlib.import_module('trader.graph.signals'), 'SignalProcessor')
-        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
+        SignalProcessor = getattr(
+            importlib.import_module("trader.graph.signals"), "SignalProcessor"
+        )
+        ChatDashScope = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScope"
+        )
 
         print("\n🧪 测试信号处理器中文输出")
         print("=" * 50)
 
         # 创建模型实例
-        llm = ChatDashScope(
-            model="qwen-plus",
-            temperature=0.1,
-            max_tokens=100
-        )
+        llm = ChatDashScope(model="qwen-plus", temperature=0.1, max_tokens=100)
 
         # 创建信号处理器
         processor = SignalProcessor(llm)
@@ -93,14 +92,14 @@ def test_signal_processor_chinese():
         print("处理测试信号...")
         decision = processor.process_signal(test_signal, "AAPL")
 
-        print(f"✅ 信号处理成功")
+        print("✅ 信号处理成功")
         print(f"决策结果: {decision}")
 
         # 检查决策是否为中文
-        if any(word in decision for word in ['买入', '卖出', '持有']):
+        if any(word in decision for word in ["买入", "卖出", "持有"]):
             print("✅ 信号处理器输出中文决策")
             return True
-        elif any(word in decision.upper() for word in ['BUY', 'SELL', 'HOLD']):
+        elif any(word in decision.upper() for word in ["BUY", "SELL", "HOLD"]):
             print("⚠️ 信号处理器输出英文决策")
             return False
         else:
@@ -109,9 +108,10 @@ def test_signal_processor_chinese():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         print(traceback.format_exc())
         return False
+
 
 def main():
     """主测试函数"""
@@ -129,7 +129,7 @@ def main():
     # 测试信号处理器
     success2 = test_signal_processor_chinese()
 
-    print(f"\n📊 测试结果:")
+    print("\n📊 测试结果:")
     print(f"  基本中文输出: {'✅ 通过' if success1 else '❌ 失败'}")
     print(f"  信号处理器: {'✅ 通过' if success2 else '❌ 失败'}")
 
@@ -137,6 +137,7 @@ def main():
         print("\n🎉 所有测试通过！中文输出功能正常")
     else:
         print("\n⚠️ 部分测试失败，可能需要进一步调整")
+
 
 if __name__ == "__main__":
     main()

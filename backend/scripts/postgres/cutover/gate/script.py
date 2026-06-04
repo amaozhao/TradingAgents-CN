@@ -9,7 +9,6 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_ROOT.parent
 DEFAULT_OUTPUT_ROOT = Path("/tmp/trading_agents_postgres_cutover_evidence")
@@ -43,13 +42,16 @@ def build_gate_steps(
     require_runtime_startup_gate: bool = True,
     require_runtime_dual_write: bool = True,
     allow_runtime_dual_write_failures: bool = False,
-    allow_runtime_mongo_only: bool = False,
+    allow_runtime_postgres_only: bool = False,
 ) -> list[GateStep]:
     python = sys.executable
     query_plan_command = [python, "backend/scripts/postgres/query/plan/check/script.py"]
     if compile_only_query_plan:
         query_plan_command.append("--compile-only")
-    runtime_log_command = [python, "backend/scripts/postgres/runtime/log/check/script.py"]
+    runtime_log_command = [
+        python,
+        "backend/scripts/postgres/runtime/log/check/script.py",
+    ]
     if runtime_log is not None:
         runtime_log_command.append(str(runtime_log))
         if not require_runtime_startup_gate:
@@ -58,8 +60,8 @@ def build_gate_steps(
             runtime_log_command.append("--no-require-dual-write")
         if allow_runtime_dual_write_failures:
             runtime_log_command.append("--allow-dual-write-failures")
-        if allow_runtime_mongo_only:
-            runtime_log_command.append("--allow-mongo-only")
+        if allow_runtime_postgres_only:
+            runtime_log_command.append("--allow-postgres-only")
 
     steps = [
         GateStep(
@@ -90,7 +92,11 @@ def build_gate_steps(
         ),
         GateStep(
             name="data_path_smoke",
-            command=[python, "backend/scripts/postgres/cutover/smoke/script.py", "--pretty"],
+            command=[
+                python,
+                "backend/scripts/postgres/cutover/smoke/script.py",
+                "--pretty",
+            ],
             output_file="05_data_path_smoke.json",
         ),
     ]
@@ -98,7 +104,11 @@ def build_gate_steps(
         steps.append(
             GateStep(
                 name="api_smoke",
-                command=[python, "backend/scripts/postgres/api/smoke/script.py", "--pretty"],
+                command=[
+                    python,
+                    "backend/scripts/postgres/api/smoke/script.py",
+                    "--pretty",
+                ],
                 output_file="06_api_smoke.json",
             )
         )
@@ -123,7 +133,7 @@ def run_gate(
     require_runtime_startup_gate: bool = True,
     require_runtime_dual_write: bool = True,
     allow_runtime_dual_write_failures: bool = False,
-    allow_runtime_mongo_only: bool = False,
+    allow_runtime_postgres_only: bool = False,
     dry_run: bool,
     require_explicit_env: bool = False,
     target_env: str | None = None,
@@ -138,7 +148,7 @@ def run_gate(
         require_runtime_startup_gate=require_runtime_startup_gate,
         require_runtime_dual_write=require_runtime_dual_write,
         allow_runtime_dual_write_failures=allow_runtime_dual_write_failures,
-        allow_runtime_mongo_only=allow_runtime_mongo_only,
+        allow_runtime_postgres_only=allow_runtime_postgres_only,
     )
     results: list[GateResult] = []
 
@@ -160,11 +170,17 @@ def run_gate(
             )
         )
         (output_dir / "00_target_env_preflight.json").write_text(
-            json.dumps({"status": results[-1].status, "detail": results[-1].detail}, ensure_ascii=False, indent=2),
+            json.dumps(
+                {"status": results[-1].status, "detail": results[-1].detail},
+                ensure_ascii=False,
+                indent=2,
+            ),
             encoding="utf-8",
         )
         if not dry_run and status == "failed":
-            summary = _build_summary(output_dir=output_dir, dry_run=dry_run, results=results)
+            summary = _build_summary(
+                output_dir=output_dir, dry_run=dry_run, results=results
+            )
             (output_dir / "summary.json").write_text(
                 json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True),
                 encoding="utf-8",
@@ -226,11 +242,16 @@ def run_gate(
             break
 
     summary = _build_summary(output_dir=output_dir, dry_run=dry_run, results=results)
-    (output_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    (output_dir / "summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
     return summary
 
 
-def _build_summary(*, output_dir: Path, dry_run: bool, results: list[GateResult]) -> dict:
+def _build_summary(
+    *, output_dir: Path, dry_run: bool, results: list[GateResult]
+) -> dict:
     return {
         "created_at": datetime.now(UTC).isoformat(),
         "dry_run": dry_run,
@@ -261,8 +282,12 @@ def _build_target_manifest(
         "require_explicit_env": require_explicit_env,
         "postgres_read_enabled": os.getenv("POSTGRES_READ_ENABLED"),
         "postgres_dual_write_enabled": os.getenv("POSTGRES_DUAL_WRITE_ENABLED"),
-        "expected_postgres_read_enabled": os.getenv("TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED"),
-        "expected_postgres_dual_write_enabled": os.getenv("TRADING_AGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED"),
+        "expected_postgres_read_enabled": os.getenv(
+            "TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED"
+        ),
+        "expected_postgres_dual_write_enabled": os.getenv(
+            "TRADING_AGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED"
+        ),
         "sync_stock_basics_enabled": os.getenv("SYNC_STOCK_BASICS_ENABLED"),
         "git_commit": os.getenv("GIT_COMMIT") or os.getenv("SOURCE_VERSION"),
     }
@@ -275,14 +300,18 @@ def _safe_environment_snapshot() -> dict[str, str | bool | None]:
         "POSTGRES_READ_ENABLED": os.getenv("POSTGRES_READ_ENABLED"),
         "POSTGRES_DUAL_WRITE_FAIL_OPEN": os.getenv("POSTGRES_DUAL_WRITE_FAIL_OPEN"),
         "SYNC_STOCK_BASICS_ENABLED": os.getenv("SYNC_STOCK_BASICS_ENABLED"),
-        "MONGODB_HOST_SET": bool(os.getenv("MONGODB_HOST")),
-        "MONGODB_DATABASE": os.getenv("MONGODB_DATABASE"),
         "POSTGRES_HOST_SET": bool(os.getenv("POSTGRES_HOST")),
         "POSTGRES_DB": os.getenv("POSTGRES_DB"),
-        "TRADING_AGENTS_API_BASE_URL_SET": bool(os.getenv("TRADING_AGENTS_API_BASE_URL")),
+        "TRADING_AGENTS_API_BASE_URL_SET": bool(
+            os.getenv("TRADING_AGENTS_API_BASE_URL")
+        ),
         "TRADING_AGENTS_API_TOKEN_SET": bool(os.getenv("TRADING_AGENTS_API_TOKEN")),
-        "TRADING_AGENTS_API_USERNAME_SET": bool(os.getenv("TRADING_AGENTS_API_USERNAME")),
-        "TRADING_AGENTS_API_PASSWORD_SET": bool(os.getenv("TRADING_AGENTS_API_PASSWORD")),
+        "TRADING_AGENTS_API_USERNAME_SET": bool(
+            os.getenv("TRADING_AGENTS_API_USERNAME")
+        ),
+        "TRADING_AGENTS_API_PASSWORD_SET": bool(
+            os.getenv("TRADING_AGENTS_API_PASSWORD")
+        ),
     }
 
 
@@ -303,12 +332,16 @@ def _validate_explicit_target_environment(
     elif effective_phase == "pre-read" and include_api_smoke:
         missing.append("pre-read phase requires --skip-api-smoke")
     elif effective_phase == "post-read" and not include_api_smoke:
-        missing.append("post-read phase requires API smoke; do not use --skip-api-smoke")
+        missing.append(
+            "post-read phase requires API smoke; do not use --skip-api-smoke"
+        )
     elif effective_phase == "rollback":
-        missing.append("rollback phase requires postgres_rollback_check.py, not postgres_cutover_gate.py")
+        missing.append(
+            "rollback phase requires postgres_rollback_check.py, not postgres_cutover_gate.py"
+        )
 
-    _require_env(missing, "MONGODB_HOST")
-    _require_env(missing, "MONGODB_DATABASE")
+    _require_env(missing, "POSTGRES_HOST")
+    _require_env(missing, "POSTGRES_DB")
 
     if not os.getenv("DATABASE_URL"):
         _require_env(missing, "POSTGRES_HOST")
@@ -319,14 +352,21 @@ def _validate_explicit_target_environment(
     if include_api_smoke:
         _require_env(missing, "TRADING_AGENTS_API_BASE_URL")
         has_token = bool(os.getenv("TRADING_AGENTS_API_TOKEN"))
-        has_login = bool(os.getenv("TRADING_AGENTS_API_USERNAME")) and bool(os.getenv("TRADING_AGENTS_API_PASSWORD"))
+        has_login = bool(os.getenv("TRADING_AGENTS_API_USERNAME")) and bool(
+            os.getenv("TRADING_AGENTS_API_PASSWORD")
+        )
         if not has_token and not has_login:
-            missing.append("TRADING_AGENTS_API_TOKEN or TRADING_AGENTS_API_USERNAME+TRADING_AGENTS_API_PASSWORD")
+            missing.append(
+                "TRADING_AGENTS_API_TOKEN or TRADING_AGENTS_API_USERNAME+TRADING_AGENTS_API_PASSWORD"
+            )
         _require_env(missing, "TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED")
         _require_env(missing, "TRADING_AGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED")
 
     if missing:
-        return "failed", f"missing explicit target environment: {', '.join(sorted(missing))}"
+        return (
+            "failed",
+            f"missing explicit target environment: {', '.join(sorted(missing))}",
+        )
     return "passed", "explicit target environment present"
 
 
@@ -335,7 +375,9 @@ def _require_env(missing: list[str], name: str) -> None:
         missing.append(name)
 
 
-def _evaluate_step_output(step: GateStep, output_file: Path, returncode: int) -> tuple[str, str]:
+def _evaluate_step_output(
+    step: GateStep, output_file: Path, returncode: int
+) -> tuple[str, str]:
     if returncode != 0:
         return "failed", f"command exited with {returncode}"
     if step.name == "alembic_offline_sql":
@@ -397,7 +439,10 @@ def _validate_consistency(payload: dict) -> tuple[str, str]:
 
 def _validate_query_plan(payload: dict) -> tuple[str, str]:
     if payload.get("all_required_without_payload_filter") is not True:
-        return "failed", f"all_required_without_payload_filter={payload.get('all_required_without_payload_filter')}"
+        return (
+            "failed",
+            f"all_required_without_payload_filter={payload.get('all_required_without_payload_filter')}",
+        )
     return "passed", "query plan gate passed"
 
 
@@ -408,7 +453,9 @@ def _validate_all_passed(payload: dict) -> tuple[str, str]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run PostgreSQL cutover gates and save an evidence bundle.")
+    parser = argparse.ArgumentParser(
+        description="Run PostgreSQL cutover gates and save an evidence bundle."
+    )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--sample-limit", type=int, default=500)
     parser.add_argument("--compile-only-query-plan", action="store_true")
@@ -421,12 +468,12 @@ def main() -> None:
     parser.add_argument("--no-require-runtime-startup-gate", action="store_true")
     parser.add_argument("--no-require-runtime-dual-write", action="store_true")
     parser.add_argument("--allow-runtime-dual-write-failures", action="store_true")
-    parser.add_argument("--allow-runtime-mongo-only", action="store_true")
+    parser.add_argument("--allow-runtime-postgres-only", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
         "--require-explicit-env",
         action="store_true",
-        help="Fail before running gates unless target Mongo/PostgreSQL/API environment variables are explicit.",
+        help="Fail before running gates unless target PostgreSQL/PostgreSQL/API environment variables are explicit.",
     )
     parser.add_argument(
         "--target-env",
@@ -448,7 +495,7 @@ def main() -> None:
         require_runtime_startup_gate=not args.no_require_runtime_startup_gate,
         require_runtime_dual_write=not args.no_require_runtime_dual_write,
         allow_runtime_dual_write_failures=args.allow_runtime_dual_write_failures,
-        allow_runtime_mongo_only=args.allow_runtime_mongo_only,
+        allow_runtime_postgres_only=args.allow_runtime_postgres_only,
         dry_run=args.dry_run,
         require_explicit_env=args.require_explicit_env,
         target_env=args.target_env,

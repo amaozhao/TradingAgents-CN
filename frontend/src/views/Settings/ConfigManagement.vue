@@ -1017,7 +1017,7 @@
 
         <el-form-item label="数据库类型" required>
           <el-select v-model="currentDatabaseConfig.type" placeholder="请选择数据库类型" disabled>
-            <el-option label="MongoDB" value="mongodb" />
+            <el-option label="PostgreSQL" value="postgres" />
             <el-option label="Redis" value="redis" />
             <el-option label="MySQL" value="mysql" />
             <el-option label="PostgreSQL" value="postgresql" />
@@ -1034,7 +1034,7 @@
             v-model="currentDatabaseConfig.port"
             :min="1"
             :max="65535"
-            placeholder="例如: 27017"
+            placeholder="例如: 5432"
           />
         </el-form-item>
 
@@ -1188,12 +1188,12 @@ const databaseDialogVisible = ref(false)
 const databaseDialogMode = ref<'add' | 'edit'>('add')
 const currentDatabaseConfig = ref<Partial<DatabaseConfig>>({
   name: '',
-  type: 'mongodb',
+  type: 'postgres',
   host: 'localhost',
-  port: 27017,
-  username: '',
+  port: 5432,
+  username: 'postgres',
   password: '',
-  database: '',
+  database: 'trading_agents_cn',
   connection_params: {},
   pool_size: 10,
   max_overflow: 20,

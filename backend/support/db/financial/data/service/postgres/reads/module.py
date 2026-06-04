@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 import pytest
 
 from app.core.config import settings
@@ -20,11 +18,15 @@ async def test_get_financial_data_uses_postgres_when_enabled(monkeypatch):
 
     results = await service.get_financial_data("000001", data_source="tushare")
 
-    assert results == [{"code": "000001", "data_source": "tushare", "report_period": "2025Q4"}]
+    assert results == [
+        {"code": "000001", "data_source": "tushare", "report_period": "2025Q4"}
+    ]
 
 
 @pytest.mark.asyncio
-async def test_get_financial_data_falls_back_to_mongo_when_postgres_misses(monkeypatch):
+async def test_get_financial_data_falls_back_to_postgres_when_postgres_misses(
+    monkeypatch,
+):
     service = FinancialDataService()
     service.db = FakeDB()
     monkeypatch.setattr(settings, "POSTGRES_READ_ENABLED", True)
@@ -36,7 +38,9 @@ async def test_get_financial_data_falls_back_to_mongo_when_postgres_misses(monke
 
     results = await service.get_financial_data("000001", data_source="tushare", limit=1)
 
-    assert results == [{"symbol": "000001", "data_source": "tushare", "report_period": "2025Q4"}]
+    assert results == [
+        {"symbol": "000001", "data_source": "tushare", "report_period": "2025Q4"}
+    ]
 
 
 class FakeDB:
@@ -57,4 +61,6 @@ class FakeCursor:
         return self
 
     async def to_list(self, *_args, **_kwargs):
-        return [{"symbol": "000001", "data_source": "tushare", "report_period": "2025Q4"}]
+        return [
+            {"symbol": "000001", "data_source": "tushare", "report_period": "2025Q4"}
+        ]

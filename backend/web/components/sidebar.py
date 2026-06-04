@@ -2,20 +2,18 @@
 侧边栏组件
 """
 
-import streamlit as st
-import os
 import logging
-import sys
-from pathlib import Path
+import os
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+import streamlit as st
 
-from web.utils.persistence import load_model_selection, save_model_selection
+from support.path import REPO_ROOT
 from web.utils.auth import auth
+from web.utils.persistence import load_model_selection, save_model_selection
 
 logger = logging.getLogger(__name__)
+project_root = REPO_ROOT
+
 
 def get_version():
     """从VERSION文件读取项目版本号"""
@@ -29,11 +27,13 @@ def get_version():
         logger.warning(f"无法读取版本文件: {e}")
         return "unknown"
 
+
 def render_sidebar():
     """渲染侧边栏配置"""
 
     # 添加localStorage支持的JavaScript
-    st.markdown("""
+    st.markdown(
+        """
     <script>
     // 保存到localStorage
     function saveToLocalStorage(key, value) {
@@ -53,10 +53,13 @@ def render_sidebar():
         console.log('Page loaded, restoring settings...');
     });
     </script>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # 侧边栏特定样式（全局样式在global_sidebar.css中）
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     /* 侧边栏宽度和基础样式已在global_sidebar.css中定义 */
 
@@ -171,11 +174,14 @@ def render_sidebar():
         padding-top: 0 !important;
     }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     with st.sidebar:
         # 使用组件来从localStorage读取并初始化session state
-        st.markdown("""
+        st.markdown(
+            """
         <div id="localStorage-reader" style="display: none;">
             <script>
             // 从localStorage读取设置并发送给Streamlit
@@ -192,24 +198,34 @@ def render_sidebar():
             }, '*');
             </script>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
         # 从持久化存储加载配置
         saved_config = load_model_selection()
 
         # 初始化session state，优先使用保存的配置
-        if 'llm_provider' not in st.session_state:
-            st.session_state.llm_provider = saved_config['provider']
-            logger.debug(f"🔧 [Persistence] 恢复 llm_provider: {st.session_state.llm_provider}")
-        if 'model_category' not in st.session_state:
-            st.session_state.model_category = saved_config['category']
-            logger.debug(f"🔧 [Persistence] 恢复 model_category: {st.session_state.model_category}")
-        if 'llm_model' not in st.session_state:
-            st.session_state.llm_model = saved_config['model']
-            logger.debug(f"🔧 [Persistence] 恢复 llm_model: {st.session_state.llm_model}")
+        if "llm_provider" not in st.session_state:
+            st.session_state.llm_provider = saved_config["provider"]
+            logger.debug(
+                f"🔧 [Persistence] 恢复 llm_provider: {st.session_state.llm_provider}"
+            )
+        if "model_category" not in st.session_state:
+            st.session_state.model_category = saved_config["category"]
+            logger.debug(
+                f"🔧 [Persistence] 恢复 model_category: {st.session_state.model_category}"
+            )
+        if "llm_model" not in st.session_state:
+            st.session_state.llm_model = saved_config["model"]
+            logger.debug(
+                f"🔧 [Persistence] 恢复 llm_model: {st.session_state.llm_model}"
+            )
 
         # 显示当前session state状态（调试用）
-        logger.debug(f"🔍 [Session State] 当前状态 - provider: {st.session_state.llm_provider}, category: {st.session_state.model_category}, model: {st.session_state.llm_model}")
+        logger.debug(
+            f"🔍 [Session State] 当前状态 - provider: {st.session_state.llm_provider}, category: {st.session_state.model_category}, model: {st.session_state.llm_model}"
+        )
 
         # AI模型配置
         st.markdown("### 🧠 AI模型配置")
@@ -217,8 +233,38 @@ def render_sidebar():
         # LLM提供商选择
         llm_provider = st.selectbox(
             "LLM提供商",
-            options=["dashscope", "deepseek", "google", "openai", "openrouter", "siliconflow", "custom_openai", "qianfan"],
-            index=["dashscope", "deepseek", "google", "openai", "openrouter", "siliconflow", "custom_openai", "qianfan"].index(st.session_state.llm_provider) if st.session_state.llm_provider in ["dashscope", "deepseek", "google", "openai", "openrouter", "siliconflow", "custom_openai", "qianfan"] else 0,
+            options=[
+                "dashscope",
+                "deepseek",
+                "google",
+                "openai",
+                "openrouter",
+                "siliconflow",
+                "custom_openai",
+                "qianfan",
+            ],
+            index=[
+                "dashscope",
+                "deepseek",
+                "google",
+                "openai",
+                "openrouter",
+                "siliconflow",
+                "custom_openai",
+                "qianfan",
+            ].index(st.session_state.llm_provider)
+            if st.session_state.llm_provider
+            in [
+                "dashscope",
+                "deepseek",
+                "google",
+                "openai",
+                "openrouter",
+                "siliconflow",
+                "custom_openai",
+                "qianfan",
+            ]
+            else 0,
             format_func=lambda x: {
                 "dashscope": "🇨🇳 阿里百炼",
                 "deepseek": "🚀 DeepSeek V3",
@@ -227,20 +273,22 @@ def render_sidebar():
                 "openrouter": "🌐 OpenRouter",
                 "siliconflow": "🇨🇳 硅基流动",
                 "custom_openai": "🔧 自定义OpenAI端点",
-                "qianfan": "🧠 文心一言（千帆）"
+                "qianfan": "🧠 文心一言（千帆）",
             }[x],
             help="选择AI模型提供商",
-            key="llm_provider_select"
+            key="llm_provider_select",
         )
 
         # 更新session state和持久化存储
         if st.session_state.llm_provider != llm_provider:
-            logger.info(f"🔄 [Persistence] 提供商变更: {st.session_state.llm_provider} → {llm_provider}")
+            logger.info(
+                f"🔄 [Persistence] 提供商变更: {st.session_state.llm_provider} → {llm_provider}"
+            )
             st.session_state.llm_provider = llm_provider
             # 提供商变更时清空模型选择
             st.session_state.llm_model = ""
             st.session_state.model_category = "openai"  # 重置为默认类别
-            logger.info(f"🔄 [Persistence] 清空模型选择")
+            logger.info("🔄 [Persistence] 清空模型选择")
 
             # 保存到持久化存储
             save_model_selection(llm_provider, st.session_state.model_category, "")
@@ -263,22 +311,36 @@ def render_sidebar():
                 format_func=lambda x: {
                     "qwen-turbo": "Turbo - 快速",
                     "qwen-plus-latest": "Plus - 平衡",
-                    "qwen-max": "Max - 最强"
+                    "qwen-max": "Max - 最强",
                 }[x],
                 help="选择用于分析的阿里百炼模型",
-                key="dashscope_model_select"
+                key="dashscope_model_select",
             )
 
             # 更新session state和持久化存储
             if st.session_state.llm_model != llm_model:
-                logger.debug(f"🔄 [Persistence] DashScope模型变更: {st.session_state.llm_model} → {llm_model}")
+                logger.debug(
+                    f"🔄 [Persistence] DashScope模型变更: {st.session_state.llm_model} → {llm_model}"
+                )
             st.session_state.llm_model = llm_model
             logger.debug(f"💾 [Persistence] DashScope模型已保存: {llm_model}")
 
             # 保存到持久化存储
-            save_model_selection(st.session_state.llm_provider, st.session_state.model_category, llm_model)
+            save_model_selection(
+                st.session_state.llm_provider,
+                st.session_state.model_category,
+                llm_model,
+            )
         elif llm_provider == "siliconflow":
-            siliconflow_options = ["Qwen/Qwen3-30B-A3B-Thinking-2507", "Qwen/Qwen3-30B-A3B-Instruct-2507", "Qwen/Qwen3-235B-A22B-Thinking-2507", "Qwen/Qwen3-235B-A22B-Instruct-2507","deepseek-ai/DeepSeek-R1", "zai-org/GLM-4.5", "moonshotai/Kimi-K2-Instruct"]
+            siliconflow_options = [
+                "Qwen/Qwen3-30B-A3B-Thinking-2507",
+                "Qwen/Qwen3-30B-A3B-Instruct-2507",
+                "Qwen/Qwen3-235B-A22B-Thinking-2507",
+                "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                "deepseek-ai/DeepSeek-R1",
+                "zai-org/GLM-4.5",
+                "moonshotai/Kimi-K2-Instruct",
+            ]
 
             # 获取当前选择的索引
             current_index = 0
@@ -299,17 +361,23 @@ def render_sidebar():
                     "moonshotai/Kimi-K2-Instruct": "Kimi-K2-Instruct",
                 }[x],
                 help="选择用于分析的siliconflow模型",
-                key="siliconflow_model_select"
+                key="siliconflow_model_select",
             )
 
             # 更新session state和持久化存储
             if st.session_state.llm_model != llm_model:
-                logger.debug(f"🔄 [Persistence] siliconflow模型变更: {st.session_state.llm_model} → {llm_model}")
+                logger.debug(
+                    f"🔄 [Persistence] siliconflow模型变更: {st.session_state.llm_model} → {llm_model}"
+                )
             st.session_state.llm_model = llm_model
             logger.debug(f"💾 [Persistence] siliconflow模型已保存: {llm_model}")
 
             # 保存到持久化存储
-            save_model_selection(st.session_state.llm_provider, st.session_state.model_category, llm_model)
+            save_model_selection(
+                st.session_state.llm_provider,
+                st.session_state.model_category,
+                llm_model,
+            )
 
         elif llm_provider == "deepseek":
             deepseek_options = ["deepseek-chat"]
@@ -327,17 +395,23 @@ def render_sidebar():
                     "deepseek-chat": "DeepSeek Chat - 通用对话模型，适合股票分析"
                 }[x],
                 help="选择用于分析的DeepSeek模型",
-                key="deepseek_model_select"
+                key="deepseek_model_select",
             )
 
             # 更新session state和持久化存储
             if st.session_state.llm_model != llm_model:
-                logger.debug(f"🔄 [Persistence] DeepSeek模型变更: {st.session_state.llm_model} → {llm_model}")
+                logger.debug(
+                    f"🔄 [Persistence] DeepSeek模型变更: {st.session_state.llm_model} → {llm_model}"
+                )
             st.session_state.llm_model = llm_model
             logger.debug(f"💾 [Persistence] DeepSeek模型已保存: {llm_model}")
 
             # 保存到持久化存储
-            save_model_selection(st.session_state.llm_provider, st.session_state.model_category, llm_model)
+            save_model_selection(
+                st.session_state.llm_provider,
+                st.session_state.model_category,
+                llm_model,
+            )
 
         elif llm_provider == "google":
             google_options = [
@@ -349,7 +423,7 @@ def render_sidebar():
                 "gemini-2.0-flash",
                 "gemini-2.5-flash-lite-preview-06-17",
                 "gemini-1.5-pro",
-                "gemini-1.5-flash"
+                "gemini-1.5-flash",
             ]
 
             # 获取当前选择的索引
@@ -370,26 +444,32 @@ def render_sidebar():
                     "gemini-2.5-flash-002": "Gemini 2.5 Flash-002 - ⚡ 优化快速版",
                     "gemini-2.0-flash": "Gemini 2.0 Flash - 🚀 推荐使用 (1.87s)",
                     "gemini-1.5-pro": "Gemini 1.5 Pro - ⚖️ 强大性能 (2.25s)",
-                    "gemini-1.5-flash": "Gemini 1.5 Flash - 💨 快速响应 (2.87s)"
+                    "gemini-1.5-flash": "Gemini 1.5 Flash - 💨 快速响应 (2.87s)",
                 }[x],
                 help="选择用于分析的Google Gemini模型",
-                key="google_model_select"
+                key="google_model_select",
             )
 
             # 更新session state和持久化存储
             if st.session_state.llm_model != llm_model:
-                logger.debug(f"🔄 [Persistence] Google模型变更: {st.session_state.llm_model} → {llm_model}")
+                logger.debug(
+                    f"🔄 [Persistence] Google模型变更: {st.session_state.llm_model} → {llm_model}"
+                )
             st.session_state.llm_model = llm_model
             logger.debug(f"💾 [Persistence] Google模型已保存: {llm_model}")
 
             # 保存到持久化存储
-            save_model_selection(st.session_state.llm_provider, st.session_state.model_category, llm_model)
+            save_model_selection(
+                st.session_state.llm_provider,
+                st.session_state.model_category,
+                llm_model,
+            )
         elif llm_provider == "qianfan":
             qianfan_options = [
                 "ernie-3.5-8k",
                 "ernie-4.0-turbo-8k",
                 "ERNIE-Speed-8K",
-                "ERNIE-Lite-8K"
+                "ERNIE-Lite-8K",
             ]
 
             current_index = 0
@@ -404,85 +484,107 @@ def render_sidebar():
                     "ernie-3.5-8k": "ERNIE 3.5 8K - ⚡ 快速高效",
                     "ernie-4.0-turbo-8k": "ERNIE 4.0 Turbo 8K - 🚀 强大推理",
                     "ERNIE-Speed-8K": "ERNIE Speed 8K - 🏃 极速响应",
-                    "ERNIE-Lite-8K": "ERNIE Lite 8K - 💡 轻量经济"
+                    "ERNIE-Lite-8K": "ERNIE Lite 8K - 💡 轻量经济",
                 }[x],
                 help="选择用于分析的文心一言（千帆）模型",
-                key="qianfan_model_select"
+                key="qianfan_model_select",
             )
 
             if st.session_state.llm_model != llm_model:
-                logger.debug(f"🔄 [Persistence] Qianfan模型变更: {st.session_state.llm_model} → {llm_model}")
+                logger.debug(
+                    f"🔄 [Persistence] Qianfan模型变更: {st.session_state.llm_model} → {llm_model}"
+                )
             st.session_state.llm_model = llm_model
             logger.debug(f"💾 [Persistence] Qianfan模型已保存: {llm_model}")
 
-            save_model_selection(st.session_state.llm_provider, st.session_state.model_category, llm_model)
+            save_model_selection(
+                st.session_state.llm_provider,
+                st.session_state.model_category,
+                llm_model,
+            )
         elif llm_provider == "openai":
-             openai_options = [
-                 "gpt-4o",
-                 "gpt-4o-mini",
-                 "gpt-4-turbo",
-                 "gpt-4",
-                 "gpt-3.5-turbo"
-             ]
+            openai_options = [
+                "gpt-4o",
+                "gpt-4o-mini",
+                "gpt-4-turbo",
+                "gpt-4",
+                "gpt-3.5-turbo",
+            ]
 
-             # 获取当前选择的索引
-             current_index = 0
-             if st.session_state.llm_model in openai_options:
-                 current_index = openai_options.index(st.session_state.llm_model)
+            # 获取当前选择的索引
+            current_index = 0
+            if st.session_state.llm_model in openai_options:
+                current_index = openai_options.index(st.session_state.llm_model)
 
-             llm_model = st.selectbox(
-                 "选择OpenAI模型",
-                 options=openai_options,
-                 index=current_index,
-                 format_func=lambda x: {
-                     "gpt-4o": "GPT-4o - 最新旗舰模型",
-                     "gpt-4o-mini": "GPT-4o Mini - 轻量旗舰",
-                     "gpt-4-turbo": "GPT-4 Turbo - 强化版",
-                     "gpt-4": "GPT-4 - 经典版",
-                     "gpt-3.5-turbo": "GPT-3.5 Turbo - 经济版"
-                 }[x],
-                 help="选择用于分析的OpenAI模型",
-                 key="openai_model_select"
-             )
+            llm_model = st.selectbox(
+                "选择OpenAI模型",
+                options=openai_options,
+                index=current_index,
+                format_func=lambda x: {
+                    "gpt-4o": "GPT-4o - 最新旗舰模型",
+                    "gpt-4o-mini": "GPT-4o Mini - 轻量旗舰",
+                    "gpt-4-turbo": "GPT-4 Turbo - 强化版",
+                    "gpt-4": "GPT-4 - 经典版",
+                    "gpt-3.5-turbo": "GPT-3.5 Turbo - 经济版",
+                }[x],
+                help="选择用于分析的OpenAI模型",
+                key="openai_model_select",
+            )
 
-             # 快速选择按钮
-             st.markdown("**快速选择:**")
+            # 快速选择按钮
+            st.markdown("**快速选择:**")
 
-             col1, col2 = st.columns(2)
-             with col1:
-                 if st.button("🚀 GPT-4o", key="quick_gpt4o", use_container_width=True):
-                     model_id = "gpt-4o"
-                     st.session_state.llm_model = model_id
-                     save_model_selection(st.session_state.llm_provider, st.session_state.model_category, model_id)
-                     logger.debug(f"💾 [Persistence] 快速选择GPT-4o: {model_id}")
-                     st.rerun()
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🚀 GPT-4o", key="quick_gpt4o", use_container_width=True):
+                    model_id = "gpt-4o"
+                    st.session_state.llm_model = model_id
+                    save_model_selection(
+                        st.session_state.llm_provider,
+                        st.session_state.model_category,
+                        model_id,
+                    )
+                    logger.debug(f"💾 [Persistence] 快速选择GPT-4o: {model_id}")
+                    st.rerun()
 
-             with col2:
-                 if st.button("⚡ GPT-4o Mini", key="quick_gpt4o_mini", use_container_width=True):
-                     model_id = "gpt-4o-mini"
-                     st.session_state.llm_model = model_id
-                     save_model_selection(st.session_state.llm_provider, st.session_state.model_category, model_id)
-                     logger.debug(f"💾 [Persistence] 快速选择GPT-4o Mini: {model_id}")
-                     st.rerun()
+            with col2:
+                if st.button(
+                    "⚡ GPT-4o Mini", key="quick_gpt4o_mini", use_container_width=True
+                ):
+                    model_id = "gpt-4o-mini"
+                    st.session_state.llm_model = model_id
+                    save_model_selection(
+                        st.session_state.llm_provider,
+                        st.session_state.model_category,
+                        model_id,
+                    )
+                    logger.debug(f"💾 [Persistence] 快速选择GPT-4o Mini: {model_id}")
+                    st.rerun()
 
-             # 更新session state和持久化存储
-             if st.session_state.llm_model != llm_model:
-                 logger.debug(f"🔄 [Persistence] OpenAI模型变更: {st.session_state.llm_model} → {llm_model}")
-             st.session_state.llm_model = llm_model
-             logger.debug(f"💾 [Persistence] OpenAI模型已保存: {llm_model}")
+            # 更新session state和持久化存储
+            if st.session_state.llm_model != llm_model:
+                logger.debug(
+                    f"🔄 [Persistence] OpenAI模型变更: {st.session_state.llm_model} → {llm_model}"
+                )
+            st.session_state.llm_model = llm_model
+            logger.debug(f"💾 [Persistence] OpenAI模型已保存: {llm_model}")
 
-             # 保存到持久化存储
-             save_model_selection(st.session_state.llm_provider, st.session_state.model_category, llm_model)
+            # 保存到持久化存储
+            save_model_selection(
+                st.session_state.llm_provider,
+                st.session_state.model_category,
+                llm_model,
+            )
 
-             # OpenAI特殊提示
-             st.info("💡 **OpenAI配置**: 在.env文件中设置OPENAI_API_KEY")
+            # OpenAI特殊提示
+            st.info("💡 **OpenAI配置**: 在.env文件中设置OPENAI_API_KEY")
         elif llm_provider == "custom_openai":
             st.markdown("### 🔧 自定义OpenAI端点配置")
 
             # 初始化session state
-            if 'custom_openai_base_url' not in st.session_state:
+            if "custom_openai_base_url" not in st.session_state:
                 st.session_state.custom_openai_base_url = "https://api.openai.com/v1"
-            if 'custom_openai_api_key' not in st.session_state:
+            if "custom_openai_api_key" not in st.session_state:
                 st.session_state.custom_openai_api_key = ""
 
             # API端点URL配置
@@ -491,7 +593,7 @@ def render_sidebar():
                 value=st.session_state.custom_openai_base_url,
                 placeholder="https://api.openai.com/v1",
                 help="输入OpenAI兼容的API端点URL，例如中转服务或本地部署的API",
-                key="custom_openai_base_url_input"
+                key="custom_openai_base_url_input",
             )
 
             # 更新session state
@@ -504,7 +606,7 @@ def render_sidebar():
                 type="password",
                 placeholder="sk-...",
                 help="输入API密钥，也可以在.env文件中设置CUSTOM_OPENAI_API_KEY",
-                key="custom_openai_api_key_input"
+                key="custom_openai_api_key_input",
             )
 
             # 更新session state
@@ -526,7 +628,7 @@ def render_sidebar():
                 "llama-3.1-8b",
                 "llama-3.1-70b",
                 "llama-3.1-405b",
-                "custom-model"
+                "custom-model",
             ]
 
             # 获取当前选择的索引
@@ -553,10 +655,10 @@ def render_sidebar():
                     "llama-3.1-8b": "Llama 3.1 8B - Meta开源",
                     "llama-3.1-70b": "Llama 3.1 70B - 大型开源",
                     "llama-3.1-405b": "Llama 3.1 405B - 超大开源",
-                    "custom-model": "自定义模型名称"
+                    "custom-model": "自定义模型名称",
                 }[x],
                 help="选择要使用的模型，支持各种OpenAI兼容的模型",
-                key="custom_openai_model_select"
+                key="custom_openai_model_select",
             )
 
             # 如果选择了自定义模型，显示输入框
@@ -566,45 +668,71 @@ def render_sidebar():
                     value="",
                     placeholder="例如: gpt-4-custom, claude-3.5-sonnet-custom",
                     help="输入自定义的模型名称",
-                    key="custom_model_name_input"
+                    key="custom_model_name_input",
                 )
                 if custom_model_name:
                     llm_model = custom_model_name
 
             # 更新session state和持久化存储
             if st.session_state.llm_model != llm_model:
-                logger.debug(f"🔄 [Persistence] 自定义OpenAI模型变更: {st.session_state.llm_model} → {llm_model}")
+                logger.debug(
+                    f"🔄 [Persistence] 自定义OpenAI模型变更: {st.session_state.llm_model} → {llm_model}"
+                )
             st.session_state.llm_model = llm_model
             logger.debug(f"💾 [Persistence] 自定义OpenAI模型已保存: {llm_model}")
 
             # 保存到持久化存储
-            save_model_selection(st.session_state.llm_provider, st.session_state.model_category, llm_model)
+            save_model_selection(
+                st.session_state.llm_provider,
+                st.session_state.model_category,
+                llm_model,
+            )
 
             # 常用端点快速配置
             st.markdown("**🚀 常用端点快速配置:**")
 
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("🌐 OpenAI官方", key="quick_openai_official", use_container_width=True):
-                    st.session_state.custom_openai_base_url = "https://api.openai.com/v1"
+                if st.button(
+                    "🌐 OpenAI官方",
+                    key="quick_openai_official",
+                    use_container_width=True,
+                ):
+                    st.session_state.custom_openai_base_url = (
+                        "https://api.openai.com/v1"
+                    )
                     st.rerun()
 
-                if st.button("🇨🇳 OpenAI中转1", key="quick_openai_relay1", use_container_width=True):
-                    st.session_state.custom_openai_base_url = "https://api.openai-proxy.com/v1"
+                if st.button(
+                    "🇨🇳 OpenAI中转1",
+                    key="quick_openai_relay1",
+                    use_container_width=True,
+                ):
+                    st.session_state.custom_openai_base_url = (
+                        "https://api.openai-proxy.com/v1"
+                    )
                     st.rerun()
 
             with col2:
-                if st.button("🏠 本地部署", key="quick_local_deploy", use_container_width=True):
+                if st.button(
+                    "🏠 本地部署", key="quick_local_deploy", use_container_width=True
+                ):
                     st.session_state.custom_openai_base_url = "http://localhost:8000/v1"
                     st.rerun()
 
-                if st.button("🇨🇳 OpenAI中转2", key="quick_openai_relay2", use_container_width=True):
-                    st.session_state.custom_openai_base_url = "https://api.openai-sb.com/v1"
+                if st.button(
+                    "🇨🇳 OpenAI中转2",
+                    key="quick_openai_relay2",
+                    use_container_width=True,
+                ):
+                    st.session_state.custom_openai_base_url = (
+                        "https://api.openai-sb.com/v1"
+                    )
                     st.rerun()
 
             # 配置验证
             if base_url and api_key:
-                st.success(f"✅ 配置完成")
+                st.success("✅ 配置完成")
                 st.info(f"**端点**: `{base_url}`")
                 st.info(f"**模型**: `{llm_model}`")
             elif base_url:
@@ -630,26 +758,37 @@ def render_sidebar():
             model_category = st.selectbox(
                 "模型类别",
                 options=["openai", "anthropic", "meta", "google", "custom"],
-                index=["openai", "anthropic", "meta", "google", "custom"].index(st.session_state.model_category) if st.session_state.model_category in ["openai", "anthropic", "meta", "google", "custom"] else 0,
+                index=["openai", "anthropic", "meta", "google", "custom"].index(
+                    st.session_state.model_category
+                )
+                if st.session_state.model_category
+                in ["openai", "anthropic", "meta", "google", "custom"]
+                else 0,
                 format_func=lambda x: {
                     "openai": "🤖 OpenAI (GPT系列)",
                     "anthropic": "🧠 Anthropic (Claude系列)",
                     "meta": "🦙 Meta (Llama系列)",
                     "google": "🌟 Google (Gemini系列)",
-                    "custom": "✏️ 自定义模型"
+                    "custom": "✏️ 自定义模型",
                 }[x],
                 help="选择模型厂商类别或自定义输入",
-                key="model_category_select"
+                key="model_category_select",
             )
 
             # 更新session state和持久化存储
             if st.session_state.model_category != model_category:
-                logger.debug(f"🔄 [Persistence] 模型类别变更: {st.session_state.model_category} → {model_category}")
+                logger.debug(
+                    f"🔄 [Persistence] 模型类别变更: {st.session_state.model_category} → {model_category}"
+                )
                 st.session_state.llm_model = ""  # 类别变更时清空模型选择
             st.session_state.model_category = model_category
 
             # 保存到持久化存储
-            save_model_selection(st.session_state.llm_provider, model_category, st.session_state.llm_model)
+            save_model_selection(
+                st.session_state.llm_provider,
+                model_category,
+                st.session_state.llm_model,
+            )
 
             # 根据厂商显示不同的模型
             if model_category == "openai":
@@ -663,7 +802,7 @@ def render_sidebar():
                     "openai/gpt-4o-2024-11-20",
                     "openai/gpt-4o-mini",
                     "openai/gpt-4-turbo",
-                    "openai/gpt-3.5-turbo"
+                    "openai/gpt-3.5-turbo",
                 ]
 
                 # 获取当前选择的索引
@@ -685,20 +824,26 @@ def render_sidebar():
                         "openai/gpt-4o-2024-11-20": "GPT-4o (2024-11-20) - 最新版",
                         "openai/gpt-4o-mini": "GPT-4o Mini - 轻量旗舰",
                         "openai/gpt-4-turbo": "GPT-4 Turbo - 经典强化",
-                        "openai/gpt-3.5-turbo": "GPT-3.5 Turbo - 经济实用"
+                        "openai/gpt-3.5-turbo": "GPT-3.5 Turbo - 经济实用",
                     }[x],
                     help="OpenAI公司的GPT和o系列模型，包含最新o4",
-                    key="openai_model_select"
+                    key="openai_model_select",
                 )
 
                 # 更新session state和持久化存储
                 if st.session_state.llm_model != llm_model:
-                    logger.debug(f"🔄 [Persistence] OpenAI模型变更: {st.session_state.llm_model} → {llm_model}")
+                    logger.debug(
+                        f"🔄 [Persistence] OpenAI模型变更: {st.session_state.llm_model} → {llm_model}"
+                    )
                 st.session_state.llm_model = llm_model
                 logger.debug(f"💾 [Persistence] OpenAI模型已保存: {llm_model}")
 
                 # 保存到持久化存储
-                save_model_selection(st.session_state.llm_provider, st.session_state.model_category, llm_model)
+                save_model_selection(
+                    st.session_state.llm_provider,
+                    st.session_state.model_category,
+                    llm_model,
+                )
             elif model_category == "anthropic":
                 anthropic_options = [
                     "anthropic/claude-opus-4",
@@ -710,7 +855,7 @@ def render_sidebar():
                     "anthropic/claude-3.5-haiku-20241022",
                     "anthropic/claude-3-opus",
                     "anthropic/claude-3-sonnet",
-                    "anthropic/claude-3-haiku"
+                    "anthropic/claude-3-haiku",
                 ]
 
                 # 获取当前选择的索引
@@ -732,20 +877,26 @@ def render_sidebar():
                         "anthropic/claude-3.5-haiku-20241022": "Claude 3.5 Haiku (2024-10-22)",
                         "anthropic/claude-3-opus": "Claude 3 Opus - 强大性能",
                         "anthropic/claude-3-sonnet": "Claude 3 Sonnet - 平衡版",
-                        "anthropic/claude-3-haiku": "Claude 3 Haiku - 经济版"
+                        "anthropic/claude-3-haiku": "Claude 3 Haiku - 经济版",
                     }[x],
                     help="Anthropic公司的Claude系列模型，包含最新Claude 4",
-                    key="anthropic_model_select"
+                    key="anthropic_model_select",
                 )
 
                 # 更新session state和持久化存储
                 if st.session_state.llm_model != llm_model:
-                    logger.debug(f"🔄 [Persistence] Anthropic模型变更: {st.session_state.llm_model} → {llm_model}")
+                    logger.debug(
+                        f"🔄 [Persistence] Anthropic模型变更: {st.session_state.llm_model} → {llm_model}"
+                    )
                 st.session_state.llm_model = llm_model
                 logger.debug(f"💾 [Persistence] Anthropic模型已保存: {llm_model}")
 
                 # 保存到持久化存储
-                save_model_selection(st.session_state.llm_provider, st.session_state.model_category, llm_model)
+                save_model_selection(
+                    st.session_state.llm_provider,
+                    st.session_state.model_category,
+                    llm_model,
+                )
             elif model_category == "meta":
                 meta_options = [
                     "meta-llama/llama-4-maverick",
@@ -757,7 +908,7 @@ def render_sidebar():
                     "meta-llama/llama-3.2-11b-vision-instruct",
                     "meta-llama/llama-3.1-8b-instruct",
                     "meta-llama/llama-3.2-3b-instruct",
-                    "meta-llama/llama-3.2-1b-instruct"
+                    "meta-llama/llama-3.2-1b-instruct",
                 ]
 
                 # 获取当前选择的索引
@@ -779,20 +930,26 @@ def render_sidebar():
                         "meta-llama/llama-3.2-11b-vision-instruct": "Llama 3.2 11B Vision - 轻量多模态",
                         "meta-llama/llama-3.1-8b-instruct": "Llama 3.1 8B - 高效模型",
                         "meta-llama/llama-3.2-3b-instruct": "Llama 3.2 3B - 轻量级",
-                        "meta-llama/llama-3.2-1b-instruct": "Llama 3.2 1B - 超轻量"
+                        "meta-llama/llama-3.2-1b-instruct": "Llama 3.2 1B - 超轻量",
                     }[x],
                     help="Meta公司的Llama系列模型，包含最新Llama 4",
-                    key="meta_model_select"
+                    key="meta_model_select",
                 )
 
                 # 更新session state和持久化存储
                 if st.session_state.llm_model != llm_model:
-                    logger.debug(f"🔄 [Persistence] Meta模型变更: {st.session_state.llm_model} → {llm_model}")
+                    logger.debug(
+                        f"🔄 [Persistence] Meta模型变更: {st.session_state.llm_model} → {llm_model}"
+                    )
                 st.session_state.llm_model = llm_model
                 logger.debug(f"💾 [Persistence] Meta模型已保存: {llm_model}")
 
                 # 保存到持久化存储
-                save_model_selection(st.session_state.llm_provider, st.session_state.model_category, llm_model)
+                save_model_selection(
+                    st.session_state.llm_provider,
+                    st.session_state.model_category,
+                    llm_model,
+                )
             elif model_category == "google":
                 google_openrouter_options = [
                     "google/gemini-2.5-pro",
@@ -806,13 +963,15 @@ def render_sidebar():
                     "google/gemini-1.5-flash",
                     "google/gemma-3-27b-it",
                     "google/gemma-3-12b-it",
-                    "google/gemma-2-27b-it"
+                    "google/gemma-2-27b-it",
                 ]
 
                 # 获取当前选择的索引
                 current_index = 0
                 if st.session_state.llm_model in google_openrouter_options:
-                    current_index = google_openrouter_options.index(st.session_state.llm_model)
+                    current_index = google_openrouter_options.index(
+                        st.session_state.llm_model
+                    )
 
                 llm_model = st.selectbox(
                     "选择Google模型",
@@ -830,92 +989,150 @@ def render_sidebar():
                         "google/gemini-1.5-flash": "Gemini 1.5 Flash - 快速版",
                         "google/gemma-3-27b-it": "Gemma 3 27B - 最新开源大模型",
                         "google/gemma-3-12b-it": "Gemma 3 12B - 开源中型模型",
-                        "google/gemma-2-27b-it": "Gemma 2 27B - 开源经典版"
+                        "google/gemma-2-27b-it": "Gemma 2 27B - 开源经典版",
                     }[x],
                     help="Google公司的Gemini/Gemma系列模型，包含最新Gemini 2.5",
-                    key="google_openrouter_model_select"
+                    key="google_openrouter_model_select",
                 )
 
                 # 更新session state和持久化存储
                 if st.session_state.llm_model != llm_model:
-                    logger.debug(f"🔄 [Persistence] Google OpenRouter模型变更: {st.session_state.llm_model} → {llm_model}")
+                    logger.debug(
+                        f"🔄 [Persistence] Google OpenRouter模型变更: {st.session_state.llm_model} → {llm_model}"
+                    )
                 st.session_state.llm_model = llm_model
-                logger.debug(f"💾 [Persistence] Google OpenRouter模型已保存: {llm_model}")
+                logger.debug(
+                    f"💾 [Persistence] Google OpenRouter模型已保存: {llm_model}"
+                )
 
                 # 保存到持久化存储
-                save_model_selection(st.session_state.llm_provider, st.session_state.model_category, llm_model)
+                save_model_selection(
+                    st.session_state.llm_provider,
+                    st.session_state.model_category,
+                    llm_model,
+                )
 
             else:  # custom
                 st.markdown("### ✏️ 自定义模型")
 
                 # 初始化自定义模型session state
-                if 'custom_model' not in st.session_state:
+                if "custom_model" not in st.session_state:
                     st.session_state.custom_model = ""
 
                 # 自定义模型输入 - 使用session state作为默认值
-                default_value = st.session_state.custom_model if st.session_state.custom_model else "anthropic/claude-3.7-sonnet"
+                default_value = (
+                    st.session_state.custom_model
+                    if st.session_state.custom_model
+                    else "anthropic/claude-3.7-sonnet"
+                )
 
                 llm_model = st.text_input(
                     "输入模型ID",
                     value=default_value,
                     placeholder="例如: anthropic/claude-3.7-sonnet",
                     help="输入OpenRouter支持的任何模型ID",
-                    key="custom_model_input"
+                    key="custom_model_input",
                 )
 
                 # 常用模型快速选择
                 st.markdown("**快速选择常用模型:**")
 
                 # 长条形按钮，每个占一行
-                if st.button("🧠 Claude 3.7 Sonnet - 最新对话模型", key="claude37", use_container_width=True):
+                if st.button(
+                    "🧠 Claude 3.7 Sonnet - 最新对话模型",
+                    key="claude37",
+                    use_container_width=True,
+                ):
                     model_id = "anthropic/claude-3.7-sonnet"
                     st.session_state.custom_model = model_id
                     st.session_state.llm_model = model_id
-                    save_model_selection(st.session_state.llm_provider, st.session_state.model_category, model_id)
-                    logger.debug(f"💾 [Persistence] 快速选择Claude 3.7 Sonnet: {model_id}")
+                    save_model_selection(
+                        st.session_state.llm_provider,
+                        st.session_state.model_category,
+                        model_id,
+                    )
+                    logger.debug(
+                        f"💾 [Persistence] 快速选择Claude 3.7 Sonnet: {model_id}"
+                    )
                     st.rerun()
 
-                if st.button("💎 Claude 4 Opus - 顶级性能模型", key="claude4opus", use_container_width=True):
+                if st.button(
+                    "💎 Claude 4 Opus - 顶级性能模型",
+                    key="claude4opus",
+                    use_container_width=True,
+                ):
                     model_id = "anthropic/claude-opus-4"
                     st.session_state.custom_model = model_id
                     st.session_state.llm_model = model_id
-                    save_model_selection(st.session_state.llm_provider, st.session_state.model_category, model_id)
+                    save_model_selection(
+                        st.session_state.llm_provider,
+                        st.session_state.model_category,
+                        model_id,
+                    )
                     logger.debug(f"💾 [Persistence] 快速选择Claude 4 Opus: {model_id}")
                     st.rerun()
 
-                if st.button("🤖 GPT-4o - OpenAI旗舰模型", key="gpt4o", use_container_width=True):
+                if st.button(
+                    "🤖 GPT-4o - OpenAI旗舰模型", key="gpt4o", use_container_width=True
+                ):
                     model_id = "openai/gpt-4o"
                     st.session_state.custom_model = model_id
                     st.session_state.llm_model = model_id
-                    save_model_selection(st.session_state.llm_provider, st.session_state.model_category, model_id)
+                    save_model_selection(
+                        st.session_state.llm_provider,
+                        st.session_state.model_category,
+                        model_id,
+                    )
                     logger.debug(f"💾 [Persistence] 快速选择GPT-4o: {model_id}")
                     st.rerun()
 
-                if st.button("🦙 Llama 4 Scout - Meta最新模型", key="llama4", use_container_width=True):
+                if st.button(
+                    "🦙 Llama 4 Scout - Meta最新模型",
+                    key="llama4",
+                    use_container_width=True,
+                ):
                     model_id = "meta-llama/llama-4-scout"
                     st.session_state.custom_model = model_id
                     st.session_state.llm_model = model_id
-                    save_model_selection(st.session_state.llm_provider, st.session_state.model_category, model_id)
+                    save_model_selection(
+                        st.session_state.llm_provider,
+                        st.session_state.model_category,
+                        model_id,
+                    )
                     logger.debug(f"💾 [Persistence] 快速选择Llama 4 Scout: {model_id}")
                     st.rerun()
 
-                if st.button("🌟 Gemini 2.5 Pro - Google多模态", key="gemini25", use_container_width=True):
+                if st.button(
+                    "🌟 Gemini 2.5 Pro - Google多模态",
+                    key="gemini25",
+                    use_container_width=True,
+                ):
                     model_id = "google/gemini-2.5-pro"
                     st.session_state.custom_model = model_id
                     st.session_state.llm_model = model_id
-                    save_model_selection(st.session_state.llm_provider, st.session_state.model_category, model_id)
+                    save_model_selection(
+                        st.session_state.llm_provider,
+                        st.session_state.model_category,
+                        model_id,
+                    )
                     logger.debug(f"💾 [Persistence] 快速选择Gemini 2.5 Pro: {model_id}")
                     st.rerun()
 
                 # 更新session state和持久化存储
                 if st.session_state.llm_model != llm_model:
-                    logger.debug(f"🔄 [Persistence] 自定义模型变更: {st.session_state.llm_model} → {llm_model}")
+                    logger.debug(
+                        f"🔄 [Persistence] 自定义模型变更: {st.session_state.llm_model} → {llm_model}"
+                    )
                 st.session_state.custom_model = llm_model
                 st.session_state.llm_model = llm_model
                 logger.debug(f"💾 [Persistence] 自定义模型已保存: {llm_model}")
 
                 # 保存到持久化存储
-                save_model_selection(st.session_state.llm_provider, st.session_state.model_category, llm_model)
+                save_model_selection(
+                    st.session_state.llm_provider,
+                    st.session_state.model_category,
+                    llm_model,
+                )
 
                 # 模型验证提示
                 if llm_model:
@@ -932,20 +1149,18 @@ def render_sidebar():
                     st.warning("⚠️ 请输入有效的模型ID")
 
             # OpenRouter特殊提示
-            st.info("💡 **OpenRouter配置**: 在.env文件中设置OPENROUTER_API_KEY，或者如果只用OpenRouter可以设置OPENAI_API_KEY")
+            st.info(
+                "💡 **OpenRouter配置**: 在.env文件中设置OPENROUTER_API_KEY，或者如果只用OpenRouter可以设置OPENAI_API_KEY"
+            )
 
         # 高级设置
         with st.expander("⚙️ 高级设置"):
             enable_memory = st.checkbox(
-                "启用记忆功能",
-                value=False,
-                help="启用智能体记忆功能（可能影响性能）"
+                "启用记忆功能", value=False, help="启用智能体记忆功能（可能影响性能）"
             )
 
             enable_debug = st.checkbox(
-                "调试模式",
-                value=False,
-                help="启用详细的调试信息输出"
+                "调试模式", value=False, help="启用详细的调试信息输出"
             )
 
             max_tokens = st.slider(
@@ -954,7 +1169,7 @@ def render_sidebar():
                 max_value=8000,
                 value=4000,
                 step=500,
-                help="AI模型的最大输出token数量"
+                help="AI模型的最大输出token数量",
             )
 
         st.markdown("---")
@@ -970,19 +1185,37 @@ def render_sidebar():
             if not key:
                 return "未配置", "error"
 
-            if expected_format == "dashscope" and key.startswith("sk-") and len(key) >= 32:
+            if (
+                expected_format == "dashscope"
+                and key.startswith("sk-")
+                and len(key) >= 32
+            ):
                 return f"{key[:8]}...", "success"
-            elif expected_format == "deepseek" and key.startswith("sk-") and len(key) >= 32:
+            elif (
+                expected_format == "deepseek"
+                and key.startswith("sk-")
+                and len(key) >= 32
+            ):
                 return f"{key[:8]}...", "success"
             elif expected_format == "finnhub" and len(key) >= 20:
                 return f"{key[:8]}...", "success"
             elif expected_format == "tushare" and len(key) >= 32:
                 return f"{key[:8]}...", "success"
-            elif expected_format == "google" and key.startswith("AIza") and len(key) >= 32:
+            elif (
+                expected_format == "google"
+                and key.startswith("AIza")
+                and len(key) >= 32
+            ):
                 return f"{key[:8]}...", "success"
-            elif expected_format == "openai" and key.startswith("sk-") and len(key) >= 40:
+            elif (
+                expected_format == "openai" and key.startswith("sk-") and len(key) >= 40
+            ):
                 return f"{key[:8]}...", "success"
-            elif expected_format == "anthropic" and key.startswith("sk-") and len(key) >= 40:
+            elif (
+                expected_format == "anthropic"
+                and key.startswith("sk-")
+                and len(key) >= 40
+            ):
                 return f"{key[:8]}...", "success"
             elif expected_format == "reddit" and len(key) >= 10:
                 return f"{key[:8]}...", "success"
@@ -1080,10 +1313,14 @@ def render_sidebar():
             st.markdown("---")
             st.markdown("### 🔧 管理功能")
 
-            if st.button("📊 用户活动记录", key="user_activity_btn", use_container_width=True):
+            if st.button(
+                "📊 用户活动记录", key="user_activity_btn", use_container_width=True
+            ):
                 st.session_state.page = "user_activity"
 
-            if st.button("⚙️ 系统设置", key="system_settings_btn", use_container_width=True):
+            if st.button(
+                "⚙️ 系统设置", key="system_settings_btn", use_container_width=True
+            ):
                 st.session_state.page = "system_settings"
 
         # 帮助链接
@@ -1100,12 +1337,14 @@ def render_sidebar():
     final_provider = st.session_state.llm_provider
     final_model = st.session_state.llm_model
 
-    logger.debug(f"🔄 [Session State] 返回配置 - provider: {final_provider}, model: {final_model}")
+    logger.debug(
+        f"🔄 [Session State] 返回配置 - provider: {final_provider}, model: {final_model}"
+    )
 
     return {
-        'llm_provider': final_provider,
-        'llm_model': final_model,
-        'enable_memory': enable_memory,
-        'enable_debug': enable_debug,
-        'max_tokens': max_tokens
+        "llm_provider": final_provider,
+        "llm_model": final_model,
+        "enable_memory": enable_memory,
+        "enable_debug": enable_debug,
+        "max_tokens": max_tokens,
     }

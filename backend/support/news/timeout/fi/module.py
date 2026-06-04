@@ -4,23 +4,18 @@
 
 这个测试程序验证新闻获取超时修复的有效性，特别是在一个新闻源失败时能否正确轮询到下一个新闻源。
 """
+
 import importlib
-
-import sys
-import os
-import time
 import unittest
-from unittest.mock import patch, MagicMock
-import pandas as pd
 from datetime import datetime
+from unittest.mock import patch
 
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import pandas as pd
+
+from trader.flows.google import make_request
 
 # 导入需要测试的模块
 from trader.flows.real.time import get_realtime_stock_news
-from trader.flows.google import get_news_data, make_request
-from trader.flows.akshare import get_stock_news_em
 
 
 class TestNewsTimeoutFix(unittest.TestCase):
@@ -34,10 +29,10 @@ class TestNewsTimeoutFix(unittest.TestCase):
     def test_make_request_timeout(self):
         """测试make_request函数的超时处理"""
         # 模拟请求超时
-        with patch('requests.get') as mock_get:
+        with patch("requests.get") as mock_get:
             # 设置mock抛出超时异常
-            requests = importlib.import_module('requests')
-            RetryError = getattr(importlib.import_module('tenacity'), 'RetryError')
+            requests = importlib.import_module("requests")
+            RetryError = getattr(importlib.import_module("tenacity"), "RetryError")
             mock_get.side_effect = requests.exceptions.Timeout("Connection timed out")
 
             # 测试make_request函数
@@ -50,22 +45,26 @@ class TestNewsTimeoutFix(unittest.TestCase):
     def test_news_source_fallback(self):
         """测试新闻源轮询机制"""
         # 模拟实时新闻聚合器失败
-        with patch('trader.flows.real.time.RealtimeNewsAggregator.get_realtime_stock_news') as mock_aggregator:
+        with patch(
+            "trader.flows.real.time.RealtimeNewsAggregator.get_realtime_stock_news"
+        ) as mock_aggregator:
             mock_aggregator.side_effect = Exception("模拟实时新闻聚合器失败")
 
             # 模拟Google新闻获取失败
-            with patch('trader.flows.interface.get_google_news') as mock_google_news:
+            with patch("trader.flows.interface.get_google_news") as mock_google_news:
                 mock_google_news.side_effect = Exception("模拟Google新闻获取失败")
 
                 # 模拟东方财富新闻获取成功
-                with patch('trader.flows.akshare.get_stock_news_em') as mock_em_news:
+                with patch("trader.flows.akshare.get_stock_news_em") as mock_em_news:
                     # 创建一个模拟的DataFrame作为返回值
-                    mock_df = pd.DataFrame({
-                        '标题': ['测试新闻1', '测试新闻2'],
-                        '时间': ['2023-01-01 12:00:00', '2023-01-01 13:00:00'],
-                        '内容': ['测试内容1', '测试内容2'],
-                        '链接': ['http://example.com/1', 'http://example.com/2']
-                    })
+                    mock_df = pd.DataFrame(
+                        {
+                            "标题": ["测试新闻1", "测试新闻2"],
+                            "时间": ["2023-01-01 12:00:00", "2023-01-01 13:00:00"],
+                            "内容": ["测试内容1", "测试内容2"],
+                            "链接": ["http://example.com/1", "http://example.com/2"],
+                        }
+                    )
                     mock_em_news.return_value = mock_df
 
                     # 调用测试函数
@@ -84,13 +83,15 @@ class TestNewsTimeoutFix(unittest.TestCase):
     def test_all_news_sources_fail(self):
         """测试所有新闻源都失败的情况"""
         # 模拟所有新闻源都失败
-        with patch('trader.flows.real.time.RealtimeNewsAggregator.get_realtime_stock_news') as mock_aggregator:
+        with patch(
+            "trader.flows.real.time.RealtimeNewsAggregator.get_realtime_stock_news"
+        ) as mock_aggregator:
             mock_aggregator.side_effect = Exception("模拟实时新闻聚合器失败")
 
-            with patch('trader.flows.interface.get_google_news') as mock_google_news:
+            with patch("trader.flows.interface.get_google_news") as mock_google_news:
                 mock_google_news.side_effect = Exception("模拟Google新闻获取失败")
 
-                with patch('trader.flows.akshare.get_stock_news_em') as mock_em_news:
+                with patch("trader.flows.akshare.get_stock_news_em") as mock_em_news:
                     mock_em_news.side_effect = Exception("模拟东方财富新闻获取失败")
 
                     # 调用测试函数

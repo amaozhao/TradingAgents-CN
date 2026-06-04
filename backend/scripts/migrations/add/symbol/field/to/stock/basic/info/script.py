@@ -10,48 +10,38 @@
 使用方法：
     python scripts/migrations/add/symbol/field/to/stock/basic/info/script.py
 """
-import importlib
 
 import asyncio
 import logging
-import sys
-from pathlib import Path
-from typing import Optional
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from typing import Any, Optional
 
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+from app.db.documentstore import create_client
 
 # 配置日志
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
 
-async def get_mongo_db() -> Optional[AsyncIOMotorDatabase]:
-    """获取 MongoDB 数据库连接"""
+async def get_postgres_db() -> Optional[Any]:
+    """获取 PostgreSQL document store 数据库连接"""
     try:
-        get_settings = getattr(importlib.import_module('app.core.config'), 'get_settings')
-        settings = get_settings()
-        client = AsyncIOMotorClient(settings.mongo_uri)
-        db = client[settings.mongo_db]
-        # 测试连接
+        client = create_client()
+        db = client["trading_agents"]
         await db.command("ping")
-        logger.info(f"✅ MongoDB 连接成功: {settings.mongo_db}")
+        logger.info("✅ PostgreSQL document store 连接成功: trading_agents")
         return db
     except Exception as e:
-        logger.error(f"❌ MongoDB 连接失败: {e}")
+        logger.error(f"❌ PostgreSQL document store 连接失败: {e}")
         return None
 
 
 async def migrate_add_symbol_field():
     """为 stock_basic_info 集合添加 symbol 字段"""
-    db = await get_mongo_db()
+    db = await get_postgres_db()
     if db is None:
-        logger.error("❌ 无法连接到 MongoDB，迁移中止")
+        logger.error("❌ 无法连接到 PostgreSQL document store，迁移中止")
         return False
 
     collection = db["stock_basic_info"]
@@ -63,7 +53,7 @@ async def migrate_add_symbol_field():
 
         # 1. 检查集合状态
         total_count = await collection.count_documents({})
-        logger.info(f"\n📊 集合状态检查:")
+        logger.info("\n📊 集合状态检查:")
         logger.info(f"  总记录数: {total_count}")
 
         # 检查有多少记录已经有 symbol 字段
@@ -71,7 +61,9 @@ async def migrate_add_symbol_field():
         logger.info(f"  已有 symbol 字段的记录: {with_symbol}")
 
         # 检查有多少记录没有 symbol 字段
-        without_symbol = await collection.count_documents({"symbol": {"$exists": False}})
+        without_symbol = await collection.count_documents(
+            {"symbol": {"$exists": False}}
+        )
         logger.info(f"  缺少 symbol 字段的记录: {without_symbol}")
 
         if without_symbol == 0:
@@ -81,20 +73,30 @@ async def migrate_add_symbol_field():
         # 2. 执行迁移
         logger.info(f"\n📝 开始为 {without_symbol} 条记录添加 symbol 字段...")
 
-        result = await collection.update_many(
-            {"symbol": {"$exists": False}},
-            [{"$set": {"symbol": "$code"}}]
-        )
+        modified = 0
+        cursor = collection.find({"symbol": {"$exists": False}})
+        for document in await cursor.to_list(None):
+            code = document.get("code")
+            if code:
+                result = await collection.update_one(
+                    {"_id": document["_id"]},
+                    {"$set": {"symbol": code}},
+                )
+                modified += result.modified_count
 
-        logger.info(f"\n✅ 迁移完成:")
-        logger.info(f"  修改的记录数: {result.modified_count}")
+        logger.info("\n✅ 迁移完成:")
+        logger.info(f"  修改的记录数: {modified}")
         logger.info(f"  匹配的记录数: {result.matched_count}")
 
         # 3. 验证迁移结果
-        logger.info(f"\n🔍 验证迁移结果...")
+        logger.info("\n🔍 验证迁移结果...")
 
-        after_with_symbol = await collection.count_documents({"symbol": {"$exists": True}})
-        after_without_symbol = await collection.count_documents({"symbol": {"$exists": False}})
+        after_with_symbol = await collection.count_documents(
+            {"symbol": {"$exists": True}}
+        )
+        after_without_symbol = await collection.count_documents(
+            {"symbol": {"$exists": False}}
+        )
 
         logger.info(f"  现在有 symbol 字段的记录: {after_with_symbol}")
         logger.info(f"  现在缺少 symbol 字段的记录: {after_without_symbol}")
@@ -103,34 +105,44 @@ async def migrate_add_symbol_field():
             logger.info("\n✅ 迁移验证成功！所有记录都已有 symbol 字段")
 
             # 4. 检查数据一致性
-            logger.info(f"\n🔍 检查数据一致性...")
+            logger.info("\n🔍 检查数据一致性...")
 
             # 检查是否有 symbol != code 的记录
-            inconsistent = await collection.count_documents({
-                "$expr": {"$ne": ["$symbol", "$code"]}
-            })
+            inconsistent = await collection.count_documents(
+                {"$expr": {"$ne": ["$symbol", "$code"]}}
+            )
 
             if inconsistent == 0:
                 logger.info("  ✅ 所有记录的 symbol 和 code 字段一致")
             else:
-                logger.warning(f"  ⚠️ 发现 {inconsistent} 条记录的 symbol 和 code 不一致")
+                logger.warning(
+                    f"  ⚠️ 发现 {inconsistent} 条记录的 symbol 和 code 不一致"
+                )
 
             # 5. 显示示例数据
-            logger.info(f"\n📋 示例数据（前5条）:")
-            sample_docs = await collection.find(
-                {"symbol": {"$exists": True}},
-                {"_id": 0, "code": 1, "symbol": 1, "name": 1}
-            ).limit(5).to_list(5)
+            logger.info("\n📋 示例数据（前5条）:")
+            sample_docs = (
+                await collection.find(
+                    {"symbol": {"$exists": True}},
+                    {"_id": 0, "code": 1, "symbol": 1, "name": 1},
+                )
+                .limit(5)
+                .to_list(5)
+            )
 
             for i, doc in enumerate(sample_docs, 1):
-                logger.info(f"  {i}. code={doc.get('code')}, symbol={doc.get('symbol')}, name={doc.get('name')}")
+                logger.info(
+                    f"  {i}. code={doc.get('code')}, symbol={doc.get('symbol')}, name={doc.get('name')}"
+                )
 
             logger.info("\n" + "=" * 80)
             logger.info("✅ 迁移成功完成！")
             logger.info("=" * 80)
             return True
         else:
-            logger.error(f"\n❌ 迁移验证失败！仍有 {after_without_symbol} 条记录缺少 symbol 字段")
+            logger.error(
+                f"\n❌ 迁移验证失败！仍有 {after_without_symbol} 条记录缺少 symbol 字段"
+            )
             return False
 
     except Exception as e:

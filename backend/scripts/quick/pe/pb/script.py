@@ -5,22 +5,16 @@
 使用方法：
     python scripts/quick/pe/pb/script.py 600036
 """
+
 import importlib
-
-import sys
-from pathlib import Path
-
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
 import logging
+import sys
 
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s | %(levelname)-8s | %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s | %(levelname)-8s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
@@ -28,16 +22,19 @@ logger = logging.getLogger(__name__)
 def test_pe_pb_from_basic_info(code: str):
     """测试从 stock_basic_info 直接获取 PE/PB"""
     logger.info("=" * 80)
-    logger.info(f"🧪 快速测试：从 stock_basic_info 获取 PE/PB")
+    logger.info("🧪 快速测试：从 stock_basic_info 获取 PE/PB")
     logger.info("=" * 80)
 
-    MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
-    settings = getattr(importlib.import_module('app.core.config'), 'settings')
-    OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
+    create_sync_client = getattr(
+        importlib.import_module("app.db.documentstore"), "create_sync_client"
+    )
+    OptimizedChinaDataProvider = getattr(
+        importlib.import_module("trader.flows.china"), "OptimizedChinaDataProvider"
+    )
 
     # 连接数据库
-    client = MongoClient(settings.mongo_uri)
-    db = client[settings.mongo_db]
+    client = create_sync_client()
+    db = client["trading_agents"]
 
     code6 = str(code).zfill(6)
 
@@ -49,7 +46,7 @@ def test_pe_pb_from_basic_info(code: str):
         client.close()
         return False
 
-    logger.info(f"✅ 找到股票基础信息")
+    logger.info("✅ 找到股票基础信息")
     logger.info(f"   股票代码: {basic_info.get('code', 'N/A')}")
     logger.info(f"   股票名称: {basic_info.get('name', 'N/A')}")
     logger.info(f"   PE: {basic_info.get('pe', 'N/A')}")
@@ -57,30 +54,30 @@ def test_pe_pb_from_basic_info(code: str):
     logger.info(f"   PE_TTM: {basic_info.get('pe_ttm', 'N/A')}")
 
     # 2. 测试解析
-    logger.info(f"\n🔧 测试 _parse_mongodb_financial_data...")
+    logger.info("\n🔧 测试 _parse_postgres_financial_data...")
 
     provider = OptimizedChinaDataProvider()
 
     try:
-        metrics = provider._parse_mongodb_financial_data(basic_info, 41.86)
+        metrics = provider._parse_postgres_financial_data(basic_info, 41.86)
 
-        logger.info(f"\n✅ 解析成功！")
+        logger.info("\n✅ 解析成功！")
         logger.info(f"   PE: {metrics.get('pe', 'N/A')}")
         logger.info(f"   PB: {metrics.get('pb', 'N/A')}")
 
         # 验证
-        if metrics.get('pe') != 'N/A' and metrics.get('pb') != 'N/A':
-            logger.info(f"\n🎉 测试通过：PE/PB 数据正确获取！")
+        if metrics.get("pe") != "N/A" and metrics.get("pb") != "N/A":
+            logger.info("\n🎉 测试通过：PE/PB 数据正确获取！")
             client.close()
             return True
         else:
-            logger.error(f"\n❌ 测试失败：PE/PB 仍然是 N/A")
+            logger.error("\n❌ 测试失败：PE/PB 仍然是 N/A")
             client.close()
             return False
 
     except Exception as e:
         logger.error(f"❌ 解析失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         logger.error(traceback.format_exc())
         client.close()
         return False
@@ -95,10 +92,10 @@ def main(code: str):
     success = test_pe_pb_from_basic_info(code)
 
     if success:
-        logger.info(f"\n🎉 测试通过！现在可以运行完整测试：")
+        logger.info("\n🎉 测试通过！现在可以运行完整测试：")
         logger.info(f"   python scripts/pe/pb/fix/test.py {code}")
     else:
-        logger.error(f"\n❌ 测试失败，请检查日志")
+        logger.error("\n❌ 测试失败，请检查日志")
 
     logger.info("=" * 80)
 
@@ -110,14 +107,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         description="快速测试 PE/PB 修复",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument(
-        "code",
-        type=str,
-        help="股票代码（6位）"
-    )
+    parser.add_argument("code", type=str, help="股票代码（6位）")
 
     args = parser.parse_args()
 

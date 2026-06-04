@@ -3,15 +3,9 @@
 测试增强的Tushare日志功能
 验证详细日志是否能帮助追踪数据获取问题
 """
+
 import importlib
 
-import sys
-import os
-from datetime import datetime, timedelta
-
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
 
 def test_enhanced_logging():
     """测试增强的日志功能"""
@@ -19,7 +13,9 @@ def test_enhanced_logging():
     print("=" * 80)
 
     try:
-        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
+        DataSourceManager = getattr(
+            importlib.import_module("trader.flows.sources"), "DataSourceManager"
+        )
 
         manager = DataSourceManager()
 
@@ -80,8 +76,9 @@ def test_enhanced_logging():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+
 
 def test_direct_tushare_provider():
     """直接测试Tushare Provider"""
@@ -89,7 +86,9 @@ def test_direct_tushare_provider():
     print("=" * 80)
 
     try:
-        get_tushare_provider = getattr(importlib.import_module('trader.flows.tushare'), 'get_tushare_provider')
+        get_tushare_provider = getattr(
+            importlib.import_module("trader.flows.tushare"), "get_tushare_provider"
+        )
 
         provider = get_tushare_provider()
 
@@ -108,14 +107,17 @@ def test_direct_tushare_provider():
         if data is not None and not data.empty:
             print(f"✅ 直接调用成功: {len(data)}条数据")
             print(f"📊 数据列: {list(data.columns)}")
-            print(f"📊 日期范围: {data['trade_date'].min()} 到 {data['trade_date'].max()}")
+            print(
+                f"📊 日期范围: {data['trade_date'].min()} 到 {data['trade_date'].max()}"
+            )
         else:
-            print(f"❌ 直接调用返回空数据")
+            print("❌ 直接调用返回空数据")
 
     except Exception as e:
         print(f"❌ 直接测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+
 
 def test_adapter_layer():
     """测试适配器层"""
@@ -123,7 +125,9 @@ def test_adapter_layer():
     print("=" * 80)
 
     try:
-        get_tushare_adapter = getattr(importlib.import_module('trader.flows.adapter'), 'get_tushare_adapter')
+        get_tushare_adapter = getattr(
+            importlib.import_module("trader.flows.adapter"), "get_tushare_adapter"
+        )
 
         adapter = get_tushare_adapter()
 
@@ -143,12 +147,13 @@ def test_adapter_layer():
             print(f"✅ 适配器调用成功: {len(data)}条数据")
             print(f"📊 数据列: {list(data.columns)}")
         else:
-            print(f"❌ 适配器调用返回空数据")
+            print("❌ 适配器调用返回空数据")
 
     except Exception as e:
         print(f"❌ 适配器测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+
 
 def main():
     """主函数"""
@@ -178,6 +183,7 @@ def main():
     print("   - 异常的完整堆栈")
     print("   - 缓存操作的详细过程")
     print("📁 详细日志请查看: logs/trader.log")
+
 
 if __name__ == "__main__":
     main()

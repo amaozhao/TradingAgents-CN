@@ -4,24 +4,25 @@
 定时任务管理服务
 提供定时任务的查询、暂停、恢复、手动触发等功能
 """
-import importlib
 
 import asyncio
-from typing import List, Dict, Any, Optional
+import importlib
 from datetime import datetime, timedelta, timezone
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.job import Job
-from apscheduler.events import (
-    EVENT_JOB_EXECUTED,
-    EVENT_JOB_ERROR,
-    EVENT_JOB_MISSED,
-    JobExecutionEvent
-)
+from typing import Any, Dict, List, Optional, cast
 
-from app.core.database import get_mongo_db
+from apscheduler.events import (
+    EVENT_JOB_ERROR,
+    EVENT_JOB_EXECUTED,
+    EVENT_JOB_MISSED,
+    JobExecutionEvent,
+)
+from apscheduler.job import Job
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document
-from trader.utils.logging.manager import get_logger
 from app.utils.timezone import now_tz
+from trader.utils.logging.manager import get_logger
 
 logger = get_logger(__name__)
 
@@ -33,7 +34,7 @@ def get_utc8_now():
     """
     获取 UTC+8 当前时间（naive datetime）
 
-    注意：返回 naive datetime（不带时区信息），MongoDB 会按原样存储本地时间值
+    注意：返回 naive datetime（不带时区信息），PostgreSQL 会按原样存储本地时间值
     这样前端可以直接添加 +08:00 后缀显示
     """
     return now_tz().replace(tzinfo=None)
@@ -41,6 +42,7 @@ def get_utc8_now():
 
 class TaskCancelledException(Exception):
     """任务被取消异常"""
+
     pass
 
 
@@ -63,7 +65,7 @@ class SchedulerService:
     def _get_db(self):
         """获取数据库连接"""
         if self.db is None:
-            self.db = get_mongo_db()
+            self.db = get_postgres_db()
         return self.db
 
     async def list_jobs(self) -> List[Dict[str, Any]]:
@@ -151,7 +153,9 @@ class SchedulerService:
             await self._record_job_action(job_id, "resume", "failed", str(e))
             return False
 
-    async def trigger_job(self, job_id: str, kwargs: Optional[Dict[str, Any]] = None) -> bool:
+    async def trigger_job(
+        self, job_id: str, kwargs: Optional[Dict[str, Any]] = None
+    ) -> bool:
         """
         手动触发任务执行
 
@@ -193,10 +197,12 @@ class SchedulerService:
                 logger.info(f"📝 任务 {job_id} 参数已更新: {kwargs}")
 
             # 手动触发任务 - 使用带时区的当前时间
-            timezone = getattr(importlib.import_module('datetime'), 'timezone')
+            timezone = getattr(importlib.import_module("datetime"), "timezone")
             now = datetime.now(timezone.utc)
             job.modify(next_run_time=now)
-            logger.info(f"🚀 手动触发任务 {job_id} (next_run_time={now}, was_paused={was_paused}, kwargs={kwargs})")
+            logger.info(
+                f"🚀 手动触发任务 {job_id} (next_run_time={now}, was_paused={was_paused}, kwargs={kwargs})"
+            )
 
             # 记录操作历史
             action_note = f"手动触发执行 (暂停状态: {was_paused}"
@@ -212,22 +218,19 @@ class SchedulerService:
                 status="running",
                 scheduled_time=get_utc8_now(),  # 使用本地时间（naive datetime）
                 progress=0,
-                is_manual=True  # 标记为手动触发
+                is_manual=True,  # 标记为手动触发
             )
 
             return True
         except Exception as e:
             logger.error(f"❌ 触发任务 {job_id} 失败: {e}")
-            traceback = importlib.import_module('traceback')
+            traceback = importlib.import_module("traceback")
             logger.error(f"详细错误: {traceback.format_exc()}")
             await self._record_job_action(job_id, "trigger", "failed", str(e))
             return False
 
     async def get_job_history(
-        self,
-        job_id: str,
-        limit: int = 20,
-        offset: int = 0
+        self, job_id: str, limit: int = 20, offset: int = 0
     ) -> List[Dict[str, Any]]:
         """
         获取任务执行历史
@@ -242,9 +245,12 @@ class SchedulerService:
         """
         try:
             db = self._get_db()
-            cursor = db.scheduler_history.find(
-                {"job_id": job_id}
-            ).sort("timestamp", -1).skip(offset).limit(limit)
+            cursor = (
+                db.scheduler_history.find({"job_id": job_id})
+                .sort("timestamp", -1)
+                .skip(offset)
+                .limit(limit)
+            )
 
             history = []
             async for doc in cursor:
@@ -279,7 +285,7 @@ class SchedulerService:
         limit: int = 50,
         offset: int = 0,
         job_id: Optional[str] = None,
-        status: Optional[str] = None
+        status: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         获取所有任务执行历史
@@ -303,7 +309,12 @@ class SchedulerService:
             if status:
                 query["status"] = status
 
-            cursor = db.scheduler_history.find(query).sort("timestamp", -1).skip(offset).limit(limit)
+            cursor = (
+                db.scheduler_history.find(query)
+                .sort("timestamp", -1)
+                .skip(offset)
+                .limit(limit)
+            )
 
             history = []
             async for doc in cursor:
@@ -316,9 +327,7 @@ class SchedulerService:
             return []
 
     async def count_all_history(
-        self,
-        job_id: Optional[str] = None,
-        status: Optional[str] = None
+        self, job_id: Optional[str] = None, status: Optional[str] = None
     ) -> int:
         """
         统计所有任务执行历史数量
@@ -352,7 +361,7 @@ class SchedulerService:
         status: Optional[str] = None,
         is_manual: Optional[bool] = None,
         limit: int = 50,
-        offset: int = 0
+        offset: int = 0,
     ) -> List[Dict[str, Any]]:
         """
         获取任务执行历史
@@ -387,7 +396,12 @@ class SchedulerService:
                     # 使用 $ne (not equal) 来排除 is_manual=true 的记录
                     query["is_manual"] = {"$ne": True}
 
-            cursor = db.scheduler_executions.find(query).sort("timestamp", -1).skip(offset).limit(limit)
+            cursor = (
+                db.scheduler_executions.find(query)
+                .sort("timestamp", -1)
+                .skip(offset)
+                .limit(limit)
+            )
 
             executions = []
             async for doc in cursor:
@@ -395,13 +409,13 @@ class SchedulerService:
                 if "_id" in doc:
                     doc["_id"] = str(doc["_id"])
 
-                # 格式化时间（MongoDB 存储的是 naive datetime，表示本地时间）
+                # 格式化时间（document store 存储的是 naive datetime，表示本地时间）
                 # 直接序列化为 ISO 格式字符串，前端会自动添加 +08:00 后缀
                 for time_field in ["scheduled_time", "timestamp", "updated_at"]:
                     if doc.get(time_field):
                         dt = doc[time_field]
                         # 如果是 datetime 对象，转换为 ISO 格式字符串
-                        if hasattr(dt, 'isoformat'):
+                        if hasattr(dt, "isoformat"):
                             doc[time_field] = dt.isoformat()
 
                 executions.append(doc)
@@ -415,7 +429,7 @@ class SchedulerService:
         self,
         job_id: Optional[str] = None,
         status: Optional[str] = None,
-        is_manual: Optional[bool] = None
+        is_manual: Optional[bool] = None,
     ) -> int:
         """
         统计任务执行历史数量
@@ -461,79 +475,86 @@ class SchedulerService:
         对于已经退出但数据库中仍为running的任务，直接标记为failed
 
         Args:
-            execution_id: 执行记录ID（MongoDB _id）
+            execution_id: 执行记录ID（PostgreSQL _id）
 
         Returns:
             是否成功
         """
         try:
-            ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
+            DocumentId = getattr(importlib.import_module("app.db.ids"), "DocumentId")
             db = self._get_db()
 
             # 查找执行记录
-            execution = await db.scheduler_executions.find_one({"_id": ObjectId(execution_id)})
+            execution = await db.scheduler_executions.find_one(
+                {"_id": DocumentId(execution_id)}
+            )
             if not execution:
                 logger.error(f"❌ 执行记录不存在: {execution_id}")
                 return False
 
             if execution.get("status") != "running":
-                logger.warning(f"⚠️ 执行记录状态不是running: {execution_id} (status={execution.get('status')})")
+                logger.warning(
+                    f"⚠️ 执行记录状态不是running: {execution_id} (status={execution.get('status')})"
+                )
                 return False
 
             # 设置取消标记
             await db.scheduler_executions.update_one(
-                {"_id": ObjectId(execution_id)},
-                {
-                    "$set": {
-                        "cancel_requested": True,
-                        "updated_at": get_utc8_now()
-                    }
-                }
+                {"_id": DocumentId(execution_id)},
+                {"$set": {"cancel_requested": True, "updated_at": get_utc8_now()}},
             )
 
-            logger.info(f"✅ 已设置取消标记: {execution.get('job_name', execution.get('job_id'))} (execution_id={execution_id})")
+            logger.info(
+                f"✅ 已设置取消标记: {execution.get('job_name', execution.get('job_id'))} (execution_id={execution_id})"
+            )
             return True
 
         except Exception as e:
             logger.error(f"❌ 取消任务执行失败: {e}")
             return False
 
-    async def mark_execution_as_failed(self, execution_id: str, reason: str = "用户手动标记为失败") -> bool:
+    async def mark_execution_as_failed(
+        self, execution_id: str, reason: str = "用户手动标记为失败"
+    ) -> bool:
         """
         将执行记录标记为失败状态
 
         用于处理已经退出但数据库中仍为running的任务
 
         Args:
-            execution_id: 执行记录ID（MongoDB _id）
+            execution_id: 执行记录ID（PostgreSQL _id）
             reason: 失败原因
 
         Returns:
             是否成功
         """
         try:
-            ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
+            DocumentId = getattr(importlib.import_module("app.db.ids"), "DocumentId")
             db = self._get_db()
 
             # 查找执行记录
-            execution = await db.scheduler_executions.find_one({"_id": ObjectId(execution_id)})
+            execution = await db.scheduler_executions.find_one(
+                {"_id": DocumentId(execution_id)}
+            )
             if not execution:
                 logger.error(f"❌ 执行记录不存在: {execution_id}")
                 return False
 
             # 更新为failed状态
             await db.scheduler_executions.update_one(
-                {"_id": ObjectId(execution_id)},
+                {"_id": DocumentId(execution_id)},
                 {
                     "$set": {
                         "status": "failed",
                         "error_message": reason,
-                        "updated_at": get_utc8_now()
+                        "updated_at": get_utc8_now(),
                     }
-                }
+                },
             )
 
-            logger.info(f"✅ 已标记为失败: {execution.get('job_name', execution.get('job_id'))} (execution_id={execution_id}, reason={reason})")
+            logger.info(
+                f"✅ 已标记为失败: {execution.get('job_name', execution.get('job_id'))} (execution_id={execution_id}, reason={reason})"
+            )
             return True
 
         except Exception as e:
@@ -545,17 +566,19 @@ class SchedulerService:
         删除执行记录
 
         Args:
-            execution_id: 执行记录ID（MongoDB _id）
+            execution_id: 执行记录ID（PostgreSQL _id）
 
         Returns:
             是否成功
         """
         try:
-            ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
+            DocumentId = getattr(importlib.import_module("app.db.ids"), "DocumentId")
             db = self._get_db()
 
             # 查找执行记录
-            execution = await db.scheduler_executions.find_one({"_id": ObjectId(execution_id)})
+            execution = await db.scheduler_executions.find_one(
+                {"_id": DocumentId(execution_id)}
+            )
             if not execution:
                 logger.error(f"❌ 执行记录不存在: {execution_id}")
                 return False
@@ -566,10 +589,14 @@ class SchedulerService:
                 return False
 
             # 删除记录
-            result = await db.scheduler_executions.delete_one({"_id": ObjectId(execution_id)})
+            result = await db.scheduler_executions.delete_one(
+                {"_id": DocumentId(execution_id)}
+            )
 
             if result.deleted_count > 0:
-                logger.info(f"✅ 已删除执行记录: {execution.get('job_name', execution.get('job_id'))} (execution_id={execution_id})")
+                logger.info(
+                    f"✅ 已删除执行记录: {execution.get('job_name', execution.get('job_id'))} (execution_id={execution_id})"
+                )
                 return True
             else:
                 logger.error(f"❌ 删除执行记录失败: {execution_id}")
@@ -595,11 +622,13 @@ class SchedulerService:
             # 统计各状态的执行次数
             pipeline = [
                 {"$match": {"job_id": job_id}},
-                {"$group": {
-                    "_id": "$status",
-                    "count": {"$sum": 1},
-                    "avg_execution_time": {"$avg": "$execution_time"}
-                }}
+                {
+                    "$group": {
+                        "_id": "$status",
+                        "count": {"$sum": 1},
+                        "avg_execution_time": {"$avg": "$execution_time"},
+                    }
+                },
             ]
 
             stats: Dict[str, Any] = {
@@ -607,7 +636,7 @@ class SchedulerService:
                 "success": 0,
                 "failed": 0,
                 "missed": 0,
-                "avg_execution_time": 0
+                "avg_execution_time": 0,
             }
 
             async for doc in db.scheduler_executions.aggregate(pipeline):
@@ -621,15 +650,16 @@ class SchedulerService:
 
             # 获取最近一次执行
             last_execution = await db.scheduler_executions.find_one(
-                {"job_id": job_id},
-                sort=[("timestamp", -1)]
+                {"job_id": job_id}, sort=[("timestamp", -1)]
             )
 
             if last_execution:
                 stats["last_execution"] = {
                     "status": last_execution.get("status"),
-                    "timestamp": last_execution.get("timestamp").isoformat() if last_execution.get("timestamp") else None,
-                    "execution_time": last_execution.get("execution_time")
+                    "timestamp": cast(Any, last_execution.get("timestamp")).isoformat()
+                    if last_execution.get("timestamp")
+                    else None,
+                    "execution_time": last_execution.get("execution_time"),
                 }
 
             return stats
@@ -655,7 +685,7 @@ class SchedulerService:
             "running_jobs": running,
             "paused_jobs": paused,
             "scheduler_running": self.scheduler.running,
-            "scheduler_state": self.scheduler.state
+            "scheduler_state": self.scheduler.state,
         }
 
     async def health_check(self) -> Dict[str, Any]:
@@ -669,7 +699,7 @@ class SchedulerService:
             "status": "healthy" if self.scheduler.running else "stopped",
             "running": self.scheduler.running,
             "state": self.scheduler.state,
-            "timestamp": get_utc8_now().isoformat()
+            "timestamp": get_utc8_now().isoformat(),
         }
 
     def _job_to_dict(self, job: Job, include_details: bool = False) -> Dict[str, Any]:
@@ -686,52 +716,47 @@ class SchedulerService:
         result = {
             "id": job.id,
             "name": job.name or job.id,
-            "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+            "next_run_time": job.next_run_time.isoformat()
+            if job.next_run_time
+            else None,
             "paused": job.next_run_time is None,
             "trigger": str(job.trigger),
         }
 
         if include_details:
-            result.update({
-                "func": f"{job.func.__module__}.{job.func.__name__}",
-                "args": job.args,
-                "kwargs": job.kwargs,
-                "misfire_grace_time": job.misfire_grace_time,
-                "max_instances": job.max_instances,
-            })
+            result.update(
+                {
+                    "func": f"{job.func.__module__}.{job.func.__name__}",
+                    "args": job.args,
+                    "kwargs": job.kwargs,
+                    "misfire_grace_time": job.misfire_grace_time,
+                    "max_instances": job.max_instances,
+                }
+            )
 
         return result
 
     def _setup_event_listeners(self):
         """设置APScheduler事件监听器"""
         # 监听任务执行成功事件
-        self.scheduler.add_listener(
-            self._on_job_executed,
-            EVENT_JOB_EXECUTED
-        )
+        self.scheduler.add_listener(self._on_job_executed, EVENT_JOB_EXECUTED)
 
         # 监听任务执行失败事件
-        self.scheduler.add_listener(
-            self._on_job_error,
-            EVENT_JOB_ERROR
-        )
+        self.scheduler.add_listener(self._on_job_error, EVENT_JOB_ERROR)
 
         # 监听任务错过执行事件
-        self.scheduler.add_listener(
-            self._on_job_missed,
-            EVENT_JOB_MISSED
-        )
+        self.scheduler.add_listener(self._on_job_missed, EVENT_JOB_MISSED)
 
         logger.info("✅ APScheduler事件监听器已设置")
 
         # 添加定时任务，检测僵尸任务（长时间处于running状态）
         self.scheduler.add_job(
             self._check_zombie_tasks,
-            'interval',
+            "interval",
             minutes=5,
-            id='check_zombie_tasks',
-            name='检测僵尸任务',
-            replace_existing=True
+            id="check_zombie_tasks",
+            name="检测僵尸任务",
+            replace_existing=True,
         )
         logger.info("✅ 僵尸任务检测定时任务已添加")
 
@@ -743,10 +768,9 @@ class SchedulerService:
             # 查找超过30分钟仍处于running状态的任务
             threshold_time = get_utc8_now() - timedelta(minutes=30)
 
-            zombie_tasks = await db.scheduler_executions.find({
-                "status": "running",
-                "timestamp": {"$lt": threshold_time}
-            }).to_list(length=100)
+            zombie_tasks = await db.scheduler_executions.find(
+                {"status": "running", "timestamp": {"$lt": threshold_time}}
+            ).to_list(length=100)
 
             for task in zombie_tasks:
                 # 更新为failed状态
@@ -756,11 +780,13 @@ class SchedulerService:
                         "$set": {
                             "status": "failed",
                             "error_message": "任务执行超时或进程异常终止",
-                            "updated_at": get_utc8_now()
+                            "updated_at": get_utc8_now(),
                         }
-                    }
+                    },
                 )
-                logger.warning(f"⚠️ 检测到僵尸任务: {task.get('job_name', task.get('job_id'))} (开始时间: {task.get('timestamp')})")
+                logger.warning(
+                    f"⚠️ 检测到僵尸任务: {task.get('job_name', task.get('job_id'))} (开始时间: {task.get('timestamp')})"
+                )
 
             if zombie_tasks:
                 logger.info(f"✅ 已标记 {len(zombie_tasks)} 个僵尸任务为失败状态")
@@ -776,14 +802,16 @@ class SchedulerService:
             now = datetime.now(event.scheduled_run_time.tzinfo)
             execution_time = (now - event.scheduled_run_time).total_seconds()
 
-        asyncio.create_task(self._record_job_execution(
-            job_id=event.job_id,
-            status="success",
-            scheduled_time=event.scheduled_run_time,
-            execution_time=execution_time,
-            return_value=str(event.retval) if event.retval else None,
-            progress=100  # 任务完成，进度100%
-        ))
+        asyncio.create_task(
+            self._record_job_execution(
+                job_id=event.job_id,
+                status="success",
+                scheduled_time=event.scheduled_run_time,
+                execution_time=execution_time,
+                return_value=str(event.retval) if event.retval else None,
+                progress=100,  # 任务完成，进度100%
+            )
+        )
 
     def _on_job_error(self, event: JobExecutionEvent):
         """任务执行失败回调"""
@@ -793,24 +821,28 @@ class SchedulerService:
             now = datetime.now(event.scheduled_run_time.tzinfo)
             execution_time = (now - event.scheduled_run_time).total_seconds()
 
-        asyncio.create_task(self._record_job_execution(
-            job_id=event.job_id,
-            status="failed",
-            scheduled_time=event.scheduled_run_time,
-            execution_time=execution_time,
-            error_message=str(event.exception) if event.exception else None,
-            traceback=event.traceback if hasattr(event, 'traceback') else None,
-            progress=None  # 失败时不设置进度
-        ))
+        asyncio.create_task(
+            self._record_job_execution(
+                job_id=event.job_id,
+                status="failed",
+                scheduled_time=event.scheduled_run_time,
+                execution_time=execution_time,
+                error_message=str(event.exception) if event.exception else None,
+                traceback=event.traceback if hasattr(event, "traceback") else None,
+                progress=None,  # 失败时不设置进度
+            )
+        )
 
     def _on_job_missed(self, event: JobExecutionEvent):
         """任务错过执行回调"""
-        asyncio.create_task(self._record_job_execution(
-            job_id=event.job_id,
-            status="missed",
-            scheduled_time=event.scheduled_run_time,
-            progress=None  # 错过时不设置进度
-        ))
+        asyncio.create_task(
+            self._record_job_execution(
+                job_id=event.job_id,
+                status="missed",
+                scheduled_time=event.scheduled_run_time,
+                progress=None,  # 错过时不设置进度
+            )
+        )
 
     async def _record_job_execution(
         self,
@@ -822,7 +854,7 @@ class SchedulerService:
         error_message: Optional[str] = None,
         traceback: Optional[str] = None,
         progress: Optional[int] = None,
-        is_manual: bool = False
+        is_manual: bool = False,
     ):
         """
         记录任务执行历史
@@ -853,9 +885,9 @@ class SchedulerService:
                     {
                         "job_id": job_id,
                         "status": "running",
-                        "timestamp": {"$gte": five_minutes_ago}
+                        "timestamp": {"$gte": five_minutes_ago},
                     },
-                    sort=[("timestamp", -1)]
+                    sort=[("timestamp", -1)],
                 )
 
                 if existing_record:
@@ -863,7 +895,7 @@ class SchedulerService:
                     update_data = {
                         "status": status,
                         "execution_time": execution_time,
-                        "updated_at": get_utc8_now()
+                        "updated_at": get_utc8_now(),
                     }
 
                     if return_value:
@@ -876,8 +908,7 @@ class SchedulerService:
                         update_data["progress"] = progress
 
                     await db.scheduler_executions.update_one(
-                        {"_id": existing_record["_id"]},
-                        {"$set": update_data}
+                        {"_id": existing_record["_id"]}, {"$set": update_data}
                     )
                     await self._dual_write_scheduler_document(
                         "scheduler_executions",
@@ -886,9 +917,13 @@ class SchedulerService:
 
                     # 记录日志
                     if status == "success":
-                        logger.info(f"✅ [任务执行] {job_name} 执行成功，耗时: {execution_time:.2f}秒")
+                        logger.info(
+                            f"✅ [任务执行] {job_name} 执行成功，耗时: {execution_time:.2f}秒"
+                        )
                     elif status == "failed":
-                        logger.error(f"❌ [任务执行] {job_name} 执行失败: {error_message}")
+                        logger.error(
+                            f"❌ [任务执行] {job_name} 执行失败: {error_message}"
+                        )
 
                     return
 
@@ -898,7 +933,9 @@ class SchedulerService:
             if scheduled_time:
                 if scheduled_time.tzinfo is not None:
                     # 转换为本地时区，然后移除时区信息
-                    scheduled_time_naive = scheduled_time.astimezone(UTC_8).replace(tzinfo=None)
+                    scheduled_time_naive = scheduled_time.astimezone(UTC_8).replace(
+                        tzinfo=None
+                    )
                 else:
                     scheduled_time_naive = scheduled_time
 
@@ -909,7 +946,7 @@ class SchedulerService:
                 "scheduled_time": scheduled_time_naive,
                 "execution_time": execution_time,
                 "timestamp": get_utc8_now(),
-                "is_manual": is_manual
+                "is_manual": is_manual,
             }
 
             if return_value:
@@ -923,28 +960,30 @@ class SchedulerService:
 
             result = await db.scheduler_executions.insert_one(execution_record)
             execution_record["_id"] = result.inserted_id
-            await self._dual_write_scheduler_document("scheduler_executions", execution_record)
+            await self._dual_write_scheduler_document(
+                "scheduler_executions", execution_record
+            )
 
             # 记录日志
             if status == "success":
-                logger.info(f"✅ [任务执行] {job_name} 执行成功，耗时: {execution_time:.2f}秒")
+                logger.info(
+                    f"✅ [任务执行] {job_name} 执行成功，耗时: {execution_time:.2f}秒"
+                )
             elif status == "failed":
                 logger.error(f"❌ [任务执行] {job_name} 执行失败: {error_message}")
             elif status == "missed":
                 logger.warning(f"⚠️ [任务执行] {job_name} 错过执行时间")
             elif status == "running":
                 trigger_type = "手动触发" if is_manual else "自动触发"
-                logger.info(f"🔄 [任务执行] {job_name} 开始执行 ({trigger_type})，进度: {progress}%")
+                logger.info(
+                    f"🔄 [任务执行] {job_name} 开始执行 ({trigger_type})，进度: {progress}%"
+                )
 
         except Exception as e:
             logger.error(f"❌ 记录任务执行历史失败: {e}")
 
     async def _record_job_action(
-        self,
-        job_id: str,
-        action: str,
-        status: str,
-        error_message: Optional[str] = None
+        self, job_id: str, action: str, status: str, error_message: Optional[str] = None
     ):
         """
         记录任务操作历史
@@ -962,7 +1001,7 @@ class SchedulerService:
                 "action": action,
                 "status": status,
                 "error_message": error_message,
-                "timestamp": get_utc8_now()
+                "timestamp": get_utc8_now(),
             }
             result = await db.scheduler_history.insert_one(history_doc)
             history_doc["_id"] = result.inserted_id
@@ -995,7 +1034,7 @@ class SchedulerService:
         self,
         job_id: str,
         display_name: Optional[str] = None,
-        description: Optional[str] = None
+        description: Optional[str] = None,
     ) -> bool:
         """
         更新任务元数据
@@ -1016,10 +1055,7 @@ class SchedulerService:
                 return False
 
             db = self._get_db()
-            update_data = {
-                "job_id": job_id,
-                "updated_at": get_utc8_now()
-            }
+            update_data = {"job_id": job_id, "updated_at": get_utc8_now()}
 
             if display_name is not None:
                 update_data["display_name"] = display_name
@@ -1028,9 +1064,7 @@ class SchedulerService:
 
             # 使用 upsert 更新或插入
             await db.scheduler_metadata.update_one(
-                {"job_id": job_id},
-                {"$set": update_data},
-                upsert=True
+                {"job_id": job_id}, {"$set": update_data}, upsert=True
             )
             await self._dual_write_scheduler_document("scheduler_metadata", update_data)
 
@@ -1040,10 +1074,16 @@ class SchedulerService:
             logger.error(f"❌ 更新任务 {job_id} 元数据失败: {e}")
             return False
 
-    async def _dual_write_scheduler_document(self, collection: str, document: Dict[str, Any]) -> None:
+    async def _dual_write_scheduler_document(
+        self, collection: str, document: Dict[str, Any]
+    ) -> None:
         result = await dual_write_hot_document(collection, document)
         if result.status == "failed":
-            logger.warning("⚠️ 调度器 PostgreSQL 双写失败: collection=%s reason=%s", collection, result.reason)
+            logger.warning(
+                "⚠️ 调度器 PostgreSQL 双写失败: collection=%s reason=%s",
+                collection,
+                result.reason,
+            )
 
 
 # 全局服务实例
@@ -1088,7 +1128,7 @@ async def update_job_progress(
     message: Optional[str] = None,
     current_item: Optional[str] = None,
     total_items: Optional[int] = None,
-    processed_items: Optional[int] = None
+    processed_items: Optional[int] = None,
 ):
     """
     更新任务执行进度（供定时任务内部调用）
@@ -1102,23 +1142,20 @@ async def update_job_progress(
         processed_items: 已处理项数
     """
     try:
-        MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
-        settings = getattr(importlib.import_module('app.core.config'), 'settings')
-
-        # 使用同步客户端避免事件循环冲突
-        sync_client = MongoClient(settings.mongo_uri)
-        sync_db = sync_client[settings.mongo_db]
+        get_postgres_db_sync = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db_sync"
+        )
+        sync_db = get_postgres_db_sync()
 
         # 查找最近的执行记录
         latest_execution = sync_db.scheduler_executions.find_one(
             {"job_id": job_id, "status": {"$in": ["running", "success", "failed"]}},
-            sort=[("timestamp", -1)]
+            sort=[("timestamp", -1)],
         )
 
         if latest_execution:
             # 检查是否有取消请求
             if latest_execution.get("cancel_requested"):
-                sync_client.close()
                 logger.warning(f"⚠️ 任务 {job_id} 收到取消请求，即将停止")
                 raise TaskCancelledException(f"任务 {job_id} 已被用户取消")
 
@@ -1126,7 +1163,7 @@ async def update_job_progress(
             update_data = {
                 "progress": progress,
                 "status": "running",
-                "updated_at": get_utc8_now()
+                "updated_at": get_utc8_now(),
             }
 
             if message:
@@ -1139,12 +1176,14 @@ async def update_job_progress(
                 update_data["processed_items"] = processed_items
 
             sync_db.scheduler_executions.update_one(
-                {"_id": latest_execution["_id"]},
-                {"$set": update_data}
+                {"_id": latest_execution["_id"]}, {"$set": update_data}
             )
         else:
             # 创建新的执行记录（任务刚开始）
-            AsyncIOScheduler = getattr(importlib.import_module('apscheduler.schedulers.asyncio'), 'AsyncIOScheduler')
+            getattr(
+                importlib.import_module("apscheduler.schedulers.asyncio"),
+                "AsyncIOScheduler",
+            )
 
             # 获取任务名称
             job_name = job_id
@@ -1159,7 +1198,7 @@ async def update_job_progress(
                 "status": "running",
                 "progress": progress,
                 "scheduled_time": get_utc8_now(),
-                "timestamp": get_utc8_now()
+                "timestamp": get_utc8_now(),
             }
 
             if message:
@@ -1172,8 +1211,6 @@ async def update_job_progress(
                 execution_record["processed_items"] = processed_items
 
             sync_db.scheduler_executions.insert_one(execution_record)
-
-        sync_client.close()
 
     except Exception as e:
         logger.error(f"❌ 更新任务进度失败: {e}")

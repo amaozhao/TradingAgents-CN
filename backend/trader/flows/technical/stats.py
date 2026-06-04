@@ -1,9 +1,12 @@
+import os
+from typing import Annotated
+
 import pandas as pd
 import yfinance as yf
 from stockstats import wrap
-from typing import Annotated
-import os
+
 from trader.config.manager import config_manager
+
 
 def get_config():
     """兼容性包装函数"""

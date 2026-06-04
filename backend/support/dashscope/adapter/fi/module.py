@@ -3,18 +3,14 @@
 DashScope OpenAI 适配器修复测试脚本
 测试修复后的工具绑定、转换和调用机制
 """
+
 import importlib
-
 import os
-import sys
-from pathlib import Path
-
-# 添加项目根目录到路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
 
 from trader.utils.logging.manager import get_logger
-logger = get_logger('test')
+
+logger = get_logger("test")
+
 
 def test_enhanced_tool_binding():
     """测试增强的工具绑定机制"""
@@ -22,9 +18,14 @@ def test_enhanced_tool_binding():
     print("=" * 60)
 
     try:
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'ChatDashScopeOpenAI')
-        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.openai"),
+            "ChatDashScopeOpenAI",
+        )
+        tool = getattr(importlib.import_module("langchain_core.tools"), "tool")
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
 
         # 定义测试工具
         @tool
@@ -38,11 +39,7 @@ def test_enhanced_tool_binding():
             return f"测试新闻: {query} 相关新闻"
 
         # 创建适配器实例
-        llm = ChatDashScopeOpenAI(
-            model="qwen-turbo",
-            temperature=0.1,
-            max_tokens=200
-        )
+        llm = ChatDashScopeOpenAI(model="qwen-turbo", temperature=0.1, max_tokens=200)
 
         print("✅ DashScope OpenAI 适配器创建成功")
 
@@ -54,19 +51,21 @@ def test_enhanced_tool_binding():
         print(f"   绑定的工具数量: {len(tools)}")
 
         # 测试工具调用
-        response = llm_with_tools.invoke([
-            HumanMessage(content="请调用get_test_stock_data工具获取AAPL的股票数据")
-        ])
+        response = llm_with_tools.invoke(
+            [HumanMessage(content="请调用get_test_stock_data工具获取AAPL的股票数据")]
+        )
 
-        print(f"✅ LLM 调用成功")
+        print("✅ LLM 调用成功")
         print(f"   响应类型: {type(response)}")
-        print(f"   响应内容长度: {len(response.content) if hasattr(response, 'content') else 0}")
+        print(
+            f"   响应内容长度: {len(response.content) if hasattr(response, 'content') else 0}"
+        )
 
         # 检查工具调用
-        if hasattr(response, 'tool_calls') and response.tool_calls:
+        if hasattr(response, "tool_calls") and response.tool_calls:
             print(f"✅ 检测到工具调用: {len(response.tool_calls)} 个")
             for i, tool_call in enumerate(response.tool_calls):
-                print(f"   工具调用 {i+1}: {tool_call.get('name', 'unknown')}")
+                print(f"   工具调用 {i + 1}: {tool_call.get('name', 'unknown')}")
         else:
             print("⚠️ 未检测到工具调用")
             print(f"   响应内容: {response.content[:200]}...")
@@ -77,13 +76,17 @@ def test_enhanced_tool_binding():
         print(f"❌ 工具绑定测试失败: {e}")
         return False
 
+
 def test_tool_format_validation():
     """测试工具格式验证机制"""
     print("\n🔍 测试工具格式验证机制")
     print("=" * 60)
 
     try:
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'ChatDashScopeOpenAI')
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.openai"),
+            "ChatDashScopeOpenAI",
+        )
 
         # 创建适配器实例
         llm = ChatDashScopeOpenAI(model="qwen-turbo")
@@ -99,9 +102,9 @@ def test_tool_format_validation():
                     "properties": {
                         "param1": {"type": "string", "description": "参数1"}
                     },
-                    "required": ["param1"]
-                }
-            }
+                    "required": ["param1"],
+                },
+            },
         }
 
         is_valid = llm._validate_openai_tool_format(valid_tool, "test_tool")
@@ -113,7 +116,7 @@ def test_tool_format_validation():
             "function": {
                 "name": "test_tool"
                 # 缺少 description
-            }
+            },
         }
 
         is_invalid = llm._validate_openai_tool_format(invalid_tool, "invalid_tool")
@@ -125,14 +128,18 @@ def test_tool_format_validation():
         print(f"❌ 工具格式验证测试失败: {e}")
         return False
 
+
 def test_backup_tool_creation():
     """测试备用工具创建机制"""
     print("\n🔧 测试备用工具创建机制")
     print("=" * 60)
 
     try:
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'ChatDashScopeOpenAI')
-        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.openai"),
+            "ChatDashScopeOpenAI",
+        )
+        tool = getattr(importlib.import_module("langchain_core.tools"), "tool")
 
         # 创建适配器实例
         llm = ChatDashScopeOpenAI(model="qwen-turbo")
@@ -164,22 +171,23 @@ def test_backup_tool_creation():
         print(f"❌ 备用工具创建测试失败: {e}")
         return False
 
+
 def test_tool_call_response_validation():
     """测试工具调用响应验证"""
     print("\n🔍 测试工具调用响应验证")
     print("=" * 60)
 
     try:
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'ChatDashScopeOpenAI')
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.openai"),
+            "ChatDashScopeOpenAI",
+        )
 
         # 创建适配器实例
         llm = ChatDashScopeOpenAI(model="qwen-turbo")
 
         # 测试有效的工具调用格式
-        valid_tool_call = {
-            "name": "test_tool",
-            "args": {"param1": "value1"}
-        }
+        valid_tool_call = {"name": "test_tool", "args": {"param1": "value1"}}
 
         is_valid = llm._validate_tool_call_format(valid_tool_call, 0)
         print(f"✅ 有效工具调用验证: {'通过' if is_valid else '失败'}")
@@ -195,10 +203,7 @@ def test_tool_call_response_validation():
 
         # 测试工具调用修复
         broken_tool_call = {
-            "function": {
-                "name": "test_tool",
-                "arguments": {"param1": "value1"}
-            }
+            "function": {"name": "test_tool", "arguments": {"param1": "value1"}}
         }
 
         fixed_tool_call = llm._fix_tool_call_format(broken_tool_call, 2)
@@ -215,15 +220,21 @@ def test_tool_call_response_validation():
         print(f"❌ 工具调用响应验证测试失败: {e}")
         return False
 
+
 def test_comprehensive_tool_calling():
     """综合测试工具调用流程"""
     print("\n🚀 综合测试工具调用流程")
     print("=" * 60)
 
     try:
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'ChatDashScopeOpenAI')
-        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.openai"),
+            "ChatDashScopeOpenAI",
+        )
+        tool = getattr(importlib.import_module("langchain_core.tools"), "tool")
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
 
         # 定义复杂的测试工具
         @tool
@@ -238,9 +249,7 @@ def test_comprehensive_tool_calling():
 
         # 创建适配器并绑定工具
         llm = ChatDashScopeOpenAI(
-            model="qwen-plus-latest",
-            temperature=0.1,
-            max_tokens=500
+            model="qwen-plus-latest", temperature=0.1, max_tokens=500
         )
 
         tools = [get_stock_analysis, get_market_news]
@@ -255,18 +264,20 @@ def test_comprehensive_tool_calling():
 
         response = llm_with_tools.invoke(messages)
 
-        print(f"✅ 复杂对话调用成功")
-        print(f"   响应内容长度: {len(response.content) if hasattr(response, 'content') else 0}")
+        print("✅ 复杂对话调用成功")
+        print(
+            f"   响应内容长度: {len(response.content) if hasattr(response, 'content') else 0}"
+        )
 
         # 详细分析响应
-        if hasattr(response, 'tool_calls') and response.tool_calls:
+        if hasattr(response, "tool_calls") and response.tool_calls:
             print(f"✅ 检测到 {len(response.tool_calls)} 个工具调用")
             for i, tool_call in enumerate(response.tool_calls):
-                print(f"   工具 {i+1}: {tool_call.get('name', 'unknown')}")
+                print(f"   工具 {i + 1}: {tool_call.get('name', 'unknown')}")
                 print(f"   参数: {tool_call.get('args', {})}")
         else:
             print("⚠️ 未检测到工具调用")
-            if hasattr(response, 'content'):
+            if hasattr(response, "content"):
                 print(f"   响应内容: {response.content[:300]}...")
 
         return True
@@ -275,13 +286,14 @@ def test_comprehensive_tool_calling():
         print(f"❌ 综合工具调用测试失败: {e}")
         return False
 
+
 def main():
     """主测试函数"""
     print("🧪 DashScope OpenAI 适配器修复测试")
     print("=" * 80)
 
     # 检查环境变量
-    if not os.getenv('DASHSCOPE_API_KEY'):
+    if not os.getenv("DASHSCOPE_API_KEY"):
         print("❌ 错误: 未找到 DASHSCOPE_API_KEY 环境变量")
         print("请设置您的 DashScope API 密钥:")
         print("  Windows: set DASHSCOPE_API_KEY=your_api_key")
@@ -329,8 +341,9 @@ def main():
         print("   ✅ 详细的错误处理和日志记录")
         print("   ✅ 提高了工具调用成功率")
     else:
-        print(f"\n⚠️ 部分测试失败，需要进一步调试")
+        print("\n⚠️ 部分测试失败，需要进一步调试")
         print("请检查失败的测试项目并查看详细日志")
+
 
 if __name__ == "__main__":
     main()

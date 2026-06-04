@@ -3,15 +3,11 @@
 测试CLI日志修复效果
 验证用户界面是否清爽，日志是否只写入文件
 """
-import importlib
 
+import importlib
 import os
 import sys
-import subprocess
 
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_cli_logging_setup():
     """测试CLI日志设置"""
@@ -20,15 +16,23 @@ def test_cli_logging_setup():
 
     try:
         # 导入CLI模块，触发日志设置
-        setup_cli_logging = getattr(importlib.import_module('cli.main'), 'setup_cli_logging')
-        logger = getattr(importlib.import_module('cli.main'), 'logger')
-        get_logger_manager = getattr(importlib.import_module('trader.utils.logging.manager'), 'get_logger_manager')
+        setup_cli_logging = getattr(
+            importlib.import_module("cli.main"), "setup_cli_logging"
+        )
+        logger = getattr(importlib.import_module("cli.main"), "logger")
+        get_logger_manager = getattr(
+            importlib.import_module("trader.utils.logging.manager"),
+            "get_logger_manager",
+        )
 
         print("📊 测试前的日志处理器:")
         logger_manager = get_logger_manager()
         handlers_before = len(logger_manager.root_logger.handlers)
-        console_handlers_before = sum(1 for h in logger_manager.root_logger.handlers
-                                    if hasattr(h, 'stream') and h.stream.name == '<stderr>')
+        console_handlers_before = sum(
+            1
+            for h in logger_manager.root_logger.handlers
+            if hasattr(h, "stream") and h.stream.name == "<stderr>"
+        )
         print(f"   总处理器数量: {handlers_before}")
         print(f"   控制台处理器数量: {console_handlers_before}")
 
@@ -37,8 +41,11 @@ def test_cli_logging_setup():
 
         print("\n📊 测试后的日志处理器:")
         handlers_after = len(logger_manager.root_logger.handlers)
-        console_handlers_after = sum(1 for h in logger_manager.root_logger.handlers
-                                   if hasattr(h, 'stream') and h.stream.name == '<stderr>')
+        console_handlers_after = sum(
+            1
+            for h in logger_manager.root_logger.handlers
+            if hasattr(h, "stream") and h.stream.name == "<stderr>"
+        )
         print(f"   总处理器数量: {handlers_after}")
         print(f"   控制台处理器数量: {console_handlers_after}")
 
@@ -58,9 +65,10 @@ def test_cli_logging_setup():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_console_output():
     """测试console输出"""
@@ -68,7 +76,7 @@ def test_console_output():
     print("=" * 60)
 
     try:
-        Console = getattr(importlib.import_module('rich.console'), 'Console')
+        Console = getattr(importlib.import_module("rich.console"), "Console")
 
         console = Console()
 
@@ -85,21 +93,24 @@ def test_console_output():
         print(f"❌ 测试失败: {e}")
         return False
 
+
 def test_log_file_writing():
     """测试日志文件写入"""
     print("\n📁 测试日志文件写入")
     print("=" * 60)
 
     try:
-        logger = getattr(importlib.import_module('cli.main'), 'logger')
-        glob = importlib.import_module('glob')
+        logger = getattr(importlib.import_module("cli.main"), "logger")
+        glob = importlib.import_module("glob")
 
         # 写入测试日志
         test_message = "CLI日志修复测试消息 - 这应该只出现在日志文件中"
         logger.info(test_message)
 
         # 查找日志文件
-        log_files = glob.glob("data/logs/*.log") + glob.glob("logs/*.log") + glob.glob("*.log")
+        log_files = (
+            glob.glob("data/logs/*.log") + glob.glob("logs/*.log") + glob.glob("*.log")
+        )
 
         if log_files:
             print(f"📄 找到日志文件: {log_files}")
@@ -109,7 +120,7 @@ def test_log_file_writing():
             print(f"📄 检查最新日志文件: {latest_log}")
 
             try:
-                with open(latest_log, 'r', encoding='utf-8') as f:
+                with open(latest_log, "r", encoding="utf-8") as f:
                     content = f.read()
                     if test_message in content:
                         print("✅ 测试消息已写入日志文件")
@@ -128,14 +139,15 @@ def test_log_file_writing():
         print(f"❌ 测试失败: {e}")
         return False
 
+
 def test_cli_interface_preview():
     """预览CLI界面效果"""
     print("\n👀 预览CLI界面效果")
     print("=" * 60)
 
     try:
-        Console = getattr(importlib.import_module('rich.console'), 'Console')
-        Panel = getattr(importlib.import_module('rich.panel'), 'Panel')
+        Console = getattr(importlib.import_module("rich.console"), "Console")
+        Panel = getattr(importlib.import_module("rich.panel"), "Panel")
 
         console = Console()
 
@@ -147,12 +159,14 @@ def test_cli_interface_preview():
         title_panel = Panel(
             "[bold blue]步骤 1: 选择市场 | Step 1: Select Market[/bold blue]\n"
             "请选择要分析的股票市场 | Please select the stock market to analyze",
-            box_style="cyan"
+            box_style="cyan",
         )
         console.print(title_panel)
 
         # 选项
-        console.print("\n[bold cyan]请选择股票市场 | Please select stock market:[/bold cyan]")
+        console.print(
+            "\n[bold cyan]请选择股票市场 | Please select stock market:[/bold cyan]"
+        )
         console.print("[cyan]1[/cyan]. 🌍 美股 | US Stock")
         console.print("   示例 | Examples: SPY, AAPL, TSLA")
         console.print("[cyan]2[/cyan]. 🌍 A股 | China A-Share")
@@ -168,6 +182,7 @@ def test_cli_interface_preview():
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         return False
+
 
 def main():
     """主测试函数"""
@@ -196,16 +211,11 @@ def main():
     passed = sum(results)
     total = len(results)
 
-    test_names = [
-        "CLI日志设置",
-        "Console输出测试",
-        "日志文件写入",
-        "CLI界面预览"
-    ]
+    test_names = ["CLI日志设置", "Console输出测试", "日志文件写入", "CLI界面预览"]
 
     for i, (name, result) in enumerate(zip(test_names, results)):
         status = "✅ 通过" if result else "❌ 失败"
-        print(f"{i+1}. {name}: {status}")
+        print(f"{i + 1}. {name}: {status}")
 
     print(f"\n📊 总体结果: {passed}/{total} 测试通过")
 
@@ -226,6 +236,7 @@ def main():
         print("⚠️ 部分测试失败，需要进一步优化")
 
     return passed == total
+
 
 if __name__ == "__main__":
     success = main()

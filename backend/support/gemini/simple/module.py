@@ -2,19 +2,17 @@
 """
 简化的Gemini测试（禁用内存功能）
 """
-import importlib
 
+import importlib
 import os
-import sys
-from pathlib import Path
+
 from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
+from support.path import BACKEND_ROOT
 
 # 加载环境变量
-load_dotenv(project_root / ".env", override=True)
+load_dotenv(BACKEND_ROOT / ".env", override=True)
+
 
 def test_gemini_simple_analysis():
     """测试Gemini的简单分析功能"""
@@ -22,11 +20,15 @@ def test_gemini_simple_analysis():
         print("🧪 测试Gemini简单分析功能")
         print("=" * 60)
 
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        TradingAgentsGraph = getattr(
+            importlib.import_module("trader.graph.trading"), "TradingAgentsGraph"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 检查API密钥
-        google_api_key = os.getenv('GOOGLE_API_KEY')
+        google_api_key = os.getenv("GOOGLE_API_KEY")
         if not google_api_key:
             print("❌ Google API密钥未配置")
             return False
@@ -44,9 +46,11 @@ def test_gemini_simple_analysis():
         config["max_risk_discuss_rounds"] = 1
 
         # 修复路径
-        config["data_dir"] = str(project_root / "data")
-        config["results_dir"] = str(project_root / "results")
-        config["data_cache_dir"] = str(project_root / "trader" / "dataflows" / "data_cache")
+        config["data_dir"] = str(BACKEND_ROOT / "data")
+        config["results_dir"] = str(BACKEND_ROOT / "results")
+        config["data_cache_dir"] = str(
+            BACKEND_ROOT / "trader" / "dataflows" / "data_cache"
+        )
 
         # 创建目录
         os.makedirs(config["data_dir"], exist_ok=True)
@@ -89,15 +93,16 @@ def test_gemini_simple_analysis():
 
         except Exception as e:
             print(f"❌ 股票分析失败: {e}")
-            traceback = importlib.import_module('traceback')
+            traceback = importlib.import_module("traceback")
             print(traceback.format_exc())
             return False
 
     except Exception as e:
         print(f"❌ 简化测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         print(traceback.format_exc())
         return False
+
 
 def test_gemini_analyst_direct():
     """直接测试Gemini分析师"""
@@ -105,11 +110,22 @@ def test_gemini_analyst_direct():
         print("\n🧪 直接测试Gemini分析师")
         print("=" * 60)
 
-        create_market_analyst = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        ChatGoogleGenerativeAI = getattr(importlib.import_module('langchain_google_genai'), 'ChatGoogleGenerativeAI')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        create_market_analyst = getattr(
+            importlib.import_module("trader.agents.analysts.market"),
+            "create_market_analyst",
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        ChatGoogleGenerativeAI = getattr(
+            importlib.import_module("langchain_google_genai"), "ChatGoogleGenerativeAI"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -120,7 +136,7 @@ def test_gemini_analyst_direct():
             model="gemini-2.5-flash-lite-preview-06-17",
             temperature=0.1,
             max_tokens=1000,
-            google_api_key=os.getenv('GOOGLE_API_KEY')
+            google_api_key=os.getenv("GOOGLE_API_KEY"),
         )
 
         # 创建工具包
@@ -137,7 +153,7 @@ def test_gemini_analyst_direct():
         test_state = {
             "messages": [HumanMessage(content="分析AAPL的市场技术指标")],
             "company_of_interest": "AAPL",
-            "trade_date": "2025-06-27"
+            "trade_date": "2025-06-27",
         }
 
         print("📊 开始市场分析...")
@@ -161,9 +177,10 @@ def test_gemini_analyst_direct():
 
     except Exception as e:
         print(f"❌ 直接分析师测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         print(traceback.format_exc())
         return False
+
 
 def main():
     """主测试函数"""
@@ -171,7 +188,7 @@ def main():
     print("=" * 70)
 
     # 检查环境变量
-    google_api_key = os.getenv('GOOGLE_API_KEY')
+    google_api_key = os.getenv("GOOGLE_API_KEY")
     if not google_api_key:
         print("❌ Google API密钥未配置")
         print("💡 请在.env文件中设置 GOOGLE_API_KEY")
@@ -182,14 +199,14 @@ def main():
 
     print("第1步: 直接分析师测试")
     print("-" * 30)
-    results['直接分析师'] = test_gemini_analyst_direct()
+    results["直接分析师"] = test_gemini_analyst_direct()
 
     print("\n第2步: 简化TradingAgents测试")
     print("-" * 30)
-    results['简化TradingAgents'] = test_gemini_simple_analysis()
+    results["简化TradingAgents"] = test_gemini_simple_analysis()
 
     # 总结结果
-    print(f"\n📊 简化测试结果总结:")
+    print("\n📊 简化测试结果总结:")
     print("=" * 50)
 
     for test_name, success in results.items():
@@ -215,6 +232,7 @@ def main():
     else:
         print("❌ Gemini模型不可用")
         print("💡 请检查API密钥和网络连接")
+
 
 if __name__ == "__main__":
     main()

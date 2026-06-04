@@ -16,8 +16,6 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -27,7 +25,9 @@ _API = "https://api.stocktwits.com/api/2/streams/symbol/{ticker}.json"
 _UA = "trader/0.2 (+https://github.com/TauricResearch/TradingAgents)"
 
 
-def fetch_stocktwits_messages(ticker: str, limit: int = 30, timeout: float = 10.0) -> str:
+def fetch_stocktwits_messages(
+    ticker: str, limit: int = 30, timeout: float = 10.0
+) -> str:
     """Fetch recent StockTwits messages for ``ticker`` and return them as a
     formatted plaintext block ready for prompt injection.
 
@@ -55,7 +55,9 @@ def fetch_stocktwits_messages(ticker: str, limit: int = 30, timeout: float = 10.
         user = (m.get("user") or {}).get("username", "?")
         entities = m.get("entities") or {}
         sentiment_obj = entities.get("sentiment") or {}
-        sentiment = sentiment_obj.get("basic") if isinstance(sentiment_obj, dict) else None
+        sentiment = (
+            sentiment_obj.get("basic") if isinstance(sentiment_obj, dict) else None
+        )
         body = (m.get("body") or "").replace("\n", " ").strip()
         if len(body) > 280:
             body = body[:280] + "…"

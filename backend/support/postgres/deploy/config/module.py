@@ -1,9 +1,7 @@
 from pathlib import Path
 
 import pytest
-
 import yaml
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 COMPOSE_FILES = [
@@ -21,8 +19,13 @@ def test_docker_compose_includes_postgres_service_and_backend_wiring(compose_pat
     assert "postgres" in services
     postgres = services["postgres"]
     assert postgres["image"] == "postgres:16-alpine"
-    assert postgres["healthcheck"]["test"] == ["CMD-SHELL", "pg_isready -U postgres -d trading_agents_cn"]
-    assert any(volume.endswith(":/var/lib/postgresql/data") for volume in postgres["volumes"])
+    assert postgres["healthcheck"]["test"] == [
+        "CMD-SHELL",
+        "pg_isready -U postgres -d trading_agents_cn",
+    ]
+    assert any(
+        volume.endswith(":/var/lib/postgresql/data") for volume in postgres["volumes"]
+    )
     if compose_path.name.endswith(".arm.yml"):
         assert postgres["platform"] == "linux/arm64"
 
@@ -30,10 +33,18 @@ def test_docker_compose_includes_postgres_service_and_backend_wiring(compose_pat
     backend_env = backend["environment"]
     assert backend_env["POSTGRES_HOST"] == "postgres"
     assert backend_env["POSTGRES_DB"] == "trading_agents_cn"
-    assert backend_env["POSTGRES_DUAL_WRITE_ENABLED"] == "${POSTGRES_DUAL_WRITE_ENABLED:-false}"
+    assert (
+        backend_env["POSTGRES_DUAL_WRITE_ENABLED"]
+        == "${POSTGRES_DUAL_WRITE_ENABLED:-false}"
+    )
     assert backend_env["POSTGRES_READ_ENABLED"] == "${POSTGRES_READ_ENABLED:-false}"
-    assert backend_env["POSTGRES_DUAL_WRITE_FAIL_OPEN"] == "${POSTGRES_DUAL_WRITE_FAIL_OPEN:-true}"
-    assert backend_env["SYNC_STOCK_BASICS_ENABLED"] == "${SYNC_STOCK_BASICS_ENABLED:-true}"
+    assert (
+        backend_env["POSTGRES_DUAL_WRITE_FAIL_OPEN"]
+        == "${POSTGRES_DUAL_WRITE_FAIL_OPEN:-true}"
+    )
+    assert (
+        backend_env["SYNC_STOCK_BASICS_ENABLED"] == "${SYNC_STOCK_BASICS_ENABLED:-true}"
+    )
     assert backend["depends_on"]["postgres"]["condition"] == "service_healthy"
 
     volumes = compose["volumes"]
@@ -42,7 +53,9 @@ def test_docker_compose_includes_postgres_service_and_backend_wiring(compose_pat
 
 def test_env_templates_include_postgres_cutover_switches():
     env_example = (REPO_ROOT / ".env.example").read_text(encoding="utf-8")
-    docker_env = (REPO_ROOT / "deploy" / "env" / "docker.env").read_text(encoding="utf-8")
+    docker_env = (REPO_ROOT / "deploy" / "env" / "docker.env").read_text(
+        encoding="utf-8"
+    )
 
     for text in [env_example, docker_env]:
         assert "POSTGRES_HOST=" in text
@@ -58,8 +71,12 @@ def test_env_templates_include_postgres_cutover_switches():
 
 
 def test_postgres_phase_env_templates_define_safe_switch_combinations():
-    dual_write = (REPO_ROOT / "deploy" / "env" / "postgres-dual-write.env").read_text(encoding="utf-8")
-    postgres_read = (REPO_ROOT / "deploy" / "env" / "postgres-read.env").read_text(encoding="utf-8")
+    dual_write = (REPO_ROOT / "deploy" / "env" / "postgres-dual-write.env").read_text(
+        encoding="utf-8"
+    )
+    postgres_read = (REPO_ROOT / "deploy" / "env" / "postgres-read.env").read_text(
+        encoding="utf-8"
+    )
 
     assert "POSTGRES_DUAL_WRITE_ENABLED=true" in dual_write
     assert "POSTGRES_READ_ENABLED=false" in dual_write
@@ -73,15 +90,18 @@ def test_postgres_phase_env_templates_define_safe_switch_combinations():
 
 
 def test_postgres_smoke_env_templates_define_expected_runtime_states():
-    pre_read = (REPO_ROOT / "deploy" / "env-templates" / "postgres-pre-read-evidence.env.example").read_text(
-        encoding="utf-8"
-    )
-    post_read = (REPO_ROOT / "deploy" / "env-templates" / "postgres-post-read-smoke.env.example").read_text(
-        encoding="utf-8"
-    )
-    rollback = (REPO_ROOT / "deploy" / "env-templates" / "postgres-rollback-smoke.env.example").read_text(
-        encoding="utf-8"
-    )
+    pre_read = (
+        REPO_ROOT
+        / "deploy"
+        / "env-templates"
+        / "postgres-pre-read-evidence.env.example"
+    ).read_text(encoding="utf-8")
+    post_read = (
+        REPO_ROOT / "deploy" / "env-templates" / "postgres-post-read-smoke.env.example"
+    ).read_text(encoding="utf-8")
+    rollback = (
+        REPO_ROOT / "deploy" / "env-templates" / "postgres-rollback-smoke.env.example"
+    ).read_text(encoding="utf-8")
 
     assert "TRADING_AGENTS_TARGET_ENV=" in pre_read
     assert "TRADING_AGENTS_CUTOVER_PHASE=pre-read" in pre_read
@@ -108,14 +128,18 @@ def test_postgres_smoke_env_templates_define_expected_runtime_states():
 
 
 def test_backend_dockerfile_installs_pyproject_dependencies():
-    dockerfile = (REPO_ROOT / "deploy" / "docker" / "backend.Dockerfile").read_text(encoding="utf-8")
+    dockerfile = (REPO_ROOT / "deploy" / "docker" / "backend.Dockerfile").read_text(
+        encoding="utf-8"
+    )
 
     assert "COPY backend ./backend" in dockerfile
     assert "pip install --prefer-binary ./backend" in dockerfile
 
 
 def test_cutover_runbook_contains_docker_compose_migration_commands():
-    runbook = (REPO_ROOT / "docs" / "migration" / "postgres_cutover_runbook.md").read_text(encoding="utf-8")
+    runbook = (
+        REPO_ROOT / "docs" / "migration" / "postgres_cutover_runbook.md"
+    ).read_text(encoding="utf-8")
 
     assert "docker compose -f <compose-file> exec backend" in runbook
     assert "--env-file .env --env-file deploy/env/postgres-dual-write.env" in runbook
@@ -144,9 +168,14 @@ def test_cutover_runbook_contains_docker_compose_migration_commands():
     assert "TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED=false" in runbook
     assert "/api/system/config/summary" in runbook
     assert "python backend/scripts/postgres/rollback/check/script.py" in runbook
-    assert "--output-dir /tmp/trading_agents_postgres_cutover_evidence/rollback" in runbook
+    assert (
+        "--output-dir /tmp/trading_agents_postgres_cutover_evidence/rollback" in runbook
+    )
     assert '--target-env "$TRADING_AGENTS_TARGET_ENV"' in runbook
-    assert "python backend/scripts/postgres/cutover/evidence/check/script.py \\\n  --rollback-only" in runbook
+    assert (
+        "python backend/scripts/postgres/cutover/evidence/check/script.py \\\n  --rollback-only"
+        in runbook
+    )
     assert "--require-target-manifest" in runbook
     assert "--expected-phase rollback" in runbook
     assert "--require-rollback-check" in runbook

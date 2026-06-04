@@ -1,8 +1,8 @@
 """Compatibility adapter for legacy ``trader.flows.adapter`` imports."""
 
 from __future__ import annotations
-import importlib
 
+import importlib
 from typing import Any, cast
 
 import pandas as pd
@@ -28,7 +28,10 @@ class TushareDataAdapter:
     def _get_realtime_data(self, symbol: str) -> pd.DataFrame:
         if self.enable_cache or use_app_cache_enabled(default=False):
             try:
-                get_market_quote_dataframe = getattr(importlib.import_module('trader.flows.app'), 'get_market_quote_dataframe')
+                get_market_quote_dataframe = getattr(
+                    importlib.import_module("trader.flows.app"),
+                    "get_market_quote_dataframe",
+                )
 
                 cached = get_market_quote_dataframe(symbol)
                 if cached is not None and not cached.empty:

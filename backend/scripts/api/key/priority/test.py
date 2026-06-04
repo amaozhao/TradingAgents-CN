@@ -9,17 +9,11 @@
 3. 数据库有无效的 Key（长度不够） → 使用环境变量的 Key
 4. 数据库和环境变量都没有 → 报错
 """
-import importlib
-
-import sys
-import os
-from pathlib import Path
-
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 import asyncio
+import importlib
+import sys
+
 from dotenv import load_dotenv
 
 # 加载环境变量
@@ -28,7 +22,9 @@ load_dotenv()
 
 async def test_api_key_validation():
     """测试 API Key 验证逻辑"""
-    ConfigService = getattr(importlib.import_module('app.services.config'), 'ConfigService')
+    ConfigService = getattr(
+        importlib.import_module("app.services.config"), "ConfigService"
+    )
 
     config_service = ConfigService()
 
@@ -51,15 +47,19 @@ async def test_api_key_validation():
     for api_key, expected, description in test_cases:
         result = config_service._is_valid_api_key(api_key)
         status = "✅" if result == expected else "❌"
-        print(f"{status} {description:30s} | Key: {repr(api_key):30s} | 结果: {result} | 期望: {expected}")
+        print(
+            f"{status} {description:30s} | Key: {repr(api_key):30s} | 结果: {result} | 期望: {expected}"
+        )
 
     print("\n" + "=" * 80)
 
 
 async def test_provider_key_priority():
     """测试厂家 API Key 优先级"""
-    ConfigService = getattr(importlib.import_module('app.services.config'), 'ConfigService')
-    init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
+    ConfigService = getattr(
+        importlib.import_module("app.services.config"), "ConfigService"
+    )
+    init_db = getattr(importlib.import_module("app.core.database"), "init_db")
 
     # 初始化数据库
     await init_db()
@@ -86,7 +86,11 @@ async def test_provider_key_priority():
         env_key = config_service._get_env_api_key(provider.name)
 
         # 显示配置来源
-        source = provider.extra_config.get("source", "unknown") if provider.extra_config else "unknown"
+        source = (
+            provider.extra_config.get("source", "unknown")
+            if provider.extra_config
+            else "unknown"
+        )
 
         print(f"  数据库 Key: {_mask_key(db_key):30s} | 有效: {db_key_valid}")
         print(f"  环境变量 Key: {_mask_key(env_key):30s} | 有效: {bool(env_key)}")
@@ -118,7 +122,7 @@ async def main():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         sys.exit(1)
 

@@ -2,19 +2,16 @@
 """
 测试命令行版本
 """
-import importlib
 
+import importlib
 import os
 import sys
-from pathlib import Path
-from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
+
 
 def test_cli_imports():
     """测试CLI模块导入"""
@@ -23,25 +20,26 @@ def test_cli_imports():
 
     try:
         # 测试导入CLI主模块
-        app = getattr(importlib.import_module('cli.main'), 'app')
-        console = getattr(importlib.import_module('cli.main'), 'console')
+        getattr(importlib.import_module("cli.main"), "app")
+        getattr(importlib.import_module("cli.main"), "console")
         print("✅ CLI主模块导入成功")
 
         # 测试导入分析师类型
-        AnalystType = getattr(importlib.import_module('cli.models'), 'AnalystType')
+        getattr(importlib.import_module("cli.models"), "AnalystType")
         print("✅ 分析师类型导入成功")
 
         # 测试导入工具函数
-        get_user_selections = getattr(importlib.import_module('cli.utils'), 'get_user_selections')
+        getattr(importlib.import_module("cli.utils"), "get_user_selections")
         print("✅ CLI工具函数导入成功")
 
         return True
 
     except Exception as e:
         print(f"❌ CLI模块导入失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_cli_config():
     """测试CLI配置"""
@@ -49,8 +47,12 @@ def test_cli_config():
     print("=" * 60)
 
     try:
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
-        config_manager = getattr(importlib.import_module('trader.config.manager'), 'config_manager')
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
+        config_manager = getattr(
+            importlib.import_module("trader.config.manager"), "config_manager"
+        )
 
         print("🔧 测试默认配置...")
         print(f"   LLM提供商: {DEFAULT_CONFIG.get('llm_provider', 'N/A')}")
@@ -77,9 +79,10 @@ def test_cli_config():
 
     except Exception as e:
         print(f"❌ CLI配置测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_cli_graph_creation():
     """测试CLI图创建"""
@@ -92,27 +95,33 @@ def test_cli_graph_creation():
         return True
 
     try:
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        TradingAgentsGraph = getattr(
+            importlib.import_module("trader.graph.trading"), "TradingAgentsGraph"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         print("🔧 创建测试配置...")
         config = DEFAULT_CONFIG.copy()
-        config.update({
-            "llm_provider": "deepseek",
-            "deep_think_llm": "deepseek-chat",
-            "quick_think_llm": "deepseek-chat",
-            "max_debate_rounds": 1,
-            "max_risk_discuss_rounds": 1,
-            "online_tools": False,  # 关闭在线工具，减少复杂度
-            "memory_enabled": False
-        })
+        config.update(
+            {
+                "llm_provider": "deepseek",
+                "deep_think_llm": "deepseek-chat",
+                "quick_think_llm": "deepseek-chat",
+                "max_debate_rounds": 1,
+                "max_risk_discuss_rounds": 1,
+                "online_tools": False,  # 关闭在线工具，减少复杂度
+                "memory_enabled": False,
+            }
+        )
 
         print("📊 创建交易分析图...")
         # 使用CLI的方式创建图
-        graph = TradingAgentsGraph(
+        TradingAgentsGraph(
             ["market"],  # 只使用市场分析师
             config=config,
-            debug=True
+            debug=True,
         )
 
         print("✅ CLI图创建成功")
@@ -120,9 +129,10 @@ def test_cli_graph_creation():
 
     except Exception as e:
         print(f"❌ CLI图创建失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_cli_cost_tracking():
     """测试CLI成本跟踪"""
@@ -130,15 +140,19 @@ def test_cli_cost_tracking():
     print("=" * 60)
 
     try:
-        config_manager = getattr(importlib.import_module('trader.config.manager'), 'config_manager')
-        token_tracker = getattr(importlib.import_module('trader.config.manager'), 'token_tracker')
+        config_manager = getattr(
+            importlib.import_module("trader.config.manager"), "config_manager"
+        )
+        token_tracker = getattr(
+            importlib.import_module("trader.config.manager"), "token_tracker"
+        )
 
         print("🔧 测试成本计算...")
         cost = config_manager.calculate_cost(
             provider="deepseek",
             model_name="deepseek-chat",
             input_tokens=1000,
-            output_tokens=500
+            output_tokens=500,
         )
         print(f"   DeepSeek成本: ¥{cost:.6f}")
 
@@ -152,7 +166,7 @@ def test_cli_cost_tracking():
                 input_tokens=100,
                 output_tokens=50,
                 session_id="cli_test",
-                analysis_type="cli_test"
+                analysis_type="cli_test",
             )
 
             if usage_record and usage_record.cost > 0:
@@ -168,9 +182,10 @@ def test_cli_cost_tracking():
 
     except Exception as e:
         print(f"❌ CLI成本跟踪测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_cli_help():
     """测试CLI帮助功能"""
@@ -178,7 +193,7 @@ def test_cli_help():
     print("=" * 60)
 
     try:
-        app = getattr(importlib.import_module('cli.main'), 'app')
+        app = getattr(importlib.import_module("cli.main"), "app")
 
         print("🔧 测试CLI应用创建...")
         print(f"   应用名称: {app.info.name}")
@@ -189,9 +204,10 @@ def test_cli_help():
 
     except Exception as e:
         print(f"❌ CLI帮助功能测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主函数"""
@@ -238,6 +254,7 @@ def main():
 
     print("\n🎯 测试完成！")
     return overall_success
+
 
 if __name__ == "__main__":
     success = main()

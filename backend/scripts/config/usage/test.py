@@ -7,14 +7,12 @@
 2. 验证环境变量桥接是否有效
 3. 测试 API 密钥的实际使用
 """
-import importlib
 
+import importlib
 import os
 import sys
 from pathlib import Path
 
-# 添加项目根目录到 Python 路径
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 def test_config_manager():
     """测试 ConfigManager 如何读取配置"""
@@ -23,7 +21,9 @@ def test_config_manager():
     print("=" * 60)
     print()
 
-    ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
+    ConfigManager = getattr(
+        importlib.import_module("trader.config.manager"), "ConfigManager"
+    )
 
     # 创建 ConfigManager 实例
     config_manager = ConfigManager()
@@ -36,7 +36,9 @@ def test_config_manager():
     for provider in providers:
         api_key = config_manager._get_env_api_key(provider)
         if api_key:
-            print(f"  ✅ {provider.upper()}_API_KEY: {api_key[:20]}... (长度: {len(api_key)})")
+            print(
+                f"  ✅ {provider.upper()}_API_KEY: {api_key[:20]}... (长度: {len(api_key)})"
+            )
         else:
             print(f"  ❌ {provider.upper()}_API_KEY: 未设置")
 
@@ -53,7 +55,9 @@ def test_config_manager():
     for model in models[:5]:  # 只显示前5个
         status = "✅ 启用" if model.enabled else "❌ 禁用"
         api_key_status = "有密钥" if model.api_key else "无密钥"
-        print(f"  {status} | {model.provider:12} | {model.model_name:20} | {api_key_status}")
+        print(
+            f"  {status} | {model.provider:12} | {model.model_name:20} | {api_key_status}"
+        )
 
     if len(models) > 5:
         print(f"  ... 还有 {len(models) - 5} 个模型")
@@ -84,31 +88,39 @@ def test_llm_adapter():
 
     dashscope_key = os.getenv("DASHSCOPE_API_KEY")
     if dashscope_key:
-        print(f"  ✅ DASHSCOPE_API_KEY 环境变量: {dashscope_key[:20]}... (长度: {len(dashscope_key)})")
+        print(
+            f"  ✅ DASHSCOPE_API_KEY 环境变量: {dashscope_key[:20]}... (长度: {len(dashscope_key)})"
+        )
 
         try:
-            ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+            ChatDashScopeOpenAI = getattr(
+                importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI"
+            )
 
             # 尝试创建适配器（不实际调用 API）
             adapter = ChatDashScopeOpenAI(model="qwen-turbo")
-            print(f"  ✅ ChatDashScopeOpenAI 创建成功")
+            print("  ✅ ChatDashScopeOpenAI 创建成功")
             print(f"     模型: {adapter.model_name}")
 
             # 检查 API 密钥
-            api_key = getattr(adapter, 'api_key', None) or getattr(adapter, 'openai_api_key', None)
+            api_key = getattr(adapter, "api_key", None) or getattr(
+                adapter, "openai_api_key", None
+            )
             if api_key:
                 # 处理 SecretStr 类型
-                if hasattr(api_key, 'get_secret_value'):
+                if hasattr(api_key, "get_secret_value"):
                     api_key_str = api_key.get_secret_value()
                 else:
                     api_key_str = str(api_key)
-                print(f"     API 密钥: {api_key_str[:20]}... (长度: {len(api_key_str)})")
+                print(
+                    f"     API 密钥: {api_key_str[:20]}... (长度: {len(api_key_str)})"
+                )
             else:
-                print(f"     ⚠️  无法获取 API 密钥属性")
+                print("     ⚠️  无法获取 API 密钥属性")
         except Exception as e:
             print(f"  ❌ ChatDashScopeOpenAI 创建失败: {e}")
     else:
-        print(f"  ❌ DASHSCOPE_API_KEY 环境变量未设置")
+        print("  ❌ DASHSCOPE_API_KEY 环境变量未设置")
 
     print()
 
@@ -215,7 +227,7 @@ def test_config_files():
         size = env_file.stat().st_size
         print(f"  ✅ .env: 存在 ({size} 字节)")
     else:
-        print(f"  ❌ .env: 不存在")
+        print("  ❌ .env: 不存在")
 
     print()
 
@@ -257,7 +269,7 @@ def main():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return 1
 

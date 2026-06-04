@@ -1,14 +1,9 @@
 """
 测试CLI港股输入功能
 """
+
 import importlib
 
-import sys
-import os
-
-# 添加项目根目录到路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_cli_market_selection():
     """测试CLI市场选择功能"""
@@ -16,8 +11,8 @@ def test_cli_market_selection():
 
     try:
         # 导入CLI相关模块
-        select_market = getattr(importlib.import_module('cli.main'), 'select_market')
-        get_ticker = getattr(importlib.import_module('cli.main'), 'get_ticker')
+        getattr(importlib.import_module("cli.main"), "select_market")
+        getattr(importlib.import_module("cli.main"), "get_ticker")
 
         # 模拟港股市场配置
         hk_market = {
@@ -26,20 +21,20 @@ def test_cli_market_selection():
             "default": "0700.HK",
             "examples": ["0700.HK (腾讯)", "9988.HK (阿里巴巴)", "3690.HK (美团)"],
             "format": "代码.HK (如: 0700.HK)",
-            "pattern": r'^\d{4}\.HK$',
-            "data_source": "yahoo_finance"
+            "pattern": r"^\d{4}\.HK$",
+            "data_source": "yahoo_finance",
         }
 
         # 测试港股代码验证
-        re = importlib.import_module('re')
+        re = importlib.import_module("re")
         test_codes = [
             ("0700.HK", True),
             ("9988.HK", True),
             ("3690.HK", True),
-            ("700.HK", False),   # 不足4位
-            ("07000.HK", False), # 超过4位
-            ("0700", False),     # 缺少.HK
-            ("AAPL", False)      # 美股代码
+            ("700.HK", False),  # 不足4位
+            ("07000.HK", False),  # 超过4位
+            ("0700", False),  # 缺少.HK
+            ("AAPL", False),  # 美股代码
         ]
 
         for code, should_match in test_codes:
@@ -52,9 +47,10 @@ def test_cli_market_selection():
 
     except Exception as e:
         print(f"❌ CLI市场选择测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_stock_analysis_flow():
     """测试股票分析流程"""
@@ -62,7 +58,9 @@ def test_stock_analysis_flow():
 
     try:
         # 测试股票类型识别
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
 
         # 测试港股
         hk_ticker = "0700.HK"
@@ -70,16 +68,18 @@ def test_stock_analysis_flow():
 
         print(f"  港股测试: {hk_ticker}")
         print(f"    市场: {market_info['market_name']}")
-        print(f"    货币: {market_info['currency_name']} ({market_info['currency_symbol']})")
+        print(
+            f"    货币: {market_info['currency_name']} ({market_info['currency_symbol']})"
+        )
         print(f"    数据源: {market_info['data_source']}")
         print(f"    是否港股: {market_info['is_hk']}")
 
         # 验证港股识别
-        if not market_info['is_hk']:
+        if not market_info["is_hk"]:
             print(f"❌ {hk_ticker} 应该被识别为港股")
             return False
 
-        if market_info['currency_symbol'] != 'HK$':
+        if market_info["currency_symbol"] != "HK$":
             print(f"❌ 港股货币符号应为HK$，实际为: {market_info['currency_symbol']}")
             return False
 
@@ -88,19 +88,17 @@ def test_stock_analysis_flow():
 
     except Exception as e:
         print(f"❌ 股票分析流程测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """运行所有测试"""
     print("🇭🇰 开始港股CLI功能测试")
     print("=" * 40)
 
-    tests = [
-        test_cli_market_selection,
-        test_stock_analysis_flow
-    ]
+    tests = [test_cli_market_selection, test_stock_analysis_flow]
 
     passed = 0
     total = len(tests)
@@ -120,6 +118,7 @@ def main():
         print("🎉 所有测试通过！港股CLI功能正常")
     else:
         print("⚠️ 部分测试失败，需要进一步调试")
+
 
 if __name__ == "__main__":
     main()

@@ -1,11 +1,12 @@
 """
 测试TushareSyncService
 """
+
 import importlib
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from app.worker.tushare.sync import TushareSyncService
 
@@ -16,9 +17,10 @@ class TestTushareSyncService:
     @pytest.fixture
     def sync_service(self):
         """创建TushareSyncService实例"""
-        with patch('app.worker.tushare.sync.get_mongo_db') as mock_get_db, \
-             patch('app.worker.tushare.sync.get_stock_data_service') as mock_get_service:
-
+        with (
+            patch("app.worker.tushare.sync.get_postgres_db") as mock_get_db,
+            patch("app.worker.tushare.sync.get_stock_data_service") as mock_get_service,
+        ):
             # 模拟数据库和服务
             mock_get_db.return_value = Mock()
             mock_get_service.return_value = Mock()
@@ -43,7 +45,7 @@ class TestTushareSyncService:
                 "industry": "银行",
                 "market_info": {"market": "CN", "exchange": "SZSE"},
                 "data_source": "tushare",
-                "updated_at": datetime.now(timezone.utc).replace(tzinfo=None)
+                "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
             },
             {
                 "code": "000002",
@@ -53,8 +55,8 @@ class TestTushareSyncService:
                 "industry": "全国地产",
                 "market_info": {"market": "CN", "exchange": "SZSE"},
                 "data_source": "tushare",
-                "updated_at": datetime.now(timezone.utc).replace(tzinfo=None)
-            }
+                "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            },
         ]
 
     @pytest.mark.asyncio
@@ -81,12 +83,14 @@ class TestTushareSyncService:
         sync_service.provider.get_stock_list = AsyncMock(return_value=mock_stock_list)
 
         # 模拟批量处理
-        sync_service._process_basic_info_batch = AsyncMock(return_value={
-            "success_count": 2,
-            "error_count": 0,
-            "skipped_count": 0,
-            "errors": []
-        })
+        sync_service._process_basic_info_batch = AsyncMock(
+            return_value={
+                "success_count": 2,
+                "error_count": 0,
+                "skipped_count": 0,
+                "errors": [],
+            }
+        )
 
         result = await sync_service.sync_stock_basic_info()
 
@@ -108,13 +112,19 @@ class TestTushareSyncService:
         assert result["error_count"] == 0
 
     @pytest.mark.asyncio
-    async def test_process_basic_info_batch_success(self, sync_service, mock_stock_list):
+    async def test_process_basic_info_batch_success(
+        self, sync_service, mock_stock_list
+    ):
         """测试处理基础信息批次成功"""
         # 模拟数据库操作
         sync_service.stock_service.get_stock_basic_info = AsyncMock(return_value=None)
-        sync_service.stock_service.update_stock_basic_info = AsyncMock(return_value=True)
+        sync_service.stock_service.update_stock_basic_info = AsyncMock(
+            return_value=True
+        )
 
-        result = await sync_service._process_basic_info_batch(mock_stock_list, force_update=False)
+        result = await sync_service._process_basic_info_batch(
+            mock_stock_list, force_update=False
+        )
 
         assert result["success_count"] == 2
         assert result["error_count"] == 0
@@ -122,14 +132,20 @@ class TestTushareSyncService:
         assert len(result["errors"]) == 0
 
     @pytest.mark.asyncio
-    async def test_process_basic_info_batch_skip_fresh_data(self, sync_service, mock_stock_list):
+    async def test_process_basic_info_batch_skip_fresh_data(
+        self, sync_service, mock_stock_list
+    ):
         """测试跳过新鲜数据"""
         # 模拟存在新鲜数据
         fresh_data = {"updated_at": datetime.now(timezone.utc).replace(tzinfo=None)}
-        sync_service.stock_service.get_stock_basic_info = AsyncMock(return_value=fresh_data)
+        sync_service.stock_service.get_stock_basic_info = AsyncMock(
+            return_value=fresh_data
+        )
         sync_service._is_data_fresh = Mock(return_value=True)
 
-        result = await sync_service._process_basic_info_batch(mock_stock_list, force_update=False)
+        result = await sync_service._process_basic_info_batch(
+            mock_stock_list, force_update=False
+        )
 
         assert result["success_count"] == 0
         assert result["error_count"] == 0
@@ -140,18 +156,13 @@ class TestTushareSyncService:
         """测试同步实时行情成功"""
         # 模拟数据库查询
         mock_cursor = AsyncMock()
-        mock_cursor.__aiter__.return_value = [
-            {"code": "000001"},
-            {"code": "000002"}
-        ]
+        mock_cursor.__aiter__.return_value = [{"code": "000001"}, {"code": "000002"}]
         sync_service.db.stock_basic_info.find.return_value = mock_cursor
 
         # 模拟批量处理
-        sync_service._process_quotes_batch = AsyncMock(return_value={
-            "success_count": 2,
-            "error_count": 0,
-            "errors": []
-        })
+        sync_service._process_quotes_batch = AsyncMock(
+            return_value={"success_count": 2, "error_count": 0, "errors": []}
+        )
 
         result = await sync_service.sync_realtime_quotes()
 
@@ -180,7 +191,7 @@ class TestTushareSyncService:
             "code": "000001",
             "close": 12.60,
             "current_price": 12.60,
-            "data_source": "tushare"
+            "data_source": "tushare",
         }
 
         sync_service.provider.get_stock_quotes = AsyncMock(return_value=mock_quotes)
@@ -190,7 +201,9 @@ class TestTushareSyncService:
 
         assert result is True
         sync_service.provider.get_stock_quotes.assert_called_once_with("000001")
-        sync_service.stock_service.update_market_quotes.assert_called_once_with("000001", mock_quotes)
+        sync_service.stock_service.update_market_quotes.assert_called_once_with(
+            "000001", mock_quotes
+        )
 
     @pytest.mark.asyncio
     async def test_get_and_save_quotes_no_data(self, sync_service):
@@ -206,22 +219,17 @@ class TestTushareSyncService:
         """测试同步历史数据成功"""
         # 模拟数据库查询
         mock_cursor = AsyncMock()
-        mock_cursor.__aiter__.return_value = [
-            {"code": "000001"},
-            {"code": "000002"}
-        ]
+        mock_cursor.__aiter__.return_value = [{"code": "000001"}, {"code": "000002"}]
         sync_service.db.stock_basic_info.find.return_value = mock_cursor
 
         # 模拟获取历史数据
-        pd = importlib.import_module('pandas')
-        mock_df = pd.DataFrame({
-            'date': ['2024-12-01'],
-            'close': [12.60],
-            'volume': [1000000]
-        })
+        pd = importlib.import_module("pandas")
+        mock_df = pd.DataFrame(
+            {"date": ["2024-12-01"], "close": [12.60], "volume": [1000000]}
+        )
         sync_service.provider.get_historical_data = AsyncMock(return_value=mock_df)
         sync_service._save_historical_data = AsyncMock(return_value=1)
-        sync_service._get_last_sync_date = AsyncMock(return_value='2024-11-01')
+        sync_service._get_last_sync_date = AsyncMock(return_value="2024-11-01")
 
         result = await sync_service.sync_historical_data(incremental=True)
 
@@ -235,10 +243,7 @@ class TestTushareSyncService:
         """测试同步财务数据成功"""
         # 模拟数据库查询
         mock_cursor = AsyncMock()
-        mock_cursor.__aiter__.return_value = [
-            {"code": "000001"},
-            {"code": "000002"}
-        ]
+        mock_cursor.__aiter__.return_value = [{"code": "000001"}, {"code": "000002"}]
         sync_service.db.stock_basic_info.find.return_value = mock_cursor
 
         # 模拟获取财务数据
@@ -246,9 +251,11 @@ class TestTushareSyncService:
             "symbol": "000001",
             "revenue": 1000000,
             "net_income": 100000,
-            "data_source": "tushare"
+            "data_source": "tushare",
         }
-        sync_service.provider.get_financial_data = AsyncMock(return_value=mock_financial_data)
+        sync_service.provider.get_financial_data = AsyncMock(
+            return_value=mock_financial_data
+        )
         sync_service._save_financial_data = AsyncMock(return_value=True)
 
         result = await sync_service.sync_financial_data()
@@ -260,7 +267,9 @@ class TestTushareSyncService:
     def test_is_data_fresh(self, sync_service):
         """测试数据新鲜度检查"""
         # 测试新鲜数据
-        fresh_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
+        fresh_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
+            hours=1
+        )
         assert sync_service._is_data_fresh(fresh_time, hours=24) is True
 
         # 测试过期数据
@@ -277,12 +286,12 @@ class TestTushareSyncService:
         sync_service.db.stock_basic_info.count_documents = AsyncMock(return_value=5000)
         sync_service.db.market_quotes.count_documents = AsyncMock(return_value=5000)
 
-        sync_service.db.stock_basic_info.find_one = AsyncMock(return_value={
-            "updated_at": datetime.now(timezone.utc).replace(tzinfo=None)
-        })
-        sync_service.db.market_quotes.find_one = AsyncMock(return_value={
-            "updated_at": datetime.now(timezone.utc).replace(tzinfo=None)
-        })
+        sync_service.db.stock_basic_info.find_one = AsyncMock(
+            return_value={"updated_at": datetime.now(timezone.utc).replace(tzinfo=None)}
+        )
+        sync_service.db.market_quotes.find_one = AsyncMock(
+            return_value={"updated_at": datetime.now(timezone.utc).replace(tzinfo=None)}
+        )
 
         result = await sync_service.get_sync_status()
 

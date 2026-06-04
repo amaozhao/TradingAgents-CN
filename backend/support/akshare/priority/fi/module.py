@@ -3,14 +3,11 @@
 测试AKShare数据源优先级修复
 验证AKShare已被设置为第一优先级数据源
 """
-import importlib
 
+import importlib
 import os
 import sys
 
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_default_data_source():
     """测试默认数据源设置"""
@@ -18,8 +15,12 @@ def test_default_data_source():
     print("=" * 60)
 
     try:
-        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
-        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
+        DataSourceManager = getattr(
+            importlib.import_module("trader.flows.sources"), "DataSourceManager"
+        )
+        ChinaDataSource = getattr(
+            importlib.import_module("trader.flows.sources"), "ChinaDataSource"
+        )
 
         # 创建数据源管理器
         manager = DataSourceManager()
@@ -38,9 +39,10 @@ def test_default_data_source():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_fallback_priority():
     """测试备用数据源优先级"""
@@ -48,8 +50,10 @@ def test_fallback_priority():
     print("=" * 60)
 
     try:
-        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
-        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
+        DataSourceManager = getattr(
+            importlib.import_module("trader.flows.sources"), "DataSourceManager"
+        )
+        getattr(importlib.import_module("trader.flows.sources"), "ChinaDataSource")
 
         manager = DataSourceManager()
 
@@ -58,7 +62,7 @@ def test_fallback_priority():
 
         # 检查_try_fallback_sources方法中的fallback_order
         # 这里我们通过检查源代码来验证
-        inspect = importlib.import_module('inspect')
+        inspect = importlib.import_module("inspect")
         source_code = inspect.getsource(manager._try_fallback_sources)
 
         if "ChinaDataSource.AKSHARE" in source_code:
@@ -78,9 +82,10 @@ def test_fallback_priority():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_environment_variable_override():
     """测试环境变量覆盖"""
@@ -89,17 +94,18 @@ def test_environment_variable_override():
 
     try:
         # 保存原始环境变量
-        original_env = os.getenv('DEFAULT_CHINA_DATA_SOURCE')
+        original_env = os.getenv("DEFAULT_CHINA_DATA_SOURCE")
 
         # 测试设置为tushare
-        os.environ['DEFAULT_CHINA_DATA_SOURCE'] = 'tushare'
+        os.environ["DEFAULT_CHINA_DATA_SOURCE"] = "tushare"
 
-        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
-        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
+        getattr(importlib.import_module("trader.flows.sources"), "DataSourceManager")
+        ChinaDataSource = getattr(
+            importlib.import_module("trader.flows.sources"), "ChinaDataSource"
+        )
 
         # 重新导入以获取新的环境变量
-        importlib = importlib.import_module('importlib')
-        dsm = importlib.import_module('trader.flows.sources')
+        dsm = importlib.import_module("trader.flows.sources")
         importlib.reload(dsm)
 
         manager = dsm.DataSourceManager()
@@ -108,22 +114,25 @@ def test_environment_variable_override():
             print("✅ 环境变量覆盖功能正常")
             result = True
         else:
-            print(f"❌ 环境变量覆盖失败: 期望tushare，实际{manager.default_source.value}")
+            print(
+                f"❌ 环境变量覆盖失败: 期望tushare，实际{manager.default_source.value}"
+            )
             result = False
 
         # 恢复原始环境变量
         if original_env:
-            os.environ['DEFAULT_CHINA_DATA_SOURCE'] = original_env
+            os.environ["DEFAULT_CHINA_DATA_SOURCE"] = original_env
         else:
-            os.environ.pop('DEFAULT_CHINA_DATA_SOURCE', None)
+            os.environ.pop("DEFAULT_CHINA_DATA_SOURCE", None)
 
         return result
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_akshare_availability():
     """测试AKShare可用性"""
@@ -131,14 +140,17 @@ def test_akshare_availability():
     print("=" * 60)
 
     try:
-        ak = importlib.import_module('akshare')
+        ak = importlib.import_module("akshare")
         print(f"✅ AKShare库已安装: v{ak.__version__}")
 
         # 简单测试AKShare功能
         print("📊 测试AKShare基本功能...")
 
         # 这里不实际调用API，只测试导入
-        get_china_stock_data_akshare = getattr(importlib.import_module('trader.flows.akshare'), 'get_china_stock_data_akshare')
+        getattr(
+            importlib.import_module("trader.flows.akshare"),
+            "get_china_stock_data_akshare",
+        )
         print("✅ AKShare工具函数导入成功")
 
         return True
@@ -150,14 +162,19 @@ def test_akshare_availability():
         print(f"❌ AKShare测试失败: {e}")
         return False
 
+
 def test_data_source_switching():
     """测试数据源切换功能"""
     print("\n🔧 测试数据源切换功能")
     print("=" * 60)
 
     try:
-        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
-        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
+        DataSourceManager = getattr(
+            importlib.import_module("trader.flows.sources"), "DataSourceManager"
+        )
+        ChinaDataSource = getattr(
+            importlib.import_module("trader.flows.sources"), "ChinaDataSource"
+        )
 
         manager = DataSourceManager()
         original_source = manager.current_source
@@ -176,7 +193,7 @@ def test_data_source_switching():
                     if current == source:
                         print(f"✅ 当前数据源确认: {current.value}")
                     else:
-                        print(f"❌ 数据源切换验证失败")
+                        print("❌ 数据源切换验证失败")
                         return False
                 else:
                     print(f"❌ 切换到{source.value}失败")
@@ -192,9 +209,10 @@ def test_data_source_switching():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主测试函数"""
@@ -240,6 +258,7 @@ def main():
     else:
         print("⚠️ 部分测试失败，需要进一步检查。")
         return False
+
 
 if __name__ == "__main__":
     success = main()

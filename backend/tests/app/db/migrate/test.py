@@ -4,11 +4,12 @@ from app.db.migrate import (
     HOT_COLLECTIONS,
     migrate_hot_collections,
 )
+from support.registry import export_module as _export_module
 
 
 @pytest.mark.asyncio
 async def test_migrate_hot_collections_batches_commits_and_reports_counts():
-    mongo_db = FakeMongoDB(
+    postgres_db = FakePostgreSQL(
         {
             "stock_basic_info": [
                 {"code": "000001", "source": "tushare"},
@@ -40,9 +41,13 @@ async def test_migrate_hot_collections_batches_commits_and_reports_counts():
             "analysis_results": [{"legacy_id": "result-1", "task_id": "task-1"}],
             "sync_status": [{"job": "example_sdk_sync", "status": "completed"}],
             "quotes_ingestion_status": [{"job": "quotes_ingestion", "success": True}],
-            "scheduler_executions": [{"legacy_id": "scheduler-1", "job_id": "tushare_daily"}],
+            "scheduler_executions": [
+                {"legacy_id": "scheduler-1", "job_id": "tushare_daily"}
+            ],
             "scheduler_history": [{"job_id": "tushare_daily", "action": "trigger"}],
-            "scheduler_metadata": [{"job_id": "tushare_daily", "display_name": "每日同步"}],
+            "scheduler_metadata": [
+                {"job_id": "tushare_daily", "display_name": "每日同步"}
+            ],
             "system_configs": [{"name": "active", "is_active": True}],
             "llm_providers": [{"provider": "dashscope", "enabled": True}],
             "model_catalog": [{"provider": "dashscope", "models": []}],
@@ -65,7 +70,11 @@ async def test_migrate_hot_collections_batches_commits_and_reports_counts():
             "users": [{"username": "admin", "email": "admin@example.com"}],
             "users_collection": [{"username": "demo", "email": "demo@example.com"}],
             "user_sessions": [
-                {"session_id": "sess-1", "user_id": "user-1", "expires_at": "2026-06-04T00:00:00"}
+                {
+                    "session_id": "sess-1",
+                    "user_id": "user-1",
+                    "expires_at": "2026-06-04T00:00:00",
+                }
             ],
             "login_attempts": [
                 {"legacy_id": "attempt-1", "username": "admin", "success": False}
@@ -80,7 +89,7 @@ async def test_migrate_hot_collections_batches_commits_and_reports_counts():
     )
     session = FakeSession()
 
-    summary = await migrate_hot_collections(mongo_db, lambda: session, batch_size=2)
+    summary = await migrate_hot_collections(postgres_db, lambda: session, batch_size=2)
 
     assert summary == {
         "stock_basic_info": {"migrated": 2, "commits": 1},
@@ -124,7 +133,7 @@ async def test_migrate_hot_collections_batches_commits_and_reports_counts():
     assert all(collection in HOT_COLLECTIONS for collection in summary)
 
 
-class FakeMongoDB:
+class FakePostgreSQL:
     def __init__(self, collections):
         self.collections = collections
 
@@ -175,7 +184,7 @@ class FakeSession:
     async def __aexit__(self, *_args):
         return None
 
-from support.registry import export_module as _export_module
+
 _export_module(globals(), "support.migration.docs.integrity.module")
 _export_module(globals(), "support.postgres.local.cutover.verify.module")
 del _export_module

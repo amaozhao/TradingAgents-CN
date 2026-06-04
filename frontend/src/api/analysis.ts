@@ -323,7 +323,7 @@ export const ANALYSIS_TYPES = {
  */
 export const DATA_SOURCES = {
   // 缓存数据源
-  MONGODB: 'mongodb',
+  POSTGRES: 'postgres',
 
   // 中国市场数据源
   TUSHARE: 'tushare',

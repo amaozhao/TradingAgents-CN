@@ -2,16 +2,16 @@
 基于文件的会话管理器 - 不依赖Redis的可靠方案
 适用于没有Redis或Redis连接失败的情况
 """
-import importlib
 
-import streamlit as st
+import importlib
 import json
 import time
-import hashlib
-import os
 import uuid
-from typing import Optional, Dict, Any
 from pathlib import Path
+from typing import Any, Dict, Optional
+
+import streamlit as st
+
 
 class FileSessionManager:
     """基于文件的会话管理器"""
@@ -26,7 +26,7 @@ class FileSessionManager:
         try:
             # 方法1：使用固定的session标识符
             # 检查是否已经有session标识符保存在session_state中
-            if hasattr(st.session_state, 'file_session_fingerprint'):
+            if hasattr(st.session_state, "file_session_fingerprint"):
                 return st.session_state.file_session_fingerprint
 
             # 方法2：查找最近的session文件（24小时内）
@@ -38,7 +38,7 @@ class FileSessionManager:
                     file_age = current_time - session_file.stat().st_mtime
                     if file_age < (24 * 3600):  # 24小时内的文件
                         recent_files.append((session_file, file_age))
-                except:
+                except Exception:
                     continue
 
             if recent_files:
@@ -58,7 +58,7 @@ class FileSessionManager:
         except Exception:
             # 方法4：最后的fallback
             fingerprint = f"fallback_{uuid.uuid4().hex[:8]}"
-            if hasattr(st, 'session_state'):
+            if hasattr(st, "session_state"):
                 st.session_state.file_session_fingerprint = fingerprint
             return fingerprint
 
@@ -84,9 +84,14 @@ class FileSessionManager:
         except Exception:
             pass  # 清理失败不影响主要功能
 
-    def save_analysis_state(self, analysis_id: str, status: str = "running",
-                           stock_symbol: str = "", market_type: str = "",
-                           form_config: Dict[str, Any] = None):
+    def save_analysis_state(
+        self,
+        analysis_id: str,
+        status: str = "running",
+        stock_symbol: str = "",
+        market_type: str = "",
+        form_config: Dict[str, Any] = None,
+    ):
         """保存分析状态和表单配置"""
         try:
             # 清理过期文件
@@ -102,7 +107,7 @@ class FileSessionManager:
                 "market_type": market_type,
                 "timestamp": time.time(),
                 "last_update": time.time(),
-                "fingerprint": fingerprint
+                "fingerprint": fingerprint,
             }
 
             # 添加表单配置
@@ -110,12 +115,12 @@ class FileSessionManager:
                 session_data["form_config"] = form_config
 
             # 保存到文件
-            with open(session_file, 'w', encoding='utf-8') as f:
+            with open(session_file, "w", encoding="utf-8") as f:
                 json.dump(session_data, f, ensure_ascii=False, indent=2)
 
             # 同时保存到session state
             st.session_state.current_analysis_id = analysis_id
-            st.session_state.analysis_running = (status == 'running')
+            st.session_state.analysis_running = status == "running"
             st.session_state.last_stock_symbol = stock_symbol
             st.session_state.last_market_type = market_type
             st.session_state.session_fingerprint = fingerprint
@@ -137,7 +142,7 @@ class FileSessionManager:
                 return None
 
             # 读取会话数据
-            with open(session_file, 'r', encoding='utf-8') as f:
+            with open(session_file, "r", encoding="utf-8") as f:
                 session_data = json.load(f)
 
             # 检查是否过期
@@ -164,7 +169,13 @@ class FileSessionManager:
                 session_file.unlink()
 
             # 清除session state
-            keys_to_remove = ['current_analysis_id', 'analysis_running', 'last_stock_symbol', 'last_market_type', 'session_fingerprint']
+            keys_to_remove = [
+                "current_analysis_id",
+                "analysis_running",
+                "last_stock_symbol",
+                "last_market_type",
+                "session_fingerprint",
+            ]
             for key in keys_to_remove:
                 if key in st.session_state:
                     del st.session_state[key]
@@ -183,7 +194,11 @@ class FileSessionManager:
                 "session_file": str(session_file),
                 "file_exists": session_file.exists(),
                 "data_dir": str(self.data_dir),
-                "session_state_keys": [k for k in st.session_state.keys() if 'analysis' in k.lower() or 'session' in k.lower()]
+                "session_state_keys": [
+                    k
+                    for k in st.session_state.keys()
+                    if "analysis" in k.lower() or "session" in k.lower()
+                ],
             }
 
             # 统计会话文件数量
@@ -193,10 +208,12 @@ class FileSessionManager:
 
             if session_file.exists():
                 try:
-                    with open(session_file, 'r', encoding='utf-8') as f:
+                    with open(session_file, "r", encoding="utf-8") as f:
                         session_data = json.load(f)
                     debug_info["session_data"] = session_data
-                    debug_info["age_hours"] = (time.time() - session_data.get("timestamp", 0)) / 3600
+                    debug_info["age_hours"] = (
+                        time.time() - session_data.get("timestamp", 0)
+                    ) / 3600
                 except Exception as e:
                     debug_info["file_error"] = str(e)
 
@@ -205,37 +222,47 @@ class FileSessionManager:
         except Exception as e:
             return {"error": str(e)}
 
+
 # 全局文件会话管理器实例
 files = FileSessionManager()
+
 
 def get_persistent_analysis_id() -> Optional[str]:
     """获取持久化的分析ID（优先级：session state > 文件会话 > Redis/文件）"""
     try:
         # 1. 首先检查session state
-        if st.session_state.get('current_analysis_id'):
+        if st.session_state.get("current_analysis_id"):
             return st.session_state.current_analysis_id
 
         # 2. 检查文件会话数据
         session_data = files.load_analysis_state()
         if session_data:
-            analysis_id = session_data.get('analysis_id')
+            analysis_id = session_data.get("analysis_id")
             if analysis_id:
                 # 恢复到session state
                 st.session_state.current_analysis_id = analysis_id
-                st.session_state.analysis_running = (session_data.get('status') == 'running')
-                st.session_state.last_stock_symbol = session_data.get('stock_symbol', '')
-                st.session_state.last_market_type = session_data.get('market_type', '')
-                st.session_state.session_fingerprint = session_data.get('fingerprint', '')
+                st.session_state.analysis_running = (
+                    session_data.get("status") == "running"
+                )
+                st.session_state.last_stock_symbol = session_data.get(
+                    "stock_symbol", ""
+                )
+                st.session_state.last_market_type = session_data.get("market_type", "")
+                st.session_state.session_fingerprint = session_data.get(
+                    "fingerprint", ""
+                )
 
                 # 恢复表单配置
-                if 'form_config' in session_data:
-                    st.session_state.form_config = session_data['form_config']
+                if "form_config" in session_data:
+                    st.session_state.form_config = session_data["form_config"]
 
                 return analysis_id
 
         # 3. 最后从Redis/文件恢复最新分析
         try:
-            get_latest_analysis_id = getattr(importlib.import_module('web.utils.progress'), 'get_latest_analysis_id')
+            get_latest_analysis_id = getattr(
+                importlib.import_module("web.utils.progress"), "get_latest_analysis_id"
+            )
             latest_id = get_latest_analysis_id()
             if latest_id:
                 st.session_state.current_analysis_id = latest_id
@@ -249,14 +276,19 @@ def get_persistent_analysis_id() -> Optional[str]:
         st.warning(f"⚠️ 获取持久化分析ID失败: {e}")
         return None
 
-def set_persistent_analysis_id(analysis_id: str, status: str = "running",
-                              stock_symbol: str = "", market_type: str = "",
-                              form_config: Dict[str, Any] = None):
+
+def set_persistent_analysis_id(
+    analysis_id: str,
+    status: str = "running",
+    stock_symbol: str = "",
+    market_type: str = "",
+    form_config: Dict[str, Any] = None,
+):
     """设置持久化的分析ID和表单配置"""
     try:
         # 设置到session state
         st.session_state.current_analysis_id = analysis_id
-        st.session_state.analysis_running = (status == 'running')
+        st.session_state.analysis_running = status == "running"
         st.session_state.last_stock_symbol = stock_symbol
         st.session_state.last_market_type = market_type
 
@@ -265,7 +297,9 @@ def set_persistent_analysis_id(analysis_id: str, status: str = "running",
             st.session_state.form_config = form_config
 
         # 保存到文件会话
-        files.save_analysis_state(analysis_id, status, stock_symbol, market_type, form_config)
+        files.save_analysis_state(
+            analysis_id, status, stock_symbol, market_type, form_config
+        )
 
     except Exception as e:
         st.warning(f"⚠️ 设置持久化分析ID失败: {e}")

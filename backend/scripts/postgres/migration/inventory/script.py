@@ -7,14 +7,12 @@ from pathlib import Path
 from typing import Any
 
 HTTP_DECORATORS = {"get", "post", "put", "patch", "delete"}
-MONGO_IMPORT_MODULES = {
+POSTGRES_IMPORT_MODULES = {
     "app.core.database",
-    "pymongo",
-    "motor",
-    "motor.motor_asyncio",
+    "app.db.documentstore",
 }
-MONGO_HELPERS = {"get_mongo_db", "get_mongo_db_sync", "get_database"}
-MONGO_WRITE_METHODS = {
+POSTGRES_HELPERS = {"get_postgres_db", "get_postgres_db_sync", "get_database"}
+POSTGRES_WRITE_METHODS = {
     "insert_one",
     "insert_many",
     "update_one",
@@ -26,7 +24,9 @@ MONGO_WRITE_METHODS = {
 }
 
 
-def scan_backend(root: str | Path, output_path: str | Path | None = None) -> dict[str, Any]:
+def scan_backend(
+    root: str | Path, output_path: str | Path | None = None
+) -> dict[str, Any]:
     root_path = Path(root)
     scan_root = root_path / "app" if (root_path / "app").is_dir() else root_path
     files = sorted(_iter_python_files(scan_root))
@@ -34,14 +34,16 @@ def scan_backend(root: str | Path, output_path: str | Path | None = None) -> dic
     contracts: list[dict[str, Any]] = []
     missing_response_models: list[dict[str, Any]] = []
     raw_request_bodies: list[dict[str, Any]] = []
-    mongo_access: list[dict[str, Any]] = []
-    mongo_writes: list[dict[str, Any]] = []
+    postgres_access: list[dict[str, Any]] = []
+    postgres_writes: list[dict[str, Any]] = []
 
     for file_path in files:
         try:
-            tree = ast.parse(file_path.read_text(encoding="utf-8"), filename=str(file_path))
+            tree = ast.parse(
+                file_path.read_text(encoding="utf-8"), filename=str(file_path)
+            )
         except SyntaxError as exc:
-            mongo_access.append(
+            postgres_access.append(
                 {
                     "path": _rel(file_path, root_path),
                     "kind": "parse_error",
@@ -57,12 +59,12 @@ def scan_backend(root: str | Path, output_path: str | Path | None = None) -> dic
         contracts.extend(visitor.contracts)
         missing_response_models.extend(visitor.missing_response_models)
         raw_request_bodies.extend(visitor.raw_request_bodies)
-        mongo_access.extend(visitor.mongo_access)
-        mongo_writes.extend(visitor.mongo_writes)
+        postgres_access.extend(visitor.postgres_access)
+        postgres_writes.extend(visitor.postgres_writes)
 
     worker_write_files = {
         item["path"]
-        for item in mongo_writes
+        for item in postgres_writes
         if item["path"].startswith("app/worker/") or item["path"] == "app/worker.py"
     }
     inventory = {
@@ -71,17 +73,17 @@ def scan_backend(root: str | Path, output_path: str | Path | None = None) -> dic
             "response_model_dict_endpoints": len(contracts),
             "missing_response_model_endpoints": len(missing_response_models),
             "raw_dict_request_bodies": len(raw_request_bodies),
-            "mongo_access_files": len({item["path"] for item in mongo_access}),
-            "mongo_access_points": len(mongo_access),
-            "mongo_write_operations": len(mongo_writes),
-            "worker_mongo_write_files": len(worker_write_files),
+            "postgres_access_files": len({item["path"] for item in postgres_access}),
+            "postgres_access_points": len(postgres_access),
+            "postgres_write_operations": len(postgres_writes),
+            "worker_postgres_write_files": len(worker_write_files),
         },
         "contracts": contracts,
         "missing_response_models": missing_response_models,
         "raw_request_bodies": raw_request_bodies,
-        "mongo_access": mongo_access,
-        "mongo_writes": mongo_writes,
-        "worker_mongo_write_files": sorted(worker_write_files),
+        "postgres_access": postgres_access,
+        "postgres_writes": postgres_writes,
+        "worker_postgres_write_files": sorted(worker_write_files),
     }
 
     if output_path is not None:
@@ -101,16 +103,16 @@ class _InventoryVisitor(ast.NodeVisitor):
         self.contracts: list[dict[str, Any]] = []
         self.missing_response_models: list[dict[str, Any]] = []
         self.raw_request_bodies: list[dict[str, Any]] = []
-        self.mongo_access: list[dict[str, Any]] = []
-        self.mongo_writes: list[dict[str, Any]] = []
+        self.postgres_access: list[dict[str, Any]] = []
+        self.postgres_writes: list[dict[str, Any]] = []
         self._collection_alias_stack: list[dict[str, str]] = []
         self._class_collection_alias_stack: list[dict[str, str]] = []
         self._module_constants: dict[str, str] = {}
 
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
-            if alias.name in MONGO_IMPORT_MODULES:
-                self.mongo_access.append(
+            if alias.name in POSTGRES_IMPORT_MODULES:
+                self.postgres_access.append(
                     {
                         "path": self.path,
                         "kind": "import",
@@ -122,9 +124,9 @@ class _InventoryVisitor(ast.NodeVisitor):
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         module = node.module or ""
-        if module in MONGO_IMPORT_MODULES:
+        if module in POSTGRES_IMPORT_MODULES:
             symbols = [alias.name for alias in node.names]
-            self.mongo_access.append(
+            self.postgres_access.append(
                 {
                     "path": self.path,
                     "kind": "import_from",
@@ -157,19 +159,23 @@ class _InventoryVisitor(ast.NodeVisitor):
                 if isinstance(target, ast.Name):
                     self._current_collection_aliases()[target.id] = collection
                 elif _self_attribute_name(target) is not None:
-                    self._current_class_collection_aliases()[_self_attribute_name(target)] = collection
+                    self._current_class_collection_aliases()[
+                        _self_attribute_name(target)
+                    ] = collection
         if literal_value:
             for target in node.targets:
                 if not self._collection_alias_stack and isinstance(target, ast.Name):
                     self._module_constants[target.id] = literal_value
                 elif _self_attribute_name(target) is not None:
-                    self._current_class_collection_aliases()[_self_attribute_name(target)] = literal_value
+                    self._current_class_collection_aliases()[
+                        _self_attribute_name(target)
+                    ] = literal_value
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
         function_name = _call_name(node.func)
-        if function_name in MONGO_HELPERS:
-            self.mongo_access.append(
+        if function_name in POSTGRES_HELPERS:
+            self.postgres_access.append(
                 {
                     "path": self.path,
                     "kind": "helper_call",
@@ -177,14 +183,16 @@ class _InventoryVisitor(ast.NodeVisitor):
                     "symbol": function_name,
                 }
             )
-        if function_name in MONGO_WRITE_METHODS:
-            self.mongo_writes.append(
+        if function_name in POSTGRES_WRITE_METHODS:
+            self.postgres_writes.append(
                 {
                     "path": self.path,
                     "line": node.lineno,
                     "operation": function_name,
                     "collection": _collection_name(
-                        node.func.value if isinstance(node.func, ast.Attribute) else None,
+                        node.func.value
+                        if isinstance(node.func, ast.Attribute)
+                        else None,
                         self._combined_collection_aliases(),
                     ),
                 }
@@ -221,7 +229,9 @@ class _InventoryVisitor(ast.NodeVisitor):
                     )
             if routes:
                 for arg, default in _iter_function_parameters(node):
-                    if _is_raw_dict_annotation(arg.annotation) and not _is_dependency_default(default):
+                    if _is_raw_dict_annotation(
+                        arg.annotation
+                    ) and not _is_dependency_default(default):
                         self.raw_request_bodies.append(
                             {
                                 "path": self.path,
@@ -275,8 +285,7 @@ def _response_model_dict_contract(decorator: ast.AST) -> dict[str, Any] | None:
         return None
 
     has_response_model_dict = any(
-        keyword.arg == "response_model"
-        and _contains_raw_dict_annotation(keyword.value)
+        keyword.arg == "response_model" and _contains_raw_dict_annotation(keyword.value)
         for keyword in decorator.keywords
     )
     if not has_response_model_dict:
@@ -290,7 +299,9 @@ def _missing_response_model_contract(decorator: ast.AST) -> dict[str, Any] | Non
     if route is None or not isinstance(decorator, ast.Call):
         return None
 
-    has_response_model_keyword = any(keyword.arg == "response_model" for keyword in decorator.keywords)
+    has_response_model_keyword = any(
+        keyword.arg == "response_model" for keyword in decorator.keywords
+    )
     if has_response_model_keyword:
         return None
     return route
@@ -317,13 +328,19 @@ def _contains_raw_dict_annotation(annotation: ast.AST | None) -> bool:
     if isinstance(annotation, ast.Subscript):
         return _contains_raw_dict_annotation(annotation.slice)
     if isinstance(annotation, ast.Tuple):
-        return any(_contains_raw_dict_annotation(element) for element in annotation.elts)
+        return any(
+            _contains_raw_dict_annotation(element) for element in annotation.elts
+        )
     return False
 
 
-def _iter_function_parameters(node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[tuple[ast.arg, ast.AST | None]]:
+def _iter_function_parameters(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> list[tuple[ast.arg, ast.AST | None]]:
     positional_args = [*node.args.posonlyargs, *node.args.args]
-    positional_defaults: list[ast.AST | None] = [None] * (len(positional_args) - len(node.args.defaults)) + list(node.args.defaults)
+    positional_defaults: list[ast.AST | None] = [None] * (
+        len(positional_args) - len(node.args.defaults)
+    ) + list(node.args.defaults)
     keyword_defaults = list(node.args.kw_defaults)
     return [
         *zip(positional_args, positional_defaults, strict=True),
@@ -346,7 +363,7 @@ def _collection_name(node: ast.AST | None, aliases: dict[str, str]) -> str | Non
         self_alias = _self_attribute_name(node)
         if self_alias is not None:
             return aliases.get(self_alias)
-        if node.attr in MONGO_WRITE_METHODS:
+        if node.attr in POSTGRES_WRITE_METHODS:
             return None
         return node.attr
     if isinstance(node, ast.Subscript):
@@ -356,7 +373,9 @@ def _collection_name(node: ast.AST | None, aliases: dict[str, str]) -> str | Non
     return None
 
 
-def _string_literal_or_alias(node: ast.AST | None, aliases: dict[str, str]) -> str | None:
+def _string_literal_or_alias(
+    node: ast.AST | None, aliases: dict[str, str]
+) -> str | None:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
     if isinstance(node, ast.Name):
@@ -398,11 +417,16 @@ def _rel(path: Path, root: Path) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate PostgreSQL migration inventory.")
+    parser = argparse.ArgumentParser(
+        description="Generate PostgreSQL migration inventory."
+    )
     parser.add_argument("--root", default=Path(__file__).resolve().parents[1])
     parser.add_argument(
         "--output",
-        default=Path(__file__).resolve().parents[2] / "docs" / "migration" / "postgres_inventory.json",
+        default=Path(__file__).resolve().parents[2]
+        / "docs"
+        / "migration"
+        / "postgres_inventory.json",
     )
     parser.add_argument(
         "--allow-contract-regressions",
@@ -412,13 +436,20 @@ def main() -> None:
     args = parser.parse_args()
 
     inventory = scan_backend(args.root, args.output)
-    print(json.dumps(inventory["summary"], ensure_ascii=False, indent=2, sort_keys=True))
-    if not args.allow_contract_regressions and _has_contract_regressions(inventory["summary"]):
+    print(
+        json.dumps(inventory["summary"], ensure_ascii=False, indent=2, sort_keys=True)
+    )
+    if not args.allow_contract_regressions and _has_contract_regressions(
+        inventory["summary"]
+    ):
         raise SystemExit(1)
 
 
 def _has_contract_regressions(summary: dict[str, Any]) -> bool:
-    return bool(summary.get("response_model_dict_endpoints") or summary.get("raw_dict_request_bodies"))
+    return bool(
+        summary.get("response_model_dict_endpoints")
+        or summary.get("raw_dict_request_bodies")
+    )
 
 
 if __name__ == "__main__":

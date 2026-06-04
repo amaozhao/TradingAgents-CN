@@ -2,15 +2,12 @@
 """
 测试Docker环境下的日志功能
 """
-import importlib
 
+import importlib
 import os
 import sys
 from pathlib import Path
 
-# 添加项目路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
 
 def test_logging():
     """测试日志功能"""
@@ -19,19 +16,23 @@ def test_logging():
 
     try:
         # 设置Docker环境变量
-        os.environ['DOCKER_CONTAINER'] = 'true'
-        os.environ['TRADING_AGENTS_LOG_DIR'] = '/app/logs'
+        os.environ["DOCKER_CONTAINER"] = "true"
+        os.environ["TRADING_AGENTS_LOG_DIR"] = "/app/logs"
 
         # 导入日志模块
-        init_logging = getattr(importlib.import_module('trader.utils.logging.init'), 'init_logging')
-        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
+        init_logging = getattr(
+            importlib.import_module("trader.utils.logging.init"), "init_logging"
+        )
+        get_logger = getattr(
+            importlib.import_module("trader.utils.logging.init"), "get_logger"
+        )
 
         # 初始化日志
         print("📋 初始化日志系统...")
         init_logging()
 
         # 获取日志器
-        logger = get_logger('test')
+        logger = get_logger("test")
 
         # 测试各种级别的日志
         print("📝 写入测试日志...")
@@ -56,9 +57,10 @@ def test_logging():
 
     except Exception as e:
         print(f"❌ 日志测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 if __name__ == "__main__":
     success = test_logging()

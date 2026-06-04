@@ -2,12 +2,13 @@
 Cookie管理器 - 解决Streamlit session state页面刷新丢失的问题
 """
 
-import streamlit as st
+import importlib
 import json
 import time
-import importlib
-from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime
+from typing import Any, Dict, Optional
+
+import streamlit as st
 
 try:
     EncryptedCookieManager = importlib.import_module(
@@ -18,6 +19,7 @@ except ImportError:
     EncryptedCookieManager = None
     COOKIES_AVAILABLE = False
     st.warning("⚠️ streamlit-cookies-manager 未安装，Cookie功能不可用")
+
 
 class CookieManager:
     """Cookie管理器，用于持久化存储分析状态"""
@@ -31,7 +33,7 @@ class CookieManager:
             try:
                 self.cookies = EncryptedCookieManager(
                     prefix="trading_agents_",
-                    password="trading_agents_secret_key_2025"  # 固定密钥
+                    password="trading_agents_secret_key_2025",  # 固定密钥
                 )
 
                 # 检查Cookie管理器是否准备就绪
@@ -46,8 +48,13 @@ class CookieManager:
         else:
             self.cookies = None
 
-    def set_analysis_state(self, analysis_id: str, status: str = "running",
-                          stock_symbol: str = "", market_type: str = ""):
+    def set_analysis_state(
+        self,
+        analysis_id: str,
+        status: str = "running",
+        stock_symbol: str = "",
+        market_type: str = "",
+    ):
         """设置分析状态到cookie"""
         try:
             state_data = {
@@ -56,7 +63,7 @@ class CookieManager:
                 "stock_symbol": stock_symbol,
                 "market_type": market_type,
                 "timestamp": time.time(),
-                "created_at": datetime.now().isoformat()
+                "created_at": datetime.now().isoformat(),
             }
 
             # 存储到session state（作为备份）
@@ -124,7 +131,11 @@ class CookieManager:
             "cookies_available": COOKIES_AVAILABLE,
             "cookies_ready": self.cookies.ready() if self.cookies else False,
             "cookies_object": self.cookies is not None,
-            "session_state_keys": [k for k in st.session_state.keys() if 'cookie' in k.lower() or 'analysis' in k.lower()]
+            "session_state_keys": [
+                k
+                for k in st.session_state.keys()
+                if "cookie" in k.lower() or "analysis" in k.lower()
+            ],
         }
 
         if self.cookies:
@@ -137,29 +148,33 @@ class CookieManager:
         return debug_info
 
 
-
 # 全局cookie管理器实例
 cookies = CookieManager()
+
 
 def get_persistent_analysis_id() -> Optional[str]:
     """获取持久化的分析ID（优先级：session state > cookie > Redis/文件）"""
     try:
         # 1. 首先检查session state
-        if st.session_state.get('current_analysis_id'):
+        if st.session_state.get("current_analysis_id"):
             return st.session_state.current_analysis_id
 
         # 2. 检查cookie
         cookie_state = cookies.get_analysis_state()
         if cookie_state:
-            analysis_id = cookie_state.get('analysis_id')
+            analysis_id = cookie_state.get("analysis_id")
             if analysis_id:
                 # 恢复到session state
                 st.session_state.current_analysis_id = analysis_id
-                st.session_state.analysis_running = (cookie_state.get('status') == 'running')
+                st.session_state.analysis_running = (
+                    cookie_state.get("status") == "running"
+                )
                 return analysis_id
 
         # 3. 最后从Redis/文件恢复
-        get_latest_analysis_id = getattr(importlib.import_module('web.utils.progress'), 'get_latest_analysis_id')
+        get_latest_analysis_id = getattr(
+            importlib.import_module("web.utils.progress"), "get_latest_analysis_id"
+        )
         latest_id = get_latest_analysis_id()
         if latest_id:
             st.session_state.current_analysis_id = latest_id
@@ -171,13 +186,18 @@ def get_persistent_analysis_id() -> Optional[str]:
         st.warning(f"⚠️ 获取持久化分析ID失败: {e}")
         return None
 
-def set_persistent_analysis_id(analysis_id: str, status: str = "running",
-                              stock_symbol: str = "", market_type: str = ""):
+
+def set_persistent_analysis_id(
+    analysis_id: str,
+    status: str = "running",
+    stock_symbol: str = "",
+    market_type: str = "",
+):
     """设置持久化的分析ID"""
     try:
         # 设置到session state
         st.session_state.current_analysis_id = analysis_id
-        st.session_state.analysis_running = (status == 'running')
+        st.session_state.analysis_running = status == "running"
 
         # 设置到cookie
         cookies.set_analysis_state(analysis_id, status, stock_symbol, market_type)

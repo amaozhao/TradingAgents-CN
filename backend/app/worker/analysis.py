@@ -2,31 +2,30 @@
 分析任务Worker进程
 消费队列中的分析任务，调用TradingAgents进行股票分析
 """
-import importlib
 
 import asyncio
+import importlib
 import json
 import logging
 import signal
 import sys
-import uuid
 import traceback
+import uuid
 from datetime import datetime
-from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
-
-from app.services.queue.service import get_queue_service
-from app.services.analysis.service import get_analysis_service
-from app.core.database import init_database, close_database
-from app.core.redis import init_redis, close_redis
 from app.core.config import settings
-from app.models.analysis import AnalysisTask, AnalysisParameters
+from app.core.database import close_database, init_database
+from app.core.redis import close_redis, init_redis
+from app.models.analysis import AnalysisParameters, AnalysisTask
+from app.services.analysis.service import get_analysis_service
 from app.services.provider import provider as config_provider
-from app.services.queue import DEFAULT_USER_CONCURRENT_LIMIT, GLOBAL_CONCURRENT_LIMIT, VISIBILITY_TIMEOUT_SECONDS
+from app.services.queue import (
+    DEFAULT_USER_CONCURRENT_LIMIT,
+    GLOBAL_CONCURRENT_LIMIT,
+    VISIBILITY_TIMEOUT_SECONDS,
+)
+from app.services.queue.service import get_queue_service
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +40,16 @@ class AnalysisWorker:
         self.current_task = None
 
         # 配置参数（可由系统设置覆盖）
-        self.heartbeat_interval = int(getattr(settings, 'WORKER_HEARTBEAT_INTERVAL', 30))
-        self.max_retries = int(getattr(settings, 'QUEUE_MAX_RETRIES', 3))
-        self.poll_interval = float(getattr(settings, 'QUEUE_POLL_INTERVAL_SECONDS', 1))  # 队列轮询间隔（秒）
-        self.cleanup_interval = float(getattr(settings, 'QUEUE_CLEANUP_INTERVAL_SECONDS', 60))
+        self.heartbeat_interval = int(
+            getattr(settings, "WORKER_HEARTBEAT_INTERVAL", 30)
+        )
+        self.max_retries = int(getattr(settings, "QUEUE_MAX_RETRIES", 3))
+        self.poll_interval = float(
+            getattr(settings, "QUEUE_POLL_INTERVAL_SECONDS", 1)
+        )  # 队列轮询间隔（秒）
+        self.cleanup_interval = float(
+            getattr(settings, "QUEUE_CLEANUP_INTERVAL_SECONDS", 60)
+        )
 
         # 注册信号处理器
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -66,7 +71,9 @@ class AnalysisWorker:
 
             # 读取系统设置（ENV 优先 → DB）
             try:
-                effective_settings = await config_provider.get_effective_system_settings()
+                effective_settings = (
+                    await config_provider.get_effective_system_settings()
+                )
             except Exception:
                 effective_settings = {}
 
@@ -77,13 +84,37 @@ class AnalysisWorker:
 
             # 应用队列并发/超时配置 + Worker/轮询参数
             try:
-                self.queue_service.user_concurrent_limit = int(effective_settings.get("max_concurrent_tasks", DEFAULT_USER_CONCURRENT_LIMIT))
-                self.queue_service.global_concurrent_limit = int(effective_settings.get("max_concurrent_tasks", GLOBAL_CONCURRENT_LIMIT))
-                self.queue_service.visibility_timeout = int(effective_settings.get("default_analysis_timeout", VISIBILITY_TIMEOUT_SECONDS))
+                self.queue_service.user_concurrent_limit = int(
+                    effective_settings.get(
+                        "max_concurrent_tasks", DEFAULT_USER_CONCURRENT_LIMIT
+                    )
+                )
+                self.queue_service.global_concurrent_limit = int(
+                    effective_settings.get(
+                        "max_concurrent_tasks", GLOBAL_CONCURRENT_LIMIT
+                    )
+                )
+                self.queue_service.visibility_timeout = int(
+                    effective_settings.get(
+                        "default_analysis_timeout", VISIBILITY_TIMEOUT_SECONDS
+                    )
+                )
                 # Worker intervals
-                self.heartbeat_interval = int(effective_settings.get("worker_heartbeat_interval_seconds", self.heartbeat_interval))
-                self.poll_interval = float(effective_settings.get("queue_poll_interval_seconds", self.poll_interval))
-                self.cleanup_interval = float(effective_settings.get("queue_cleanup_interval_seconds", self.cleanup_interval))
+                self.heartbeat_interval = int(
+                    effective_settings.get(
+                        "worker_heartbeat_interval_seconds", self.heartbeat_interval
+                    )
+                )
+                self.poll_interval = float(
+                    effective_settings.get(
+                        "queue_poll_interval_seconds", self.poll_interval
+                    )
+                )
+                self.cleanup_interval = float(
+                    effective_settings.get(
+                        "queue_cleanup_interval_seconds", self.cleanup_interval
+                    )
+                )
             except Exception:
                 pass
             # 启动心跳任务
@@ -165,13 +196,12 @@ class AnalysisWorker:
                 symbol=stock_code,
                 stock_code=stock_code,
                 batch_id=task_data.get("batch_id"),
-                parameters=parameters
+                parameters=parameters,
             )
 
             # 执行分析
             result = await get_analysis_service().execute_analysis_task(
-                task,
-                progress_callback=self._progress_callback
+                task, progress_callback=self._progress_callback
             )
 
             success = True
@@ -210,18 +240,22 @@ class AnalysisWorker:
     async def _send_heartbeat(self):
         """发送心跳"""
         try:
-            get_redis_service = getattr(importlib.import_module('app.core.redis'), 'get_redis_service')
+            get_redis_service = getattr(
+                importlib.import_module("app.core.redis"), "get_redis_service"
+            )
             redis_service = get_redis_service()
 
             heartbeat_data = {
                 "worker_id": self.worker_id,
                 "timestamp": datetime.utcnow().isoformat(),
                 "current_task": self.current_task,
-                "status": "active" if self.running else "stopping"
+                "status": "active" if self.running else "stopping",
             }
 
             heartbeat_key = f"worker:{self.worker_id}:heartbeat"
-            await redis_service.set_json(heartbeat_key, heartbeat_data, ttl=self.heartbeat_interval * 2)
+            await redis_service.set_json(
+                heartbeat_key, heartbeat_data, ttl=self.heartbeat_interval * 2
+            )
 
         except Exception as e:
             logger.error(f"发送心跳失败: {e}")
@@ -244,7 +278,9 @@ class AnalysisWorker:
 
         try:
             # 清理心跳记录
-            get_redis_service = getattr(importlib.import_module('app.core.redis'), 'get_redis_service')
+            get_redis_service = getattr(
+                importlib.import_module("app.core.redis"), "get_redis_service"
+            )
             redis_service = get_redis_service()
             heartbeat_key = f"worker:{self.worker_id}:heartbeat"
             await redis_service.redis.delete(heartbeat_key)
@@ -264,7 +300,7 @@ async def main():
     # 设置日志
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
     # 创建并启动Worker

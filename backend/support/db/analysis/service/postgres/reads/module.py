@@ -26,13 +26,19 @@ async def test_list_user_tasks_uses_postgres_history_when_available(monkeypatch)
             }
         ]
 
-    async def fail_mongo_history(**_kwargs):
-        raise AssertionError("Mongo fallback should not be used when PostgreSQL returns history")
+    async def fail_postgres_history(**_kwargs):
+        raise AssertionError(
+            "PostgreSQL fallback should not be used when PostgreSQL returns history"
+        )
 
     monkeypatch.setattr(service, "_list_user_tasks_from_postgres", fake_pg_history)
-    monkeypatch.setattr(service, "_list_user_tasks_from_mongo", fail_mongo_history)
+    monkeypatch.setattr(
+        service, "_list_user_tasks_from_postgres", fail_postgres_history
+    )
 
-    tasks = await service.list_user_tasks("user-1", status="completed", limit=20, offset=0)
+    tasks = await service.list_user_tasks(
+        "user-1", status="completed", limit=20, offset=0
+    )
 
     assert len(tasks) == 1
     assert tasks[0]["task_id"] == "task-1"

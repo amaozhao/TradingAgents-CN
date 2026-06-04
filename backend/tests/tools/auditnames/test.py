@@ -30,5 +30,13 @@ def test_glued_compounds_are_rejected_without_separators() -> None:
 def test_approved_atomic_code_words_are_not_split() -> None:
     auditnames = load_auditnames()
 
-    for stem in ("akshare", "database", "mongodb", "openapi", "runtime", "stocktwits", "tushare"):
+    for stem in (
+        "akshare",
+        "database",
+        "postgres",
+        "openapi",
+        "runtime",
+        "stocktwits",
+        "tushare",
+    ):
         assert auditnames._validate_single_word_stem(stem) == []

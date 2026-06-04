@@ -1,7 +1,7 @@
 """
 测试数据导出脱敏功能
 """
-import pytest
+
 from app.services.database.backup import _sanitize_document
 
 
@@ -13,7 +13,7 @@ def test_sanitize_simple_fields():
         "api_secret": "secret456",
         "password": "pass123",
         "token": "token123",
-        "normal_field": "keep_this"
+        "normal_field": "keep_this",
     }
 
     result = _sanitize_document(doc)
@@ -35,7 +35,7 @@ def test_sanitize_max_tokens_preserved():
         "max_tokens": 8000,
         "timeout": 180,
         "retry_times": 3,
-        "context_length": 32768
+        "context_length": 32768,
     }
 
     result = _sanitize_document(doc)
@@ -51,16 +51,10 @@ def test_sanitize_nested_dict():
     """测试嵌套字典脱敏"""
     doc = {
         "config": {
-            "llm": {
-                "api_key": "secret123",
-                "model": "gpt-4"
-            },
-            "database": {
-                "password": "dbpass",
-                "host": "localhost"
-            }
+            "llm": {"api_key": "secret123", "model": "gpt-4"},
+            "database": {"password": "dbpass", "host": "localhost"},
         },
-        "name": "test"
+        "name": "test",
     }
 
     result = _sanitize_document(doc)
@@ -77,7 +71,7 @@ def test_sanitize_list():
     doc = {
         "providers": [
             {"name": "provider1", "api_key": "key1"},
-            {"name": "provider2", "client_secret": "secret2"}
+            {"name": "provider2", "client_secret": "secret2"},
         ]
     }
 
@@ -95,7 +89,7 @@ def test_sanitize_case_insensitive():
         "API_KEY": "secret1",
         "Api_Secret": "secret2",
         "PASSWORD": "pass1",
-        "Token": "token1"
+        "Token": "token1",
     }
 
     result = _sanitize_document(doc)
@@ -117,7 +111,7 @@ def test_sanitize_all_keywords():
         "client_secret": "6",
         "webhook_secret": "7",
         "private_key": "8",
-        "safe_field": "keep"
+        "safe_field": "keep",
     }
 
     result = _sanitize_document(doc)
@@ -139,27 +133,23 @@ def test_sanitize_complex_structure():
         "system_configs": [
             {
                 "llm_configs": [
-                    {
-                        "provider": "openai",
-                        "api_key": "sk-xxx",
-                        "model": "gpt-4"
-                    }
+                    {"provider": "openai", "api_key": "sk-xxx", "model": "gpt-4"}
                 ],
                 "system_settings": {
                     "finnhub_api_key": "xxx",
                     "tushare_token": "yyy",
                     "reddit_client_secret": "zzz",
-                    "app_name": "TradingAgents"
-                }
+                    "app_name": "TradingAgents",
+                },
             }
         ],
         "llm_providers": [
             {
                 "name": "OpenAI",
                 "api_key": "sk-xxx",
-                "base_url": "https://api.openai.com"
+                "base_url": "https://api.openai.com",
             }
-        ]
+        ],
     }
 
     result = _sanitize_document(doc)

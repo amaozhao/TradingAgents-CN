@@ -4,17 +4,13 @@
 详细数据显示测试脚本
 完整显示基本面分析获取的所有数据内容
 """
-import importlib
 
-import sys
-import os
+import importlib
 import json
 from datetime import datetime, timedelta
 
-# 添加项目根目录到路径
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 from trader.agents.utils.utils import Toolkit
+
 
 def test_detailed_data_display():
     """测试并完整显示基本面分析获取的数据"""
@@ -30,7 +26,9 @@ def test_detailed_data_display():
     end_date = curr_date
 
     print(f"🎯 测试股票: {ticker}")
-    print(f"📅 数据范围: {start_date.strftime('%Y-%m-%d')} 到 {end_date.strftime('%Y-%m-%d')}")
+    print(
+        f"📅 数据范围: {start_date.strftime('%Y-%m-%d')} 到 {end_date.strftime('%Y-%m-%d')}"
+    )
     print(f"⏰ 当前时间: {curr_date.strftime('%Y-%m-%d %H:%M:%S')}")
     print()
 
@@ -42,12 +40,14 @@ def test_detailed_data_display():
         print("-" * 60)
 
         # 调用优化后的基本面数据获取函数
-        result = toolkit.get_stock_fundamentals_unified.invoke({
-            'ticker': ticker,
-            'start_date': start_date.strftime('%Y-%m-%d'),
-            'end_date': end_date.strftime('%Y-%m-%d'),
-            'curr_date': curr_date.strftime('%Y-%m-%d')
-        })
+        result = toolkit.get_stock_fundamentals_unified.invoke(
+            {
+                "ticker": ticker,
+                "start_date": start_date.strftime("%Y-%m-%d"),
+                "end_date": end_date.strftime("%Y-%m-%d"),
+                "curr_date": curr_date.strftime("%Y-%m-%d"),
+            }
+        )
 
         print("✅ 数据获取成功！")
         print()
@@ -77,7 +77,7 @@ def test_detailed_data_display():
         elif isinstance(result, list):
             print("📝 列表格式数据:")
             for i, item in enumerate(result):
-                print(f"📌 项目 {i+1}:")
+                print(f"📌 项目 {i + 1}:")
                 if isinstance(item, (dict, list)):
                     print(json.dumps(item, ensure_ascii=False, indent=2))
                 else:
@@ -96,19 +96,28 @@ def test_detailed_data_display():
 
         # 如果是字符串，显示前后部分内容
         if isinstance(result, str):
-            lines = result.split('\n')
+            lines = result.split("\n")
             print(f"   - 总行数: {len(lines)}")
-            print(f"   - 首行: {lines[0][:100]}..." if len(lines[0]) > 100 else f"   - 首行: {lines[0]}")
+            print(
+                f"   - 首行: {lines[0][:100]}..."
+                if len(lines[0]) > 100
+                else f"   - 首行: {lines[0]}"
+            )
             if len(lines) > 1:
-                print(f"   - 末行: {lines[-1][:100]}..." if len(lines[-1]) > 100 else f"   - 末行: {lines[-1]}")
+                print(
+                    f"   - 末行: {lines[-1][:100]}..."
+                    if len(lines[-1]) > 100
+                    else f"   - 末行: {lines[-1]}"
+                )
 
         print("\n🎉 数据显示完成！")
 
     except Exception as e:
         print(f"❌ 测试失败: {str(e)}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         print("🔍 详细错误信息:")
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     test_detailed_data_display()

@@ -6,12 +6,13 @@
 # 导入 stats
 try:
     from .stats import StockstatsUtils
+
     STOCKSTATS_AVAILABLE = True
 except ImportError:
     StockstatsUtils = None
     STOCKSTATS_AVAILABLE = False
 
 __all__ = [
-    'StockstatsUtils',
-    'STOCKSTATS_AVAILABLE',
+    "StockstatsUtils",
+    "STOCKSTATS_AVAILABLE",
 ]

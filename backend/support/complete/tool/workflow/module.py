@@ -2,19 +2,15 @@
 """
 测试完整的工具调用工作流程
 """
+
 import importlib
-
 import os
-import sys
-from pathlib import Path
-from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
+
 
 def test_deepseek_complete_workflow():
     """测试DeepSeek的完整工具调用工作流程"""
@@ -22,16 +18,20 @@ def test_deepseek_complete_workflow():
     print("=" * 60)
 
     try:
-        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
-        BaseTool = getattr(importlib.import_module('langchain_core.tools'), 'BaseTool')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
-        ToolMessage = getattr(importlib.import_module('langchain_core.messages'), 'ToolMessage')
+        ChatDeepSeek = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"), "ChatDeepSeek"
+        )
+        BaseTool = getattr(importlib.import_module("langchain_core.tools"), "BaseTool")
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
+        ToolMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "ToolMessage"
+        )
 
         # 创建DeepSeek实例
         deepseek_llm = ChatDeepSeek(
-            model="deepseek-chat",
-            temperature=0.1,
-            max_tokens=2000
+            model="deepseek-chat", temperature=0.1, max_tokens=2000
         )
 
         # 创建模拟工具
@@ -74,19 +74,21 @@ def test_deepseek_complete_workflow():
         chain = deepseek_llm.bind_tools(tools)
         result1 = chain.invoke([HumanMessage(content=prompt)])
 
-        print(f"📊 第一次响应:")
-        print(f"   工具调用数量: {len(result1.tool_calls) if hasattr(result1, 'tool_calls') else 0}")
+        print("📊 第一次响应:")
+        print(
+            f"   工具调用数量: {len(result1.tool_calls) if hasattr(result1, 'tool_calls') else 0}"
+        )
         print(f"   响应内容长度: {len(result1.content)}")
         print(f"   响应内容: {result1.content[:200]}...")
 
-        if hasattr(result1, 'tool_calls') and result1.tool_calls:
-            print(f"\n🔧 执行工具调用...")
+        if hasattr(result1, "tool_calls") and result1.tool_calls:
+            print("\n🔧 执行工具调用...")
 
             # 模拟工具执行
             tool_messages = []
             for tool_call in result1.tool_calls:
-                tool_name = tool_call.get('name')
-                tool_id = tool_call.get('id')
+                tool_name = tool_call.get("name")
+                tool_id = tool_call.get("id")
 
                 print(f"   执行工具: {tool_name}")
 
@@ -95,32 +97,34 @@ def test_deepseek_complete_workflow():
                 tool_result = tool._run("")
 
                 # 创建工具消息
-                tool_message = ToolMessage(
-                    content=tool_result,
-                    tool_call_id=tool_id
-                )
+                tool_message = ToolMessage(content=tool_result, tool_call_id=tool_id)
                 tool_messages.append(tool_message)
 
             # 第二步：发送工具结果，要求生成分析
-            print(f"\n📤 发送工具结果，要求生成分析...")
+            print("\n📤 发送工具结果，要求生成分析...")
             messages = [
                 HumanMessage(content=prompt),
                 result1,
                 *tool_messages,
-                HumanMessage(content="现在请基于上述工具获取的数据，生成详细的技术分析报告。报告应该包含具体的数据分析和投资建议。")
+                HumanMessage(
+                    content="现在请基于上述工具获取的数据，生成详细的技术分析报告。报告应该包含具体的数据分析和投资建议。"
+                ),
             ]
 
             result2 = deepseek_llm.invoke(messages)
 
-            print(f"📊 第二次响应:")
+            print("📊 第二次响应:")
             print(f"   响应内容长度: {len(result2.content)}")
-            print(f"   响应内容前500字符:")
+            print("   响应内容前500字符:")
             print("-" * 50)
             print(result2.content[:500])
             print("-" * 50)
 
             # 检查是否包含实际数据分析
-            has_data = any(keyword in result2.content for keyword in ["¥6.56", "RSI", "MACD", "万科A", "42.5"])
+            has_data = any(
+                keyword in result2.content
+                for keyword in ["¥6.56", "RSI", "MACD", "万科A", "42.5"]
+            )
             print(f"   包含实际数据: {'✅' if has_data else '❌'}")
 
             return result2
@@ -130,9 +134,10 @@ def test_deepseek_complete_workflow():
 
     except Exception as e:
         print(f"❌ DeepSeek测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return None
+
 
 def test_dashscope_react_agent():
     """测试百炼的ReAct Agent模式"""
@@ -140,29 +145,38 @@ def test_dashscope_react_agent():
     print("=" * 60)
 
     try:
-        create_react_agent = getattr(importlib.import_module('langchain.agents'), 'create_react_agent')
-        AgentExecutor = getattr(importlib.import_module('langchain.agents'), 'AgentExecutor')
-        PromptTemplate = getattr(importlib.import_module('langchain_core.prompts'), 'PromptTemplate')
-        BaseTool = getattr(importlib.import_module('langchain_core.tools'), 'BaseTool')
+        create_react_agent = getattr(
+            importlib.import_module("langchain.agents"), "create_react_agent"
+        )
+        AgentExecutor = getattr(
+            importlib.import_module("langchain.agents"), "AgentExecutor"
+        )
+        PromptTemplate = getattr(
+            importlib.import_module("langchain_core.prompts"), "PromptTemplate"
+        )
+        BaseTool = getattr(importlib.import_module("langchain_core.tools"), "BaseTool")
 
         # 检查是否有百炼API密钥
         if not os.getenv("DASHSCOPE_API_KEY"):
             print("⚠️ 未找到DASHSCOPE_API_KEY，跳过百炼测试")
             return None
 
-        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters.dashscope.native'), 'ChatDashScope')
+        ChatDashScope = getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.native"),
+            "ChatDashScope",
+        )
 
         # 创建百炼实例
         dashscope_llm = ChatDashScope(
-            model="qwen-plus",
-            temperature=0.1,
-            max_tokens=2000
+            model="qwen-plus", temperature=0.1, max_tokens=2000
         )
 
         # 创建工具
         class MockChinaStockDataTool(BaseTool):
             name: str = "get_china_stock_data"
-            description: str = "获取中国A股股票000002的市场数据和技术指标。直接调用，无需参数。"
+            description: str = (
+                "获取中国A股股票000002的市场数据和技术指标。直接调用，无需参数。"
+            )
 
             def _run(self, query: str = "") -> str:
                 print("🔧 [工具执行] get_china_stock_data被调用")
@@ -222,31 +236,37 @@ Question: {input}
 
         # 创建agent
         agent = create_react_agent(dashscope_llm, tools, prompt)
-        agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, max_iterations=3)
+        agent_executor = AgentExecutor(
+            agent=agent, tools=tools, verbose=True, max_iterations=3
+        )
 
         print("📤 执行ReAct Agent...")
-        result = agent_executor.invoke({
-            "input": "请对中国A股股票000002进行详细的技术分析"
-        })
+        result = agent_executor.invoke(
+            {"input": "请对中国A股股票000002进行详细的技术分析"}
+        )
 
-        print(f"📊 ReAct Agent结果:")
+        print("📊 ReAct Agent结果:")
         print(f"   输出长度: {len(result['output'])}")
-        print(f"   输出内容前500字符:")
+        print("   输出内容前500字符:")
         print("-" * 50)
-        print(result['output'][:500])
+        print(result["output"][:500])
         print("-" * 50)
 
         # 检查是否包含实际数据分析
-        has_data = any(keyword in result['output'] for keyword in ["¥6.56", "RSI", "MACD", "万科A", "42.5"])
+        has_data = any(
+            keyword in result["output"]
+            for keyword in ["¥6.56", "RSI", "MACD", "万科A", "42.5"]
+        )
         print(f"   包含实际数据: {'✅' if has_data else '❌'}")
 
         return result
 
     except Exception as e:
         print(f"❌ 百炼ReAct Agent测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return None
+
 
 def main():
     """主函数"""
@@ -264,18 +284,29 @@ def main():
     print("=" * 60)
 
     if deepseek_result:
-        has_data = any(keyword in deepseek_result.content for keyword in ["¥6.56", "RSI", "MACD", "万科A"])
-        print(f"✅ DeepSeek: {'成功生成基于数据的分析' if has_data else '调用工具但分析不完整'}")
+        has_data = any(
+            keyword in deepseek_result.content
+            for keyword in ["¥6.56", "RSI", "MACD", "万科A"]
+        )
+        print(
+            f"✅ DeepSeek: {'成功生成基于数据的分析' if has_data else '调用工具但分析不完整'}"
+        )
     else:
-        print(f"❌ DeepSeek: 测试失败")
+        print("❌ DeepSeek: 测试失败")
 
     if dashscope_result:
-        has_data = any(keyword in dashscope_result['output'] for keyword in ["¥6.56", "RSI", "MACD", "万科A"])
-        print(f"✅ 百炼ReAct: {'成功生成基于数据的分析' if has_data else '执行但分析不完整'}")
+        has_data = any(
+            keyword in dashscope_result["output"]
+            for keyword in ["¥6.56", "RSI", "MACD", "万科A"]
+        )
+        print(
+            f"✅ 百炼ReAct: {'成功生成基于数据的分析' if has_data else '执行但分析不完整'}"
+        )
     else:
-        print(f"❌ 百炼ReAct: 测试失败")
+        print("❌ 百炼ReAct: 测试失败")
 
     print("\n🎯 测试完成！")
+
 
 if __name__ == "__main__":
     main()

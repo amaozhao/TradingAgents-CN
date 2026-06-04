@@ -559,7 +559,7 @@ export const CONFIG_PROVIDERS = {
  */
 export const DATA_SOURCE_TYPES = {
   // 缓存数据源
-  MONGODB: 'mongodb',
+  POSTGRES: 'postgres',
 
   // 中国市场数据源
   TUSHARE: 'tushare',
@@ -583,7 +583,7 @@ export const DATA_SOURCE_TYPES = {
 } as const
 
 export const DATABASE_TYPES = {
-  MONGODB: 'mongodb',
+  POSTGRES: 'postgres',
   REDIS: 'redis',
   MYSQL: 'mysql',
   POSTGRESQL: 'postgresql'

@@ -3,15 +3,9 @@
 阿里百炼 OpenAI 兼容适配器修复验证测试
 验证新的 OpenAI 兼容适配器是否解决了工具调用问题
 """
+
 import importlib
-
 import os
-import sys
-from datetime import datetime, timedelta
-
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
 
 
 def test_openai_adapter_import():
@@ -20,19 +14,28 @@ def test_openai_adapter_import():
     print("=" * 60)
 
     try:
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        getattr(importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI")
         print("✅ ChatDashScopeOpenAI 导入成功")
 
-        create_dashscope_openai_llm = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'create_dashscope_openai_llm')
-        test_dashscope_openai_connection = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'test_dashscope_openai_connection')
-        test_dashscope_openai_function_calling = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'test_dashscope_openai_function_calling')
+        getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.openai"),
+            "create_dashscope_openai_llm",
+        )
+        getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.openai"),
+            "test_dashscope_openai_connection",
+        )
+        getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.openai"),
+            "test_dashscope_openai_function_calling",
+        )
         print("✅ 相关函数导入成功")
 
         return True
 
     except Exception as e:
         print(f"❌ 导入失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -43,7 +46,10 @@ def test_openai_adapter_connection():
     print("=" * 60)
 
     try:
-        test_dashscope_openai_connection = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'test_dashscope_openai_connection')
+        test_dashscope_openai_connection = getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.openai"),
+            "test_dashscope_openai_connection",
+        )
 
         # 测试连接
         result = test_dashscope_openai_connection(model="qwen-turbo")
@@ -57,7 +63,7 @@ def test_openai_adapter_connection():
 
     except Exception as e:
         print(f"❌ 连接测试异常: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -68,7 +74,10 @@ def test_openai_adapter_function_calling():
     print("=" * 60)
 
     try:
-        test_dashscope_openai_function_calling = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'test_dashscope_openai_function_calling')
+        test_dashscope_openai_function_calling = getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.openai"),
+            "test_dashscope_openai_function_calling",
+        )
 
         # 测试 Function Calling
         result = test_dashscope_openai_function_calling(model="qwen-plus-latest")
@@ -82,7 +91,7 @@ def test_openai_adapter_function_calling():
 
     except Exception as e:
         print(f"❌ Function Calling 测试异常: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -93,16 +102,18 @@ def test_technical_analysis_with_new_adapter():
     print("=" * 60)
 
     try:
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
-        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI"
+        )
+        getattr(importlib.import_module("trader.agents.utils.utils"), "Toolkit")
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
+        tool = getattr(importlib.import_module("langchain_core.tools"), "tool")
 
         # 创建新的 OpenAI 兼容适配器
         llm = ChatDashScopeOpenAI(
-            model="qwen-plus-latest",
-            temperature=0.1,
-            max_tokens=2000
+            model="qwen-plus-latest", temperature=0.1, max_tokens=2000
         )
 
         print("✅ 新适配器创建成功")
@@ -141,7 +152,9 @@ def test_technical_analysis_with_new_adapter():
         # 测试工具调用
         print("🔄 测试工具调用...")
 
-        messages = [HumanMessage(content="""请分析600036这只股票的技术面。
+        messages = [
+            HumanMessage(
+                content="""请分析600036这只股票的技术面。
 
 请先调用get_test_stock_data工具获取数据，参数：
 - ticker: "600036"
@@ -152,7 +165,9 @@ def test_technical_analysis_with_new_adapter():
 1. 报告长度不少于500字
 2. 包含具体的技术指标分析
 3. 提供明确的投资建议
-4. 使用中文撰写""")]
+4. 使用中文撰写"""
+            )
+        ]
 
         response = llm_with_tools.invoke(messages)
 
@@ -160,16 +175,16 @@ def test_technical_analysis_with_new_adapter():
         print(f"📊 响应长度: {len(response.content)}字符")
 
         # 检查是否有工具调用
-        if hasattr(response, 'tool_calls') and len(response.tool_calls) > 0:
+        if hasattr(response, "tool_calls") and len(response.tool_calls) > 0:
             print(f"✅ 工具调用成功: {len(response.tool_calls)}个工具调用")
             for i, tool_call in enumerate(response.tool_calls):
-                print(f"   工具{i+1}: {tool_call.get('name', 'unknown')}")
+                print(f"   工具{i + 1}: {tool_call.get('name', 'unknown')}")
 
             # 这里应该继续执行工具并生成最终分析
             # 但为了测试，我们只验证工具调用是否正常
             return True
         else:
-            print(f"❌ 没有工具调用")
+            print("❌ 没有工具调用")
             print(f"📋 直接响应: {response.content[:200]}...")
 
             # 检查响应长度
@@ -182,7 +197,7 @@ def test_technical_analysis_with_new_adapter():
 
     except Exception as e:
         print(f"❌ 技术面分析测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -193,7 +208,9 @@ def test_trading_graph_integration():
     print("=" * 60)
 
     try:
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        TradingAgentsGraph = getattr(
+            importlib.import_module("trader.graph.trading"), "TradingAgentsGraph"
+        )
 
         # 创建配置
         config = {
@@ -202,7 +219,7 @@ def test_trading_graph_integration():
             "quick_think_llm": "qwen-turbo",
             "max_debate_rounds": 1,
             "online_tools": True,
-            "selected_analysts": ["fundamentals_analyst", "market_analyst"]
+            "selected_analysts": ["fundamentals_analyst", "market_analyst"],
         }
 
         print("🔄 创建 TradingGraph...")
@@ -222,7 +239,7 @@ def test_trading_graph_integration():
 
     except Exception as e:
         print(f"❌ TradingGraph 集成测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -250,7 +267,7 @@ def main():
         ("OpenAI 兼容适配器连接", test_openai_adapter_connection),
         ("Function Calling", test_openai_adapter_function_calling),
         ("技术面分析工具调用", test_technical_analysis_with_new_adapter),
-        ("TradingGraph 集成", test_trading_graph_integration)
+        ("TradingGraph 集成", test_trading_graph_integration),
     ]
 
     results = []

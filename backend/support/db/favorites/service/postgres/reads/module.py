@@ -1,15 +1,18 @@
-import pytest
 from types import SimpleNamespace
 
+import pytest
+
+from app.core import unified as unified_config
 from app.core.config import settings
-from app.core import unifiedconfig
 from app.services.favorite import FavoritesService
 
 
 @pytest.mark.asyncio
-async def test_get_user_favorites_uses_postgres_entries_and_existing_enrichment(monkeypatch):
+async def test_get_user_favorites_uses_postgres_entries_and_existing_enrichment(
+    monkeypatch,
+):
     service = FavoritesService()
-    db = FakeMongoDB(
+    db = FakePostgreSQL(
         {
             "stock_basic_info": FakeCollection(
                 [{"code": "000001", "market": "主板", "sse": "深圳证券交易所"}]
@@ -53,7 +56,7 @@ async def test_get_user_favorites_uses_postgres_entries_and_existing_enrichment(
     assert result[0]["exchange"] == "深圳证券交易所"
 
 
-class FakeMongoDB:
+class FakePostgreSQL:
     def __init__(self, collections):
         self.collections = collections
 

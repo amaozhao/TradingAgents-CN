@@ -1,18 +1,18 @@
 import importlib
 import logging
 import traceback
-from datetime import datetime, time as dtime, timedelta
-from typing import Any, Dict, Optional, Tuple, List
-from zoneinfo import ZoneInfo
 from collections import deque
-
-from pymongo import UpdateOne
+from datetime import datetime, timedelta
+from datetime import time as dtime
+from typing import Any, Dict, List, Optional, Tuple
+from zoneinfo import ZoneInfo
 
 from app.core.config import settings
-from app.core.database import get_mongo_db
+from app.core.database import get_postgres_db
+from app.db.documentstore import UpdateOne
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
-from app.services.sources.manager import DataSourceManager
 from app.services.sources.akshare import AKShareAdapter
+from app.services.sources.manager import DataSourceManager
 from app.services.sources.tushare import TushareAdapter
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class QuotesIngestionService:
     """
-    定时从数据源适配层获取全市场近实时行情，入库到 MongoDB 集合 `market_quotes`。
+    定时从数据源适配层获取全市场近实时行情，入库到 PostgreSQL 集合 `market_quotes`。
 
     核心特性：
     - 调度频率：由 settings.QUOTES_INGEST_INTERVAL_SECONDS 控制（默认360秒=6分钟）
@@ -72,15 +72,15 @@ class QuotesIngestionService:
         # 如果代码长度超过6位，去掉前面的交易所前缀（如 sz, sh）
         if len(code_str) > 6:
             # 提取所有数字字符
-            code_str = ''.join(filter(str.isdigit, code_str))
+            code_str = "".join(filter(str.isdigit, code_str))
 
         # 如果是纯数字，补齐到6位
         if code_str.isdigit():
-            code_clean = code_str.lstrip('0') or '0'  # 移除前导0，如果全是0则保留一个0
+            code_clean = code_str.lstrip("0") or "0"  # 移除前导0，如果全是0则保留一个0
             return code_clean.zfill(6)  # 补齐到6位
 
         # 如果不是纯数字，尝试提取数字部分
-        code_digits = ''.join(filter(str.isdigit, code_str))
+        code_digits = "".join(filter(str.isdigit, code_str))
         if code_digits:
             return code_digits.zfill(6)
 
@@ -88,7 +88,7 @@ class QuotesIngestionService:
         return ""
 
     async def ensure_indexes(self) -> None:
-        db = get_mongo_db()
+        db = get_postgres_db()
         coll = db[self.collection_name]
         try:
             await coll.create_index("code", unique=True)
@@ -101,7 +101,7 @@ class QuotesIngestionService:
         success: bool,
         source: Optional[str] = None,
         records_count: int = 0,
-        error_msg: Optional[str] = None
+        error_msg: Optional[str] = None,
     ) -> None:
         """
         记录同步状态
@@ -113,7 +113,7 @@ class QuotesIngestionService:
             error_msg: 错误信息
         """
         try:
-            db = get_mongo_db()
+            db = get_postgres_db()
             status_coll = db[self.status_collection_name]
 
             now = datetime.now(self.tz)
@@ -131,9 +131,7 @@ class QuotesIngestionService:
             }
 
             await status_coll.update_one(
-                {"job": "quotes_ingestion"},
-                {"$set": status_doc},
-                upsert=True
+                {"job": "quotes_ingestion"}, {"$set": status_doc}, upsert=True
             )
             await self._dual_write_sync_status(status_doc)
 
@@ -157,7 +155,7 @@ class QuotesIngestionService:
             }
         """
         try:
-            db = get_mongo_db()
+            db = get_postgres_db()
             status_coll = db[self.status_collection_name]
 
             doc = await status_coll.find_one({"job": "quotes_ingestion"})
@@ -171,7 +169,7 @@ class QuotesIngestionService:
                     "data_source": None,
                     "success": None,
                     "records_count": 0,
-                    "error_message": "尚未执行过同步"
+                    "error_message": "尚未执行过同步",
                 }
 
             # 移除 _id 字段
@@ -184,7 +182,7 @@ class QuotesIngestionService:
             # 🔥 格式化时间（确保转换为本地时区）
             if "last_sync_time" in doc and doc["last_sync_time"]:
                 dt = doc["last_sync_time"]
-                # MongoDB 返回的是 UTC 时间的 datetime 对象（aware 或 naive）
+                # PostgreSQL 返回的是 UTC 时间的 datetime 对象（aware 或 naive）
                 # 如果是 naive，添加 UTC 时区；如果是 aware，转换为本地时区
                 if dt.tzinfo is None:
                     # naive datetime，假设是 UTC
@@ -205,7 +203,7 @@ class QuotesIngestionService:
                 "data_source": None,
                 "success": None,
                 "records_count": 0,
-                "error_message": f"获取状态失败: {str(e)}"
+                "error_message": f"获取状态失败: {str(e)}",
             }
 
     def _check_tushare_permission(self) -> bool:
@@ -220,7 +218,10 @@ class QuotesIngestionService:
             return self._tushare_has_premium or False
 
         try:
-            TushareAdapter = getattr(importlib.import_module('app.services.sources.tushare'), 'TushareAdapter')
+            TushareAdapter = getattr(
+                importlib.import_module("app.services.sources.tushare"),
+                "TushareAdapter",
+            )
             adapter = TushareAdapter()
 
             if not adapter.is_available():
@@ -231,16 +232,22 @@ class QuotesIngestionService:
 
             # 尝试调用 rt_k 接口测试权限
             try:
-                df = adapter._provider.api.rt_k(ts_code='000001.SZ')
-                if df is not None and not getattr(df, 'empty', True):
+                df = adapter._provider.api.rt_k(ts_code="000001.SZ")
+                if df is not None and not getattr(df, "empty", True):
                     logger.info("✅ 检测到 Tushare rt_k 接口权限（付费用户）")
                     self._tushare_has_premium = True
                 else:
-                    logger.info("⚠️ Tushare rt_k 接口返回空数据（可能是免费用户或接口限制）")
+                    logger.info(
+                        "⚠️ Tushare rt_k 接口返回空数据（可能是免费用户或接口限制）"
+                    )
                     self._tushare_has_premium = False
             except Exception as e:
                 error_msg = str(e).lower()
-                if "权限" in error_msg or "permission" in error_msg or "没有访问" in error_msg:
+                if (
+                    "权限" in error_msg
+                    or "permission" in error_msg
+                    or "没有访问" in error_msg
+                ):
                     logger.info("⚠️ Tushare rt_k 接口无权限（免费用户）")
                     self._tushare_has_premium = False
                 else:
@@ -345,7 +352,7 @@ class QuotesIngestionService:
         return (morning <= t <= noon) or (afternoon_start <= t <= buffer_end)
 
     async def _collection_empty(self) -> bool:
-        db = get_mongo_db()
+        db = get_postgres_db()
         coll = db[self.collection_name]
         try:
             count = await coll.estimated_document_count()
@@ -356,7 +363,7 @@ class QuotesIngestionService:
     async def _collection_stale(self, latest_trade_date: Optional[str]) -> bool:
         if not latest_trade_date:
             return False
-        db = get_mongo_db()
+        db = get_postgres_db()
         coll = db[self.collection_name]
         try:
             cursor = coll.find({}, {"trade_date": 1}).sort("trade_date", -1).limit(1)
@@ -368,8 +375,10 @@ class QuotesIngestionService:
         except Exception:
             return True
 
-    async def _bulk_upsert(self, quotes_map: Dict[str, Dict], trade_date: str, source: Optional[str] = None) -> None:
-        db = get_mongo_db()
+    async def _bulk_upsert(
+        self, quotes_map: Dict[str, Dict], trade_date: str, source: Optional[str] = None
+    ) -> None:
+        db = get_postgres_db()
         coll = db[self.collection_name]
         ops = []
         postgres_documents = []
@@ -385,25 +394,29 @@ class QuotesIngestionService:
             # 🔥 日志：记录写入的成交量值
             volume = q.get("volume")
             if code6 in ["300750", "000001", "600000"]:  # 只记录几个示例股票
-                logger.info(f"📊 [写入market_quotes] {code6} - volume={volume}, amount={q.get('amount')}, source={source}")
+                logger.info(
+                    f"📊 [写入market_quotes] {code6} - volume={volume}, amount={q.get('amount')}, source={source}"
+                )
 
             ops.append(
                 UpdateOne(
                     {"code": code6},
-                    {"$set": {
-                        "code": code6,
-                        "symbol": code6,  # 添加 symbol 字段，与 code 保持一致
-                        "close": q.get("close"),
-                        "pct_chg": q.get("pct_chg"),
-                        "amount": q.get("amount"),
-                        "volume": volume,
-                        "open": q.get("open"),
-                        "high": q.get("high"),
-                        "low": q.get("low"),
-                        "pre_close": q.get("pre_close"),
-                        "trade_date": trade_date,
-                        "updated_at": updated_at,
-                    }},
+                    {
+                        "$set": {
+                            "code": code6,
+                            "symbol": code6,  # 添加 symbol 字段，与 code 保持一致
+                            "close": q.get("close"),
+                            "pct_chg": q.get("pct_chg"),
+                            "amount": q.get("amount"),
+                            "volume": volume,
+                            "open": q.get("open"),
+                            "high": q.get("high"),
+                            "low": q.get("low"),
+                            "pre_close": q.get("pre_close"),
+                            "trade_date": trade_date,
+                            "updated_at": updated_at,
+                        }
+                    },
                     upsert=True,
                 )
             )
@@ -446,7 +459,7 @@ class QuotesIngestionService:
 
     async def _fix_missing_volume(self) -> None:
         """从最新历史行情补齐 market_quotes 中缺失的 volume 字段。"""
-        db = get_mongo_db()
+        db = get_postgres_db()
         quotes_collection = db[self.collection_name]
         missing_cursor = quotes_collection.find(
             {"$or": [{"volume": {"$exists": False}}, {"volume": None}]},
@@ -471,7 +484,9 @@ class QuotesIngestionService:
             volume = daily_doc.get("volume") or daily_doc.get("vol")
             if volume is None:
                 continue
-            operations.append(UpdateOne({"_id": doc["_id"]}, {"$set": {"volume": volume}}))
+            operations.append(
+                UpdateOne({"_id": doc["_id"]}, {"$set": {"volume": volume}})
+            )
 
         if operations:
             result = await quotes_collection.bulk_write(operations, ordered=False)
@@ -495,7 +510,7 @@ class QuotesIngestionService:
 
             logger.info("📊 market_quotes 集合为空，开始从历史数据导入")
 
-            db = get_mongo_db()
+            db = get_postgres_db()
             manager = DataSourceManager()
 
             # 获取最新交易日
@@ -508,20 +523,23 @@ class QuotesIngestionService:
                 logger.warning(f"⚠️ 获取最新交易日失败: {e}，跳过历史数据导入")
                 return
 
-            logger.info(f"📊 从历史数据集合导入 {latest_trade_date} 的收盘数据到 market_quotes")
+            logger.info(
+                f"📊 从历史数据集合导入 {latest_trade_date} 的收盘数据到 market_quotes"
+            )
 
             # 从 stock_daily_quotes 集合查询最新交易日的数据
             daily_quotes_collection = db["stock_daily_quotes"]
-            cursor = daily_quotes_collection.find({
-                "trade_date": latest_trade_date,
-                "period": "daily"
-            })
+            cursor = daily_quotes_collection.find(
+                {"trade_date": latest_trade_date, "period": "daily"}
+            )
 
             docs = await cursor.to_list(length=None)
 
             if not docs:
                 logger.warning(f"⚠️ 历史数据集合中未找到 {latest_trade_date} 的数据")
-                logger.warning("⚠️ market_quotes 和历史数据集合都为空，请先同步历史数据或实时行情")
+                logger.warning(
+                    "⚠️ market_quotes 和历史数据集合都为空，请先同步历史数据或实时行情"
+                )
                 return
 
             logger.info(f"✅ 从历史数据集合找到 {len(docs)} 条记录")
@@ -540,7 +558,9 @@ class QuotesIngestionService:
 
                 # 🔥 日志：记录原始成交量值
                 if code6 in ["300750", "000001", "600000"]:  # 只记录几个示例股票
-                    logger.info(f"📊 [回填] {code6} - volume={doc.get('volume')}, vol={doc.get('vol')}, data_source={data_source}")
+                    logger.info(
+                        f"📊 [回填] {code6} - volume={doc.get('volume')}, vol={doc.get('vol')}, data_source={data_source}"
+                    )
 
                 quotes_map[code6] = {
                     "close": doc.get("close"),
@@ -554,8 +574,12 @@ class QuotesIngestionService:
                 }
 
             if quotes_map:
-                await self._bulk_upsert(quotes_map, latest_trade_date, "historical_data")
-                logger.info(f"✅ 成功从历史数据导入 {len(quotes_map)} 条收盘数据到 market_quotes")
+                await self._bulk_upsert(
+                    quotes_map, latest_trade_date, "historical_data"
+                )
+                logger.info(
+                    f"✅ 成功从历史数据导入 {len(quotes_map)} 条收盘数据到 market_quotes"
+                )
             else:
                 logger.warning("⚠️ 历史数据转换后为空，无法导入")
 
@@ -573,7 +597,10 @@ class QuotesIngestionService:
                 logger.warning("backfill: 未获取到行情数据，跳过")
                 return
             try:
-                trade_date = manager.find_latest_trade_date_with_fallback() or datetime.now(self.tz).strftime("%Y%m%d")
+                trade_date = (
+                    manager.find_latest_trade_date_with_fallback()
+                    or datetime.now(self.tz).strftime("%Y%m%d")
+                )
             except Exception:
                 trade_date = datetime.now(self.tz).strftime("%Y%m%d")
             await self._bulk_upsert(quotes_map, trade_date, source)
@@ -603,7 +630,9 @@ class QuotesIngestionService:
         except Exception as e:
             logger.warning(f"backfill 触发检查失败（忽略）: {e}")
 
-    def _fetch_quotes_from_source(self, source_type: str, akshare_api: Optional[str] = None) -> Tuple[Optional[Dict], Optional[str]]:
+    def _fetch_quotes_from_source(
+        self, source_type: str, akshare_api: Optional[str] = None
+    ) -> Tuple[Optional[Dict], Optional[str]]:
         """
         从指定数据源获取行情
 
@@ -680,7 +709,10 @@ class QuotesIngestionService:
 
         try:
             # 首次运行：检测 Tushare 权限
-            if settings.QUOTES_AUTO_DETECT_TUSHARE_PERMISSION and not self._tushare_permission_checked:
+            if (
+                settings.QUOTES_AUTO_DETECT_TUSHARE_PERMISSION
+                and not self._tushare_permission_checked
+            ):
                 logger.info("🔍 首次运行，检测 Tushare rt_k 接口权限...")
                 has_premium = self._check_tushare_permission()
 
@@ -698,31 +730,42 @@ class QuotesIngestionService:
             source_type, akshare_api = self._get_next_source()
 
             # 尝试获取行情
-            quotes_map, source_name = self._fetch_quotes_from_source(source_type, akshare_api)
+            quotes_map, source_name = self._fetch_quotes_from_source(
+                source_type, akshare_api
+            )
 
             if not quotes_map:
-                logger.warning(f"⚠️ {source_name or source_type} 未获取到行情数据，尝试统一数据源兜底")
+                logger.warning(
+                    f"⚠️ {source_name or source_type} 未获取到行情数据，尝试统一数据源兜底"
+                )
                 try:
                     manager = DataSourceManager()
-                    quotes_map, source_name = manager.get_realtime_quotes_with_fallback()
+                    quotes_map, source_name = (
+                        manager.get_realtime_quotes_with_fallback()
+                    )
                 except Exception as fallback_error:
                     logger.warning(f"⚠️ 统一数据源兜底失败: {fallback_error}")
 
             if not quotes_map:
-                logger.warning(f"⚠️ {source_name or source_type} 未获取到行情数据，跳过本次入库")
+                logger.warning(
+                    f"⚠️ {source_name or source_type} 未获取到行情数据，跳过本次入库"
+                )
                 # 记录失败状态
                 await self._record_sync_status(
                     success=False,
                     source=source_name or source_type,
                     records_count=0,
-                    error_msg="未获取到行情数据"
+                    error_msg="未获取到行情数据",
                 )
                 return
 
             # 获取交易日
             try:
                 manager = DataSourceManager()
-                trade_date = manager.find_latest_trade_date_with_fallback() or datetime.now(self.tz).strftime("%Y%m%d")
+                trade_date = (
+                    manager.find_latest_trade_date_with_fallback()
+                    or datetime.now(self.tz).strftime("%Y%m%d")
+                )
             except Exception:
                 trade_date = datetime.now(self.tz).strftime("%Y%m%d")
 
@@ -734,15 +777,12 @@ class QuotesIngestionService:
                 success=True,
                 source=source_name,
                 records_count=len(quotes_map),
-                error_msg=None
+                error_msg=None,
             )
 
         except Exception as e:
             logger.error(f"❌ 行情入库失败: {e}")
             # 记录失败状态
             await self._record_sync_status(
-                success=False,
-                source=None,
-                records_count=0,
-                error_msg=str(e)
+                success=False, source=None, records_count=0, error_msg=str(e)
             )

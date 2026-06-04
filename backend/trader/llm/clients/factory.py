@@ -4,7 +4,6 @@ from typing import Optional
 from .base import BaseLLMClient
 from .providers import normalize_provider_key
 
-
 _PROVIDER_ALIASES = {
     "dashscope": "qwen",
     "alibaba": "qwen",
@@ -42,21 +41,29 @@ def create_llm_client(
 
     if provider_lower in _OPENAI_COMPATIBLE:
         if provider_lower == "azure":
-            AzureOpenAIClient = getattr(importlib.import_module('trader.llm.clients.azure'), 'AzureOpenAIClient')
+            AzureOpenAIClient = getattr(
+                importlib.import_module("trader.llm.clients.azure"), "AzureOpenAIClient"
+            )
 
             return AzureOpenAIClient(model, base_url, **kwargs)
 
-        OpenAIClient = getattr(importlib.import_module('trader.llm.clients.openai'), 'OpenAIClient')
+        OpenAIClient = getattr(
+            importlib.import_module("trader.llm.clients.openai"), "OpenAIClient"
+        )
 
         return OpenAIClient(model, base_url, provider=provider_lower, **kwargs)
 
     if provider_lower == "google":
-        GoogleClient = getattr(importlib.import_module('trader.llm.clients.google'), 'GoogleClient')
+        GoogleClient = getattr(
+            importlib.import_module("trader.llm.clients.google"), "GoogleClient"
+        )
 
         return GoogleClient(model, base_url, **kwargs)
 
     if provider_lower == "anthropic":
-        AnthropicClient = getattr(importlib.import_module('trader.llm.clients.anthropic'), 'AnthropicClient')
+        AnthropicClient = getattr(
+            importlib.import_module("trader.llm.clients.anthropic"), "AnthropicClient"
+        )
 
         return AnthropicClient(model, base_url, **kwargs)
 

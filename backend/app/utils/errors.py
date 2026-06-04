@@ -4,13 +4,13 @@
 将技术性错误转换为用户友好的错误提示，明确指出问题所在（数据源、大模型、配置等）
 """
 
-import re
-from typing import Dict, Optional, Tuple
 from enum import Enum
+from typing import Dict, Optional, Tuple
 
 
 class ErrorCategory(str, Enum):
     """错误类别"""
+
     LLM_API_KEY = "llm_api_key"  # 大模型 API Key 错误
     LLM_NETWORK = "llm_network"  # 大模型网络错误
     LLM_QUOTA = "llm_quota"  # 大模型配额/限流错误
@@ -53,11 +53,13 @@ class ErrorFormatter:
         "akshare": "AKShare",
         "baostock": "BaoStock",
         "finnhub": "Finnhub",
-        "mongodb": "MongoDB缓存",
+        "postgres": "PostgreSQL缓存",
     }
 
     @classmethod
-    def format_error(cls, error_message: str, context: Optional[Dict] = None) -> Dict[str, str]:
+    def format_error(
+        cls, error_message: str, context: Optional[Dict] = None
+    ) -> Dict[str, str]:
         """
         格式化错误信息
 
@@ -80,10 +82,14 @@ class ErrorFormatter:
         category, provider_or_source = cls._categorize_error(error_message, context)
 
         # 生成友好提示
-        return cls._generate_friendly_message(category, provider_or_source, error_message, context)
+        return cls._generate_friendly_message(
+            category, provider_or_source, error_message, context
+        )
 
     @classmethod
-    def _categorize_error(cls, error_message: str, context: Dict) -> Tuple[ErrorCategory, Optional[str]]:
+    def _categorize_error(
+        cls, error_message: str, context: Dict
+    ) -> Tuple[ErrorCategory, Optional[str]]:
         """
         分类错误
 
@@ -93,85 +99,159 @@ class ErrorFormatter:
         error_lower = error_message.lower()
 
         # 1. 检查是否是 LLM 相关错误
-        llm_provider = context.get("llm_provider") or cls._extract_llm_provider(error_message)
+        llm_provider = context.get("llm_provider") or cls._extract_llm_provider(
+            error_message
+        )
 
-        if llm_provider or any(keyword in error_lower for keyword in [
-            "api key", "api_key", "apikey", "invalid_api_key", "authentication",
-            "unauthorized", "401", "403", "gemini", "openai", "dashscope", "qianfan", "qwen", "zhipu", "glm"
-        ]):
+        if llm_provider or any(
+            keyword in error_lower
+            for keyword in [
+                "api key",
+                "api_key",
+                "apikey",
+                "invalid_api_key",
+                "authentication",
+                "unauthorized",
+                "401",
+                "403",
+                "gemini",
+                "openai",
+                "dashscope",
+                "qianfan",
+                "qwen",
+                "zhipu",
+                "glm",
+            ]
+        ):
             # LLM API Key 错误
-            if any(keyword in error_lower for keyword in [
-                "api key", "api_key", "apikey", "invalid", "authentication",
-                "unauthorized", "401", "invalid_api_key", "api key not valid"
-            ]):
+            if any(
+                keyword in error_lower
+                for keyword in [
+                    "api key",
+                    "api_key",
+                    "apikey",
+                    "invalid",
+                    "authentication",
+                    "unauthorized",
+                    "401",
+                    "invalid_api_key",
+                    "api key not valid",
+                ]
+            ):
                 return ErrorCategory.LLM_API_KEY, llm_provider
 
             # LLM 配额/限流错误
-            if any(keyword in error_lower for keyword in [
-                "quota", "rate limit", "too many requests", "429", "resource exhausted",
-                "insufficient_quota", "billing"
-            ]):
+            if any(
+                keyword in error_lower
+                for keyword in [
+                    "quota",
+                    "rate limit",
+                    "too many requests",
+                    "429",
+                    "resource exhausted",
+                    "insufficient_quota",
+                    "billing",
+                ]
+            ):
                 return ErrorCategory.LLM_QUOTA, llm_provider
 
             # LLM 内容审核失败
-            if any(keyword in error_lower for keyword in [
-                "data_inspection_failed", "inappropriate content", "content filter",
-                "内容审核", "敏感内容", "违规内容", "content policy"
-            ]):
+            if any(
+                keyword in error_lower
+                for keyword in [
+                    "data_inspection_failed",
+                    "inappropriate content",
+                    "content filter",
+                    "内容审核",
+                    "敏感内容",
+                    "违规内容",
+                    "content policy",
+                ]
+            ):
                 return ErrorCategory.LLM_CONTENT_FILTER, llm_provider
 
             # LLM 网络错误
-            if any(keyword in error_lower for keyword in [
-                "connection", "network", "timeout", "unreachable", "dns", "ssl"
-            ]):
+            if any(
+                keyword in error_lower
+                for keyword in [
+                    "connection",
+                    "network",
+                    "timeout",
+                    "unreachable",
+                    "dns",
+                    "ssl",
+                ]
+            ):
                 return ErrorCategory.LLM_NETWORK, llm_provider
 
             # LLM 其他错误
             return ErrorCategory.LLM_OTHER, llm_provider
 
         # 2. 检查是否是数据源相关错误
-        data_source = context.get("data_source") or cls._extract_data_source(error_message)
+        data_source = context.get("data_source") or cls._extract_data_source(
+            error_message
+        )
 
-        if data_source or any(keyword in error_lower for keyword in [
-            "tushare", "akshare", "baostock", "finnhub", "数据源", "data source"
-        ]):
+        if data_source or any(
+            keyword in error_lower
+            for keyword in [
+                "tushare",
+                "akshare",
+                "baostock",
+                "finnhub",
+                "数据源",
+                "data source",
+            ]
+        ):
             # 数据源 API Key 错误
-            if any(keyword in error_lower for keyword in [
-                "token", "api key", "authentication", "unauthorized"
-            ]):
+            if any(
+                keyword in error_lower
+                for keyword in ["token", "api key", "authentication", "unauthorized"]
+            ):
                 return ErrorCategory.DATA_SOURCE_API_KEY, data_source
 
             # 数据源找不到数据
-            if any(keyword in error_lower for keyword in [
-                "not found", "no data", "empty", "无数据", "未找到"
-            ]):
+            if any(
+                keyword in error_lower
+                for keyword in ["not found", "no data", "empty", "无数据", "未找到"]
+            ):
                 return ErrorCategory.DATA_SOURCE_NOT_FOUND, data_source
 
             # 数据源网络错误
-            if any(keyword in error_lower for keyword in [
-                "connection", "network", "timeout"
-            ]):
+            if any(
+                keyword in error_lower
+                for keyword in ["connection", "network", "timeout"]
+            ):
                 return ErrorCategory.DATA_SOURCE_NETWORK, data_source
 
             # 数据源其他错误
             return ErrorCategory.DATA_SOURCE_OTHER, data_source
 
         # 3. 检查是否是股票代码错误
-        if any(keyword in error_lower for keyword in [
-            "股票代码", "stock code", "symbol", "invalid code", "代码无效"
-        ]):
+        if any(
+            keyword in error_lower
+            for keyword in [
+                "股票代码",
+                "stock code",
+                "symbol",
+                "invalid code",
+                "代码无效",
+            ]
+        ):
             return ErrorCategory.STOCK_CODE_INVALID, None
 
         # 4. 检查是否是网络错误
-        if any(keyword in error_lower for keyword in [
-            "connection", "network", "timeout", "unreachable", "dns"
-        ]):
+        if any(
+            keyword in error_lower
+            for keyword in ["connection", "network", "timeout", "unreachable", "dns"]
+        ):
             return ErrorCategory.NETWORK, None
 
         # 5. 系统错误
-        if any(keyword in error_lower for keyword in [
-            "internal error", "server error", "500", "系统错误"
-        ]):
+        if any(
+            keyword in error_lower
+            for keyword in ["internal error", "server error", "500", "系统错误"]
+        ):
             return ErrorCategory.SYSTEM, None
 
         # 6. 未知错误
@@ -201,16 +281,18 @@ class ErrorFormatter:
         category: ErrorCategory,
         provider_or_source: Optional[str],
         original_error: str,
-        context: Dict
+        context: Dict,
     ) -> Dict[str, str]:
         """生成用户友好的错误信息"""
 
         # 获取友好的厂商/数据源名称
         friendly_name = None
         if provider_or_source:
-            friendly_name = cls.LLM_PROVIDERS.get(provider_or_source) or \
-                           cls.DATA_SOURCES.get(provider_or_source) or \
-                           provider_or_source
+            friendly_name = (
+                cls.LLM_PROVIDERS.get(provider_or_source)
+                or cls.DATA_SOURCES.get(provider_or_source)
+                or provider_or_source
+            )
 
         # 根据类别生成消息
         if category == ErrorCategory.LLM_API_KEY:
@@ -225,7 +307,7 @@ class ErrorFormatter:
                     "3. 尝试重新生成 API Key 并更新配置\n"
                     "4. 或者切换到其他可用的大模型"
                 ),
-                "technical_detail": original_error
+                "technical_detail": original_error,
             }
 
         elif category == ErrorCategory.LLM_QUOTA:
@@ -240,7 +322,7 @@ class ErrorFormatter:
                     "3. 升级账户套餐以获取更多配额\n"
                     "4. 切换到其他可用的大模型"
                 ),
-                "technical_detail": original_error
+                "technical_detail": original_error,
             }
 
         elif category == ErrorCategory.LLM_CONTENT_FILTER:
@@ -257,7 +339,7 @@ class ErrorFormatter:
                     "\n"
                     "💡 提示：不同大模型的内容审核策略不同，切换模型通常可以解决此问题。"
                 ),
-                "technical_detail": original_error
+                "technical_detail": original_error,
             }
 
         elif category == ErrorCategory.LLM_NETWORK:
@@ -272,7 +354,7 @@ class ErrorFormatter:
                     "3. 检查防火墙或代理设置\n"
                     "4. 稍后重试或切换到其他大模型"
                 ),
-                "technical_detail": original_error
+                "technical_detail": original_error,
             }
 
         elif category == ErrorCategory.LLM_OTHER:
@@ -287,7 +369,7 @@ class ErrorFormatter:
                     "3. 尝试切换到其他大模型\n"
                     "4. 如问题持续，请联系技术支持"
                 ),
-                "technical_detail": original_error
+                "technical_detail": original_error,
             }
 
         elif category == ErrorCategory.DATA_SOURCE_API_KEY:
@@ -302,7 +384,7 @@ class ErrorFormatter:
                     "3. 检查账户是否已激活\n"
                     "4. 系统会自动尝试使用备用数据源"
                 ),
-                "technical_detail": original_error
+                "technical_detail": original_error,
             }
 
         elif category == ErrorCategory.DATA_SOURCE_NOT_FOUND:
@@ -317,7 +399,7 @@ class ErrorFormatter:
                     "3. 系统会自动尝试使用其他数据源\n"
                     "4. 如果是新股，可能需要等待数据更新"
                 ),
-                "technical_detail": original_error
+                "technical_detail": original_error,
             }
 
         elif category == ErrorCategory.DATA_SOURCE_NETWORK:
@@ -332,7 +414,7 @@ class ErrorFormatter:
                     "3. 系统会自动尝试使用备用数据源\n"
                     "4. 稍后重试"
                 ),
-                "technical_detail": original_error
+                "technical_detail": original_error,
             }
 
         elif category == ErrorCategory.DATA_SOURCE_OTHER:
@@ -347,7 +429,7 @@ class ErrorFormatter:
                     "3. 稍后重试\n"
                     "4. 如问题持续，请联系技术支持"
                 ),
-                "technical_detail": original_error
+                "technical_detail": original_error,
             }
 
         elif category == ErrorCategory.STOCK_CODE_INVALID:
@@ -362,7 +444,7 @@ class ErrorFormatter:
                     "3. 美股代码格式：股票代码（如 AAPL、TSLA）\n"
                     "4. 确认股票是否已上市"
                 ),
-                "technical_detail": original_error
+                "technical_detail": original_error,
             }
 
         elif category == ErrorCategory.NETWORK:
@@ -377,7 +459,7 @@ class ErrorFormatter:
                     "3. 防火墙或代理设置\n"
                     "4. 稍后重试"
                 ),
-                "technical_detail": original_error
+                "technical_detail": original_error,
             }
 
         elif category == ErrorCategory.SYSTEM:
@@ -391,7 +473,7 @@ class ErrorFormatter:
                     "2. 如问题持续，请联系技术支持\n"
                     "3. 提供技术细节以便排查问题"
                 ),
-                "technical_detail": original_error
+                "technical_detail": original_error,
             }
 
         else:  # UNKNOWN
@@ -406,5 +488,5 @@ class ErrorFormatter:
                     "3. 稍后重试\n"
                     "4. 如问题持续，请联系技术支持"
                 ),
-                "technical_detail": original_error
+                "technical_detail": original_error,
             }

@@ -2936,18 +2936,18 @@ onMounted(async () => {
 }
 
 .main-progress-bar {
-  :deep(.el-progress-bar__outer) {
+  .el-progress-bar__outer {
     background-color: var(--el-fill-color);
     border-radius: 8px;
   }
 
-  :deep(.el-progress-bar__inner) {
+  .el-progress-bar__inner {
     background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
     border-radius: 8px;
     transition: width 0.6s ease;
   }
 
-  :deep(.el-progress__text) {
+  .el-progress__text {
     font-weight: 600;
     color: var(--el-text-color-primary);
   }
@@ -3029,7 +3029,7 @@ onMounted(async () => {
   animation: fadeInDown 0.5s ease-out;
 }
 
-.risk-disclaimer :deep(.el-alert) {
+.risk-disclaimer .el-alert {
   background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
   border: 2px solid #ffc107;
   border-radius: 12px;
@@ -3037,7 +3037,7 @@ onMounted(async () => {
   box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
 }
 
-.risk-disclaimer :deep(.el-alert__icon) {
+.risk-disclaimer .el-alert__icon {
   font-size: 24px;
   color: #ff6b00;
 }
@@ -3199,7 +3199,7 @@ onMounted(async () => {
 
 .analysis-tabs {
   /* 标签页头部样式 */
-  :deep(.el-tabs__header) {
+  .el-tabs__header {
     margin: 0 0 20px 0;
     background: var(--el-fill-color-light);
     padding: 12px;
@@ -3209,14 +3209,14 @@ onMounted(async () => {
   }
 
   /* 标签页导航 */
-  :deep(.el-tabs__nav-wrap) {
+  .el-tabs__nav-wrap {
     &::after {
       display: none; /* 隐藏默认的底部边框 */
     }
   }
 
   /* 单个标签页样式 */
-  :deep(.el-tabs__item) {
+  .el-tabs__item {
     height: 55px !important;
     line-height: 55px !important;
     padding: 0 20px !important;
@@ -3262,11 +3262,11 @@ onMounted(async () => {
   }
 
   /* 标签页内容区域 */
-  :deep(.el-tabs__content) {
+  .el-tabs__content {
     padding: 0;
   }
 
-  :deep(.el-tab-pane) {
+  .el-tab-pane {
     padding: 25px;
     background: var(--el-bg-color);
     border-radius: 15px;
@@ -3394,11 +3394,11 @@ onMounted(async () => {
   margin-top: 24px;
   border-radius: 8px;
 
-  :deep(.el-alert__content) {
+  .el-alert__content {
     width: 100%;
   }
 
-  :deep(.el-alert__title) {
+  .el-alert__title {
     font-size: 14px;
     line-height: 1.6;
     color: #e6a23c;

@@ -31,7 +31,7 @@ def test_openapi_generation_does_not_initialize_runtime_config_storage():
     )
 
     assert result.returncode == 0, result.stderr
-    assert "MongoDB数据库未初始化" not in result.stdout + result.stderr
+    assert "PostgreSQL数据库未初始化" not in result.stdout + result.stderr
     assert "command find requires authentication" not in result.stdout + result.stderr
 
     summary = json.loads(result.stdout.strip())

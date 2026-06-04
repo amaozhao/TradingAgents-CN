@@ -2,7 +2,6 @@ from pathlib import Path
 
 from scripts.postgres.migration.inventory.script import scan_backend
 
-
 STRICT_RESPONSE_MODEL_MODULES = {
     "app/routers/akshare_init.py",
     "app/routers/analysis.py",

@@ -247,7 +247,7 @@ if __name__ == "__main__":
    - 检查页面是否可以访问
 
 3. **数据库**
-   - 检查 MongoDB 中是否有 `usage_records` 集合
+   - 检查 PostgreSQL 中是否有 `usage_records` 集合
    - 检查数据是否正确存储
 
 4. **浏览器控制台**
@@ -290,7 +290,7 @@ if __name__ == "__main__":
 **解决**:
 1. 重新保存定价配置
 2. 刷新页面
-3. 检查 MongoDB 中的数据
+3. 检查 PostgreSQL 中的数据
 
 ## 📝 测试报告模板
 

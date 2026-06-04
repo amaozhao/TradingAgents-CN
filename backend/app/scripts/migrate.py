@@ -5,9 +5,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set
 
-from pymongo import MongoClient
-
 from app.core.config import settings
+from app.db.documentstore import create_sync_client
 
 DEFAULT_EXCLUDED_COLLECTIONS = {
     "analysis_tasks",
@@ -87,7 +86,11 @@ def _copy_collection(
 
     src_count = src.count_documents(query)
     source_count_used = min(src_count, limit) if limit > 0 else src_count
-    tgt_count_before = tgt.estimated_document_count() if name in target_db.list_collection_names() else 0
+    tgt_count_before = (
+        tgt.estimated_document_count()
+        if name in target_db.list_collection_names()
+        else 0
+    )
 
     if dry_run:
         return {
@@ -154,19 +157,43 @@ def _write_summary_json(path: str, summary: Dict[str, object]) -> None:
 
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
-    parser = argparse.ArgumentParser(prog="migrate_mongo_db")
-    parser.add_argument("--mongo-uri", default=os.getenv("MONGO_URI") or settings.mongo_uri)
-    parser.add_argument("--source-db", default=os.getenv("MONGO_SOURCE_DB") or "trading_agents")
-    parser.add_argument("--target-db", default=os.getenv("MONGO_TARGET_DB") or settings.mongo_db)
-    parser.add_argument("--include", default="", help="Comma-separated collection names to include")
-    parser.add_argument("--exclude", default="", help="Comma-separated collection names to exclude")
-    parser.add_argument("--since", default="", help="Incremental migration lower bound, ISO-8601 format")
-    parser.add_argument("--show-default-excludes", action="store_true", help="Print default excluded large/cache collections and exit")
+    parser = argparse.ArgumentParser(prog="migrate_postgres_db")
+    parser.add_argument(
+        "--document-store",
+        default=os.getenv("POSTGRES_DOCUMENT_STORE") or settings.POSTGRES_DB,
+    )
+    parser.add_argument(
+        "--source-db", default=os.getenv("POSTGRES_SOURCE_DB") or settings.POSTGRES_DB
+    )
+    parser.add_argument(
+        "--target-db", default=os.getenv("POSTGRES_TARGET_DB") or settings.POSTGRES_DB
+    )
+    parser.add_argument(
+        "--include", default="", help="Comma-separated collection names to include"
+    )
+    parser.add_argument(
+        "--exclude", default="", help="Comma-separated collection names to exclude"
+    )
+    parser.add_argument(
+        "--since", default="", help="Incremental migration lower bound, ISO-8601 format"
+    )
+    parser.add_argument(
+        "--show-default-excludes",
+        action="store_true",
+        help="Print default excluded large/cache collections and exit",
+    )
     parser.add_argument("--drop-target", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--batch-size", type=int, default=500)
-    parser.add_argument("--limit", type=int, default=0, help="Per-collection document limit for small-sample validation")
-    parser.add_argument("--summary-json", default="", help="Write migration summary JSON to file")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=0,
+        help="Per-collection document limit for small-sample validation",
+    )
+    parser.add_argument(
+        "--summary-json", default="", help="Write migration summary JSON to file"
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     if args.show_default_excludes:
@@ -179,7 +206,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     if include is None:
         exclude |= DEFAULT_EXCLUDED_COLLECTIONS
 
-    client = MongoClient(args.mongo_uri)
+    client = create_sync_client()
     try:
         source_db = client[args.source_db]
         target_db = client[args.target_db]

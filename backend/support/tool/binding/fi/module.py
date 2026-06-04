@@ -2,11 +2,14 @@
 """
 测试统一新闻工具的LangChain绑定修复
 """
+
 import importlib
+
+from langchain_core.utils.function_calling import convert_to_openai_tool
 
 from trader.agents.utils.utils import Toolkit
 from trader.tools.news import create_unified_news_tool
-from langchain_core.utils.function_calling import convert_to_openai_tool
+
 
 def test_tool_binding():
     """测试工具绑定是否修复"""
@@ -24,15 +27,15 @@ def test_tool_binding():
         openai_tool = convert_to_openai_tool(unified_tool)
         print("✅ LangChain工具转换成功")
 
-        func_info = openai_tool['function']
+        func_info = openai_tool["function"]
         print(f"工具名称: {func_info['name']}")
         print(f"工具描述: {func_info['description'][:100]}...")
 
-        params = list(func_info['parameters']['properties'].keys())
+        params = list(func_info["parameters"]["properties"].keys())
         print(f"参数: {params}")
 
         # 检查参数是否正确
-        expected_params = ['stock_code', 'max_news']
+        expected_params = ["stock_code", "max_news"]
         if set(params) == set(expected_params):
             print("✅ 参数匹配正确")
         else:
@@ -40,19 +43,19 @@ def test_tool_binding():
 
     except Exception as e:
         print(f"❌ LangChain工具转换失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
     # 测试工具调用
     print("\n2. 测试工具调用...")
     try:
-        result = unified_tool('000001', 5)
+        result = unified_tool("000001", 5)
         print(f"✅ 工具调用成功，结果长度: {len(result)} 字符")
         print(f"结果预览: {result[:200]}...")
     except Exception as e:
         print(f"❌ 工具调用失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -62,6 +65,7 @@ def test_tool_binding():
     print("✅ 工具可以正常绑定到LLM")
 
     return True
+
 
 if __name__ == "__main__":
     test_tool_binding()

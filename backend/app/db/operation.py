@@ -20,7 +20,9 @@ def build_operation_log_select(query, *, offset: int, limit: int) -> Select:
 
 
 def build_operation_log_count(query) -> Select:
-    return select(func.count()).select_from(OperationLogDocument).where(*_filters(query))
+    return (
+        select(func.count()).select_from(OperationLogDocument).where(*_filters(query))
+    )
 
 
 def build_operation_log_totals_select(days: int) -> Select:
@@ -71,14 +73,18 @@ async def get_operation_log_stats(session, days: int) -> OperationLogStats:
     failed_logs = total_logs - success_logs
     success_rate = (success_logs / total_logs * 100) if total_logs > 0 else 0
 
-    action_rows = await session.execute(build_operation_log_action_distribution_select(days))
+    action_rows = await session.execute(
+        build_operation_log_action_distribution_select(days)
+    )
     action_type_distribution = {
         str(action_type): int(count)
         for action_type, count in action_rows
         if action_type is not None
     }
 
-    hourly_rows = await session.execute(build_operation_log_hourly_distribution_select(days))
+    hourly_rows = await session.execute(
+        build_operation_log_hourly_distribution_select(days)
+    )
     hourly_data = {hour: 0 for hour in range(24)}
     for hour, count in hourly_rows:
         if hour is not None:
@@ -101,9 +107,13 @@ def _filters(query) -> list[Any]:
     filters: list[Any] = [OperationLogDocument.deleted.is_(False)]
 
     if query.start_date:
-        filters.append(OperationLogDocument.timestamp >= _parse_datetime(query.start_date))
+        filters.append(
+            OperationLogDocument.timestamp >= _parse_datetime(query.start_date)
+        )
     if query.end_date:
-        filters.append(OperationLogDocument.timestamp <= _parse_datetime(query.end_date))
+        filters.append(
+            OperationLogDocument.timestamp <= _parse_datetime(query.end_date)
+        )
     if query.action_type:
         filters.append(OperationLogDocument.action_type == query.action_type)
     if query.success is not None:
@@ -116,7 +126,9 @@ def _filters(query) -> list[Any]:
             or_(
                 OperationLogDocument.username.ilike(keyword),
                 OperationLogDocument.payload["action"].astext.ilike(keyword),
-                OperationLogDocument.payload["details"]["stock_symbol"].astext.ilike(keyword),
+                OperationLogDocument.payload["details"]["stock_symbol"].astext.ilike(
+                    keyword
+                ),
             )
         )
 
@@ -133,8 +145,12 @@ def _stats_filters(days: int) -> list[Any]:
 
 def _operation_log_to_dict(row: OperationLogDocument) -> dict[str, Any]:
     payload = row.payload or {}
-    created_at = payload.get("created_at") or (row.created_at.isoformat() if row.created_at else None)
-    timestamp = payload.get("timestamp") or (row.timestamp.isoformat() if row.timestamp else created_at)
+    created_at = payload.get("created_at") or (
+        row.created_at.isoformat() if row.created_at else None
+    )
+    timestamp = payload.get("timestamp") or (
+        row.timestamp.isoformat() if row.timestamp else created_at
+    )
     data = {
         **payload,
         "id": str(payload.get("_id") or row.legacy_id),

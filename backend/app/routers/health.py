@@ -1,7 +1,7 @@
-from fastapi import APIRouter
 import time
 from pathlib import Path
 
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -31,10 +31,13 @@ class ReadyzResponse(BaseModel):
 def get_version() -> str:
     """从 VERSION 文件读取版本号"""
     try:
-        for root in (Path(__file__).resolve().parents[3], Path(__file__).resolve().parents[2]):
+        for root in (
+            Path(__file__).resolve().parents[3],
+            Path(__file__).resolve().parents[2],
+        ):
             version_file = root / "VERSION"
             if version_file.exists():
-                return version_file.read_text(encoding='utf-8').strip()
+                return version_file.read_text(encoding="utf-8").strip()
     except Exception:
         pass
     return "0.1.16"  # 默认版本号
@@ -49,15 +52,17 @@ async def health():
             "status": "ok",
             "version": get_version(),
             "timestamp": int(time.time()),
-            "service": "TradingAgents-CN API"
+            "service": "TradingAgents-CN API",
         },
-        "message": "服务运行正常"
+        "message": "服务运行正常",
     }
+
 
 @router.get("/healthz", response_model=HealthzResponse)
 async def healthz():
     """Kubernetes健康检查"""
     return {"status": "ok"}
+
 
 @router.get("/readyz", response_model=ReadyzResponse)
 async def readyz():

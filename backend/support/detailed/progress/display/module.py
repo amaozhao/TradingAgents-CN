@@ -3,15 +3,11 @@
 测试详细进度显示效果
 验证用户在每个阶段都能看到系统在工作
 """
-import importlib
 
-import os
+import importlib
 import sys
 import time
 
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_complete_analysis_flow():
     """测试完整的分析流程进度显示"""
@@ -19,7 +15,9 @@ def test_complete_analysis_flow():
     print("=" * 80)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
 
         ui = CLIUserInterface()
         completed_analysts = set()
@@ -119,9 +117,10 @@ def test_complete_analysis_flow():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_problem_solving_effect():
     """测试问题解决效果"""
@@ -129,7 +128,9 @@ def test_problem_solving_effect():
     print("=" * 80)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
 
         ui = CLIUserInterface()
 
@@ -171,15 +172,18 @@ def test_problem_solving_effect():
         print(f"❌ 测试失败: {e}")
         return False
 
+
 def test_analysis_stages():
     """测试分析阶段划分"""
     print("\n📈 测试分析阶段划分")
     print("=" * 80)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
 
-        ui = CLIUserInterface()
+        CLIUserInterface()
 
         print("📊 TradingAgents完整分析流程:")
         print("-" * 50)
@@ -187,29 +191,44 @@ def test_analysis_stages():
         stages = [
             {
                 "name": "基础分析阶段",
-                "analysts": ["📈 市场分析师", "📊 基本面分析师", "🔍 技术分析师", "💭 情感分析师"],
-                "description": "获取和分析基础数据"
+                "analysts": [
+                    "📈 市场分析师",
+                    "📊 基本面分析师",
+                    "🔍 技术分析师",
+                    "💭 情感分析师",
+                ],
+                "description": "获取和分析基础数据",
             },
             {
                 "name": "研究团队阶段",
-                "analysts": ["🐂 Bull研究员", "🐻 Bear研究员", "⚖️ Neutral研究员", "👨‍💼 研究经理"],
-                "description": "多角度深度研究和辩论"
+                "analysts": [
+                    "🐂 Bull研究员",
+                    "🐻 Bear研究员",
+                    "⚖️ Neutral研究员",
+                    "👨‍💼 研究经理",
+                ],
+                "description": "多角度深度研究和辩论",
             },
             {
                 "name": "交易团队阶段",
                 "analysts": ["💼 交易员"],
-                "description": "制定具体投资计划"
+                "description": "制定具体投资计划",
             },
             {
                 "name": "风险管理阶段",
-                "analysts": ["⚠️ 风险分析师", "🛡️ 安全分析师", "⚖️ 中性分析师", "📊 投资组合经理"],
-                "description": "评估和管理投资风险"
+                "analysts": [
+                    "⚠️ 风险分析师",
+                    "🛡️ 安全分析师",
+                    "⚖️ 中性分析师",
+                    "📊 投资组合经理",
+                ],
+                "description": "评估和管理投资风险",
             },
             {
                 "name": "决策生成阶段",
                 "analysts": ["🤖 信号处理器"],
-                "description": "生成最终投资决策"
-            }
+                "description": "生成最终投资决策",
+            },
         ]
 
         for i, stage in enumerate(stages, 1):
@@ -224,17 +243,18 @@ def test_analysis_stages():
             else:
                 print("   ✅ 清晰的最终决策过程")
 
-        print(f"\n📋 总结:")
+        print("\n📋 总结:")
         print(f"   - 总共 {len(stages)} 个主要阶段")
-        print(f"   - 每个阶段都有明确的进度指示")
-        print(f"   - 用户不会感到系统'卡顿'")
-        print(f"   - 专业的投资分析流程")
+        print("   - 每个阶段都有明确的进度指示")
+        print("   - 用户不会感到系统'卡顿'")
+        print("   - 专业的投资分析流程")
 
         return True
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         return False
+
 
 def main():
     """主测试函数"""
@@ -260,15 +280,11 @@ def main():
     passed = sum(results)
     total = len(results)
 
-    test_names = [
-        "完整分析流程进度显示",
-        "问题解决效果验证",
-        "分析阶段划分测试"
-    ]
+    test_names = ["完整分析流程进度显示", "问题解决效果验证", "分析阶段划分测试"]
 
     for i, (name, result) in enumerate(zip(test_names, results)):
         status = "✅ 通过" if result else "❌ 失败"
-        print(f"{i+1}. {name}: {status}")
+        print(f"{i + 1}. {name}: {status}")
 
     print(f"\n📊 总体结果: {passed}/{total} 测试通过")
 
@@ -295,6 +311,7 @@ def main():
         print("⚠️ 部分测试失败，需要进一步优化")
 
     return passed == total
+
 
 if __name__ == "__main__":
     success = main()

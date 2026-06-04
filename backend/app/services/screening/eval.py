@@ -2,14 +2,18 @@
 Utility functions for screening evaluation and DSL parsing.
 Extracted from ScreeningService to separate concerns while keeping API unchanged.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Optional
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 
 
-def collect_fields_from_conditions(node: Dict[str, Any], allowed_fields: Iterable[str]) -> List[str]:
+def collect_fields_from_conditions(
+    node: Dict[str, Any], allowed_fields: Iterable[str]
+) -> List[str]:
     if not node:
         return []
     if node.get("op") == "group" or "children" in node:
@@ -28,7 +32,9 @@ def collect_fields_from_conditions(node: Dict[str, Any], allowed_fields: Iterabl
     return out
 
 
-def evaluate_fund_conditions(snap: Dict[str, Any], node: Dict[str, Any], fund_fields: Iterable[str]) -> bool:
+def evaluate_fund_conditions(
+    snap: Dict[str, Any], node: Dict[str, Any], fund_fields: Iterable[str]
+) -> bool:
     if not node:
         return True
     # group
@@ -70,7 +76,11 @@ def evaluate_fund_conditions(snap: Dict[str, Any], node: Dict[str, Any], fund_fi
             return float(left) != float(right)
         if op == "between":
             lo_hi = right if isinstance(right, (list, tuple)) else (None, None)
-            lo, hi = lo_hi if isinstance(lo_hi, (list, tuple)) and len(lo_hi) == 2 else (None, None)
+            lo, hi = (
+                lo_hi
+                if isinstance(lo_hi, (list, tuple)) and len(lo_hi) == 2
+                else (None, None)
+            )
             if lo is None or hi is None:
                 return False
             v = float(left)
@@ -94,7 +104,9 @@ def evaluate_conditions(
         children = node.get("children", [])
         if logic not in {"AND", "OR"}:
             logic = "AND"
-        flags = [evaluate_conditions(df, c, allowed_fields, allowed_ops) for c in children]
+        flags = [
+            evaluate_conditions(df, c, allowed_fields, allowed_ops) for c in children
+        ]
         return all(flags) if logic == "AND" else any(flags)
 
     # 叶子：字段比较
@@ -102,7 +114,11 @@ def evaluate_conditions(
     op = node.get("op")
     allowed_field_set = set(allowed_fields)
     allowed_op_set = set(allowed_ops)
-    if not isinstance(field, str) or field not in allowed_field_set or op not in allowed_op_set:
+    if (
+        not isinstance(field, str)
+        or field not in allowed_field_set
+        or op not in allowed_op_set
+    ):
         return False
 
     # 需要最近两行（交叉）
@@ -156,7 +172,11 @@ def evaluate_conditions(
             return float(left) != float(right)
         if op == "between":
             lo_hi = right if isinstance(right, (list, tuple)) else (None, None)
-            lo, hi = lo_hi if isinstance(lo_hi, (list, tuple)) and len(lo_hi) == 2 else (None, None)
+            lo, hi = (
+                lo_hi
+                if isinstance(lo_hi, (list, tuple)) and len(lo_hi) == 2
+                else (None, None)
+            )
             if lo is None or hi is None:
                 return False
             v = float(left)

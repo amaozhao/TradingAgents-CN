@@ -5,7 +5,13 @@
 """
 
 # 模拟数据库返回的数据源优先级（包含脏数据）
-us_priority_from_db = ['Alpha Vantage', 'alpha_vantage', 'Yahoo Finance', 'yahoo_finance', 'Finnhub']
+us_priority_from_db = [
+    "Alpha Vantage",
+    "alpha_vantage",
+    "Yahoo Finance",
+    "yahoo_finance",
+    "Finnhub",
+]
 
 print("=" * 80)
 print("📊 数据库返回的美股数据源优先级（包含脏数据）:")
@@ -15,9 +21,9 @@ for i, source in enumerate(us_priority_from_db, 1):
 
 # 数据源名称映射（只有这些是有效的）
 source_handlers = {
-    'alpha_vantage': 'alpha_vantage',
-    'yahoo_finance': 'yfinance',
-    'finnhub': 'finnhub',
+    "alpha_vantage": "alpha_vantage",
+    "yahoo_finance": "yfinance",
+    "finnhub": "finnhub",
 }
 
 print("\n" + "=" * 80)

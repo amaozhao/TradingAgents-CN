@@ -5,19 +5,22 @@
 - 如果系统已配置全局代理（如 V2Ray 系统代理模式），会自动使用
 - 不需要显式设置 HTTP_PROXY 环境变量
 """
+
 import importlib
-import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import sys
 
 print("🧪 Google AI base_url 参数测试")
 print("=" * 80)
+
 
 def test_google_base_url():
     """测试 Google AI 的 base_url 参数"""
     print()
 
-    ChatGoogleOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatGoogleOpenAI')
+    ChatGoogleOpenAI = getattr(
+        importlib.import_module("trader.llm.adapters"), "ChatGoogleOpenAI"
+    )
 
     # 测试 1: 不提供 base_url（使用默认端点）
     print("\n📊 测试 1: 不提供 base_url（使用默认端点）")
@@ -26,9 +29,9 @@ def test_google_base_url():
     try:
         llm1 = ChatGoogleOpenAI(
             model="gemini-2.5-flash",
-            google_api_key=os.getenv('GOOGLE_API_KEY'),
+            google_api_key=os.getenv("GOOGLE_API_KEY"),
             temperature=0.7,
-            max_tokens=100
+            max_tokens=100,
         )
         print("✅ LLM 创建成功（默认端点）")
         print(f"   模型: {llm1.model}")
@@ -45,15 +48,15 @@ def test_google_base_url():
     try:
         llm2 = ChatGoogleOpenAI(
             model="gemini-2.5-flash",
-            google_api_key=os.getenv('GOOGLE_API_KEY'),
+            google_api_key=os.getenv("GOOGLE_API_KEY"),
             base_url=custom_url_v1beta,
             temperature=0.7,
             max_tokens=100,
-            transport="rest"  # 🔧 使用 REST 传输模式，支持 HTTP 代理
+            transport="rest",  # 🔧 使用 REST 传输模式，支持 HTTP 代理
         )
         print(f"✅ LLM 创建成功（自定义端点: {custom_url_v1beta}）")
         print(f"   模型: {llm2.model}")
-        print(f"   传输模式: REST（支持 HTTP 代理）")
+        print("   传输模式: REST（支持 HTTP 代理）")
     except Exception as e:
         print(f"❌ LLM 创建失败: {e}")
         return False
@@ -67,10 +70,10 @@ def test_google_base_url():
     try:
         llm3 = ChatGoogleOpenAI(
             model="gemini-2.5-flash",
-            google_api_key=os.getenv('GOOGLE_API_KEY'),
+            google_api_key=os.getenv("GOOGLE_API_KEY"),
             base_url=custom_url_v1,
             temperature=0.7,
-            max_tokens=100
+            max_tokens=100,
         )
         print(f"✅ LLM 创建成功（自定义端点: {custom_url_v1}）")
         print(f"   模型: {llm3.model}")
@@ -83,7 +86,9 @@ def test_google_base_url():
     print("\n📊 测试 4: 使用 create_llm_by_provider 函数")
     print("-" * 80)
 
-    create_llm_by_provider = getattr(importlib.import_module('trader.graph.trading'), 'create_llm_by_provider')
+    create_llm_by_provider = getattr(
+        importlib.import_module("trader.graph.trading"), "create_llm_by_provider"
+    )
 
     try:
         llm4 = create_llm_by_provider(
@@ -92,9 +97,9 @@ def test_google_base_url():
             backend_url=custom_url_v1,
             temperature=0.7,
             max_tokens=100,
-            timeout=60
+            timeout=60,
         )
-        print(f"✅ LLM 创建成功（通过 create_llm_by_provider）")
+        print("✅ LLM 创建成功（通过 create_llm_by_provider）")
         print(f"   模型: {llm4.model}")
     except Exception as e:
         print(f"❌ LLM 创建失败: {e}")
@@ -116,12 +121,14 @@ def test_google_base_url():
         print(f"   响应长度: {len(response.content)} 字符")
 
         # 检查响应元数据
-        if hasattr(response, 'response_metadata'):
+        if hasattr(response, "response_metadata"):
             metadata = response.response_metadata
             print(f"   模型: {metadata.get('model_name', 'N/A')}")
-            if 'token_usage' in metadata:
-                usage = metadata['token_usage']
-                print(f"   Token使用: 输入={usage.get('prompt_tokens', 0)}, 输出={usage.get('completion_tokens', 0)}, 总计={usage.get('total_tokens', 0)}")
+            if "token_usage" in metadata:
+                usage = metadata["token_usage"]
+                print(
+                    f"   Token使用: 输入={usage.get('prompt_tokens', 0)}, 输出={usage.get('completion_tokens', 0)}, 总计={usage.get('total_tokens', 0)}"
+                )
 
         return True
 

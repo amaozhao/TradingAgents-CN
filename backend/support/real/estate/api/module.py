@@ -4,10 +4,10 @@
 """
 
 import requests
-import json
 
 # 配置
 BASE_URL = "http://localhost:8000"
+
 
 def test_real_estate_screening():
     """测试房地产筛选"""
@@ -16,10 +16,9 @@ def test_real_estate_screening():
 
     # 1. 获取访问令牌
     print("\n1. 获取访问令牌...")
-    auth_response = requests.post(f"{BASE_URL}/api/auth/login", json={
-        "username": "admin",
-        "password": "admin123"
-    })
+    auth_response = requests.post(
+        f"{BASE_URL}/api/auth/login", json={"username": "admin", "password": "admin123"}
+    )
 
     if auth_response.status_code != 200:
         print(f"❌ 登录失败: {auth_response.status_code}")
@@ -42,8 +41,11 @@ def test_real_estate_screening():
         # 查找房地产相关行业
         real_estate_industries = []
         for industry in industries:
-            industry_name = industry['label']
-            if any(keyword in industry_name for keyword in ['房', '地产', '建筑', '装修', '家居']):
+            industry_name = industry["label"]
+            if any(
+                keyword in industry_name
+                for keyword in ["房", "地产", "建筑", "装修", "家居"]
+            ):
                 real_estate_industries.append(industry)
 
         print(f"\n🏠 房地产相关行业 ({len(real_estate_industries)}个):")
@@ -53,12 +55,14 @@ def test_real_estate_screening():
         # 3. 测试不同的房地产相关筛选
         test_industries = []
         if real_estate_industries:
-            test_industries = [ind['label'] for ind in real_estate_industries[:3]]  # 测试前3个
+            test_industries = [
+                ind["label"] for ind in real_estate_industries[:3]
+            ]  # 测试前3个
         else:
             # 如果没找到，尝试一些可能的名称
-            test_industries = ['房地产开发', '建筑装饰', '建筑材料', '家居用品']
+            test_industries = ["房地产开发", "建筑装饰", "建筑材料", "家居用品"]
 
-        print(f"\n3. 测试房地产相关行业筛选...")
+        print("\n3. 测试房地产相关行业筛选...")
         for industry_name in test_industries:
             print(f"\n🔍 测试行业: {industry_name}")
 
@@ -68,15 +72,20 @@ def test_real_estate_screening():
                     "logic": "AND",
                     "children": [
                         {"field": "industry", "op": "in", "value": [industry_name]},
-                        {"field": "market_cap", "op": "between", "value": [1000000, 9007199254740991]}  # 100亿以上
-                    ]
+                        {
+                            "field": "market_cap",
+                            "op": "between",
+                            "value": [1000000, 9007199254740991],
+                        },  # 100亿以上
+                    ],
                 },
                 "order_by": [{"field": "market_cap", "direction": "desc"}],
-                "limit": 10
+                "limit": 10,
             }
 
-            response = requests.post(f"{BASE_URL}/api/screening/run",
-                                   json=screening_request, headers=headers)
+            response = requests.post(
+                f"{BASE_URL}/api/screening/run", json=screening_request, headers=headers
+            )
 
             if response.status_code == 200:
                 result = response.json()
@@ -85,12 +94,14 @@ def test_real_estate_screening():
 
                 print(f"  ✅ 找到 {total} 只股票")
                 if items:
-                    print(f"  📊 前3只股票:")
+                    print("  📊 前3只股票:")
                     for i, stock in enumerate(items[:3]):
-                        market_cap = stock.get('total_mv', 0)
-                        print(f"    {i+1}. {stock.get('code', 'N/A')} - {stock.get('name', 'N/A')} - {market_cap:.2f}亿元")
+                        market_cap = stock.get("total_mv", 0)
+                        print(
+                            f"    {i + 1}. {stock.get('code', 'N/A')} - {stock.get('name', 'N/A')} - {market_cap:.2f}亿元"
+                        )
                 else:
-                    print(f"  ⚠️ 该行业没有100亿以上市值的股票")
+                    print("  ⚠️ 该行业没有100亿以上市值的股票")
             else:
                 print(f"  ❌ 筛选失败: {response.status_code}")
                 print(f"     响应: {response.text}")
@@ -100,6 +111,7 @@ def test_real_estate_screening():
         print(f"❌ 获取行业列表失败: {response.status_code}")
         print(f"   响应内容: {response.text}")
         return False
+
 
 if __name__ == "__main__":
     success = test_real_estate_screening()

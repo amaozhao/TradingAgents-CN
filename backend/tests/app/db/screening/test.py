@@ -1,7 +1,7 @@
 from sqlalchemy.dialects import postgresql
 
-from app.db.stock import build_list_stock_daily_quotes
 from app.db.screening import build_screening_count, build_screening_select
+from app.db.stock import build_list_stock_daily_quotes
 
 
 def test_screening_select_joins_hot_tables_and_filters_split_columns():

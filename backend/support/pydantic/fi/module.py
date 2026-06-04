@@ -4,14 +4,14 @@
 """
 
 try:
-    from app.models.user import PyObjectId, User
-    from bson import ObjectId
+    from app.db.ids import DocumentId
+    from app.models.user import User
 
     print("✅ 导入成功")
 
-    # 测试PyObjectId
-    test_id = ObjectId()
-    print(f"✅ ObjectId创建成功: {test_id}")
+    # 测试PyDocumentId
+    test_id = DocumentId()
+    print(f"✅ DocumentId创建成功: {test_id}")
 
     # 测试User模型
     user_data = {
@@ -19,7 +19,7 @@ try:
         "email": "test@example.com",
         "is_active": True,
         "is_verified": False,
-        "is_admin": False
+        "is_admin": False,
     }
 
     user = User(**user_data)
@@ -30,4 +30,5 @@ try:
 except Exception as e:
     print(f"❌ 错误: {e}")
     import traceback
+
     traceback.print_exc()

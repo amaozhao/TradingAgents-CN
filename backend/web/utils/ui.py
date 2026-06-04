@@ -6,12 +6,14 @@ UI工具函数
 
 import streamlit as st
 
+
 def apply_hide_deploy_button_css():
     """
     应用隐藏Deploy按钮和工具栏的CSS样式
     在所有页面中调用此函数以确保一致的UI体验
     """
-    st.markdown("""
+    st.markdown(
+        """
     <style>
         /* 隐藏Streamlit顶部工具栏和Deploy按钮 - 多种选择器确保兼容性 */
         .stAppToolbar {
@@ -75,7 +77,10 @@ def apply_hide_deploy_button_css():
             padding-top: 0 !important;
         }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
+
 
 def apply_common_styles():
     """
@@ -86,7 +91,8 @@ def apply_common_styles():
     apply_hide_deploy_button_css()
 
     # 其他通用样式
-    st.markdown("""
+    st.markdown(
+        """
     <style>
         /* 应用样式 */
         .main-header {
@@ -138,4 +144,6 @@ def apply_common_styles():
             margin: 1rem 0;
         }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )

@@ -8,13 +8,14 @@ inherit support automatically.
 
 import pytest
 
-from trader.llm.clients import anthropicclient as mod
+from trader.llm.clients import anthropic as mod
 
 
 def _capture_kwargs(monkeypatch):
     captured: dict = {}
     monkeypatch.setattr(
-        mod, "NormalizedChatAnthropic",
+        mod,
+        "NormalizedChatAnthropic",
         lambda **kwargs: captured.setdefault("kwargs", kwargs),
     )
     return captured
@@ -34,8 +35,11 @@ class TestEffortGate:
     @pytest.mark.parametrize(
         "model",
         [
-            "claude-opus-4-5", "claude-opus-4-6", "claude-opus-4-7",
-            "claude-sonnet-4-5", "claude-sonnet-4-6",
+            "claude-opus-4-5",
+            "claude-opus-4-6",
+            "claude-opus-4-7",
+            "claude-sonnet-4-5",
+            "claude-sonnet-4-6",
         ],
     )
     def test_current_opus_and_sonnet_receive_effort(self, monkeypatch, model):

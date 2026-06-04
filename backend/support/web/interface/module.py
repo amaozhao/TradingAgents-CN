@@ -2,19 +2,17 @@
 """
 测试Web界面的Google模型功能
 """
-import importlib
 
+import importlib
 import os
-import sys
-from pathlib import Path
+
 from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
+from support.path import BACKEND_ROOT
 
 # 加载环境变量
-load_dotenv(project_root / ".env", override=True)
+load_dotenv(BACKEND_ROOT / ".env", override=True)
+
 
 def test_web_interface_config():
     """测试Web界面配置功能"""
@@ -24,14 +22,14 @@ def test_web_interface_config():
     try:
         # 测试sidebar配置
         print("📋 测试sidebar配置...")
-        render_sidebar = getattr(importlib.import_module('web.components.sidebar'), 'render_sidebar')
+        getattr(importlib.import_module("web.components.sidebar"), "render_sidebar")
 
         # 模拟Streamlit环境（简化测试）
         print("✅ sidebar模块导入成功")
 
         # 测试analysis_runner配置
         print("📊 测试analysis_runner配置...")
-        run_stock_analysis = getattr(importlib.import_module('web.utils.analysis'), 'run_stock_analysis')
+        getattr(importlib.import_module("web.utils.analysis"), "run_stock_analysis")
 
         print("✅ analysis_runner模块导入成功")
 
@@ -40,17 +38,17 @@ def test_web_interface_config():
 
         # 模拟Google配置
         test_config = {
-            'llm_provider': 'google',
-            'llm_model': 'gemini-2.0-flash',
-            'enable_memory': True,
-            'enable_debug': False,
-            'max_tokens': 4000
+            "llm_provider": "google",
+            "llm_model": "gemini-2.0-flash",
+            "enable_memory": True,
+            "enable_debug": False,
+            "max_tokens": 4000,
         }
 
         print(f"✅ 测试配置创建成功: {test_config}")
 
         # 验证配置参数
-        required_params = ['llm_provider', 'llm_model']
+        required_params = ["llm_provider", "llm_model"]
         for param in required_params:
             if param in test_config:
                 print(f"   ✅ {param}: {test_config[param]}")
@@ -61,9 +59,10 @@ def test_web_interface_config():
 
     except Exception as e:
         print(f"❌ Web界面配置测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         print(traceback.format_exc())
         return False
+
 
 def test_model_options():
     """测试模型选项配置"""
@@ -83,13 +82,14 @@ def test_model_options():
         print(f"   ✅ {model}")
 
     # 验证推荐配置
-    print(f"\n🏆 推荐配置:")
-    print(f"   LLM提供商: Google AI")
-    print(f"   推荐模型: gemini-2.0-flash")
-    print(f"   嵌入服务: 阿里百炼 (自动配置)")
-    print(f"   内存功能: 启用")
+    print("\n🏆 推荐配置:")
+    print("   LLM提供商: Google AI")
+    print("   推荐模型: gemini-2.0-flash")
+    print("   嵌入服务: 阿里百炼 (自动配置)")
+    print("   内存功能: 启用")
 
     return True
+
 
 def test_api_requirements():
     """测试API密钥要求"""
@@ -98,9 +98,9 @@ def test_api_requirements():
 
     # 检查必需的API密钥
     api_keys = {
-        'GOOGLE_API_KEY': 'Google AI API密钥',
-        'DASHSCOPE_API_KEY': '阿里百炼API密钥（用于嵌入）',
-        'FINNHUB_API_KEY': '金融数据API密钥'
+        "GOOGLE_API_KEY": "Google AI API密钥",
+        "DASHSCOPE_API_KEY": "阿里百炼API密钥（用于嵌入）",
+        "FINNHUB_API_KEY": "金融数据API密钥",
     }
 
     all_configured = True
@@ -114,13 +114,14 @@ def test_api_requirements():
             all_configured = False
 
     if all_configured:
-        print(f"\n🎉 所有必需的API密钥都已配置！")
-        print(f"💡 现在可以使用Google AI进行完整的股票分析")
+        print("\n🎉 所有必需的API密钥都已配置！")
+        print("💡 现在可以使用Google AI进行完整的股票分析")
     else:
-        print(f"\n⚠️ 部分API密钥未配置")
-        print(f"💡 请在.env文件中配置缺失的API密钥")
+        print("\n⚠️ 部分API密钥未配置")
+        print("💡 请在.env文件中配置缺失的API密钥")
 
     return all_configured
+
 
 def main():
     """主测试函数"""
@@ -130,12 +131,12 @@ def main():
     # 运行测试
     results = {}
 
-    results['Web界面配置'] = test_web_interface_config()
-    results['模型选项'] = test_model_options()
-    results['API密钥'] = test_api_requirements()
+    results["Web界面配置"] = test_web_interface_config()
+    results["模型选项"] = test_model_options()
+    results["API密钥"] = test_api_requirements()
 
     # 总结结果
-    print(f"\n📊 测试结果总结:")
+    print("\n📊 测试结果总结:")
     print("=" * 50)
 
     for test_name, success in results.items():
@@ -158,6 +159,7 @@ def main():
         print("\n🚀 现在您可以享受Google AI的强大分析能力！")
     else:
         print("⚠️ 部分功能需要进一步配置")
+
 
 if __name__ == "__main__":
     main()

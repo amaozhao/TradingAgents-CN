@@ -1,23 +1,25 @@
 """Adapter helpers for reading TradingAgents-CN app cache collections."""
 
 from __future__ import annotations
-import importlib
 
+import importlib
 from typing import Any
 
 import pandas as pd
 
 
 def get_market_quote_dataframe(symbol: str) -> pd.DataFrame:
-    """Return a single-symbol market quote dataframe from the app Mongo cache."""
+    """Return a single-symbol market quote dataframe from the app PostgreSQL document cache."""
     try:
-        get_database_manager = getattr(importlib.import_module('trader.config.databases'), 'get_database_manager')
+        get_database_manager = getattr(
+            importlib.import_module("trader.config.databases"), "get_database_manager"
+        )
 
         manager = get_database_manager()
-        if not manager.is_mongodb_available():
+        if not manager.is_postgres_available():
             return pd.DataFrame()
 
-        db = manager.get_mongodb_db()
+        db = manager.get_postgres_db()
         if db is None:
             return pd.DataFrame()
 

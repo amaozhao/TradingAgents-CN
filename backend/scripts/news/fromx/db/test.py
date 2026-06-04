@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """测试从数据库获取新闻"""
+
+import asyncio
 import importlib
 
-import sys
-import asyncio
 from trader.agents.utils.utils import Toolkit
 from trader.tools.news import UnifiedNewsAnalyzer
+
 
 async def test_news_from_db():
     print("=" * 80)
@@ -24,15 +25,15 @@ async def test_news_from_db():
     try:
         news_000001 = analyzer._get_news_from_database("000001", max_news=5)
         if news_000001:
-            print(f"✅ 成功获取 000001 的新闻")
+            print("✅ 成功获取 000001 的新闻")
             print(f"📊 新闻长度: {len(news_000001)} 字符")
-            print(f"📋 新闻预览 (前500字符):")
+            print("📋 新闻预览 (前500字符):")
             print(news_000001[:500])
         else:
-            print(f"❌ 未获取到 000001 的新闻")
+            print("❌ 未获取到 000001 的新闻")
     except Exception as e:
         print(f"❌ 获取 000001 新闻失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
     # 测试获取 000002 的新闻（数据库中可能没有）
@@ -40,18 +41,19 @@ async def test_news_from_db():
     try:
         news_000002 = analyzer._get_news_from_database("000002", max_news=5)
         if news_000002:
-            print(f"✅ 成功获取 000002 的新闻")
+            print("✅ 成功获取 000002 的新闻")
             print(f"📊 新闻长度: {len(news_000002)} 字符")
-            print(f"📋 新闻预览 (前500字符):")
+            print("📋 新闻预览 (前500字符):")
             print(news_000002[:500])
         else:
-            print(f"⚠️ 数据库中没有 000002 的新闻")
+            print("⚠️ 数据库中没有 000002 的新闻")
     except Exception as e:
         print(f"❌ 获取 000002 新闻失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
     print("\n" + "=" * 80)
+
 
 if __name__ == "__main__":
     asyncio.run(test_news_from_db())

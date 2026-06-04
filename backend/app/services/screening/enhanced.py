@@ -6,19 +6,19 @@
 import logging
 import time
 from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime
 
-from app.models.screening import ScreeningCondition, FieldType, BASIC_FIELDS_INFO
+from app.core.database import get_postgres_db
+from app.models.screening import BASIC_FIELDS_INFO, ScreeningCondition
 from app.services.screening.database import get_database_screening_service
-from app.services.screening.service import ScreeningService, ScreeningParams
-
-logger = logging.getLogger(__name__)
-
 from app.services.screening.helper import (
     analyze_conditions as _analyze_conditions_util,
+)
+from app.services.screening.helper import (
     convert_conditions_to_traditional_format as _convert_to_traditional_util,
 )
-from app.core.database import get_mongo_db
+from app.services.screening.service import ScreeningParams, ScreeningService
+
+logger = logging.getLogger(__name__)
 
 
 class EnhancedScreeningService:
@@ -40,7 +40,7 @@ class EnhancedScreeningService:
         limit: int = 50,
         offset: int = 0,
         order_by: Optional[List[Dict[str, str]]] = None,
-        use_database_optimization: bool = True
+        use_database_optimization: bool = True,
     ) -> Dict[str, Any]:
         """
         智能股票筛选
@@ -65,16 +65,17 @@ class EnhancedScreeningService:
             analysis = self._analyze_conditions(conditions)
 
             # 决定使用哪种筛选方式
-            if (use_database_optimization and
-                analysis["can_use_database"] and
-                not analysis["needs_technical_indicators"]):
-
+            if (
+                use_database_optimization
+                and analysis["can_use_database"]
+                and not analysis["needs_technical_indicators"]
+            ):
                 # 使用数据库优化筛选
                 result = await self._screen_with_database(
                     conditions, limit, offset, order_by
                 )
                 optimization_used = "database"
-                source = "mongodb"
+                source = "postgres"
 
             else:
                 # 使用传统筛选方式
@@ -89,18 +90,28 @@ class EnhancedScreeningService:
             total = result[1] if isinstance(result, tuple) else result.get("total", 0)
 
             # 若使用数据库优化路径，则从数据库行情表进行富集（避免请求时外部调用）
-            if source == "mongodb" and items:
+            if source == "postgres" and items:
                 try:
-                    db = get_mongo_db()
+                    db = get_postgres_db()
                     coll = db["market_quotes"]
-                    codes = [str(it.get("code")).zfill(6) for it in items if it.get("code")]
+                    codes = [
+                        str(it.get("code")).zfill(6) for it in items if it.get("code")
+                    ]
                     if codes:
                         cursor = coll.find(
                             {"code": {"$in": codes}},
-                            projection={"_id": 0, "code": 1, "close": 1, "pct_chg": 1, "amount": 1},
+                            projection={
+                                "_id": 0,
+                                "code": 1,
+                                "close": 1,
+                                "pct_chg": 1,
+                                "amount": 1,
+                            },
                         )
                         quotes_list = await cursor.to_list(length=len(codes))
-                        quotes_map = {str(d.get("code")).zfill(6): d for d in quotes_list}
+                        quotes_map = {
+                            str(d.get("code")).zfill(6): d for d in quotes_list
+                        }
                         for it in items:
                             key = str(it.get("code")).zfill(6)
                             q = quotes_map.get(key)
@@ -132,7 +143,7 @@ class EnhancedScreeningService:
                 "took_ms": took_ms,
                 "optimization_used": optimization_used,
                 "source": source,
-                "analysis": analysis
+                "analysis": analysis,
             }
 
         except Exception as e:
@@ -145,10 +156,12 @@ class EnhancedScreeningService:
                 "took_ms": took_ms,
                 "optimization_used": "none",
                 "source": "error",
-                "error": str(e)
+                "error": str(e),
             }
 
-    def _analyze_conditions(self, conditions: List[ScreeningCondition]) -> Dict[str, Any]:
+    def _analyze_conditions(
+        self, conditions: List[ScreeningCondition]
+    ) -> Dict[str, Any]:
         """Delegate condition analysis to utils."""
         analysis = _analyze_conditions_util(conditions)
         logger.info(f"📊 筛选条件分析: {analysis}")
@@ -159,17 +172,14 @@ class EnhancedScreeningService:
         conditions: List[ScreeningCondition],
         limit: int,
         offset: int,
-        order_by: Optional[List[Dict[str, str]]]
+        order_by: Optional[List[Dict[str, str]]],
     ) -> Tuple[List[Dict[str, Any]], int]:
         """使用数据库优化筛选"""
         logger.info("🚀 使用数据库优化筛选")
         condition_dicts = [condition.model_dump() for condition in conditions]
 
         return await self.db_service.screen_stocks(
-            conditions=condition_dicts,
-            limit=limit,
-            offset=offset,
-            order_by=order_by
+            conditions=condition_dicts, limit=limit, offset=offset, order_by=order_by
         )
 
     async def _screen_with_traditional_method(
@@ -180,13 +190,15 @@ class EnhancedScreeningService:
         adj: str,
         limit: int,
         offset: int,
-        order_by: Optional[List[Dict[str, str]]]
+        order_by: Optional[List[Dict[str, str]]],
     ) -> Dict[str, Any]:
         """使用传统筛选方法"""
         logger.info("🔄 使用传统筛选方法")
 
         # 转换条件格式为传统服务支持的格式
-        traditional_conditions = self._convert_conditions_to_traditional_format(conditions)
+        traditional_conditions = self._convert_conditions_to_traditional_format(
+            conditions
+        )
 
         # 创建筛选参数
         params = ScreeningParams(
@@ -195,7 +207,7 @@ class EnhancedScreeningService:
             adj=adj,
             limit=limit,
             offset=offset,
-            order_by=order_by
+            order_by=order_by,
         )
 
         # 执行传统筛选
@@ -204,13 +216,14 @@ class EnhancedScreeningService:
         return result
 
     def _convert_conditions_to_traditional_format(
-        self,
-        conditions: List[ScreeningCondition]
+        self, conditions: List[ScreeningCondition]
     ) -> Dict[str, Any]:
         """Delegate condition conversion to utils."""
         return _convert_to_traditional_util(conditions)
 
-    async def _enrich_results_with_realtime_metrics(self, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def _enrich_results_with_realtime_metrics(
+        self, items: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """
         为筛选结果添加PE/PB（使用静态数据，避免性能问题）
 
@@ -224,7 +237,9 @@ class EnhancedScreeningService:
         # 原因：批量计算动态 PE 会导致严重的性能问题（每个股票都要查询多个集合）
         # 静态 PE 基于最近一个交易日的收盘价，对于筛选场景已经足够准确
 
-        logger.info(f"📊 [筛选结果富集] 使用静态PE/PB（避免性能问题），共 {len(items)} 只股票")
+        logger.info(
+            f"📊 [筛选结果富集] 使用静态PE/PB（避免性能问题），共 {len(items)} 只股票"
+        )
 
         # 注意：items 中的 PE/PB 已经来自 stock_basic_info，这里不需要额外处理
         # 如果未来需要实时 PE，可以在单个股票详情页面单独计算
@@ -259,9 +274,11 @@ class EnhancedScreeningService:
                 "data_type": field_info.data_type,
                 "description": field_info.description,
                 "unit": field_info.unit,
-                "supported_operators": [op.value for op in field_info.supported_operators],
+                "supported_operators": [
+                    op.value for op in field_info.supported_operators
+                ],
                 "statistics": stats,
-                "available_values": available_values
+                "available_values": available_values,
             }
 
         return None
@@ -277,7 +294,9 @@ class EnhancedScreeningService:
 
         return fields
 
-    async def validate_conditions(self, conditions: List[ScreeningCondition]) -> Dict[str, Any]:
+    async def validate_conditions(
+        self, conditions: List[ScreeningCondition]
+    ) -> Dict[str, Any]:
         """
         验证筛选条件
 
@@ -287,11 +306,7 @@ class EnhancedScreeningService:
         Returns:
             Dict: 验证结果
         """
-        validation_result = {
-            "valid": True,
-            "errors": [],
-            "warnings": []
-        }
+        validation_result = {"valid": True, "errors": [], "warnings": []}
 
         for i, condition in enumerate(conditions):
             field = condition.field
@@ -301,7 +316,7 @@ class EnhancedScreeningService:
             # 检查字段是否支持
             if field not in BASIC_FIELDS_INFO:
                 validation_result["errors"].append(
-                    f"条件 {i+1}: 不支持的字段 '{field}'"
+                    f"条件 {i + 1}: 不支持的字段 '{field}'"
                 )
                 validation_result["valid"] = False
                 continue
@@ -311,7 +326,7 @@ class EnhancedScreeningService:
             # 检查操作符是否支持
             if operator not in [op.value for op in field_info.supported_operators]:
                 validation_result["errors"].append(
-                    f"条件 {i+1}: 字段 '{field}' 不支持操作符 '{operator}'"
+                    f"条件 {i + 1}: 字段 '{field}' 不支持操作符 '{operator}'"
                 )
                 validation_result["valid"] = False
 
@@ -320,17 +335,17 @@ class EnhancedScreeningService:
                 if operator == "between":
                     if not isinstance(value, list) or len(value) != 2:
                         validation_result["errors"].append(
-                            f"条件 {i+1}: between操作符需要两个数值"
+                            f"条件 {i + 1}: between操作符需要两个数值"
                         )
                         validation_result["valid"] = False
                     elif not all(isinstance(v, (int, float)) for v in value):
                         validation_result["errors"].append(
-                            f"条件 {i+1}: between操作符的值必须是数字"
+                            f"条件 {i + 1}: between操作符的值必须是数字"
                         )
                         validation_result["valid"] = False
                 elif not isinstance(value, (int, float)):
                     validation_result["errors"].append(
-                        f"条件 {i+1}: 数值字段 '{field}' 的值必须是数字"
+                        f"条件 {i + 1}: 数值字段 '{field}' 的值必须是数字"
                     )
                     validation_result["valid"] = False
 

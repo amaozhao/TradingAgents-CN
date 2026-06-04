@@ -3,15 +3,9 @@
 Agent Utils Tushare修复验证测试
 验证agent_utils中的函数已成功从TDX迁移到Tushare统一接口
 """
+
 import importlib
-
-import os
-import sys
 from datetime import datetime, timedelta
-
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
 
 
 def test_get_china_stock_data_fix():
@@ -20,14 +14,16 @@ def test_get_china_stock_data_fix():
     print("=" * 60)
 
     try:
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
 
         print("✅ Toolkit导入成功")
 
         # 测试股票数据获取
         print("🔄 测试股票数据获取...")
-        end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=10)).strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d")
 
         result = Toolkit.get_china_stock_data("600036", start_date, end_date)
 
@@ -53,7 +49,7 @@ def test_get_china_stock_data_fix():
 
     except Exception as e:
         print(f"❌ get_china_stock_data测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -64,13 +60,15 @@ def test_get_china_market_overview_fix():
     print("=" * 60)
 
     try:
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
 
         print("✅ Toolkit导入成功")
 
         # 测试市场概览获取
         print("🔄 测试市场概览获取...")
-        curr_date = datetime.now().strftime('%Y-%m-%d')
+        curr_date = datetime.now().strftime("%Y-%m-%d")
 
         result = Toolkit.get_china_market_overview(curr_date)
 
@@ -96,7 +94,7 @@ def test_get_china_market_overview_fix():
 
     except Exception as e:
         print(f"❌ get_china_market_overview测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -107,13 +105,15 @@ def test_stock_name_mapping_fix():
     print("=" * 60)
 
     try:
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
 
         print("✅ Toolkit导入成功")
 
         # 测试基本面数据获取（会触发股票名称映射）
         print("🔄 测试基本面数据获取（包含股票名称映射）...")
-        curr_date = datetime.now().strftime('%Y-%m-%d')
+        curr_date = datetime.now().strftime("%Y-%m-%d")
 
         result = Toolkit.get_fundamentals_openai("600036", curr_date)
 
@@ -137,7 +137,7 @@ def test_stock_name_mapping_fix():
 
     except Exception as e:
         print(f"❌ 股票名称映射测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -148,14 +148,16 @@ def check_debug_output():
     print("=" * 60)
 
     try:
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
 
         print("🔄 运行股票数据获取并检查调试输出...")
-        end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d")
 
         # 这应该会产生调试输出
-        result = Toolkit.get_china_stock_data("000001", start_date, end_date)
+        Toolkit.get_china_stock_data("000001", start_date, end_date)
 
         print("✅ 调试输出检查完成")
         print("💡 请查看上面的调试输出，确认是否显示:")
@@ -186,7 +188,7 @@ def main():
         ("get_china_stock_data修复", test_get_china_stock_data_fix),
         ("get_china_market_overview修复", test_get_china_market_overview_fix),
         ("股票名称映射修复", test_stock_name_mapping_fix),
-        ("调试输出检查", check_debug_output)
+        ("调试输出检查", check_debug_output),
     ]
 
     results = []

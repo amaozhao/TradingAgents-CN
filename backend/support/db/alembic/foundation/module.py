@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -11,7 +10,10 @@ def test_alembic_config_points_to_backend_migrations():
 
     text = alembic_ini.read_text(encoding="utf-8")
     assert "script_location = alembic" in text
-    assert "sqlalchemy.url = postgresql+asyncpg://postgres:postgres@localhost:5432/trading_agents_cn" in text
+    assert (
+        "sqlalchemy.url = postgresql+asyncpg://postgres:postgres@localhost:5432/trading_agents_cn"
+        in text
+    )
 
 
 def test_alembic_env_uses_settings_postgres_url_and_model_metadata():

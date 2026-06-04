@@ -2,14 +2,15 @@
 分析线程跟踪器
 用于跟踪和检测分析线程的存活状态
 """
-import importlib
 
+import importlib
 import threading
-import time
 from typing import Dict, Optional
+
 from trader.utils.logging.manager import get_logger
 
-logger = get_logger('web')
+logger = get_logger("web")
+
 
 class ThreadTracker:
     """线程跟踪器"""
@@ -77,11 +78,11 @@ class ThreadTracker:
                 return None
 
             return {
-                'analysis_id': analysis_id,
-                'thread_name': thread.name,
-                'thread_id': thread.ident,
-                'is_alive': thread.is_alive(),
-                'is_daemon': thread.daemon
+                "analysis_id": analysis_id,
+                "thread_name": thread.name,
+                "thread_id": thread.ident,
+                "is_alive": thread.is_alive(),
+                "is_daemon": thread.daemon,
             }
 
     def get_all_thread_info(self) -> Dict[str, Dict]:
@@ -90,40 +91,48 @@ class ThreadTracker:
             info = {}
             for analysis_id, thread in self._threads.items():
                 info[analysis_id] = {
-                    'analysis_id': analysis_id,
-                    'thread_name': thread.name,
-                    'thread_id': thread.ident,
-                    'is_alive': thread.is_alive(),
-                    'is_daemon': thread.daemon
+                    "analysis_id": analysis_id,
+                    "thread_name": thread.name,
+                    "thread_id": thread.ident,
+                    "is_alive": thread.is_alive(),
+                    "is_daemon": thread.daemon,
                 }
             return info
 
+
 # 全局线程跟踪器实例
 threads = ThreadTracker()
+
 
 def register_analysis_thread(analysis_id: str, thread: threading.Thread):
     """注册分析线程"""
     threads.register_thread(analysis_id, thread)
 
+
 def unregister_analysis_thread(analysis_id: str):
     """注销分析线程"""
     threads.unregister_thread(analysis_id)
+
 
 def is_analysis_thread_alive(analysis_id: str) -> bool:
     """检查分析线程是否存活"""
     return threads.is_thread_alive(analysis_id)
 
+
 def get_analysis_thread_info(analysis_id: str) -> Optional[Dict]:
     """获取分析线程信息"""
     return threads.get_thread_info(analysis_id)
+
 
 def cleanup_dead_analysis_threads():
     """清理所有死亡的分析线程"""
     threads.cleanup_dead_threads()
 
+
 def get_all_analysis_threads() -> Dict[str, Dict]:
     """获取所有分析线程信息"""
     return threads.get_all_thread_info()
+
 
 def check_analysis_status(analysis_id: str) -> str:
     """
@@ -132,22 +141,24 @@ def check_analysis_status(analysis_id: str) -> str:
     """
     # 首先检查线程是否存活
     if is_analysis_thread_alive(analysis_id):
-        return 'running'
+        return "running"
 
     # 线程不存在，检查进度数据确定最终状态
     try:
-        get_progress_by_id = getattr(importlib.import_module('web.utils.progress'), 'get_progress_by_id')
+        get_progress_by_id = getattr(
+            importlib.import_module("web.utils.progress"), "get_progress_by_id"
+        )
         progress_data = get_progress_by_id(analysis_id)
 
         if progress_data:
-            status = progress_data.get('status', 'unknown')
-            if status in ['completed', 'failed']:
+            status = progress_data.get("status", "unknown")
+            if status in ["completed", "failed"]:
                 return status
             else:
                 # 状态显示运行中但线程已死亡，说明异常终止
-                return 'failed'
+                return "failed"
         else:
-            return 'not_found'
+            return "not_found"
     except Exception as e:
         logger.error(f"📊 [状态检查] 检查进度数据失败: {e}")
-        return 'not_found'
+        return "not_found"

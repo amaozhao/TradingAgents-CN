@@ -4,6 +4,7 @@
 验证单位转换是否正确
 """
 
+
 def test_pb_calculation_units():
     """
     测试 PB 计算的单位转换
@@ -26,14 +27,14 @@ def test_pb_calculation_units():
     # 错误的计算方式（原代码）
     pb_wrong = money_cap / total_equity
     print(f"❌ 错误计算: {money_cap} / {total_equity} = {pb_wrong}")
-    print(f"   这个值太小了，相差10000倍！")
+    print("   这个值太小了，相差10000倍！")
 
     # 正确的计算方式（修复后）
     # money_cap 是万元，total_equity 是元
     # 1 万元 = 10000 元，所以 money_cap * 10000 = 元
     pb_correct = (money_cap * 10000) / total_equity
     print(f"\n✅ 正确计算: ({money_cap} * 10000) / {total_equity} = {pb_correct}")
-    print(f"   预期值: 2.0 倍")
+    print("   预期值: 2.0 倍")
 
     assert abs(pb_correct - 2.0) < 0.01, f"PB 计算错误，期望 2.0，得到 {pb_correct}"
     print("\n✅ 测试通过！")
@@ -87,13 +88,13 @@ def test_pb_calculation_formula_equivalence():
     money_cap_yuan = money_cap_wan * 10000
     pb3 = money_cap_yuan / total_equity_yuan
 
-    print(f"\n公式等价性验证：")
+    print("\n公式等价性验证：")
     print(f"  方案1（亿元）: {pb1:.2f}")
     print(f"  方案2（万元）: {pb2:.2f}")
     print(f"  方案3（元）: {pb3:.2f}")
 
     assert pb1 == pb2 == pb3, "公式不等价"
-    print(f"✅ 所有公式等价！")
+    print("✅ 所有公式等价！")
 
 
 if __name__ == "__main__":

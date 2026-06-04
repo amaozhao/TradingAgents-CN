@@ -1,29 +1,26 @@
 from __future__ import annotations
-import importlib
 
 import argparse
 import asyncio
+import importlib
 import json
 import os
 import socket
 import subprocess
 import sys
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-BACKEND_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = BACKEND_ROOT.parent
-if str(BACKEND_ROOT) not in sys.path:
-    sys.path.insert(0, str(BACKEND_ROOT))
-
 from app.db.migrate import HOT_COLLECTIONS
 from scripts.postgres.runtime.log.check.script import check_runtime_log
 
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = BACKEND_ROOT.parent
+
 DEFAULT_OUTPUT_ROOT = Path("/tmp/trading_agents_postgres_local_cutover")
-MONGO_CONTAINER = "ta_mongo_migration_test"
 POSTGRES_CONTAINER = "ta_pg_migration_test"
 LOCAL_DB = "trading_agents_cn"
 LOCAL_TARGET_ENV = "local-seeded"
@@ -31,9 +28,6 @@ LOCAL_TARGET_ENV = "local-seeded"
 
 @dataclass(frozen=True)
 class LocalServices:
-    mongo_host: str = "127.0.0.1"
-    mongo_port: int = 27019
-    mongo_image: str = "mongo:4.4"
     postgres_host: str = "127.0.0.1"
     postgres_port: int = 55432
     postgres_image: str = "postgres:16-alpine"
@@ -62,10 +56,6 @@ class StepResult:
 
 def local_cutover_env(services: LocalServices) -> dict[str, str]:
     return {
-        "MONGODB_HOST": services.mongo_host,
-        "MONGODB_PORT": str(services.mongo_port),
-        "MONGODB_DATABASE": LOCAL_DB,
-        "MONGODB_DATABASE_SCOPE": "explicit",
         "POSTGRES_HOST": services.postgres_host,
         "POSTGRES_PORT": str(services.postgres_port),
         "POSTGRES_USER": services.postgres_user,
@@ -118,7 +108,9 @@ def build_verification_steps(
         target_phase,
     ]
     if include_api_smoke:
-        evidence_check_command.extend(["--require-api-smoke", "--require-api-migration-state"])
+        evidence_check_command.extend(
+            ["--require-api-smoke", "--require-api-migration-state"]
+        )
     if runtime_log is not None:
         evidence_check_command.append("--require-runtime-log-check")
     evidence_check_command.append(str(output_dir / "gate"))
@@ -131,7 +123,7 @@ def build_verification_steps(
             output_file="01_alembic_upgrade.log",
         ),
         VerificationStep(
-            name="mongo_to_postgres_migrator",
+            name="document_store_to_tables_migrator",
             command=[
                 sys.executable,
                 "-m",
@@ -171,20 +163,20 @@ def write_runtime_log_check(
     )
     output_path = output_dir / "gate" / "runtime_log_check.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    output_path.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
     if not result["all_passed"]:
         raise RuntimeError(f"runtime log check failed: {output_path}")
     return output_path
 
 
-async def seed_local_mongo(services: LocalServices) -> dict[str, int]:
-    AsyncIOMotorClient = getattr(importlib.import_module('motor.motor_asyncio'), 'AsyncIOMotorClient')
-
-    client = AsyncIOMotorClient(
-        services.mongo_host,
-        services.mongo_port,
-        serverSelectionTimeoutMS=5000,
+async def seed_local_postgres(services: LocalServices) -> dict[str, int]:
+    create_client = getattr(
+        importlib.import_module("app.db.documentstore"), "create_client"
     )
+    client = create_client()
     try:
         db = client[LOCAL_DB]
         await client.admin.command("ping")
@@ -277,7 +269,12 @@ def local_seed_documents() -> dict[str, list[dict[str, Any]]]:
             }
         ],
         "analysis_tasks": [
-            {"task_id": "task-1", "user_id": "user-1", "stock_code": "000001", "status": "completed"}
+            {
+                "task_id": "task-1",
+                "user_id": "user-1",
+                "stock_code": "000001",
+                "status": "completed",
+            }
         ],
         "analysis_reports": [
             {
@@ -290,8 +287,12 @@ def local_seed_documents() -> dict[str, list[dict[str, Any]]]:
                 "status": "completed",
             }
         ],
-        "analysis_batches": [{"batch_id": "batch-1", "user_id": "user-1", "status": "completed"}],
-        "analysis_results": [{"legacy_id": "result-1", "task_id": "task-1", "user_id": "user-1"}],
+        "analysis_batches": [
+            {"batch_id": "batch-1", "user_id": "user-1", "status": "completed"}
+        ],
+        "analysis_results": [
+            {"legacy_id": "result-1", "task_id": "task-1", "user_id": "user-1"}
+        ],
         "sync_status": [{"job": "example_sdk_sync", "status": "completed"}],
         "quotes_ingestion_status": [
             {
@@ -302,10 +303,14 @@ def local_seed_documents() -> dict[str, list[dict[str, Any]]]:
                 "last_sync_time": "2026-06-03T10:00:00+08:00",
             }
         ],
-        "scheduler_executions": [{"legacy_id": "scheduler-1", "job_id": "tushare_daily", "status": "success"}],
+        "scheduler_executions": [
+            {"legacy_id": "scheduler-1", "job_id": "tushare_daily", "status": "success"}
+        ],
         "scheduler_history": [{"job_id": "tushare_daily", "action": "trigger"}],
         "scheduler_metadata": [{"job_id": "tushare_daily", "display_name": "每日同步"}],
-        "system_configs": [{"name": "active", "is_active": True, "value": {"enabled": True}}],
+        "system_configs": [
+            {"name": "active", "is_active": True, "value": {"enabled": True}}
+        ],
         "llm_providers": [{"provider": "dashscope", "enabled": True}],
         "model_catalog": [{"provider": "dashscope", "models": []}],
         "market_categories": [{"id": "a_shares", "enabled": True}],
@@ -313,15 +318,35 @@ def local_seed_documents() -> dict[str, list[dict[str, Any]]]:
         "user_favorites": [
             {
                 "user_id": "user-1",
-                "favorites": [{"stock_code": "000001", "stock_name": "平安银行", "market": "CN"}],
+                "favorites": [
+                    {"stock_code": "000001", "stock_name": "平安银行", "market": "CN"}
+                ],
             }
         ],
-        "user_tags": [{"legacy_id": "tag-1", "user_id": "user-1", "tag_id": "tag-1", "name": "关注"}],
+        "user_tags": [
+            {
+                "legacy_id": "tag-1",
+                "user_id": "user-1",
+                "tag_id": "tag-1",
+                "name": "关注",
+            }
+        ],
         "paper_accounts": [{"user_id": "user-1", "cash": 100000.0}],
         "paper_positions": [{"user_id": "user-1", "code": "000001", "quantity": 100}],
-        "paper_orders": [{"legacy_id": "order-1", "user_id": "user-1", "code": "000001", "status": "filled"}],
-        "paper_trades": [{"legacy_id": "trade-1", "user_id": "user-1", "code": "000001"}],
-        "users": [{"user_id": "user-1", "username": "admin", "email": "admin@example.com"}],
+        "paper_orders": [
+            {
+                "legacy_id": "order-1",
+                "user_id": "user-1",
+                "code": "000001",
+                "status": "filled",
+            }
+        ],
+        "paper_trades": [
+            {"legacy_id": "trade-1", "user_id": "user-1", "code": "000001"}
+        ],
+        "users": [
+            {"user_id": "user-1", "username": "admin", "email": "admin@example.com"}
+        ],
         "users_collection": [],
         "user_sessions": [
             {
@@ -331,7 +356,9 @@ def local_seed_documents() -> dict[str, list[dict[str, Any]]]:
                 "expires_at": "2026-06-04T00:00:00",
             }
         ],
-        "login_attempts": [{"legacy_id": "attempt-1", "username": "admin", "success": False}],
+        "login_attempts": [
+            {"legacy_id": "attempt-1", "username": "admin", "success": False}
+        ],
         "operation_logs": [
             {
                 "legacy_id": "log-1",
@@ -346,10 +373,18 @@ def local_seed_documents() -> dict[str, list[dict[str, Any]]]:
             }
         ],
         "database_backups": [{"legacy_id": "backup-1", "name": "daily"}],
-        "notifications": [{"legacy_id": "notif-1", "user_id": "user-1", "status": "unread"}],
-        "token_usage": [{"legacy_id": "usage-1", "provider": "dashscope", "model": "qwen"}],
-        "internal_messages": [{"message_id": "msg-1", "symbol": "000001", "message_type": "alert"}],
-        "social_media_messages": [{"message_id": "social-1", "symbol": "000001", "platform": "weibo"}],
+        "notifications": [
+            {"legacy_id": "notif-1", "user_id": "user-1", "status": "unread"}
+        ],
+        "token_usage": [
+            {"legacy_id": "usage-1", "provider": "dashscope", "model": "qwen"}
+        ],
+        "internal_messages": [
+            {"message_id": "msg-1", "symbol": "000001", "message_type": "alert"}
+        ],
+        "social_media_messages": [
+            {"message_id": "social-1", "symbol": "000001", "platform": "weibo"}
+        ],
     }
 
 
@@ -361,19 +396,7 @@ def validate_seed_covers_hot_collections() -> None:
 
 def start_local_containers(services: LocalServices, *, reuse_containers: bool) -> None:
     if not reuse_containers:
-        _run_docker(["rm", "-f", MONGO_CONTAINER, POSTGRES_CONTAINER], check=False)
-    _run_docker(
-        [
-            "run",
-            "-d",
-            "--name",
-            MONGO_CONTAINER,
-            "-p",
-            f"{services.mongo_port}:27017",
-            services.mongo_image,
-        ],
-        check=not reuse_containers,
-    )
+        _run_docker(["rm", "-f", POSTGRES_CONTAINER], check=False)
     _run_docker(
         [
             "run",
@@ -390,13 +413,12 @@ def start_local_containers(services: LocalServices, *, reuse_containers: bool) -
         ],
         check=not reuse_containers,
     )
-    _wait_for_port(services.mongo_host, services.mongo_port, timeout_seconds=60)
     _wait_for_port(services.postgres_host, services.postgres_port, timeout_seconds=60)
     _wait_for_postgres_ready(services, timeout_seconds=60)
 
 
 def stop_local_containers() -> None:
-    _run_docker(["rm", "-f", MONGO_CONTAINER, POSTGRES_CONTAINER], check=False)
+    _run_docker(["rm", "-f", POSTGRES_CONTAINER], check=False)
 
 
 def run_verification_steps(
@@ -424,7 +446,9 @@ def run_verification_steps(
                     check=False,
                 )
         else:
-            process = subprocess.run(step.command, cwd=step.cwd, env=merged_env, text=True, check=False)
+            process = subprocess.run(
+                step.command, cwd=step.cwd, env=merged_env, text=True, check=False
+            )
         status = "passed" if process.returncode == 0 else "failed"
         results.append(
             StepResult(
@@ -442,7 +466,13 @@ def run_verification_steps(
 
 
 def _run_docker(args: list[str], *, check: bool) -> subprocess.CompletedProcess:
-    return subprocess.run(["docker", *args], text=True, check=check, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    return subprocess.run(
+        ["docker", *args],
+        text=True,
+        check=check,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
 
 
 def _wait_for_port(host: str, port: int, *, timeout_seconds: int) -> None:
@@ -478,14 +508,13 @@ def _wait_for_postgres_ready(services: LocalServices, *, timeout_seconds: int) -
         if process.returncode == 0:
             return
         time.sleep(1)
-    raise TimeoutError(f"timed out waiting for PostgreSQL readiness: {last_output.strip()}")
+    raise TimeoutError(
+        f"timed out waiting for PostgreSQL readiness: {last_output.strip()}"
+    )
 
 
 def _safe_env_snapshot(env: dict[str, str]) -> dict[str, str | bool]:
     return {
-        "MONGODB_HOST": env["MONGODB_HOST"],
-        "MONGODB_PORT": env["MONGODB_PORT"],
-        "MONGODB_DATABASE": env["MONGODB_DATABASE"],
         "POSTGRES_HOST": env["POSTGRES_HOST"],
         "POSTGRES_PORT": env["POSTGRES_PORT"],
         "POSTGRES_USER": env["POSTGRES_USER"],
@@ -503,8 +532,6 @@ async def run_local_cutover_verification(args: argparse.Namespace) -> dict[str, 
     validate_seed_covers_hot_collections()
     output_dir = args.output_dir
     services = LocalServices(
-        mongo_port=args.mongo_port,
-        mongo_image=args.mongo_image,
         postgres_port=args.postgres_port,
         postgres_image=args.postgres_image,
     )
@@ -516,7 +543,7 @@ async def run_local_cutover_verification(args: argparse.Namespace) -> dict[str, 
 
     try:
         start_local_containers(services, reuse_containers=args.reuse_containers)
-        seed_counts = await seed_local_mongo(services)
+        seed_counts = await seed_local_postgres(services)
         steps = build_verification_steps(
             output_dir=output_dir,
             batch_size=args.batch_size,
@@ -528,7 +555,9 @@ async def run_local_cutover_verification(args: argparse.Namespace) -> dict[str, 
             target_env=args.target_env,
         )
         results = run_verification_steps(steps, env=env, output_dir=output_dir)
-        runtime_log_check_path = output_dir / "gate" / "runtime_log_check.json" if args.runtime_log else None
+        runtime_log_check_path = (
+            output_dir / "gate" / "runtime_log_check.json" if args.runtime_log else None
+        )
         target_manifest_path = output_dir / "gate" / "00_target_manifest.json"
         summary = {
             "created_at": datetime.now(UTC).isoformat(),
@@ -537,7 +566,9 @@ async def run_local_cutover_verification(args: argparse.Namespace) -> dict[str, 
             "environment": _safe_env_snapshot(env),
             "seed_counts": seed_counts,
             "results": [asdict(result) for result in results],
-            "runtime_log_check": str(runtime_log_check_path) if runtime_log_check_path else None,
+            "runtime_log_check": str(runtime_log_check_path)
+            if runtime_log_check_path
+            else None,
             "target_manifest": str(target_manifest_path),
         }
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -552,17 +583,23 @@ async def run_local_cutover_verification(args: argparse.Namespace) -> dict[str, 
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run a repeatable local PostgreSQL cutover verification.")
+    parser = argparse.ArgumentParser(
+        description="Run a repeatable local PostgreSQL cutover verification."
+    )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_ROOT)
-    parser.add_argument("--mongo-port", type=int, default=27019)
     parser.add_argument("--postgres-port", type=int, default=55432)
-    parser.add_argument("--mongo-image", default="mongo:4.4")
     parser.add_argument("--postgres-image", default="postgres:16-alpine")
     parser.add_argument("--batch-size", type=int, default=5)
     parser.add_argument("--sample-limit", type=int, default=500)
-    parser.add_argument("--api-base-url", help="Optional deployed/local API base URL for API smoke.")
+    parser.add_argument(
+        "--api-base-url", help="Optional deployed/local API base URL for API smoke."
+    )
     parser.add_argument("--api-token", help="Optional bearer token for API smoke.")
-    parser.add_argument("--runtime-log", type=Path, help="Optional backend log file to validate into gate/runtime_log_check.json.")
+    parser.add_argument(
+        "--runtime-log",
+        type=Path,
+        help="Optional backend log file to validate into gate/runtime_log_check.json.",
+    )
     parser.add_argument(
         "--target-env",
         default=LOCAL_TARGET_ENV,

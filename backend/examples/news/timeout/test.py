@@ -5,20 +5,16 @@
 这个脚本用于手动验证新闻获取功能，特别是在Google新闻获取超时的情况下的轮询机制。
 """
 
-import sys
-import os
 import time
 from datetime import datetime
-
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # 导入需要测试的模块
 from trader.flows.real.time import get_realtime_stock_news
 from trader.utils.logging import get_logger
 
 # 获取日志记录器
-logger = get_logger('test')
+logger = get_logger("test")
+
 
 def test_news_for_stock(ticker):
     """
@@ -49,6 +45,7 @@ def test_news_for_stock(ticker):
         logger.error(f"获取{ticker}的新闻失败: {e}")
         return False
 
+
 def main():
     """
     主函数
@@ -78,6 +75,7 @@ def main():
 
     # 打印统计结果
     print(f"\n测试完成: 成功 {success_count} 个, 失败 {fail_count} 个")
+
 
 if __name__ == "__main__":
     main()

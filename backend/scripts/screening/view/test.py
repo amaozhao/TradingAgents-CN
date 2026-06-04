@@ -2,19 +2,12 @@
 """
 测试股票筛选视图
 """
-import importlib
-
-import sys
-import os
-from pathlib import Path
-
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 import asyncio
+import importlib
 import logging
-from app.core.database import init_database, get_mongo_db, close_database
+
+from app.core.database import close_database, init_database
 from app.services.screening.database import get_database_screening_service
 
 logging.basicConfig(level=logging.INFO)
@@ -36,20 +29,18 @@ async def test_screening():
         logger.info("测试1：筛选涨跌幅在 1-10 之间的股票")
         logger.info("=" * 60)
 
-        conditions1 = [
-            {"field": "pct_chg", "operator": "between", "value": [1, 10]}
-        ]
+        conditions1 = [{"field": "pct_chg", "operator": "between", "value": [1, 10]}]
 
         results1, total1 = await service.screen_stocks(
-            conditions=conditions1,
-            limit=5,
-            offset=0
+            conditions=conditions1, limit=5, offset=0
         )
 
         logger.info(f"✅ 找到 {total1} 只股票，返回前 5 只:")
         for r in results1:
-            logger.info(f"  - {r.get('code')} {r.get('name')}: ROE={r.get('roe')}, "
-                       f"close={r.get('close')}, pct_chg={r.get('pct_chg')}")
+            logger.info(
+                f"  - {r.get('code')} {r.get('name')}: ROE={r.get('roe')}, "
+                f"close={r.get('close')}, pct_chg={r.get('pct_chg')}"
+            )
 
         # 测试2：筛选涨跌幅 + 成交额
         logger.info("\n" + "=" * 60)
@@ -58,19 +49,19 @@ async def test_screening():
 
         conditions2 = [
             {"field": "pct_chg", "operator": "between", "value": [1, 10]},
-            {"field": "amount", "operator": ">", "value": 10000}
+            {"field": "amount", "operator": ">", "value": 10000},
         ]
 
         results2, total2 = await service.screen_stocks(
-            conditions=conditions2,
-            limit=5,
-            offset=0
+            conditions=conditions2, limit=5, offset=0
         )
 
         logger.info(f"✅ 找到 {total2} 只股票，返回前 5 只:")
         for r in results2:
-            logger.info(f"  - {r.get('code')} {r.get('name')}: ROE={r.get('roe')}, "
-                       f"close={r.get('close')}, pct_chg={r.get('pct_chg')}")
+            logger.info(
+                f"  - {r.get('code')} {r.get('name')}: ROE={r.get('roe')}, "
+                f"close={r.get('close')}, pct_chg={r.get('pct_chg')}"
+            )
 
         # 测试3：筛选 ROE + 涨跌幅 + 成交额（宽松条件）
         logger.info("\n" + "=" * 60)
@@ -80,26 +71,28 @@ async def test_screening():
         conditions3 = [
             {"field": "roe", "operator": ">", "value": 0},
             {"field": "pct_chg", "operator": ">", "value": 1},
-            {"field": "amount", "operator": ">", "value": 10000}
+            {"field": "amount", "operator": ">", "value": 10000},
         ]
 
         results3, total3 = await service.screen_stocks(
             conditions=conditions3,
             limit=5,
             offset=0,
-            order_by=[{"field": "pct_chg", "direction": "desc"}]
+            order_by=[{"field": "pct_chg", "direction": "desc"}],
         )
 
         logger.info(f"✅ 找到 {total3} 只股票，返回前 5 只（按涨跌幅降序）:")
         for r in results3:
-            logger.info(f"  - {r.get('code')} {r.get('name')}: ROE={r.get('roe')}, "
-                       f"close={r.get('close')}, pct_chg={r.get('pct_chg')}, amount={r.get('amount')}")
+            logger.info(
+                f"  - {r.get('code')} {r.get('name')}: ROE={r.get('roe')}, "
+                f"close={r.get('close')}, pct_chg={r.get('pct_chg')}, amount={r.get('amount')}"
+            )
 
         logger.info("\n✅ 所有测试完成！")
 
     except Exception as e:
         logger.error(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return 1
 

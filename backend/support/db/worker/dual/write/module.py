@@ -1,6 +1,6 @@
+import sys
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-import sys
 
 import pytest
 
@@ -59,7 +59,9 @@ async def test_us_quotes_bulk_write_dual_writes_postgres(monkeypatch):
     monkeypatch.setitem(
         __import__("sys").modules,
         "yfinance",
-        SimpleNamespace(Ticker=lambda _code: SimpleNamespace(history=lambda period: FakeHistory())),
+        SimpleNamespace(
+            Ticker=lambda _code: SimpleNamespace(history=lambda period: FakeHistory())
+        ),
     )
 
     dual_write_calls = []
@@ -171,7 +173,9 @@ async def test_hk_quotes_bulk_write_dual_writes_postgres(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_baostock_basic_info_update_dual_writes_postgres(monkeypatch):
-    service = baostock_sync_service.BaoStockSyncService.__new__(baostock_sync_service.BaoStockSyncService)
+    service = baostock_sync_service.BaoStockSyncService.__new__(
+        baostock_sync_service.BaoStockSyncService
+    )
     service.db = SimpleNamespace(stock_basic_info=FakeUpdateCollection())
 
     dual_write_calls = []
@@ -179,21 +183,30 @@ async def test_baostock_basic_info_update_dual_writes_postgres(monkeypatch):
     async def fake_dual_write(collection, document):
         dual_write_calls.append((collection, document))
 
-    monkeypatch.setattr(baostock_sync_service, "dual_write_hot_document", fake_dual_write)
+    monkeypatch.setattr(
+        baostock_sync_service, "dual_write_hot_document", fake_dual_write
+    )
 
     await service._update_stock_basic_info({"code": "000001", "name": "平安银行"})
 
     assert dual_write_calls == [
         (
             "stock_basic_info",
-            {"code": "000001", "name": "平安银行", "symbol": "000001", "source": "baostock"},
+            {
+                "code": "000001",
+                "name": "平安银行",
+                "symbol": "000001",
+                "source": "baostock",
+            },
         )
     ]
 
 
 @pytest.mark.asyncio
 async def test_baostock_quotes_update_dual_writes_postgres(monkeypatch):
-    service = baostock_sync_service.BaoStockSyncService.__new__(baostock_sync_service.BaoStockSyncService)
+    service = baostock_sync_service.BaoStockSyncService.__new__(
+        baostock_sync_service.BaoStockSyncService
+    )
     service.db = SimpleNamespace(market_quotes=FakeUpdateCollection())
 
     dual_write_calls = []
@@ -201,7 +214,9 @@ async def test_baostock_quotes_update_dual_writes_postgres(monkeypatch):
     async def fake_dual_write(collection, document):
         dual_write_calls.append((collection, document))
 
-    monkeypatch.setattr(baostock_sync_service, "dual_write_hot_document", fake_dual_write)
+    monkeypatch.setattr(
+        baostock_sync_service, "dual_write_hot_document", fake_dual_write
+    )
 
     await service._update_stock_quotes({"code": "000001", "close": 10.2})
 
@@ -215,7 +230,9 @@ async def test_baostock_quotes_update_dual_writes_postgres(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_akshare_batch_quotes_dual_writes_postgres(monkeypatch):
-    service = akshare_sync_service.AKShareSyncService.__new__(akshare_sync_service.AKShareSyncService)
+    service = akshare_sync_service.AKShareSyncService.__new__(
+        akshare_sync_service.AKShareSyncService
+    )
     service.db = SimpleNamespace(market_quotes=FakeUpdateCollection())
 
     class FakeProvider:
@@ -229,7 +246,9 @@ async def test_akshare_batch_quotes_dual_writes_postgres(monkeypatch):
     async def fake_dual_write(collection, document):
         dual_write_calls.append((collection, document))
 
-    monkeypatch.setattr(akshare_sync_service, "dual_write_hot_document", fake_dual_write)
+    monkeypatch.setattr(
+        akshare_sync_service, "dual_write_hot_document", fake_dual_write
+    )
 
     result = await service._process_quotes_batch(["000001"])
 
@@ -244,18 +263,29 @@ async def test_akshare_batch_quotes_dual_writes_postgres(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_baostock_historical_metadata_dual_writes_postgres(monkeypatch):
-    service = baostock_sync_service.BaoStockSyncService.__new__(baostock_sync_service.BaoStockSyncService)
+    service = baostock_sync_service.BaoStockSyncService.__new__(
+        baostock_sync_service.BaoStockSyncService
+    )
     service.db = SimpleNamespace(market_quotes=FakeUpdateCollection())
-    service.historical_service = SimpleNamespace(save_historical_data=fake_save_historical_data)
+    service.historical_service = SimpleNamespace(
+        save_historical_data=fake_save_historical_data
+    )
 
     dual_write_calls = []
 
     async def fake_dual_write(collection, document):
         dual_write_calls.append((collection, document))
 
-    monkeypatch.setattr(baostock_sync_service, "dual_write_hot_document", fake_dual_write)
+    monkeypatch.setattr(
+        baostock_sync_service, "dual_write_hot_document", fake_dual_write
+    )
 
-    assert await service._update_historical_data("000001", FakeHistoricalFrame(), period="daily") == 3
+    assert (
+        await service._update_historical_data(
+            "000001", FakeHistoricalFrame(), period="daily"
+        )
+        == 3
+    )
     assert dual_write_calls[0][0] == "market_quotes"
     assert dual_write_calls[0][1]["code"] == "000001"
     assert dual_write_calls[0][1]["source"] == "baostock"
@@ -276,14 +306,16 @@ async def test_example_sdk_financial_update_dual_writes_postgres(monkeypatch):
     service.sync_stats = {"financial": {"total": 0, "success": 0, "failed": 0}}
 
     fake_db = SimpleNamespace(stock_financial_data=FakeUpdateCollection())
-    monkeypatch.setattr(example_sdk_sync_service, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(example_sdk_sync_service, "get_postgres_db", lambda: fake_db)
 
     dual_write_calls = []
 
     async def fake_dual_write(collection, document):
         dual_write_calls.append((collection, document))
 
-    monkeypatch.setattr(example_sdk_sync_service, "dual_write_hot_document", fake_dual_write)
+    monkeypatch.setattr(
+        example_sdk_sync_service, "dual_write_hot_document", fake_dual_write
+    )
 
     await service._process_financial_data("000001")
 
@@ -302,16 +334,20 @@ async def test_example_sdk_sync_status_dual_writes_postgres(monkeypatch):
     service.sync_stats = {"basic": {"success": 1}}
 
     fake_db = SimpleNamespace(sync_status=FakeUpdateCollection())
-    monkeypatch.setattr(example_sdk_sync_service, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(example_sdk_sync_service, "get_postgres_db", lambda: fake_db)
 
     dual_write_calls = []
 
     async def fake_dual_write(collection, document):
         dual_write_calls.append((collection, document))
 
-    monkeypatch.setattr(example_sdk_sync_service, "dual_write_hot_document", fake_dual_write)
+    monkeypatch.setattr(
+        example_sdk_sync_service, "dual_write_hot_document", fake_dual_write
+    )
 
-    await service._record_sync_status("completed", start_time=datetime.now() - timedelta(seconds=1))
+    await service._record_sync_status(
+        "completed", start_time=datetime.now() - timedelta(seconds=1)
+    )
 
     assert dual_write_calls[0][0] == "sync_status"
     assert dual_write_calls[0][1]["job"] == "example_sdk_sync"
@@ -320,7 +356,9 @@ async def test_example_sdk_sync_status_dual_writes_postgres(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_tushare_scheduler_progress_dual_writes_postgres(monkeypatch):
-    service = tushare_sync_service.TushareSyncService.__new__(tushare_sync_service.TushareSyncService)
+    service = tushare_sync_service.TushareSyncService.__new__(
+        tushare_sync_service.TushareSyncService
+    )
     fake_collection = FakeSchedulerExecutionCollection(
         {
             "_id": "scheduler-1",
@@ -333,8 +371,10 @@ async def test_tushare_scheduler_progress_dual_writes_postgres(monkeypatch):
 
     monkeypatch.setitem(
         sys.modules,
-        "pymongo",
-        SimpleNamespace(MongoClient=lambda _uri: FakeMongoClient(fake_collection)),
+        "app.db.documentstore",
+        SimpleNamespace(
+            PostgreSQLClient=lambda _uri: FakePostgreSQLClient(fake_collection)
+        ),
     )
 
     dual_write_calls = []
@@ -342,7 +382,9 @@ async def test_tushare_scheduler_progress_dual_writes_postgres(monkeypatch):
     async def fake_dual_write(collection, document):
         dual_write_calls.append((collection, document))
 
-    monkeypatch.setattr(tushare_sync_service, "dual_write_hot_document", fake_dual_write)
+    monkeypatch.setattr(
+        tushare_sync_service, "dual_write_hot_document", fake_dual_write
+    )
 
     await service._update_progress("tushare_daily", 55, "同步行情")
 
@@ -366,7 +408,9 @@ async def test_hk_on_demand_cache_dual_writes_postgres(monkeypatch):
 
     monkeypatch.setattr(hk_data_service, "dual_write_hot_document", fake_dual_write)
 
-    await service._save_to_cache({"code": "00700", "source": "yfinance", "name": "Tencent"})
+    await service._save_to_cache(
+        {"code": "00700", "source": "yfinance", "name": "Tencent"}
+    )
 
     assert dual_write_calls == [
         ("stock_basic_info", {"code": "00700", "source": "yfinance", "name": "Tencent"})
@@ -385,7 +429,9 @@ async def test_us_on_demand_cache_dual_writes_postgres(monkeypatch):
 
     monkeypatch.setattr(us_data_service, "dual_write_hot_document", fake_dual_write)
 
-    await service._save_to_cache({"code": "AAPL", "source": "yfinance", "name": "Apple"})
+    await service._save_to_cache(
+        {"code": "AAPL", "source": "yfinance", "name": "Apple"}
+    )
 
     assert dual_write_calls == [
         ("stock_basic_info", {"code": "AAPL", "source": "yfinance", "name": "Apple"})
@@ -397,7 +443,9 @@ async def test_baostock_init_financial_update_dual_writes_postgres(monkeypatch):
     service = baostock_init_service.BaoStockInitService.__new__(
         baostock_init_service.BaoStockInitService
     )
-    service.db = SimpleNamespace(stock_basic_info=FakeFindUpdateCollection([{"code": "000001"}]))
+    service.db = SimpleNamespace(
+        stock_basic_info=FakeFindUpdateCollection([{"code": "000001"}])
+    )
 
     class FakeProvider:
         async def get_financial_data(self, _code):
@@ -410,7 +458,9 @@ async def test_baostock_init_financial_update_dual_writes_postgres(monkeypatch):
     async def fake_dual_write(collection, document):
         dual_write_calls.append((collection, document))
 
-    monkeypatch.setattr(baostock_init_service, "dual_write_hot_document", fake_dual_write)
+    monkeypatch.setattr(
+        baostock_init_service, "dual_write_hot_document", fake_dual_write
+    )
 
     assert await service._sync_financial_data() == 1
     assert dual_write_calls[0][0] == "stock_basic_info"
@@ -450,7 +500,7 @@ class FakeSchedulerExecutionCollection:
         return SimpleNamespace(matched_count=1, modified_count=1)
 
 
-class FakeMongoClient:
+class FakePostgreSQLClient:
     def __init__(self, scheduler_collection):
         self.scheduler_collection = scheduler_collection
         self.closed = False
@@ -515,19 +565,25 @@ class FakeHKSpotFrame:
         return 2
 
     def iterrows(self):
-        yield 0, {
-            "代码": "700",
-            "中文名称": "腾讯控股",
-            "最新价": 390,
-            "涨跌幅": 1.2,
-            "总市值": 3000000000000,
-            "市盈率": 20,
-        }
-        yield 1, {
-            "代码": "9988",
-            "中文名称": "阿里巴巴",
-            "最新价": 80,
-            "涨跌幅": 0.5,
-            "总市值": 2000000000000,
-            "市盈率": 18,
-        }
+        yield (
+            0,
+            {
+                "代码": "700",
+                "中文名称": "腾讯控股",
+                "最新价": 390,
+                "涨跌幅": 1.2,
+                "总市值": 3000000000000,
+                "市盈率": 20,
+            },
+        )
+        yield (
+            1,
+            {
+                "代码": "9988",
+                "中文名称": "阿里巴巴",
+                "最新价": 80,
+                "涨跌幅": 0.5,
+                "总市值": 2000000000000,
+                "市盈率": 18,
+            },
+        )

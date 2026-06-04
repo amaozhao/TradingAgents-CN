@@ -9,7 +9,7 @@ from app.services.stocks.service import StockDataService
 @pytest.mark.asyncio
 async def test_update_stock_basic_info_dual_writes_postgres(monkeypatch):
     fake_db = FakeDB()
-    monkeypatch.setattr(stock_data_service, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(stock_data_service, "get_postgres_db", lambda: fake_db)
 
     dual_write_calls = []
 
@@ -33,9 +33,11 @@ async def test_update_stock_basic_info_dual_writes_postgres(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_update_market_quotes_dual_writes_postgres_with_default_source(monkeypatch):
+async def test_update_market_quotes_dual_writes_postgres_with_default_source(
+    monkeypatch,
+):
     fake_db = FakeDB()
-    monkeypatch.setattr(stock_data_service, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(stock_data_service, "get_postgres_db", lambda: fake_db)
 
     dual_write_calls = []
 

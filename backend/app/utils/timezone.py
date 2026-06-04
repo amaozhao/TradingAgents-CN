@@ -1,9 +1,9 @@
 from __future__ import annotations
-import importlib
 
+import importlib
 from datetime import datetime
-from zoneinfo import ZoneInfo
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from app.core.config import settings
 
@@ -15,7 +15,7 @@ def get_tz_name() -> str:
     """
     try:
         # Lazy import to avoid circular imports
-        cfgprov = getattr(importlib.import_module('app.services.provider'), 'provider')
+        cfgprov = getattr(importlib.import_module("app.services.provider"), "provider")
         cached = getattr(cfgprov, "_cache_settings", None)
         if isinstance(cached, dict):
             tz = cached.get("app_timezone") or cached.get("APP_TIMEZONE")

@@ -3,20 +3,16 @@
 
 用于验证配置验证器是否正常工作
 """
+
 import importlib
-
 import sys
-import os
-
-# 添加项目根目录到 Python 路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
 
+from app.core.startup import ConfigurationError, validate_startup_config
+
 # 加载 .env 文件
 load_dotenv()
-
-from app.core.startup import validate_startup_config, ConfigurationError
 
 
 def main():
@@ -44,7 +40,7 @@ def main():
         return 1
     except Exception as e:
         print(f"\n❌ 发生错误: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return 1
 

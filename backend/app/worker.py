@@ -3,25 +3,19 @@ TradingAgents-CN WebAPI Worker
 
 Consumes tasks from Redis queue and processes them using actual stock analysis.
 """
-import importlib
 
 import asyncio
+import importlib
 import json
 import logging
 import signal
-import sys
 import time
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Optional
 
 # Add project root to path for importing analysis runner
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
+from app.core.database import close_db, get_redis_client, init_db
 from app.core.logs import setup_logging
-from app.core.database import init_db, close_db, get_redis_client
-from app.core.config import settings
 
 # Redis keys (must match queue_service)
 READY_LIST = "qa:ready"
@@ -33,7 +27,12 @@ SET_FAILED = "qa:failed"
 logger = logging.getLogger("worker")
 
 
-async def publish_progress(task_id: str, message: str, step: Optional[int] = None, total_steps: Optional[int] = None):
+async def publish_progress(
+    task_id: str,
+    message: str,
+    step: Optional[int] = None,
+    total_steps: Optional[int] = None,
+):
     """Publish progress updates to Redis pubsub for SSE streaming"""
     r = get_redis_client()
     progress_data: dict[str, Any] = {
@@ -47,7 +46,9 @@ async def publish_progress(task_id: str, message: str, step: Optional[int] = Non
         progress_data["progress"] = round((step / total_steps) * 100, 1)
 
     try:
-        await r.publish(f"task_progress:{task_id}", json.dumps(progress_data, ensure_ascii=False))
+        await r.publish(
+            f"task_progress:{task_id}", json.dumps(progress_data, ensure_ascii=False)
+        )
     except Exception as e:
         logger.warning(f"Failed to publish progress for task {task_id}: {e}")
 
@@ -66,24 +67,35 @@ async def process_task(task_id: str) -> None:
     now = int(time.time())
     await r.hset(key, mapping={"status": "processing", "started_at": str(now)})
     await r.sadd(SET_PROCESSING, task_id)
-    logger.info(f"Processing task {task_id} | user={data.get('user')} symbol={data.get('symbol')}")
+    logger.info(
+        f"Processing task {task_id} | user={data.get('user')} symbol={data.get('symbol')}"
+    )
 
     try:
         # Parse params
         params = {}
         if "params" in data:
             try:
-                params = json.loads(data["params"]) if isinstance(data["params"], str) else {}
+                params = (
+                    json.loads(data["params"])
+                    if isinstance(data["params"], str)
+                    else {}
+                )
             except Exception:
                 params = {}
 
         symbol = data.get("symbol", "")
-        user_id = data.get("user", "")
+        data.get("user", "")
 
         # Extract analysis parameters with defaults
-        analysts = params.get("analysts", ["Bull Analyst", "Bear Analyst", "Research Manager"])
+        analysts = params.get(
+            "analysts", ["Bull Analyst", "Bear Analyst", "Research Manager"]
+        )
         research_depth = params.get("research_depth", 2)
-        normalize_provider_key = getattr(importlib.import_module('trader.llm.clients.providers'), 'normalize_provider_key')
+        normalize_provider_key = getattr(
+            importlib.import_module("trader.llm.clients.providers"),
+            "normalize_provider_key",
+        )
 
         llm_provider = normalize_provider_key(params.get("llm_provider", "dashscope"))
         llm_model = params.get("llm_model", "qwen-plus")
@@ -91,14 +103,18 @@ async def process_task(task_id: str) -> None:
         analysis_date = params.get("analysis_date", datetime.now().strftime("%Y-%m-%d"))
 
         # Progress callback function
-        async def progress_callback(message: str, step: Optional[int] = None, total_steps: Optional[int] = None):
+        async def progress_callback(
+            message: str, step: Optional[int] = None, total_steps: Optional[int] = None
+        ):
             await publish_progress(task_id, message, step, total_steps)
 
         await progress_callback("🚀 开始执行股票分析...")
 
         # Import and call the actual analysis function
         try:
-            run_stock_analysis = getattr(importlib.import_module('web.utils.analysis'), 'run_stock_analysis')
+            run_stock_analysis = getattr(
+                importlib.import_module("web.utils.analysis"), "run_stock_analysis"
+            )
 
             loop = asyncio.get_running_loop()
 
@@ -109,6 +125,7 @@ async def process_task(task_id: str) -> None:
                     asyncio.run_coroutine_threadsafe(
                         progress_callback(msg, step, total), loop
                     )
+
                 return run_stock_analysis(
                     stock_symbol=symbol,
                     analysis_date=analysis_date,
@@ -126,44 +143,53 @@ async def process_task(task_id: str) -> None:
             await progress_callback("✅ 分析完成，正在保存结果...")
 
             # Prepare result
-            if analysis_result and analysis_result.get('success', False):
+            if analysis_result and analysis_result.get("success", False):
                 result = {
                     "symbol": symbol,
                     "analysis_result": analysis_result,
                     "completed_at": datetime.now().isoformat(),
-                    "success": True
+                    "success": True,
                 }
                 status = "completed"
                 await progress_callback("🎉 任务成功完成")
             else:
-                error_msg = analysis_result.get('error', '分析失败') if analysis_result else '分析返回空结果'
+                error_msg = (
+                    analysis_result.get("error", "分析失败")
+                    if analysis_result
+                    else "分析返回空结果"
+                )
                 result = {
                     "symbol": symbol,
                     "error": error_msg,
                     "completed_at": datetime.now().isoformat(),
-                    "success": False
+                    "success": False,
                 }
                 status = "failed"
                 await progress_callback(f"❌ 任务失败: {error_msg}")
 
         except Exception as analysis_error:
-            logger.exception(f"Analysis execution failed for task {task_id}: {analysis_error}")
+            logger.exception(
+                f"Analysis execution failed for task {task_id}: {analysis_error}"
+            )
             result = {
                 "symbol": symbol,
                 "error": f"分析执行异常: {str(analysis_error)}",
                 "completed_at": datetime.now().isoformat(),
-                "success": False
+                "success": False,
             }
             status = "failed"
             await progress_callback(f"❌ 分析执行异常: {str(analysis_error)}")
 
         # Mark completed/failed
         finished = int(time.time())
-        await r.hset(key, mapping={
-            "status": status,
-            "completed_at": str(finished),
-            "result": json.dumps(result, ensure_ascii=False),
-        })
+        await r.hset(
+            key,
+            mapping={
+                "status": status,
+                "completed_at": str(finished),
+                "result": json.dumps(result, ensure_ascii=False),
+            },
+        )
         await r.srem(SET_PROCESSING, task_id)
         if status == "completed":
             await r.sadd(SET_COMPLETED, task_id)
@@ -175,11 +201,14 @@ async def process_task(task_id: str) -> None:
     except Exception as e:
         logger.exception(f"Task {task_id} processing failed: {e}")
         finished = int(time.time())
-        await r.hset(key, mapping={
-            "status": "failed",
-            "completed_at": str(finished),
-            "error": str(e),
-        })
+        await r.hset(
+            key,
+            mapping={
+                "status": "failed",
+                "completed_at": str(finished),
+                "error": str(e),
+            },
+        )
         await r.srem(SET_PROCESSING, task_id)
         await r.sadd(SET_FAILED, task_id)
         await publish_progress(task_id, f"❌ 处理失败: {str(e)}")
@@ -195,7 +224,9 @@ async def worker_loop(stop_event: asyncio.Event):
             if not item:
                 continue
             _, task_id = item
-            await process_task(task_id.decode() if isinstance(task_id, bytes) else str(task_id))
+            await process_task(
+                task_id.decode() if isinstance(task_id, bytes) else str(task_id)
+            )
         except asyncio.CancelledError:
             break
         except Exception as e:
@@ -209,7 +240,9 @@ async def main():
     await init_db()
     # Apply dynamic log level from system settings
     try:
-        config_provider = getattr(importlib.import_module('app.services.provider'), 'provider')
+        config_provider = getattr(
+            importlib.import_module("app.services.provider"), "provider"
+        )
         eff = await config_provider.get_effective_system_settings()
         desired_level = str(eff.get("log_level", "INFO")).upper()
         setup_logging(desired_level)
@@ -217,7 +250,6 @@ async def main():
             logging.getLogger(name).setLevel(desired_level)
     except Exception as e:
         logging.getLogger("worker").warning(f"Failed to apply dynamic log level: {e}")
-
 
     stop_event = asyncio.Event()
 

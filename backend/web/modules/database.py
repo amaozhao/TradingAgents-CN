@@ -1,42 +1,32 @@
 #!/usr/bin/env python3
 """
 数据库缓存管理页面
-MongoDB + Redis 缓存管理和监控
+PostgreSQL + Redis 缓存管理和监控
 """
 
 import streamlit as st
-import sys
-import os
-from pathlib import Path
-import json
-from datetime import datetime, timedelta
-
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent.parent
-sys.path.append(str(project_root))
 
 # 导入UI工具函数
-sys.path.append(str(Path(__file__).parent.parent))
 from utils.ui import apply_hide_deploy_button_css
 
 try:
     from trader.config.databases import get_database_manager
+
     DB_MANAGER_AVAILABLE = True
 except ImportError as e:
     DB_MANAGER_AVAILABLE = False
     st.error(f"数据库管理器不可用: {e}")
 
+
 def main():
     st.set_page_config(
-        page_title="数据库管理 - TradingAgents",
-        page_icon="🗄️",
-        layout="wide"
+        page_title="数据库管理 - TradingAgents", page_icon="🗄️", layout="wide"
     )
 
     # 应用隐藏Deploy按钮的CSS样式
     apply_hide_deploy_button_css()
 
-    st.title("🗄️ MongoDB + Redis 数据库管理")
+    st.title("🗄️ PostgreSQL + Redis 数据库管理")
     st.markdown("---")
 
     if not DB_MANAGER_AVAILABLE:
@@ -51,7 +41,7 @@ def main():
 
         2. 启动数据库服务：
         ```bash
-        docker compose up -d mongodb redis
+        docker compose up -d postgres redis
         ```
 
         3. 测试连接：
@@ -70,10 +60,12 @@ def main():
 
         # 连接状态
         st.subheader("📡 连接状态")
-        mongodb_status = "✅ 已连接" if db_manager.is_mongodb_available() else "❌ 未连接"
+        postgres_status = (
+            "✅ 已连接" if db_manager.is_postgres_available() else "❌ 未连接"
+        )
         redis_status = "✅ 已连接" if db_manager.is_redis_available() else "❌ 未连接"
 
-        st.write(f"**MongoDB**: {mongodb_status}")
+        st.write(f"**PostgreSQL**: {postgres_status}")
         st.write(f"**Redis**: {redis_status}")
 
         st.markdown("---")
@@ -92,7 +84,7 @@ def main():
             min_value=1,
             max_value=30,
             value=7,
-            help="删除指定天数之前的缓存数据"
+            help="删除指定天数之前的缓存数据",
         )
 
         if st.button("🗑️ 清理过期数据", type="secondary"):
@@ -107,29 +99,31 @@ def main():
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        st.subheader("📊 MongoDB 统计")
+        st.subheader("📊 PostgreSQL 统计")
 
         try:
             stats = db_manager.get_cache_stats()
 
-            if db_manager.is_mongodb_available():
-                # 获取MongoDB集合统计
+            if db_manager.is_postgres_available():
+                # 获取PostgreSQL集合统计
                 collections_info = {
                     "stock_data": "📈 股票数据",
                     "analysis": "📊 分析结果",
                     "user_sessions": "👤 用户会话",
-                    "configurations": "⚙️ 配置信息"
+                    "configurations": "⚙️ 配置信息",
                 }
 
                 total_records = 0
                 st.markdown("**集合详情：**")
 
-                mongodb_client = db_manager.get_mongodb_client()
-                if mongodb_client is not None:
-                    mongodb_db = mongodb_client[db_manager.mongodb_config["database"]]
+                postgres_client = db_manager.get_postgres_client()
+                if postgres_client is not None:
+                    postgres_db = postgres_client[
+                        db_manager.postgres_config["database"]
+                    ]
                     for collection_name, display_name in collections_info.items():
                         try:
-                            collection = mongodb_db[collection_name]
+                            collection = postgres_db[collection_name]
                             count = collection.count_documents({})
                             total_records += count
                             st.write(f"**{display_name}**: {count:,} 条记录")
@@ -140,12 +134,12 @@ def main():
                 with metric_col1:
                     st.metric("总记录数", f"{total_records:,}")
                 with metric_col2:
-                    st.metric("Redis缓存", stats.get('redis_keys', 0))
+                    st.metric("Redis缓存", stats.get("redis_keys", 0))
             else:
-                st.error("MongoDB 未连接")
+                st.error("PostgreSQL 未连接")
 
         except Exception as e:
-            st.error(f"获取MongoDB统计失败: {e}")
+            st.error(f"获取PostgreSQL统计失败: {e}")
 
     with col2:
         st.subheader("⚡ Redis 统计")
@@ -168,7 +162,7 @@ def main():
                 🔹 **用户会话**：1小时自动过期
 
                 Redis 主要用于热点数据的快速访问，
-                过期后会自动从 MongoDB 重新加载。
+                过期后会自动从 PostgreSQL 重新加载。
                 """)
             else:
                 st.error("Redis 未连接")
@@ -184,20 +178,20 @@ def main():
     config_col1, config_col2 = st.columns([1, 1])
 
     with config_col1:
-        st.markdown("**MongoDB 配置：**")
+        st.markdown("**PostgreSQL 配置：**")
         # 从数据库管理器获取实际配置
-        mongodb_config = db_manager.mongodb_config
-        mongodb_host = mongodb_config.get('host', 'localhost')
-        mongodb_port = mongodb_config.get('port', 27017)
-        mongodb_db_name = mongodb_config.get('database', 'trading_agents')
+        postgres_config = db_manager.postgres_config
+        postgres_host = postgres_config.get("host", "localhost")
+        postgres_port = postgres_config.get("port", 5432)
+        postgres_db_name = postgres_config.get("database", "trading_agents")
         st.code(f"""
-    主机: {mongodb_host}:{mongodb_port}
-    数据库: {mongodb_db_name}
-    状态: {mongodb_status}
-    启用: {mongodb_config.get('enabled', False)}
+    主机: {postgres_host}:{postgres_port}
+    数据库: {postgres_db_name}
+    状态: {postgres_status}
+    启用: {postgres_config.get("enabled", False)}
         """)
 
-        if db_manager.is_mongodb_available():
+        if db_manager.is_postgres_available():
             st.markdown("**集合结构：**")
             st.code("""
     📁 trader/
@@ -211,14 +205,14 @@ def main():
         st.markdown("**Redis 配置：**")
         # 从数据库管理器获取实际配置
         redis_config = db_manager.redis_config
-        redis_host = redis_config.get('host', 'localhost')
-        redis_port = redis_config.get('port', 6379)
-        redis_db = redis_config.get('db', 0)
+        redis_host = redis_config.get("host", "localhost")
+        redis_port = redis_config.get("port", 6379)
+        redis_db = redis_config.get("db", 0)
         st.code(f"""
     主机: {redis_host}:{redis_port}
     数据库: {redis_db}
     状态: {redis_status}
-    启用: {redis_config.get('enabled', False)}
+    启用: {redis_config.get("enabled", False)}
                 """)
 
         if db_manager.is_redis_available():
@@ -241,15 +235,15 @@ def main():
             label="Redis 缓存速度",
             value="< 1ms",
             delta="比API快 1000+ 倍",
-            help="Redis内存缓存的超快访问速度"
+            help="Redis内存缓存的超快访问速度",
         )
 
     with perf_col2:
         st.metric(
-            label="MongoDB 查询速度",
+            label="PostgreSQL 查询速度",
             value="< 10ms",
             delta="比API快 100+ 倍",
-            help="MongoDB索引优化的查询速度"
+            help="PostgreSQL索引优化的查询速度",
         )
 
     with perf_col3:
@@ -257,7 +251,7 @@ def main():
             label="存储容量",
             value="无限制",
             delta="vs API 配额限制",
-            help="本地存储不受API调用次数限制"
+            help="本地存储不受API调用次数限制",
         )
 
     # 架构说明
@@ -272,7 +266,7 @@ def main():
        - 自动过期管理
        - 高并发支持
 
-    2. **MongoDB (L2缓存)** - 持久化存储，秒级访问
+    2. **PostgreSQL (L2缓存)** - 持久化存储，秒级访问
        - 存储所有历史数据
        - 支持复杂查询
        - 数据持久化保证
@@ -282,17 +276,21 @@ def main():
        - FINNHUB API (美股数据)
        - Yahoo Finance API (补充数据)
 
-    **数据流向：** API → MongoDB → Redis → 应用程序
+    **数据流向：** API → PostgreSQL → Redis → 应用程序
     """)
 
     # 页脚信息
     st.markdown("---")
-    st.markdown("""
+    st.markdown(
+        """
     <div style='text-align: center; color: #666; font-size: 0.9em;'>
         🗄️ 数据库缓存管理系统 | TradingAgents v0.1.2 |
         <a href='https://github.com/your-repo/TradingAgents' target='_blank'>GitHub</a>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
+
 
 if __name__ == "__main__":
     main()

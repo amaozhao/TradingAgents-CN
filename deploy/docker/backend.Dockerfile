@@ -83,5 +83,5 @@ EXPOSE 8000
 # Docker环境标识
 ENV DOCKER_CONTAINER=true
 
-# 启动FastAPI服务
-CMD ["python", "-m", "uvicorn", "app.appmain:app", "--host", "0.0.0.0", "--port", "8000"]
+# 启动前先应用 PostgreSQL schema，再启动 FastAPI 服务
+CMD ["sh", "-c", "cd /app/backend && alembic -c alembic.ini upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"]

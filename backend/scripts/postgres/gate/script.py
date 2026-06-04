@@ -8,7 +8,6 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
 
-
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_ROOT.parent
 
@@ -191,7 +190,14 @@ SCOPE_STEPS: dict[str, list[TestStep]] = {
     "db": [
         TestStep(
             name="postgres_db_tests",
-            command=[PYTHON, "-m", "pytest", "backend/tests/db", "backend/tests/config", "-q"],
+            command=[
+                PYTHON,
+                "-m",
+                "pytest",
+                "backend/tests/db",
+                "backend/tests/config",
+                "-q",
+            ],
         ),
     ],
     "full": [

@@ -6,12 +6,15 @@
 """
 
 import importlib
-from typing import Dict, List, Optional, Any
-from .service import get_stock_data_service
+from typing import Any, Dict, List, Optional
 
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
-logger = get_logger('agents')
+
+from .service import get_stock_data_service
+
+logger = get_logger("agents")
+
 
 def get_stock_info(stock_code: str) -> Optional[Dict[str, Any]]:
     """
@@ -32,6 +35,7 @@ def get_stock_info(stock_code: str) -> Optional[Dict[str, Any]]:
     result = service.get_stock_basic_info(stock_code)
     return result if isinstance(result, dict) else None
 
+
 def get_all_stocks() -> List[Dict[str, Any]]:
     """
     获取所有股票列表
@@ -49,10 +53,11 @@ def get_all_stocks() -> List[Dict[str, Any]]:
 
     if isinstance(result, list):
         return result
-    elif isinstance(result, dict) and 'error' in result:
+    elif isinstance(result, dict) and "error" in result:
         return [result]  # 返回错误信息
     else:
         return []
+
 
 def get_stock_data(stock_code: str, start_date: str, end_date: str) -> str:
     """
@@ -73,9 +78,10 @@ def get_stock_data(stock_code: str, start_date: str, end_date: str) -> str:
     service = get_stock_data_service()
     return service.get_stock_data_with_fallback(stock_code, start_date, end_date)
 
+
 def search_stocks_by_name(name: str) -> List[Dict[str, Any]]:
     """
-    根据股票名称搜索股票（需要MongoDB支持）
+    根据股票名称搜索股票（需要PostgreSQL支持）
 
     Args:
         name: 股票名称关键词
@@ -88,14 +94,15 @@ def search_stocks_by_name(name: str) -> List[Dict[str, Any]]:
         >>> for stock in results:
         logger.info(f"{stock['code']}: {stock['name']}")
     """
-    # 这个功能需要MongoDB支持，暂时通过原有方式实现
+    # 这个功能需要PostgreSQL支持，暂时通过原有方式实现
     try:
         module = importlib.import_module("examples.stock.query.examples.example")
         service_cls = getattr(module, "EnhancedStockQueryService")
         service = service_cls()
         return service.query_stocks_by_name(name)
     except Exception as e:
-        return [{'error': f'名称搜索功能不可用: {str(e)}'}]
+        return [{"error": f"名称搜索功能不可用: {str(e)}"}]
+
 
 def check_data_sources() -> Dict[str, Any]:
     """
@@ -106,18 +113,21 @@ def check_data_sources() -> Dict[str, Any]:
 
     Example:
         >>> status = check_data_sources()
-        logger.info(f"MongoDB可用: {status['mongodb_available']}")
+        logger.info(f"PostgreSQL可用: {status['postgres_available']}")
         logger.info(f"统一数据接口可用: {status['unified_api_available']}")
     """
     service = get_stock_data_service()
 
     return {
-        'mongodb_available': service.db_manager is not None and service.db_manager.mongodb_db is not None,
-        'unified_api_available': True,  # 统一接口总是可用
-        'enhanced_fetcher_available': True,  # 这个通常都可用
-        'fallback_mode': service.db_manager is None or service.db_manager.mongodb_db is None,
-        'recommendation': (
-            "所有数据源正常" if service.db_manager and service.db_manager.mongodb_db
-            else "建议配置MongoDB以获得最佳性能，当前使用统一数据接口降级模式"
-        )
+        "postgres_available": service.db_manager is not None
+        and service.db_manager.postgres_db is not None,
+        "unified_api_available": True,  # 统一接口总是可用
+        "enhanced_fetcher_available": True,  # 这个通常都可用
+        "fallback_mode": service.db_manager is None
+        or service.db_manager.postgres_db is None,
+        "recommendation": (
+            "所有数据源正常"
+            if service.db_manager and service.db_manager.postgres_db
+            else "建议配置PostgreSQL以获得最佳性能，当前使用统一数据接口降级模式"
+        ),
     }

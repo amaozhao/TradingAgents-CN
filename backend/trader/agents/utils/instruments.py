@@ -20,7 +20,9 @@ def build_instrument_context(
         details = []
         name = identity.get("company_name") or identity.get("name")
         if name:
-            details.append(f"名称/Company: {name}" if not is_crypto else f"名称/Name: {name}")
+            details.append(
+                f"名称/Company: {name}" if not is_crypto else f"名称/Name: {name}"
+            )
         sector = identity.get("sector")
         industry = identity.get("industry")
         if sector and industry:

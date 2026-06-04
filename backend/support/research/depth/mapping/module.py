@@ -2,7 +2,9 @@
 测试研究深度映射是否正确
 验证前端数字等级到后端中文等级的转换
 """
+
 import pytest
+
 from app.services.analysis.simple import create_analysis_config
 
 
@@ -17,7 +19,7 @@ class TestResearchDepthMapping:
             quick_model="qwen-turbo",
             deep_model="qwen-plus",
             llm_provider="dashscope",
-            market_type="A股"
+            market_type="A股",
         )
 
         assert config["max_debate_rounds"] == 1
@@ -33,7 +35,7 @@ class TestResearchDepthMapping:
             quick_model="qwen-turbo",
             deep_model="qwen-plus",
             llm_provider="dashscope",
-            market_type="A股"
+            market_type="A股",
         )
 
         assert config["max_debate_rounds"] == 1
@@ -49,7 +51,7 @@ class TestResearchDepthMapping:
             quick_model="qwen-plus",
             deep_model="qwen-max",
             llm_provider="dashscope",
-            market_type="A股"
+            market_type="A股",
         )
 
         assert config["max_debate_rounds"] == 1
@@ -65,7 +67,7 @@ class TestResearchDepthMapping:
             quick_model="qwen-plus",
             deep_model="qwen-max",
             llm_provider="dashscope",
-            market_type="A股"
+            market_type="A股",
         )
 
         # 🔥 关键断言：4级应该有2轮辩论
@@ -82,7 +84,7 @@ class TestResearchDepthMapping:
             quick_model="qwen-max",
             deep_model="qwen-max",
             llm_provider="dashscope",
-            market_type="A股"
+            market_type="A股",
         )
 
         # 🔥 关键断言：5级应该有3轮辩论
@@ -99,7 +101,7 @@ class TestResearchDepthMapping:
             quick_model="qwen-turbo",
             deep_model="qwen-plus",
             llm_provider="dashscope",
-            market_type="A股"
+            market_type="A股",
         )
 
         assert config["max_debate_rounds"] == 1
@@ -114,7 +116,7 @@ class TestResearchDepthMapping:
             quick_model="qwen-plus",
             deep_model="qwen-max",
             llm_provider="dashscope",
-            market_type="A股"
+            market_type="A股",
         )
 
         assert config["max_debate_rounds"] == 2
@@ -129,7 +131,7 @@ class TestResearchDepthMapping:
             quick_model="qwen-max",
             deep_model="qwen-max",
             llm_provider="dashscope",
-            market_type="A股"
+            market_type="A股",
         )
 
         assert config["max_debate_rounds"] == 3
@@ -144,7 +146,7 @@ class TestResearchDepthMapping:
             quick_model="qwen-plus",
             deep_model="qwen-max",
             llm_provider="dashscope",
-            market_type="A股"
+            market_type="A股",
         )
 
         assert config["max_debate_rounds"] == 2
@@ -159,7 +161,7 @@ class TestResearchDepthMapping:
             quick_model="qwen-plus",
             deep_model="qwen-max",
             llm_provider="dashscope",
-            market_type="A股"
+            market_type="A股",
         )
 
         # 应该回退到标准分析
@@ -173,20 +175,24 @@ class TestResearchDepthMapping:
         expected_debate_rounds = [1, 1, 1, 2, 3]
         expected_risk_rounds = [1, 1, 2, 2, 3]
 
-        for level, expected_debate, expected_risk in zip(levels, expected_debate_rounds, expected_risk_rounds):
+        for level, expected_debate, expected_risk in zip(
+            levels, expected_debate_rounds, expected_risk_rounds
+        ):
             config = create_analysis_config(
                 research_depth=level,
                 selected_analysts=["market"],
                 quick_model="qwen-plus",
                 deep_model="qwen-max",
                 llm_provider="dashscope",
-                market_type="A股"
+                market_type="A股",
             )
 
-            assert config["max_debate_rounds"] == expected_debate, \
+            assert config["max_debate_rounds"] == expected_debate, (
                 f"级别{level}的辩论轮次应该是{expected_debate}，实际是{config['max_debate_rounds']}"
-            assert config["max_risk_discuss_rounds"] == expected_risk, \
+            )
+            assert config["max_risk_discuss_rounds"] == expected_risk, (
                 f"级别{level}的风险讨论轮次应该是{expected_risk}，实际是{config['max_risk_discuss_rounds']}"
+            )
 
 
 if __name__ == "__main__":

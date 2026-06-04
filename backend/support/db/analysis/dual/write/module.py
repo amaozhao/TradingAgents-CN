@@ -3,10 +3,10 @@ from types import SimpleNamespace
 import pytest
 
 from app.models.analysis import AnalysisStatus
-from app.services.analysis import simple as simple_analysis_service
-from app.services.analysis import status as status_update_utils
 from app.routers import analysis as analysis_router
 from app.routers import reports as reports_router
+from app.services.analysis import simple as simple_analysis_service
+from app.services.analysis import status as status_update_utils
 
 
 @pytest.mark.asyncio
@@ -18,7 +18,7 @@ async def test_analysis_status_update_dual_writes_task(monkeypatch):
     async def fake_dual_write(collection, document):
         dual_write_calls.append((collection, document))
 
-    monkeypatch.setattr(status_update_utils, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(status_update_utils, "get_postgres_db", lambda: fake_db)
     monkeypatch.setattr(
         status_update_utils,
         "get_redis_service",
@@ -44,7 +44,7 @@ async def test_analysis_status_update_dual_writes_task(monkeypatch):
 @pytest.mark.asyncio
 async def test_web_style_analysis_result_dual_writes_report_and_task(monkeypatch):
     fake_db = SimpleNamespace(
-        analysis_reports=FakeInsertCollection(inserted_id="report-mongo-id"),
+        analysis_reports=FakeInsertCollection(inserted_id="report-postgres-id"),
         analysis_tasks=FakeUpdateCollection(),
     )
     dual_write_calls = []
@@ -52,8 +52,10 @@ async def test_web_style_analysis_result_dual_writes_report_and_task(monkeypatch
     async def fake_dual_write(collection, document):
         dual_write_calls.append((collection, document))
 
-    monkeypatch.setattr(simple_analysis_service, "get_mongo_db", lambda: fake_db)
-    monkeypatch.setattr(simple_analysis_service, "dual_write_hot_document", fake_dual_write)
+    monkeypatch.setattr(simple_analysis_service, "get_postgres_db", lambda: fake_db)
+    monkeypatch.setattr(
+        simple_analysis_service, "dual_write_hot_document", fake_dual_write
+    )
 
     service = simple_analysis_service.SimpleAnalysisService.__new__(
         simple_analysis_service.SimpleAnalysisService
@@ -91,7 +93,10 @@ async def test_web_style_analysis_result_dual_writes_report_and_task(monkeypatch
         "Market report content long enough"
     )
     assert dual_write_calls[1][1]["task_id"] == "task-1"
-    assert dual_write_calls[1][1]["result"]["analysis_id"] == dual_write_calls[0][1]["analysis_id"]
+    assert (
+        dual_write_calls[1][1]["result"]["analysis_id"]
+        == dual_write_calls[0][1]["analysis_id"]
+    )
     assert dual_write_calls[1][1]["result"]["recommendation"] == "buy"
 
 
@@ -103,7 +108,7 @@ async def test_mark_task_failed_route_dual_writes_task(monkeypatch):
     async def fake_dual_write(collection, document):
         dual_write_calls.append((collection, document))
 
-    monkeypatch.setattr(analysis_router, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(analysis_router, "get_postgres_db", lambda: fake_db)
     monkeypatch.setattr(analysis_router, "dual_write_hot_document", fake_dual_write)
     monkeypatch.setattr(
         analysis_router,
@@ -133,7 +138,7 @@ async def test_delete_task_route_dual_writes_tombstone(monkeypatch):
     async def fake_dual_write(collection, document):
         dual_write_calls.append((collection, document))
 
-    monkeypatch.setattr(analysis_router, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(analysis_router, "get_postgres_db", lambda: fake_db)
     monkeypatch.setattr(analysis_router, "dual_write_hot_document", fake_dual_write)
     monkeypatch.setattr(
         analysis_router,
@@ -163,7 +168,7 @@ async def test_delete_report_route_dual_writes_tombstone(monkeypatch):
     async def fake_dual_write(collection, document):
         dual_write_calls.append((collection, document))
 
-    monkeypatch.setattr(reports_router, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(reports_router, "get_postgres_db", lambda: fake_db)
     monkeypatch.setattr(reports_router, "dual_write_hot_document", fake_dual_write)
 
     result = await reports_router.delete_report("report-1", user={"id": "user-1"})

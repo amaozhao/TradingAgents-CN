@@ -5,8 +5,8 @@ from typing import Any, Iterable
 from sqlalchemy.dialects.postgresql import insert
 
 from app.db.document import (
-    map_analysis_report,
     map_analysis_batch,
+    map_analysis_report,
     map_analysis_result,
     map_analysis_task,
     map_database_backup,
@@ -22,13 +22,13 @@ from app.db.document import (
     map_scheduler_execution,
     map_scheduler_history,
     map_scheduler_metadata,
+    map_social_media_message,
     map_stock_basic_info,
     map_stock_daily_quote,
     map_stock_financial_data,
     map_stock_news,
-    map_system_config_document,
     map_sync_status,
-    map_social_media_message,
+    map_system_config_document,
     map_token_usage,
     map_user_account,
     map_user_favorite,
@@ -36,8 +36,8 @@ from app.db.document import (
     map_user_tag,
 )
 from app.db.model import (
-    AnalysisReport,
     AnalysisBatchDocument,
+    AnalysisReport,
     AnalysisResultDocument,
     AnalysisTask,
     DatabaseBackupDocument,
@@ -53,13 +53,13 @@ from app.db.model import (
     SchedulerExecution,
     SchedulerHistoryDocument,
     SchedulerMetadataDocument,
+    SocialMediaMessageDocument,
     StockBasicInfo,
     StockDailyQuote,
     StockFinancialData,
     StockNewsDocument,
-    SystemConfigDocument,
     SyncStatusDocument,
-    SocialMediaMessageDocument,
+    SystemConfigDocument,
     TokenUsageDocument,
     UserAccount,
     UserFavorite,
@@ -80,12 +80,18 @@ def build_market_quote_upsert(document: dict[str, Any]):
 
 def build_stock_daily_quote_upsert(document: dict[str, Any]):
     values = map_stock_daily_quote(document)
-    return _build_upsert(StockDailyQuote.__table__, values, ("symbol", "trade_date", "data_source", "period"))
+    return _build_upsert(
+        StockDailyQuote.__table__,
+        values,
+        ("symbol", "trade_date", "data_source", "period"),
+    )
 
 
 def build_stock_financial_data_upsert(document: dict[str, Any]):
     values = map_stock_financial_data(document)
-    return _build_upsert(StockFinancialData.__table__, values, ("code", "data_source", "report_period"))
+    return _build_upsert(
+        StockFinancialData.__table__, values, ("code", "data_source", "report_period")
+    )
 
 
 def build_stock_news_upsert(document: dict[str, Any]):
@@ -133,7 +139,9 @@ def build_scheduler_metadata_upsert(document: dict[str, Any]):
     return _build_upsert(SchedulerMetadataDocument.__table__, values, ("job_id",))
 
 
-def build_system_config_document_upsert(document: dict[str, Any], *, collection: str = "system_configs"):
+def build_system_config_document_upsert(
+    document: dict[str, Any], *, collection: str = "system_configs"
+):
     values = map_system_config_document(document, collection=collection)
     return _build_upsert(SystemConfigDocument.__table__, values, ("config_key",))
 
@@ -210,7 +218,9 @@ def build_internal_message_upsert(document: dict[str, Any]):
 
 def build_social_media_message_upsert(document: dict[str, Any]):
     values = map_social_media_message(document)
-    return _build_upsert(SocialMediaMessageDocument.__table__, values, ("message_id", "platform"))
+    return _build_upsert(
+        SocialMediaMessageDocument.__table__, values, ("message_id", "platform")
+    )
 
 
 async def upsert_stock_basic_info(session, document: dict[str, Any]) -> None:
@@ -271,7 +281,9 @@ async def upsert_system_config_document(
     *,
     collection: str = "system_configs",
 ) -> None:
-    await session.execute(build_system_config_document_upsert(document, collection=collection))
+    await session.execute(
+        build_system_config_document_upsert(document, collection=collection)
+    )
 
 
 async def upsert_user_favorite(session, document: dict[str, Any]) -> None:

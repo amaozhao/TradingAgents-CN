@@ -21,7 +21,6 @@ added, plus the heuristic SignalProcessor.
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 
 from trader.agents.managers.portfolio import create_portfolio_manager
@@ -29,7 +28,6 @@ from trader.agents.managers.research import create_research_manager
 from trader.agents.trader.trader import create_trader
 from trader.graph.signals import SignalProcessor
 from trader.llm.clients import create_llm_client
-
 
 PROVIDER_DEFAULTS = {
     "openai": ("gpt-5.4-mini", None),
@@ -153,8 +151,12 @@ def main() -> int:
     #    saved reports) keep working.
     checks = [
         ("Research Manager", investment_plan, ["**Recommendation**:"]),
-        ("Trader",           trader_plan,     ["**Action**:", "FINAL TRANSACTION PROPOSAL:"]),
-        ("Portfolio Manager", final_decision, ["**Rating**:", "**Executive Summary**:", "**Investment Thesis**:"]),
+        ("Trader", trader_plan, ["**Action**:", "FINAL TRANSACTION PROPOSAL:"]),
+        (
+            "Portfolio Manager",
+            final_decision,
+            ["**Rating**:", "**Executive Summary**:", "**Investment Thesis**:"],
+        ),
     ]
     print("\n" + "=" * 70 + "\nStructure checks\n" + "=" * 70)
     failures = 0
@@ -168,7 +170,10 @@ def main() -> int:
     if failures:
         print(f"Smoke FAILED: {failures} structure check(s) missing.")
         return 1
-    print("Smoke PASSED: structured output → rendered markdown chain works for", args.provider)
+    print(
+        "Smoke PASSED: structured output → rendered markdown chain works for",
+        args.provider,
+    )
     return 0
 
 

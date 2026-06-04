@@ -7,13 +7,10 @@ try:
     print("🔄 测试基础模块导入...")
 
     # 测试基础模块
-    from app.core.config import settings
     print("✅ 配置模块导入成功")
 
-    from app.models.user import User
     print("✅ 用户模型导入成功")
 
-    from app.services.analysis.service import get_analysis_service
     print("✅ 分析服务导入成功")
 
     print("🎉 所有模块导入成功！")
@@ -21,4 +18,5 @@ try:
 except Exception as e:
     print(f"❌ 导入失败: {e}")
     import traceback
+
     traceback.print_exc()

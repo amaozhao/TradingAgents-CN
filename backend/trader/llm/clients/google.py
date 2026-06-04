@@ -5,7 +5,9 @@ from .base import BaseLLMClient
 from .validators import validate_model
 
 try:
-    from trader.llm.adapters.google.openai import ChatGoogleOpenAI as NormalizedChatGoogleGenerativeAI
+    from trader.llm.adapters.google.openai import (
+        ChatGoogleOpenAI as NormalizedChatGoogleGenerativeAI,
+    )
 except Exception:
     NormalizedChatGoogleGenerativeAI = None
 
@@ -17,7 +19,10 @@ class GoogleClient(BaseLLMClient):
         self.warn_if_unknown_model()
         chat_cls = NormalizedChatGoogleGenerativeAI
         if chat_cls is None:
-            chat_cls = getattr(importlib.import_module('trader.llm.adapters.google.openai'), 'ChatGoogleOpenAI')
+            chat_cls = getattr(
+                importlib.import_module("trader.llm.adapters.google.openai"),
+                "ChatGoogleOpenAI",
+            )
 
         llm_kwargs = {"model": self.model}
 

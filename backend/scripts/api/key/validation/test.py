@@ -5,12 +5,6 @@
 """
 
 import sys
-import os
-from pathlib import Path
-
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 from app.core.startup import StartupValidator
 
@@ -36,8 +30,16 @@ def test_api_key_validation():
         ("sk-990547695d6046cf9be4e8d095235d91", True, "有效的 API Key"),
         ("sk-c64f9c504be1496f943843f553e3d6ee", True, "有效的 API Key"),
         ("AIzaSyC3JdZVjblI0rfT_SNXXL5a4kvZ13_12CE", True, "有效的 Google API Key"),
-        ("bce-v3/ALTAK-ZV1T8VLLSFYvSPAzVthhY/d364f2499819c1e08dd2e84c7cc5a9ab6bac895f", True, "有效的千帆 API Key"),
-        ("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", True, "有效的 OpenRouter API Key"),
+        (
+            "bce-v3/ALTAK-ZV1T8VLLSFYvSPAzVthhY/d364f2499819c1e08dd2e84c7cc5a9ab6bac895f",
+            True,
+            "有效的千帆 API Key",
+        ),
+        (
+            "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",
+            True,
+            "有效的 OpenRouter API Key",
+        ),
         ('"sk-990547695d6046cf9be4e8d095235d91"', True, "带引号的有效 API Key"),
         ("'sk-990547695d6046cf9be4e8d095235d91'", True, "带单引号的有效 API Key"),
     ]
@@ -61,7 +63,9 @@ def test_api_key_validation():
         # 显示 API Key 的前 20 个字符（如果太长）
         display_key = api_key if len(api_key) <= 40 else api_key[:40] + "..."
 
-        print(f"{status} | {description:40s} | Key: {display_key:45s} | Expected: {expected:5} | Got: {result:5}")
+        print(
+            f"{status} | {description:40s} | Key: {display_key:45s} | Expected: {expected:5} | Got: {result:5}"
+        )
 
     print("=" * 80)
     print(f"📊 测试结果: {passed} 通过, {failed} 失败")

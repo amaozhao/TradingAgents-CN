@@ -2,19 +2,15 @@
 """
 测试时区修复
 """
-import importlib
 
 import asyncio
-import sys
-import os
 import datetime
+import importlib
 
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from app.core.database import init_db, get_mongo_db
-from app.services.operation import log_operation
+from app.core.database import get_postgres_db, init_db
 from app.models.operations import ActionType
+from app.services.operation import log_operation
+
 
 async def test_timezone_fix():
     """测试时区修复"""
@@ -42,30 +38,30 @@ async def test_timezone_fix():
             details={
                 "test_type": "timezone_fix",
                 "local_time": now_local.isoformat(),
-                "utc_time": now_utc.isoformat()
+                "utc_time": now_utc.isoformat(),
             },
             success=True,
             duration_ms=100,
             ip_address="127.0.0.1",
-            user_agent="Timezone Test"
+            user_agent="Timezone Test",
         )
         print(f"✅ 创建日志成功，ID: {log_id}")
 
         # 直接从数据库查询这条记录
         print("\n🔍 从数据库查询记录...")
-        db = get_mongo_db()
-        ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
+        db = get_postgres_db()
+        DocumentId = getattr(importlib.import_module("app.db.ids"), "DocumentId")
 
-        doc = await db.operation_logs.find_one({"_id": ObjectId(log_id)})
+        doc = await db.operation_logs.find_one({"_id": DocumentId(log_id)})
         if doc:
-            print(f"📄 数据库中存储的时间:")
+            print("📄 数据库中存储的时间:")
             print(f"  timestamp: {doc['timestamp']}")
             print(f"  created_at: {doc['created_at']}")
             print(f"  action: {doc['action']}")
 
             # 比较时间
-            stored_time = doc['timestamp']
-            print(f"\n⏰ 时间比较:")
+            stored_time = doc["timestamp"]
+            print("\n⏰ 时间比较:")
             print(f"  存储时间: {stored_time}")
             print(f"  本地时间: {now_local}")
             print(f"  UTC时间: {now_utc}")
@@ -82,8 +78,13 @@ async def test_timezone_fix():
 
         # 测试API返回的时间格式
         print("\n🌐 测试API返回格式...")
-        get_operation_log_service = getattr(importlib.import_module('app.services.operation'), 'get_operation_log_service')
-        OperationLogQuery = getattr(importlib.import_module('app.models.operations'), 'OperationLogQuery')
+        get_operation_log_service = getattr(
+            importlib.import_module("app.services.operation"),
+            "get_operation_log_service",
+        )
+        OperationLogQuery = getattr(
+            importlib.import_module("app.models.operations"), "OperationLogQuery"
+        )
 
         service = get_operation_log_service()
         query = OperationLogQuery(page=1, page_size=1)
@@ -97,17 +98,20 @@ async def test_timezone_fix():
             # 如果是字符串，尝试解析
             if isinstance(log.timestamp, str):
                 try:
-                    parsed_time = datetime.datetime.fromisoformat(log.timestamp.replace('Z', ''))
+                    parsed_time = datetime.datetime.fromisoformat(
+                        log.timestamp.replace("Z", "")
+                    )
                     print(f"📋 解析后的时间: {parsed_time}")
-                except:
+                except Exception:
                     print("❌ 时间字符串解析失败")
 
         print("\n🎉 时区测试完成！")
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     asyncio.run(test_timezone_fix())

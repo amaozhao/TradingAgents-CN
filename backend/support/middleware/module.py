@@ -2,15 +2,12 @@
 """
 测试操作日志中间件
 """
-import importlib
 
 import asyncio
-import sys
-import os
+import importlib
+
 import httpx
 
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 async def test_middleware():
     """测试中间件是否正常工作"""
@@ -22,10 +19,7 @@ async def test_middleware():
         try:
             # 测试1: 登录请求
             print("\n🔐 测试1: 登录请求")
-            login_data = {
-                "username": "admin",
-                "password": "admin123"
-            }
+            login_data = {"username": "admin", "password": "admin123"}
 
             response = await client.post(f"{base_url}/api/auth/login", json=login_data)
             print(f"登录响应状态: {response.status_code}")
@@ -40,8 +34,7 @@ async def test_middleware():
                 headers = {"Authorization": f"Bearer {token}"}
 
                 logs_response = await client.get(
-                    f"{base_url}/api/system/logs/list",
-                    headers=headers
+                    f"{base_url}/api/system/logs/list", headers=headers
                 )
                 print(f"获取日志响应状态: {logs_response.status_code}")
 
@@ -54,15 +47,16 @@ async def test_middleware():
                     logs = logs_data["data"]["logs"]
                     print("📝 最近的日志:")
                     for log in logs[:5]:
-                        print(f"  - {log['timestamp']} | {log['username']} | {log['action']} | {'✅' if log['success'] else '❌'}")
+                        print(
+                            f"  - {log['timestamp']} | {log['username']} | {log['action']} | {'✅' if log['success'] else '❌'}"
+                        )
                 else:
                     print(f"❌ 获取日志失败: {logs_response.text}")
 
                 # 测试3: 登出请求
                 print("\n🚪 测试3: 登出请求")
                 logout_response = await client.post(
-                    f"{base_url}/api/auth/logout",
-                    headers=headers
+                    f"{base_url}/api/auth/logout", headers=headers
                 )
                 print(f"登出响应状态: {logout_response.status_code}")
 
@@ -76,8 +70,9 @@ async def test_middleware():
 
         except Exception as e:
             print(f"❌ 测试失败: {e}")
-            traceback = importlib.import_module('traceback')
+            traceback = importlib.import_module("traceback")
             traceback.print_exc()
+
 
 if __name__ == "__main__":
     asyncio.run(test_middleware())

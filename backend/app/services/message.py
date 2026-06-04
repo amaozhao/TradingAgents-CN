@@ -2,25 +2,26 @@
 内部消息数据服务
 提供统一的内部消息存储、查询和管理功能
 """
+
 import importlib
-from typing import Any, Dict, List, Optional, Union, cast
-from datetime import datetime, timedelta
-from dataclasses import dataclass, field
 import logging
-from pymongo import ReplaceOne
-from pymongo.errors import BulkWriteError
-from bson import ObjectId
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Union, cast
 
 from app.core.config import settings
 from app.core.database import get_database
+from app.db.documentstore import BulkWriteError, ReplaceOne
 from app.db.dual import dual_write_hot_documents
 
 logger = logging.getLogger(__name__)
 
 
-def convert_objectid_to_str(data: Union[Dict, List[Dict]]) -> Union[Dict, List[Dict]]:
+def convert_document_id_to_str(
+    data: Union[Dict, List[Dict]],
+) -> Union[Dict, List[Dict]]:
     """
-    转换 MongoDB ObjectId 为字符串，避免 JSON 序列化错误
+    转换 PostgreSQL DocumentId 为字符串，避免 JSON 序列化错误
 
     Args:
         data: 单个文档或文档列表
@@ -30,12 +31,12 @@ def convert_objectid_to_str(data: Union[Dict, List[Dict]]) -> Union[Dict, List[D
     """
     if isinstance(data, list):
         for item in data:
-            if isinstance(item, dict) and '_id' in item:
-                item['_id'] = str(item['_id'])
+            if isinstance(item, dict) and "_id" in item:
+                item["_id"] = str(item["_id"])
         return data
     elif isinstance(data, dict):
-        if '_id' in data:
-            data['_id'] = str(data['_id'])
+        if "_id" in data:
+            data["_id"] = str(data["_id"])
         return data
     return data
 
@@ -43,11 +44,18 @@ def convert_objectid_to_str(data: Union[Dict, List[Dict]]) -> Union[Dict, List[D
 @dataclass
 class InternalMessageQueryParams:
     """内部消息查询参数"""
+
     symbol: Optional[str] = None
     symbols: Optional[List[str]] = None
-    message_type: Optional[str] = None  # research_report/insider_info/analyst_note/meeting_minutes/internal_analysis
-    category: Optional[str] = None  # fundamental_analysis/technical_analysis/market_sentiment/risk_assessment
-    source_type: Optional[str] = None  # internal_research/insider/analyst/meeting/system_analysis
+    message_type: Optional[str] = (
+        None  # research_report/insider_info/analyst_note/meeting_minutes/internal_analysis
+    )
+    category: Optional[str] = (
+        None  # fundamental_analysis/technical_analysis/market_sentiment/risk_assessment
+    )
+    source_type: Optional[str] = (
+        None  # internal_research/insider/analyst/meeting/system_analysis
+    )
     department: Optional[str] = None
     author: Optional[str] = None
     start_time: Optional[datetime] = None
@@ -67,6 +75,7 @@ class InternalMessageQueryParams:
 @dataclass
 class InternalMessageStats:
     """内部消息统计信息"""
+
     total_count: int = 0
     message_types: Dict[str, int] = field(default_factory=dict)
     categories: Dict[str, int] = field(default_factory=dict)
@@ -102,8 +111,7 @@ class InternalMessageService:
         return self.collection
 
     async def save_internal_messages(
-        self,
-        messages: List[Dict[str, Any]]
+        self, messages: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
         批量保存内部消息
@@ -128,9 +136,7 @@ class InternalMessageService:
                 message["updated_at"] = datetime.utcnow()
 
                 # 使用message_id作为唯一标识
-                filter_dict = {
-                    "message_id": message.get("message_id")
-                }
+                filter_dict = {"message_id": message.get("message_id")}
 
                 operations.append(ReplaceOne(filter_dict, message, upsert=True))
 
@@ -145,7 +151,7 @@ class InternalMessageService:
                 "saved": saved_count,
                 "failed": len(messages) - saved_count,
                 "upserted": result.upserted_count,
-                "modified": result.modified_count
+                "modified": result.modified_count,
             }
 
         except BulkWriteError as e:
@@ -153,20 +159,21 @@ class InternalMessageService:
             return {
                 "saved": e.details.get("nUpserted", 0) + e.details.get("nModified", 0),
                 "failed": len(e.details.get("writeErrors", [])),
-                "errors": e.details.get("writeErrors", [])
+                "errors": e.details.get("writeErrors", []),
             }
         except Exception as e:
             self.logger.error(f"❌ 内部消息保存失败: {e}")
             return {"saved": 0, "failed": len(messages), "error": str(e)}
 
-    async def _dual_write_internal_messages(self, messages: List[Dict[str, Any]]) -> None:
+    async def _dual_write_internal_messages(
+        self, messages: List[Dict[str, Any]]
+    ) -> None:
         result = await dual_write_hot_documents("internal_messages", messages)
         if result.status == "failed":
             self.logger.warning("⚠️ 内部消息 PostgreSQL 双写失败: %s", result.reason)
 
     async def query_internal_messages(
-        self,
-        params: InternalMessageQueryParams
+        self, params: InternalMessageQueryParams
     ) -> List[Dict[str, Any]]:
         """
         查询内部消息
@@ -179,7 +186,9 @@ class InternalMessageService:
         """
         try:
             if settings.POSTGRES_READ_ENABLED:
-                postgres_messages = await self._query_internal_messages_from_postgres(params)
+                postgres_messages = await self._query_internal_messages_from_postgres(
+                    params
+                )
                 if postgres_messages:
                     return postgres_messages
 
@@ -246,8 +255,8 @@ class InternalMessageService:
             # 获取结果
             messages = await cursor.to_list(length=params.limit)
 
-            # 🔧 转换 ObjectId 为字符串，避免 JSON 序列化错误
-            messages = cast(List[Dict[str, Any]], convert_objectid_to_str(messages))
+            # 🔧 转换 DocumentId 为字符串，避免 JSON 序列化错误
+            messages = cast(List[Dict[str, Any]], convert_document_id_to_str(messages))
 
             self.logger.debug(f"📊 查询到 {len(messages)} 条内部消息")
             return messages
@@ -261,13 +270,17 @@ class InternalMessageService:
         params: InternalMessageQueryParams,
     ) -> List[Dict[str, Any]]:
         try:
-            query_internal_messages = getattr(importlib.import_module('app.db.message'), 'query_internal_messages')
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            query_internal_messages = getattr(
+                importlib.import_module("app.db.message"), "query_internal_messages"
+            )
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
 
             async with get_session_factory()() as session:
                 return await query_internal_messages(session, params)
         except Exception as e:
-            self.logger.warning(f"PostgreSQL内部消息查询失败，回退MongoDB: {e}")
+            self.logger.warning(f"PostgreSQL内部消息查询失败，回退PostgreSQL: {e}")
             return []
 
     async def get_latest_messages(
@@ -275,7 +288,7 @@ class InternalMessageService:
         symbol: Optional[str] = None,
         message_type: Optional[str] = None,
         access_level: Optional[str] = None,
-        limit: int = 20
+        limit: int = 20,
     ) -> List[Dict[str, Any]]:
         """获取最新内部消息"""
         params = InternalMessageQueryParams(
@@ -284,7 +297,7 @@ class InternalMessageService:
             access_level=access_level,
             limit=limit,
             sort_by="created_time",
-            sort_order=-1
+            sort_order=-1,
         )
         return await self.query_internal_messages(params)
 
@@ -293,7 +306,7 @@ class InternalMessageService:
         query: str,
         symbol: Optional[str] = None,
         access_level: Optional[str] = None,
-        limit: int = 50
+        limit: int = 50,
     ) -> List[Dict[str, Any]]:
         """全文搜索内部消息"""
         try:
@@ -310,9 +323,7 @@ class InternalMessageService:
             collection = await self._get_collection()
 
             # 构建搜索条件
-            search_query: Dict[str, Any] = {
-                "$text": {"$search": query}
-            }
+            search_query: Dict[str, Any] = {"$text": {"$search": query}}
 
             if symbol:
                 search_query["symbol"] = symbol
@@ -322,8 +333,7 @@ class InternalMessageService:
 
             # 执行搜索
             cursor = collection.find(
-                search_query,
-                {"score": {"$meta": "textScore"}}
+                search_query, {"score": {"$meta": "textScore"}}
             ).sort([("score", {"$meta": "textScore"})])
 
             messages = await cursor.limit(limit).to_list(length=limit)
@@ -344,8 +354,12 @@ class InternalMessageService:
         limit: int = 50,
     ) -> List[Dict[str, Any]]:
         try:
-            search_internal_messages = getattr(importlib.import_module('app.db.message'), 'search_internal_messages')
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            search_internal_messages = getattr(
+                importlib.import_module("app.db.message"), "search_internal_messages"
+            )
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
 
             async with get_session_factory()() as session:
                 return await search_internal_messages(
@@ -356,14 +370,14 @@ class InternalMessageService:
                     limit=limit,
                 )
         except Exception as e:
-            self.logger.warning(f"PostgreSQL内部消息搜索失败，回退MongoDB: {e}")
+            self.logger.warning(f"PostgreSQL内部消息搜索失败，回退PostgreSQL: {e}")
             return []
 
     async def get_research_reports(
         self,
         symbol: Optional[str] = None,
         department: Optional[str] = None,
-        limit: int = 20
+        limit: int = 20,
     ) -> List[Dict[str, Any]]:
         """获取研究报告"""
         params = InternalMessageQueryParams(
@@ -372,7 +386,7 @@ class InternalMessageService:
             department=department,
             limit=limit,
             sort_by="created_time",
-            sort_order=-1
+            sort_order=-1,
         )
         return await self.query_internal_messages(params)
 
@@ -380,7 +394,7 @@ class InternalMessageService:
         self,
         symbol: Optional[str] = None,
         author: Optional[str] = None,
-        limit: int = 20
+        limit: int = 20,
     ) -> List[Dict[str, Any]]:
         """获取分析师笔记"""
         params = InternalMessageQueryParams(
@@ -389,7 +403,7 @@ class InternalMessageService:
             author=author,
             limit=limit,
             sort_by="created_time",
-            sort_order=-1
+            sort_order=-1,
         )
         return await self.query_internal_messages(params)
 
@@ -397,7 +411,7 @@ class InternalMessageService:
         self,
         symbol: Optional[str] = None,
         start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None
+        end_time: Optional[datetime] = None,
     ) -> InternalMessageStats:
         """获取内部消息统计信息"""
         try:
@@ -429,20 +443,22 @@ class InternalMessageService:
             if match_stage:
                 pipeline.append({"$match": match_stage})
 
-            pipeline.extend([
-                {
-                    "$group": {
-                        "_id": None,
-                        "total_count": {"$sum": 1},
-                        "avg_confidence": {"$avg": "$confidence_level"},
-                        "message_types": {"$push": "$message_type"},
-                        "categories": {"$push": "$category"},
-                        "departments": {"$push": "$source.department"},
-                        "importance_levels": {"$push": "$importance"},
-                        "ratings": {"$push": "$related_data.rating"}
+            pipeline.extend(
+                [
+                    {
+                        "$group": {
+                            "_id": None,
+                            "total_count": {"$sum": 1},
+                            "avg_confidence": {"$avg": "$confidence_level"},
+                            "message_types": {"$push": "$message_type"},
+                            "categories": {"$push": "$category"},
+                            "departments": {"$push": "$source.department"},
+                            "importance_levels": {"$push": "$importance"},
+                            "ratings": {"$push": "$related_data.rating"},
+                        }
                     }
-                }
-            ])
+                ]
+            )
 
             # 执行聚合
             result = await collection.aggregate(pipeline).to_list(length=1)
@@ -463,9 +479,11 @@ class InternalMessageService:
                     message_types=count_items(stats_data.get("message_types", [])),
                     categories=count_items(stats_data.get("categories", [])),
                     departments=count_items(stats_data.get("departments", [])),
-                    importance_levels=count_items(stats_data.get("importance_levels", [])),
+                    importance_levels=count_items(
+                        stats_data.get("importance_levels", [])
+                    ),
                     ratings=count_items(stats_data.get("ratings", [])),
-                    avg_confidence=stats_data.get("avg_confidence", 0.0)
+                    avg_confidence=stats_data.get("avg_confidence", 0.0),
                 )
             else:
                 return InternalMessageStats()
@@ -482,8 +500,12 @@ class InternalMessageService:
         end_time: Optional[datetime] = None,
     ) -> Optional[InternalMessageStats]:
         try:
-            get_internal_message_stats = getattr(importlib.import_module('app.db.message'), 'get_internal_message_stats')
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            get_internal_message_stats = getattr(
+                importlib.import_module("app.db.message"), "get_internal_message_stats"
+            )
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
 
             async with get_session_factory()() as session:
                 stats = await get_internal_message_stats(
@@ -494,12 +516,13 @@ class InternalMessageService:
                 )
             return InternalMessageStats(**stats)
         except Exception as e:
-            self.logger.warning(f"PostgreSQL内部消息统计失败，回退MongoDB: {e}")
+            self.logger.warning(f"PostgreSQL内部消息统计失败，回退PostgreSQL: {e}")
             return None
 
 
 # 全局服务实例
 _internal_message_service = None
+
 
 async def get_internal_message_service() -> InternalMessageService:
     """获取内部消息数据服务实例"""

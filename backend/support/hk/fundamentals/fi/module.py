@@ -3,17 +3,19 @@
 测试港股基本面分析修复
 验证港股代码识别、工具选择和货币处理是否正确
 """
-import importlib
 
-import os
+import importlib
 import sys
+
 
 def test_stock_type_detection():
     """测试股票类型检测功能"""
     print("🧪 测试股票类型检测...")
 
     try:
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
 
         test_cases = [
             ("0700.HK", "港股", "港币", "HK$"),
@@ -29,20 +31,28 @@ def test_stock_type_detection():
 
             print(f"  {ticker}:")
             print(f"    市场: {market_info['market_name']}")
-            print(f"    货币: {market_info['currency_name']} ({market_info['currency_symbol']})")
+            print(
+                f"    货币: {market_info['currency_name']} ({market_info['currency_symbol']})"
+            )
             print(f"    是否港股: {market_info['is_hk']}")
             print(f"    是否A股: {market_info['is_china']}")
             print(f"    是否美股: {market_info['is_us']}")
 
             # 验证结果
-            if (expected_market in market_info['market_name'] and
-                market_info['currency_name'] == expected_currency and
-                market_info['currency_symbol'] == expected_symbol):
-                print(f"    ✅ 识别正确")
+            if (
+                expected_market in market_info["market_name"]
+                and market_info["currency_name"] == expected_currency
+                and market_info["currency_symbol"] == expected_symbol
+            ):
+                print("    ✅ 识别正确")
             else:
-                print(f"    ❌ 识别错误")
-                print(f"       期望: {expected_market}, {expected_currency}, {expected_symbol}")
-                print(f"       实际: {market_info['market_name']}, {market_info['currency_name']}, {market_info['currency_symbol']}")
+                print("    ❌ 识别错误")
+                print(
+                    f"       期望: {expected_market}, {expected_currency}, {expected_symbol}"
+                )
+                print(
+                    f"       实际: {market_info['market_name']}, {market_info['currency_name']}, {market_info['currency_symbol']}"
+                )
                 return False
 
         print("✅ 股票类型检测测试通过")
@@ -58,9 +68,15 @@ def test_fundamentals_analyst_tool_selection():
     print("\n🧪 测试基本面分析师工具选择...")
 
     try:
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
 
         # 创建工具包
         config = DEFAULT_CONFIG.copy()
@@ -74,13 +90,15 @@ def test_fundamentals_analyst_tool_selection():
         print(f"  港股工具选择测试: {hk_ticker}")
         print(f"    市场类型: {market_info['market_name']}")
         print(f"    是否港股: {market_info['is_hk']}")
-        print(f"    货币: {market_info['currency_name']} ({market_info['currency_symbol']})")
+        print(
+            f"    货币: {market_info['currency_name']} ({market_info['currency_symbol']})"
+        )
 
         # 检查港股专用工具是否存在
-        if hasattr(toolkit, 'get_hk_stock_data_unified'):
-            print(f"    ✅ 港股专用工具存在: get_hk_stock_data_unified")
+        if hasattr(toolkit, "get_hk_stock_data_unified"):
+            print("    ✅ 港股专用工具存在: get_hk_stock_data_unified")
         else:
-            print(f"    ❌ 港股专用工具不存在")
+            print("    ❌ 港股专用工具不存在")
             return False
 
         # 测试A股工具选择
@@ -90,13 +108,15 @@ def test_fundamentals_analyst_tool_selection():
         print(f"  A股工具选择测试: {china_ticker}")
         print(f"    市场类型: {market_info['market_name']}")
         print(f"    是否A股: {market_info['is_china']}")
-        print(f"    货币: {market_info['currency_name']} ({market_info['currency_symbol']})")
+        print(
+            f"    货币: {market_info['currency_name']} ({market_info['currency_symbol']})"
+        )
 
         # 检查A股专用工具是否存在
-        if hasattr(toolkit, 'get_china_stock_data'):
-            print(f"    ✅ A股专用工具存在: get_china_stock_data")
+        if hasattr(toolkit, "get_china_stock_data"):
+            print("    ✅ A股专用工具存在: get_china_stock_data")
         else:
-            print(f"    ❌ A股专用工具不存在")
+            print("    ❌ A股专用工具不存在")
             return False
 
         print("✅ 基本面分析师工具选择测试通过")
@@ -112,7 +132,9 @@ def test_trader_currency_detection():
     print("\n🧪 测试交易员货币检测...")
 
     try:
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
 
         test_cases = [
             ("0700.HK", "港币", "HK$"),
@@ -125,14 +147,18 @@ def test_trader_currency_detection():
             market_info = StockUtils.get_market_info(ticker)
 
             print(f"  {ticker}:")
-            print(f"    检测到的货币: {market_info['currency_name']} ({market_info['currency_symbol']})")
+            print(
+                f"    检测到的货币: {market_info['currency_name']} ({market_info['currency_symbol']})"
+            )
             print(f"    期望的货币: {expected_currency} ({expected_symbol})")
 
-            if (market_info['currency_name'] == expected_currency and
-                market_info['currency_symbol'] == expected_symbol):
-                print(f"    ✅ 货币检测正确")
+            if (
+                market_info["currency_name"] == expected_currency
+                and market_info["currency_symbol"] == expected_symbol
+            ):
+                print("    ✅ 货币检测正确")
             else:
-                print(f"    ❌ 货币检测错误")
+                print("    ❌ 货币检测错误")
                 return False
 
         print("✅ 交易员货币检测测试通过")
@@ -148,7 +174,10 @@ def test_hk_data_source():
     print("\n🧪 测试港股数据源...")
 
     try:
-        get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
+        get_hk_stock_data_unified = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "get_hk_stock_data_unified",
+        )
 
         # 测试港股数据获取
         hk_ticker = "0700.HK"
@@ -160,10 +189,10 @@ def test_hk_data_source():
         print(f"  结果前100字符: {result[:100]}...")
 
         if "❌" in result:
-            print(f"  ⚠️ 数据获取失败，但这可能是正常的（网络问题或API限制）")
+            print("  ⚠️ 数据获取失败，但这可能是正常的（网络问题或API限制）")
             print(f"  失败信息: {result}")
         else:
-            print(f"  ✅ 数据获取成功")
+            print("  ✅ 数据获取成功")
 
         print("✅ 港股数据源测试完成")
         return True

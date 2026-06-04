@@ -6,9 +6,9 @@
 
 import logging
 import os
-from typing import Callable, List, Optional
 from dataclasses import dataclass
 from enum import Enum
+from typing import Callable, List, Optional
 
 from app.core.config import settings
 
@@ -17,17 +17,19 @@ logger = logging.getLogger(__name__)
 
 class ConfigLevel(Enum):
     """配置级别"""
-    REQUIRED = "required"      # 必需配置，缺少则无法启动
+
+    REQUIRED = "required"  # 必需配置，缺少则无法启动
     RECOMMENDED = "recommended"  # 推荐配置，缺少会影响功能
-    OPTIONAL = "optional"      # 可选配置，缺少不影响基本功能
+    OPTIONAL = "optional"  # 可选配置，缺少不影响基本功能
 
 
 @dataclass
 class ConfigItem:
     """配置项"""
-    key: str                    # 配置键名
-    level: ConfigLevel          # 配置级别
-    description: str            # 配置描述
+
+    key: str  # 配置键名
+    level: ConfigLevel  # 配置级别
+    description: str  # 配置描述
     example: Optional[str] = None  # 配置示例
     help_url: Optional[str] = None  # 帮助链接
     validator: Optional[Callable[[str], bool]] = None  # 自定义验证函数
@@ -36,11 +38,12 @@ class ConfigItem:
 @dataclass
 class ValidationResult:
     """验证结果"""
-    success: bool               # 是否验证成功
+
+    success: bool  # 是否验证成功
     missing_required: List[ConfigItem]  # 缺少的必需配置
     missing_recommended: List[ConfigItem]  # 缺少的推荐配置
     invalid_configs: List[tuple[ConfigItem, str]]  # 无效的配置（配置项，错误信息）
-    warnings: List[str]         # 警告信息
+    warnings: List[str]  # 警告信息
 
 
 class StartupValidator:
@@ -49,43 +52,43 @@ class StartupValidator:
     # 必需配置项
     REQUIRED_CONFIGS = [
         ConfigItem(
-            key="MONGODB_HOST",
+            key="POSTGRES_HOST",
             level=ConfigLevel.REQUIRED,
-            description="MongoDB主机地址",
-            example="localhost"
+            description="PostgreSQL主机地址",
+            example="localhost",
         ),
         ConfigItem(
-            key="MONGODB_PORT",
+            key="POSTGRES_PORT",
             level=ConfigLevel.REQUIRED,
-            description="MongoDB端口",
-            example="27017",
-            validator=lambda v: v.isdigit() and 1 <= int(v) <= 65535
+            description="PostgreSQL端口",
+            example="5432",
+            validator=lambda v: v.isdigit() and 1 <= int(v) <= 65535,
         ),
         ConfigItem(
-            key="MONGODB_DATABASE",
+            key="POSTGRES_DB",
             level=ConfigLevel.REQUIRED,
-            description="MongoDB数据库名称",
-            example="trading_agents"
+            description="PostgreSQL数据库名称",
+            example="trading_agents_cn",
         ),
         ConfigItem(
             key="REDIS_HOST",
             level=ConfigLevel.REQUIRED,
             description="Redis主机地址",
-            example="localhost"
+            example="localhost",
         ),
         ConfigItem(
             key="REDIS_PORT",
             level=ConfigLevel.REQUIRED,
             description="Redis端口",
             example="6379",
-            validator=lambda v: v.isdigit() and 1 <= int(v) <= 65535
+            validator=lambda v: v.isdigit() and 1 <= int(v) <= 65535,
         ),
         ConfigItem(
             key="JWT_SECRET",
             level=ConfigLevel.REQUIRED,
             description="JWT密钥（用于生成认证令牌）",
             example="your-super-secret-jwt-key-change-in-production",
-            validator=lambda v: len(v) >= 16
+            validator=lambda v: len(v) >= 16,
         ),
     ]
 
@@ -96,21 +99,21 @@ class StartupValidator:
             level=ConfigLevel.RECOMMENDED,
             description="DeepSeek API密钥（推荐，性价比高）",
             example="sk-xxx",
-            help_url="https://platform.deepseek.com/"
+            help_url="https://platform.deepseek.com/",
         ),
         ConfigItem(
             key="DASHSCOPE_API_KEY",
             level=ConfigLevel.RECOMMENDED,
             description="阿里百炼API密钥（推荐，国产稳定）",
             example="sk-xxx",
-            help_url="https://dashscope.aliyun.com/"
+            help_url="https://dashscope.aliyun.com/",
         ),
         ConfigItem(
             key="TUSHARE_TOKEN",
             level=ConfigLevel.RECOMMENDED,
             description="Tushare Token（推荐，专业A股数据）",
             example="xxx",
-            help_url="https://tushare.pro/weborder/#/login?reg=tacn"
+            help_url="https://tushare.pro/weborder/#/login?reg=tacn",
         ),
     ]
 
@@ -120,7 +123,7 @@ class StartupValidator:
             missing_required=[],
             missing_recommended=[],
             invalid_configs=[],
-            warnings=[]
+            warnings=[],
         )
 
     def _is_valid_api_key(self, api_key: str) -> bool:
@@ -144,11 +147,11 @@ class StartupValidator:
             return False
 
         # 检查是否为占位符（前缀）
-        if api_key.startswith('your_') or api_key.startswith('your-'):
+        if api_key.startswith("your_") or api_key.startswith("your-"):
             return False
 
         # 检查是否为占位符（后缀）
-        if api_key.endswith('_here') or api_key.endswith('-here'):
+        if api_key.endswith("_here") or api_key.endswith("-here"):
             return False
 
         # 检查长度（大多数 API Key 都 > 10 个字符）
@@ -176,7 +179,10 @@ class StartupValidator:
         self._check_security_configs()
 
         # 设置验证结果
-        self.result.success = len(self.result.missing_required) == 0 and len(self.result.invalid_configs) == 0
+        self.result.success = (
+            len(self.result.missing_required) == 0
+            and len(self.result.invalid_configs) == 0
+        )
 
         # 输出验证结果
         self._print_validation_result()
@@ -216,14 +222,20 @@ class StartupValidator:
         """检查安全配置"""
         # 检查JWT密钥是否使用默认值
         jwt_secret = os.getenv("JWT_SECRET", "")
-        if jwt_secret in ["change-me-in-production", "your-super-secret-jwt-key-change-in-production"]:
+        if jwt_secret in [
+            "change-me-in-production",
+            "your-super-secret-jwt-key-change-in-production",
+        ]:
             self.result.warnings.append(
                 "⚠️  JWT_SECRET 使用默认值，生产环境请务必修改！"
             )
 
         # 检查CSRF密钥是否使用默认值
         csrf_secret = os.getenv("CSRF_SECRET", "")
-        if csrf_secret in ["change-me-csrf-secret", "your-csrf-secret-key-change-in-production"]:
+        if csrf_secret in [
+            "change-me-csrf-secret",
+            "your-csrf-secret-key-change-in-production",
+        ]:
             self.result.warnings.append(
                 "⚠️  CSRF_SECRET 使用默认值，生产环境请务必修改！"
             )
@@ -235,28 +247,12 @@ class StartupValidator:
         else:
             logger.info("ℹ️  开发环境模式（DEBUG=true）")
 
-        # 检查开发环境是否误连共享数据库
-        db_identity = settings.mongo_db_identity
-        if (
-            settings.DEBUG
-            and db_identity.get("scope_effective") != "major_instance"
-            and not settings.ALLOW_SHARED_DB_IN_DEBUG
-        ):
-            self.result.invalid_configs.append(
-                (
-                    ConfigItem(
-                        key="MONGODB_DATABASE_SCOPE",
-                        level=ConfigLevel.REQUIRED,
-                        description="开发环境应默认使用 major_instance 隔离数据库",
-                        example="major_instance",
-                    ),
-                    (
-                        "DEBUG=true 时当前数据库作用域为 "
-                        f"{db_identity.get('scope_effective')}，实际数据库为 {db_identity.get('database')}。"
-                        " 如确需共享数据库，请显式设置 ALLOW_SHARED_DB_IN_DEBUG=true。"
-                    ),
-                )
-            )
+        logger.info(
+            "✅ PostgreSQL 主存储配置: %s:%s/%s",
+            settings.POSTGRES_HOST,
+            settings.POSTGRES_PORT,
+            settings.POSTGRES_DB,
+        )
 
     def _print_validation_result(self):
         """输出验证结果"""
@@ -327,13 +323,15 @@ class StartupValidator:
                 )
 
             raise ConfigurationError(
-                "配置验证失败:\n" + "\n".join(f"  • {msg}" for msg in error_messages) +
-                "\n\n请检查 .env 文件并参考 docs/configuration_guide.md"
+                "配置验证失败:\n"
+                + "\n".join(f"  • {msg}" for msg in error_messages)
+                + "\n\n请检查 .env 文件并参考 docs/configuration_guide.md"
             )
 
 
 class ConfigurationError(Exception):
     """配置错误异常"""
+
     pass
 
 

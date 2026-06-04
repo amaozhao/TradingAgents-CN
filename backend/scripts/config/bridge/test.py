@@ -3,16 +3,12 @@
 测试配置桥接功能
 验证数据库配置是否正确桥接到环境变量
 """
-import importlib
 
+import asyncio
+import importlib
 import os
 import sys
-import asyncio
-from pathlib import Path
 
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 async def test_config_bridge():
     """测试配置桥接"""
@@ -22,41 +18,45 @@ async def test_config_bridge():
 
     # 1. 初始化数据库
     print("\n1️⃣ 初始化数据库连接...")
-    init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
+    init_db = getattr(importlib.import_module("app.core.database"), "init_db")
     await init_db()
     print("✅ 数据库连接成功")
 
     # 2. 读取数据库中的配置
     print("\n2️⃣ 读取数据库配置...")
-    get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
-    db = get_mongo_db()
+    get_postgres_db = getattr(
+        importlib.import_module("app.core.database"), "get_postgres_db"
+    )
+    db = get_postgres_db()
     config_doc = await db.system_configs.find_one({"is_active": True})
 
     if not config_doc:
         print("❌ 未找到激活的配置")
         return False
 
-    system_settings = config_doc.get('system_settings', {})
+    system_settings = config_doc.get("system_settings", {})
     print(f"✅ 找到配置，包含 {len(system_settings)} 个设置项")
 
     # 显示 TradingAgents 相关配置
     ta_keys = [
-        'ta_use_app_cache',
-        'ta_hk_min_request_interval_seconds',
-        'ta_hk_timeout_seconds',
-        'ta_hk_max_retries',
-        'ta_hk_rate_limit_wait_seconds',
-        'ta_hk_cache_ttl_seconds',
+        "ta_use_app_cache",
+        "ta_hk_min_request_interval_seconds",
+        "ta_hk_timeout_seconds",
+        "ta_hk_max_retries",
+        "ta_hk_rate_limit_wait_seconds",
+        "ta_hk_cache_ttl_seconds",
     ]
 
     print("\n📋 数据库中的 TradingAgents 配置：")
     for key in ta_keys:
-        value = system_settings.get(key, '未设置')
+        value = system_settings.get(key, "未设置")
         print(f"  • {key}: {value}")
 
     # 3. 执行配置桥接
     print("\n3️⃣ 执行配置桥接...")
-    bridge_config_to_env = getattr(importlib.import_module('app.core.bridge'), 'bridge_config_to_env')
+    bridge_config_to_env = getattr(
+        importlib.import_module("app.core.bridge"), "bridge_config_to_env"
+    )
     success = bridge_config_to_env()
 
     if not success:
@@ -68,12 +68,12 @@ async def test_config_bridge():
     # 4. 验证环境变量
     print("\n4️⃣ 验证环境变量...")
     env_mapping = {
-        'ta_use_app_cache': 'TA_USE_APP_CACHE',
-        'ta_hk_min_request_interval_seconds': 'TA_HK_MIN_REQUEST_INTERVAL_SECONDS',
-        'ta_hk_timeout_seconds': 'TA_HK_TIMEOUT_SECONDS',
-        'ta_hk_max_retries': 'TA_HK_MAX_RETRIES',
-        'ta_hk_rate_limit_wait_seconds': 'TA_HK_RATE_LIMIT_WAIT_SECONDS',
-        'ta_hk_cache_ttl_seconds': 'TA_HK_CACHE_TTL_SECONDS',
+        "ta_use_app_cache": "TA_USE_APP_CACHE",
+        "ta_hk_min_request_interval_seconds": "TA_HK_MIN_REQUEST_INTERVAL_SECONDS",
+        "ta_hk_timeout_seconds": "TA_HK_TIMEOUT_SECONDS",
+        "ta_hk_max_retries": "TA_HK_MAX_RETRIES",
+        "ta_hk_rate_limit_wait_seconds": "TA_HK_RATE_LIMIT_WAIT_SECONDS",
+        "ta_hk_cache_ttl_seconds": "TA_HK_CACHE_TTL_SECONDS",
     }
 
     all_ok = True
@@ -102,10 +102,14 @@ async def test_config_bridge():
     # 5. 测试 trading_agents 读取配置
     print("\n5️⃣ 测试 trading_agents 读取配置...")
     try:
-        get_float = getattr(importlib.import_module('trader.config.runtime'), 'get_float')
-        get_int = getattr(importlib.import_module('trader.config.runtime'), 'get_int')
-        get_bool = getattr(importlib.import_module('trader.config.runtime'), 'get_bool')
-        use_app_cache_enabled = getattr(importlib.import_module('trader.config.runtime'), 'use_app_cache_enabled')
+        get_float = getattr(
+            importlib.import_module("trader.config.runtime"), "get_float"
+        )
+        get_int = getattr(importlib.import_module("trader.config.runtime"), "get_int")
+        getattr(importlib.import_module("trader.config.runtime"), "get_bool")
+        use_app_cache_enabled = getattr(
+            importlib.import_module("trader.config.runtime"), "use_app_cache_enabled"
+        )
 
         print("\n📋 trading_agents 读取的配置值：")
 
@@ -117,44 +121,30 @@ async def test_config_bridge():
         min_interval = get_float(
             "TA_HK_MIN_REQUEST_INTERVAL_SECONDS",
             "ta_hk_min_request_interval_seconds",
-            2.0
+            2.0,
         )
         print(f"  • ta_hk_min_request_interval_seconds: {min_interval}")
 
         # 测试整数
-        timeout = get_int(
-            "TA_HK_TIMEOUT_SECONDS",
-            "ta_hk_timeout_seconds",
-            60
-        )
+        timeout = get_int("TA_HK_TIMEOUT_SECONDS", "ta_hk_timeout_seconds", 60)
         print(f"  • ta_hk_timeout_seconds: {timeout}")
 
-        max_retries = get_int(
-            "TA_HK_MAX_RETRIES",
-            "ta_hk_max_retries",
-            3
-        )
+        max_retries = get_int("TA_HK_MAX_RETRIES", "ta_hk_max_retries", 3)
         print(f"  • ta_hk_max_retries: {max_retries}")
 
         rate_limit_wait = get_int(
-            "TA_HK_RATE_LIMIT_WAIT_SECONDS",
-            "ta_hk_rate_limit_wait_seconds",
-            60
+            "TA_HK_RATE_LIMIT_WAIT_SECONDS", "ta_hk_rate_limit_wait_seconds", 60
         )
         print(f"  • ta_hk_rate_limit_wait_seconds: {rate_limit_wait}")
 
-        cache_ttl = get_int(
-            "TA_HK_CACHE_TTL_SECONDS",
-            "ta_hk_cache_ttl_seconds",
-            86400
-        )
+        cache_ttl = get_int("TA_HK_CACHE_TTL_SECONDS", "ta_hk_cache_ttl_seconds", 86400)
         print(f"  • ta_hk_cache_ttl_seconds: {cache_ttl}")
 
         print("\n✅ trading_agents 配置读取成功")
 
     except Exception as e:
         print(f"\n❌ trading_agents 配置读取失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         all_ok = False
 

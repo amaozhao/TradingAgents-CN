@@ -143,12 +143,12 @@ const handleWizardComplete = async (data: any) => {
       }
     }
 
-    // 3. 数据库配置（MongoDB 和 Redis）
+    // 3. 数据库配置（PostgreSQL 和 Redis）
     // 注意：数据库配置通常在 .env 文件中，这里只是记录用户的选择
     // 实际的数据库连接需要在后端 .env 文件中配置
-    if (data.mongodb || data.redis) {
+    if (data.postgres || data.redis) {
       console.log('数据库配置（需要在 .env 文件中设置）:', {
-        mongodb: data.mongodb,
+        postgres: data.postgres,
         redis: data.redis
       })
     }

@@ -2,88 +2,83 @@
 数据库连接管理模块
 增强版本，支持连接池、健康检查和错误恢复
 """
-import importlib
 
-import logging
-import asyncio
 import atexit
+import importlib
+import logging
 from typing import Optional
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from pymongo import MongoClient
-from pymongo.database import Database
-from redis.asyncio import Redis, ConnectionPool
-from pymongo.errors import ServerSelectionTimeoutError, ConnectionFailure
-from redis.exceptions import ConnectionError as RedisConnectionError
+
+from redis.asyncio import ConnectionPool, Redis
+from sqlalchemy import text
+
+from app.db.documentstore import (
+    PostgresDocumentClient,
+    PostgresDocumentDatabase,
+    SyncPostgresDocumentClient,
+    SyncPostgresDocumentDatabase,
+    create_client,
+    create_database,
+    create_sync_client,
+    create_sync_database,
+)
+from app.db.session import get_session_factory, init_postgres
+
 from .config import settings
 
 logger = logging.getLogger(__name__)
 
 # 全局连接实例
-mongo_client: Optional[AsyncIOMotorClient] = None
-mongo_db: Optional[AsyncIOMotorDatabase] = None
+postgres_client: Optional[PostgresDocumentClient] = None
+postgres_db: Optional[PostgresDocumentDatabase] = None
 redis_client: Optional[Redis] = None
 redis_pool: Optional[ConnectionPool] = None
 
-# 同步 MongoDB 连接（用于非异步上下文）
-_sync_mongo_client: Optional[MongoClient] = None
-_sync_mongo_db: Optional[Database] = None
+# 同步 PostgreSQL document store 连接（用于非异步上下文）
+_sync_postgres_client: Optional[SyncPostgresDocumentClient] = None
+_sync_postgres_db: Optional[SyncPostgresDocumentDatabase] = None
 
 
-def close_sync_mongo_client() -> None:
-    """Close the lazily-created synchronous MongoDB client."""
-    global _sync_mongo_client, _sync_mongo_db
+def close_sync_postgres_client() -> None:
+    """Close the lazily-created synchronous PostgreSQL document-store client."""
+    global _sync_postgres_client, _sync_postgres_db
 
-    if _sync_mongo_client is not None:
-        _sync_mongo_client.close()
-        _sync_mongo_client = None
-    _sync_mongo_db = None
+    if _sync_postgres_client is not None:
+        _sync_postgres_client.close()
+        _sync_postgres_client = None
+    _sync_postgres_db = None
 
 
-atexit.register(close_sync_mongo_client)
+atexit.register(close_sync_postgres_client)
 
 
 class DatabaseManager:
     """数据库连接管理器"""
 
     def __init__(self):
-        self.mongo_client: Optional[AsyncIOMotorClient] = None
-        self.mongo_db: Optional[AsyncIOMotorDatabase] = None
+        self.postgres_client: Optional[PostgresDocumentClient] = None
+        self.postgres_db: Optional[PostgresDocumentDatabase] = None
         self.redis_client: Optional[Redis] = None
         self.redis_pool: Optional[ConnectionPool] = None
-        self._mongo_healthy = False
+        self._postgres_healthy = False
         self._redis_healthy = False
 
-    async def init_mongodb(self):
-        """初始化MongoDB连接"""
+    async def init_postgres_document_store(self):
+        """初始化 PostgreSQL 文档存储。"""
         try:
-            logger.info("🔄 正在初始化MongoDB连接...")
+            logger.info("🔄 正在初始化PostgreSQL文档存储...")
+            await init_postgres()
+            session_factory = get_session_factory()
+            async with session_factory() as session:
+                await session.execute(text("select 1"))
 
-            # 创建MongoDB客户端，配置连接池
-            self.mongo_client = AsyncIOMotorClient(
-                settings.mongo_uri,
-                maxPoolSize=settings.MONGO_MAX_CONNECTIONS,
-                minPoolSize=settings.MONGO_MIN_CONNECTIONS,
-                maxIdleTimeMS=30000,  # 30秒空闲超时
-                serverSelectionTimeoutMS=settings.MONGO_SERVER_SELECTION_TIMEOUT_MS,  # 服务器选择超时
-                connectTimeoutMS=settings.MONGO_CONNECT_TIMEOUT_MS,  # 连接超时
-                socketTimeoutMS=settings.MONGO_SOCKET_TIMEOUT_MS,  # 套接字超时
-            )
-
-            # 获取数据库实例
-            self.mongo_db = self.mongo_client[settings.mongo_db]
-
-            # 测试连接
-            await self.mongo_client.admin.command('ping')
-            self._mongo_healthy = True
-
-            logger.info("✅ MongoDB连接成功建立")
-            logger.info(f"📊 数据库: {settings.mongo_db}")
-            logger.info(f"🔗 连接池: {settings.MONGO_MIN_CONNECTIONS}-{settings.MONGO_MAX_CONNECTIONS}")
-            logger.info(f"⏱️  超时配置: connectTimeout={settings.MONGO_CONNECT_TIMEOUT_MS}ms, socketTimeout={settings.MONGO_SOCKET_TIMEOUT_MS}ms")
+            self.postgres_client = create_client()
+            self.postgres_db = create_database()
+            self._postgres_healthy = True
+            logger.info("✅ PostgreSQL文档存储初始化完成")
 
         except Exception as e:
-            logger.error(f"❌ MongoDB连接失败: {e}")
-            self._mongo_healthy = False
+            logger.error(f"❌ PostgreSQL文档存储初始化失败: {e}")
+            self._postgres_healthy = False
             raise
 
     async def init_redis(self):
@@ -121,14 +116,14 @@ class DatabaseManager:
         """关闭所有数据库连接"""
         logger.info("🔄 正在关闭数据库连接...")
 
-        # 关闭MongoDB连接
-        if self.mongo_client:
+        # 关闭 PostgreSQL 文档客户端
+        if self.postgres_client:
             try:
-                self.mongo_client.close()
-                self._mongo_healthy = False
-                logger.info("✅ MongoDB连接已关闭")
+                self.postgres_client.close()
+                self._postgres_healthy = False
+                logger.info("✅ PostgreSQL文档存储客户端已关闭")
             except Exception as e:
-                logger.error(f"❌ 关闭MongoDB连接时出错: {e}")
+                logger.error(f"❌ 关闭PostgreSQL文档存储客户端时出错: {e}")
 
         # 关闭Redis连接
         if self.redis_client:
@@ -150,27 +145,29 @@ class DatabaseManager:
     async def health_check(self) -> dict:
         """数据库健康检查"""
         health_status = {
-            "mongodb": {"status": "unknown", "details": None},
-            "redis": {"status": "unknown", "details": None}
+            "postgres": {"status": "unknown", "details": None},
+            "redis": {"status": "unknown", "details": None},
         }
 
-        # 检查MongoDB
+        # 检查PostgreSQL
         try:
-            if self.mongo_client:
-                result = await self.mongo_client.admin.command('ping')
-                health_status["mongodb"] = {
+            if self.postgres_db:
+                session_factory = get_session_factory()
+                async with session_factory() as session:
+                    await session.execute(text("select 1"))
+                health_status["postgres"] = {
                     "status": "healthy",
-                    "details": {"ping": result, "database": settings.mongo_db}
+                    "details": {"database": settings.POSTGRES_DB},
                 }
-                self._mongo_healthy = True
+                self._postgres_healthy = True
             else:
-                health_status["mongodb"]["status"] = "disconnected"
+                health_status["postgres"]["status"] = "disconnected"
         except Exception as e:
-            health_status["mongodb"] = {
+            health_status["postgres"] = {
                 "status": "unhealthy",
-                "details": {"error": str(e)}
+                "details": {"error": str(e)},
             }
-            self._mongo_healthy = False
+            self._postgres_healthy = False
 
         # 检查Redis
         try:
@@ -178,7 +175,7 @@ class DatabaseManager:
                 result = await self.redis_client.ping()
                 health_status["redis"] = {
                     "status": "healthy",
-                    "details": {"ping": result}
+                    "details": {"ping": result},
                 }
                 self._redis_healthy = True
             else:
@@ -186,7 +183,7 @@ class DatabaseManager:
         except Exception as e:
             health_status["redis"] = {
                 "status": "unhealthy",
-                "details": {"error": str(e)}
+                "details": {"error": str(e)},
             }
             self._redis_healthy = False
 
@@ -195,7 +192,7 @@ class DatabaseManager:
     @property
     def is_healthy(self) -> bool:
         """检查所有数据库连接是否健康"""
-        return self._mongo_healthy and self._redis_healthy
+        return self._postgres_healthy and self._redis_healthy
 
 
 # 全局数据库管理器实例
@@ -204,21 +201,20 @@ db_manager = DatabaseManager()
 
 async def init_database():
     """初始化数据库连接"""
-    global mongo_client, mongo_db, redis_client, redis_pool
+    global postgres_client, postgres_db, redis_client, redis_pool
 
     try:
-        # 初始化MongoDB
-        await db_manager.init_mongodb()
-        mongo_client = db_manager.mongo_client
-        mongo_db = db_manager.mongo_db
+        # 初始化PostgreSQL文档存储
+        await db_manager.init_postgres_document_store()
+        postgres_client = db_manager.postgres_client
+        postgres_db = db_manager.postgres_db
 
         # 初始化Redis
         await db_manager.init_redis()
         redis_client = db_manager.redis_client
         redis_pool = db_manager.redis_pool
 
-        # 初始化PostgreSQL（仅在PG读或双写开关开启时）
-        await init_postgres_if_enabled()
+        # PostgreSQL现在是主存储，启动阶段必须已经初始化。
 
         logger.info("🎉 所有数据库连接初始化完成")
 
@@ -230,19 +226,19 @@ async def init_database():
         raise
 
 
-async def init_mongodb_only():
-    """Initialize only MongoDB for offline migration/consistency tools."""
-    global mongo_client, mongo_db
+async def init_postgres_document_store_only():
+    """Initialize only the PostgreSQL document store for tools."""
+    global postgres_client, postgres_db
 
-    await db_manager.init_mongodb()
-    mongo_client = db_manager.mongo_client
-    mongo_db = db_manager.mongo_db
+    await db_manager.init_postgres_document_store()
+    postgres_client = db_manager.postgres_client
+    postgres_db = db_manager.postgres_db
 
 
 async def init_database_views_and_indexes():
     """初始化数据库视图和索引"""
     try:
-        db = get_mongo_db()
+        db = get_postgres_db()
 
         # 1. 创建股票筛选视图
         await create_stock_screening_view(db)
@@ -274,16 +270,11 @@ async def create_stock_screening_view(db):
                     "from": "market_quotes",
                     "localField": "code",
                     "foreignField": "code",
-                    "as": "quote_data"
+                    "as": "quote_data",
                 }
             },
             # 第二步：展开 quote_data 数组
-            {
-                "$unwind": {
-                    "path": "$quote_data",
-                    "preserveNullAndEmptyArrays": True
-                }
-            },
+            {"$unwind": {"path": "$quote_data", "preserveNullAndEmptyArrays": True}},
             # 第三步：关联财务数据 (stock_financial_data)
             {
                 "$lookup": {
@@ -295,22 +286,22 @@ async def create_stock_screening_view(db):
                                 "$expr": {
                                     "$and": [
                                         {"$eq": ["$code", "$$stock_code"]},
-                                        {"$eq": ["$data_source", "$$stock_source"]}
+                                        {"$eq": ["$data_source", "$$stock_source"]},
                                     ]
                                 }
                             }
                         },
                         {"$sort": {"report_period": -1}},
-                        {"$limit": 1}
+                        {"$limit": 1},
                     ],
-                    "as": "financial_data"
+                    "as": "financial_data",
                 }
             },
             # 第四步：展开 financial_data 数组
             {
                 "$unwind": {
                     "path": "$financial_data",
-                    "preserveNullAndEmptyArrays": True
+                    "preserveNullAndEmptyArrays": True,
                 }
             },
             # 第五步：重新组织字段结构
@@ -354,17 +345,19 @@ async def create_stock_screening_view(db):
                     # 时间戳
                     "updated_at": 1,
                     "quote_updated_at": "$quote_data.updated_at",
-                    "financial_updated_at": "$financial_data.updated_at"
+                    "financial_updated_at": "$financial_data.updated_at",
                 }
-            }
+            },
         ]
 
         # 创建视图
-        await db.command({
-            "create": "stock_screening_view",
-            "viewOn": "stock_basic_info",
-            "pipeline": pipeline
-        })
+        await db.command(
+            {
+                "create": "stock_screening_view",
+                "viewOn": "stock_basic_info",
+                "pipeline": pipeline,
+            }
+        )
 
         logger.info("✅ 视图 stock_screening_view 创建成功")
 
@@ -398,86 +391,81 @@ async def create_database_indexes(db):
 
 async def close_database():
     """关闭数据库连接"""
-    global mongo_client, mongo_db, redis_client, redis_pool
+    global postgres_client, postgres_db, redis_client, redis_pool
 
     await db_manager.close_connections()
     await close_postgres_if_enabled()
 
     # 清空全局变量
-    mongo_client = None
-    mongo_db = None
+    postgres_client = None
+    postgres_db = None
     redis_client = None
     redis_pool = None
 
 
-async def close_mongodb_only():
-    """Close only MongoDB connections used by offline migration/consistency tools."""
-    global mongo_client, mongo_db
+async def close_postgres_document_store_only():
+    """Close only the PostgreSQL document-store client."""
+    global postgres_client, postgres_db
 
-    if db_manager.mongo_client:
-        db_manager.mongo_client.close()
-        db_manager.mongo_client = None
-        db_manager.mongo_db = None
-        db_manager._mongo_healthy = False
-    mongo_client = None
-    mongo_db = None
+    if db_manager.postgres_client:
+        db_manager.postgres_client.close()
+        db_manager.postgres_client = None
+        db_manager.postgres_db = None
+        db_manager._postgres_healthy = False
+    postgres_client = None
+    postgres_db = None
 
 
 def postgres_runtime_enabled() -> bool:
-    return settings.POSTGRES_READ_ENABLED or settings.POSTGRES_DUAL_WRITE_ENABLED
+    return True
 
 
 async def init_postgres_if_enabled() -> None:
     if not postgres_runtime_enabled():
         return
 
-    init_postgres = getattr(importlib.import_module('app.db.session'), 'init_postgres')
+    init_postgres = getattr(importlib.import_module("app.db.session"), "init_postgres")
 
     await init_postgres()
 
 
 async def close_postgres_if_enabled() -> None:
-    close_postgres = getattr(importlib.import_module('app.db.session'), 'close_postgres')
+    close_postgres = getattr(
+        importlib.import_module("app.db.session"), "close_postgres"
+    )
 
     await close_postgres()
 
 
-def get_mongo_client() -> AsyncIOMotorClient:
-    """获取MongoDB客户端"""
-    if mongo_client is None:
-        raise RuntimeError("MongoDB客户端未初始化")
-    return mongo_client
+def get_postgres_client() -> PostgresDocumentClient:
+    """获取 PostgreSQL 文档客户端"""
+    if postgres_client is None:
+        raise RuntimeError("PostgreSQL文档客户端未初始化")
+    return postgres_client
 
 
-def get_mongo_db() -> AsyncIOMotorDatabase:
-    """获取MongoDB数据库实例"""
-    if mongo_db is None:
-        raise RuntimeError("MongoDB数据库未初始化")
-    return mongo_db
+def get_postgres_db() -> PostgresDocumentDatabase:
+    """获取 PostgreSQL 文档数据库实例"""
+    if postgres_db is None:
+        raise RuntimeError("PostgreSQL文档数据库未初始化")
+    return postgres_db
 
 
-def get_mongo_db_sync() -> Database:
+def get_postgres_db_sync() -> SyncPostgresDocumentDatabase:
     """
-    获取同步版本的MongoDB数据库实例
+    获取同步版本的 PostgreSQL 文档数据库实例
     用于非异步上下文（如普通函数调用）
     """
-    global _sync_mongo_client, _sync_mongo_db
+    global _sync_postgres_client, _sync_postgres_db
 
-    if _sync_mongo_db is not None:
-        return _sync_mongo_db
+    if _sync_postgres_db is not None:
+        return _sync_postgres_db
 
-    # 创建同步 MongoDB 客户端
-    if _sync_mongo_client is None:
-        _sync_mongo_client = MongoClient(
-            settings.mongo_uri,
-            maxPoolSize=settings.MONGO_MAX_CONNECTIONS,
-            minPoolSize=settings.MONGO_MIN_CONNECTIONS,
-            maxIdleTimeMS=30000,
-            serverSelectionTimeoutMS=5000
-        )
+    if _sync_postgres_client is None:
+        _sync_postgres_client = create_sync_client()
 
-    _sync_mongo_db = _sync_mongo_client[settings.mongo_db]
-    return _sync_mongo_db
+    _sync_postgres_db = create_sync_database()
+    return _sync_postgres_db
 
 
 def get_redis_client() -> Redis:
@@ -499,6 +487,6 @@ close_db = close_database
 
 def get_database():
     """获取数据库实例"""
-    if db_manager.mongo_db is None:
-        raise RuntimeError("MongoDB数据库未初始化")
-    return db_manager.mongo_db
+    if db_manager.postgres_db is None:
+        raise RuntimeError("PostgreSQL文档数据库未初始化")
+    return db_manager.postgres_db

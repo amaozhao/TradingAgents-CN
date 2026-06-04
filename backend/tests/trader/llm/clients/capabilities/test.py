@@ -3,7 +3,6 @@
 import pytest
 
 from trader.llm.clients.capabilities import (
-    ModelCapabilities,
     get_capabilities,
 )
 
@@ -64,7 +63,9 @@ class TestMinimaxExactMatches:
     def test_m2_7_rejects_tool_choice(self):
         caps = get_capabilities("MiniMax-M2.7")
         assert caps.supports_tool_choice is False
-        assert caps.supports_json_mode is False  # only MiniMax-Text-01 supports json_object
+        assert (
+            caps.supports_json_mode is False
+        )  # only MiniMax-Text-01 supports json_object
 
     def test_m2_7_highspeed_rejects_tool_choice(self):
         assert get_capabilities("MiniMax-M2.7-highspeed").supports_tool_choice is False

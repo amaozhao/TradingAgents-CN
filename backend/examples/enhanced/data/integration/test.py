@@ -3,28 +3,24 @@
 测试增强数据整合功能
 验证 TA_USE_APP_CACHE 配置对数据访问的影响
 """
-import importlib
 
+import importlib
 import os
-import sys
-import asyncio
 from datetime import datetime, timedelta
 
-# 添加项目根目录到路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 # 设置环境变量
-os.environ['TA_USE_APP_CACHE'] = 'true'  # 启用MongoDB优先模式
+os.environ["TA_USE_APP_CACHE"] = "true"  # 启用PostgreSQL优先模式
 
-from trader.flows.cache.mongodb import get_enhanced_data_adapter
+from trader.flows.cache.postgres import get_enhanced_data_adapter
 from trader.flows.china import get_optimized_china_data_provider
+
 
 def test_enhanced_data_adapter():
     """测试增强数据适配器"""
     print("🔄 测试增强数据适配器...")
 
     adapter = get_enhanced_data_adapter()
-    print(f"📊 MongoDB缓存模式: {'启用' if adapter.use_app_cache else '禁用'}")
+    print(f"📊 PostgreSQL缓存模式: {'启用' if adapter.use_app_cache else '禁用'}")
 
     # 测试股票代码
     test_symbol = "000001"
@@ -39,13 +35,15 @@ def test_enhanced_data_adapter():
 
     # 2. 测试历史数据获取
     print(f"\n2️⃣ 测试历史数据获取: {test_symbol}")
-    end_date = datetime.now().strftime('%Y-%m-%d')  # 使用YYYY-MM-DD格式
-    start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+    end_date = datetime.now().strftime("%Y-%m-%d")  # 使用YYYY-MM-DD格式
+    start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
 
     historical_data = adapter.get_historical_data(test_symbol, start_date, end_date)
     if historical_data is not None and not historical_data.empty:
         print(f"✅ 获取历史数据成功: {len(historical_data)} 条记录")
-        print(f"📅 数据范围: {historical_data['trade_date'].min()} - {historical_data['trade_date'].max()}")
+        print(
+            f"📅 数据范围: {historical_data['trade_date'].min()} - {historical_data['trade_date'].max()}"
+        )
     else:
         print("❌ 未获取到历史数据")
 
@@ -53,7 +51,9 @@ def test_enhanced_data_adapter():
     print(f"\n3️⃣ 测试财务数据获取: {test_symbol}")
     financial_data = adapter.get_financial_data(test_symbol)
     if financial_data:
-        print(f"✅ 获取财务数据成功: 报告期 {financial_data.get('report_period', 'N/A')}")
+        print(
+            f"✅ 获取财务数据成功: 报告期 {financial_data.get('report_period', 'N/A')}"
+        )
     else:
         print("❌ 未获取到财务数据")
 
@@ -83,8 +83,8 @@ def test_optimized_china_data_provider():
 
     # 测试股票数据获取
     print(f"\n📈 测试股票数据获取: {test_symbol}")
-    end_date = datetime.now().strftime('%Y-%m-%d')
-    start_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+    end_date = datetime.now().strftime("%Y-%m-%d")
+    start_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
 
     try:
         stock_data = provider.get_stock_data(test_symbol, start_date, end_date)
@@ -114,12 +114,12 @@ def test_cache_mode_comparison():
     print("\n🔄 测试缓存模式对比...")
 
     test_symbol = "000001"
-    end_date = datetime.now().strftime('%Y-%m-%d')
-    start_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+    end_date = datetime.now().strftime("%Y-%m-%d")
+    start_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
 
-    # 测试启用MongoDB模式
-    print("\n📊 MongoDB优先模式:")
-    os.environ['TA_USE_APP_CACHE'] = 'true'
+    # 测试启用PostgreSQL模式
+    print("\n📊 PostgreSQL优先模式:")
+    os.environ["TA_USE_APP_CACHE"] = "true"
     provider1 = get_optimized_china_data_provider()
 
     start_time = datetime.now()
@@ -131,14 +131,14 @@ def test_cache_mode_comparison():
     except Exception as e:
         print(f"❌ 异常: {e}")
 
-    # 测试禁用MongoDB模式
+    # 测试禁用PostgreSQL模式
     print("\n📁 传统缓存模式:")
-    os.environ['TA_USE_APP_CACHE'] = 'false'
+    os.environ["TA_USE_APP_CACHE"] = "false"
     # 注意：需要重新创建实例以应用新配置
-    reload = getattr(importlib.import_module('importlib'), 'reload')
-    importlib.import_module('trader.flows.cache.mongodb')
-    trader = importlib.import_module('trader')
-    reload(trader.flows.cache.mongodb)
+    reload = getattr(importlib.import_module("importlib"), "reload")
+    importlib.import_module("trader.flows.cache.postgres")
+    trader = importlib.import_module("trader")
+    reload(trader.flows.cache.postgres)
 
     provider2 = get_optimized_china_data_provider()
 

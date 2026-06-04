@@ -3,14 +3,9 @@
 测试统一的技术指标计算函数
 验证港股和美股数据是否使用了统一的技术指标计算
 """
+
 import importlib
 
-import sys
-import os
-
-# 添加项目根目录到 Python 路径
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-sys.path.insert(0, project_root)
 
 def test_hk_indicators():
     """测试港股技术指标"""
@@ -18,7 +13,10 @@ def test_hk_indicators():
     print("测试港股技术指标（使用统一计算函数）")
     print("=" * 80)
 
-    get_hk_stock_data_akshare = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_stock_data_akshare')
+    get_hk_stock_data_akshare = getattr(
+        importlib.import_module("trader.flows.providers.hk.improved"),
+        "get_hk_stock_data_akshare",
+    )
 
     symbol = "00700.HK"
     start_date = "2024-11-09"
@@ -30,7 +28,7 @@ def test_hk_indicators():
     result = get_hk_stock_data_akshare(symbol, start_date, end_date)
 
     # 检查是否包含所有技术指标
-    indicators = ['MA5', 'MA10', 'MA20', 'MA60', 'MACD', 'DIF', 'DEA', 'RSI', '布林带']
+    indicators = ["MA5", "MA10", "MA20", "MA60", "MACD", "DIF", "DEA", "RSI", "布林带"]
 
     print("\n✅ 技术指标检查:")
     all_present = True
@@ -55,7 +53,10 @@ def test_us_indicators():
     print("测试美股技术指标（使用统一计算函数）")
     print("=" * 80)
 
-    get_us_stock_data_cached = getattr(importlib.import_module('trader.flows.providers.us.optimized'), 'get_us_stock_data_cached')
+    get_us_stock_data_cached = getattr(
+        importlib.import_module("trader.flows.providers.us.optimized"),
+        "get_us_stock_data_cached",
+    )
 
     symbol = "AAPL"
     start_date = "2024-11-09"
@@ -68,7 +69,17 @@ def test_us_indicators():
         result = get_us_stock_data_cached(symbol, start_date, end_date)
 
         # 检查是否包含所有技术指标
-        indicators = ['MA5', 'MA10', 'MA20', 'MA60', 'MACD', 'DIF', 'DEA', 'RSI', '布林带']
+        indicators = [
+            "MA5",
+            "MA10",
+            "MA20",
+            "MA60",
+            "MACD",
+            "DIF",
+            "DEA",
+            "RSI",
+            "布林带",
+        ]
 
         print("\n✅ 技术指标检查:")
         all_present = True
@@ -98,33 +109,233 @@ def test_indicator_library():
     print("测试技术指标计算库")
     print("=" * 80)
 
-    pd = importlib.import_module('pandas')
-    add_all_indicators = getattr(importlib.import_module('trader.tools.analysis.indicators'), 'add_all_indicators')
+    pd = importlib.import_module("pandas")
+    add_all_indicators = getattr(
+        importlib.import_module("trader.tools.analysis.indicators"),
+        "add_all_indicators",
+    )
 
     # 创建测试数据
-    test_data = pd.DataFrame({
-        'close': [100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
-                  110, 111, 112, 113, 114, 115, 116, 117, 118, 119,
-                  120, 121, 122, 123, 124, 125, 126, 127, 128, 129,
-                  130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
-                  140, 141, 142, 143, 144, 145, 146, 147, 148, 149,
-                  150, 151, 152, 153, 154, 155, 156, 157, 158, 159,
-                  160, 161, 162, 163, 164, 165, 166, 167, 168, 169],
-        'high': [101, 102, 103, 104, 105, 106, 107, 108, 109, 110,
-                 111, 112, 113, 114, 115, 116, 117, 118, 119, 120,
-                 121, 122, 123, 124, 125, 126, 127, 128, 129, 130,
-                 131, 132, 133, 134, 135, 136, 137, 138, 139, 140,
-                 141, 142, 143, 144, 145, 146, 147, 148, 149, 150,
-                 151, 152, 153, 154, 155, 156, 157, 158, 159, 160,
-                 161, 162, 163, 164, 165, 166, 167, 168, 169, 170],
-        'low': [99, 100, 101, 102, 103, 104, 105, 106, 107, 108,
-                109, 110, 111, 112, 113, 114, 115, 116, 117, 118,
-                119, 120, 121, 122, 123, 124, 125, 126, 127, 128,
-                129, 130, 131, 132, 133, 134, 135, 136, 137, 138,
-                139, 140, 141, 142, 143, 144, 145, 146, 147, 148,
-                149, 150, 151, 152, 153, 154, 155, 156, 157, 158,
-                159, 160, 161, 162, 163, 164, 165, 166, 167, 168]
-    })
+    test_data = pd.DataFrame(
+        {
+            "close": [
+                100,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114,
+                115,
+                116,
+                117,
+                118,
+                119,
+                120,
+                121,
+                122,
+                123,
+                124,
+                125,
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133,
+                134,
+                135,
+                136,
+                137,
+                138,
+                139,
+                140,
+                141,
+                142,
+                143,
+                144,
+                145,
+                146,
+                147,
+                148,
+                149,
+                150,
+                151,
+                152,
+                153,
+                154,
+                155,
+                156,
+                157,
+                158,
+                159,
+                160,
+                161,
+                162,
+                163,
+                164,
+                165,
+                166,
+                167,
+                168,
+                169,
+            ],
+            "high": [
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114,
+                115,
+                116,
+                117,
+                118,
+                119,
+                120,
+                121,
+                122,
+                123,
+                124,
+                125,
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133,
+                134,
+                135,
+                136,
+                137,
+                138,
+                139,
+                140,
+                141,
+                142,
+                143,
+                144,
+                145,
+                146,
+                147,
+                148,
+                149,
+                150,
+                151,
+                152,
+                153,
+                154,
+                155,
+                156,
+                157,
+                158,
+                159,
+                160,
+                161,
+                162,
+                163,
+                164,
+                165,
+                166,
+                167,
+                168,
+                169,
+                170,
+            ],
+            "low": [
+                99,
+                100,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114,
+                115,
+                116,
+                117,
+                118,
+                119,
+                120,
+                121,
+                122,
+                123,
+                124,
+                125,
+                126,
+                127,
+                128,
+                129,
+                130,
+                131,
+                132,
+                133,
+                134,
+                135,
+                136,
+                137,
+                138,
+                139,
+                140,
+                141,
+                142,
+                143,
+                144,
+                145,
+                146,
+                147,
+                148,
+                149,
+                150,
+                151,
+                152,
+                153,
+                154,
+                155,
+                156,
+                157,
+                158,
+                159,
+                160,
+                161,
+                162,
+                163,
+                164,
+                165,
+                166,
+                167,
+                168,
+            ],
+        }
+    )
 
     print(f"\n📊 测试数据: {len(test_data)} 条")
 
@@ -132,9 +343,19 @@ def test_indicator_library():
     result_df = add_all_indicators(test_data)
 
     # 检查是否添加了所有指标
-    expected_columns = ['ma5', 'ma10', 'ma20', 'ma60', 'rsi',
-                       'macd_dif', 'macd_dea', 'macd',
-                       'boll_mid', 'boll_upper', 'boll_lower']
+    expected_columns = [
+        "ma5",
+        "ma10",
+        "ma20",
+        "ma60",
+        "rsi",
+        "macd_dif",
+        "macd_dea",
+        "macd",
+        "boll_mid",
+        "boll_upper",
+        "boll_lower",
+    ]
 
     print("\n✅ 技术指标列检查:")
     all_present = True
@@ -188,7 +409,9 @@ if __name__ == "__main__":
     print("=" * 80)
     print(f"  技术指标计算库: {'✅ 通过' if lib_ok else '❌ 失败'}")
     print(f"  港股数据接口: {'✅ 通过' if hk_ok else '❌ 失败'}")
-    print(f"  美股数据接口: {'✅ 通过' if us_ok else '⚠️ 跳过' if us_ok is None else '❌ 失败'}")
+    print(
+        f"  美股数据接口: {'✅ 通过' if us_ok else '⚠️ 跳过' if us_ok is None else '❌ 失败'}"
+    )
 
     if lib_ok and hk_ok and (us_ok or us_ok is None):
         print("\n🎉 所有测试通过！技术指标计算已统一！")

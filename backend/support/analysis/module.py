@@ -3,30 +3,29 @@
 简化的分析测试脚本
 用于验证TradingAgents核心功能是否正常工作
 """
-import importlib
 
+import importlib
 import os
-import sys
-from pathlib import Path
+
 from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
+from support.path import BACKEND_ROOT
 
 # 加载环境变量
-load_dotenv(project_root / ".env", override=True)
+load_dotenv(BACKEND_ROOT / ".env", override=True)
+
 
 def test_basic_imports():
     """测试基本导入"""
     try:
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        getattr(importlib.import_module("trader.graph.trading"), "TradingAgentsGraph")
+        getattr(importlib.import_module("trader.default"), "DEFAULT_CONFIG")
         print("✅ 基本导入成功")
         return True
     except Exception as e:
         print(f"❌ 基本导入失败: {e}")
         return False
+
 
 def test_environment_variables():
     """测试环境变量"""
@@ -38,11 +37,16 @@ def test_environment_variables():
 
     return bool(dashscope_key and finnhub_key)
 
+
 def test_graph_initialization():
     """测试图初始化"""
     try:
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        TradingAgentsGraph = getattr(
+            importlib.import_module("trader.graph.trading"), "TradingAgentsGraph"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -53,9 +57,11 @@ def test_graph_initialization():
         config["online_tools"] = True
 
         # 修复路径
-        config["data_dir"] = str(project_root / "data")
-        config["results_dir"] = str(project_root / "results")
-        config["data_cache_dir"] = str(project_root / "trader" / "dataflows" / "data_cache")
+        config["data_dir"] = str(BACKEND_ROOT / "data")
+        config["results_dir"] = str(BACKEND_ROOT / "results")
+        config["data_cache_dir"] = str(
+            BACKEND_ROOT / "trader" / "dataflows" / "data_cache"
+        )
 
         # 创建目录
         os.makedirs(config["data_dir"], exist_ok=True)
@@ -68,9 +74,10 @@ def test_graph_initialization():
         return True, graph
     except Exception as e:
         print(f"❌ 图初始化失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         print(traceback.format_exc())
         return False, None
+
 
 def test_simple_analysis():
     """测试简单分析"""
@@ -87,9 +94,10 @@ def test_simple_analysis():
         return True
     except Exception as e:
         print(f"❌ 分析失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         print(traceback.format_exc())
         return False
+
 
 def main():
     """主测试函数"""
@@ -119,6 +127,7 @@ def main():
         print("\n🎉 所有测试通过！")
     else:
         print("\n❌ 分析测试失败")
+
 
 if __name__ == "__main__":
     main()

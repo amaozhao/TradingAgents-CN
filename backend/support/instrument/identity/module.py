@@ -45,7 +45,11 @@ class ResolveInstrumentIdentityTests(unittest.TestCase):
 
     def test_skips_placeholder_values(self):
         with patch("trader.agents.utils.utils.yf.Ticker") as mock:
-            mock.return_value.info = {"longName": "  ", "sector": "None", "industry": "n/a"}
+            mock.return_value.info = {
+                "longName": "  ",
+                "sector": "None",
+                "industry": "n/a",
+            }
             identity = resolve_instrument_identity("TOTDY")
         self.assertEqual(identity, {})
 
@@ -75,7 +79,8 @@ class BuildInstrumentContextTests(unittest.TestCase):
 
     def test_injects_resolved_identity(self):
         context = build_instrument_context(
-            "TOTDY", "stock",
+            "TOTDY",
+            "stock",
             {
                 "company_name": "TOTO LTD.",
                 "sector": "Industrials",
@@ -134,7 +139,11 @@ class ContextAnchoredPlaceholderTests(unittest.TestCase):
 
     def test_placeholder_is_not_bare_continue(self):
         result = self._run(
-            {"company_of_interest": "EC", "asset_type": "stock", "trade_date": "2026-05-28"}
+            {
+                "company_of_interest": "EC",
+                "asset_type": "stock",
+                "trade_date": "2026-05-28",
+            }
         )
         placeholder = result["messages"][-1]
         self.assertIsInstance(placeholder, HumanMessage)

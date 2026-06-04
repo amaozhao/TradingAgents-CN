@@ -10,7 +10,7 @@ print("=" * 80)
 
 # 1. 读取系统设置
 settings = unified_config.get_system_settings()
-print(f"\n📖 系统设置中的字段:")
+print("\n📖 系统设置中的字段:")
 print(f"  - quick_analysis_model: {settings.get('quick_analysis_model')}")
 print(f"  - deep_analysis_model: {settings.get('deep_analysis_model')}")
 print(f"  - quick_think_llm: {settings.get('quick_think_llm')}")
@@ -20,7 +20,7 @@ print(f"  - deep_think_llm: {settings.get('deep_think_llm')}")
 quick_model = unified_config.get_quick_analysis_model()
 deep_model = unified_config.get_deep_analysis_model()
 
-print(f"\n✅ 通过 unified_config 读取的模型:")
+print("\n✅ 通过 unified_config 读取的模型:")
 print(f"  - quick_analysis_model: {quick_model}")
 print(f"  - deep_analysis_model: {deep_model}")
 
@@ -29,11 +29,11 @@ expected_quick = "qwen-flash"
 expected_deep = "qwen-plus"
 
 if quick_model == expected_quick and deep_model == expected_deep:
-    print(f"\n🎉 测试通过！模型配置正确:")
+    print("\n🎉 测试通过！模型配置正确:")
     print(f"  ✓ 快速分析模型: {quick_model}")
     print(f"  ✓ 深度分析模型: {deep_model}")
 else:
-    print(f"\n❌ 测试失败！")
+    print("\n❌ 测试失败！")
     print(f"  期望: quick={expected_quick}, deep={expected_deep}")
     print(f"  实际: quick={quick_model}, deep={deep_model}")
 

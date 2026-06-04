@@ -1,16 +1,21 @@
-import importlib
 import asyncio
+import importlib
 
 
 def test_database_screening_builds_roe_query():
-    DatabaseScreeningService = getattr(importlib.import_module('app.services.screening.database'), 'DatabaseScreeningService')
+    DatabaseScreeningService = getattr(
+        importlib.import_module("app.services.screening.database"),
+        "DatabaseScreeningService",
+    )
 
     svc = DatabaseScreeningService()
 
     async def _run():
-        query = await svc._build_query([
-            {"field": "roe", "operator": "between", "value": [10, 20]},
-        ])
+        query = await svc._build_query(
+            [
+                {"field": "roe", "operator": "between", "value": [10, 20]},
+            ]
+        )
         # Should map to direct 'roe' field with $gte/$lte
         assert "roe" in query
         assert query["roe"]["$gte"] == 10
@@ -20,19 +25,26 @@ def test_database_screening_builds_roe_query():
 
 
 def test_database_screening_formats_roe_in_result(monkeypatch):
-    DatabaseScreeningService = getattr(importlib.import_module('app.services.screening.database'), 'DatabaseScreeningService')
-    mod = importlib.import_module('app.services.screening.database')
+    DatabaseScreeningService = getattr(
+        importlib.import_module("app.services.screening.database"),
+        "DatabaseScreeningService",
+    )
+    mod = importlib.import_module("app.services.screening.database")
 
     # Fake collection returning docs that contain 'roe'
     class _FakeCursor:
         def __init__(self, docs):
             self._docs = docs
+
         def sort(self, *_args, **_kwargs):
             return self
+
         def skip(self, *_args, **_kwargs):
             return self
+
         def limit(self, *_args, **_kwargs):
             return self
+
         async def __aiter__(self):
             for d in self._docs:
                 yield d
@@ -40,14 +52,17 @@ def test_database_screening_formats_roe_in_result(monkeypatch):
     class _FakeColl:
         def __init__(self, docs):
             self._docs = docs
+
         async def count_documents(self, _query):
             return len(self._docs)
+
         def find(self, _query):
             return _FakeCursor(self._docs)
 
     class _FakeDB:
         def __init__(self, docs):
             self._coll = _FakeColl(docs)
+
         def __getitem__(self, name: str):
             return self._coll
 
@@ -59,7 +74,7 @@ def test_database_screening_formats_roe_in_result(monkeypatch):
     def _fake_get_db():
         return _FakeDB(docs)
 
-    monkeypatch.setattr(mod, "get_mongo_db", _fake_get_db, raising=True)
+    monkeypatch.setattr(mod, "get_postgres_db", _fake_get_db, raising=True)
 
     async def _run():
         svc = DatabaseScreeningService()

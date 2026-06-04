@@ -97,7 +97,9 @@ def test_evidence_check_api_migration_state_implies_api_smoke_required(tmp_path)
 
 
 def test_evidence_check_passes_with_api_migration_state_when_requested(tmp_path):
-    _write_complete_bundle(tmp_path, include_api_smoke=True, include_api_migration_state=True)
+    _write_complete_bundle(
+        tmp_path, include_api_smoke=True, include_api_migration_state=True
+    )
 
     result = check_evidence_bundle(
         tmp_path,
@@ -145,7 +147,9 @@ def test_evidence_check_requires_target_manifest_when_requested(tmp_path):
 
 
 def test_evidence_check_passes_with_expected_target_manifest_phase(tmp_path):
-    _write_complete_bundle(tmp_path, include_target_manifest=True, target_phase="post-read")
+    _write_complete_bundle(
+        tmp_path, include_target_manifest=True, target_phase="post-read"
+    )
 
     result = check_evidence_bundle(
         tmp_path,
@@ -157,7 +161,9 @@ def test_evidence_check_passes_with_expected_target_manifest_phase(tmp_path):
 
 
 def test_evidence_check_fails_when_target_manifest_phase_does_not_match(tmp_path):
-    _write_complete_bundle(tmp_path, include_target_manifest=True, target_phase="pre-read")
+    _write_complete_bundle(
+        tmp_path, include_target_manifest=True, target_phase="pre-read"
+    )
 
     result = check_evidence_bundle(
         tmp_path,
@@ -232,7 +238,9 @@ def test_evidence_check_supports_standalone_rollback_bundle(tmp_path):
     assert result["all_passed"] is True
 
 
-def test_evidence_check_requires_target_manifest_for_standalone_rollback_bundle(tmp_path):
+def test_evidence_check_requires_target_manifest_for_standalone_rollback_bundle(
+    tmp_path,
+):
     (tmp_path / "00_target_manifest.json").write_text(
         json.dumps(
             {
@@ -284,19 +292,37 @@ def _write_complete_bundle(
             encoding="utf-8",
         )
     result_specs = [
-        ("inventory", "01_inventory.json", {"response_model_dict_endpoints": 0, "raw_dict_request_bodies": 0}),
-        ("alembic_offline_sql", "02_alembic_offline.sql", "CREATE TABLE example(id uuid);"),
+        (
+            "inventory",
+            "01_inventory.json",
+            {"response_model_dict_endpoints": 0, "raw_dict_request_bodies": 0},
+        ),
+        (
+            "alembic_offline_sql",
+            "02_alembic_offline.sql",
+            "CREATE TABLE example(id uuid);",
+        ),
         ("consistency", "03_consistency.json", {"all_consistent": True}),
-        ("query_plan", "04_query_plan.json", {"all_required_without_payload_filter": True}),
+        (
+            "query_plan",
+            "04_query_plan.json",
+            {"all_required_without_payload_filter": True},
+        ),
         ("data_path_smoke", "05_data_path_smoke.json", {"all_passed": True}),
     ]
     if include_api_smoke:
         checks = []
         if include_api_migration_state:
-            checks.append({"name": "migration_state", "status": "passed", "detail": "ok"})
-        result_specs.append(("api_smoke", "06_api_smoke.json", {"all_passed": True, "checks": checks}))
+            checks.append(
+                {"name": "migration_state", "status": "passed", "detail": "ok"}
+            )
+        result_specs.append(
+            ("api_smoke", "06_api_smoke.json", {"all_passed": True, "checks": checks})
+        )
     if include_runtime_log_check:
-        result_specs.append(("runtime_log_check", "runtime_log_check.json", {"all_passed": True}))
+        result_specs.append(
+            ("runtime_log_check", "runtime_log_check.json", {"all_passed": True})
+        )
 
     results = []
     for name, filename, payload in result_specs:

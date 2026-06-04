@@ -63,7 +63,17 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
+      onwarn(warning, warn) {
+        if (
+          warning.code === 'INVALID_ANNOTATION' ||
+          warning.code === 'INEFFECTIVE_DYNAMIC_IMPORT'
+        ) {
+          return
+        }
+        warn(warning)
+      },
       output: {
         chunkFileNames: 'js/[name]-[hash].js',
         entryFileNames: 'js/[name]-[hash].js',

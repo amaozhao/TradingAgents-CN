@@ -207,7 +207,7 @@
               <span class="tech-desc">高性能缓存和队列</span>
             </div>
             <div class="tech-item">
-              <span class="tech-name">MongoDB</span>
+              <span class="tech-name">PostgreSQL</span>
               <span class="tech-desc">文档数据库</span>
             </div>
             <div class="tech-item">

@@ -1,21 +1,18 @@
 """
 测试港股验证修复
 """
+
 import importlib
 
-import sys
-import os
-
-# 添加项目根目录到路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_hk_validation():
     """测试港股验证"""
     print("🧪 测试港股验证修复...")
 
     try:
-        validate_analysis_params = getattr(importlib.import_module('web.utils.analysis'), 'validate_analysis_params')
+        validate_analysis_params = getattr(
+            importlib.import_module("web.utils.analysis"), "validate_analysis_params"
+        )
 
         # 测试用例
         test_cases = [
@@ -42,16 +39,20 @@ def test_hk_validation():
                 analysis_date="2025-07-14",
                 analysts=["market"],
                 research_depth=3,
-                market_type=market_type
+                market_type=market_type,
             )
 
             validation_passed = is_valid
 
             if validation_passed == should_pass:
-                print(f"  ✅ {symbol} ({market_type}): {'通过' if validation_passed else '失败'}")
+                print(
+                    f"  ✅ {symbol} ({market_type}): {'通过' if validation_passed else '失败'}"
+                )
                 passed += 1
             else:
-                print(f"  ❌ {symbol} ({market_type}): 期望{'通过' if should_pass else '失败'}, 实际{'通过' if validation_passed else '失败'}")
+                print(
+                    f"  ❌ {symbol} ({market_type}): 期望{'通过' if should_pass else '失败'}, 实际{'通过' if validation_passed else '失败'}"
+                )
                 if errors:
                     print(f"      错误: {errors}")
 
@@ -66,16 +67,19 @@ def test_hk_validation():
 
     except Exception as e:
         print(f"❌ 验证测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_specific_case():
     """测试具体的0700.HK案例"""
     print("\n🧪 测试具体的0700.HK案例...")
 
     try:
-        validate_analysis_params = getattr(importlib.import_module('web.utils.analysis'), 'validate_analysis_params')
+        validate_analysis_params = getattr(
+            importlib.import_module("web.utils.analysis"), "validate_analysis_params"
+        )
 
         # 测试0700.HK
         is_valid, errors = validate_analysis_params(
@@ -83,11 +87,11 @@ def test_specific_case():
             analysis_date="2025-07-14",
             analysts=["market", "fundamentals"],
             research_depth=3,
-            market_type="港股"
+            market_type="港股",
         )
 
-        print(f"  股票代码: 0700.HK")
-        print(f"  市场类型: 港股")
+        print("  股票代码: 0700.HK")
+        print("  市场类型: 港股")
         print(f"  验证结果: {'通过' if is_valid else '失败'}")
 
         if not is_valid:
@@ -101,16 +105,17 @@ def test_specific_case():
         print(f"❌ 具体案例测试失败: {e}")
         return False
 
+
 def test_regex_patterns():
     """测试正则表达式模式"""
     print("\n🧪 测试正则表达式模式...")
 
     try:
-        re = importlib.import_module('re')
+        re = importlib.import_module("re")
 
         # 测试港股正则模式（支持4-5位数字）
-        hk_pattern = r'^\d{4,5}\.HK$'
-        digit_pattern = r'^\d{4}$'
+        hk_pattern = r"^\d{4,5}\.HK$"
+        digit_pattern = r"^\d{4}$"
 
         test_symbols = [
             "0700.HK",
@@ -121,7 +126,7 @@ def test_regex_patterns():
             "3690",
             "AAPL",
             "000001",
-            "ABC.HK"
+            "ABC.HK",
         ]
 
         for symbol in test_symbols:
@@ -131,7 +136,9 @@ def test_regex_patterns():
 
             matches = bool(hk_match or digit_match)
 
-            print(f"  {symbol}: HK格式={bool(hk_match)}, 数字格式={bool(digit_match)}, 总体匹配={matches}")
+            print(
+                f"  {symbol}: HK格式={bool(hk_match)}, 数字格式={bool(digit_match)}, 总体匹配={matches}"
+            )
 
         return True
 
@@ -139,16 +146,13 @@ def test_regex_patterns():
         print(f"❌ 正则表达式测试失败: {e}")
         return False
 
+
 def main():
     """运行所有测试"""
     print("🔧 港股验证修复测试")
     print("=" * 40)
 
-    tests = [
-        test_regex_patterns,
-        test_specific_case,
-        test_hk_validation
-    ]
+    tests = [test_regex_patterns, test_specific_case, test_hk_validation]
 
     passed = 0
     total = len(tests)
@@ -168,6 +172,7 @@ def main():
         print("\n现在可以正常使用0700.HK进行分析了")
     else:
         print("⚠️ 修复可能不完整，请检查失败的测试")
+
 
 if __name__ == "__main__":
     main()

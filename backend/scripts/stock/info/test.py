@@ -3,13 +3,9 @@
 股票基本信息获取测试脚本
 专门测试股票名称、行业等基本信息的获取功能
 """
+
 import importlib
 
-import sys
-import os
-
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def test_stock_info_retrieval():
     """测试股票基本信息获取功能"""
@@ -25,41 +21,55 @@ def test_stock_info_retrieval():
 
         try:
             # 1. 测试Tushare股票信息获取
-            print(f"🔍 步骤1: 测试Tushare股票信息获取...")
-            get_china_stock_info_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_tushare')
+            print("🔍 步骤1: 测试Tushare股票信息获取...")
+            get_china_stock_info_tushare = getattr(
+                importlib.import_module("trader.flows.interface"),
+                "get_china_stock_info_tushare",
+            )
             tushare_info = get_china_stock_info_tushare(code)
             print(f"✅ Tushare信息: {tushare_info}")
 
             # 2. 测试统一股票信息获取
-            print(f"🔍 步骤2: 测试统一股票信息获取...")
-            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
+            print("🔍 步骤2: 测试统一股票信息获取...")
+            get_china_stock_info_unified = getattr(
+                importlib.import_module("trader.flows.interface"),
+                "get_china_stock_info_unified",
+            )
             unified_info = get_china_stock_info_unified(code)
             print(f"✅ 统一信息: {unified_info}")
 
             # 3. 测试DataSourceManager直接调用
-            print(f"🔍 步骤3: 测试DataSourceManager...")
-            manager_info = getattr(importlib.import_module('trader.flows.sources'), 'get_china_stock_info_unified')
+            print("🔍 步骤3: 测试DataSourceManager...")
+            manager_info = getattr(
+                importlib.import_module("trader.flows.sources"),
+                "get_china_stock_info_unified",
+            )
             manager_result = manager_info(code)
             print(f"✅ Manager结果: {manager_result}")
 
             # 4. 测试TushareAdapter直接调用
-            print(f"🔍 步骤4: 测试TushareAdapter...")
-            get_tushare_adapter = getattr(importlib.import_module('trader.flows.adapter'), 'get_tushare_adapter')
+            print("🔍 步骤4: 测试TushareAdapter...")
+            get_tushare_adapter = getattr(
+                importlib.import_module("trader.flows.adapter"), "get_tushare_adapter"
+            )
             adapter = get_tushare_adapter()
             adapter_result = adapter.get_stock_info(code)
             print(f"✅ Adapter结果: {adapter_result}")
 
             # 5. 测试TushareProvider直接调用
-            print(f"🔍 步骤5: 测试TushareProvider...")
-            TushareProvider = getattr(importlib.import_module('trader.flows.tushare'), 'TushareProvider')
+            print("🔍 步骤5: 测试TushareProvider...")
+            TushareProvider = getattr(
+                importlib.import_module("trader.flows.tushare"), "TushareProvider"
+            )
             provider = TushareProvider()
             provider_result = provider.get_stock_info(code)
             print(f"✅ Provider结果: {provider_result}")
 
         except Exception as e:
             print(f"❌ 测试{code}失败: {e}")
-            traceback = importlib.import_module('traceback')
+            traceback = importlib.import_module("traceback")
             traceback.print_exc()
+
 
 def test_tushare_stock_basic_api():
     """直接测试Tushare的stock_basic API"""
@@ -67,7 +77,9 @@ def test_tushare_stock_basic_api():
     print("=" * 50)
 
     try:
-        get_tushare_provider = getattr(importlib.import_module('trader.flows.tushare'), 'get_tushare_provider')
+        get_tushare_provider = getattr(
+            importlib.import_module("trader.flows.tushare"), "get_tushare_provider"
+        )
 
         provider = get_tushare_provider()
 
@@ -89,14 +101,16 @@ def test_tushare_stock_basic_api():
             try:
                 basic_info = provider.api.stock_basic(
                     ts_code=ts_code,
-                    fields='ts_code,symbol,name,area,industry,market,list_date'
+                    fields="ts_code,symbol,name,area,industry,market,list_date",
                 )
 
-                print(f"✅ API返回数据形状: {basic_info.shape if basic_info is not None else 'None'}")
+                print(
+                    f"✅ API返回数据形状: {basic_info.shape if basic_info is not None else 'None'}"
+                )
 
                 if basic_info is not None and not basic_info.empty:
-                    print(f"📊 返回数据:")
-                    print(basic_info.to_dict('records'))
+                    print("📊 返回数据:")
+                    print(basic_info.to_dict("records"))
                 else:
                     print("❌ API返回空数据")
 
@@ -105,8 +119,9 @@ def test_tushare_stock_basic_api():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+
 
 def test_stock_basic_all():
     """测试获取所有股票基本信息"""
@@ -114,7 +129,9 @@ def test_stock_basic_all():
     print("=" * 50)
 
     try:
-        get_tushare_provider = getattr(importlib.import_module('trader.flows.tushare'), 'get_tushare_provider')
+        get_tushare_provider = getattr(
+            importlib.import_module("trader.flows.tushare"), "get_tushare_provider"
+        )
 
         provider = get_tushare_provider()
 
@@ -125,9 +142,9 @@ def test_stock_basic_all():
         # 获取所有A股基本信息
         print("🔍 获取所有A股基本信息...")
         all_stocks = provider.api.stock_basic(
-            exchange='',
-            list_status='L',
-            fields='ts_code,symbol,name,area,industry,market,list_date'
+            exchange="",
+            list_status="L",
+            fields="ts_code,symbol,name,area,industry,market,list_date",
         )
 
         print(f"✅ 获取到{len(all_stocks)}只股票")
@@ -139,11 +156,11 @@ def test_stock_basic_all():
             print(f"\n📊 查找股票: {code}")
 
             # 在所有股票中查找
-            found_stocks = all_stocks[all_stocks['symbol'] == code]
+            found_stocks = all_stocks[all_stocks["symbol"] == code]
 
             if not found_stocks.empty:
                 stock_info = found_stocks.iloc[0]
-                print(f"✅ 找到股票:")
+                print("✅ 找到股票:")
                 print(f"   代码: {stock_info['symbol']}")
                 print(f"   名称: {stock_info['name']}")
                 print(f"   行业: {stock_info['industry']}")
@@ -155,8 +172,9 @@ def test_stock_basic_all():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     print("🧪 股票基本信息获取测试")

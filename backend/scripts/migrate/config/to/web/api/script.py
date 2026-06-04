@@ -1,38 +1,30 @@
 #!/usr/bin/env python3
 """
 配置数据迁移工具
-将现有的trader/config配置迁移到webapi的MongoDB数据库中
+将现有的trader/config配置迁移到webapi的PostgreSQL数据库中
 """
 
-import os
-import sys
-import json
 import asyncio
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, List, Any, Optional
-
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+import sys
 
 # 导入webapi相关模块
 from app.core.database import DatabaseManager
 from app.models.config import (
-    SystemConfig, LLMConfig, DataSourceConfig, DatabaseConfig,
-    ModelProvider, DataSourceType, DatabaseType
+    LLMConfig,
+    ModelProvider,
 )
 from app.services.config import ConfigService
 
 # 导入传统配置管理器
-from trader.config.manager import ConfigManager, ModelConfig, PricingConfig, UsageRecord
+from support.path import BACKEND_ROOT
+from trader.config.manager import ConfigManager, ModelConfig
 
 
 class ConfigMigrator:
     """配置迁移器"""
 
     def __init__(self):
-        self.project_root = project_root
+        self.project_root = BACKEND_ROOT
         self.config_manager = ConfigManager()
         self.db_manager = None
         self.config_service = None
@@ -41,7 +33,7 @@ class ConfigMigrator:
         """初始化数据库连接"""
         try:
             self.db_manager = DatabaseManager()
-            await self.db_manager.init_mongodb()
+            await self.db_manager.init_postgres_document_store()
             # 将DatabaseManager实例传递给ConfigService
             self.config_service = ConfigService(db_manager=self.db_manager)
             print("✅ 数据库连接初始化成功")
@@ -116,19 +108,21 @@ class ConfigMigrator:
         """转换传统模型配置为新格式"""
         # 映射供应商名称 - 包含sidebar.py中的所有提供商
         provider_mapping = {
-            'dashscope': ModelProvider.DASHSCOPE,
-            'openai': ModelProvider.OPENAI,
-            'google': ModelProvider.GOOGLE,
-            'anthropic': ModelProvider.ANTHROPIC,
-            'zhipuai': ModelProvider.GLM,
-            'deepseek': ModelProvider.DEEPSEEK,
-            'siliconflow': ModelProvider.SILICONFLOW,
-            'openrouter': ModelProvider.OPENROUTER,
-            'custom_openai': ModelProvider.CUSTOM_OPENAI,
-            'qianfan': ModelProvider.QIANFAN
+            "dashscope": ModelProvider.DASHSCOPE,
+            "openai": ModelProvider.OPENAI,
+            "google": ModelProvider.GOOGLE,
+            "anthropic": ModelProvider.ANTHROPIC,
+            "zhipuai": ModelProvider.GLM,
+            "deepseek": ModelProvider.DEEPSEEK,
+            "siliconflow": ModelProvider.SILICONFLOW,
+            "openrouter": ModelProvider.OPENROUTER,
+            "custom_openai": ModelProvider.CUSTOM_OPENAI,
+            "qianfan": ModelProvider.QIANFAN,
         }
 
-        provider = provider_mapping.get(legacy_model.provider.lower(), ModelProvider.OPENAI)
+        provider = provider_mapping.get(
+            legacy_model.provider.lower(), ModelProvider.OPENAI
+        )
 
         return LLMConfig(
             provider=provider,
@@ -138,7 +132,7 @@ class ConfigMigrator:
             max_tokens=legacy_model.max_tokens,
             temperature=legacy_model.temperature,
             enabled=legacy_model.enabled,
-            description=f"从传统配置迁移: {legacy_model.provider}/{legacy_model.model_name}"
+            description=f"从传统配置迁移: {legacy_model.provider}/{legacy_model.model_name}",
         )
 
     async def migrate_system_settings(self):
@@ -155,11 +149,19 @@ class ConfigMigrator:
         try:
             # 转换为新格式的系统设置
             system_settings = {
-                "default_provider": legacy_settings.get("default_provider", "dashscope"),
+                "default_provider": legacy_settings.get(
+                    "default_provider", "dashscope"
+                ),
                 "default_model": legacy_settings.get("default_model", "qwen-turbo"),
-                "enable_cost_tracking": legacy_settings.get("enable_cost_tracking", True),
-                "cost_alert_threshold": legacy_settings.get("cost_alert_threshold", 100.0),
-                "currency_preference": legacy_settings.get("currency_preference", "CNY"),
+                "enable_cost_tracking": legacy_settings.get(
+                    "enable_cost_tracking", True
+                ),
+                "cost_alert_threshold": legacy_settings.get(
+                    "cost_alert_threshold", 100.0
+                ),
+                "currency_preference": legacy_settings.get(
+                    "currency_preference", "CNY"
+                ),
                 "auto_save_usage": legacy_settings.get("auto_save_usage", True),
                 "max_usage_records": legacy_settings.get("max_usage_records", 10000),
                 "data_dir": legacy_settings.get("data_dir", ""),
@@ -172,7 +174,7 @@ class ConfigMigrator:
                 "max_concurrent_tasks": 3,
                 "default_analysis_timeout": 300,
                 "enable_cache": True,
-                "cache_ttl": 3600
+                "cache_ttl": 3600,
             }
 
             print(f"  ✅ 系统设置迁移完成，包含 {len(system_settings)} 个配置项")
@@ -186,7 +188,7 @@ class ConfigMigrator:
 
         try:
             # 检查ConfigManager是否有load_usage_records方法
-            if hasattr(self.config_manager, 'load_usage_records'):
+            if hasattr(self.config_manager, "load_usage_records"):
                 legacy_usage = self.config_manager.load_usage_records()
 
                 if not legacy_usage:

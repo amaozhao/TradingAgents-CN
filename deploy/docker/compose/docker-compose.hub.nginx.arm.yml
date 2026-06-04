@@ -12,32 +12,6 @@
 # - 可以添加负载均衡、缓存等功能
 
 services:
-  # MongoDB数据库
-  mongodb:
-    image: mongo:4.4
-    platform: linux/arm64  # 显式指定 ARM64 平台
-    container_name: trading-agents-mongodb
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    volumes:
-      - trading_agents_mongodb_data:/data/db
-      # 注意：不挂载初始化脚本，使用 MongoDB 自动创建的 root 用户
-      # 应用会在首次运行时自动创建所需的集合和索引
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: trading_agents123
-      MONGO_INITDB_DATABASE: trading_agents_cn
-      TZ: "Asia/Shanghai"
-    networks:
-      - trading-agents-network
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
   # Redis缓存
   redis:
     image: redis:7-alpine
@@ -60,7 +34,7 @@ services:
       retries: 5
       start_period: 5s
 
-  # PostgreSQL数据库（Mongo -> PostgreSQL 迁移目标）
+  # PostgreSQL数据库
   postgres:
     image: postgres:16-alpine
     platform: linux/arm64  # 显式指定 ARM64 平台
@@ -103,29 +77,18 @@ services:
       TRADING_AGENTS_LOG_LEVEL: "INFO"
       TRADING_AGENTS_LOG_DIR: "/app/logs"
       TRADING_AGENTS_LOG_FILE: "/app/logs/trading_agents.log"
-      # MongoDB配置（使用 root 用户）
-      MONGODB_HOST: "mongodb"
-      MONGODB_PORT: "27017"
-      MONGODB_USERNAME: "admin"
-      MONGODB_PASSWORD: "trading_agents123"
-      MONGODB_DATABASE: "trading_agents_cn"
-      MONGODB_AUTH_SOURCE: "admin"
-      # 注意：authSource=admin 表示在 admin 数据库中验证用户
-      MONGODB_URL: "mongodb://admin:trading_agents123@mongodb:27017/trading_agents_cn?authSource=admin"
-      MONGODB_CONNECTION_STRING: "mongodb://admin:trading_agents123@mongodb:27017/trading_agents_cn?authSource=admin"
       # Redis配置
       REDIS_HOST: "redis"
       REDIS_PORT: "6379"
       REDIS_PASSWORD: "trading_agents123"
       REDIS_URL: "redis://:trading_agents123@redis:6379/0"
-      # PostgreSQL迁移配置：默认不切读/不双写
       POSTGRES_HOST: "postgres"
       POSTGRES_PORT: "5432"
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "trading_agents_pg123"
       POSTGRES_DB: "trading_agents_cn"
-      POSTGRES_DUAL_WRITE_ENABLED: "${POSTGRES_DUAL_WRITE_ENABLED:-false}"
-      POSTGRES_READ_ENABLED: "${POSTGRES_READ_ENABLED:-false}"
+      POSTGRES_DUAL_WRITE_ENABLED: "${POSTGRES_DUAL_WRITE_ENABLED:-true}"
+      POSTGRES_READ_ENABLED: "${POSTGRES_READ_ENABLED:-true}"
       POSTGRES_DUAL_WRITE_FAIL_OPEN: "${POSTGRES_DUAL_WRITE_FAIL_OPEN:-true}"
       SYNC_STOCK_BASICS_ENABLED: "${SYNC_STOCK_BASICS_ENABLED:-true}"
       DOCKER_CONTAINER: "true"
@@ -159,8 +122,6 @@ services:
       FINNHUB_API_KEY: "${FINNHUB_API_KEY:-your_finnhub_api_key_here}"
       FINNHUB_ENABLED: "${FINNHUB_ENABLED:-false}"
     depends_on:
-      mongodb:
-        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
@@ -220,8 +181,6 @@ services:
       start_period: 10s
 
 volumes:
-  trading_agents_mongodb_data:
-    driver: local
   trading_agents_redis_data:
     driver: local
   trading_agents_postgres_data:

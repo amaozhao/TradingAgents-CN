@@ -2,10 +2,13 @@
 测试历史数据天数修复
 验证 historical_days 参数是否正确工作
 """
-import importlib
+
 import asyncio
+import importlib
 from datetime import datetime, timedelta
+
 from app.worker.tushare.init import TushareInitService
+
 
 async def test_historical_days_calculation():
     """测试历史数据天数计算逻辑"""
@@ -32,11 +35,11 @@ async def test_historical_days_calculation():
         # 模拟计算逻辑
         if days >= 3650:
             start_date = "1990-01-01"
-            print(f"  ✅ 使用全历史模式")
+            print("  ✅ 使用全历史模式")
             print(f"  📅 日期范围: {start_date} 到 {end_date.strftime('%Y-%m-%d')}")
         else:
-            start_date = (end_date - timedelta(days=days)).strftime('%Y-%m-%d')
-            print(f"  ✅ 使用指定天数模式")
+            start_date = (end_date - timedelta(days=days)).strftime("%Y-%m-%d")
+            print("  ✅ 使用指定天数模式")
             print(f"  📅 日期范围: {start_date} 到 {end_date.strftime('%Y-%m-%d')}")
 
         # 计算实际天数
@@ -47,6 +50,7 @@ async def test_historical_days_calculation():
 
         print(f"  📈 实际天数: {actual_days}天")
         print(f"  📊 预计交易日: ~{int(actual_days * 0.68)}天（按68%交易日比例）")
+
 
 async def test_service_initialization():
     """测试初始化服务"""
@@ -60,11 +64,12 @@ async def test_service_initialization():
         await service.initialize()
 
         print("\n✅ 初始化服务创建成功")
-        print(f"  数据源: Tushare")
-        print(f"  同步服务: 已初始化")
+        print("  数据源: Tushare")
+        print("  同步服务: 已初始化")
 
     except Exception as e:
         print(f"\n❌ 初始化服务失败: {e}")
+
 
 async def check_existing_data():
     """检查现有数据"""
@@ -74,40 +79,41 @@ async def check_existing_data():
     print("=" * 60)
 
     try:
-        get_mongodb_client = getattr(importlib.import_module('trader.config.databases'), 'get_mongodb_client')
+        get_postgres_client = getattr(
+            importlib.import_module("trader.config.databases"), "get_postgres_client"
+        )
 
-        client = get_mongodb_client()
-        db = client.get_database('trading_agents')
+        client = get_postgres_client()
+        db = client.get_database("trading_agents")
 
         # 检查688788的数据
         symbol = "688788"
 
         # 基础信息
-        basic_info = db.stock_basic_info.find_one({'code': symbol})
+        basic_info = db.stock_basic_info.find_one({"code": symbol})
         if basic_info:
             print(f"\n📊 {symbol} ({basic_info.get('name')})")
             print(f"  上市日期: {basic_info.get('list_date')}")
 
         # 历史数据统计
-        for period in ['daily', 'weekly', 'monthly']:
-            count = db.stock_daily_quotes.count_documents({
-                'symbol': symbol,
-                'period': period
-            })
+        for period in ["daily", "weekly", "monthly"]:
+            count = db.stock_daily_quotes.count_documents(
+                {"symbol": symbol, "period": period}
+            )
 
             if count > 0:
                 first = db.stock_daily_quotes.find_one(
-                    {'symbol': symbol, 'period': period},
-                    sort=[('trade_date', 1)]
+                    {"symbol": symbol, "period": period}, sort=[("trade_date", 1)]
                 )
                 last = db.stock_daily_quotes.find_one(
-                    {'symbol': symbol, 'period': period},
-                    sort=[('trade_date', -1)]
+                    {"symbol": symbol, "period": period}, sort=[("trade_date", -1)]
                 )
 
                 print(f"\n  {period.upper()}:")
                 print(f"    记录数: {count}条")
-                print(f"    日期范围: {first.get('trade_date')} ~ {last.get('trade_date')}")
+                print(
+                    f"    日期范围: {first.get('trade_date')} ~ {last.get('trade_date')}"
+                )
             else:
                 print(f"\n  {period.upper()}: 无数据")
 
@@ -115,15 +121,16 @@ async def check_existing_data():
         print("\n" + "-" * 60)
         print("全市场数据统计:")
 
-        total_stocks = db.stock_basic_info.count_documents({'market_info.market': 'CN'})
+        total_stocks = db.stock_basic_info.count_documents({"market_info.market": "CN"})
         print(f"  股票总数: {total_stocks}")
 
-        for period in ['daily', 'weekly', 'monthly']:
-            count = db.stock_daily_quotes.count_documents({'period': period})
+        for period in ["daily", "weekly", "monthly"]:
+            count = db.stock_daily_quotes.count_documents({"period": period})
             print(f"  {period.upper()}记录数: {count:,}条")
 
     except Exception as e:
         print(f"\n❌ 检查数据失败: {e}")
+
 
 async def main():
     """主函数"""
@@ -159,6 +166,7 @@ async def main():
     print("  # 同步全历史多周期数据")
     print("  python cli/tushare_init.py --full --multi-period --historical-days 10000")
     print()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

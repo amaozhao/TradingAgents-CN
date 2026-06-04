@@ -1,4 +1,4 @@
-from scripts import postgres_api_smoke as smoke
+from scripts.postgres.api.smoke import script as smoke
 
 
 def test_extract_token_supports_wrapped_login_response():

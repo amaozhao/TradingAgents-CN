@@ -1,9 +1,9 @@
 from types import SimpleNamespace
 
-import pytest
 import pandas as pd
-from bson import ObjectId
+import pytest
 
+from app.db.ids import DocumentId
 from app.models.config import UsageRecord
 from app.models.notification import NotificationCreate
 from app.services import (
@@ -26,8 +26,10 @@ async def test_notification_create_and_mark_read_dual_write(monkeypatch):
         single_calls.append((collection_name, document))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(notifications_service, "get_mongo_db", lambda: db)
-    monkeypatch.setattr(notifications_service, "dual_write_hot_document", fake_dual_write)
+    monkeypatch.setattr(notifications_service, "get_postgres_db", lambda: db)
+    monkeypatch.setattr(
+        notifications_service, "dual_write_hot_document", fake_dual_write
+    )
 
     notification_id = await service.create_and_publish(
         NotificationCreate(user_id="user-1", type="analysis", title="分析完成")
@@ -45,7 +47,9 @@ async def test_notification_create_and_mark_read_dual_write(monkeypatch):
 @pytest.mark.asyncio
 async def test_usage_statistics_add_and_delete_dual_write(monkeypatch):
     service = usage_statistics_service.UsageStatisticsService()
-    collection = FakeCollection(existing=[{"_id": ObjectId(), "provider": "dashscope"}])
+    collection = FakeCollection(
+        existing=[{"_id": DocumentId(), "provider": "dashscope"}]
+    )
     db = FakeDB({"token_usage": collection})
     single_calls = []
     batch_calls = []
@@ -58,21 +62,28 @@ async def test_usage_statistics_add_and_delete_dual_write(monkeypatch):
         batch_calls.append((collection_name, documents))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(usage_statistics_service, "get_mongo_db", lambda: db)
-    monkeypatch.setattr(usage_statistics_service, "dual_write_hot_document", fake_dual_write)
-    monkeypatch.setattr(usage_statistics_service, "dual_write_hot_documents", fake_dual_write_many)
+    monkeypatch.setattr(usage_statistics_service, "get_postgres_db", lambda: db)
+    monkeypatch.setattr(
+        usage_statistics_service, "dual_write_hot_document", fake_dual_write
+    )
+    monkeypatch.setattr(
+        usage_statistics_service, "dual_write_hot_documents", fake_dual_write_many
+    )
 
-    assert await service.add_usage_record(
-        UsageRecord(
-            timestamp="2026-06-03T10:00:00",
-            provider="dashscope",
-            model_name="qwen-plus",
-            input_tokens=10,
-            output_tokens=20,
-            cost=0.1,
-            session_id="session-1",
+    assert (
+        await service.add_usage_record(
+            UsageRecord(
+                timestamp="2026-06-03T10:00:00",
+                provider="dashscope",
+                model_name="qwen-plus",
+                input_tokens=10,
+                output_tokens=20,
+                cost=0.1,
+                session_id="session-1",
+            )
         )
-    ) is True
+        is True
+    )
     assert await service.delete_old_records(days=90) == 1
 
     assert single_calls[0][0] == "token_usage"
@@ -91,7 +102,9 @@ async def test_internal_messages_dual_write_bulk_upserts(monkeypatch):
         batch_calls.append((collection_name, documents))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(internal_message_service, "dual_write_hot_documents", fake_dual_write_many)
+    monkeypatch.setattr(
+        internal_message_service, "dual_write_hot_documents", fake_dual_write_many
+    )
 
     result = await service.save_internal_messages(
         [{"message_id": "msg-1", "symbol": "000001", "message_type": "research_report"}]
@@ -112,7 +125,9 @@ async def test_social_media_messages_dual_write_bulk_upserts(monkeypatch):
         batch_calls.append((collection_name, documents))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(social_media_service, "dual_write_hot_documents", fake_dual_write_many)
+    monkeypatch.setattr(
+        social_media_service, "dual_write_hot_documents", fake_dual_write_many
+    )
 
     result = await service.save_social_media_messages(
         [{"message_id": "social-1", "platform": "weibo", "symbol": "000001"}]
@@ -125,7 +140,9 @@ async def test_social_media_messages_dual_write_bulk_upserts(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_historical_data_service_dual_writes_standardized_daily_quotes(monkeypatch):
+async def test_historical_data_service_dual_writes_standardized_daily_quotes(
+    monkeypatch,
+):
     service = historical_data_service.HistoricalDataService()
     service.collection = FakeCollection()
     batch_calls = []
@@ -134,12 +151,22 @@ async def test_historical_data_service_dual_writes_standardized_daily_quotes(mon
         batch_calls.append((collection_name, documents))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(historical_data_service, "dual_write_hot_documents", fake_dual_write_many)
+    monkeypatch.setattr(
+        historical_data_service, "dual_write_hot_documents", fake_dual_write_many
+    )
 
     saved = await service.save_historical_data(
         symbol="000001",
         data=pd.DataFrame(
-            [{"trade_date": "20260603", "open": 10.1, "close": 10.3, "volume": 100, "amount": 200}],
+            [
+                {
+                    "trade_date": "20260603",
+                    "open": 10.1,
+                    "close": 10.3,
+                    "volume": 100,
+                    "amount": 200,
+                }
+            ],
         ),
         data_source="tushare",
         market="CN",
@@ -164,7 +191,7 @@ class FakeDB:
 
 class FakeCollection:
     def __init__(self, existing=None, count=0):
-        self.inserted_id = ObjectId()
+        self.inserted_id = DocumentId()
         self.existing = existing or []
         self.count = count
 

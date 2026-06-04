@@ -1,10 +1,13 @@
-import importlib
 import asyncio
+import importlib
 
 
 def test_offhours_backfill_when_empty(monkeypatch):
-    QuotesIngestionService = getattr(importlib.import_module('app.services.quotes.ingestion'), 'QuotesIngestionService')
-    qis_mod = importlib.import_module('app.services.quotes.ingestion')
+    QuotesIngestionService = getattr(
+        importlib.import_module("app.services.quotes.ingestion"),
+        "QuotesIngestionService",
+    )
+    qis_mod = importlib.import_module("app.services.quotes.ingestion")
 
     # Fake DataSourceManager to avoid external calls
     class _FakeManager:
@@ -49,15 +52,20 @@ def test_offhours_backfill_when_empty(monkeypatch):
 
     fake_db = _FakeDB()
 
-    def _fake_get_mongo_db():
+    def _fake_get_postgres_db():
         return fake_db
 
-    monkeypatch.setattr(qis_mod, "get_mongo_db", _fake_get_mongo_db, raising=True)
+    monkeypatch.setattr(qis_mod, "get_postgres_db", _fake_get_postgres_db, raising=True)
 
     async def _run():
         svc = QuotesIngestionService()
         # Force off-hours
-        monkeypatch.setattr(QuotesIngestionService, "_is_trading_time", lambda self, now=None: False, raising=True)
+        monkeypatch.setattr(
+            QuotesIngestionService,
+            "_is_trading_time",
+            lambda self, now=None: False,
+            raising=True,
+        )
         await svc.run_once()
         assert fake_db._coll.last_ops is not None
         assert len(fake_db._coll.last_ops) == 2

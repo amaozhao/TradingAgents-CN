@@ -1,26 +1,23 @@
 """
 快速测试港股功能
 """
+
 import importlib
 
-import sys
-import os
-
-# 添加项目根目录到路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_stock_recognition():
     """测试股票识别"""
     print("🧪 测试股票识别...")
 
     try:
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
 
         test_cases = [
             "0700.HK",  # 腾讯港股
-            "000001",   # 平安银行A股
-            "AAPL"      # 苹果美股
+            "000001",  # 平安银行A股
+            "AAPL",  # 苹果美股
         ]
 
         for ticker in test_cases:
@@ -34,12 +31,15 @@ def test_stock_recognition():
         print(f"❌ 股票识别测试失败: {e}")
         return False
 
+
 def test_akshare_basic():
     """测试AKShare基本功能"""
     print("\n🧪 测试AKShare基本功能...")
 
     try:
-        get_akshare_provider = getattr(importlib.import_module('trader.flows.akshare'), 'get_akshare_provider')
+        get_akshare_provider = getattr(
+            importlib.import_module("trader.flows.akshare"), "get_akshare_provider"
+        )
 
         provider = get_akshare_provider()
 
@@ -60,19 +60,23 @@ def test_akshare_basic():
         print(f"❌ AKShare基本功能测试失败: {e}")
         return False
 
+
 def test_unified_interface():
     """测试统一接口"""
     print("\n🧪 测试统一接口...")
 
     try:
-        get_hk_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_info_unified')
+        get_hk_stock_info_unified = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "get_hk_stock_info_unified",
+        )
 
         symbol = "0700.HK"
         print(f"  获取 {symbol} 信息...")
 
         info = get_hk_stock_info_unified(symbol)
 
-        if info and 'symbol' in info:
+        if info and "symbol" in info:
             print(f"    代码: {info['symbol']}")
             print(f"    名称: {info['name']}")
             print(f"    货币: {info['currency']}")
@@ -87,16 +91,13 @@ def test_unified_interface():
         print(f"❌ 统一接口测试失败: {e}")
         return False
 
+
 def main():
     """运行快速测试"""
     print("🇭🇰 港股功能快速测试")
     print("=" * 30)
 
-    tests = [
-        test_stock_recognition,
-        test_akshare_basic,
-        test_unified_interface
-    ]
+    tests = [test_stock_recognition, test_akshare_basic, test_unified_interface]
 
     passed = 0
     total = len(tests)
@@ -115,6 +116,7 @@ def main():
         print("🎉 港股功能基本正常！")
     else:
         print("⚠️ 港股功能可能有问题")
+
 
 if __name__ == "__main__":
     main()

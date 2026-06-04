@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
-import os
 
 from app.services.config import config_service
 
@@ -28,7 +28,9 @@ class ConfigProvider:
         return (
             self._cache_settings is not None
             and self._cache_time is not None
-            and __import__("datetime").datetime.now(__import__("datetime").timezone.utc) - self._cache_time < self._ttl
+            and __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+            - self._cache_time
+            < self._ttl
         )
 
     async def get_effective_system_settings(self) -> Dict[str, Any]:
@@ -67,8 +69,11 @@ class ConfigProvider:
 
         # Cache
         self._cache_settings = dict(merged)
-        self._cache_time = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+        self._cache_time = __import__("datetime").datetime.now(
+            __import__("datetime").timezone.utc
+        )
         return dict(merged)
+
     async def get_system_settings_meta(self) -> Dict[str, Dict[str, Any]]:
         """Return metadata for system settings keys including sensitivity, editability and source.
         Fields per key:
@@ -101,8 +106,14 @@ class ConfigProvider:
         meta: Dict[str, Dict[str, Any]] = {}
         for k, v in db_settings.items():
             env_v = _env_override_for_key(k)
-            source = "environment" if env_v is not None else ("database" if v is not None else "default")
-            sensitive = isinstance(k, str) and any(p in k.lower() for p in sens_patterns)
+            source = (
+                "environment"
+                if env_v is not None
+                else ("database" if v is not None else "default")
+            )
+            sensitive = isinstance(k, str) and any(
+                p in k.lower() for p in sens_patterns
+            )
             editable = not sensitive and source != "environment"
             effective_val = env_v if env_v is not None else v
             has_value = effective_val not in (None, "")
@@ -113,7 +124,6 @@ class ConfigProvider:
                 "has_value": bool(has_value),
             }
         return meta
-
 
 
 # Module-level singleton

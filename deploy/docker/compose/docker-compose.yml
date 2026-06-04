@@ -29,17 +29,15 @@ services:
       TRADING_AGENTS_LOG_DIR: "/app/logs"
       TRADING_AGENTS_LOG_FILE: "/app/logs/trading_agents.log"
       # Docker专用数据库配置
-      TRADING_AGENTS_MONGODB_URL: mongodb://admin:trading_agents123@mongodb:27017/trading_agents?authSource=admin
       TRADING_AGENTS_REDIS_URL: redis://:trading_agents123@redis:6379
       TRADING_AGENTS_CACHE_TYPE: redis
-      # PostgreSQL 迁移配置：默认不切读/不双写，由 cutover runbook 分阶段开启
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: trading_agents_pg123
       POSTGRES_DB: trading_agents_cn
-      POSTGRES_DUAL_WRITE_ENABLED: "${POSTGRES_DUAL_WRITE_ENABLED:-false}"
-      POSTGRES_READ_ENABLED: "${POSTGRES_READ_ENABLED:-false}"
+      POSTGRES_DUAL_WRITE_ENABLED: "${POSTGRES_DUAL_WRITE_ENABLED:-true}"
+      POSTGRES_READ_ENABLED: "${POSTGRES_READ_ENABLED:-true}"
       POSTGRES_DUAL_WRITE_FAIL_OPEN: "${POSTGRES_DUAL_WRITE_FAIL_OPEN:-true}"
       SYNC_STOCK_BASICS_ENABLED: "${SYNC_STOCK_BASICS_ENABLED:-true}"
       # Docker环境标识
@@ -50,8 +48,6 @@ services:
       # CORS配置
       CORS_ORIGINS: "http://localhost:3000,http://localhost:8080,http://localhost:5173"
     depends_on:
-      mongodb:
-        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
@@ -102,35 +98,6 @@ services:
         max-size: "100m"
         max-file: "3"
 
-  # MongoDB 数据库服务
-  mongodb:
-    image: mongo:latest
-    container_name: trading-agents-mongodb
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: trading_agents123
-      MONGO_INITDB_DATABASE: trading_agents
-      TZ: "Asia/Shanghai"
-    volumes:
-      - mongodb_data:/data/db
-      - ../../../backend/scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-    networks:
-      - trading-agents-network
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "2"
-
   # Redis 缓存服务
   redis:
     image: redis:latest
@@ -158,7 +125,7 @@ services:
         max-size: "50m"
         max-file: "2"
 
-  # PostgreSQL 数据库服务（Mongo -> PostgreSQL 迁移目标）
+  # PostgreSQL 数据库服务
   postgres:
     image: postgres:16-alpine
     container_name: trading-agents-postgres
@@ -209,32 +176,8 @@ services:
     profiles:
       - management
 
-  # Mongo Express 管理界面（可选）
-  mongo-express:
-    image: mongo-express:latest
-    container_name: trading-agents-mongo-express
-    restart: unless-stopped
-    ports:
-      - "8082:8081"
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
-      ME_CONFIG_MONGODB_ADMINPASSWORD: trading_agents123
-      ME_CONFIG_MONGODB_URL: mongodb://admin:trading_agents123@mongodb:27017/
-      ME_CONFIG_BASICAUTH_USERNAME: admin
-      ME_CONFIG_BASICAUTH_PASSWORD: trading_agents123
-    networks:
-      - trading-agents-network
-    depends_on:
-      mongodb:
-        condition: service_healthy
-    profiles:
-      - management
-
 # 数据卷定义
 volumes:
-  mongodb_data:
-    driver: local
-    name: trading_agents_mongodb_data
   redis_data:
     driver: local
     name: trading_agents_redis_data

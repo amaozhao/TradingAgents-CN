@@ -4,10 +4,11 @@ import unittest
 
 import pytest
 
+from support.registry import export_module as _export_module
 from trader.flows.symbols import (
     NoMarketDataError,
-    normalize_symbol,
     is_yahoo_safe,
+    normalize_symbol,
 )
 
 
@@ -23,7 +24,7 @@ class TestNormalizeSymbol(unittest.TestCase):
 
     def test_metal_aliases_map_to_futures(self):
         self.assertEqual(normalize_symbol("XAUUSD"), "GC=F")
-        self.assertEqual(normalize_symbol("XAUUSD+"), "GC=F")   # broker CFD suffix
+        self.assertEqual(normalize_symbol("XAUUSD+"), "GC=F")  # broker CFD suffix
         self.assertEqual(normalize_symbol("xauusd+"), "GC=F")
         self.assertEqual(normalize_symbol("GOLD"), "GC=F")
         self.assertEqual(normalize_symbol("XAGUSD"), "SI=F")
@@ -80,6 +81,5 @@ class TestIsYahooSafe(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
-from support.registry import export_module as _export_module
 _export_module(globals(), "support.no.data.handling.module")
 del _export_module

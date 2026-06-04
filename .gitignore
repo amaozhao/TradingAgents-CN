@@ -78,6 +78,7 @@ temp/
 # 注意：不要忽略 tradingagents/dataflows/cache/ 目录（这是代码模块）
 /cache/
 /data/
+backend/data/cache/
 web/data/
 dataflows/data_cache/
 tradingagents/dataflows/data_cache/

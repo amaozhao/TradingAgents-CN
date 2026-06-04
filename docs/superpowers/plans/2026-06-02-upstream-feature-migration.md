@@ -6,7 +6,7 @@
 
 **Architecture:** Treat `TradingAgents-CN` as the host system and upstream `TradingAgents` as the capability source. Add upstream modules only when they are standalone, then connect them through CN-compatible adapters so graph state, node names, provider configuration, and backend response shapes remain stable. Do not replace CN dataflows, LLM configuration, prompts, progress reporting, or report extraction with upstream defaults.
 
-**Tech Stack:** Python, LangGraph, LangChain, Pydantic, FastAPI backend, MongoDB-backed configuration, ChromaDB role memory, CN multi-market data providers, pytest, conda env `trader`.
+**Tech Stack:** Python, LangGraph, LangChain, Pydantic, FastAPI backend, PostgreSQL-backed configuration, ChromaDB role memory, CN multi-market data providers, pytest, conda env `trader`.
 
 ## Execution Status
 
@@ -15,7 +15,7 @@ Status as of 2026-06-02:
 - The CN backend remains the host system; upstream modules were adapted rather than replacing CN data routing, prompts, progress streaming, or report contracts.
 - Existing CN `FinancialSituationMemory` / Chroma role memories are preserved when `memory_enabled` is true.
 - Upstream `TradingMemoryLog` is added alongside the existing role memories for final-decision logging and delayed outcome reflection.
-- Local MongoDB verification uses Docker Compose service `trading-agents-mongodb`; current health check: container `healthy`, `db.adminCommand({ping:1}).ok == 1`.
+- Local PostgreSQL verification uses Docker Compose service `trading-agents-postgres`; current health check: container `healthy`, `db.adminCommand({ping:1}).ok == 1`.
 - Legacy import/collection blockers have been resolved with compatibility shims for `app.database`, `app.routers.auth`, `trader.llm.adapters.dashscope_adapter`, legacy dataflow utility paths, `TushareDataAdapter`, `OptimizedChinaDataFlow`, upstream `aggressive_debator`, and old `create_trading_graph()`.
 - Legacy live/manual tests that require a running `localhost:8000` backend, missing local export fixtures, or direct live scripts are skipped by default unless `TRADING_AGENTS_RUN_LIVE_TESTS=1` is set.
 - Verification completed in conda env `trader`:
@@ -232,7 +232,7 @@ These files should only be touched when a backend contract must explicitly under
 
 **Acceptance:**
 - `conda run -n trader python -c "from trader.default import DEFAULT_CONFIG; print(DEFAULT_CONFIG['checkpoint_enabled'])"` succeeds.
-- Config import does not initialize MongoDB or network clients.
+- Config import does not initialize PostgreSQL or network clients.
 - Dependency declarations include checkpoint support.
 
 ---

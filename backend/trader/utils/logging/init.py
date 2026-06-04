@@ -4,18 +4,13 @@
 在应用启动时初始化统一日志系统
 """
 
-import os
-import sys
 import logging
+import os
 import platform
-from pathlib import Path
+import sys
 from typing import Any, Optional
 
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
-
-from trader.utils.logging.manager import setup_logging, get_logger
+from trader.utils.logging.manager import get_logger, setup_logging
 
 
 def init_logging(config_override: Optional[dict] = None) -> None:
@@ -29,24 +24,30 @@ def init_logging(config_override: Optional[dict] = None) -> None:
     logger_manager = setup_logging(config_override)
 
     # 获取初始化日志器
-    logger = get_logger('trader.init')
+    logger = get_logger("trader.init")
 
     # 记录初始化信息
     logger.info("🚀 TradingAgents-CN 日志系统初始化完成")
-    logger.info(f"📁 日志目录: {logger_manager.config.get('handlers', {}).get('file', {}).get('directory', 'N/A')}")
+    logger.info(
+        f"📁 日志目录: {logger_manager.config.get('handlers', {}).get('file', {}).get('directory', 'N/A')}"
+    )
     logger.info(f"📊 日志级别: {logger_manager.config.get('level', 'INFO')}")
 
     # Docker环境特殊处理
-    if logger_manager.config.get('docker', {}).get('enabled', False):
+    if logger_manager.config.get("docker", {}).get("enabled", False):
         logger.info("🐳 Docker环境检测到，使用容器优化配置")
 
     # 记录环境信息
     logger.debug(f"🔧 Python版本: {sys.version}")
     logger.debug(f"📂 工作目录: {os.getcwd()}")
-    logger.debug(f"🌍 环境变量: DOCKER_CONTAINER={os.getenv('DOCKER_CONTAINER', 'false')}")
+    logger.debug(
+        f"🌍 环境变量: DOCKER_CONTAINER={os.getenv('DOCKER_CONTAINER', 'false')}"
+    )
 
 
-def get_session_logger(session_id: str, module_name: str = 'session') -> logging.LoggerAdapter[Any]:
+def get_session_logger(
+    session_id: str, module_name: str = "session"
+) -> logging.LoggerAdapter[Any]:
     """
     获取会话专用日志器
 
@@ -64,7 +65,7 @@ def get_session_logger(session_id: str, module_name: str = 'session') -> logging
 
 def log_startup_info():
     """记录应用启动信息"""
-    logger = get_logger('trader.startup')
+    logger = get_logger("trader.startup")
 
     logger.info("=" * 60)
     logger.info("🎯 TradingAgents-CN 启动")
@@ -76,9 +77,9 @@ def log_startup_info():
 
     # 环境信息
     env_info = {
-        'DOCKER_CONTAINER': os.getenv('DOCKER_CONTAINER', 'false'),
-        'TRADING_AGENTS_LOG_LEVEL': os.getenv('TRADING_AGENTS_LOG_LEVEL', 'INFO'),
-        'TRADING_AGENTS_LOG_DIR': os.getenv('TRADING_AGENTS_LOG_DIR', './logs'),
+        "DOCKER_CONTAINER": os.getenv("DOCKER_CONTAINER", "false"),
+        "TRADING_AGENTS_LOG_LEVEL": os.getenv("TRADING_AGENTS_LOG_LEVEL", "INFO"),
+        "TRADING_AGENTS_LOG_DIR": os.getenv("TRADING_AGENTS_LOG_DIR", "./logs"),
     }
 
     for key, value in env_info.items():
@@ -89,7 +90,7 @@ def log_startup_info():
 
 def log_shutdown_info():
     """记录应用关闭信息"""
-    logger = get_logger('trader.shutdown')
+    logger = get_logger("trader.shutdown")
 
     logger.info("=" * 60)
     logger.info("🛑 TradingAgents-CN 关闭")
@@ -101,22 +102,22 @@ def setup_web_logging():
     """设置Web应用专用日志"""
     init_logging()
     log_startup_info()
-    return get_logger('web')
+    return get_logger("web")
 
 
 def setup_analysis_logging(session_id: str):
     """设置分析专用日志"""
-    return get_session_logger(session_id, 'analysis')
+    return get_session_logger(session_id, "analysis")
 
 
 def setup_dataflow_logging():
     """设置数据流专用日志"""
-    return get_logger('dataflows')
+    return get_logger("dataflows")
 
 
 def setup_llm_logging():
     """设置LLM适配器专用日志"""
-    return get_logger('llm_adapters')
+    return get_logger("llm_adapters")
 
 
 if __name__ == "__main__":

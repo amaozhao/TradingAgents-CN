@@ -1,16 +1,15 @@
 import importlib
+
 # TradingAgents/graph/propagation.py
+from typing import Any, Dict, List, Optional
 
-from typing import Dict, Any, List, Optional
-
-# 导入统一日志系统
-from trader.utils.logging.init import get_logger
-logger = get_logger("default")
 from trader.agents.utils.states import (
-    AgentState,
     InvestDebateState,
     RiskDebateState,
 )
+from trader.utils.logging.init import get_logger
+
+logger = get_logger("default")
 
 
 class Propagator:
@@ -29,11 +28,15 @@ class Propagator:
         instrument_context: str = "",
     ) -> Dict[str, Any]:
         """Create the initial state for the agent graph."""
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
 
         # 🔥 修复：创建明确的分析请求消息，而不是只传递股票代码
         # 这样可以确保所有LLM（包括DeepSeek）都能理解任务
-        analysis_request = f"请对股票 {company_name} 进行全面分析，交易日期为 {trade_date}。"
+        analysis_request = (
+            f"请对股票 {company_name} 进行全面分析，交易日期为 {trade_date}。"
+        )
 
         return {
             "messages": [HumanMessage(content=analysis_request)],

@@ -2,11 +2,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.scripts import initproviders
+from app.scripts import providers as init_providers
 
 
 @pytest.mark.asyncio
-async def test_init_providers_dual_writes_deleted_existing_and_inserted_providers(monkeypatch):
+async def test_init_providers_dual_writes_deleted_existing_and_inserted_providers(
+    monkeypatch,
+):
     fake_collection = FakeProvidersCollection(
         existing=[{"_id": "old-id", "name": "old-provider", "is_active": True}]
     )
@@ -26,9 +28,13 @@ async def test_init_providers_dual_writes_deleted_existing_and_inserted_provider
         return SimpleNamespace(status="written", reason="")
 
     monkeypatch.setattr(init_providers, "init_db", fake_init_db)
-    monkeypatch.setattr(init_providers, "get_mongo_db", lambda: fake_db)
-    monkeypatch.setattr(init_providers, "dual_write_hot_documents", fake_dual_write_documents)
-    monkeypatch.setattr(init_providers, "dual_write_hot_document", fake_dual_write_document)
+    monkeypatch.setattr(init_providers, "get_postgres_db", lambda: fake_db)
+    monkeypatch.setattr(
+        init_providers, "dual_write_hot_documents", fake_dual_write_documents
+    )
+    monkeypatch.setattr(
+        init_providers, "dual_write_hot_document", fake_dual_write_document
+    )
 
     await init_providers.init_providers()
 

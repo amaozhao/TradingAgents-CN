@@ -4,22 +4,16 @@
 使用方法:
     python scripts/aggregator/support/test.py
 """
+
 import importlib
-
-import asyncio
 import sys
-from pathlib import Path
 
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from app.services.capability import ModelCapabilityService
 from app.constants.capabilities import (
     AGGREGATOR_PROVIDERS,
     is_aggregator_model,
-    parse_aggregator_model
+    parse_aggregator_model,
 )
+from app.services.capability import ModelCapabilityService
 
 
 def test_aggregator_model_parsing():
@@ -40,7 +34,11 @@ def test_aggregator_model_parsing():
         is_agg = is_aggregator_model(model_name)
         parsed = parse_aggregator_model(model_name)
 
-        status = "✅" if (is_agg == expected_is_aggregator and parsed == expected_parse) else "❌"
+        status = (
+            "✅"
+            if (is_agg == expected_is_aggregator and parsed == expected_parse)
+            else "❌"
+        )
         print(f"{status} {model_name}")
         print(f"   是否聚合模型: {is_agg} (期望: {expected_is_aggregator})")
         print(f"   解析结果: {parsed} (期望: {expected_parse})")
@@ -122,14 +120,14 @@ def test_model_recommendation():
 
         print(f"   有效: {'✅' if result['valid'] else '❌'}")
 
-        if result['warnings']:
+        if result["warnings"]:
             print("   警告:")
-            for warning in result['warnings']:
+            for warning in result["warnings"]:
                 print(f"     - {warning}")
 
-        if result['recommendations']:
+        if result["recommendations"]:
             print("   建议:")
-            for rec in result['recommendations']:
+            for rec in result["recommendations"]:
                 print(f"     - {rec}")
 
         print()
@@ -161,7 +159,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return 1
 

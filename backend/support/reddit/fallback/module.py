@@ -7,8 +7,7 @@ from urllib.error import HTTPError
 
 import pytest
 
-from trader.flows import dataflowreddit as reddit
-
+from trader.flows import reddit
 
 _SAMPLE_ATOM = """<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
@@ -40,7 +39,7 @@ class TestIsoToTimestamp:
 @pytest.mark.unit
 class TestStripHtml:
     def test_extracts_between_sc_markers_and_unescapes(self):
-        raw = "<!-- SC_OFF --><div class=\"md\"><p>Great <b>quarter</b> &amp; more</p></div><!-- SC_ON -->"
+        raw = '<!-- SC_OFF --><div class="md"><p>Great <b>quarter</b> &amp; more</p></div><!-- SC_ON -->'
         assert reddit._strip_html(raw) == "Great quarter & more"
 
     def test_empty(self):
@@ -53,10 +52,13 @@ class TestRssFallbackParsing:
         class _Resp:
             def __enter__(self_inner):
                 return self_inner
+
             def __exit__(self_inner, *a):
                 return False
+
             def read(self_inner):
                 return xml_bytes
+
         return patch.object(reddit, "urlopen", return_value=_Resp())
 
     def test_parses_atom_entries(self):
@@ -79,8 +81,23 @@ class TestRssFallbackParsing:
 class TestJsonFallsBackToRss:
     def test_403_triggers_rss(self):
         err = HTTPError("url", 403, "Blocked", {}, None)
-        with patch.object(reddit, "urlopen", side_effect=err), \
-             patch.object(reddit, "_fetch_subreddit_rss", return_value=[{"title": "x", "source": "rss", "score": None, "num_comments": None, "created_utc": None, "selftext": ""}]) as rss:
+        with (
+            patch.object(reddit, "urlopen", side_effect=err),
+            patch.object(
+                reddit,
+                "_fetch_subreddit_rss",
+                return_value=[
+                    {
+                        "title": "x",
+                        "source": "rss",
+                        "score": None,
+                        "num_comments": None,
+                        "created_utc": None,
+                        "selftext": "",
+                    }
+                ],
+            ) as rss,
+        ):
             out = reddit._fetch_subreddit("NVDA", "stocks", 5, 5.0)
         rss.assert_called_once()
         assert out and out[0]["source"] == "rss"
@@ -89,26 +106,39 @@ class TestJsonFallsBackToRss:
 @pytest.mark.unit
 class TestFormatterHandlesRssPosts:
     def test_rss_posts_omit_fake_counts_and_note_source(self):
-        rss_posts = [{
-            "title": "NVDA pops", "score": None, "num_comments": None,
-            "created_utc": reddit._iso_to_timestamp("2026-05-20T14:30:00Z"),
-            "selftext": "great quarter", "source": "rss",
-        }]
+        rss_posts = [
+            {
+                "title": "NVDA pops",
+                "score": None,
+                "num_comments": None,
+                "created_utc": reddit._iso_to_timestamp("2026-05-20T14:30:00Z"),
+                "selftext": "great quarter",
+                "source": "rss",
+            }
+        ]
         with patch.object(reddit, "_fetch_subreddit", return_value=rss_posts):
-            out = reddit.fetch_reddit_posts("NVDA", subreddits=("stocks",), inter_request_delay=0)
+            out = reddit.fetch_reddit_posts(
+                "NVDA", subreddits=("stocks",), inter_request_delay=0
+            )
         assert "via RSS feed" in out
         assert "↑" not in out  # no fake score arrow
         assert "NVDA pops" in out
         assert "great quarter" in out
 
     def test_json_posts_still_show_counts(self):
-        json_posts = [{
-            "title": "NVDA pops", "score": 1234, "num_comments": 56,
-            "created_utc": reddit._iso_to_timestamp("2026-05-20T14:30:00Z"),
-            "selftext": "",
-        }]
+        json_posts = [
+            {
+                "title": "NVDA pops",
+                "score": 1234,
+                "num_comments": 56,
+                "created_utc": reddit._iso_to_timestamp("2026-05-20T14:30:00Z"),
+                "selftext": "",
+            }
+        ]
         with patch.object(reddit, "_fetch_subreddit", return_value=json_posts):
-            out = reddit.fetch_reddit_posts("NVDA", subreddits=("stocks",), inter_request_delay=0)
+            out = reddit.fetch_reddit_posts(
+                "NVDA", subreddits=("stocks",), inter_request_delay=0
+            )
         assert "1234↑" in out
         assert "56c" in out
         assert "via RSS" not in out

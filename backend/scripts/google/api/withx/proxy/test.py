@@ -2,16 +2,14 @@
 测试 Google API 连接（使用代理）
 """
 
-import sys
 import os
-from pathlib import Path
-
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+import socket
+import sys
+import time
 
 # 加载 .env 文件
 from dotenv import load_dotenv
+
 load_dotenv()
 
 print("=" * 80)
@@ -26,14 +24,14 @@ print("如果不需要代理，直接按回车跳过")
 proxy_url = input("代理地址: ").strip()
 
 if proxy_url:
-    os.environ['HTTP_PROXY'] = proxy_url
-    os.environ['HTTPS_PROXY'] = proxy_url
+    os.environ["HTTP_PROXY"] = proxy_url
+    os.environ["HTTPS_PROXY"] = proxy_url
     print(f"✅ 已设置代理: {proxy_url}")
 else:
     print("⚠️ 未设置代理，将直接连接")
 
 # 2. 检查 API Key
-google_api_key = os.getenv('GOOGLE_API_KEY')
+google_api_key = os.getenv("GOOGLE_API_KEY")
 if not google_api_key:
     print("\n❌ 未找到 GOOGLE_API_KEY 环境变量")
     print("请在 .env 文件中设置：GOOGLE_API_KEY=your-api-key")
@@ -46,8 +44,6 @@ print("\n" + "=" * 80)
 print("测试网络连接")
 print("=" * 80)
 
-import socket
-import time
 
 def test_connection(host, port=443, timeout=5):
     """测试 TCP 连接"""
@@ -59,6 +55,7 @@ def test_connection(host, port=443, timeout=5):
         return True, elapsed
     except Exception as e:
         return False, str(e)
+
 
 # 测试连接
 host = "generativelanguage.googleapis.com"
@@ -83,7 +80,7 @@ try:
         google_api_key=google_api_key,
         temperature=0.7,
         max_tokens=500,  # 增加到 500
-        timeout=30  # 30秒超时
+        timeout=30,  # 30秒超时
     )
 
     print("✅ LLM 实例创建成功")
@@ -100,7 +97,7 @@ try:
     elapsed = time.time() - start_time
 
     print(f"\n✅ API 调用成功！耗时: {elapsed:.2f}秒")
-    print(f"\n📥 响应内容:")
+    print("\n📥 响应内容:")
     print(f"   {response.content}")
 
     print("\n" + "=" * 80)
@@ -115,6 +112,7 @@ except Exception as e:
     print(f"\n❌ 测试失败: {e}")
     print("\n详细错误信息:")
     import traceback
+
     traceback.print_exc()
 
     print("\n" + "=" * 80)

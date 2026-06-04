@@ -1,17 +1,19 @@
 """
 通知服务：持久化 + 列表 + 已读 + SSE 发布
 """
-import importlib
-import json
-import logging
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
-from bson import ObjectId
 
-from app.core.database import get_mongo_db, get_redis_client
+import importlib
+import logging
+from datetime import timedelta
+from typing import Any, Dict, List, Optional, cast
+
+from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
+from app.db.ids import DocumentId
 from app.models.notification import (
-    NotificationCreate, NotificationOut, NotificationList
+    NotificationCreate,
+    NotificationList,
+    NotificationOut,
 )
 from app.utils.timezone import now_tz
 
@@ -27,7 +29,7 @@ class NotificationsService:
 
     async def _ensure_indexes(self):
         try:
-            db = get_mongo_db()
+            db = get_postgres_db()
             await db[self.collection].create_index([("user_id", 1), ("created_at", -1)])
             await db[self.collection].create_index([("user_id", 1), ("status", 1)])
         except Exception as e:
@@ -35,7 +37,7 @@ class NotificationsService:
 
     async def create_and_publish(self, payload: NotificationCreate) -> str:
         await self._ensure_indexes()
-        db = get_mongo_db()
+        db = get_postgres_db()
         doc = {
             "user_id": payload.user_id,
             "type": payload.type,
@@ -66,7 +68,10 @@ class NotificationsService:
 
         # 🔥 使用 WebSocket 发送通知
         try:
-            send_notification_via_websocket = getattr(importlib.import_module('app.routers.socket'), 'send_notification_via_websocket')
+            send_notification_via_websocket = getattr(
+                importlib.import_module("app.routers.socket"),
+                "send_notification_via_websocket",
+            )
             await send_notification_via_websocket(payload.user_id, payload_to_publish)
             logger.debug(f"✅ [WS] 通知已通过 WebSocket 发送: user={payload.user_id}")
         except Exception as e:
@@ -74,25 +79,45 @@ class NotificationsService:
 
         # 清理策略：保留最近N天/最多M条
         try:
-            old_docs = await db[self.collection].find({
-                "user_id": payload.user_id,
-                "created_at": {"$lt": now_tz() - timedelta(days=self.retain_days)}
-            }).to_list(length=None)
-            delete_result = await db[self.collection].delete_many({
-                "user_id": payload.user_id,
-                "created_at": {"$lt": now_tz() - timedelta(days=self.retain_days)}
-            })
+            old_docs = (
+                await db[self.collection]
+                .find(
+                    {
+                        "user_id": payload.user_id,
+                        "created_at": {
+                            "$lt": now_tz() - timedelta(days=self.retain_days)
+                        },
+                    }
+                )
+                .to_list(length=None)
+            )
+            delete_result = await db[self.collection].delete_many(
+                {
+                    "user_id": payload.user_id,
+                    "created_at": {"$lt": now_tz() - timedelta(days=self.retain_days)},
+                }
+            )
             if delete_result.deleted_count:
                 await self._dual_write_notification_tombstones(old_docs)
 
             # 超过配额按时间删旧
-            count = await db[self.collection].count_documents({"user_id": payload.user_id})
+            count = await db[self.collection].count_documents(
+                {"user_id": payload.user_id}
+            )
             if count > self.max_per_user:
                 skip = count - self.max_per_user
-                docs_to_delete = await db[self.collection].find({"user_id": payload.user_id}).sort("created_at", 1).limit(skip).to_list(length=None)
+                docs_to_delete = (
+                    await db[self.collection]
+                    .find({"user_id": payload.user_id})
+                    .sort("created_at", 1)
+                    .limit(skip)
+                    .to_list(length=None)
+                )
                 ids = [d["_id"] for d in docs_to_delete]
                 if ids:
-                    delete_result = await db[self.collection].delete_many({"_id": {"$in": ids}})
+                    delete_result = await db[self.collection].delete_many(
+                        {"_id": {"$in": ids}}
+                    )
                     if delete_result.deleted_count:
                         await self._dual_write_notification_tombstones(docs_to_delete)
         except Exception as e:
@@ -101,47 +126,77 @@ class NotificationsService:
         return doc_id
 
     async def unread_count(self, user_id: str) -> int:
-        db = get_mongo_db()
-        return await db[self.collection].count_documents({"user_id": user_id, "status": "unread"})
+        db = get_postgres_db()
+        return await db[self.collection].count_documents(
+            {"user_id": user_id, "status": "unread"}
+        )
 
-    async def list(self, user_id: str, *, status: Optional[str] = None, ntype: Optional[str] = None, page: int = 1, page_size: int = 20) -> NotificationList:
-        db = get_mongo_db()
+    async def list(
+        self,
+        user_id: str,
+        *,
+        status: Optional[str] = None,
+        ntype: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> NotificationList:
+        db = get_postgres_db()
         q: Dict[str, Any] = {"user_id": user_id}
         if status in ("read", "unread"):
             q["status"] = status
         if ntype in ("analysis", "alert", "system"):
             q["type"] = ntype
         total = await db[self.collection].count_documents(q)
-        cursor = db[self.collection].find(q).sort("created_at", -1).skip((page-1)*page_size).limit(page_size)
+        cursor = (
+            db[self.collection]
+            .find(q)
+            .sort("created_at", -1)
+            .skip((page - 1) * page_size)
+            .limit(page_size)
+        )
         items: List[NotificationOut] = []
         async for d in cursor:
-            items.append(NotificationOut(
-                id=str(d.get("_id")),
-                type=d.get("type"),
-                title=d.get("title"),
-                content=d.get("content"),
-                link=d.get("link"),
-                source=d.get("source"),
-                status=d.get("status", "unread"),
-                created_at=d.get("created_at") or now_tz(),
-            ))
-        return NotificationList(items=items, total=total, page=page, page_size=page_size)
+            items.append(
+                NotificationOut(
+                    id=str(d.get("_id")),
+                    type=cast(Any, d.get("type") or "system"),
+                    title=str(d.get("title") or ""),
+                    content=str(d.get("content") or ""),
+                    link=d.get("link"),
+                    source=d.get("source"),
+                    status=d.get("status", "unread"),
+                    created_at=d.get("created_at") or now_tz(),
+                )
+            )
+        return NotificationList(
+            items=items, total=total, page=page, page_size=page_size
+        )
 
     async def mark_read(self, user_id: str, notif_id: str) -> bool:
-        db = get_mongo_db()
+        db = get_postgres_db()
         try:
-            oid = ObjectId(notif_id)
+            document_id = DocumentId(notif_id)
         except Exception:
             return False
-        res = await db[self.collection].update_one({"_id": oid, "user_id": user_id}, {"$set": {"status": "read"}})
+        res = await db[self.collection].update_one(
+            {"_id": document_id, "user_id": user_id}, {"$set": {"status": "read"}}
+        )
         if res.modified_count:
-            await self._dual_write_notification({"_id": oid, "user_id": user_id, "status": "read"})
+            await self._dual_write_notification(
+                {"_id": document_id, "user_id": user_id, "status": "read"}
+            )
         return res.modified_count > 0
 
     async def mark_all_read(self, user_id: str) -> int:
-        db = get_mongo_db()
-        unread_docs = await db[self.collection].find({"user_id": user_id, "status": "unread"}).to_list(length=None)
-        res = await db[self.collection].update_many({"user_id": user_id, "status": "unread"}, {"$set": {"status": "read"}})
+        db = get_postgres_db()
+        unread_docs = (
+            await db[self.collection]
+            .find({"user_id": user_id, "status": "unread"})
+            .to_list(length=None)
+        )
+        res = await db[self.collection].update_many(
+            {"user_id": user_id, "status": "unread"}, {"$set": {"status": "read"}}
+        )
         if res.modified_count:
             await dual_write_hot_documents(
                 self.collection,
@@ -154,12 +209,17 @@ class NotificationsService:
         if result.status == "failed":
             logger.warning("⚠️ 通知 PostgreSQL 双写失败: %s", result.reason)
 
-    async def _dual_write_notification_tombstones(self, documents: List[Dict[str, Any]]) -> None:
+    async def _dual_write_notification_tombstones(
+        self, documents: List[Dict[str, Any]]
+    ) -> None:
         if not documents:
             return
         result = await dual_write_hot_documents(
             self.collection,
-            [{**document, "deleted": True, "updated_at": now_tz()} for document in documents],
+            [
+                {**document, "deleted": True, "updated_at": now_tz()}
+                for document in documents
+            ],
         )
         if result.status == "failed":
             logger.warning("⚠️ 通知 PostgreSQL tombstone 双写失败: %s", result.reason)

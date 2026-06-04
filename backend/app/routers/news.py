@@ -2,17 +2,19 @@
 新闻数据API路由
 提供新闻数据查询、同步和管理接口
 """
-import importlib
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query, status
-from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
-from pydantic import BaseModel, Field
-import logging
 
+import importlib
+import logging
+from datetime import datetime, timedelta
+from typing import List, Optional
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
+
+from app.core.response import ok
 from app.models.response import ApiResponse
 from app.routers.account import get_current_user
-from app.core.response import ok
-from app.services.market.news import get_news_data_service, NewsQueryParams
+from app.services.market.news import NewsQueryParams, get_news_data_service
 from app.worker.news import get_news_data_sync_service
 
 router = APIRouter(prefix="/api/news-data", tags=["新闻数据"])
@@ -21,6 +23,7 @@ logger = logging.getLogger("webapi")
 
 class NewsQueryRequest(BaseModel):
     """新闻查询请求"""
+
     symbol: Optional[str] = Field(None, description="股票代码")
     symbols: Optional[List[str]] = Field(None, description="多个股票代码")
     start_time: Optional[datetime] = Field(None, description="开始时间")
@@ -36,6 +39,7 @@ class NewsQueryRequest(BaseModel):
 
 class NewsSyncRequest(BaseModel):
     """新闻同步请求"""
+
     symbol: Optional[str] = Field(None, description="股票代码，为空则同步市场新闻")
     data_sources: Optional[List[str]] = Field(None, description="数据源列表")
     hours_back: int = Field(24, description="回溯小时数")
@@ -49,7 +53,7 @@ async def query_stock_news(
     limit: int = Query(20, description="返回数量限制"),
     category: Optional[str] = Query(None, description="新闻类别"),
     sentiment: Optional[str] = Query(None, description="情绪分析"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     查询股票新闻（智能获取：优先数据库，无数据时实时获取）
@@ -77,7 +81,7 @@ async def query_stock_news(
             sentiment=sentiment,
             limit=limit,
             sort_by="publish_time",
-            sort_order=-1
+            sort_order=-1,
         )
 
         # 1. 先从数据库查询
@@ -88,21 +92,21 @@ async def query_stock_news(
         if not news_list:
             logger.info(f"📰 数据库无新闻数据，实时获取: {symbol}")
             try:
-                get_akshare_sync_service = getattr(importlib.import_module('app.worker.akshare.sync'), 'get_akshare_sync_service')
+                get_akshare_sync_service = getattr(
+                    importlib.import_module("app.worker.akshare.sync"),
+                    "get_akshare_sync_service",
+                )
                 sync_service = await get_akshare_sync_service()
 
                 # 实时获取新闻
                 news_data = await sync_service.provider.get_stock_news(
-                    symbol=symbol,
-                    limit=limit
+                    symbol=symbol, limit=limit
                 )
 
                 if news_data:
                     # 保存到数据库
                     saved_count = await service.save_news_data(
-                        news_data=news_data,
-                        data_source="akshare",
-                        market="CN"
+                        news_data=news_data, data_source="akshare", market="CN"
                     )
                     logger.info(f"✅ 实时获取并保存 {saved_count} 条新闻")
 
@@ -115,27 +119,27 @@ async def query_stock_news(
             except Exception as e:
                 logger.error(f"❌ 实时获取新闻异常: {e}")
 
-        return ok(data={
+        return ok(
+            data={
                 "symbol": symbol,
                 "hours_back": hours_back,
                 "total_count": len(news_list),
                 "news": news_list,
-                "data_source": data_source
+                "data_source": data_source,
             },
-            message=f"查询成功，返回 {len(news_list)} 条新闻（来源：{data_source}）"
+            message=f"查询成功，返回 {len(news_list)} 条新闻（来源：{data_source}）",
         )
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"查询股票新闻失败: {str(e)}"
+            detail=f"查询股票新闻失败: {str(e)}",
         )
 
 
 @router.post("/query", response_model=ApiResponse)
 async def query_news_advanced(
-    request: NewsQueryRequest,
-    current_user: dict = Depends(get_current_user)
+    request: NewsQueryRequest, current_user: dict = Depends(get_current_user)
 ):
     """
     高级新闻查询
@@ -161,24 +165,25 @@ async def query_news_advanced(
             data_source=request.data_source,
             keywords=request.keywords,
             limit=request.limit,
-            skip=request.skip
+            skip=request.skip,
         )
 
         # 查询新闻
         news_list = await service.query_news(params)
 
-        return ok(data={
+        return ok(
+            data={
                 "query_params": request.dict(),
                 "total_count": len(news_list),
-                "news": news_list
+                "news": news_list,
             },
-            message=f"高级查询成功，返回 {len(news_list)} 条新闻"
+            message=f"高级查询成功，返回 {len(news_list)} 条新闻",
         )
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"高级新闻查询失败: {str(e)}"
+            detail=f"高级新闻查询失败: {str(e)}",
         )
 
 
@@ -187,7 +192,7 @@ async def get_latest_news(
     symbol: Optional[str] = Query(None, description="股票代码，为空则获取所有新闻"),
     limit: int = Query(10, description="返回数量限制"),
     hours_back: int = Query(24, description="回溯小时数"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     获取最新新闻
@@ -205,25 +210,24 @@ async def get_latest_news(
 
         # 获取最新新闻
         news_list = await service.get_latest_news(
-            symbol=symbol,
-            limit=limit,
-            hours_back=hours_back
+            symbol=symbol, limit=limit, hours_back=hours_back
         )
 
-        return ok(data={
+        return ok(
+            data={
                 "symbol": symbol,
                 "limit": limit,
                 "hours_back": hours_back,
                 "total_count": len(news_list),
-                "news": news_list
+                "news": news_list,
             },
-            message=f"获取最新新闻成功，返回 {len(news_list)} 条"
+            message=f"获取最新新闻成功，返回 {len(news_list)} 条",
         )
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取最新新闻失败: {str(e)}"
+            detail=f"获取最新新闻失败: {str(e)}",
         )
 
 
@@ -232,7 +236,7 @@ async def search_news(
     query: str = Query(..., description="搜索关键词"),
     symbol: Optional[str] = Query(None, description="股票代码过滤"),
     limit: int = Query(20, description="返回数量限制"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     全文搜索新闻
@@ -250,24 +254,23 @@ async def search_news(
 
         # 全文搜索
         news_list = await service.search_news(
-            query_text=query,
-            symbol=symbol,
-            limit=limit
+            query_text=query, symbol=symbol, limit=limit
         )
 
-        return ok(data={
+        return ok(
+            data={
                 "query": query,
                 "symbol": symbol,
                 "total_count": len(news_list),
-                "news": news_list
+                "news": news_list,
             },
-            message=f"搜索成功，返回 {len(news_list)} 条结果"
+            message=f"搜索成功，返回 {len(news_list)} 条结果",
         )
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"新闻搜索失败: {str(e)}"
+            detail=f"新闻搜索失败: {str(e)}",
         )
 
 
@@ -275,7 +278,7 @@ async def search_news(
 async def get_news_statistics(
     symbol: Optional[str] = Query(None, description="股票代码"),
     days_back: int = Query(7, description="回溯天数"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     获取新闻统计信息
@@ -294,12 +297,10 @@ async def get_news_statistics(
         start_time = datetime.utcnow() - timedelta(days=days_back)
 
         # 获取统计信息
-        stats = await service.get_news_statistics(
-            symbol=symbol,
-            start_time=start_time
-        )
+        stats = await service.get_news_statistics(symbol=symbol, start_time=start_time)
 
-        return ok(data={
+        return ok(
+            data={
                 "symbol": symbol,
                 "days_back": days_back,
                 "statistics": {
@@ -307,24 +308,24 @@ async def get_news_statistics(
                     "sentiment_distribution": {
                         "positive": stats.positive_count,
                         "negative": stats.negative_count,
-                        "neutral": stats.neutral_count
+                        "neutral": stats.neutral_count,
                     },
                     "importance_distribution": {
                         "high": stats.high_importance_count,
                         "medium": stats.medium_importance_count,
-                        "low": stats.low_importance_count
+                        "low": stats.low_importance_count,
                     },
                     "categories": stats.categories,
-                    "sources": stats.sources
-                }
+                    "sources": stats.sources,
+                },
             },
-            message="获取新闻统计成功"
+            message="获取新闻统计成功",
         )
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取新闻统计失败: {str(e)}"
+            detail=f"获取新闻统计失败: {str(e)}",
         )
 
 
@@ -332,7 +333,7 @@ async def get_news_statistics(
 async def start_news_sync(
     request: NewsSyncRequest,
     background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     启动新闻同步任务
@@ -349,34 +350,27 @@ async def start_news_sync(
 
         # 添加后台同步任务
         if request.symbol:
-            background_tasks.add_task(
-                _execute_stock_news_sync,
-                sync_service,
-                request
-            )
+            background_tasks.add_task(_execute_stock_news_sync, sync_service, request)
             message = f"股票 {request.symbol} 新闻同步任务已启动"
         else:
-            background_tasks.add_task(
-                _execute_market_news_sync,
-                sync_service,
-                request
-            )
+            background_tasks.add_task(_execute_market_news_sync, sync_service, request)
             message = "市场新闻同步任务已启动"
 
-        return ok(data={
+        return ok(
+            data={
                 "sync_type": "stock" if request.symbol else "market",
                 "symbol": request.symbol,
                 "data_sources": request.data_sources,
                 "hours_back": request.hours_back,
-                "max_news_per_source": request.max_news_per_source
+                "max_news_per_source": request.max_news_per_source,
             },
-            message=message
+            message=message,
         )
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"启动新闻同步失败: {str(e)}"
+            detail=f"启动新闻同步失败: {str(e)}",
         )
 
 
@@ -386,7 +380,7 @@ async def sync_single_stock_news(
     data_sources: Optional[List[str]] = None,
     hours_back: int = 24,
     max_news_per_source: int = 50,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     同步单只股票新闻（同步执行）
@@ -408,10 +402,11 @@ async def sync_single_stock_news(
             symbol=symbol,
             data_sources=data_sources,
             hours_back=hours_back,
-            max_news_per_source=max_news_per_source
+            max_news_per_source=max_news_per_source,
         )
 
-        return ok(data={
+        return ok(
+            data={
                 "symbol": symbol,
                 "sync_stats": {
                     "total_processed": stats.total_processed,
@@ -420,23 +415,23 @@ async def sync_single_stock_news(
                     "duplicate_skipped": stats.duplicate_skipped,
                     "sources_used": stats.sources_used,
                     "duration_seconds": stats.duration_seconds,
-                    "success_rate": stats.success_rate
-                }
+                    "success_rate": stats.success_rate,
+                },
             },
-            message=f"股票 {symbol} 新闻同步完成，成功保存 {stats.successful_saves} 条"
+            message=f"股票 {symbol} 新闻同步完成，成功保存 {stats.successful_saves} 条",
         )
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"同步股票新闻失败: {str(e)}"
+            detail=f"同步股票新闻失败: {str(e)}",
         )
 
 
 @router.delete("/cleanup", response_model=ApiResponse)
 async def cleanup_old_news(
     days_to_keep: int = Query(90, description="保留天数"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     清理过期新闻
@@ -453,17 +448,15 @@ async def cleanup_old_news(
         # 删除过期新闻
         deleted_count = await service.delete_old_news(days_to_keep)
 
-        return ok(data={
-                "days_to_keep": days_to_keep,
-                "deleted_count": deleted_count
-            },
-            message=f"清理完成，删除 {deleted_count} 条过期新闻"
+        return ok(
+            data={"days_to_keep": days_to_keep, "deleted_count": deleted_count},
+            message=f"清理完成，删除 {deleted_count} 条过期新闻",
         )
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"清理过期新闻失败: {str(e)}"
+            detail=f"清理过期新闻失败: {str(e)}",
         )
 
 
@@ -471,20 +464,21 @@ async def cleanup_old_news(
 async def health_check():
     """健康检查"""
     try:
-        service = await get_news_data_service()
-        sync_service = await get_news_data_sync_service()
+        await get_news_data_service()
+        await get_news_data_sync_service()
 
-        return ok(data={
+        return ok(
+            data={
                 "service_status": "healthy",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             },
-            message="新闻数据服务运行正常"
+            message="新闻数据服务运行正常",
         )
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"健康检查失败: {str(e)}"
+            detail=f"健康检查失败: {str(e)}",
         )
 
 
@@ -496,7 +490,7 @@ async def _execute_stock_news_sync(sync_service, request: NewsSyncRequest):
             symbol=request.symbol,
             data_sources=request.data_sources,
             hours_back=request.hours_back,
-            max_news_per_source=request.max_news_per_source
+            max_news_per_source=request.max_news_per_source,
         )
     except Exception as e:
         logger.error(f"❌ 后台股票新闻同步失败: {e}")
@@ -508,7 +502,7 @@ async def _execute_market_news_sync(sync_service, request: NewsSyncRequest):
         await sync_service.sync_market_news(
             data_sources=request.data_sources,
             hours_back=request.hours_back,
-            max_news_per_source=request.max_news_per_source
+            max_news_per_source=request.max_news_per_source,
         )
     except Exception as e:
         logger.error(f"❌ 后台市场新闻同步失败: {e}")

@@ -3,14 +3,9 @@
 测试数据源降级机制
 验证当Tushare返回空数据时是否能正确降级到其他数据源
 """
+
 import importlib
 
-import sys
-import os
-
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
 
 def test_data_source_availability():
     """测试数据源可用性"""
@@ -18,8 +13,10 @@ def test_data_source_availability():
     print("=" * 60)
 
     try:
-        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
-        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
+        DataSourceManager = getattr(
+            importlib.import_module("trader.flows.sources"), "DataSourceManager"
+        )
+        getattr(importlib.import_module("trader.flows.sources"), "ChinaDataSource")
 
         manager = DataSourceManager()
 
@@ -31,9 +28,10 @@ def test_data_source_availability():
 
     except Exception as e:
         print(f"❌ 数据源管理器初始化失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return None
+
 
 def test_fallback_mechanism(manager):
     """测试降级机制"""
@@ -52,7 +50,7 @@ def test_fallback_mechanism(manager):
         # 调用数据获取方法
         result = manager.get_stock_data(test_symbol, start_date, end_date)
 
-        print(f"\n📋 获取结果:")
+        print("\n📋 获取结果:")
         print(f"   结果长度: {len(result) if result else 0}")
         print(f"   前200字符: {result[:200] if result else 'None'}")
 
@@ -66,9 +64,10 @@ def test_fallback_mechanism(manager):
 
     except Exception as e:
         print(f"❌ 测试过程中发生异常: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_specific_sources(manager):
     """测试特定数据源"""
@@ -102,6 +101,7 @@ def test_specific_sources(manager):
         except Exception as e:
             print(f"   ❌ {source.value} 异常: {e}")
 
+
 def main():
     """主函数"""
     print("🧪 数据源降级机制测试")
@@ -128,7 +128,8 @@ def main():
         print("⚠️ 降级机制可能存在问题")
 
     print(f"📊 可用数据源数量: {len(manager.available_sources)}")
-    print(f"📊 建议: 确保至少有2个数据源可用以支持降级")
+    print("📊 建议: 确保至少有2个数据源可用以支持降级")
+
 
 if __name__ == "__main__":
     main()

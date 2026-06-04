@@ -2,10 +2,12 @@
 """
 测试 API 返回的系统设置
 """
+
 import importlib
+import json
 
 import requests
-import json
+
 
 def main():
     """主函数"""
@@ -23,7 +25,7 @@ def main():
             login_response = requests.post(
                 "http://127.0.0.1:8000/api/auth/login",
                 json={"username": "admin", "password": "admin123"},
-                timeout=5
+                timeout=5,
             )
             print(f"登录响应状态: {login_response.status_code}")
             print(f"登录响应内容: {login_response.text}")
@@ -37,12 +39,12 @@ def main():
                     response = requests.get(
                         "http://127.0.0.1:8000/api/config/settings",
                         headers={"Authorization": f"Bearer {token}"},
-                        timeout=5
+                        timeout=5,
                     )
                 else:
-                    print(f"❌ 无法从响应中获取 token")
+                    print("❌ 无法从响应中获取 token")
             else:
-                print(f"❌ 登录失败")
+                print("❌ 登录失败")
 
         if response.status_code == 200:
             settings = response.json()
@@ -50,11 +52,11 @@ def main():
 
             # 打印模型相关的设置
             print("模型相关设置:")
-            for key in ['default_model', 'quick_analysis_model', 'deep_analysis_model']:
+            for key in ["default_model", "quick_analysis_model", "deep_analysis_model"]:
                 value = settings.get(key)
                 print(f"  {key}: {value}")
 
-            print(f"\n所有设置:")
+            print("\n所有设置:")
             print(json.dumps(settings, indent=2, ensure_ascii=False))
         else:
             print(f"\n❌ API 请求失败: {response.status_code}")
@@ -64,7 +66,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 错误: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 

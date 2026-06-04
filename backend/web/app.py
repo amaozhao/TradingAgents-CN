@@ -3,50 +3,48 @@
 TradingAgents-CN Streamlit Web界面
 基于Streamlit的股票分析Web应用程序
 """
+
+import datetime
 import importlib
+import json
+import os
+import time
+from pathlib import Path
 
 import streamlit as st
-import os
-import sys
-import json
-from pathlib import Path
-import datetime
-import time
+from components.form import render_form
+from components.header import render_header
+from components.login import (
+    render_login_form,
+    render_sidebar_logout,
+    render_sidebar_user_info,
+    require_permission,
+)
+from components.progress import display_unified_progress
+from components.result import render_results
+from components.sidebar import render_sidebar
 from dotenv import load_dotenv
+from utils.activity import activity
+from utils.analysis import run_stock_analysis, validate_analysis_params
+from utils.api import check_api_keys
+from utils.auth import auth
+from utils.progress import AsyncProgressTracker
+from utils.smart import get_persistent_analysis_id, set_persistent_analysis_id
 
-# 添加后端源码目录到Python路径，并保留仓库根目录用于 .env/data/config
-backend_root = Path(__file__).resolve().parent.parent
-project_root = backend_root.parent
-sys.path.insert(0, str(backend_root))
-
-# 导入日志模块
 try:
     from trader.utils.logging.manager import get_logger
-    logger = get_logger('web')
+
+    logger = get_logger("web")
 except ImportError:
     # 如果无法导入，使用标准logging
     import logging
+
     logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger('web')
+    logger = logging.getLogger("web")
 
-# 加载环境变量
-load_dotenv(project_root / ".env", override=True)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-# 导入自定义组件
-from components.sidebar import render_sidebar
-from components.header import render_header
-from components.form import render_form
-from components.result import render_results
-from components.login import render_login_form, check_authentication, render_user_info, render_sidebar_user_info, render_sidebar_logout, require_permission
-from components.activity import render_activity, render_activity_summary_widget
-from utils.api import check_api_keys
-from utils.analysis import run_stock_analysis, validate_analysis_params, format_analysis
-from utils.tracker import SmartStreamlitProgressDisplay, create_smart_progress_callback
-from utils.progress import AsyncProgressTracker
-from components.progress import display_unified_progress
-from utils.smart import get_persistent_analysis_id, set_persistent_analysis_id
-from utils.auth import auth
-from utils.activity import activity
+load_dotenv(PROJECT_ROOT / ".env", override=True)
 
 # 设置页面配置
 st.set_page_config(
@@ -54,11 +52,12 @@ st.set_page_config(
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded",
-    menu_items=None
+    menu_items=None,
 )
 
 # 自定义CSS样式
-st.markdown("""
+st.markdown(
+    """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
@@ -316,60 +315,76 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
+
 
 def initialize_session_state():
     """初始化会话状态"""
     # 初始化认证相关状态
-    if 'authenticated' not in st.session_state:
+    if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
-    if 'user_info' not in st.session_state:
+    if "user_info" not in st.session_state:
         st.session_state.user_info = None
-    if 'login_time' not in st.session_state:
+    if "login_time" not in st.session_state:
         st.session_state.login_time = None
 
     # 初始化分析相关状态
-    if 'analysis' not in st.session_state:
+    if "analysis" not in st.session_state:
         st.session_state.analysis = None
-    if 'analysis_running' not in st.session_state:
+    if "analysis_running" not in st.session_state:
         st.session_state.analysis_running = False
-    if 'last_analysis_time' not in st.session_state:
+    if "last_analysis_time" not in st.session_state:
         st.session_state.last_analysis_time = None
-    if 'current_analysis_id' not in st.session_state:
+    if "current_analysis_id" not in st.session_state:
         st.session_state.current_analysis_id = None
-    if 'form_config' not in st.session_state:
+    if "form_config" not in st.session_state:
         st.session_state.form_config = None
 
     # 尝试从最新完成的分析中恢复结果
     if not st.session_state.analysis:
         try:
-            get_latest_analysis_id = getattr(importlib.import_module('utils.progress'), 'get_latest_analysis_id')
-            get_progress_by_id = getattr(importlib.import_module('utils.progress'), 'get_progress_by_id')
-            format_analysis = getattr(importlib.import_module('utils.analysis'), 'format_analysis')
+            get_latest_analysis_id = getattr(
+                importlib.import_module("utils.progress"), "get_latest_analysis_id"
+            )
+            get_progress_by_id = getattr(
+                importlib.import_module("utils.progress"), "get_progress_by_id"
+            )
+            format_analysis = getattr(
+                importlib.import_module("utils.analysis"), "format_analysis"
+            )
 
             latest_id = get_latest_analysis_id()
             if latest_id:
                 progress_data = get_progress_by_id(latest_id)
-                if (progress_data and
-                    progress_data.get('status') == 'completed' and
-                    'raw_results' in progress_data):
-
+                if (
+                    progress_data
+                    and progress_data.get("status") == "completed"
+                    and "raw_results" in progress_data
+                ):
                     # 恢复分析结果
-                    raw_results = progress_data['raw_results']
+                    raw_results = progress_data["raw_results"]
                     formatted_results = format_analysis(raw_results)
 
                     if formatted_results:
                         st.session_state.analysis = formatted_results
                         st.session_state.current_analysis_id = latest_id
                         # 检查分析状态
-                        analysis_status = progress_data.get('status', 'completed')
-                        st.session_state.analysis_running = (analysis_status == 'running')
+                        analysis_status = progress_data.get("status", "completed")
+                        st.session_state.analysis_running = analysis_status == "running"
                         # 恢复股票信息
-                        if 'stock_symbol' in raw_results:
-                            st.session_state.last_stock_symbol = raw_results.get('stock_symbol', '')
-                        if 'market_type' in raw_results:
-                            st.session_state.last_market_type = raw_results.get('market_type', '')
-                        logger.info(f"📊 [结果恢复] 从分析 {latest_id} 恢复结果，状态: {analysis_status}")
+                        if "stock_symbol" in raw_results:
+                            st.session_state.last_stock_symbol = raw_results.get(
+                                "stock_symbol", ""
+                            )
+                        if "market_type" in raw_results:
+                            st.session_state.last_market_type = raw_results.get(
+                                "market_type", ""
+                            )
+                        logger.info(
+                            f"📊 [结果恢复] 从分析 {latest_id} 恢复结果，状态: {analysis_status}"
+                        )
 
         except Exception as e:
             logger.warning(f"⚠️ [结果恢复] 恢复失败: {e}")
@@ -379,23 +394,29 @@ def initialize_session_state():
         persistent_analysis_id = get_persistent_analysis_id()
         if persistent_analysis_id:
             # 使用线程检测来检查分析状态
-            check_analysis_status = getattr(importlib.import_module('utils.threads'), 'check_analysis_status')
+            check_analysis_status = getattr(
+                importlib.import_module("utils.threads"), "check_analysis_status"
+            )
             actual_status = check_analysis_status(persistent_analysis_id)
 
             # 只在状态变化时记录日志，避免重复
-            current_session_status = st.session_state.get('last_logged_status')
+            current_session_status = st.session_state.get("last_logged_status")
             if current_session_status != actual_status:
-                logger.info(f"📊 [状态检查] 分析 {persistent_analysis_id} 实际状态: {actual_status}")
+                logger.info(
+                    f"📊 [状态检查] 分析 {persistent_analysis_id} 实际状态: {actual_status}"
+                )
                 st.session_state.last_logged_status = actual_status
 
-            if actual_status == 'running':
+            if actual_status == "running":
                 st.session_state.analysis_running = True
                 st.session_state.current_analysis_id = persistent_analysis_id
-            elif actual_status in ['completed', 'failed']:
+            elif actual_status in ["completed", "failed"]:
                 st.session_state.analysis_running = False
                 st.session_state.current_analysis_id = persistent_analysis_id
             else:  # not_found
-                logger.warning(f"📊 [状态检查] 分析 {persistent_analysis_id} 未找到，清理状态")
+                logger.warning(
+                    f"📊 [状态检查] 分析 {persistent_analysis_id} 未找到，清理状态"
+                )
                 st.session_state.analysis_running = False
                 st.session_state.current_analysis_id = None
     except Exception as e:
@@ -406,34 +427,35 @@ def initialize_session_state():
 
     # 恢复表单配置
     try:
-        smart = getattr(importlib.import_module('utils.smart'), 'smart')
+        smart = getattr(importlib.import_module("utils.smart"), "smart")
         session_data = smart.load_analysis_state()
 
-        if session_data and 'form_config' in session_data:
-            st.session_state.form_config = session_data['form_config']
+        if session_data and "form_config" in session_data:
+            st.session_state.form_config = session_data["form_config"]
             # 只在没有分析运行时记录日志，避免重复
-            if not st.session_state.get('analysis_running', False):
+            if not st.session_state.get("analysis_running", False):
                 logger.info("📊 [配置恢复] 表单配置已恢复")
     except Exception as e:
         logger.warning(f"⚠️ [配置恢复] 表单配置恢复失败: {e}")
 
+
 def check_frontend_auth_cache():
     """检查前端缓存并尝试恢复登录状态"""
-    auth = getattr(importlib.import_module('utils.auth'), 'auth')
+    auth = getattr(importlib.import_module("utils.auth"), "auth")
 
     logger.info("🔍 开始检查前端缓存恢复")
     logger.info(f"📊 当前认证状态: {st.session_state.get('authenticated', False)}")
     logger.info(f"🔗 URL参数: {dict(st.query_params)}")
 
     # 如果已经认证，确保状态同步
-    if st.session_state.get('authenticated', False):
+    if st.session_state.get("authenticated", False):
         # 确保auth也知道用户已认证
-        if not auth.is_authenticated() and st.session_state.get('user_info'):
+        if not auth.is_authenticated() and st.session_state.get("user_info"):
             logger.info("🔄 同步认证状态到auth")
             try:
                 auth.login_user(
                     st.session_state.user_info,
-                    st.session_state.get('login_time', time.time())
+                    st.session_state.get("login_time", time.time()),
                 )
                 logger.info("✅ 认证状态同步成功")
             except Exception as e:
@@ -444,8 +466,8 @@ def check_frontend_auth_cache():
 
     # 检查URL参数中是否有恢复信息
     try:
-        base64 = importlib.import_module('base64')
-        restore_data = st.query_params.get('restore_auth')
+        base64 = importlib.import_module("base64")
+        restore_data = st.query_params.get("restore_auth")
 
         if restore_data:
             logger.info("📥 发现URL中的恢复参数，开始恢复登录状态")
@@ -453,8 +475,8 @@ def check_frontend_auth_cache():
             auth_data = json.loads(base64.b64decode(restore_data).decode())
 
             # 兼容旧格式（直接是用户信息）和新格式（包含loginTime）
-            if 'userInfo' in auth_data:
-                user_info = auth_data['userInfo']
+            if "userInfo" in auth_data:
+                user_info = auth_data["userInfo"]
                 # 使用当前时间作为新的登录时间，避免超时问题
                 # 因为前端已经验证了lastActivity没有超时
                 login_time = time.time()
@@ -469,8 +491,10 @@ def check_frontend_auth_cache():
             # 恢复登录状态
             if auth.restore_from_cache(user_info, login_time):
                 # 清除URL参数
-                del st.query_params['restore_auth']
-                logger.info(f"✅ 从前端缓存成功恢复用户 {user_info['username']} 的登录状态")
+                del st.query_params["restore_auth"]
+                logger.info(
+                    f"✅ 从前端缓存成功恢复用户 {user_info['username']} 的登录状态"
+                )
                 logger.info("🧹 已清除URL恢复参数")
                 # 立即重新运行以应用恢复的状态
                 logger.info("🔄 触发页面重新运行")
@@ -478,7 +502,7 @@ def check_frontend_auth_cache():
             else:
                 logger.error("❌ 恢复登录状态失败")
                 # 恢复失败，清除URL参数
-                del st.query_params['restore_auth']
+                del st.query_params["restore_auth"]
         else:
             # 如果没有URL参数，注入前端检查脚本
             logger.info("📝 没有URL恢复参数，注入前端检查脚本")
@@ -486,15 +510,16 @@ def check_frontend_auth_cache():
     except Exception as e:
         logger.warning(f"⚠️ 处理前端缓存恢复失败: {e}")
         # 如果恢复失败，清除可能损坏的URL参数
-        if 'restore_auth' in st.query_params:
-            del st.query_params['restore_auth']
+        if "restore_auth" in st.query_params:
+            del st.query_params["restore_auth"]
+
 
 def inject_frontend_cache_check():
     """注入前端缓存检查脚本"""
     logger.info("📝 准备注入前端缓存检查脚本")
 
     # 如果已经注入过，不重复注入
-    if st.session_state.get('cache_script_injected', False):
+    if st.session_state.get("cache_script_injected", False):
         logger.info("⚠️ 前端脚本已注入，跳过重复注入")
         return
 
@@ -594,6 +619,7 @@ def inject_frontend_cache_check():
 
     st.components.v1.html(cache_check_js, height=0)
 
+
 def main():
     """主应用程序"""
 
@@ -606,16 +632,17 @@ def main():
     # 检查用户认证状态
     if not auth.is_authenticated():
         # 最后一次尝试从session state恢复认证状态
-        if (st.session_state.get('authenticated', False) and
-            st.session_state.get('user_info') and
-            st.session_state.get('login_time')):
+        if (
+            st.session_state.get("authenticated", False)
+            and st.session_state.get("user_info")
+            and st.session_state.get("login_time")
+        ):
             logger.info("🔄 从session state恢复认证状态")
             try:
-                auth.login_user(
-                    st.session_state.user_info,
-                    st.session_state.login_time
+                auth.login_user(st.session_state.user_info, st.session_state.login_time)
+                logger.info(
+                    f"✅ 成功从session state恢复用户 {st.session_state.user_info.get('username', 'Unknown')} 的认证状态"
                 )
-                logger.info(f"✅ 成功从session state恢复用户 {st.session_state.user_info.get('username', 'Unknown')} 的认证状态")
             except Exception as e:
                 logger.warning(f"⚠️ 从session state恢复认证状态失败: {e}")
 
@@ -625,7 +652,8 @@ def main():
             return
 
     # 全局侧边栏CSS样式 - 确保所有页面一致
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     /* 统一侧边栏宽度为320px */
     section[data-testid="stSidebar"] {
@@ -882,10 +910,12 @@ def main():
     // 定期强制应用样式
     setInterval(forceOptimalPadding, 500);
     </script>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # 添加调试按钮（仅在调试模式下显示）
-    if os.getenv('DEBUG_MODE') == 'true':
+    if os.getenv("DEBUG_MODE") == "true":
         if st.button("🔄 清除会话状态"):
             st.session_state.clear()
             st.experimental_rerun()
@@ -908,8 +938,16 @@ def main():
 
     page = st.sidebar.selectbox(
         "切换功能模块",
-        ["📊 股票分析", "⚙️ 配置管理", "💾 缓存管理", "💰 Token统计", "📋 操作日志", "📈 分析结果", "🔧 系统状态"],
-        label_visibility="collapsed"
+        [
+            "📊 股票分析",
+            "⚙️ 配置管理",
+            "💾 缓存管理",
+            "💰 Token统计",
+            "📋 操作日志",
+            "📈 分析结果",
+            "🔧 系统状态",
+        ],
+        label_visibility="collapsed",
     )
 
     # 记录页面访问活动
@@ -919,8 +957,8 @@ def main():
             page_params={
                 "page_url": f"/app?page={page.split(' ')[1] if ' ' in page else page}",
                 "page_type": "main_navigation",
-                "access_method": "sidebar_selectbox"
-            }
+                "access_method": "sidebar_selectbox",
+            },
         )
     except Exception as e:
         logger.warning(f"记录页面访问活动失败: {e}")
@@ -934,7 +972,9 @@ def main():
         if not require_permission("config"):
             return
         try:
-            render_config = getattr(importlib.import_module('modules.config'), 'render_config')
+            render_config = getattr(
+                importlib.import_module("modules.config"), "render_config"
+            )
             render_config()
         except ImportError as e:
             st.error(f"配置管理模块加载失败: {e}")
@@ -945,7 +985,7 @@ def main():
         if not require_permission("admin"):
             return
         try:
-            cache_main = getattr(importlib.import_module('modules.cache'), 'main')
+            cache_main = getattr(importlib.import_module("modules.cache"), "main")
             cache_main()
         except ImportError as e:
             st.error(f"缓存管理页面加载失败: {e}")
@@ -955,7 +995,9 @@ def main():
         if not require_permission("config"):
             return
         try:
-            render_tokens = getattr(importlib.import_module('modules.tokens'), 'render_tokens')
+            render_tokens = getattr(
+                importlib.import_module("modules.tokens"), "render_tokens"
+            )
             render_tokens()
         except ImportError as e:
             st.error(f"Token统计页面加载失败: {e}")
@@ -966,7 +1008,9 @@ def main():
         if not require_permission("admin"):
             return
         try:
-            render_operations = getattr(importlib.import_module('components.operation'), 'render_operations')
+            render_operations = getattr(
+                importlib.import_module("components.operation"), "render_operations"
+            )
             render_operations()
         except ImportError as e:
             st.error(f"操作日志模块加载失败: {e}")
@@ -977,7 +1021,9 @@ def main():
         if not require_permission("analysis"):
             return
         try:
-            render_analysis = getattr(importlib.import_module('components.analysis'), 'render_analysis')
+            render_analysis = getattr(
+                importlib.import_module("components.analysis"), "render_analysis"
+            )
             render_analysis()
         except ImportError as e:
             st.error(f"分析结果模块加载失败: {e}")
@@ -990,34 +1036,40 @@ def main():
         st.header("🔧 系统状态")
 
         # 展示股票基础信息同步状态
-        requests = importlib.import_module('requests')
-        backend_url = os.getenv('WEBAPI_BASE_URL', 'http://localhost:8000')
+        requests = importlib.import_module("requests")
+        backend_url = os.getenv("WEBAPI_BASE_URL", "http://localhost:8000")
         try:
-            resp = requests.get(f"{backend_url}/api/sync/stock_basics/status", timeout=5)
+            resp = requests.get(
+                f"{backend_url}/api/sync/stock_basics/status", timeout=5
+            )
             if resp.ok:
-                data = resp.json().get('data', {})
+                data = resp.json().get("data", {})
                 st.subheader("📦 股票基础信息同步状态")
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("状态", data.get('status', 'unknown'))
+                    st.metric("状态", data.get("status", "unknown"))
                 with col2:
-                    st.metric("总处理", data.get('total', 0))
+                    st.metric("总处理", data.get("total", 0))
                 with col3:
-                    st.metric("错误数", data.get('errors', 0))
+                    st.metric("错误数", data.get("errors", 0))
 
-                st.write("- 开始时间:", data.get('started_at', ''))
-                st.write("- 结束时间:", data.get('finished_at', ''))
-                st.write("- 交易日期:", data.get('last_trade_date', ''))
+                st.write("- 开始时间:", data.get("started_at", ""))
+                st.write("- 结束时间:", data.get("finished_at", ""))
+                st.write("- 交易日期:", data.get("last_trade_date", ""))
 
                 # 手动触发按钮
                 if st.button("🔄 手动运行全量同步"):
                     with st.spinner("正在触发后端同步..."):
                         try:
-                            run_resp = requests.post(f"{backend_url}/api/sync/stock_basics/run", timeout=10)
+                            run_resp = requests.post(
+                                f"{backend_url}/api/sync/stock_basics/run", timeout=10
+                            )
                             if run_resp.ok:
                                 st.success("已触发同步任务，请稍后刷新查看状态")
                             else:
-                                st.error(f"触发失败: {run_resp.status_code} {run_resp.text}")
+                                st.error(
+                                    f"触发失败: {run_resp.status_code} {run_resp.text}"
+                                )
                         except Exception as e:
                             st.error(f"触发异常: {e}")
             else:
@@ -1034,7 +1086,7 @@ def main():
     # 检查API密钥
     api_status = check_api_keys()
 
-    if not api_status['all_configured']:
+    if not api_status["all_configured"]:
         st.error("⚠️ API密钥配置不完整，请先配置必要的API密钥")
 
         with st.expander("📋 API密钥配置指南", expanded=True):
@@ -1064,8 +1116,8 @@ def main():
 
         # 显示当前API密钥状态
         st.subheader("🔍 当前API密钥状态")
-        for key, status in api_status['details'].items():
-            if status['configured']:
+        for key, status in api_status["details"].items():
+            if status["configured"]:
                 st.success(f"✅ {key}: {status['display']}")
             else:
                 st.error(f"❌ {key}: 未配置")
@@ -1077,28 +1129,33 @@ def main():
 
     # 添加使用指南显示切换
     # 如果正在分析或有分析结果，默认隐藏使用指南
-    default_show_guide = not (st.session_state.get('analysis_running', False) or st.session_state.get('analysis') is not None)
+    default_show_guide = not (
+        st.session_state.get("analysis_running", False)
+        or st.session_state.get("analysis") is not None
+    )
 
     # 如果用户没有手动设置过，使用默认值
-    if 'user_set_guide_preference' not in st.session_state:
+    if "user_set_guide_preference" not in st.session_state:
         st.session_state.user_set_guide_preference = False
         st.session_state.show_guide_preference = default_show_guide
 
     show_guide = st.sidebar.checkbox(
         "📖 显示使用指南",
-        value=st.session_state.get('show_guide_preference', default_show_guide),
+        value=st.session_state.get("show_guide_preference", default_show_guide),
         help="显示/隐藏右侧使用指南",
-        key="guide_checkbox"
+        key="guide_checkbox",
     )
 
     # 记录用户的选择
-    if show_guide != st.session_state.get('show_guide_preference', default_show_guide):
+    if show_guide != st.session_state.get("show_guide_preference", default_show_guide):
         st.session_state.user_set_guide_preference = True
         st.session_state.show_guide_preference = show_guide
 
     # 添加状态清理按钮
     st.sidebar.markdown("---")
-    if st.sidebar.button("🧹 清理分析状态", help="清理僵尸分析状态，解决页面持续刷新问题"):
+    if st.sidebar.button(
+        "🧹 清理分析状态", help="清理僵尸分析状态，解决页面持续刷新问题"
+    ):
         # 清理session state
         st.session_state.analysis_running = False
         st.session_state.current_analysis_id = None
@@ -1107,14 +1164,16 @@ def main():
         # 清理所有自动刷新状态
         keys_to_remove = []
         for key in st.session_state.keys():
-            if 'auto_refresh' in key:
+            if "auto_refresh" in key:
                 keys_to_remove.append(key)
 
         for key in keys_to_remove:
             del st.session_state[key]
 
         # 清理死亡线程
-        cleanup_dead_analysis_threads = getattr(importlib.import_module('utils.threads'), 'cleanup_dead_analysis_threads')
+        cleanup_dead_analysis_threads = getattr(
+            importlib.import_module("utils.threads"), "cleanup_dead_analysis_threads"
+        )
         cleanup_dead_analysis_threads()
 
         st.sidebar.success("✅ 分析状态已清理")
@@ -1142,35 +1201,37 @@ def main():
             # 验证表单数据格式
             if not isinstance(form_data, dict):
                 st.error(f"⚠️ 表单数据格式异常: {type(form_data)}")
-                form_data = {'submitted': False}
+                form_data = {"submitted": False}
 
         except Exception as e:
             st.error(f"❌ 表单渲染失败: {e}")
-            form_data = {'submitted': False}
+            form_data = {"submitted": False}
 
         # 避免显示调试信息
-        if form_data and form_data != {'submitted': False}:
+        if form_data and form_data != {"submitted": False}:
             # 只在调试模式下显示表单数据
-            if os.getenv('DEBUG_MODE') == 'true':
+            if os.getenv("DEBUG_MODE") == "true":
                 st.write("Debug - Form data:", form_data)
 
         # 添加接收日志
-        if form_data.get('submitted', False):
-            logger.debug(f"🔍 [APP DEBUG] ===== 主应用接收表单数据 =====")
+        if form_data.get("submitted", False):
+            logger.debug("🔍 [APP DEBUG] ===== 主应用接收表单数据 =====")
             logger.debug(f"🔍 [APP DEBUG] 接收到的form_data: {form_data}")
             logger.debug(f"🔍 [APP DEBUG] 股票代码: '{form_data['stock_symbol']}'")
             logger.debug(f"🔍 [APP DEBUG] 市场类型: '{form_data['market_type']}'")
 
         # 检查是否提交了表单
-        if form_data.get('submitted', False) and not st.session_state.get('analysis_running', False):
+        if form_data.get("submitted", False) and not st.session_state.get(
+            "analysis_running", False
+        ):
             # 只有在没有分析运行时才处理新的提交
             # 验证分析参数
             is_valid, validation_errors = validate_analysis_params(
-                stock_symbol=form_data['stock_symbol'],
-                analysis_date=form_data['analysis_date'],
-                analysts=form_data['analysts'],
-                research_depth=form_data['research_depth'],
-                market_type=form_data.get('market_type', '美股')
+                stock_symbol=form_data["stock_symbol"],
+                analysis_date=form_data["analysis_date"],
+                analysts=form_data["analysts"],
+                research_depth=form_data["research_depth"],
+                market_type=form_data.get("market_type", "美股"),
             )
 
             if not is_valid:
@@ -1186,34 +1247,36 @@ def main():
                 logger.info("🧹 [新分析] 清空旧的分析结果")
 
                 # 自动隐藏使用指南（除非用户明确设置要显示）
-                if not st.session_state.get('user_set_guide_preference', False):
+                if not st.session_state.get("user_set_guide_preference", False):
                     st.session_state.show_guide_preference = False
                     logger.info("📖 [界面] 开始分析，自动隐藏使用指南")
 
                 # 生成分析ID
-                uuid = importlib.import_module('uuid')
+                uuid = importlib.import_module("uuid")
                 analysis_id = f"analysis_{uuid.uuid4().hex[:8]}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
                 # 保存分析ID和表单配置到session state和cookie
-                form_config = st.session_state.get('form_config', {})
+                form_config = st.session_state.get("form_config", {})
                 set_persistent_analysis_id(
                     analysis_id=analysis_id,
                     status="running",
-                    stock_symbol=form_data['stock_symbol'],
-                    market_type=form_data.get('market_type', '美股'),
-                    form_config=form_config
+                    stock_symbol=form_data["stock_symbol"],
+                    market_type=form_data.get("market_type", "美股"),
+                    form_config=form_config,
                 )
 
                 # 创建异步进度跟踪器
                 async_tracker = AsyncProgressTracker(
                     analysis_id=analysis_id,
-                    analysts=form_data['analysts'],
-                    research_depth=form_data['research_depth'],
-                    llm_provider=config['llm_provider']
+                    analysts=form_data["analysts"],
+                    research_depth=form_data["research_depth"],
+                    llm_provider=config["llm_provider"],
                 )
 
                 # 创建进度回调函数
-                def progress_callback(message: str, step: int = None, total_steps: int = None):
+                def progress_callback(
+                    message: str, step: int = None, total_steps: int = None
+                ):
                     async_tracker.update_progress(message, step)
 
                 # 显示启动成功消息和加载动效
@@ -1223,7 +1286,9 @@ def main():
                 with st.spinner("🔄 正在初始化分析..."):
                     time.sleep(1.5)  # 让用户看到反馈
 
-                st.info(f"📊 正在分析: {form_data.get('market_type', '美股')} {form_data['stock_symbol']}")
+                st.info(
+                    f"📊 正在分析: {form_data.get('market_type', '美股')} {form_data['stock_symbol']}"
+                )
                 st.info("""
                 ⏱️ 页面将在6秒后自动刷新...
 
@@ -1237,53 +1302,60 @@ def main():
                 # 设置分析状态
                 st.session_state.analysis_running = True
                 st.session_state.current_analysis_id = analysis_id
-                st.session_state.last_stock_symbol = form_data['stock_symbol']
-                st.session_state.last_market_type = form_data.get('market_type', '美股')
+                st.session_state.last_stock_symbol = form_data["stock_symbol"]
+                st.session_state.last_market_type = form_data.get("market_type", "美股")
 
                 # 自动启用自动刷新选项（设置所有可能的key）
                 auto_refresh_keys = [
                     f"auto_refresh_unified_{analysis_id}",
                     f"auto_refresh_unified_default_{analysis_id}",
                     f"auto_refresh_static_{analysis_id}",
-                    f"auto_refresh_streamlit_{analysis_id}"
+                    f"auto_refresh_streamlit_{analysis_id}",
                 ]
                 for key in auto_refresh_keys:
                     st.session_state[key] = True
 
                 # 在后台线程中运行分析（立即启动，不等待倒计时）
-                threading = importlib.import_module('threading')
+                threading = importlib.import_module("threading")
 
                 def run_analysis_in_background():
                     try:
                         results = run_stock_analysis(
-                            stock_symbol=form_data['stock_symbol'],
-                            analysis_date=form_data['analysis_date'],
-                            analysts=form_data['analysts'],
-                            research_depth=form_data['research_depth'],
-                            llm_provider=config['llm_provider'],
-                            market_type=form_data.get('market_type', '美股'),
-                            llm_model=config['llm_model'],
-                            progress_callback=progress_callback
+                            stock_symbol=form_data["stock_symbol"],
+                            analysis_date=form_data["analysis_date"],
+                            analysts=form_data["analysts"],
+                            research_depth=form_data["research_depth"],
+                            llm_provider=config["llm_provider"],
+                            market_type=form_data.get("market_type", "美股"),
+                            llm_model=config["llm_model"],
+                            progress_callback=progress_callback,
                         )
 
                         # 标记分析完成并保存结果（不访问session state）
-                        async_tracker.mark_completed("✅ 分析成功完成！", results=results)
+                        async_tracker.mark_completed(
+                            "✅ 分析成功完成！", results=results
+                        )
 
                         # 自动保存分析结果到历史记录
                         try:
-                            save_analysis_result = getattr(importlib.import_module('components.analysis'), 'save_analysis_result')
+                            save_analysis_result = getattr(
+                                importlib.import_module("components.analysis"),
+                                "save_analysis_result",
+                            )
 
                             save_success = save_analysis_result(
                                 analysis_id=analysis_id,
-                                stock_symbol=form_data['stock_symbol'],
-                                analysts=form_data['analysts'],
-                                research_depth=form_data['research_depth'],
+                                stock_symbol=form_data["stock_symbol"],
+                                analysts=form_data["analysts"],
+                                research_depth=form_data["research_depth"],
                                 result_data=results,
-                                status="completed"
+                                status="completed",
                             )
 
                             if save_success:
-                                logger.info(f"💾 [后台保存] 分析结果已保存到历史记录: {analysis_id}")
+                                logger.info(
+                                    f"💾 [后台保存] 分析结果已保存到历史记录: {analysis_id}"
+                                )
                             else:
                                 logger.warning(f"⚠️ [后台保存] 保存失败: {analysis_id}")
 
@@ -1298,17 +1370,22 @@ def main():
 
                         # 保存失败的分析记录
                         try:
-                            save_analysis_result = getattr(importlib.import_module('components.analysis'), 'save_analysis_result')
+                            save_analysis_result = getattr(
+                                importlib.import_module("components.analysis"),
+                                "save_analysis_result",
+                            )
 
                             save_analysis_result(
                                 analysis_id=analysis_id,
-                                stock_symbol=form_data['stock_symbol'],
-                                analysts=form_data['analysts'],
-                                research_depth=form_data['research_depth'],
+                                stock_symbol=form_data["stock_symbol"],
+                                analysts=form_data["analysts"],
+                                research_depth=form_data["research_depth"],
                                 result_data={"error": str(e)},
-                                status="failed"
+                                status="failed",
                             )
-                            logger.info(f"💾 [失败记录] 分析失败记录已保存: {analysis_id}")
+                            logger.info(
+                                f"💾 [失败记录] 分析失败记录已保存: {analysis_id}"
+                            )
 
                         except Exception as save_error:
                             logger.error(f"❌ [失败记录] 保存异常: {save_error}")
@@ -1317,17 +1394,24 @@ def main():
 
                     finally:
                         # 分析结束后注销线程
-                        unregister_analysis_thread = getattr(importlib.import_module('utils.threads'), 'unregister_analysis_thread')
+                        unregister_analysis_thread = getattr(
+                            importlib.import_module("utils.threads"),
+                            "unregister_analysis_thread",
+                        )
                         unregister_analysis_thread(analysis_id)
                         logger.info(f"🧵 [线程清理] 分析线程已注销: {analysis_id}")
 
                 # 启动后台分析线程
                 analysis_thread = threading.Thread(target=run_analysis_in_background)
-                analysis_thread.daemon = True  # 设置为守护线程，这样主程序退出时线程也会退出
+                analysis_thread.daemon = (
+                    True  # 设置为守护线程，这样主程序退出时线程也会退出
+                )
                 analysis_thread.start()
 
                 # 注册线程到跟踪器
-                register_analysis_thread = getattr(importlib.import_module('utils.threads'), 'register_analysis_thread')
+                register_analysis_thread = getattr(
+                    importlib.import_module("utils.threads"), "register_analysis_thread"
+                )
                 register_analysis_thread(analysis_id, analysis_thread)
 
                 logger.info(f"🧵 [后台分析] 分析线程已启动: {analysis_id}")
@@ -1343,34 +1427,40 @@ def main():
                 st.rerun()
 
         # 2. 股票分析区域（只有在有分析ID时才显示）
-        current_analysis_id = st.session_state.get('current_analysis_id')
+        current_analysis_id = st.session_state.get("current_analysis_id")
         if current_analysis_id:
             st.markdown("---")
 
             st.header("📊 股票分析")
 
             # 使用线程检测来获取真实状态
-            check_analysis_status = getattr(importlib.import_module('utils.threads'), 'check_analysis_status')
+            check_analysis_status = getattr(
+                importlib.import_module("utils.threads"), "check_analysis_status"
+            )
             actual_status = check_analysis_status(current_analysis_id)
-            is_running = (actual_status == 'running')
+            is_running = actual_status == "running"
 
             # 同步session state状态
-            if st.session_state.get('analysis_running', False) != is_running:
+            if st.session_state.get("analysis_running", False) != is_running:
                 st.session_state.analysis_running = is_running
-                logger.info(f"🔄 [状态同步] 更新分析状态: {is_running} (基于线程检测: {actual_status})")
+                logger.info(
+                    f"🔄 [状态同步] 更新分析状态: {is_running} (基于线程检测: {actual_status})"
+                )
 
             # 获取进度数据用于显示
-            get_progress_by_id = getattr(importlib.import_module('utils.progress'), 'get_progress_by_id')
+            get_progress_by_id = getattr(
+                importlib.import_module("utils.progress"), "get_progress_by_id"
+            )
             progress_data = get_progress_by_id(current_analysis_id)
 
             # 显示分析信息
             if is_running:
                 st.info(f"🔄 正在分析: {current_analysis_id}")
             else:
-                if actual_status == 'completed':
+                if actual_status == "completed":
                     st.success(f"✅ 分析完成: {current_analysis_id}")
 
-                elif actual_status == 'failed':
+                elif actual_status == "failed":
                     st.error(f"❌ 分析失败: {current_analysis_id}")
                 else:
                     st.warning(f"⚠️ 分析状态未知: {current_analysis_id}")
@@ -1380,32 +1470,46 @@ def main():
             with progress_col1:
                 st.markdown("### 📊 分析进度")
 
-            is_completed = display_unified_progress(current_analysis_id, show_refresh_controls=is_running)
+            is_completed = display_unified_progress(
+                current_analysis_id, show_refresh_controls=is_running
+            )
 
             # 如果分析正在进行，显示提示信息（不添加额外的自动刷新）
             if is_running:
                 st.info("⏱️ 分析正在进行中，可以使用下方的自动刷新功能查看进度更新...")
 
             # 如果分析刚完成，尝试恢复结果
-            if is_completed and not st.session_state.get('analysis') and progress_data:
-                if 'raw_results' in progress_data:
+            if is_completed and not st.session_state.get("analysis") and progress_data:
+                if "raw_results" in progress_data:
                     try:
-                        format_analysis = getattr(importlib.import_module('utils.analysis'), 'format_analysis')
-                        raw_results = progress_data['raw_results']
+                        format_analysis = getattr(
+                            importlib.import_module("utils.analysis"), "format_analysis"
+                        )
+                        raw_results = progress_data["raw_results"]
                         formatted_results = format_analysis(raw_results)
                         if formatted_results:
                             st.session_state.analysis = formatted_results
                             st.session_state.analysis_running = False
-                            logger.info(f"📊 [结果同步] 恢复分析结果: {current_analysis_id}")
+                            logger.info(
+                                f"📊 [结果同步] 恢复分析结果: {current_analysis_id}"
+                            )
 
                             # 自动保存分析结果到历史记录
                             try:
-                                save_analysis_result = getattr(importlib.import_module('components.analysis'), 'save_analysis_result')
+                                save_analysis_result = getattr(
+                                    importlib.import_module("components.analysis"),
+                                    "save_analysis_result",
+                                )
 
                                 # 从进度数据中获取分析参数
-                                stock_symbol = progress_data.get('stock_symbol', st.session_state.get('last_stock_symbol', 'unknown'))
-                                analysts = progress_data.get('analysts', [])
-                                research_depth = progress_data.get('research_depth', 3)
+                                stock_symbol = progress_data.get(
+                                    "stock_symbol",
+                                    st.session_state.get(
+                                        "last_stock_symbol", "unknown"
+                                    ),
+                                )
+                                analysts = progress_data.get("analysts", [])
+                                research_depth = progress_data.get("research_depth", 3)
 
                                 # 保存分析结果
                                 save_success = save_analysis_result(
@@ -1414,13 +1518,17 @@ def main():
                                     analysts=analysts,
                                     research_depth=research_depth,
                                     result_data=raw_results,
-                                    status="completed"
+                                    status="completed",
                                 )
 
                                 if save_success:
-                                    logger.info(f"💾 [结果保存] 分析结果已保存到历史记录: {current_analysis_id}")
+                                    logger.info(
+                                        f"💾 [结果保存] 分析结果已保存到历史记录: {current_analysis_id}"
+                                    )
                                 else:
-                                    logger.warning(f"⚠️ [结果保存] 保存失败: {current_analysis_id}")
+                                    logger.warning(
+                                        f"⚠️ [结果保存] 保存失败: {current_analysis_id}"
+                                    )
 
                             except Exception as save_error:
                                 logger.error(f"❌ [结果保存] 保存异常: {save_error}")
@@ -1439,7 +1547,7 @@ def main():
                     except Exception as e:
                         logger.warning(f"⚠️ [结果同步] 恢复失败: {e}")
 
-            if is_completed and st.session_state.get('analysis_running', False):
+            if is_completed and st.session_state.get("analysis_running", False):
                 # 分析刚完成，更新状态
                 st.session_state.analysis_running = False
                 st.success("🎉 分析完成！正在刷新页面显示报告...")
@@ -1448,26 +1556,23 @@ def main():
                 time.sleep(1)
                 st.rerun()
 
-
-
         # 3. 分析报告区域（只有在有结果且分析完成时才显示）
 
-        current_analysis_id = st.session_state.get('current_analysis_id')
-        analysis = st.session_state.get('analysis')
-        analysis_running = st.session_state.get('analysis_running', False)
+        current_analysis_id = st.session_state.get("current_analysis_id")
+        analysis = st.session_state.get("analysis")
+        analysis_running = st.session_state.get("analysis_running", False)
 
         # 检查是否应该显示分析报告
         # 1. 有分析结果且不在运行中
         # 2. 或者用户点击了"查看报告"按钮
-        show_results_button_clicked = st.session_state.get('show_analysis', False)
+        show_results_button_clicked = st.session_state.get("show_analysis", False)
 
         should_show_results = (
-            (analysis and not analysis_running and current_analysis_id) or
-            (show_results_button_clicked and analysis)
-        )
+            analysis and not analysis_running and current_analysis_id
+        ) or (show_results_button_clicked and analysis)
 
         # 调试日志
-        logger.info(f"🔍 [布局调试] 分析报告显示检查:")
+        logger.info("🔍 [布局调试] 分析报告显示检查:")
         logger.info(f"  - analysis存在: {bool(analysis)}")
         logger.info(f"  - analysis_running: {analysis_running}")
         logger.info(f"  - current_analysis_id: {current_analysis_id}")
@@ -1478,7 +1583,7 @@ def main():
             st.markdown("---")
             st.header("📋 分析报告")
             render_results(analysis)
-            logger.info(f"✅ [布局] 分析报告已显示")
+            logger.info("✅ [布局] 分析报告已显示")
 
             # 清除查看报告按钮状态，避免重复触发
             if show_results_button_clicked:
@@ -1612,7 +1717,10 @@ def main():
 
         # 显示系统状态
         if st.session_state.last_analysis_time:
-            st.info(f"🕒 上次分析时间: {st.session_state.last_analysis_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            st.info(
+                f"🕒 上次分析时间: {st.session_state.last_analysis_time.strftime('%Y-%m-%d %H:%M:%S')}"
+            )
+
 
 if __name__ == "__main__":
     main()

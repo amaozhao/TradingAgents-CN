@@ -3,9 +3,11 @@
 历史数据查询API
 提供统一的历史K线数据查询接口
 """
+
 import logging
-from datetime import datetime, date
-from typing import Dict, Any, List, Optional
+from datetime import datetime
+from typing import Any, Dict, Optional
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -18,16 +20,20 @@ router = APIRouter(prefix="/api/historical-data", tags=["历史数据"])
 
 class HistoricalDataQuery(BaseModel):
     """历史数据查询请求"""
+
     symbol: str = Field(..., description="股票代码")
     start_date: Optional[str] = Field(None, description="开始日期 (YYYY-MM-DD)")
     end_date: Optional[str] = Field(None, description="结束日期 (YYYY-MM-DD)")
-    data_source: Optional[str] = Field(None, description="数据源 (tushare/akshare/baostock)")
+    data_source: Optional[str] = Field(
+        None, description="数据源 (tushare/akshare/baostock)"
+    )
     period: Optional[str] = Field(None, description="数据周期 (daily/weekly/monthly)")
     limit: Optional[int] = Field(None, ge=1, le=1000, description="限制返回数量")
 
 
 class HistoricalDataResponse(BaseModel):
     """历史数据响应"""
+
     success: bool
     message: str
     data: Optional[Dict[str, Any]] = None
@@ -38,9 +44,11 @@ async def get_historical_data(
     symbol: str,
     start_date: Optional[str] = Query(None, description="开始日期 (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="结束日期 (YYYY-MM-DD)"),
-    data_source: Optional[str] = Query(None, description="数据源 (tushare/akshare/baostock)"),
+    data_source: Optional[str] = Query(
+        None, description="数据源 (tushare/akshare/baostock)"
+    ),
     period: Optional[str] = Query(None, description="数据周期 (daily/weekly/monthly)"),
-    limit: Optional[int] = Query(None, ge=1, le=1000, description="限制返回数量")
+    limit: Optional[int] = Query(None, ge=1, le=1000, description="限制返回数量"),
 ):
     """
     查询股票历史数据
@@ -63,7 +71,7 @@ async def get_historical_data(
             end_date=end_date,
             data_source=data_source,
             period=period,
-            limit=limit
+            limit=limit,
         )
 
         # 格式化响应
@@ -75,15 +83,15 @@ async def get_historical_data(
                 "end_date": end_date,
                 "data_source": data_source,
                 "period": period,
-                "limit": limit
+                "limit": limit,
             },
-            "records": results
+            "records": results,
         }
 
         return HistoricalDataResponse(
             success=True,
             message=f"查询成功，返回 {len(results)} 条记录",
-            data=response_data
+            data=response_data,
         )
 
     except Exception as e:
@@ -106,7 +114,7 @@ async def query_historical_data(request: HistoricalDataQuery):
             end_date=request.end_date,
             data_source=request.data_source,
             period=request.period,
-            limit=request.limit
+            limit=request.limit,
         )
 
         # 格式化响应
@@ -114,13 +122,13 @@ async def query_historical_data(request: HistoricalDataQuery):
             "symbol": request.symbol,
             "count": len(results),
             "query_params": request.dict(),
-            "records": results
+            "records": results,
         }
 
         return HistoricalDataResponse(
             success=True,
             message=f"查询成功，返回 {len(results)} 条记录",
-            data=response_data
+            data=response_data,
         )
 
     except Exception as e:
@@ -131,7 +139,7 @@ async def query_historical_data(request: HistoricalDataQuery):
 @router.get("/latest-date/{symbol}", response_model=HistoricalDataResponse)
 async def get_latest_date(
     symbol: str,
-    data_source: str = Query(..., description="数据源 (tushare/akshare/baostock)")
+    data_source: str = Query(..., description="数据源 (tushare/akshare/baostock)"),
 ):
     """获取股票最新数据日期"""
     try:
@@ -143,9 +151,9 @@ async def get_latest_date(
             "data": {
                 "symbol": symbol,
                 "data_source": data_source,
-                "latest_date": latest_date
+                "latest_date": latest_date,
             },
-            "message": "查询成功"
+            "message": "查询成功",
         }
 
     except Exception as e:
@@ -160,11 +168,7 @@ async def get_data_statistics():
         service = await get_historical_data_service()
         stats = await service.get_data_statistics()
 
-        return {
-            "success": True,
-            "data": stats,
-            "message": "统计信息获取成功"
-        }
+        return {"success": True, "data": stats, "message": "统计信息获取成功"}
 
     except Exception as e:
         logger.error(f"获取统计信息失败: {e}")
@@ -173,8 +177,7 @@ async def get_data_statistics():
 
 @router.get("/compare/{symbol}", response_model=HistoricalDataResponse)
 async def compare_data_sources(
-    symbol: str,
-    trade_date: str = Query(..., description="交易日期 (YYYY-MM-DD)")
+    symbol: str, trade_date: str = Query(..., description="交易日期 (YYYY-MM-DD)")
 ):
     """
     对比不同数据源的同一股票同一日期的数据
@@ -192,7 +195,7 @@ async def compare_data_sources(
                 start_date=trade_date,
                 end_date=trade_date,
                 data_source=source,
-                limit=1
+                limit=1,
             )
 
             if results:
@@ -206,9 +209,11 @@ async def compare_data_sources(
                 "symbol": symbol,
                 "trade_date": trade_date,
                 "comparison": comparison,
-                "available_sources": [k for k, v in comparison.items() if v is not None]
+                "available_sources": [
+                    k for k, v in comparison.items() if v is not None
+                ],
             },
-            "message": "数据对比完成"
+            "message": "数据对比完成",
         }
 
     except Exception as e:
@@ -230,9 +235,9 @@ async def health_check():
                 "status": "healthy",
                 "total_records": stats.get("total_records", 0),
                 "total_symbols": stats.get("total_symbols", 0),
-                "last_check": datetime.utcnow().isoformat()
+                "last_check": datetime.utcnow().isoformat(),
             },
-            "message": "服务正常"
+            "message": "服务正常",
         }
 
     except Exception as e:
@@ -243,7 +248,7 @@ async def health_check():
                 "service": "历史数据服务",
                 "status": "unhealthy",
                 "error": str(e),
-                "last_check": datetime.utcnow().isoformat()
+                "last_check": datetime.utcnow().isoformat(),
             },
-            "message": "服务异常"
+            "message": "服务异常",
         }

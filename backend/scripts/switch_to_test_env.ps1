@@ -34,13 +34,13 @@ Write-Host "[OK] Test environment started!" -ForegroundColor Green
 Write-Host "======================================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "[INFO] Test containers:" -ForegroundColor Cyan
-Write-Host "  - trading-agents-mongodb-test" -ForegroundColor White
+Write-Host "  - trading-agents-postgres-test" -ForegroundColor White
 Write-Host "  - trading-agents-redis-test" -ForegroundColor White
 Write-Host "  - trading-agents-backend-test" -ForegroundColor White
 Write-Host "  - trading-agents-frontend-test" -ForegroundColor White
 Write-Host ""
 Write-Host "[INFO] Test data volumes:" -ForegroundColor Cyan
-Write-Host "  - trading_agents_test_mongodb_data" -ForegroundColor White
+Write-Host "  - trading_agents_test_postgres_data" -ForegroundColor White
 Write-Host "  - trading_agents_test_redis_data" -ForegroundColor White
 Write-Host ""
 Write-Host "[INFO] Test directories:" -ForegroundColor Cyan

@@ -2,13 +2,14 @@
 速率限制中间件
 防止API滥用，实现用户级和端点级速率限制
 """
-import importlib
 
-from fastapi import Request, Response, HTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
+import importlib
 import logging
-from typing import Callable, Dict, Optional
-from core.redis import get_redis_service, RedisKeys
+from typing import Callable
+
+from core.redis import RedisKeys, get_redis_service
+from fastapi import HTTPException, Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -22,16 +23,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # 不同端点的速率限制配置
         self.endpoint_limits = {
-            "/api/analysis/single": 10,      # 单股分析：每分钟10次
-            "/api/analysis/batch": 5,        # 批量分析：每分钟5次
-            "/api/screening/filter": 20,     # 股票筛选：每分钟20次
-            "/api/auth/login": 5,            # 登录：每分钟5次
-            "/api/auth/register": 3,         # 注册：每分钟3次
+            "/api/analysis/single": 10,  # 单股分析：每分钟10次
+            "/api/analysis/batch": 5,  # 批量分析：每分钟5次
+            "/api/screening/filter": 20,  # 股票筛选：每分钟20次
+            "/api/auth/login": 5,  # 登录：每分钟5次
+            "/api/auth/register": 3,  # 注册：每分钟3次
         }
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # 跳过健康检查和静态资源
-        if request.url.path.startswith(("/api/health", "/docs", "/redoc", "/openapi.json")):
+        if request.url.path.startswith(
+            ("/api/health", "/docs", "/redoc", "/openapi.json")
+        ):
             return await call_next(request)
 
         # 获取用户ID（如果已认证）
@@ -60,8 +63,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # 构建Redis键
         rate_key = RedisKeys.USER_RATE_LIMIT.format(
-            user_id=user_id,
-            endpoint=endpoint.replace("/", "_")
+            user_id=user_id, endpoint=endpoint.replace("/", "_")
         )
 
         # 获取当前计数
@@ -81,12 +83,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 detail={
                     "error": {
                         "code": "RATE_LIMIT_EXCEEDED",
-                        "message": f"请求过于频繁，请稍后重试",
+                        "message": "请求过于频繁，请稍后重试",
                         "rate_limit": rate_limit,
                         "current_count": current_count,
-                        "reset_time": 60
+                        "reset_time": 60,
                     }
-                }
+                },
             )
 
         logger.debug(
@@ -107,7 +109,7 @@ class QuotaMiddleware(BaseHTTPMiddleware):
         self.quota_endpoints = {
             "/api/analysis/single",
             "/api/analysis/batch",
-            "/api/screening/filter"
+            "/api/screening/filter",
         }
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -134,7 +136,7 @@ class QuotaMiddleware(BaseHTTPMiddleware):
 
     async def check_daily_quota(self, user_id: str):
         """检查每日配额"""
-        datetime = importlib.import_module('datetime')
+        datetime = importlib.import_module("datetime")
 
         redis_service = get_redis_service()
 
@@ -142,13 +144,12 @@ class QuotaMiddleware(BaseHTTPMiddleware):
         today = datetime.date.today().isoformat()
 
         # 构建Redis键
-        quota_key = RedisKeys.USER_DAILY_QUOTA.format(
-            user_id=user_id,
-            date=today
-        )
+        quota_key = RedisKeys.USER_DAILY_QUOTA.format(user_id=user_id, date=today)
 
         # 获取今日使用量
-        current_usage = await redis_service.increment_with_ttl(quota_key, ttl=86400)  # 24小时TTL
+        current_usage = await redis_service.increment_with_ttl(
+            quota_key, ttl=86400
+        )  # 24小时TTL
 
         # 检查是否超过配额
         if current_usage > self.daily_quota:
@@ -166,9 +167,9 @@ class QuotaMiddleware(BaseHTTPMiddleware):
                         "message": "今日配额已用完，请明天再试",
                         "daily_quota": self.daily_quota,
                         "current_usage": current_usage,
-                        "reset_date": today
+                        "reset_date": today,
                     }
-                }
+                },
             )
 
         logger.debug(

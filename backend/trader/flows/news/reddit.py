@@ -1,11 +1,8 @@
-import requests
-import time
 import json
-from datetime import datetime, timedelta
-from contextlib import contextmanager
-from typing import Annotated, Optional
 import os
 import re
+from datetime import datetime
+from typing import Annotated, Optional
 
 ticker_to_company = {
     "AAPL": "Apple",
@@ -55,7 +52,9 @@ def fetch_top_from_category(
     ],
     date: Annotated[str, "Date to fetch top posts from."],
     max_limit: Annotated[int, "Maximum number of posts to fetch."],
-    query: Annotated[Optional[str], "Optional query to search for in the subreddit."] = None,
+    query: Annotated[
+        Optional[str], "Optional query to search for in the subreddit."
+    ] = None,
     data_path: Annotated[
         str,
         "Path to the data folder. Default is 'reddit_data'.",

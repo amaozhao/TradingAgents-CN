@@ -14,7 +14,8 @@ from unittest import mock
 import pandas as pd
 import pytest
 
-from trader.flows import stockstatsutils, interface
+from trader.flows import interface
+from trader.flows import stats as stockstats_utils
 from trader.flows.config import set_config
 from trader.flows.symbols import NoMarketDataError
 
@@ -33,14 +34,16 @@ class TestLoadOhlcvNoPoison(unittest.TestCase):
 
     def test_empty_download_raises_and_does_not_cache(self):
         empty = pd.DataFrame()
-        with mock.patch.object(stockstats_utils.yf, "download", return_value=empty) as dl:
+        with mock.patch.object(stockstats_utils.yf, "download", return_value=empty):
             with self.assertRaises(NoMarketDataError):
                 stockstats_utils.load_ohlcv("FAKE", "2026-01-01")
         # Nothing should have been written to the cache.
         self.assertEqual(os.listdir(self._tmp), [])
 
         # A second call must re-attempt the fetch (no poisoned cache served).
-        with mock.patch.object(stockstats_utils.yf, "download", return_value=empty) as dl2:
+        with mock.patch.object(
+            stockstats_utils.yf, "download", return_value=empty
+        ) as dl2:
             with self.assertRaises(NoMarketDataError):
                 stockstats_utils.load_ohlcv("FAKE", "2026-01-01")
             self.assertTrue(dl2.called)

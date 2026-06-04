@@ -8,13 +8,10 @@
 3. 显示重载结果
 """
 
-import requests
 import json
 import sys
-import os
 
-# 添加项目根目录到 Python 路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import requests
 
 # API 配置
 BASE_URL = "http://localhost:8001"
@@ -44,7 +41,7 @@ def get_test_token():
                     token = data.get("data", {}).get("access_token")
                     print(f"✅ 使用用户 '{user['username']}' 登录成功")
                     return token
-        except Exception as e:
+        except Exception:
             continue
 
     print("❌ 无法获取测试 token，请先创建测试用户或手动设置 TOKEN")
@@ -71,10 +68,7 @@ def test_config_reload():
     print()
 
     # 调用配置重载 API
-    headers = {
-        "Authorization": f"Bearer {TOKEN}",
-        "Content-Type": "application/json"
-    }
+    headers = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 
     try:
         response = requests.post(API_URL, headers=headers)

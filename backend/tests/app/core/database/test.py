@@ -1,5 +1,5 @@
-
 from support.registry import export_module as _export_module
+
 _export_module(globals(), "support.m0114.cleanup.data.module")
 _export_module(globals(), "support.m0114.create.sample.reports.module")
 _export_module(globals(), "support.m0114.analysis.save.module")
@@ -8,9 +8,9 @@ _export_module(globals(), "support.db.database.cleanup.dual.write.module")
 _export_module(globals(), "support.db.database.lifecycle.module")
 _export_module(globals(), "support.db.postgres.api.smoke.module")
 _export_module(globals(), "support.db.requirements.fi.module")
-_export_module(globals(), "support.mongodb.check.module")
-_export_module(globals(), "support.mongodb.connection.module")
-_export_module(globals(), "support.mongodb.save.module")
+_export_module(globals(), "support.postgres.legacy.check.module")
+_export_module(globals(), "support.postgres.legacy.connection.module")
+_export_module(globals(), "support.postgres.legacy.save.module")
 _export_module(globals(), "support.postgres.cutover.evidence.check.module")
 _export_module(globals(), "support.postgres.cutover.gate.module")
 _export_module(globals(), "support.postgres.cutover.script.it.gates.module")

@@ -69,7 +69,7 @@
 #### 🏗️ **全新技术架构**
 - **后端升级**: 从 Streamlit 迁移到 FastAPI，提供更强大的 RESTful API
 - **前端重构**: 采用 Vue 3 + Element Plus，打造现代化的单页应用
-- **数据库优化**: MongoDB + Redis 双数据库架构，性能提升 10 倍
+- **数据库优化**: PostgreSQL + Redis 双数据库架构，性能提升 10 倍
 - **容器化部署**: 完整的 Docker 多架构支持（amd64 + arm64）
 
 #### 🚀 **v1.0.1 重点增强**
@@ -84,7 +84,7 @@
 #### 🎯 **企业级功能**
 - **用户权限管理**: 完整的用户认证、角色管理、操作日志系统
 - **配置管理中心**: 可视化的大模型配置、数据源管理、系统设置
-- **缓存管理系统**: 智能缓存策略，支持 MongoDB/Redis/文件多级缓存
+- **缓存管理系统**: 智能缓存策略，支持 PostgreSQL/Redis/文件多级缓存
 - **实时通知系统**: SSE+WebSocket 双通道推送，实时跟踪分析进度和系统状态
 - **批量分析功能**: 支持多只股票同时分析，提升工作效率
 - **智能股票筛选**: 基于多维度指标的股票筛选和排序系统
@@ -115,7 +115,7 @@
 |------|--------|----------------|
 | **后端框架** | Streamlit | FastAPI + Uvicorn |
 | **前端框架** | Streamlit | Vue 3 + Vite + Element Plus |
-| **数据库** | 可选 MongoDB | MongoDB + Redis |
+| **数据库** | 可选 PostgreSQL | PostgreSQL + Redis |
 | **API 架构** | 单体应用 | RESTful API + WebSocket |
 | **部署方式** | 本地/Docker | Docker 多架构 + GitHub Actions |
 
@@ -198,7 +198,7 @@ Docker 默认读取 `deploy/env/docker.env`。配置真实密钥时，可以先�
   - `fundamentals_analyst.py` 中 qwen fresh llm 重建逻辑
   - 图层参数透传、工厂别名兼容、风控引用修复
   - provider 默认 URL / 环境变量映射统一
-  - MongoDB 默认库名、版本隔离命名与迁移脚本增强
+  - PostgreSQL 默认库名、版本隔离命名与迁移脚本增强
 
 #### 关注公众号
 

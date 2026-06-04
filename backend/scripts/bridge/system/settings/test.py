@@ -2,23 +2,18 @@
 """
 直接测试 _bridge_system_settings 函数
 """
-import importlib
 
-import os
-import sys
 import asyncio
+import importlib
 import logging
-from pathlib import Path
-
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+import os
 
 # 设置日志级别为 DEBUG
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s | %(name)-20s | %(levelname)-8s | %(message)s'
+    format="%(asctime)s | %(name)-20s | %(levelname)-8s | %(message)s",
 )
+
 
 async def main():
     """测试 _bridge_system_settings"""
@@ -28,13 +23,15 @@ async def main():
 
     # 1. 初始化数据库
     print("\n1️⃣ 初始化数据库连接...")
-    init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
+    init_db = getattr(importlib.import_module("app.core.database"), "init_db")
     await init_db()
     print("✅ 数据库连接成功")
 
     # 2. 直接调用 _bridge_system_settings
     print("\n2️⃣ 调用 _bridge_system_settings...")
-    _bridge_system_settings = getattr(importlib.import_module('app.core.bridge'), '_bridge_system_settings')
+    _bridge_system_settings = getattr(
+        importlib.import_module("app.core.bridge"), "_bridge_system_settings"
+    )
 
     count = _bridge_system_settings()
     print(f"\n✅ 桥接了 {count} 个配置项")
@@ -42,12 +39,12 @@ async def main():
     # 3. 检查环境变量
     print("\n3️⃣ 检查环境变量...")
     ta_env_keys = [
-        'TA_USE_APP_CACHE',
-        'TA_HK_MIN_REQUEST_INTERVAL_SECONDS',
-        'TA_HK_TIMEOUT_SECONDS',
-        'TA_HK_MAX_RETRIES',
-        'TA_HK_RATE_LIMIT_WAIT_SECONDS',
-        'TA_HK_CACHE_TTL_SECONDS',
+        "TA_USE_APP_CACHE",
+        "TA_HK_MIN_REQUEST_INTERVAL_SECONDS",
+        "TA_HK_TIMEOUT_SECONDS",
+        "TA_HK_MAX_RETRIES",
+        "TA_HK_RATE_LIMIT_WAIT_SECONDS",
+        "TA_HK_CACHE_TTL_SECONDS",
     ]
 
     for key in ta_env_keys:

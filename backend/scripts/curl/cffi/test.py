@@ -3,12 +3,14 @@
 使用 curl_cffi 模拟真实浏览器的 TLS 指纹
 这个库可以模拟 Chrome/Firefox 的 TLS/JA3 指纹，绕过更严格的反爬虫检测
 """
+
 import importlib
 import json
 import time
 
 try:
     from curl_cffi import requests
+
     print("✅ curl_cffi 已安装")
 except ImportError:
     print("❌ curl_cffi 未安装")
@@ -37,20 +39,20 @@ def get_stock_news_with_curl_cffi(symbol: str, page_size: int = 10):
                 "pageIndex": 1,
                 "pageSize": page_size,
                 "preTag": "<em>",
-                "postTag": "</em>"
+                "postTag": "</em>",
             }
-        }
+        },
     }
 
     params = {
         "cb": f"jQuery{int(time.time() * 1000)}",
         "param": json.dumps(param),
-        "_": str(int(time.time() * 1000))
+        "_": str(int(time.time() * 1000)),
     }
 
     print(f"测试股票: {symbol}")
     print(f"URL: {url}")
-    print(f"-" * 80)
+    print("-" * 80)
 
     # 使用 curl_cffi 模拟 Chrome 浏览器
     # impersonate 参数可以模拟不同浏览器的 TLS 指纹
@@ -60,7 +62,7 @@ def get_stock_news_with_curl_cffi(symbol: str, page_size: int = 10):
             url,
             params=params,
             impersonate="chrome120",  # 模拟 Chrome 120 的 TLS 指纹
-            timeout=10
+            timeout=10,
         )
 
         print(f"状态码: {response.status_code}")
@@ -70,7 +72,7 @@ def get_stock_news_with_curl_cffi(symbol: str, page_size: int = 10):
             # 解析 JSONP
             text = response.text
             if text.startswith("jQuery"):
-                text = text[text.find("(")+1:text.rfind(")")]
+                text = text[text.find("(") + 1 : text.rfind(")")]
 
             data = json.loads(text)
             print(f"返回的键: {list(data.keys())}")
@@ -83,7 +85,7 @@ def get_stock_news_with_curl_cffi(symbol: str, page_size: int = 10):
                     print(f"✅ 成功获取 {len(articles)} 条新闻")
 
                     if articles:
-                        print(f"\n第一条新闻:")
+                        print("\n第一条新闻:")
                         first = articles[0]
                         print(f"  标题: {first.get('title', 'N/A')}")
                         print(f"  时间: {first.get('date', 'N/A')}")
@@ -91,12 +93,12 @@ def get_stock_news_with_curl_cffi(symbol: str, page_size: int = 10):
 
                     return articles
                 else:
-                    print(f"❌ 未找到 cmsArticleWebOld 字段")
+                    print("❌ 未找到 cmsArticleWebOld 字段")
                     print(f"可用字段: {list(data['result'].keys())}")
 
     except Exception as e:
         print(f"❌ 请求失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
     return []
@@ -119,15 +121,15 @@ if __name__ == "__main__":
 
         if news_list:
             success_count += 1
-            print(f"✅ 成功")
+            print("✅ 成功")
         else:
             fail_count += 1
-            print(f"❌ 失败")
+            print("❌ 失败")
 
         time.sleep(0.5)  # 避免请求过快
 
     print(f"\n{'=' * 80}")
-    print(f"📊 测试结果")
+    print("📊 测试结果")
     print(f"  总计: {len(test_symbols)} 只股票")
     print(f"  成功: {success_count} 只")
     print(f"  失败: {fail_count} 只")

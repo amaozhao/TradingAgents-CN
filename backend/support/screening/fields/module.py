@@ -2,18 +2,15 @@
 """
 测试筛选字段映射
 """
-import importlib
 
 import asyncio
-import sys
-import os
+import importlib
+
 from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
 
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 async def test_screening_fields():
     """测试筛选字段映射"""
@@ -21,10 +18,17 @@ async def test_screening_fields():
 
     try:
         # 导入服务
-        init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
-        get_database_screening_service = getattr(importlib.import_module('app.services.screening.database'), 'get_database_screening_service')
-        ScreeningCondition = getattr(importlib.import_module('app.models.screening'), 'ScreeningCondition')
-        OperatorType = getattr(importlib.import_module('app.models.screening'), 'OperatorType')
+        init_db = getattr(importlib.import_module("app.core.database"), "init_db")
+        get_database_screening_service = getattr(
+            importlib.import_module("app.services.screening.database"),
+            "get_database_screening_service",
+        )
+        ScreeningCondition = getattr(
+            importlib.import_module("app.models.screening"), "ScreeningCondition"
+        )
+        OperatorType = getattr(
+            importlib.import_module("app.models.screening"), "OperatorType"
+        )
 
         # 初始化数据库
         await init_db()
@@ -38,7 +42,7 @@ async def test_screening_fields():
             ScreeningCondition(
                 field="total_mv",
                 operator=OperatorType.GTE,
-                value=100  # 总市值 >= 100亿
+                value=100,  # 总市值 >= 100亿
             )
         ]
 
@@ -46,7 +50,7 @@ async def test_screening_fields():
         results, total = await service.screen_stocks(
             conditions=conditions,
             limit=3,
-            order_by=[{"field": "total_mv", "direction": "desc"}]
+            order_by=[{"field": "total_mv", "direction": "desc"}],
         )
 
         print(f"✅ 筛选完成: 总数={total}, 返回={len(results)}")
@@ -58,9 +62,14 @@ async def test_screening_fields():
 
             # 检查前端期望的字段
             expected_fields = [
-                "code", "name", "industry",
-                "market_cap", "pe_ratio", "pb_ratio",
-                "price", "change_percent"
+                "code",
+                "name",
+                "industry",
+                "market_cap",
+                "pe_ratio",
+                "pb_ratio",
+                "price",
+                "change_percent",
             ]
 
             print("前端期望的字段:")
@@ -69,7 +78,7 @@ async def test_screening_fields():
                 status = "✅" if field in first_result else "❌"
                 print(f"  {status} {field}: {value}")
 
-            print(f"\n📄 完整结果示例:")
+            print("\n📄 完整结果示例:")
             print(f"  股票代码: {first_result.get('code')}")
             print(f"  股票名称: {first_result.get('name')}")
             print(f"  所属行业: {first_result.get('industry')}")
@@ -83,8 +92,9 @@ async def test_screening_fields():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     asyncio.run(test_screening_fields())

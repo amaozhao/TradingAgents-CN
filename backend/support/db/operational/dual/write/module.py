@@ -1,9 +1,9 @@
-from types import SimpleNamespace
 import json
+from types import SimpleNamespace
 
 import pytest
-from bson import ObjectId
 
+from app.db.ids import DocumentId
 from app.models.operations import ActionType, OperationLogCreate
 from app.services import operation as operation_log_service
 from app.services.database import backup
@@ -13,15 +13,17 @@ from app.services.database import backup
 async def test_create_operation_log_dual_writes_inserted_document(monkeypatch):
     service = operation_log_service.OperationLogService()
     collection = FakeAsyncCollection()
-    db = FakeMongoDB({"operation_logs": collection})
+    db = FakePostgreSQL({"operation_logs": collection})
     dual_write_calls = []
 
     async def fake_dual_write(collection_name, document):
         dual_write_calls.append((collection_name, document))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(operation_log_service, "get_mongo_db", lambda: db)
-    monkeypatch.setattr(operation_log_service, "dual_write_hot_document", fake_dual_write)
+    monkeypatch.setattr(operation_log_service, "get_postgres_db", lambda: db)
+    monkeypatch.setattr(
+        operation_log_service, "dual_write_hot_document", fake_dual_write
+    )
 
     log_id = await service.create_log(
         "user-1",
@@ -43,16 +45,18 @@ async def test_create_operation_log_dual_writes_inserted_document(monkeypatch):
 @pytest.mark.asyncio
 async def test_clear_operation_logs_dual_writes_tombstones(monkeypatch):
     service = operation_log_service.OperationLogService()
-    existing = [{"_id": ObjectId(), "user_id": "user-1", "action_type": "login"}]
-    db = FakeMongoDB({"operation_logs": FakeAsyncCollection(existing=existing)})
+    existing = [{"_id": DocumentId(), "user_id": "user-1", "action_type": "login"}]
+    db = FakePostgreSQL({"operation_logs": FakeAsyncCollection(existing=existing)})
     dual_write_calls = []
 
     async def fake_dual_write_many(collection_name, documents):
         dual_write_calls.append((collection_name, documents))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(operation_log_service, "get_mongo_db", lambda: db)
-    monkeypatch.setattr(operation_log_service, "dual_write_hot_documents", fake_dual_write_many)
+    monkeypatch.setattr(operation_log_service, "get_postgres_db", lambda: db)
+    monkeypatch.setattr(
+        operation_log_service, "dual_write_hot_documents", fake_dual_write_many
+    )
 
     result = await service.clear_logs(action_type="login")
 
@@ -64,7 +68,7 @@ async def test_clear_operation_logs_dual_writes_tombstones(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_delete_database_backup_dual_writes_tombstone(monkeypatch):
-    backup_id = ObjectId()
+    backup_id = DocumentId()
     backup_document = {
         "_id": backup_id,
         "name": "daily",
@@ -74,14 +78,16 @@ async def test_delete_database_backup_dual_writes_tombstone(monkeypatch):
         "collections": ["operation_logs"],
         "created_by": "user-1",
     }
-    db = SimpleNamespace(database_backups=FakeAsyncCollection(existing=[backup_document]))
+    db = SimpleNamespace(
+        database_backups=FakeAsyncCollection(existing=[backup_document])
+    )
     dual_write_calls = []
 
     async def fake_dual_write(collection_name, document):
         dual_write_calls.append((collection_name, document))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(backup, "get_mongo_db", lambda: db)
+    monkeypatch.setattr(backup, "get_postgres_db", lambda: db)
     monkeypatch.setattr(backup, "dual_write_hot_document", fake_dual_write)
     monkeypatch.setattr(backup.os.path, "exists", lambda _path: False)
 
@@ -93,17 +99,19 @@ async def test_delete_database_backup_dual_writes_tombstone(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_import_supported_collection_dual_writes_tombstones_and_inserted_docs(monkeypatch):
-    existing = [{"_id": ObjectId(), "code": "000001", "source": "tushare"}]
+async def test_import_supported_collection_dual_writes_tombstones_and_inserted_docs(
+    monkeypatch,
+):
+    existing = [{"_id": DocumentId(), "code": "000001", "source": "tushare"}]
     collection = FakeAsyncCollection(existing=existing)
-    db = FakeMongoDB({"stock_basic_info": collection})
+    db = FakePostgreSQL({"stock_basic_info": collection})
     dual_write_calls = []
 
     async def fake_dual_write_many(collection_name, documents):
         dual_write_calls.append((collection_name, documents))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(backup, "get_mongo_db", lambda: db)
+    monkeypatch.setattr(backup, "get_postgres_db", lambda: db)
     monkeypatch.setattr(backup, "dual_write_hot_documents", fake_dual_write_many)
 
     result = await backup.import_data(
@@ -121,15 +129,15 @@ async def test_import_supported_collection_dual_writes_tombstones_and_inserted_d
 
 
 @pytest.mark.asyncio
-async def test_import_unknown_collection_records_mongo_only(monkeypatch):
-    db = FakeMongoDB({"ad_hoc_collection": FakeAsyncCollection()})
-    mongo_only_calls = []
+async def test_import_unknown_collection_records_postgres_only(monkeypatch):
+    db = FakePostgreSQL({"ad_hoc_collection": FakeAsyncCollection()})
+    postgres_only_calls = []
 
-    monkeypatch.setattr(backup, "get_mongo_db", lambda: db)
+    monkeypatch.setattr(backup, "get_postgres_db", lambda: db)
     monkeypatch.setattr(
         backup,
-        "log_mongo_only_write",
-        lambda collection, reason: mongo_only_calls.append((collection, reason)),
+        "log_postgres_only_write",
+        lambda collection, reason: postgres_only_calls.append((collection, reason)),
     )
 
     result = await backup.import_data(
@@ -139,10 +147,12 @@ async def test_import_unknown_collection_records_mongo_only(monkeypatch):
     )
 
     assert result["inserted_count"] == 1
-    assert mongo_only_calls == [("ad_hoc_collection", "database_import_unsupported_collection")]
+    assert postgres_only_calls == [
+        ("ad_hoc_collection", "database_import_unsupported_collection")
+    ]
 
 
-class FakeMongoDB:
+class FakePostgreSQL:
     def __init__(self, collections):
         self.collections = collections
 
@@ -152,7 +162,7 @@ class FakeMongoDB:
 
 class FakeAsyncCollection:
     def __init__(self, existing=None):
-        self.inserted_id = ObjectId()
+        self.inserted_id = DocumentId()
         self.existing = existing or []
 
     async def insert_one(self, document):
@@ -161,7 +171,7 @@ class FakeAsyncCollection:
 
     async def insert_many(self, documents):
         for document in documents:
-            document.setdefault("_id", ObjectId())
+            document.setdefault("_id", DocumentId())
         self.inserted_many = documents
         return SimpleNamespace(inserted_ids=[document["_id"] for document in documents])
 

@@ -3,14 +3,11 @@
 测试提示词优化后的效果
 验证股票代码和公司名称正确分离，以及分析师输出质量
 """
-import importlib
 
+import importlib
 import os
 import sys
 
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_fundamentals_analyst_prompt():
     """测试基本面分析师的提示词优化效果"""
@@ -19,7 +16,9 @@ def test_fundamentals_analyst_prompt():
 
     try:
         # 设置日志级别
-        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
+        get_logger = getattr(
+            importlib.import_module("trader.utils.logging.init"), "get_logger"
+        )
         logger = get_logger("default")
         logger.setLevel("INFO")
 
@@ -29,18 +28,20 @@ def test_fundamentals_analyst_prompt():
             print("⚠️ 未找到DASHSCOPE_API_KEY，跳过LLM测试")
             return True
 
-        print(f"🔧 创建基本面分析师...")
+        print("🔧 创建基本面分析师...")
 
         # 创建LLM和工具包
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
-
-        llm = ChatDashScopeOpenAI(
-            model="qwen-turbo",
-            temperature=0.1,
-            max_tokens=2000
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI"
         )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
+
+        llm = ChatDashScopeOpenAI(model="qwen-turbo", temperature=0.1, max_tokens=2000)
 
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True
@@ -48,10 +49,13 @@ def test_fundamentals_analyst_prompt():
         toolkit.update_config(config)
 
         # 创建基本面分析师
-        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
+        create_fundamentals_analyst = getattr(
+            importlib.import_module("trader.agents.analysts.fundamentals"),
+            "create_fundamentals_analyst",
+        )
         fundamentals_analyst = create_fundamentals_analyst(llm, toolkit)
 
-        print(f"✅ 基本面分析师创建完成")
+        print("✅ 基本面分析师创建完成")
 
         # 测试不同类型的股票
         test_cases = [
@@ -68,14 +72,19 @@ def test_fundamentals_analyst_prompt():
             state = {
                 "company_of_interest": ticker,
                 "trade_date": "2025-07-16",
-                "messages": []
+                "messages": [],
             }
 
-            print(f"🔍 [提示词验证] 检查提示词构建...")
+            print("🔍 [提示词验证] 检查提示词构建...")
 
             # 获取公司名称（验证提示词构建逻辑）
-            _get_company_name_for_fundamentals = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), '_get_company_name_for_fundamentals')
-            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+            _get_company_name_for_fundamentals = getattr(
+                importlib.import_module("trader.agents.analysts.fundamentals"),
+                "_get_company_name_for_fundamentals",
+            )
+            StockUtils = getattr(
+                importlib.import_module("trader.utils.stocks"), "StockUtils"
+            )
 
             market_info = StockUtils.get_market_info(ticker)
             company_name = _get_company_name_for_fundamentals(ticker, market_info)
@@ -83,26 +92,30 @@ def test_fundamentals_analyst_prompt():
             print(f"   ✅ 股票代码: {ticker}")
             print(f"   ✅ 公司名称: {company_name}")
             print(f"   ✅ 市场类型: {market_info['market_name']}")
-            print(f"   ✅ 货币信息: {market_info['currency_name']} ({market_info['currency_symbol']})")
+            print(
+                f"   ✅ 货币信息: {market_info['currency_name']} ({market_info['currency_symbol']})"
+            )
 
             # 验证公司名称是否正确
             if expected_name in company_name or company_name == expected_name:
                 print(f"   ✅ 公司名称匹配预期: {expected_name}")
             else:
-                print(f"   ⚠️ 公司名称与预期不符: 期望 {expected_name}, 实际 {company_name}")
+                print(
+                    f"   ⚠️ 公司名称与预期不符: 期望 {expected_name}, 实际 {company_name}"
+                )
 
-            print(f"\n🤖 执行基本面分析...")
+            print("\n🤖 执行基本面分析...")
 
             try:
                 # 执行基本面分析（限制输出长度以节省时间）
                 result = fundamentals_analyst(state)
 
-                if isinstance(result, dict) and 'fundamentals_report' in result:
-                    report = result['fundamentals_report']
+                if isinstance(result, dict) and "fundamentals_report" in result:
+                    report = result["fundamentals_report"]
                     print(f"✅ 基本面分析完成，报告长度: {len(report)}")
 
                     # 检查报告中的关键元素
-                    print(f"\n🔍 检查报告内容...")
+                    print("\n🔍 检查报告内容...")
 
                     # 检查股票代码
                     if ticker in report:
@@ -113,15 +126,15 @@ def test_fundamentals_analyst_prompt():
                         print(f"   ❌ 报告不包含股票代码: {ticker}")
 
                     # 检查公司名称
-                    if company_name in report and not company_name.startswith('股票'):
+                    if company_name in report and not company_name.startswith("股票"):
                         print(f"   ✅ 报告包含正确的公司名称: {company_name}")
                         name_count = report.count(company_name)
                         print(f"      出现次数: {name_count}")
                     else:
-                        print(f"   ⚠️ 报告可能不包含具体公司名称")
+                        print("   ⚠️ 报告可能不包含具体公司名称")
 
                     # 检查货币信息
-                    currency_symbol = market_info['currency_symbol']
+                    currency_symbol = market_info["currency_symbol"]
                     if currency_symbol in report:
                         print(f"   ✅ 报告包含正确的货币符号: {currency_symbol}")
                     else:
@@ -136,7 +149,7 @@ def test_fundamentals_analyst_prompt():
                             print(f"   ✅ 报告不包含错误的股票代码: {error_code}")
 
                     # 显示报告摘要
-                    print(f"\n📄 报告摘要 (前500字符):")
+                    print("\n📄 报告摘要 (前500字符):")
                     print("-" * 40)
                     print(report[:500])
                     if len(report) > 500:
@@ -148,16 +161,17 @@ def test_fundamentals_analyst_prompt():
 
             except Exception as e:
                 print(f"❌ 基本面分析执行失败: {e}")
-                traceback = importlib.import_module('traceback')
+                traceback = importlib.import_module("traceback")
                 traceback.print_exc()
 
         return True
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_market_analyst_prompt():
     """测试市场分析师的提示词优化效果"""
@@ -171,18 +185,20 @@ def test_market_analyst_prompt():
             print("⚠️ 未找到DASHSCOPE_API_KEY，跳过LLM测试")
             return True
 
-        print(f"🔧 创建市场分析师...")
+        print("🔧 创建市场分析师...")
 
         # 创建LLM和工具包
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
-
-        llm = ChatDashScopeOpenAI(
-            model="qwen-turbo",
-            temperature=0.1,
-            max_tokens=1500
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI"
         )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
+
+        llm = ChatDashScopeOpenAI(model="qwen-turbo", temperature=0.1, max_tokens=1500)
 
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True
@@ -190,10 +206,13 @@ def test_market_analyst_prompt():
         toolkit.update_config(config)
 
         # 创建市场分析师
-        create_market_analyst = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst')
+        create_market_analyst = getattr(
+            importlib.import_module("trader.agents.analysts.market"),
+            "create_market_analyst",
+        )
         market_analyst = create_market_analyst(llm, toolkit)
 
-        print(f"✅ 市场分析师创建完成")
+        print("✅ 市场分析师创建完成")
 
         # 测试股票
         test_ticker = "002027"
@@ -205,14 +224,19 @@ def test_market_analyst_prompt():
         state = {
             "company_of_interest": test_ticker,
             "trade_date": "2025-07-16",
-            "messages": []
+            "messages": [],
         }
 
-        print(f"🔍 [提示词验证] 检查提示词构建...")
+        print("🔍 [提示词验证] 检查提示词构建...")
 
         # 获取公司名称（验证提示词构建逻辑）
-        _get_company_name = getattr(importlib.import_module('trader.agents.analysts.market'), '_get_company_name')
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        _get_company_name = getattr(
+            importlib.import_module("trader.agents.analysts.market"),
+            "_get_company_name",
+        )
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
 
         market_info = StockUtils.get_market_info(test_ticker)
         company_name = _get_company_name(test_ticker, market_info)
@@ -220,20 +244,22 @@ def test_market_analyst_prompt():
         print(f"   ✅ 股票代码: {test_ticker}")
         print(f"   ✅ 公司名称: {company_name}")
         print(f"   ✅ 市场类型: {market_info['market_name']}")
-        print(f"   ✅ 货币信息: {market_info['currency_name']} ({market_info['currency_symbol']})")
+        print(
+            f"   ✅ 货币信息: {market_info['currency_name']} ({market_info['currency_symbol']})"
+        )
 
-        print(f"\n🤖 执行市场分析...")
+        print("\n🤖 执行市场分析...")
 
         try:
             # 执行市场分析
             result = market_analyst(state)
 
-            if isinstance(result, dict) and 'market_report' in result:
-                report = result['market_report']
+            if isinstance(result, dict) and "market_report" in result:
+                report = result["market_report"]
                 print(f"✅ 市场分析完成，报告长度: {len(report)}")
 
                 # 检查报告中的关键元素
-                print(f"\n🔍 检查报告内容...")
+                print("\n🔍 检查报告内容...")
 
                 # 检查股票代码
                 if test_ticker in report:
@@ -245,10 +271,10 @@ def test_market_analyst_prompt():
                 if company_name in report and company_name != f"股票{test_ticker}":
                     print(f"   ✅ 报告包含正确的公司名称: {company_name}")
                 else:
-                    print(f"   ⚠️ 报告可能不包含具体公司名称")
+                    print("   ⚠️ 报告可能不包含具体公司名称")
 
                 # 显示报告摘要
-                print(f"\n📄 报告摘要 (前500字符):")
+                print("\n📄 报告摘要 (前500字符):")
                 print("-" * 40)
                 print(report[:500])
                 if len(report) > 500:
@@ -260,16 +286,17 @@ def test_market_analyst_prompt():
 
         except Exception as e:
             print(f"❌ 市场分析执行失败: {e}")
-            traceback = importlib.import_module('traceback')
+            traceback = importlib.import_module("traceback")
             traceback.print_exc()
 
         return True
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_prompt_elements():
     """测试提示词关键元素"""
@@ -288,34 +315,44 @@ def test_prompt_elements():
             print("-" * 40)
 
             # 获取市场信息和公司名称
-            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
-            _get_company_name_for_fundamentals = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), '_get_company_name_for_fundamentals')
-            _get_company_name = getattr(importlib.import_module('trader.agents.analysts.market'), '_get_company_name')
+            StockUtils = getattr(
+                importlib.import_module("trader.utils.stocks"), "StockUtils"
+            )
+            _get_company_name_for_fundamentals = getattr(
+                importlib.import_module("trader.agents.analysts.fundamentals"),
+                "_get_company_name_for_fundamentals",
+            )
+            _get_company_name = getattr(
+                importlib.import_module("trader.agents.analysts.market"),
+                "_get_company_name",
+            )
 
             market_info = StockUtils.get_market_info(ticker)
             fundamentals_name = _get_company_name_for_fundamentals(ticker, market_info)
             market_name = _get_company_name(ticker, market_info)
 
             print(f"   市场信息: {market_info['market_name']}")
-            print(f"   货币: {market_info['currency_name']} ({market_info['currency_symbol']})")
+            print(
+                f"   货币: {market_info['currency_name']} ({market_info['currency_symbol']})"
+            )
             print(f"   基本面分析师获取的公司名称: {fundamentals_name}")
             print(f"   市场分析师获取的公司名称: {market_name}")
 
             # 验证一致性
             if fundamentals_name == market_name:
-                print(f"   ✅ 两个分析师获取的公司名称一致")
+                print("   ✅ 两个分析师获取的公司名称一致")
             else:
-                print(f"   ⚠️ 两个分析师获取的公司名称不一致")
+                print("   ⚠️ 两个分析师获取的公司名称不一致")
 
             # 验证提示词应包含的关键元素
             expected_elements = [
                 f"公司名称：{fundamentals_name}",
                 f"股票代码：{ticker}",
                 f"所属市场：{market_info['market_name']}",
-                f"计价货币：{market_info['currency_name']}"
+                f"计价货币：{market_info['currency_name']}",
             ]
 
-            print(f"   提示词应包含的关键元素:")
+            print("   提示词应包含的关键元素:")
             for element in expected_elements:
                 print(f"      ✅ {element}")
 
@@ -323,9 +360,10 @@ def test_prompt_elements():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主测试函数"""
@@ -354,12 +392,12 @@ def main():
     test_names = [
         "提示词关键元素验证",
         "基本面分析师提示词优化",
-        "市场分析师提示词优化"
+        "市场分析师提示词优化",
     ]
 
     for i, (name, result) in enumerate(zip(test_names, results)):
         status = "✅ 通过" if result else "❌ 失败"
-        print(f"{i+1}. {name}: {status}")
+        print(f"{i + 1}. {name}: {status}")
 
     print(f"\n📊 总体结果: {passed}/{total} 测试通过")
 
@@ -381,6 +419,7 @@ def main():
         print("⚠️ 部分测试失败，需要进一步优化")
 
     return passed == total
+
 
 if __name__ == "__main__":
     success = main()

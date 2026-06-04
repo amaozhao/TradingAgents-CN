@@ -3,9 +3,12 @@ Minimal stub for DataConsistencyChecker
 - Purpose: eliminate warning and provide no-op consistency checking
 - Behavior: always mark data as consistent and prefer primary source
 """
+
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Tuple
+
 import pandas as pd
 
 

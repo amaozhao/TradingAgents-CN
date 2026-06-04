@@ -1,8 +1,8 @@
 from types import SimpleNamespace
 
 import pytest
-from bson import ObjectId
 
+from app.db.ids import DocumentId
 from app.models.user import UserCreate
 from app.services import user as user_service
 
@@ -33,7 +33,7 @@ async def test_create_user_dual_writes_user_account(monkeypatch):
 @pytest.mark.asyncio
 async def test_authenticate_user_dual_writes_last_login(monkeypatch):
     service = user_service.UserService.__new__(user_service.UserService)
-    user_id = ObjectId()
+    user_id = DocumentId()
     stored = {
         "_id": user_id,
         "username": "demo",
@@ -63,7 +63,7 @@ async def test_authenticate_user_dual_writes_last_login(monkeypatch):
 class FakeUsersCollection:
     def __init__(self, existing=None):
         self.existing = existing
-        self.inserted_id = ObjectId()
+        self.inserted_id = DocumentId()
         self.inserted = None
         self.updated = []
 

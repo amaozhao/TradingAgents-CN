@@ -14,9 +14,6 @@ from pathlib import Path
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_DIR.parent
 
-# 添加项目根目录到 Python 路径
-sys.path.insert(0, str(BACKEND_DIR))
-
 
 def read_repo_file(relative_path: str) -> str:
     return (REPO_ROOT / relative_path).read_text(encoding="utf-8")
@@ -96,7 +93,10 @@ def test_migration_script_exists():
     print("测试5: 迁移脚本是否存在")
     print("=" * 60)
 
-    migration_script = REPO_ROOT / "backend/scripts/migrations/add/symbol/field/to/stock/basic/info/script.py"
+    migration_script = (
+        REPO_ROOT
+        / "backend/scripts/migrations/add/symbol/field/to/stock/basic/info/script.py"
+    )
     found = migration_script.exists()
     if found:
         print(f"✅ 迁移脚本存在: {migration_script}")
@@ -122,11 +122,30 @@ def main():
     results = []
 
     # 运行所有测试
-    results.append(("basics_sync_service", run_test_function(test_basics_sync_service_has_symbol_field)))
-    results.append(("multi_source_sync_service", run_test_function(test_multi_source_sync_service_has_symbol_field)))
-    results.append(("baostock_sync_service", run_test_function(test_baostock_sync_service_has_symbol_field)))
-    results.append(("app_adapter_query", run_test_function(test_app_adapter_query_logic)))
-    results.append(("migration_script", run_test_function(test_migration_script_exists)))
+    results.append(
+        (
+            "basics_sync_service",
+            run_test_function(test_basics_sync_service_has_symbol_field),
+        )
+    )
+    results.append(
+        (
+            "multi_source_sync_service",
+            run_test_function(test_multi_source_sync_service_has_symbol_field),
+        )
+    )
+    results.append(
+        (
+            "baostock_sync_service",
+            run_test_function(test_baostock_sync_service_has_symbol_field),
+        )
+    )
+    results.append(
+        ("app_adapter_query", run_test_function(test_app_adapter_query_logic))
+    )
+    results.append(
+        ("migration_script", run_test_function(test_migration_script_exists))
+    )
 
     # 总结
     print("\n" + "=" * 60)

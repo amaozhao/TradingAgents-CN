@@ -19,12 +19,12 @@ from app.db.model import (
     SchedulerExecution,
     SchedulerHistoryDocument,
     SchedulerMetadataDocument,
+    SocialMediaMessageDocument,
     StockBasicInfo,
     StockDailyQuote,
     StockFinancialData,
     StockNewsDocument,
     SyncStatusDocument,
-    SocialMediaMessageDocument,
     TokenUsageDocument,
     UserAccount,
     UserFavorite,
@@ -168,9 +168,7 @@ def test_stock_screening_hot_fields_are_split_columns():
 
 def test_hot_fields_have_expected_indexes_and_uniqueness():
     indexes = {
-        index.name
-        for table in Base.metadata.tables.values()
-        for index in table.indexes
+        index.name for table in Base.metadata.tables.values() for index in table.indexes
     }
     constraints = {
         constraint.name
@@ -261,7 +259,14 @@ def test_status_tables_keep_query_fields_split_from_payload():
     )
     assert _has_columns(
         SchedulerExecution.__table__,
-        {"job_id", "status", "progress", "progress_message", "timestamp", "cancel_requested"},
+        {
+            "job_id",
+            "status",
+            "progress",
+            "progress_message",
+            "timestamp",
+            "cancel_requested",
+        },
     )
     assert _has_columns(
         SchedulerHistoryDocument.__table__,
@@ -276,7 +281,14 @@ def test_status_tables_keep_query_fields_split_from_payload():
 def test_analysis_extension_tables_keep_query_fields_split_from_payload():
     assert _has_columns(
         AnalysisReport.__table__,
-        {"analysis_id", "task_id", "user_id", "stock_symbol", "analysis_date", "summary"},
+        {
+            "analysis_id",
+            "task_id",
+            "user_id",
+            "stock_symbol",
+            "analysis_date",
+            "summary",
+        },
     )
     assert _has_columns(
         AnalysisBatchDocument.__table__,
@@ -305,8 +317,12 @@ def test_paper_trading_tables_keep_query_fields_split_from_payload():
         PaperPosition.__table__,
         {"user_id", "code", "market", "currency", "quantity", "deleted"},
     )
-    assert _has_columns(PaperOrder.__table__, {"user_id", "code", "side", "status", "deleted"})
-    assert _has_columns(PaperTrade.__table__, {"user_id", "code", "side", "timestamp", "deleted"})
+    assert _has_columns(
+        PaperOrder.__table__, {"user_id", "code", "side", "status", "deleted"}
+    )
+    assert _has_columns(
+        PaperTrade.__table__, {"user_id", "code", "side", "timestamp", "deleted"}
+    )
 
 
 def test_user_account_table_keeps_auth_fields_split_from_payload():
@@ -332,7 +348,15 @@ def test_security_session_tables_keep_ttl_and_audit_fields_split_from_payload():
     )
     assert _has_columns(
         LoginAttemptDocument.__table__,
-        {"user_id", "username", "ip_address", "success", "reason", "timestamp", "deleted"},
+        {
+            "user_id",
+            "username",
+            "ip_address",
+            "success",
+            "reason",
+            "timestamp",
+            "deleted",
+        },
     )
 
 
@@ -354,15 +378,43 @@ def test_dynamic_business_tables_keep_query_fields_split_from_payload():
     )
     assert _has_columns(
         TokenUsageDocument.__table__,
-        {"provider", "model_name", "session_id", "timestamp", "input_tokens", "output_tokens", "cost", "currency", "deleted"},
+        {
+            "provider",
+            "model_name",
+            "session_id",
+            "timestamp",
+            "input_tokens",
+            "output_tokens",
+            "cost",
+            "currency",
+            "deleted",
+        },
     )
     assert _has_columns(
         InternalMessageDocument.__table__,
-        {"message_id", "symbol", "message_type", "category", "access_level", "importance", "created_time", "deleted"},
+        {
+            "message_id",
+            "symbol",
+            "message_type",
+            "category",
+            "access_level",
+            "importance",
+            "created_time",
+            "deleted",
+        },
     )
     assert _has_columns(
         SocialMediaMessageDocument.__table__,
-        {"message_id", "platform", "symbol", "message_type", "sentiment", "importance", "publish_time", "deleted"},
+        {
+            "message_id",
+            "platform",
+            "symbol",
+            "message_type",
+            "sentiment",
+            "importance",
+            "publish_time",
+            "deleted",
+        },
     )
 
 

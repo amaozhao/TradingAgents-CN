@@ -30,7 +30,9 @@ def test_scheduler_adds_quotes_job(monkeypatch):
 
         def add_job(self, func, trigger, *args, **kwargs):
             # record and keep a handle to the callable and trigger
-            self.jobs.append({"func": func, "trigger": trigger, "args": args, "kwargs": kwargs})
+            self.jobs.append(
+                {"func": func, "trigger": trigger, "args": args, "kwargs": kwargs}
+            )
 
         def pause_job(self, job_id):
             self.paused_job_ids.append(job_id)
@@ -43,7 +45,7 @@ def test_scheduler_adds_quotes_job(monkeypatch):
             return None
 
     # Patch scheduler and service in app.main before startup runs
-    main_mod = importlib.import_module('app.main')
+    main_mod = importlib.import_module("app.main")
 
     fake_scheduler = _FakeScheduler()
 
@@ -67,15 +69,26 @@ def test_scheduler_adds_quotes_job(monkeypatch):
 
     monkeypatch.setattr(main_mod, "init_db", _noop_async, raising=True)
     monkeypatch.setattr(main_mod, "close_db", _noop_async, raising=True)
-    monkeypatch.setattr(main_mod, "get_basics_sync_service", lambda: _FakeBasicsService(), raising=True)
+    monkeypatch.setattr(
+        main_mod, "get_basics_sync_service", lambda: _FakeBasicsService(), raising=True
+    )
 
     # Patch scheduler, quotes service and asyncio.create_task
-    monkeypatch.setattr(main_mod, "AsyncIOScheduler", lambda *args, **kwargs: fake_scheduler, raising=True)
-    monkeypatch.setattr(main_mod, "QuotesIngestionService", _FakeQuotesIngestion, raising=True)
-    monkeypatch.setattr(main_mod.asyncio, "create_task", _fake_asyncio_create_task, raising=True)
+    monkeypatch.setattr(
+        main_mod,
+        "AsyncIOScheduler",
+        lambda *args, **kwargs: fake_scheduler,
+        raising=True,
+    )
+    monkeypatch.setattr(
+        main_mod, "QuotesIngestionService", _FakeQuotesIngestion, raising=True
+    )
+    monkeypatch.setattr(
+        main_mod.asyncio, "create_task", _fake_asyncio_create_task, raising=True
+    )
 
     # Directly drive the lifespan to avoid importing full router stack
-    _asyncio = importlib.import_module('asyncio')
+    _asyncio = importlib.import_module("asyncio")
 
     async def _run():
         async with main_mod.lifespan(FastAPI()):

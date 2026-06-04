@@ -2,15 +2,12 @@
 """
 测试改进的港股工具（简版，直接导入）
 """
-import importlib
 
+import importlib
 import os
 import sys
 import time
 
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_hk_provider_direct():
     """直接测试港股提供器"""
@@ -19,7 +16,10 @@ def test_hk_provider_direct():
 
     try:
         # 直接导入改进的港股工具
-        ImprovedHKStockProvider = getattr(importlib.import_module('support.improved.hk.utils.module'), 'ImprovedHKStockProvider')
+        ImprovedHKStockProvider = getattr(
+            importlib.import_module("support.improved.hk.utils.module"),
+            "ImprovedHKStockProvider",
+        )
 
         provider = ImprovedHKStockProvider()
         print("✅ 改进港股提供器初始化成功")
@@ -27,16 +27,16 @@ def test_hk_provider_direct():
         # 测试不同格式的港股代码
         test_symbols = [
             "0700.HK",  # 腾讯控股
-            "0700",     # 腾讯控股（无后缀）
-            "00700",    # 腾讯控股（5位）
+            "0700",  # 腾讯控股（无后缀）
+            "00700",  # 腾讯控股（5位）
             "0941.HK",  # 中国移动
-            "1299",     # 友邦保险
+            "1299",  # 友邦保险
             "9988.HK",  # 阿里巴巴
-            "3690",     # 美团
+            "3690",  # 美团
             "1234.HK",  # 不存在的股票
         ]
 
-        print(f"\n📊 测试港股公司名称获取:")
+        print("\n📊 测试港股公司名称获取:")
         success_count = 0
         for symbol in test_symbols:
             try:
@@ -44,11 +44,11 @@ def test_hk_provider_direct():
                 print(f"   {symbol:10} -> {company_name}")
 
                 # 验证不是默认格式
-                if not company_name.startswith('港股'):
-                    print(f"      ✅ 成功获取具体公司名称")
+                if not company_name.startswith("港股"):
+                    print("      ✅ 成功获取具体公司名称")
                     success_count += 1
                 else:
-                    print(f"      ⚠️ 使用默认格式")
+                    print("      ⚠️ 使用默认格式")
 
             except Exception as e:
                 print(f"   {symbol:10} -> ❌ 错误: {e}")
@@ -58,9 +58,10 @@ def test_hk_provider_direct():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_cache_direct():
     """直接测试缓存功能"""
@@ -68,14 +69,17 @@ def test_cache_direct():
     print("=" * 80)
 
     try:
-        ImprovedHKStockProvider = getattr(importlib.import_module('support.improved.hk.utils.module'), 'ImprovedHKStockProvider')
+        ImprovedHKStockProvider = getattr(
+            importlib.import_module("support.improved.hk.utils.module"),
+            "ImprovedHKStockProvider",
+        )
 
         provider = ImprovedHKStockProvider()
 
         # 使用新的缓存路径
-        cache_dir = os.path.join('data', 'cache', 'hk')
+        cache_dir = os.path.join("data", "cache", "hk")
         os.makedirs(cache_dir, exist_ok=True)
-        cache_file = os.path.join(cache_dir, 'hk_stock_cache.json')
+        cache_file = os.path.join(cache_dir, "hk_stock_cache.json")
 
         # 清理可能存在的缓存文件
         if os.path.exists(cache_file):
@@ -111,8 +115,8 @@ def test_cache_direct():
             print("✅ 缓存文件已创建")
 
             # 读取缓存内容
-            json = importlib.import_module('json')
-            with open(cache_file, 'r', encoding='utf-8') as f:
+            json = importlib.import_module("json")
+            with open(cache_file, "r", encoding="utf-8") as f:
                 cache_data = json.load(f)
 
             print(f"📄 缓存条目数: {len(cache_data)}")
@@ -125,9 +129,10 @@ def test_cache_direct():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_normalization():
     """测试港股代码标准化"""
@@ -135,7 +140,10 @@ def test_normalization():
     print("=" * 80)
 
     try:
-        ImprovedHKStockProvider = getattr(importlib.import_module('support.improved.hk.utils.module'), 'ImprovedHKStockProvider')
+        ImprovedHKStockProvider = getattr(
+            importlib.import_module("support.improved.hk.utils.module"),
+            "ImprovedHKStockProvider",
+        )
 
         provider = ImprovedHKStockProvider()
 
@@ -155,15 +163,18 @@ def test_normalization():
         for input_symbol, expected in test_cases:
             normalized = provider._normalize_hk_symbol(input_symbol)
             status = "✅" if normalized == expected else "❌"
-            print(f"   {input_symbol:10} -> {normalized:10} (期望: {expected}) {status}")
+            print(
+                f"   {input_symbol:10} -> {normalized:10} (期望: {expected}) {status}"
+            )
 
         return True
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主测试函数"""
@@ -189,15 +200,11 @@ def main():
     passed = sum(results)
     total = len(results)
 
-    test_names = [
-        "港股提供器直接测试",
-        "缓存功能直接测试",
-        "代码标准化测试"
-    ]
+    test_names = ["港股提供器直接测试", "缓存功能直接测试", "代码标准化测试"]
 
     for i, (name, result) in enumerate(zip(test_names, results)):
         status = "✅ 通过" if result else "❌ 失败"
-        print(f"{i+1}. {name}: {status}")
+        print(f"{i + 1}. {name}: {status}")
 
     print(f"\n📊 总体结果: {passed}/{total} 测试通过")
 
@@ -219,6 +226,7 @@ def main():
         print("⚠️ 部分测试失败，需要进一步优化")
 
     return passed == total
+
 
 if __name__ == "__main__":
     success = main()

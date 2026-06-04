@@ -2,27 +2,27 @@
 操作日志记录中间件
 自动记录用户的API操作日志
 """
-import importlib
 
-import time
-import json
+import importlib
 import logging
-from typing import Optional, Dict, Any
+import time
+from typing import Any, Dict, Optional
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.services.operation import log_operation
 from app.models.operations import ActionType
+from app.services.operation import log_operation
 
 logger = logging.getLogger("webapi")
 
 # 全局开关：是否启用操作日志记录（可由系统设置动态控制）
 OPLOG_ENABLED: bool = True
 
+
 def set_operation_log_enabled(flag: bool) -> None:
     global OPLOG_ENABLED
     OPLOG_ENABLED = bool(flag)
-
 
 
 class OperationLogMiddleware(BaseHTTPMiddleware):
@@ -89,7 +89,7 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
                     duration_ms=duration_ms,
                     ip_address=ip_address,
                     user_agent=user_agent,
-                    request=request
+                    request=request,
                 )
             except Exception as e:
                 logger.error(f"记录操作日志失败: {e}")
@@ -149,7 +149,9 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
                 token = auth_header.split(" ", 1)[1]
 
                 # 使用AuthService验证token
-                AuthService = getattr(importlib.import_module('app.services.auth'), 'AuthService')
+                AuthService = getattr(
+                    importlib.import_module("app.services.auth"), "AuthService"
+                )
                 token_data = AuthService.verify_token(token)
 
                 if token_data:
@@ -159,7 +161,7 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
                         "username": "admin",
                         "name": "管理员",
                         "is_admin": True,
-                        "roles": ["admin"]
+                        "roles": ["admin"],
                     }
 
             return None
@@ -178,12 +180,7 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
     def _get_action_description(self, method: str, path: str, request: Request) -> str:
         """生成操作描述"""
         # 基础描述
-        action_map = {
-            "POST": "创建",
-            "PUT": "更新",
-            "PATCH": "修改",
-            "DELETE": "删除"
-        }
+        action_map = {"POST": "创建", "PUT": "更新", "PATCH": "修改", "DELETE": "删除"}
 
         action_verb = action_map.get(method, method)
 
@@ -237,7 +234,7 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
         duration_ms: int,
         ip_address: str,
         user_agent: str,
-        request: Request
+        request: Request,
     ):
         """记录操作日志"""
         try:
@@ -253,7 +250,9 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
                 "method": method,
                 "path": path,
                 "status_code": response.status_code,
-                "query_params": dict(request.query_params) if request.query_params else None,
+                "query_params": dict(request.query_params)
+                if request.query_params
+                else None,
             }
 
             # 获取错误信息（如果有）
@@ -273,7 +272,7 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
                 duration_ms=duration_ms,
                 ip_address=ip_address,
                 user_agent=user_agent,
-                session_id=user_info.get("session_id")
+                session_id=user_info.get("session_id"),
             )
 
         except Exception as e:
@@ -289,7 +288,7 @@ async def manual_log_operation(
     details: Optional[Dict[str, Any]] = None,
     success: bool = True,
     error_message: Optional[str] = None,
-    duration_ms: Optional[int] = None
+    duration_ms: Optional[int] = None,
 ):
     """手动记录操作日志"""
     try:
@@ -307,7 +306,7 @@ async def manual_log_operation(
             duration_ms=duration_ms,
             ip_address=ip_address,
             user_agent=user_agent,
-            session_id=user_info.get("session_id")
+            session_id=user_info.get("session_id"),
         )
     except Exception as e:
         logger.error(f"手动记录操作日志失败: {e}")

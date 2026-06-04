@@ -3,18 +3,12 @@
 Tushare数据初始化CLI工具
 用于首次部署时的数据初始化操作
 """
-import importlib
-import asyncio
-import argparse
-import sys
-import os
-from datetime import datetime
-from pathlib import Path
-from typing import Optional
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+import argparse
+import asyncio
+import importlib
+import sys
+from typing import Optional
 
 from app.core.database import init_database
 from app.worker.tushare.init import get_tushare_init_service
@@ -39,7 +33,9 @@ def print_help():
     print("  --historical-days   历史数据天数（默认365天）")
     print("  --multi-period      同步多周期数据（日线、周线、月线）")
     print("  --sync-items        指定要同步的数据类型（逗号分隔）")
-    print("                      可选值: basic_info,historical,weekly,monthly,financial,quotes,news")
+    print(
+        "                      可选值: basic_info,historical,weekly,monthly,financial,quotes,news"
+    )
     print("  --force             强制初始化（覆盖已有数据）")
     print("  --batch-size        批处理大小（默认100）")
     print("  --check-only        仅检查数据库状态")
@@ -86,26 +82,23 @@ async def check_database_status():
     print("📊 检查数据库状态...")
 
     try:
-        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
-        db = get_mongo_db()
+        get_postgres_db = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db"
+        )
+        db = get_postgres_db()
 
         # 检查各集合状态
         basic_count = await db.stock_basic_info.count_documents({})
         quotes_count = await db.market_quotes.count_documents({})
 
         # 检查扩展字段覆盖率
-        extended_count = await db.stock_basic_info.count_documents({
-            "full_symbol": {"$exists": True},
-            "market_info": {"$exists": True}
-        })
+        extended_count = await db.stock_basic_info.count_documents(
+            {"full_symbol": {"$exists": True}, "market_info": {"$exists": True}}
+        )
 
         # 检查最新更新时间
-        latest_basic = await db.stock_basic_info.find_one(
-            {}, sort=[("updated_at", -1)]
-        )
-        latest_quotes = await db.market_quotes.find_one(
-            {}, sort=[("updated_at", -1)]
-        )
+        latest_basic = await db.stock_basic_info.find_one({}, sort=[("updated_at", -1)])
+        latest_quotes = await db.market_quotes.find_one({}, sort=[("updated_at", -1)])
 
         print(f"  📋 股票基础信息: {basic_count:,}条")
         if basic_count > 0:
@@ -157,14 +150,21 @@ async def run_basic_initialization():
         return False
 
 
-async def run_full_initialization(historical_days: int, force: bool, multi_period: bool = False, sync_items: Optional[list] = None):
+async def run_full_initialization(
+    historical_days: int,
+    force: bool,
+    multi_period: bool = False,
+    sync_items: Optional[list] = None,
+):
     """运行完整初始化"""
     if sync_items:
         print(f"🚀 开始数据初始化（历史数据: {historical_days}天）...")
         print(f"📋 同步项目: {', '.join(sync_items)}")
     else:
         period_info = "日线、周线、月线" if multi_period else "日线"
-        print(f"🚀 开始完整数据初始化（历史数据: {historical_days}天，周期: {period_info}）...")
+        print(
+            f"🚀 开始完整数据初始化（历史数据: {historical_days}天，周期: {period_info}）..."
+        )
 
     try:
         service = await get_tushare_init_service()
@@ -173,7 +173,7 @@ async def run_full_initialization(historical_days: int, force: bool, multi_perio
             historical_days=historical_days,
             skip_if_exists=not force,
             enable_multi_period=multi_period,
-            sync_items=sync_items
+            sync_items=sync_items,
         )
 
         # 显示结果
@@ -212,14 +212,20 @@ async def main():
     """主函数"""
     parser = argparse.ArgumentParser(
         description="Tushare数据初始化工具",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     parser.add_argument("--full", action="store_true", help="运行完整初始化")
     parser.add_argument("--basic-only", action="store_true", help="仅初始化基础信息")
     parser.add_argument("--historical-days", type=int, default=365, help="历史数据天数")
-    parser.add_argument("--multi-period", action="store_true", help="同步多周期数据（日线、周线、月线）")
-    parser.add_argument("--sync-items", type=str, help="指定要同步的数据类型（逗号分隔），可选: basic_info,historical,weekly,monthly,financial,quotes,news")
+    parser.add_argument(
+        "--multi-period", action="store_true", help="同步多周期数据（日线、周线、月线）"
+    )
+    parser.add_argument(
+        "--sync-items",
+        type=str,
+        help="指定要同步的数据类型（逗号分隔），可选: basic_info,historical,weekly,monthly,financial,quotes,news",
+    )
     parser.add_argument("--force", action="store_true", help="强制初始化")
     parser.add_argument("--batch-size", type=int, default=100, help="批处理大小")
     parser.add_argument("--check-only", action="store_true", help="仅检查数据库状态")
@@ -261,16 +267,26 @@ async def main():
             # 解析sync_items参数
             sync_items = None
             if args.sync_items:
-                sync_items = [item.strip() for item in args.sync_items.split(',')]
+                sync_items = [item.strip() for item in args.sync_items.split(",")]
                 # 验证sync_items
-                valid_items = ['basic_info', 'historical', 'weekly', 'monthly', 'financial', 'quotes', 'news']
+                valid_items = [
+                    "basic_info",
+                    "historical",
+                    "weekly",
+                    "monthly",
+                    "financial",
+                    "quotes",
+                    "news",
+                ]
                 invalid_items = [item for item in sync_items if item not in valid_items]
                 if invalid_items:
                     print(f"❌ 无效的同步项目: {', '.join(invalid_items)}")
                     print(f"   有效选项: {', '.join(valid_items)}")
                     return
 
-            success = await run_full_initialization(args.historical_days, args.force, args.multi_period, sync_items or [])
+            success = await run_full_initialization(
+                args.historical_days, args.force, args.multi_period, sync_items or []
+            )
 
         else:
             print("❓ 请指定操作类型，使用 --help-detail 查看详细帮助")

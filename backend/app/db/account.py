@@ -58,7 +58,9 @@ def _user_account_to_dict(row: UserAccount) -> dict[str, Any]:
         "email": row.email,
         "is_active": row.is_active,
         "is_admin": row.is_admin,
-        "created_at": payload.get("created_at") or (row.created_at.isoformat() if row.created_at else None),
-        "updated_at": payload.get("updated_at") or (row.updated_at.isoformat() if row.updated_at else None),
+        "created_at": payload.get("created_at")
+        or (row.created_at.isoformat() if row.created_at else None),
+        "updated_at": payload.get("updated_at")
+        or (row.updated_at.isoformat() if row.updated_at else None),
     }
     return {key: value for key, value in data.items() if value is not None}

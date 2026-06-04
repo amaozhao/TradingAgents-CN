@@ -2,19 +2,16 @@
 """
 测试修复后的市场分析师
 """
-import importlib
 
+import importlib
 import os
 import sys
-from pathlib import Path
-from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
+
 
 def test_deepseek_market_analyst():
     """测试DeepSeek的市场分析师"""
@@ -22,16 +19,23 @@ def test_deepseek_market_analyst():
     print("=" * 60)
 
     try:
-        create_market_analyst = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst')
-        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        create_market_analyst = getattr(
+            importlib.import_module("trader.agents.analysts.market"),
+            "create_market_analyst",
+        )
+        ChatDeepSeek = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"), "ChatDeepSeek"
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 创建DeepSeek LLM
         deepseek_llm = ChatDeepSeek(
-            model="deepseek-chat",
-            temperature=0.1,
-            max_tokens=2000
+            model="deepseek-chat", temperature=0.1, max_tokens=2000
         )
 
         # 创建工具包
@@ -46,7 +50,7 @@ def test_deepseek_market_analyst():
         state = {
             "company_of_interest": "000002",
             "trade_date": "2025-07-08",
-            "messages": []
+            "messages": [],
         }
 
         print(f"📊 开始分析股票: {state['company_of_interest']}")
@@ -54,22 +58,25 @@ def test_deepseek_market_analyst():
         # 执行分析
         result = market_analyst(state)
 
-        print(f"📊 分析结果:")
+        print("📊 分析结果:")
         print(f"   消息数量: {len(result.get('messages', []))}")
 
-        market_report = result.get('market_report', '')
+        market_report = result.get("market_report", "")
         print(f"   市场报告长度: {len(market_report)}")
-        print(f"   市场报告前500字符:")
+        print("   市场报告前500字符:")
         print("-" * 50)
         print(market_report[:500])
         print("-" * 50)
 
         # 检查报告质量
-        has_data = any(keyword in market_report for keyword in ["¥", "RSI", "MACD", "万科", "技术指标"])
+        has_data = any(
+            keyword in market_report
+            for keyword in ["¥", "RSI", "MACD", "万科", "技术指标"]
+        )
         has_analysis = len(market_report) > 500
         not_placeholder = "正在调用工具" not in market_report
 
-        print(f"📊 报告质量检查:")
+        print("📊 报告质量检查:")
         print(f"   包含实际数据: {'✅' if has_data else '❌'}")
         print(f"   分析内容充实: {'✅' if has_analysis else '❌'}")
         print(f"   非占位符内容: {'✅' if not_placeholder else '❌'}")
@@ -81,9 +88,10 @@ def test_deepseek_market_analyst():
 
     except Exception as e:
         print(f"❌ DeepSeek市场分析师测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_dashscope_market_analyst():
     """测试百炼的市场分析师（ReAct模式）"""
@@ -96,16 +104,24 @@ def test_dashscope_market_analyst():
             print("⚠️ 未找到DASHSCOPE_API_KEY，跳过百炼测试")
             return True  # 跳过不算失败
 
-        create_market_analyst_react = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst_react')
-        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters.dashscope.native'), 'ChatDashScope')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        create_market_analyst_react = getattr(
+            importlib.import_module("trader.agents.analysts.market"),
+            "create_market_analyst_react",
+        )
+        ChatDashScope = getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.native"),
+            "ChatDashScope",
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 创建百炼LLM
         dashscope_llm = ChatDashScope(
-            model="qwen-plus",
-            temperature=0.1,
-            max_tokens=2000
+            model="qwen-plus", temperature=0.1, max_tokens=2000
         )
 
         # 创建工具包
@@ -120,7 +136,7 @@ def test_dashscope_market_analyst():
         state = {
             "company_of_interest": "000002",
             "trade_date": "2025-07-08",
-            "messages": []
+            "messages": [],
         }
 
         print(f"📊 开始分析股票: {state['company_of_interest']}")
@@ -128,22 +144,25 @@ def test_dashscope_market_analyst():
         # 执行分析
         result = market_analyst(state)
 
-        print(f"📊 分析结果:")
+        print("📊 分析结果:")
         print(f"   消息数量: {len(result.get('messages', []))}")
 
-        market_report = result.get('market_report', '')
+        market_report = result.get("market_report", "")
         print(f"   市场报告长度: {len(market_report)}")
-        print(f"   市场报告前500字符:")
+        print("   市场报告前500字符:")
         print("-" * 50)
         print(market_report[:500])
         print("-" * 50)
 
         # 检查报告质量
-        has_data = any(keyword in market_report for keyword in ["¥", "RSI", "MACD", "万科", "技术指标"])
+        has_data = any(
+            keyword in market_report
+            for keyword in ["¥", "RSI", "MACD", "万科", "技术指标"]
+        )
         has_analysis = len(market_report) > 500
         not_placeholder = "正在调用工具" not in market_report
 
-        print(f"📊 报告质量检查:")
+        print("📊 报告质量检查:")
         print(f"   包含实际数据: {'✅' if has_data else '❌'}")
         print(f"   分析内容充实: {'✅' if has_analysis else '❌'}")
         print(f"   非占位符内容: {'✅' if not_placeholder else '❌'}")
@@ -155,9 +174,10 @@ def test_dashscope_market_analyst():
 
     except Exception as e:
         print(f"❌ 百炼市场分析师测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主函数"""
@@ -200,6 +220,7 @@ def main():
 
     print("\n🎯 测试完成！")
     return overall_success
+
 
 if __name__ == "__main__":
     success = main()

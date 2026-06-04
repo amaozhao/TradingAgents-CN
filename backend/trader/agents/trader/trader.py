@@ -1,18 +1,18 @@
-import importlib
 import functools
-import time
-import json
+import importlib
 
 from langchain_core.messages import AIMessage
 
 from trader.agents.schemas import TraderProposal, render_trader_proposal
-from trader.agents.utils.utils import get_instrument_context_from_state
 from trader.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
 )
+from trader.agents.utils.utils import get_instrument_context_from_state
+
 # 导入统一日志系统
 from trader.utils.logging.init import get_logger
+
 logger = get_logger("default")
 
 
@@ -29,20 +29,26 @@ def create_trader(llm, memory=None):
         fundamentals_report = state.get("fundamentals_report", "")
 
         # 使用统一的股票类型检测
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
         market_info = StockUtils.get_market_info(company_name)
-        is_china = market_info['is_china']
-        is_hk = market_info['is_hk']
-        is_us = market_info['is_us']
+        is_china = market_info["is_china"]
+        is_hk = market_info["is_hk"]
+        is_us = market_info["is_us"]
 
         # 根据股票类型确定货币单位
-        currency = market_info['currency_name']
-        currency_symbol = market_info['currency_symbol']
+        currency = market_info["currency_name"]
+        currency_symbol = market_info["currency_symbol"]
 
-        logger.debug(f"💰 [DEBUG] ===== 交易员节点开始 =====")
-        logger.debug(f"💰 [DEBUG] 交易员检测股票类型: {company_name} -> {market_info['market_name']}, 货币: {currency}")
+        logger.debug("💰 [DEBUG] ===== 交易员节点开始 =====")
+        logger.debug(
+            f"💰 [DEBUG] 交易员检测股票类型: {company_name} -> {market_info['market_name']}, 货币: {currency}"
+        )
         logger.debug(f"💰 [DEBUG] 货币符号: {currency_symbol}")
-        logger.debug(f"💰 [DEBUG] 市场详情: 中国A股={is_china}, 港股={is_hk}, 美股={is_us}")
+        logger.debug(
+            f"💰 [DEBUG] 市场详情: 中国A股={is_china}, 港股={is_hk}, 美股={is_us}"
+        )
         logger.debug(f"💰 [DEBUG] 基本面报告长度: {len(fundamentals_report)}")
         logger.debug(f"💰 [DEBUG] 基本面报告前200字符: {fundamentals_report[:200]}...")
 
@@ -50,13 +56,13 @@ def create_trader(llm, memory=None):
 
         # 检查memory是否可用
         if memory is not None:
-            logger.warning(f"⚠️ [DEBUG] memory可用，获取历史记忆")
+            logger.warning("⚠️ [DEBUG] memory可用，获取历史记忆")
             past_memories = memory.get_memories(curr_situation, n_matches=2)
             past_memory_str = ""
             for i, rec in enumerate(past_memories, 1):
                 past_memory_str += rec["recommendation"] + "\n\n"
         else:
-            logger.warning(f"⚠️ [DEBUG] memory为None，跳过历史记忆检索")
+            logger.warning("⚠️ [DEBUG] memory为None，跳过历史记忆检索")
             past_memories = []
             past_memory_str = "暂无历史记忆数据可参考。"
 
@@ -121,10 +127,10 @@ def create_trader(llm, memory=None):
             "Trader",
         )
 
-        logger.debug(f"💰 [DEBUG] LLM调用完成")
+        logger.debug("💰 [DEBUG] LLM调用完成")
         logger.debug(f"💰 [DEBUG] 交易员回复长度: {len(trader_plan)}")
         logger.debug(f"💰 [DEBUG] 交易员回复前500字符: {trader_plan[:500]}...")
-        logger.debug(f"💰 [DEBUG] ===== 交易员节点结束 =====")
+        logger.debug("💰 [DEBUG] ===== 交易员节点结束 =====")
 
         return {
             "messages": [AIMessage(content=trader_plan)],

@@ -3,14 +3,10 @@
 """
 测试新闻分析师与统一新闻工具的集成
 """
-import importlib
 
-import os
-import sys
+import importlib
 from datetime import datetime
 
-# 添加项目根目录到路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def test_news_analyst_integration():
     """测试新闻分析师与统一新闻工具的集成"""
@@ -19,8 +15,13 @@ def test_news_analyst_integration():
 
     try:
         # 导入必要的模块
-        create_news_analyst = getattr(importlib.import_module('trader.agents.analysts.news'), 'create_news_analyst')
-        create_unified_news_tool = getattr(importlib.import_module('trader.tools.news'), 'create_unified_news_tool')
+        create_news_analyst = getattr(
+            importlib.import_module("trader.agents.analysts.news"),
+            "create_news_analyst",
+        )
+        create_unified_news_tool = getattr(
+            importlib.import_module("trader.tools.news"), "create_unified_news_tool"
+        )
         print("✅ 成功导入必要模块")
 
         # 创建模拟工具包
@@ -99,10 +100,12 @@ def test_news_analyst_integration():
 基于真实新闻数据的专业分析报告。
 """
                         # 模拟工具调用
-                        self.tool_calls = [{
-                            "name": "get_stock_news_unified",
-                            "args": {"stock_code": "000001", "max_news": 10}
-                        }]
+                        self.tool_calls = [
+                            {
+                                "name": "get_stock_news_unified",
+                                "args": {"stock_code": "000001", "max_news": 10},
+                            }
+                        ]
 
                 return MockResult()
 
@@ -117,23 +120,25 @@ def test_news_analyst_integration():
         test_stocks = [
             ("000001", "平安银行 - A股"),
             ("00700", "腾讯控股 - 港股"),
-            ("AAPL", "苹果公司 - 美股")
+            ("AAPL", "苹果公司 - 美股"),
         ]
 
         for stock_code, description in test_stocks:
-            print(f"\n{'='*60}")
+            print(f"\n{'=' * 60}")
             print(f"🔍 测试股票: {stock_code} ({description})")
-            print(f"{'='*60}")
+            print(f"{'=' * 60}")
 
             try:
                 # 调用新闻分析师
                 start_time = datetime.now()
-                result = news_analyst({
-                    "messages": [],
-                    "company_of_interest": stock_code,
-                    "trade_date": "2025-07-28",
-                    "session_id": f"test_{stock_code}"
-                })
+                result = news_analyst(
+                    {
+                        "messages": [],
+                        "company_of_interest": stock_code,
+                        "trade_date": "2025-07-28",
+                        "session_id": f"test_{stock_code}",
+                    }
+                )
                 end_time = datetime.now()
 
                 print(f"⏱️ 分析耗时: {(end_time - start_time).total_seconds():.2f}秒")
@@ -141,9 +146,9 @@ def test_news_analyst_integration():
                 # 检查结果
                 if result and "messages" in result and len(result["messages"]) > 0:
                     final_message = result["messages"][-1]
-                    if hasattr(final_message, 'content'):
+                    if hasattr(final_message, "content"):
                         report = final_message.content
-                        print(f"✅ 成功获取新闻分析报告")
+                        print("✅ 成功获取新闻分析报告")
                         print(f"📊 报告长度: {len(report)} 字符")
 
                         # 显示报告摘要
@@ -153,8 +158,17 @@ def test_news_analyst_integration():
                             print(f"📝 完整报告: {report}")
 
                         # 检查是否包含真实新闻特征
-                        news_indicators = ['发布时间', '新闻标题', '文章来源', '东方财富', '业绩', '营收']
-                        has_real_news = any(indicator in report for indicator in news_indicators)
+                        news_indicators = [
+                            "发布时间",
+                            "新闻标题",
+                            "文章来源",
+                            "东方财富",
+                            "业绩",
+                            "营收",
+                        ]
+                        has_real_news = any(
+                            indicator in report for indicator in news_indicators
+                        )
                         print(f"🔍 包含真实新闻特征: {'是' if has_real_news else '否'}")
 
                         if has_real_news:
@@ -168,17 +182,18 @@ def test_news_analyst_integration():
 
             except Exception as e:
                 print(f"❌ 测试股票 {stock_code} 时出错: {e}")
-                traceback = importlib.import_module('traceback')
+                traceback = importlib.import_module("traceback")
                 traceback.print_exc()
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("🎉 新闻分析师集成测试完成!")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
     except Exception as e:
         print(f"❌ 测试过程中出现错误: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     test_news_analyst_integration()

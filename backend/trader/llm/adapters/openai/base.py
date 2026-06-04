@@ -3,39 +3,44 @@ OpenAI兼容适配器基类
 为所有支持OpenAI接口的LLM提供商提供统一的基础实现
 """
 
+import importlib
 import os
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
+
+from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs import ChatResult
 from langchain_openai import ChatOpenAI
-from langchain_core.callbacks import CallbackManagerForLLMRun
 
 # 导入统一日志系统
 from trader.utils.logging.init import setup_llm_logging
 
 # 导入日志模块
-from trader.utils.logging.manager import get_logger, get_logger_manager
-logger = get_logger('agents')
+from trader.utils.logging.manager import get_logger
+
+logger = get_logger("agents")
 logger = setup_llm_logging()
 
 try:
     from app.utils.keys import is_valid_api_key
-except ImportError:
+except (ImportError, AttributeError):
+
     def is_valid_api_key(api_key: Optional[str]) -> bool:
         if not api_key or len(api_key) <= 10:
             return False
-        if api_key.startswith('your_') or api_key.startswith('your-'):
+        if api_key.startswith("your_") or api_key.startswith("your-"):
             return False
-        if api_key.endswith('_here') or api_key.endswith('-here'):
+        if api_key.endswith("_here") or api_key.endswith("-here"):
             return False
-        if '...' in api_key:
+        if "..." in api_key:
             return False
         return True
 
+
 # 导入token跟踪器
 try:
-    from trader.config.manager import token_tracker
+    getattr(importlib.import_module("trader.config.manager"), "token_tracker")
     TOKEN_TRACKING_ENABLED = True
     logger.info("✅ Token跟踪功能已启用")
 except ImportError:
@@ -58,7 +63,7 @@ class OpenAICompatibleBase(ChatOpenAI):
         api_key: Optional[str] = None,
         temperature: float = 0.1,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         初始化OpenAI兼容适配器
@@ -78,7 +83,9 @@ class OpenAICompatibleBase(ChatOpenAI):
         logger.info(f"🔍 [{provider_name}初始化] 开始初始化 OpenAI 兼容适配器")
         logger.info(f"🔍 [{provider_name}初始化] 模型: {model}")
         logger.info(f"🔍 [{provider_name}初始化] API Key 环境变量名: {api_key_env_var}")
-        logger.info(f"🔍 [{provider_name}初始化] 是否传入 api_key 参数: {api_key is not None}")
+        logger.info(
+            f"🔍 [{provider_name}初始化] 是否传入 api_key 参数: {api_key is not None}"
+        )
 
         # 在父类初始化前先缓存元信息到私有属性（避免Pydantic字段限制）
         object.__setattr__(self, "_provider_name", provider_name)
@@ -88,27 +95,39 @@ class OpenAICompatibleBase(ChatOpenAI):
         if api_key is None:
             # 从环境变量读取 API Key
             env_api_key = os.getenv(api_key_env_var)
-            logger.info(f"🔍 [{provider_name}初始化] 从环境变量读取 {api_key_env_var}: {'有值' if env_api_key else '空'}")
+            logger.info(
+                f"🔍 [{provider_name}初始化] 从环境变量读取 {api_key_env_var}: {'有值' if env_api_key else '空'}"
+            )
 
             # 验证环境变量中的 API Key 是否有效（排除占位符）
             if env_api_key and is_valid_api_key(env_api_key):
-                logger.info(f"✅ [{provider_name}初始化] 环境变量中的 API Key 有效，长度: {len(env_api_key)}, 前10位: {env_api_key[:10]}...")
+                logger.info(
+                    f"✅ [{provider_name}初始化] 环境变量中的 API Key 有效，长度: {len(env_api_key)}, 前10位: {env_api_key[:10]}..."
+                )
                 api_key = env_api_key
             elif env_api_key:
-                logger.warning(f"⚠️ [{provider_name}初始化] 环境变量中的 API Key 无效（可能是占位符），将被忽略")
+                logger.warning(
+                    f"⚠️ [{provider_name}初始化] 环境变量中的 API Key 无效（可能是占位符），将被忽略"
+                )
                 api_key = None
             else:
-                logger.warning(f"⚠️ [{provider_name}初始化] {api_key_env_var} 环境变量为空")
+                logger.warning(
+                    f"⚠️ [{provider_name}初始化] {api_key_env_var} 环境变量为空"
+                )
                 api_key = None
 
             if not api_key:
-                logger.error(f"❌ [{provider_name}初始化] API Key 检查失败，即将抛出异常")
+                logger.error(
+                    f"❌ [{provider_name}初始化] API Key 检查失败，即将抛出异常"
+                )
                 raise ValueError(
                     f"{provider_name} API密钥未找到。"
                     f"请在 Web 界面配置 API Key (设置 -> 大模型厂家) 或设置 {api_key_env_var} 环境变量。"
                 )
         else:
-            logger.info(f"✅ [{provider_name}初始化] 使用传入的 API Key（来自数据库配置），长度: {len(api_key)}")
+            logger.info(
+                f"✅ [{provider_name}初始化] 使用传入的 API Key（来自数据库配置），长度: {len(api_key)}"
+            )
 
         # 设置OpenAI兼容参数
         # 注意：model参数会被Pydantic映射到model_name字段
@@ -116,22 +135,18 @@ class OpenAICompatibleBase(ChatOpenAI):
             "model": model,  # 这会被映射到model_name字段
             "temperature": temperature,
             "max_tokens": max_tokens,
-            **kwargs
+            **kwargs,
         }
 
         # 根据LangChain版本使用不同的参数名
         try:
             # 新版本LangChain
-            openai_kwargs.update({
-                "api_key": api_key,
-                "base_url": base_url
-            })
-        except:
+            openai_kwargs.update({"api_key": api_key, "base_url": base_url})
+        except Exception:
             # 旧版本LangChain
-            openai_kwargs.update({
-                "openai_api_key": api_key,
-                "openai_api_base": base_url
-            })
+            openai_kwargs.update(
+                {"openai_api_key": api_key, "openai_api_base": base_url}
+            )
 
         # 初始化父类
         super().__init__(**openai_kwargs)
@@ -202,7 +217,7 @@ class ChatDeepSeekOpenAI(OpenAICompatibleBase):
         api_key: Optional[str] = None,
         temperature: float = 0.1,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             provider_name="deepseek",
@@ -212,7 +227,7 @@ class ChatDeepSeekOpenAI(OpenAICompatibleBase):
             api_key=api_key,
             temperature=temperature,
             max_tokens=max_tokens,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -225,7 +240,7 @@ class ChatDashScopeOpenAIUnified(OpenAICompatibleBase):
         api_key: Optional[str] = None,
         temperature: float = 0.1,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             provider_name="dashscope",
@@ -235,7 +250,7 @@ class ChatDashScopeOpenAIUnified(OpenAICompatibleBase):
             api_key=api_key,
             temperature=temperature,
             max_tokens=max_tokens,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -248,14 +263,14 @@ class ChatQianfanOpenAI(OpenAICompatibleBase):
         api_key: Optional[str] = None,
         temperature: float = 0.1,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         # 千帆新一代API使用单一API Key认证
         # 格式: bce-v3/ALTAK-xxx/xxx
 
         # 如果没有传入 API Key，尝试从环境变量读取
         if not api_key:
-            env_api_key = os.getenv('QIANFAN_API_KEY')
+            env_api_key = os.getenv("QIANFAN_API_KEY")
             if env_api_key and is_valid_api_key(env_api_key):
                 qianfan_api_key = env_api_key
             else:
@@ -270,10 +285,8 @@ class ChatQianfanOpenAI(OpenAICompatibleBase):
                 "格式为: bce-v3/ALTAK-xxx/xxx"
             )
 
-        if not qianfan_api_key.startswith('bce-v3/'):
-            raise ValueError(
-                "QIANFAN_API_KEY格式错误，应为: bce-v3/ALTAK-xxx/xxx"
-            )
+        if not qianfan_api_key.startswith("bce-v3/"):
+            raise ValueError("QIANFAN_API_KEY格式错误，应为: bce-v3/ALTAK-xxx/xxx")
 
         super().__init__(
             provider_name="qianfan",
@@ -283,7 +296,7 @@ class ChatQianfanOpenAI(OpenAICompatibleBase):
             api_key=qianfan_api_key,
             temperature=temperature,
             max_tokens=max_tokens,
-            **kwargs
+            **kwargs,
         )
 
     def _estimate_tokens(self, text: str) -> int:
@@ -292,7 +305,9 @@ class ChatQianfanOpenAI(OpenAICompatibleBase):
         # 保守估算：2字符/token
         return max(1, len(text) // 2)
 
-    def _truncate_messages(self, messages: List[BaseMessage], max_tokens: int = 4500) -> List[BaseMessage]:
+    def _truncate_messages(
+        self, messages: List[BaseMessage], max_tokens: int = 4500
+    ) -> List[BaseMessage]:
         """截断消息以适应千帆模型的token限制"""
         # 为千帆模型预留一些token空间，使用4500而不是5120
         truncated_messages = []
@@ -300,7 +315,9 @@ class ChatQianfanOpenAI(OpenAICompatibleBase):
 
         # 从最后一条消息开始，向前保留消息
         for message in reversed(messages):
-            content = str(message.content) if hasattr(message, 'content') else str(message)
+            content = (
+                str(message.content) if hasattr(message, "content") else str(message)
+            )
             message_tokens = self._estimate_tokens(content)
 
             if total_tokens + message_tokens <= max_tokens:
@@ -314,13 +331,15 @@ class ChatQianfanOpenAI(OpenAICompatibleBase):
                     truncated_content = content[:max_chars] + "...(内容已截断)"
 
                     # 创建截断后的消息
-                    if hasattr(message, 'content'):
+                    if hasattr(message, "content"):
                         message.content = truncated_content
                     truncated_messages.insert(0, message)
                 break
 
         if len(truncated_messages) < len(messages):
-            logger.warning(f"⚠️ 千帆模型输入过长，已截断 {len(messages) - len(truncated_messages)} 条消息")
+            logger.warning(
+                f"⚠️ 千帆模型输入过长，已截断 {len(messages) - len(truncated_messages)} 条消息"
+            )
 
         return truncated_messages
 
@@ -350,12 +369,16 @@ class ChatZhipuOpenAI(OpenAICompatibleBase):
         base_url: Optional[str] = None,
         temperature: float = 0.1,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         if base_url is None:
             env_base_url = os.getenv("ZHIPU_BASE_URL")
             # 只使用有效的环境变量值（不是占位符）
-            if env_base_url and not env_base_url.startswith('your_') and not env_base_url.startswith('your-'):
+            if (
+                env_base_url
+                and not env_base_url.startswith("your_")
+                and not env_base_url.startswith("your-")
+            ):
                 base_url = env_base_url
             else:
                 base_url = "https://open.bigmodel.cn/api/paas/v4"
@@ -368,7 +391,7 @@ class ChatZhipuOpenAI(OpenAICompatibleBase):
             api_key=api_key,
             temperature=temperature,
             max_tokens=max_tokens,
-            **kwargs
+            **kwargs,
         )
 
     def _estimate_tokens(self, text: str) -> int:
@@ -388,13 +411,17 @@ class ChatCustomOpenAI(OpenAICompatibleBase):
         base_url: Optional[str] = None,
         temperature: float = 0.1,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         # 如果没有传入 base_url，尝试从环境变量读取
         if base_url is None:
             env_base_url = os.getenv("CUSTOM_OPENAI_BASE_URL")
             # 只使用有效的环境变量值（不是占位符）
-            if env_base_url and not env_base_url.startswith('your_') and not env_base_url.startswith('your-'):
+            if (
+                env_base_url
+                and not env_base_url.startswith("your_")
+                and not env_base_url.startswith("your-")
+            ):
                 base_url = env_base_url
             else:
                 base_url = "https://api.openai.com/v1"
@@ -407,7 +434,7 @@ class ChatCustomOpenAI(OpenAICompatibleBase):
             api_key=api_key,
             temperature=temperature,
             max_tokens=max_tokens,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -418,9 +445,15 @@ OPENAI_COMPATIBLE_PROVIDERS = {
         "base_url": "https://api.deepseek.com",
         "api_key_env": "DEEPSEEK_API_KEY",
         "models": {
-            "deepseek-chat": {"context_length": 32768, "supports_function_calling": True},
-            "deepseek-coder": {"context_length": 16384, "supports_function_calling": True}
-        }
+            "deepseek-chat": {
+                "context_length": 32768,
+                "supports_function_calling": True,
+            },
+            "deepseek-coder": {
+                "context_length": 16384,
+                "supports_function_calling": True,
+            },
+        },
     },
     "dashscope": {
         "adapter_class": ChatDashScopeOpenAIUnified,
@@ -429,10 +462,16 @@ OPENAI_COMPATIBLE_PROVIDERS = {
         "models": {
             "qwen-turbo": {"context_length": 8192, "supports_function_calling": True},
             "qwen-plus": {"context_length": 32768, "supports_function_calling": True},
-            "qwen-plus-latest": {"context_length": 32768, "supports_function_calling": True},
+            "qwen-plus-latest": {
+                "context_length": 32768,
+                "supports_function_calling": True,
+            },
             "qwen-max": {"context_length": 32768, "supports_function_calling": True},
-            "qwen-max-latest": {"context_length": 32768, "supports_function_calling": True}
-        }
+            "qwen-max-latest": {
+                "context_length": 32768,
+                "supports_function_calling": True,
+            },
+        },
     },
     "qianfan": {
         "adapter_class": ChatQianfanOpenAI,
@@ -440,10 +479,19 @@ OPENAI_COMPATIBLE_PROVIDERS = {
         "api_key_env": "QIANFAN_API_KEY",
         "models": {
             "ernie-3.5-8k": {"context_length": 5120, "supports_function_calling": True},
-            "ernie-4.0-turbo-8k": {"context_length": 5120, "supports_function_calling": True},
-            "ERNIE-Speed-8K": {"context_length": 5120, "supports_function_calling": True},
-            "ERNIE-Lite-8K": {"context_length": 5120, "supports_function_calling": True}
-        }
+            "ernie-4.0-turbo-8k": {
+                "context_length": 5120,
+                "supports_function_calling": True,
+            },
+            "ERNIE-Speed-8K": {
+                "context_length": 5120,
+                "supports_function_calling": True,
+            },
+            "ERNIE-Lite-8K": {
+                "context_length": 5120,
+                "supports_function_calling": True,
+            },
+        },
     },
     "zhipu": {
         "adapter_class": ChatZhipuOpenAI,
@@ -453,31 +501,70 @@ OPENAI_COMPATIBLE_PROVIDERS = {
             "glm-4.6": {"context_length": 200000, "supports_function_calling": True},
             "glm-4": {"context_length": 128000, "supports_function_calling": True},
             "glm-4-plus": {"context_length": 128000, "supports_function_calling": True},
-            "glm-3-turbo": {"context_length": 128000, "supports_function_calling": True}
-        }
+            "glm-3-turbo": {
+                "context_length": 128000,
+                "supports_function_calling": True,
+            },
+        },
     },
     "custom_openai": {
         "adapter_class": ChatCustomOpenAI,
         "base_url": None,  # 将由用户配置
         "api_key_env": "CUSTOM_OPENAI_API_KEY",
         "models": {
-            "gpt-3.5-turbo": {"context_length": 16384, "supports_function_calling": True},
+            "gpt-3.5-turbo": {
+                "context_length": 16384,
+                "supports_function_calling": True,
+            },
             "gpt-4": {"context_length": 8192, "supports_function_calling": True},
-            "gpt-4-turbo": {"context_length": 128000, "supports_function_calling": True},
+            "gpt-4-turbo": {
+                "context_length": 128000,
+                "supports_function_calling": True,
+            },
             "gpt-4o": {"context_length": 128000, "supports_function_calling": True},
-            "gpt-4o-mini": {"context_length": 128000, "supports_function_calling": True},
-            "claude-3-haiku": {"context_length": 200000, "supports_function_calling": True},
-            "claude-3-sonnet": {"context_length": 200000, "supports_function_calling": True},
-            "claude-3-opus": {"context_length": 200000, "supports_function_calling": True},
-            "claude-3.5-sonnet": {"context_length": 200000, "supports_function_calling": True},
+            "gpt-4o-mini": {
+                "context_length": 128000,
+                "supports_function_calling": True,
+            },
+            "claude-3-haiku": {
+                "context_length": 200000,
+                "supports_function_calling": True,
+            },
+            "claude-3-sonnet": {
+                "context_length": 200000,
+                "supports_function_calling": True,
+            },
+            "claude-3-opus": {
+                "context_length": 200000,
+                "supports_function_calling": True,
+            },
+            "claude-3.5-sonnet": {
+                "context_length": 200000,
+                "supports_function_calling": True,
+            },
             "gemini-pro": {"context_length": 32768, "supports_function_calling": True},
-            "gemini-1.5-pro": {"context_length": 1000000, "supports_function_calling": True},
-            "llama-3.1-8b": {"context_length": 128000, "supports_function_calling": True},
-            "llama-3.1-70b": {"context_length": 128000, "supports_function_calling": True},
-            "llama-3.1-405b": {"context_length": 128000, "supports_function_calling": True},
-            "custom-model": {"context_length": 32768, "supports_function_calling": True}
-        }
-    }
+            "gemini-1.5-pro": {
+                "context_length": 1000000,
+                "supports_function_calling": True,
+            },
+            "llama-3.1-8b": {
+                "context_length": 128000,
+                "supports_function_calling": True,
+            },
+            "llama-3.1-70b": {
+                "context_length": 128000,
+                "supports_function_calling": True,
+            },
+            "llama-3.1-405b": {
+                "context_length": 128000,
+                "supports_function_calling": True,
+            },
+            "custom-model": {
+                "context_length": 32768,
+                "supports_function_calling": True,
+            },
+        },
+    },
 }
 
 
@@ -488,7 +575,7 @@ def create_openai_compatible_llm(
     temperature: float = 0.1,
     max_tokens: Optional[int] = None,
     base_url: Optional[str] = None,
-    **kwargs
+    **kwargs,
 ) -> OpenAICompatibleBase:
     """创建OpenAI兼容LLM实例的统一工厂函数"""
     provider_info = OPENAI_COMPATIBLE_PROVIDERS.get(provider)
@@ -522,7 +609,11 @@ def test_openai_compatible_adapters():
         cls = info["adapter_class"]
         try:
             if provider == "custom_openai":
-                cls(model="gpt-3.5-turbo", api_key="test", base_url="https://api.openai.com/v1")
+                cls(
+                    model="gpt-3.5-turbo",
+                    api_key="test",
+                    base_url="https://api.openai.com/v1",
+                )
             elif provider == "qianfan":
                 # 千帆新一代API仅需QIANFAN_API_KEY，格式: bce-v3/ALTAK-xxx/xxx
                 cls(model="ernie-3.5-8k", api_key="bce-v3/test-key/test-secret")

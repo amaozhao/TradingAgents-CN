@@ -2,14 +2,14 @@
 缓存管理路由
 提供缓存统计、清理等功能
 """
-import importlib
-from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Optional
-from datetime import datetime, timedelta
 
-from app.routers.account import get_current_user
+import importlib
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+
 from app.core.response import ok
 from app.models.response import ApiResponse
+from app.routers.account import get_current_user
 from trader.utils.logging.manager import get_logger
 
 logger = get_logger(__name__)
@@ -26,7 +26,7 @@ async def get_cache_stats(current_user: dict = Depends(get_current_user)):
         dict: 缓存统计数据
     """
     try:
-        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
+        get_cache = getattr(importlib.import_module("trader.flows.cache"), "get_cache")
 
         cache = get_cache()
 
@@ -37,28 +37,25 @@ async def get_cache_stats(current_user: dict = Depends(get_current_user)):
 
         return ok(
             data={
-                "totalFiles": stats.get('total_files', 0),
-                "totalSize": stats.get('total_size', 0),  # 字节
+                "totalFiles": stats.get("total_files", 0),
+                "totalSize": stats.get("total_size", 0),  # 字节
                 "maxSize": 1024 * 1024 * 1024,  # 1GB
-                "stockDataCount": stats.get('stock_data_count', 0),
-                "newsDataCount": stats.get('news_count', 0),
-                "analysisDataCount": stats.get('fundamentals_count', 0)
+                "stockDataCount": stats.get("stock_data_count", 0),
+                "newsDataCount": stats.get("news_count", 0),
+                "analysisDataCount": stats.get("fundamentals_count", 0),
             },
-            message="获取缓存统计成功"
+            message="获取缓存统计成功",
         )
 
     except Exception as e:
         logger.error(f"获取缓存统计失败: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"获取缓存统计失败: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"获取缓存统计失败: {str(e)}")
 
 
 @router.delete("/cleanup", response_model=ApiResponse)
 async def cleanup_old_cache(
     days: int = Query(7, ge=1, le=30, description="清理多少天前的缓存"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     清理过期缓存
@@ -70,7 +67,7 @@ async def cleanup_old_cache(
         dict: 清理结果
     """
     try:
-        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
+        get_cache = getattr(importlib.import_module("trader.flows.cache"), "get_cache")
 
         cache = get_cache()
 
@@ -79,17 +76,11 @@ async def cleanup_old_cache(
 
         logger.info(f"用户 {current_user['username']} 清理了 {days} 天前的缓存")
 
-        return ok(
-            data={"days": days},
-            message=f"已清理 {days} 天前的缓存"
-        )
+        return ok(data={"days": days}, message=f"已清理 {days} 天前的缓存")
 
     except Exception as e:
         logger.error(f"清理缓存失败: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"清理缓存失败: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"清理缓存失败: {str(e)}")
 
 
 @router.delete("/clear", response_model=ApiResponse)
@@ -101,7 +92,7 @@ async def clear_all_cache(current_user: dict = Depends(get_current_user)):
         dict: 清理结果
     """
     try:
-        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
+        get_cache = getattr(importlib.import_module("trader.flows.cache"), "get_cache")
 
         cache = get_cache()
 
@@ -111,24 +102,18 @@ async def clear_all_cache(current_user: dict = Depends(get_current_user)):
 
         logger.warning(f"用户 {current_user['username']} 清空了所有缓存")
 
-        return ok(
-            data={},
-            message="所有缓存已清空"
-        )
+        return ok(data={}, message="所有缓存已清空")
 
     except Exception as e:
         logger.error(f"清空缓存失败: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"清空缓存失败: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"清空缓存失败: {str(e)}")
 
 
 @router.get("/details", response_model=ApiResponse)
 async def get_cache_details(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     获取缓存详情列表
@@ -141,7 +126,7 @@ async def get_cache_details(
         dict: 缓存详情列表
     """
     try:
-        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
+        get_cache = getattr(importlib.import_module("trader.flows.cache"), "get_cache")
 
         cache = get_cache()
 
@@ -151,26 +136,15 @@ async def get_cache_details(
             details = cache.get_cache_details(page=page, page_size=page_size)
         except AttributeError:
             # 如果缓存类没有实现这个方法，返回空列表
-            details = {
-                "items": [],
-                "total": 0,
-                "page": page,
-                "page_size": page_size
-            }
+            details = {"items": [], "total": 0, "page": page, "page_size": page_size}
 
         logger.info(f"用户 {current_user['username']} 获取缓存详情 (页码: {page})")
 
-        return ok(
-            data=details,
-            message="获取缓存详情成功"
-        )
+        return ok(data=details, message="获取缓存详情成功")
 
     except Exception as e:
         logger.error(f"获取缓存详情失败: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"获取缓存详情失败: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"获取缓存详情失败: {str(e)}")
 
 
 @router.get("/backend-info", response_model=ApiResponse)
@@ -182,7 +156,7 @@ async def get_cache_backend_info(current_user: dict = Depends(get_current_user))
         dict: 缓存后端配置信息
     """
     try:
-        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
+        get_cache = getattr(importlib.import_module("trader.flows.cache"), "get_cache")
 
         cache = get_cache()
 
@@ -194,19 +168,13 @@ async def get_cache_backend_info(current_user: dict = Depends(get_current_user))
             backend_info = {
                 "system": "file",
                 "primary_backend": "file",
-                "fallback_enabled": False
+                "fallback_enabled": False,
             }
 
         logger.info(f"用户 {current_user['username']} 获取缓存后端信息")
 
-        return ok(
-            data=backend_info,
-            message="获取缓存后端信息成功"
-        )
+        return ok(data=backend_info, message="获取缓存后端信息成功")
 
     except Exception as e:
         logger.error(f"获取缓存后端信息失败: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"获取缓存后端信息失败: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"获取缓存后端信息失败: {str(e)}")

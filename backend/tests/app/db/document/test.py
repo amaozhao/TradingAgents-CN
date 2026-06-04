@@ -1,15 +1,16 @@
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from bson import ObjectId
+from sqlalchemy.dialects import postgresql
 
 from app.db.document import (
+    iter_user_favorite_documents,
     legacy_id_from_document,
     map_analysis_batch,
-    map_database_backup,
     map_analysis_report,
     map_analysis_result,
     map_analysis_task,
+    map_database_backup,
     map_internal_message,
     map_login_attempt,
     map_market_quote,
@@ -22,30 +23,36 @@ from app.db.document import (
     map_scheduler_execution,
     map_scheduler_history,
     map_scheduler_metadata,
+    map_social_media_message,
     map_stock_basic_info,
     map_stock_daily_quote,
     map_stock_financial_data,
     map_stock_news,
-    map_system_config_document,
     map_sync_status,
-    map_social_media_message,
+    map_system_config_document,
     map_token_usage,
     map_user_account,
     map_user_favorite,
     map_user_session,
     map_user_tag,
     normalize_payload,
-    iter_user_favorite_documents,
 )
+from app.db.documentstore import _build_specialized_select
+from app.db.ids import DocumentId
+from app.db.model import SystemConfigDocument
 
 
-def test_legacy_id_uses_mongo_object_id_and_payload_keeps_string_id():
-    object_id = ObjectId()
-    document = {"_id": object_id, "code": "000001", "updated_at": datetime(2026, 6, 3, tzinfo=timezone.utc)}
+def test_legacy_id_uses_postgres_document_id_and_payload_keeps_string_id():
+    document_id = DocumentId()
+    document = {
+        "_id": document_id,
+        "code": "000001",
+        "updated_at": datetime(2026, 6, 3, tzinfo=timezone.utc),
+    }
 
-    assert legacy_id_from_document(document) == str(object_id)
+    assert legacy_id_from_document(document) == str(document_id)
     assert normalize_payload(document) == {
-        "_id": str(object_id),
+        "_id": str(document_id),
         "code": "000001",
         "updated_at": "2026-06-03T00:00:00+00:00",
     }
@@ -58,10 +65,10 @@ def test_legacy_id_falls_back_to_existing_legacy_id():
 
 
 def test_stock_basic_info_mapper_splits_hot_fields_and_payload():
-    object_id = ObjectId()
+    document_id = DocumentId()
     values = map_stock_basic_info(
         {
-            "_id": object_id,
+            "_id": document_id,
             "code": "000001",
             "source": "tushare",
             "name": "平安银行",
@@ -78,8 +85,8 @@ def test_stock_basic_info_mapper_splits_hot_fields_and_payload():
         }
     )
 
-    assert values["legacy_id"] == str(object_id)
-    assert values["payload"]["_id"] == str(object_id)
+    assert values["legacy_id"] == str(document_id)
+    assert values["payload"]["_id"] == str(document_id)
     assert values["code"] == "000001"
     assert values["source"] == "tushare"
     assert values["list_date"] == date(1991, 4, 3)
@@ -89,7 +96,7 @@ def test_stock_basic_info_mapper_splits_hot_fields_and_payload():
     assert values["pb"] is None
 
 
-def test_stock_basic_info_mapper_generates_stable_legacy_id_without_mongo_id():
+def test_stock_basic_info_mapper_generates_stable_legacy_id_without_postgres_id():
     values = map_stock_basic_info({"code": "000001", "source": "tushare"})
 
     assert values["legacy_id"] == "stock_basic_info:tushare:000001"
@@ -119,7 +126,7 @@ def test_market_quote_mapper_splits_screening_fields():
     assert values["amount"] == Decimal("1000000.25")
 
 
-def test_market_quote_mapper_generates_stable_legacy_id_without_mongo_id():
+def test_market_quote_mapper_generates_stable_legacy_id_without_postgres_id():
     values = map_market_quote({"code": "000001", "source": "akshare"})
 
     assert values["legacy_id"] == "market_quotes:akshare:000001"
@@ -174,7 +181,7 @@ def test_financial_data_mapper_splits_report_fields():
     assert values["gross_margin"] == Decimal("44.1")
 
 
-def test_financial_data_mapper_generates_stable_legacy_id_without_mongo_id():
+def test_financial_data_mapper_generates_stable_legacy_id_without_postgres_id():
     values = map_stock_financial_data(
         {"code": "000001", "data_source": "tushare", "report_period": "2025Q4"}
     )
@@ -303,10 +310,10 @@ def test_sync_status_mapper_accepts_quotes_ingestion_status_shape():
 
 
 def test_scheduler_execution_mapper_uses_legacy_id_for_progress_updates():
-    object_id = ObjectId()
+    document_id = DocumentId()
     values = map_scheduler_execution(
         {
-            "_id": object_id,
+            "_id": document_id,
             "job_id": "tushare_daily",
             "status": "running",
             "progress": "66",
@@ -316,8 +323,8 @@ def test_scheduler_execution_mapper_uses_legacy_id_for_progress_updates():
         }
     )
 
-    assert values["legacy_id"] == str(object_id)
-    assert values["payload"]["_id"] == str(object_id)
+    assert values["legacy_id"] == str(document_id)
+    assert values["payload"]["_id"] == str(document_id)
     assert values["job_id"] == "tushare_daily"
     assert values["progress"] == 66
     assert values["timestamp"].isoformat() == "2026-06-03T01:00:00+00:00"
@@ -361,6 +368,16 @@ def test_system_config_mapper_namespaces_keys_by_collection():
     assert values["payload"]["api_key"] == "secret"
 
 
+def test_config_collection_select_filters_specialized_rows_by_type():
+    statement = _build_specialized_select("llm_providers", SystemConfigDocument)
+    sql = str(statement.compile(dialect=postgresql.dialect()))
+
+    assert "WHERE system_config_documents.config_type = " in sql
+    assert statement.compile(dialect=postgresql.dialect()).params == {
+        "config_type_1": "llm_providers"
+    }
+
+
 def test_user_favorites_mapper_flattens_embedded_favorites():
     documents = iter_user_favorite_documents(
         {
@@ -381,11 +398,11 @@ def test_user_favorites_mapper_flattens_embedded_favorites():
     assert values["deleted"] is False
 
 
-def test_user_tag_mapper_uses_mongo_id_as_legacy_id():
-    object_id = ObjectId()
+def test_user_tag_mapper_uses_postgres_id_as_legacy_id():
+    document_id = DocumentId()
     values = map_user_tag(
         {
-            "_id": object_id,
+            "_id": document_id,
             "user_id": "user-1",
             "name": "关注",
             "color": "#409EFF",
@@ -393,17 +410,17 @@ def test_user_tag_mapper_uses_mongo_id_as_legacy_id():
         }
     )
 
-    assert values["legacy_id"] == str(object_id)
-    assert values["tag_id"] == str(object_id)
+    assert values["legacy_id"] == str(document_id)
+    assert values["tag_id"] == str(document_id)
     assert values["name"] == "关注"
     assert values["sort_order"] == 2
 
 
 def test_user_session_mapper_splits_ttl_and_audit_fields():
-    object_id = ObjectId()
+    document_id = DocumentId()
     values = map_user_session(
         {
-            "_id": object_id,
+            "_id": document_id,
             "session_id": "sess-1",
             "user_id": "user-1",
             "username": "admin",
@@ -414,7 +431,7 @@ def test_user_session_mapper_splits_ttl_and_audit_fields():
         }
     )
 
-    assert values["legacy_id"] == str(object_id)
+    assert values["legacy_id"] == str(document_id)
     assert values["session_id"] == "sess-1"
     assert values["user_id"] == "user-1"
     assert values["ip_address"] == "127.0.0.1"
@@ -445,13 +462,31 @@ def test_login_attempt_mapper_splits_security_audit_fields():
 def test_paper_mappers_split_trading_keys():
     account = map_paper_account({"user_id": "user-1", "cash": {"USD": 1000}})
     position = map_paper_position(
-        {"user_id": "user-1", "code": "AAPL", "market": "US", "currency": "USD", "quantity": 3}
+        {
+            "user_id": "user-1",
+            "code": "AAPL",
+            "market": "US",
+            "currency": "USD",
+            "quantity": 3,
+        }
     )
     order = map_paper_order(
-        {"legacy_id": "order-1", "user_id": "user-1", "code": "AAPL", "side": "buy", "status": "filled"}
+        {
+            "legacy_id": "order-1",
+            "user_id": "user-1",
+            "code": "AAPL",
+            "side": "buy",
+            "status": "filled",
+        }
     )
     trade = map_paper_trade(
-        {"legacy_id": "trade-1", "user_id": "user-1", "code": "AAPL", "side": "buy", "timestamp": "2026-06-03T01:00:00"}
+        {
+            "legacy_id": "trade-1",
+            "user_id": "user-1",
+            "code": "AAPL",
+            "side": "buy",
+            "timestamp": "2026-06-03T01:00:00",
+        }
     )
 
     assert account["legacy_id"] == "paper_accounts:user-1"
@@ -462,10 +497,10 @@ def test_paper_mappers_split_trading_keys():
 
 
 def test_user_account_mapper_splits_auth_fields():
-    object_id = ObjectId()
+    document_id = DocumentId()
     values = map_user_account(
         {
-            "_id": object_id,
+            "_id": document_id,
             "username": "admin",
             "email": "admin@example.com",
             "is_active": True,
@@ -473,7 +508,7 @@ def test_user_account_mapper_splits_auth_fields():
         }
     )
 
-    assert values["legacy_id"] == str(object_id)
+    assert values["legacy_id"] == str(document_id)
     assert values["username"] == "admin"
     assert values["email"] == "admin@example.com"
     assert values["is_active"] is True
@@ -481,8 +516,8 @@ def test_user_account_mapper_splits_auth_fields():
 
 
 def test_operational_mappers_split_log_and_backup_fields():
-    log_id = ObjectId()
-    backup_id = ObjectId()
+    log_id = DocumentId()
+    backup_id = DocumentId()
     log_values = map_operation_log(
         {
             "_id": log_id,
@@ -499,7 +534,7 @@ def test_operational_mappers_split_log_and_backup_fields():
             "name": "daily",
             "filename": "backup.gz",
             "created_by": "admin",
-            "backup_type": "mongodump",
+            "backup_type": "postgres_document_json",
         }
     )
 
@@ -511,7 +546,7 @@ def test_operational_mappers_split_log_and_backup_fields():
 
 
 def test_dynamic_business_mappers_split_query_fields():
-    notification_id = ObjectId()
+    notification_id = DocumentId()
     notification = map_notification(
         {
             "_id": notification_id,

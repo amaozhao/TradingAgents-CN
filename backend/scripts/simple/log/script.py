@@ -3,10 +3,10 @@
 简单的日志测试 - 避免复杂导入
 """
 
-import os
 import logging
 import logging.handlers
 from pathlib import Path
+
 
 def simple_log_test():
     """简单的日志测试"""
@@ -26,7 +26,9 @@ def simple_log_test():
     # 添加控制台处理器
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
-    console_formatter = logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s | %(message)s")
+    console_formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+    )
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 
@@ -35,12 +37,14 @@ def simple_log_test():
         log_file = log_dir / "simple_test.log"
         file_handler = logging.handlers.RotatingFileHandler(
             log_file,
-            maxBytes=10*1024*1024,  # 10MB
+            maxBytes=10 * 1024 * 1024,  # 10MB
             backupCount=3,
-            encoding='utf-8'
+            encoding="utf-8",
         )
         file_handler.setLevel(logging.DEBUG)
-        file_formatter = logging.Formatter("%(asctime)s | %(name)-20s | %(levelname)-8s | %(module)s:%(funcName)s:%(lineno)d | %(message)s")
+        file_formatter = logging.Formatter(
+            "%(asctime)s | %(name)-20s | %(levelname)-8s | %(module)s:%(funcName)s:%(lineno)d | %(message)s"
+        )
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
 
@@ -64,7 +68,7 @@ def simple_log_test():
             print(f"📄 日志文件大小: {size} 字节")
 
             if size > 0:
-                with open(log_file, 'r', encoding='utf-8') as f:
+                with open(log_file, "r", encoding="utf-8") as f:
                     lines = f.readlines()
                     print(f"📄 日志文件行数: {len(lines)}")
                     if lines:
@@ -81,6 +85,7 @@ def simple_log_test():
     except Exception as e:
         print(f"❌ 日志写入失败: {e}")
         return False
+
 
 if __name__ == "__main__":
     success = simple_log_test()

@@ -2,32 +2,36 @@
 Stock basics synchronization service
 - Fetches A-share stock basic info from Tushare
 - Enriches with latest market cap (total_mv)
-- Upserts into MongoDB collection `stock_basic_info`
+- Upserts into PostgreSQL collection `stock_basic_info`
 - Persists status in collection `sync_status` with key `stock_basics`
 - Provides a singleton accessor for reuse across routers/scheduler
 
 This module is async-friendly and offloads blocking IO (Tushare/pandas) to a thread.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, cast
 
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from pymongo import UpdateOne
-
-from app.core.database import get_mongo_db
 from app.core.config import settings
+from app.core.database import get_postgres_db
+from app.db.documentstore import UpdateOne
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
-
+from app.services.basics import (
+    fetch_daily_basic_mv_map as _fetch_daily_basic_mv_map_util,
+)
+from app.services.basics import (
+    fetch_latest_roe_map as _fetch_latest_roe_map_util,
+)
 from app.services.basics import (
     fetch_stock_basic_df as _fetch_stock_basic_df_util,
+)
+from app.services.basics import (
     find_latest_trade_date as _find_latest_trade_date_util,
-    fetch_daily_basic_mv_map as _fetch_daily_basic_mv_map_util,
-    fetch_latest_roe_map as _fetch_latest_roe_map_util,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,7 +65,7 @@ class BasicsSyncService:
         self._last_status: Optional[Dict[str, Any]] = None
         self._indexes_ensured = False
 
-    async def _ensure_indexes(self, db: AsyncIOMotorDatabase) -> None:
+    async def _ensure_indexes(self, db: Any) -> None:
         """确保必要的索引存在"""
         if self._indexes_ensured:
             return
@@ -71,34 +75,52 @@ class BasicsSyncService:
             logger.info("📊 检查并创建股票基础信息索引...")
 
             # 1. 复合唯一索引：股票代码+数据源（用于 upsert）
-            await collection.create_index([
-                ("code", 1),
-                ("source", 1)
-            ], unique=True, name="code_source_unique", background=True)
+            await collection.create_index(
+                [("code", 1), ("source", 1)],
+                unique=True,
+                name="code_source_unique",
+                background=True,
+            )
 
             # 2. 股票代码索引（查询所有数据源）
-            await collection.create_index([("code", 1)], name="code_index", background=True)
+            await collection.create_index(
+                [("code", 1)], name="code_index", background=True
+            )
 
             # 3. 数据源索引（按数据源筛选）
-            await collection.create_index([("source", 1)], name="source_index", background=True)
+            await collection.create_index(
+                [("source", 1)], name="source_index", background=True
+            )
 
             # 4. 股票名称索引（按名称搜索）
-            await collection.create_index([("name", 1)], name="name_index", background=True)
+            await collection.create_index(
+                [("name", 1)], name="name_index", background=True
+            )
 
             # 5. 行业索引（按行业筛选）
-            await collection.create_index([("industry", 1)], name="industry_index", background=True)
+            await collection.create_index(
+                [("industry", 1)], name="industry_index", background=True
+            )
 
             # 6. 市场索引（按市场筛选）
-            await collection.create_index([("market", 1)], name="market_index", background=True)
+            await collection.create_index(
+                [("market", 1)], name="market_index", background=True
+            )
 
             # 7. 总市值索引（按市值排序）
-            await collection.create_index([("total_mv", -1)], name="total_mv_desc", background=True)
+            await collection.create_index(
+                [("total_mv", -1)], name="total_mv_desc", background=True
+            )
 
             # 8. 流通市值索引（按流通市值排序）
-            await collection.create_index([("circ_mv", -1)], name="circ_mv_desc", background=True)
+            await collection.create_index(
+                [("circ_mv", -1)], name="circ_mv_desc", background=True
+            )
 
             # 9. 更新时间索引（数据维护）
-            await collection.create_index([("updated_at", -1)], name="updated_at_desc", background=True)
+            await collection.create_index(
+                [("updated_at", -1)], name="updated_at_desc", background=True
+            )
 
             # 10. PE索引（按估值筛选）
             await collection.create_index([("pe", 1)], name="pe_index", background=True)
@@ -107,7 +129,9 @@ class BasicsSyncService:
             await collection.create_index([("pb", 1)], name="pb_index", background=True)
 
             # 12. 换手率索引（按活跃度筛选）
-            await collection.create_index([("turnover_rate", -1)], name="turnover_rate_desc", background=True)
+            await collection.create_index(
+                [("turnover_rate", -1)], name="turnover_rate_desc", background=True
+            )
 
             self._indexes_ensured = True
             logger.info("✅ 股票基础信息索引检查完成")
@@ -115,11 +139,11 @@ class BasicsSyncService:
             # 索引创建失败不应该阻止服务启动
             logger.warning(f"⚠️ 创建索引时出现警告（可能已存在）: {e}")
 
-    async def get_status(self, db: Optional[AsyncIOMotorDatabase] = None) -> Dict[str, Any]:
+    async def get_status(self, db: Optional[Any] = None) -> Dict[str, Any]:
         """Return last persisted status; falls back to in-memory snapshot."""
         try:
-            db = db or get_mongo_db()
-            doc = await db[STATUS_COLLECTION].find_one({"job": JOB_KEY})
+            database = cast(Any, db or get_postgres_db())
+            doc = await database[STATUS_COLLECTION].find_one({"job": JOB_KEY})
             if doc:
                 doc.pop("_id", None)
                 return doc
@@ -127,26 +151,32 @@ class BasicsSyncService:
             logger.warning(f"Failed to load sync status from DB: {e}")
         return self._last_status or {"job": JOB_KEY, "status": "idle"}
 
-    async def _persist_status(self, db: AsyncIOMotorDatabase, stats: Dict[str, Any]) -> None:
+    async def _persist_status(self, db: Any, stats: Dict[str, Any]) -> None:
         stats["job"] = JOB_KEY
-        await db[STATUS_COLLECTION].update_one({"job": JOB_KEY}, {"$set": stats}, upsert=True)
+        await db[STATUS_COLLECTION].update_one(
+            {"job": JOB_KEY}, {"$set": stats}, upsert=True
+        )
         result = await dual_write_hot_document(STATUS_COLLECTION, stats)
         if result.status not in {"written", "skipped"}:
-            logger.warning("PostgreSQL dual-write failed for %s: %s", STATUS_COLLECTION, result.reason)
+            logger.warning(
+                "PostgreSQL dual-write failed for %s: %s",
+                STATUS_COLLECTION,
+                result.reason,
+            )
         self._last_status = {k: v for k, v in stats.items() if k != "_id"}
 
     async def _execute_bulk_write_with_retry(
         self,
-        db: AsyncIOMotorDatabase,
+        db: Any,
         operations: List,
         documents: Optional[List[Dict[str, Any]]] = None,
-        max_retries: int = 3
+        max_retries: int = 3,
     ) -> tuple:
         """
         执行批量写入，带重试机制
 
         Args:
-            db: MongoDB数据库实例
+            db: PostgreSQL数据库实例
             operations: 批量操作列表
             max_retries: 最大重试次数
 
@@ -161,9 +191,15 @@ class BasicsSyncService:
             try:
                 result = await db[DATA_COLLECTION].bulk_write(operations, ordered=False)
                 if documents:
-                    dual_result = await dual_write_hot_documents(DATA_COLLECTION, documents)
+                    dual_result = await dual_write_hot_documents(
+                        DATA_COLLECTION, documents
+                    )
                     if dual_result.status not in {"written", "skipped"}:
-                        logger.warning("PostgreSQL dual-write failed for %s: %s", DATA_COLLECTION, dual_result.reason)
+                        logger.warning(
+                            "PostgreSQL dual-write failed for %s: %s",
+                            DATA_COLLECTION,
+                            dual_result.reason,
+                        )
                 inserted = len(result.upserted_ids) if result.upserted_ids else 0
                 updated = result.modified_count or 0
                 logger.debug(f"✅ 批量写入成功: 新增 {inserted}, 更新 {updated}")
@@ -172,8 +208,10 @@ class BasicsSyncService:
             except asyncio.TimeoutError as e:
                 retry_count += 1
                 if retry_count < max_retries:
-                    wait_time = 2 ** retry_count  # 指数退避：2秒、4秒、8秒
-                    logger.warning(f"⚠️ 批量写入超时 (第{retry_count}次重试)，等待{wait_time}秒后重试...")
+                    wait_time = 2**retry_count  # 指数退避：2秒、4秒、8秒
+                    logger.warning(
+                        f"⚠️ 批量写入超时 (第{retry_count}次重试)，等待{wait_time}秒后重试..."
+                    )
                     await asyncio.sleep(wait_time)
                 else:
                     logger.error(f"❌ 批量写入失败，已重试{max_retries}次: {e}")
@@ -193,7 +231,7 @@ class BasicsSyncService:
                 return await self.get_status()
             self._running = True
 
-        db = get_mongo_db()
+        db = get_postgres_db()
 
         # 🔥 确保索引存在（提升查询和 upsert 性能）
         await self._ensure_indexes(db)
@@ -224,12 +262,14 @@ class BasicsSyncService:
             # Step 2: Determine latest trade_date and fetch daily_basic for financial metrics (blocking -> thread)
             latest_trade_date = await asyncio.to_thread(self._find_latest_trade_date)
             stats.last_trade_date = latest_trade_date
-            daily_data_map = await asyncio.to_thread(self._fetch_daily_basic_mv_map, latest_trade_date)
+            daily_data_map = await asyncio.to_thread(
+                self._fetch_daily_basic_mv_map, latest_trade_date
+            )
 
             # Step 2b: Fetch latest ROE snapshot from fina_indicator (blocking -> thread)
             roe_map = await asyncio.to_thread(self._fetch_latest_roe_map)
 
-            # Step 3: Upsert into MongoDB (batched bulk writes)
+            # Step 3: Upsert into PostgreSQL (batched bulk writes)
             ops: List[UpdateOne] = []
             postgres_docs: List[Dict[str, Any]] = []
             now_iso = _utc_now_iso()
@@ -329,7 +369,9 @@ class BasicsSyncService:
 
                 # 🔥 使用 (code, source) 联合查询条件
                 ops.append(
-                    UpdateOne({"code": code, "source": "tushare"}, {"$set": doc}, upsert=True)
+                    UpdateOne(
+                        {"code": code, "source": "tushare"}, {"$set": doc}, upsert=True
+                    )
                 )
                 postgres_docs.append(doc)
 
@@ -341,14 +383,17 @@ class BasicsSyncService:
             for i in range(0, len(ops), BATCH):
                 batch = ops[i : i + BATCH]
                 batch_docs = postgres_docs[i : i + BATCH]
-                batch_inserted, batch_updated = await self._execute_bulk_write_with_retry(db, batch, batch_docs)
+                (
+                    batch_inserted,
+                    batch_updated,
+                ) = await self._execute_bulk_write_with_retry(db, batch, batch_docs)
 
                 if batch_inserted > 0 or batch_updated > 0:
                     inserted += batch_inserted
                     updated += batch_updated
                 else:
                     errors += 1
-                    logger.error(f"Bulk write error on batch {i//BATCH}")
+                    logger.error(f"Bulk write error on batch {i // BATCH}")
 
             stats.total = len(ops)
             stats.inserted = inserted
@@ -412,11 +457,11 @@ class BasicsSyncService:
             return code
 
         # 根据代码判断交易所
-        if code.startswith(('60', '68', '90')):
+        if code.startswith(("60", "68", "90")):
             return f"{code}.SS"  # 上海证券交易所
-        elif code.startswith(('00', '30', '20')):
+        elif code.startswith(("00", "30", "20")):
             return f"{code}.SZ"  # 深圳证券交易所
-        elif code.startswith(('8', '4')):
+        elif code.startswith(("8", "4")):
             return f"{code}.BJ"  # 北京证券交易所
         else:
             # 无法识别的代码，返回原始代码（确保不为空）

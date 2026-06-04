@@ -7,11 +7,6 @@
 """
 
 import sys
-from pathlib import Path
-
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 from trader.utils.logging.init import get_logger
 
@@ -56,26 +51,26 @@ def test_node_mapping():
 
     # 我们的映射表（来自 trader/graph/trading_graph.py）
     node_mapping = {
-        'Market Analyst': "📊 市场分析师",
-        'Fundamentals Analyst': "💼 基本面分析师",
-        'News Analyst': "📰 新闻分析师",
-        'Social Analyst': "💬 社交媒体分析师",
-        'tools_market': None,
-        'tools_fundamentals': None,
-        'tools_news': None,
-        'tools_social': None,
-        'Msg Clear Market': None,
-        'Msg Clear Fundamentals': None,
-        'Msg Clear News': None,
-        'Msg Clear Social': None,
-        'Bull Researcher': "🐂 看涨研究员",
-        'Bear Researcher': "🐻 看跌研究员",
-        'Research Manager': "👔 研究经理",
-        'Trader': "💼 交易员决策",
-        'Risky Analyst': "🔥 激进风险评估",
-        'Safe Analyst': "🛡️ 保守风险评估",
-        'Neutral Analyst': "⚖️ 中性风险评估",
-        'Risk Judge': "🎯 风险经理",
+        "Market Analyst": "📊 市场分析师",
+        "Fundamentals Analyst": "💼 基本面分析师",
+        "News Analyst": "📰 新闻分析师",
+        "Social Analyst": "💬 社交媒体分析师",
+        "tools_market": None,
+        "tools_fundamentals": None,
+        "tools_news": None,
+        "tools_social": None,
+        "Msg Clear Market": None,
+        "Msg Clear Fundamentals": None,
+        "Msg Clear News": None,
+        "Msg Clear Social": None,
+        "Bull Researcher": "🐂 看涨研究员",
+        "Bear Researcher": "🐻 看跌研究员",
+        "Research Manager": "👔 研究经理",
+        "Trader": "💼 交易员决策",
+        "Risky Analyst": "🔥 激进风险评估",
+        "Safe Analyst": "🛡️ 保守风险评估",
+        "Neutral Analyst": "⚖️ 中性风险评估",
+        "Risk Judge": "🎯 风险经理",
     }
 
     print("\n✅ 检查所有实际节点是否都有映射：")
@@ -230,7 +225,7 @@ def test_step_coverage():
         else:
             print(f"  {i:2d}. ⏭️  {step} (虚拟步骤)")
 
-    print(f"\n📊 统计：")
+    print("\n📊 统计：")
     print(f"  总步骤数: {len(tracker_steps)}")
     print(f"  LangGraph 执行步骤: {len(langgraph_steps)}")
     print(f"  虚拟步骤: {len(tracker_steps) - len(langgraph_steps)}")

@@ -3,24 +3,20 @@
 测试分析结果保存功能
 模拟分析完成后的保存过程
 """
-import importlib
 
-import sys
-import os
+import importlib
 from datetime import datetime
 
-# 添加项目路径
-sys.path.append(os.path.join(os.path.dirname(__file__), 'web'))
 
 def create_mock_analysis_results():
     """创建模拟的分析结果数据"""
     return {
-        'stock_symbol': 'TEST123',
-        'analysis_date': '2025-07-31',
-        'analysts': ['market_analyst', 'fundamentals_analyst', 'trader_agent'],
-        'research_depth': 3,
-        'state': {
-            'market_report': """# TEST123 股票技术分析报告
+        "stock_symbol": "TEST123",
+        "analysis_date": "2025-07-31",
+        "analysts": ["market_analyst", "fundamentals_analyst", "trader_agent"],
+        "research_depth": 3,
+        "state": {
+            "market_report": """# TEST123 股票技术分析报告
 
 ## 📈 价格趋势分析
 当前股价呈现上涨趋势，技术指标向好。
@@ -33,7 +29,7 @@ def create_mock_analysis_results():
 ## 🎯 操作建议
 建议在回调时买入，目标价位上涨15%。
 """,
-            'fundamentals_report': """# TEST123 基本面分析报告
+            "fundamentals_report": """# TEST123 基本面分析报告
 
 ## 💰 财务状况
 公司财务状况良好，盈利能力强。
@@ -46,7 +42,7 @@ def create_mock_analysis_results():
 ## 💡 投资价值
 估值合理，具有投资价值。
 """,
-            'final_trade_decision': """# TEST123 最终交易决策
+            "final_trade_decision": """# TEST123 最终交易决策
 
 ## 🎯 投资建议
 **行动**: 买入
@@ -55,16 +51,17 @@ def create_mock_analysis_results():
 
 ## 💡 决策依据
 基于技术面和基本面综合分析，建议买入。
-"""
+""",
         },
-        'decision': {
-            'action': 'buy',
-            'confidence': 0.85,
-            'target_price': 'up 15-20%',
-            'reasoning': '技术面和基本面都支持买入决策'
+        "decision": {
+            "action": "buy",
+            "confidence": 0.85,
+            "target_price": "up 15-20%",
+            "reasoning": "技术面和基本面都支持买入决策",
         },
-        'summary': 'TEST123股票综合分析显示具有良好投资潜力，建议买入。'
+        "summary": "TEST123股票综合分析显示具有良好投资潜力，建议买入。",
     }
+
 
 def test_save_analysis_result():
     """测试保存分析结果"""
@@ -73,40 +70,45 @@ def test_save_analysis_result():
 
     try:
         # 导入保存函数
-        save_analysis_result = getattr(importlib.import_module('web.components.analysis'), 'save_analysis_result')
+        save_analysis_result = getattr(
+            importlib.import_module("web.components.analysis"), "save_analysis_result"
+        )
 
         # 创建模拟数据
         analysis_id = f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         stock_symbol = "TEST123"
-        analysts = ['market_analyst', 'fundamentals_analyst', 'trader_agent']
+        analysts = ["market_analyst", "fundamentals_analyst", "trader_agent"]
         research_depth = 3
         result_data = create_mock_analysis_results()
 
-        print(f"📝 测试数据:")
+        print("📝 测试数据:")
         print(f"   分析ID: {analysis_id}")
         print(f"   股票代码: {stock_symbol}")
         print(f"   分析师: {analysts}")
         print(f"   研究深度: {research_depth}")
 
         # 执行保存
-        print(f"\n💾 开始保存分析结果...")
+        print("\n💾 开始保存分析结果...")
         success = save_analysis_result(
             analysis_id=analysis_id,
             stock_symbol=stock_symbol,
             analysts=analysts,
             research_depth=research_depth,
             result_data=result_data,
-            status="completed"
+            status="completed",
         )
 
         if success:
             print("✅ 分析结果保存成功！")
 
             # 检查文件是否创建
-            print(f"\n📁 检查保存的文件:")
+            print("\n📁 检查保存的文件:")
 
             # 检查JSON文件
-            get_analysis_results_dir = getattr(importlib.import_module('web.components.analysis'), 'get_analysis_results_dir')
+            get_analysis_results_dir = getattr(
+                importlib.import_module("web.components.analysis"),
+                "get_analysis_results_dir",
+            )
             results_dir = get_analysis_results_dir()
             json_file = results_dir / f"analysis_{analysis_id}.json"
 
@@ -116,20 +118,24 @@ def test_save_analysis_result():
                 print(f"❌ JSON文件未找到: {json_file}")
 
             # 检查详细报告目录
-            os = importlib.import_module('os')
-            Path = getattr(importlib.import_module('pathlib'), 'Path')
+            os = importlib.import_module("os")
+            Path = getattr(importlib.import_module("pathlib"), "Path")
 
             # 获取项目根目录
             project_root = Path(__file__).parent
-            results_dir_env = os.getenv("TRADING_AGENTS_RESULTS_DIR", "./data/analysis_results")
+            results_dir_env = os.getenv(
+                "TRADING_AGENTS_RESULTS_DIR", "./data/analysis_results"
+            )
 
             if not os.path.isabs(results_dir_env):
                 detailed_results_dir = project_root / results_dir_env
             else:
                 detailed_results_dir = Path(results_dir_env)
 
-            analysis_date = datetime.now().strftime('%Y-%m-%d')
-            reports_dir = detailed_results_dir / stock_symbol / analysis_date / "reports"
+            analysis_date = datetime.now().strftime("%Y-%m-%d")
+            reports_dir = (
+                detailed_results_dir / stock_symbol / analysis_date / "reports"
+            )
 
             print(f"📂 详细报告目录: {reports_dir}")
 
@@ -154,42 +160,46 @@ def test_save_analysis_result():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
-def test_mongodb_save():
-    """测试MongoDB保存"""
-    print(f"\n🗄️ 测试MongoDB保存...")
+
+def test_postgres_save():
+    """测试 PostgreSQL document store 保存"""
+    print("\n🗄️ 测试 PostgreSQL document store 保存...")
 
     try:
-        mongodb_report_manager = getattr(importlib.import_module('web.utils.mongodb'), 'mongodb_report_manager')
+        postgres_report_manager = getattr(
+            importlib.import_module("web.utils.postgres"), "postgres_report_manager"
+        )
 
-        if not mongodb_report_manager.connected:
-            print("❌ MongoDB未连接")
+        if not postgres_report_manager.connected:
+            print("❌ PostgreSQL document store 未连接")
             return False
 
         # 获取当前记录数
-        before_count = len(mongodb_report_manager.get_analysis_reports(limit=1000))
-        print(f"📊 保存前MongoDB记录数: {before_count}")
+        before_count = len(postgres_report_manager.get_analysis_reports(limit=1000))
+        print(f"📊 保存前 PostgreSQL document store 记录数: {before_count}")
 
         # 执行测试保存
         test_save_analysis_result()
 
         # 获取保存后记录数
-        after_count = len(mongodb_report_manager.get_analysis_reports(limit=1000))
-        print(f"📊 保存后MongoDB记录数: {after_count}")
+        after_count = len(postgres_report_manager.get_analysis_reports(limit=1000))
+        print(f"📊 保存后 PostgreSQL document store 记录数: {after_count}")
 
         if after_count > before_count:
-            print("✅ MongoDB记录增加，保存成功")
+            print("✅ PostgreSQL document store 记录增加，保存成功")
             return True
         else:
-            print("⚠️ MongoDB记录数未增加")
+            print("⚠️ PostgreSQL document store 记录数未增加")
             return False
 
     except Exception as e:
-        print(f"❌ MongoDB测试失败: {e}")
+        print(f"❌ PostgreSQL document store 测试失败: {e}")
         return False
+
 
 def main():
     """主测试函数"""
@@ -199,12 +209,15 @@ def main():
     # 测试基本保存功能
     save_success = test_save_analysis_result()
 
-    # 测试MongoDB保存
-    mongodb_success = test_mongodb_save()
+    # 测试 PostgreSQL document store 保存
+    postgres_success = test_postgres_save()
 
-    print(f"\n🎉 测试完成")
+    print("\n🎉 测试完成")
     print(f"📄 文件保存: {'✅ 成功' if save_success else '❌ 失败'}")
-    print(f"🗄️ MongoDB保存: {'✅ 成功' if mongodb_success else '❌ 失败'}")
+    print(
+        f"🗄️ PostgreSQL document store 保存: {'✅ 成功' if postgres_success else '❌ 失败'}"
+    )
+
 
 if __name__ == "__main__":
     main()

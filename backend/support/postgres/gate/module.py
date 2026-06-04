@@ -2,7 +2,7 @@ import subprocess
 
 import pytest
 
-from scripts import postgres_test_gate
+from scripts.postgres.gate import script as postgres_test_gate
 
 
 def test_test_gate_defaults_to_quick_scope_without_full_pytest():

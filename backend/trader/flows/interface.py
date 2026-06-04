@@ -1,8 +1,19 @@
-from typing import Annotated, Any, Dict, cast
-import time
-import os
 import importlib
+import os
+import time
 from datetime import datetime
+from typing import Annotated, Any, Dict, cast
+
+import pandas as pd
+from dateutil.relativedelta import relativedelta
+from openai import OpenAI
+from tqdm import tqdm
+
+from trader.config.manager import config_manager
+from trader.utils.logging.init import setup_dataflow_logging
+from trader.utils.logging.manager import get_logger
+
+from .news.china import get_chinese_social_sentiment as get_chinese_social_sentiment
 
 # 导入新闻模块（支持新旧路径）
 try:
@@ -10,35 +21,28 @@ try:
 except ImportError:
     from .news.reddit import fetch_top_from_category
 
-from .news.google import *
-
-
-from .news.china import get_chinese_social_sentiment
+from .news.google import get_news_data
 
 # 导入 Finnhub 工具（支持新旧路径）
-
 from .providers.us import get_data_in_range
 
-
-# 导入统一日志系统
-from trader.utils.logging.init import setup_dataflow_logging
-
-# 导入日志模块
-from trader.utils.logging.manager import get_logger
-logger = get_logger('agents')
+logger = get_logger("agents")
 logger = setup_dataflow_logging()
 
 
 def _openai_response_text(response: Any) -> str:
     return str(response.output[1].content[0].text)
 
+
 # 导入港股工具
 try:
     from .providers.hk.stock import get_hk_stock_data, get_hk_stock_info
+
     HK_STOCK_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"⚠️ 港股工具不可用: {e}")
     HK_STOCK_AVAILABLE = False
+
 
 # 导入AKShare港股工具
 # 注意：港股功能在 providers/hk/ 目录中
@@ -60,6 +64,7 @@ except (ImportError, AttributeError) as e:
 
 # ==================== 数据源配置读取 ====================
 
+
 def _get_enabled_hk_data_sources() -> list:
     """
     从数据库读取用户启用的港股数据源配置
@@ -69,55 +74,60 @@ def _get_enabled_hk_data_sources() -> list:
     """
     try:
         # 尝试从数据库读取配置
-        get_mongo_db_sync = getattr(importlib.import_module('app.core.database'), 'get_mongo_db_sync')
-        db = get_mongo_db_sync()
+        get_postgres_db_sync = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db_sync"
+        )
+        db = get_postgres_db_sync()
 
         # 获取最新的激活配置
         config_data = db.system_configs.find_one(
-            {"is_active": True},
-            sort=[("version", -1)]
+            {"is_active": True}, sort=[("version", -1)]
         )
 
-        if config_data and config_data.get('data_source_configs'):
-            data_source_configs = config_data.get('data_source_configs', [])
+        if config_data and config_data.get("data_source_configs"):
+            data_source_configs = config_data.get("data_source_configs", [])
 
             # 过滤出启用的港股数据源
             enabled_sources = []
             for ds in data_source_configs:
-                if not ds.get('enabled', True):
+                if not ds.get("enabled", True):
                     continue
 
                 # 检查是否支持港股市场（支持中英文标识）
-                market_categories = ds.get('market_categories', [])
+                market_categories = ds.get("market_categories", [])
                 if market_categories:
                     # 支持 '港股' 或 'hk_stocks'
-                    if '港股' not in market_categories and 'hk_stocks' not in market_categories:
+                    if (
+                        "港股" not in market_categories
+                        and "hk_stocks" not in market_categories
+                    ):
                         continue
 
                 # 映射数据源类型
-                ds_type = ds.get('type', '').lower()
-                if ds_type in ['akshare', 'yfinance', 'finnhub']:
-                    enabled_sources.append({
-                        'type': ds_type,
-                        'priority': ds.get('priority', 0)
-                    })
+                ds_type = ds.get("type", "").lower()
+                if ds_type in ["akshare", "yfinance", "finnhub"]:
+                    enabled_sources.append(
+                        {"type": ds_type, "priority": ds.get("priority", 0)}
+                    )
 
             # 按优先级排序（数字越大优先级越高）
-            enabled_sources.sort(key=lambda x: x['priority'], reverse=True)
+            enabled_sources.sort(key=lambda x: x["priority"], reverse=True)
 
-            result = [s['type'] for s in enabled_sources]
+            result = [s["type"] for s in enabled_sources]
             if result:
                 logger.info(f"✅ [港股数据源] 从数据库读取: {result}")
                 return result
             else:
-                logger.warning(f"⚠️ [港股数据源] 数据库中没有启用的港股数据源，使用默认顺序")
+                logger.warning(
+                    "⚠️ [港股数据源] 数据库中没有启用的港股数据源，使用默认顺序"
+                )
         else:
             logger.warning("⚠️ [港股数据源] 数据库中没有配置，使用默认顺序")
     except Exception as e:
         logger.warning(f"⚠️ [港股数据源] 从数据库读取失败: {e}，使用默认顺序")
 
     # 回退到默认顺序
-    return ['akshare', 'yfinance']
+    return ["akshare", "yfinance"]
 
 
 def _get_enabled_us_data_sources() -> list:
@@ -129,59 +139,66 @@ def _get_enabled_us_data_sources() -> list:
     """
     try:
         # 尝试从数据库读取配置
-        get_mongo_db_sync = getattr(importlib.import_module('app.core.database'), 'get_mongo_db_sync')
-        db = get_mongo_db_sync()
+        get_postgres_db_sync = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db_sync"
+        )
+        db = get_postgres_db_sync()
 
         # 获取最新的激活配置
         config_data = db.system_configs.find_one(
-            {"is_active": True},
-            sort=[("version", -1)]
+            {"is_active": True}, sort=[("version", -1)]
         )
 
-        if config_data and config_data.get('data_source_configs'):
-            data_source_configs = config_data.get('data_source_configs', [])
+        if config_data and config_data.get("data_source_configs"):
+            data_source_configs = config_data.get("data_source_configs", [])
 
             # 过滤出启用的美股数据源
             enabled_sources = []
             for ds in data_source_configs:
-                if not ds.get('enabled', True):
+                if not ds.get("enabled", True):
                     continue
 
                 # 检查是否支持美股市场（支持中英文标识）
-                market_categories = ds.get('market_categories', [])
+                market_categories = ds.get("market_categories", [])
                 if market_categories:
                     # 支持 '美股' 或 'us_stocks'
-                    if '美股' not in market_categories and 'us_stocks' not in market_categories:
+                    if (
+                        "美股" not in market_categories
+                        and "us_stocks" not in market_categories
+                    ):
                         continue
 
                 # 映射数据源类型
-                ds_type = ds.get('type', '').lower()
-                if ds_type in ['yfinance', 'finnhub']:
-                    enabled_sources.append({
-                        'type': ds_type,
-                        'priority': ds.get('priority', 0)
-                    })
+                ds_type = ds.get("type", "").lower()
+                if ds_type in ["yfinance", "finnhub"]:
+                    enabled_sources.append(
+                        {"type": ds_type, "priority": ds.get("priority", 0)}
+                    )
 
             # 按优先级排序（数字越大优先级越高）
-            enabled_sources.sort(key=lambda x: x['priority'], reverse=True)
+            enabled_sources.sort(key=lambda x: x["priority"], reverse=True)
 
-            result = [s['type'] for s in enabled_sources]
+            result = [s["type"] for s in enabled_sources]
             if result:
                 logger.info(f"✅ [美股数据源] 从数据库读取: {result}")
                 return result
             else:
-                logger.warning(f"⚠️ [美股数据源] 数据库中没有启用的美股数据源，使用默认顺序")
+                logger.warning(
+                    "⚠️ [美股数据源] 数据库中没有启用的美股数据源，使用默认顺序"
+                )
         else:
             logger.warning("⚠️ [美股数据源] 数据库中没有配置，使用默认顺序")
     except Exception as e:
         logger.warning(f"⚠️ [美股数据源] 从数据库读取失败: {e}，使用默认顺序")
 
     # 回退到默认顺序
-    return ['yfinance', 'finnhub']
+    return ["yfinance", "finnhub"]
+
 
 # 尝试导入yfinance相关模块，如果失败则跳过
 try:
-    from .providers.us.yfinance import *
+    importlib.import_module("trader.flows.providers.us.yfinance")
+
     YFIN_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"⚠️ yfinance工具不可用: {e}")
@@ -189,36 +206,31 @@ except ImportError as e:
 
 try:
     from .technical.stats import StockstatsUtils
+
     STOCKSTATS_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"⚠️ stockstats工具不可用: {e}")
     StockstatsUtils = None
     STOCKSTATS_AVAILABLE = False
-from dateutil.relativedelta import relativedelta
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
-import json
-import os
-import pandas as pd
-from tqdm import tqdm
-from openai import OpenAI
 
 # 尝试导入yfinance，如果失败则设置为None
 try:
     import yfinance as yf
+
     YF_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"⚠️ yfinance库不可用: {e}")
     yf = None
     YF_AVAILABLE = False
-from trader.config.manager import config_manager
 
 # 获取数据目录
 DATA_DIR = config_manager.get_data_dir()
 
+
 def get_config():
     """获取配置（兼容性包装）"""
     return config_manager.load_settings()
+
 
 def set_config(config):
     """设置配置（兼容性包装）"""
@@ -230,12 +242,17 @@ try:
         "trader.flows.alpha.common"
     ).AlphaVantageRateLimitError
 except Exception:
+
     class AlphaVantageRateLimitError(Exception):
         pass
 
+
 try:
-    NoMarketDataError = importlib.import_module("trader.flows.symbols").NoMarketDataError
+    NoMarketDataError = importlib.import_module(
+        "trader.flows.symbols"
+    ).NoMarketDataError
 except Exception:
+
     class NoMarketDataError(Exception):
         symbol = ""
         canonical = ""
@@ -255,7 +272,8 @@ VENDOR_METHODS = {
             "trader.flows.alpha.api", fromlist=["get_indicator"]
         ).get_indicator(*args, **kwargs),
         "yfinance": lambda *args, **kwargs: __import__(
-            "trader.flows.yfinance.legacy", fromlist=["get_stock_stats_indicators_window"]
+            "trader.flows.yfinance.legacy",
+            fromlist=["get_stock_stats_indicators_window"],
         ).get_stock_stats_indicators_window(*args, **kwargs),
     },
     "get_fundamentals": {
@@ -295,7 +313,9 @@ VENDOR_METHODS = {
 
 def _configured_vendor(category: str, method: str | None = None) -> str:
     try:
-        get_runtime_config = getattr(importlib.import_module('trader.flows.config'), 'get_config')
+        get_runtime_config = getattr(
+            importlib.import_module("trader.flows.config"), "get_config"
+        )
 
         cfg = get_runtime_config()
     except Exception:
@@ -349,7 +369,9 @@ def _route_cn_unified(method: str, *args, **kwargs):
         limit = args[2] if len(args) > 2 and args[2] is not None else 10
         return get_global_news_openai(curr_date, look_back_days, limit)
     if method == "get_insider_transactions":
-        return get_finnhub_company_insider_transactions(args[0], datetime.now().strftime("%Y-%m-%d"), 15)
+        return get_finnhub_company_insider_transactions(
+            args[0], datetime.now().strftime("%Y-%m-%d"), 15
+        )
     raise ValueError(f"Method '{method}' not supported by cn_unified router")
 
 
@@ -361,46 +383,77 @@ def _route_upstream_vendor(vendor: str, method: str, *args, **kwargs):
 
     if method == "get_stock_data":
         if vendor == "alpha_vantage":
-            get_stock = getattr(importlib.import_module('trader.flows.alpha.api'), 'get_stock')
+            get_stock = getattr(
+                importlib.import_module("trader.flows.alpha.api"), "get_stock"
+            )
 
             return get_stock(*args, **kwargs)
-        get_yfin_data_online = getattr(importlib.import_module('trader.flows.yfinance.legacy'), 'get_yfin_data_online')
+        get_yfin_data_online = getattr(
+            importlib.import_module("trader.flows.yfinance.legacy"),
+            "get_yfin_data_online",
+        )
 
         return get_yfin_data_online(*args, **kwargs)
     if method == "get_indicators":
         if vendor == "alpha_vantage":
-            get_indicator = getattr(importlib.import_module('trader.flows.alpha.api'), 'get_indicator')
+            get_indicator = getattr(
+                importlib.import_module("trader.flows.alpha.api"), "get_indicator"
+            )
 
             return get_indicator(*args, **kwargs)
-        get_stock_stats_indicators_window = getattr(importlib.import_module('trader.flows.yfinance.legacy'), 'get_stock_stats_indicators_window')
+        get_stock_stats_indicators_window = getattr(
+            importlib.import_module("trader.flows.yfinance.legacy"),
+            "get_stock_stats_indicators_window",
+        )
 
         return get_stock_stats_indicators_window(*args, **kwargs)
     if method == "get_fundamentals":
         if vendor == "alpha_vantage":
-            get_fundamentals = getattr(importlib.import_module('trader.flows.alpha.api'), 'get_fundamentals')
+            get_fundamentals = getattr(
+                importlib.import_module("trader.flows.alpha.api"), "get_fundamentals"
+            )
         else:
-            get_fundamentals = getattr(importlib.import_module('trader.flows.yfinance.legacy'), 'get_fundamentals')
+            get_fundamentals = getattr(
+                importlib.import_module("trader.flows.yfinance.legacy"),
+                "get_fundamentals",
+            )
 
         return get_fundamentals(*args, **kwargs)
     if method == "get_news":
         if vendor == "alpha_vantage":
-            get_news = getattr(importlib.import_module('trader.flows.alpha.api'), 'get_news')
+            get_news = getattr(
+                importlib.import_module("trader.flows.alpha.api"), "get_news"
+            )
         else:
-            get_news = getattr(importlib.import_module('trader.flows.yfinance.news'), 'get_news_yfinance')
+            get_news = getattr(
+                importlib.import_module("trader.flows.yfinance.news"),
+                "get_news_yfinance",
+            )
 
         return get_news(*args, **kwargs)
     if method == "get_global_news":
         if vendor == "alpha_vantage":
-            get_global_news = getattr(importlib.import_module('trader.flows.alpha.api'), 'get_global_news')
+            get_global_news = getattr(
+                importlib.import_module("trader.flows.alpha.api"), "get_global_news"
+            )
         else:
-            get_global_news = getattr(importlib.import_module('trader.flows.yfinance.news'), 'get_global_news_yfinance')
+            get_global_news = getattr(
+                importlib.import_module("trader.flows.yfinance.news"),
+                "get_global_news_yfinance",
+            )
 
         return get_global_news(*args, **kwargs)
     if method == "get_insider_transactions":
         if vendor == "alpha_vantage":
-            get_insider_transactions = getattr(importlib.import_module('trader.flows.alpha.api'), 'get_insider_transactions')
+            get_insider_transactions = getattr(
+                importlib.import_module("trader.flows.alpha.api"),
+                "get_insider_transactions",
+            )
         else:
-            get_insider_transactions = getattr(importlib.import_module('trader.flows.yfinance.legacy'), 'get_insider_transactions')
+            get_insider_transactions = getattr(
+                importlib.import_module("trader.flows.yfinance.legacy"),
+                "get_insider_transactions",
+            )
 
         return get_insider_transactions(*args, **kwargs)
     raise ValueError(f"Method '{method}' not supported by vendor '{vendor}'")
@@ -441,7 +494,9 @@ def route_to_vendor(method: str, *args, **kwargs):
                 result = _route_upstream_vendor(vendor, method, *args, **kwargs)
             if _is_unusable_data_result(result):
                 if first_error is None:
-                    first_error = RuntimeError(f"{vendor} returned unusable data for '{method}'")
+                    first_error = RuntimeError(
+                        f"{vendor} returned unusable data for '{method}'"
+                    )
                 continue
             return result
         except AlphaVantageRateLimitError:
@@ -502,11 +557,11 @@ def get_finnhub_news(
 
     if len(result) == 0:
         error_msg = f"⚠️ 无法获取{ticker}的新闻数据 ({before} 到 {curr_date})\n"
-        error_msg += f"可能的原因：\n"
-        error_msg += f"1. 数据文件不存在或路径配置错误\n"
-        error_msg += f"2. 指定日期范围内没有新闻数据\n"
-        error_msg += f"3. 需要先下载或更新Finnhub新闻数据\n"
-        error_msg += f"建议：检查数据目录配置或重新获取新闻数据"
+        error_msg += "可能的原因：\n"
+        error_msg += "1. 数据文件不存在或路径配置错误\n"
+        error_msg += "2. 指定日期范围内没有新闻数据\n"
+        error_msg += "3. 需要先下载或更新Finnhub新闻数据\n"
+        error_msg += "建议：检查数据目录配置或重新获取新闻数据"
         logger.debug(f"📰 [DEBUG] {error_msg}")
         return error_msg
 
@@ -637,11 +692,13 @@ def get_simfin_balance_sheet(
 
     # Check if there are any available reports; if not, return a notification
     if filtered_df.empty:
-        logger.info(f"No balance sheet available before the given current date.")
+        logger.info("No balance sheet available before the given current date.")
         return ""
 
     # Get the most recent balance sheet by selecting the row with the latest Publish Date
-    latest_balance_sheet = filtered_df.loc[cast(pd.Series, filtered_df["Publish Date"]).idxmax()]
+    latest_balance_sheet = filtered_df.loc[
+        cast(pd.Series, filtered_df["Publish Date"]).idxmax()
+    ]
 
     # drop the SimFinID column
     latest_balance_sheet = latest_balance_sheet.drop("SimFinId")
@@ -684,11 +741,13 @@ def get_simfin_cashflow(
 
     # Check if there are any available reports; if not, return a notification
     if filtered_df.empty:
-        logger.info(f"No cash flow statement available before the given current date.")
+        logger.info("No cash flow statement available before the given current date.")
         return ""
 
     # Get the most recent cash flow statement by selecting the row with the latest Publish Date
-    latest_cash_flow = filtered_df.loc[cast(pd.Series, filtered_df["Publish Date"]).idxmax()]
+    latest_cash_flow = filtered_df.loc[
+        cast(pd.Series, filtered_df["Publish Date"]).idxmax()
+    ]
 
     # drop the SimFinID column
     latest_cash_flow = latest_cash_flow.drop("SimFinId")
@@ -731,11 +790,13 @@ def get_simfin_income_statements(
 
     # Check if there are any available reports; if not, return a notification
     if filtered_df.empty:
-        logger.info(f"No income statement available before the given current date.")
+        logger.info("No income statement available before the given current date.")
         return ""
 
     # Get the most recent income statement by selecting the row with the latest Publish Date
-    latest_income = filtered_df.loc[cast(pd.Series, filtered_df["Publish Date"]).idxmax()]
+    latest_income = filtered_df.loc[
+        cast(pd.Series, filtered_df["Publish Date"]).idxmax()
+    ]
 
     # drop the SimFinID column
     latest_income = latest_income.drop("SimFinId")
@@ -754,14 +815,20 @@ def get_google_news(
 ) -> str:
     # 判断是否为A股查询
     is_china_stock = False
-    if any(code in query for code in ['SH', 'SZ', 'XSHE', 'XSHG']) or query.isdigit() or (len(query) == 6 and query[:6].isdigit()):
+    if (
+        any(code in query for code in ["SH", "SZ", "XSHE", "XSHG"])
+        or query.isdigit()
+        or (len(query) == 6 and query[:6].isdigit())
+    ):
         is_china_stock = True
 
     # 尝试使用StockUtils判断
     try:
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
         market_info = StockUtils.get_market_info(query.split()[0])
-        if market_info['is_china']:
+        if market_info["is_china"]:
             is_china_stock = True
     except Exception:
         # 如果StockUtils判断失败，使用上面的简单判断
@@ -770,7 +837,7 @@ def get_google_news(
     # 对A股查询添加中文关键词
     if is_china_stock:
         logger.info(f"[Google新闻] 检测到A股查询: {query}，使用中文搜索")
-        if '股票' not in query and '股价' not in query and '公司' not in query:
+        if "股票" not in query and "股价" not in query and "公司" not in query:
             query = f"{query} 股票 公司 财报 新闻"
 
     query = query.replace(" ", "+")
@@ -779,7 +846,9 @@ def get_google_news(
     before = start_date - relativedelta(days=look_back_days)
     before = before.strftime("%Y-%m-%d")
 
-    logger.info(f"[Google新闻] 开始获取新闻，查询: {query}, 时间范围: {before} 至 {curr_date}")
+    logger.info(
+        f"[Google新闻] 开始获取新闻，查询: {query}, 时间范围: {before} 至 {curr_date}"
+    )
     news_results = get_news_data(query, before, curr_date)
 
     news_str = ""
@@ -1277,10 +1346,10 @@ def get_fundamentals_finnhub(ticker, curr_date):
         str: 格式化的基本面数据报告
     """
     try:
-        finnhub = importlib.import_module('finnhub')
-        os = importlib.import_module('os')
+        finnhub = importlib.import_module("finnhub")
+        os = importlib.import_module("os")
         # 导入缓存管理器（统一入口）
-        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
+        get_cache = getattr(importlib.import_module("trader.flows.cache"), "get_cache")
         cache = get_cache()
         cached_key = cache.find_cached_fundamentals_data(ticker, data_source="finnhub")
         if cached_key:
@@ -1290,7 +1359,7 @@ def get_fundamentals_finnhub(ticker, curr_date):
                 return cached_data
 
         # 获取Finnhub API密钥
-        api_key = os.getenv('FINNHUB_API_KEY')
+        api_key = os.getenv("FINNHUB_API_KEY")
         if not api_key:
             return "错误：未配置FINNHUB_API_KEY环境变量"
 
@@ -1301,7 +1370,7 @@ def get_fundamentals_finnhub(ticker, curr_date):
 
         # 获取基本财务数据
         try:
-            basic_financials = finnhub_client.company_basic_financials(ticker, 'all')
+            basic_financials = finnhub_client.company_basic_financials(ticker, "all")
         except Exception as e:
             logger.error(f"❌ [DEBUG] Finnhub基本财务数据获取失败: {str(e)}")
             basic_financials = None
@@ -1323,7 +1392,7 @@ def get_fundamentals_finnhub(ticker, curr_date):
         # 格式化报告
         report = f"# {ticker} 基本面分析报告（Finnhub数据源）\n\n"
         report += f"**数据获取时间**: {curr_date}\n"
-        report += f"**数据来源**: Finnhub API\n\n"
+        report += "**数据来源**: Finnhub API\n\n"
 
         # 公司概况部分
         if company_profile:
@@ -1336,33 +1405,35 @@ def get_fundamentals_finnhub(ticker, curr_date):
             report += f"- **流通股数**: {company_profile.get('shareOutstanding', 'N/A')} 百万股\n\n"
 
         # 基本财务指标
-        if basic_financials and 'metric' in basic_financials:
-            metrics = basic_financials['metric']
+        if basic_financials and "metric" in basic_financials:
+            metrics = basic_financials["metric"]
             report += "## 关键财务指标\n"
             report += "| 指标 | 数值 |\n"
             report += "|------|------|\n"
 
             # 估值指标
-            if 'peBasicExclExtraTTM' in metrics:
+            if "peBasicExclExtraTTM" in metrics:
                 report += f"| 市盈率 (PE) | {metrics['peBasicExclExtraTTM']:.2f} |\n"
-            if 'psAnnual' in metrics:
+            if "psAnnual" in metrics:
                 report += f"| 市销率 (PS) | {metrics['psAnnual']:.2f} |\n"
-            if 'pbAnnual' in metrics:
+            if "pbAnnual" in metrics:
                 report += f"| 市净率 (PB) | {metrics['pbAnnual']:.2f} |\n"
 
             # 盈利能力指标
-            if 'roeTTM' in metrics:
+            if "roeTTM" in metrics:
                 report += f"| 净资产收益率 (ROE) | {metrics['roeTTM']:.2f}% |\n"
-            if 'roaTTM' in metrics:
+            if "roaTTM" in metrics:
                 report += f"| 总资产收益率 (ROA) | {metrics['roaTTM']:.2f}% |\n"
-            if 'netProfitMarginTTM' in metrics:
+            if "netProfitMarginTTM" in metrics:
                 report += f"| 净利润率 | {metrics['netProfitMarginTTM']:.2f}% |\n"
 
             # 财务健康指标
-            if 'currentRatioAnnual' in metrics:
+            if "currentRatioAnnual" in metrics:
                 report += f"| 流动比率 | {metrics['currentRatioAnnual']:.2f} |\n"
-            if 'totalDebt/totalEquityAnnual' in metrics:
-                report += f"| 负债权益比 | {metrics['totalDebt/totalEquityAnnual']:.2f} |\n"
+            if "totalDebt/totalEquityAnnual" in metrics:
+                report += (
+                    f"| 负债权益比 | {metrics['totalDebt/totalEquityAnnual']:.2f} |\n"
+                )
 
             report += "\n"
 
@@ -1372,10 +1443,10 @@ def get_fundamentals_finnhub(ticker, curr_date):
             report += "| 季度 | 实际EPS | 预期EPS | 差异 |\n"
             report += "|------|---------|---------|------|\n"
             for earning in earnings[:4]:  # 显示最近4个季度
-                actual = earning.get('actual', 'N/A')
-                estimate = earning.get('estimate', 'N/A')
-                period = earning.get('period', 'N/A')
-                surprise = earning.get('surprise', 'N/A')
+                actual = earning.get("actual", "N/A")
+                estimate = earning.get("estimate", "N/A")
+                period = earning.get("period", "N/A")
+                surprise = earning.get("surprise", "N/A")
                 report += f"| {period} | {actual} | {estimate} | {surprise} |\n"
             report += "\n"
 
@@ -1426,9 +1497,14 @@ def get_fundamentals_openai(ticker, curr_date):
     """
     try:
         # 导入缓存管理器和数据源管理器
-        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
-        get_us_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_us_data_source_manager')
-        USDataSource = getattr(importlib.import_module('trader.flows.sources'), 'USDataSource')
+        get_cache = getattr(importlib.import_module("trader.flows.cache"), "get_cache")
+        get_us_data_source_manager = getattr(
+            importlib.import_module("trader.flows.sources"),
+            "get_us_data_source_manager",
+        )
+        USDataSource = getattr(
+            importlib.import_module("trader.flows.sources"), "USDataSource"
+        )
 
         cache = get_cache()
         us_manager = get_us_data_source_manager()
@@ -1441,21 +1517,27 @@ def get_fundamentals_openai(ticker, curr_date):
         }
 
         for source in us_manager.available_sources:
-            if source == USDataSource.MONGODB:
-                continue  # MongoDB 缓存单独处理
+            if source == USDataSource.POSTGRES:
+                continue  # PostgreSQL 缓存单独处理
 
             cache_name = data_source_cache_names.get(source)
             if cache_name:
-                cached_key = cache.find_cached_fundamentals_data(ticker, data_source=cache_name)
+                cached_key = cache.find_cached_fundamentals_data(
+                    ticker, data_source=cache_name
+                )
                 if cached_key:
                     cached_data = cache.load_fundamentals_data(cached_key)
                     if cached_data:
-                        logger.info(f"💾 [缓存] 从 {cache_name} 缓存加载基本面数据: {ticker}")
+                        logger.info(
+                            f"💾 [缓存] 从 {cache_name} 缓存加载基本面数据: {ticker}"
+                        )
                         return cached_data
 
         # 🔥 从数据库获取数据源优先级顺序
         priority_order = us_manager._get_data_source_priority_order(ticker)
-        logger.info(f"📊 [美股基本面] 数据源优先级: {[s.value for s in priority_order]}")
+        logger.info(
+            f"📊 [美股基本面] 数据源优先级: {[s.value for s in priority_order]}"
+        )
 
         # 按优先级尝试每个数据源
         for source in priority_order:
@@ -1473,7 +1555,9 @@ def get_fundamentals_openai(ticker, curr_date):
                 elif source == USDataSource.FINNHUB:
                     result = get_fundamentals_finnhub(ticker, curr_date)
                     if result and "❌" not in result:
-                        cache.save_fundamentals_data(ticker, result, data_source="finnhub")
+                        cache.save_fundamentals_data(
+                            ticker, result, data_source="finnhub"
+                        )
                         return result
 
             except Exception as e:
@@ -1483,12 +1567,18 @@ def get_fundamentals_openai(ticker, curr_date):
         # 🔥 特殊处理：OpenAI（如果配置了）
         config = get_config()
         openai_api_key = os.getenv("OPENAI_API_KEY")
-        if openai_api_key and config.get("backend_url") and config.get("quick_think_llm"):
+        if (
+            openai_api_key
+            and config.get("backend_url")
+            and config.get("quick_think_llm")
+        ):
             backend_url = config.get("backend_url", "")
             if "openai.com" in backend_url:
                 try:
-                    logger.info(f"📊 [OpenAI] 尝试使用 OpenAI 获取基本面数据...")
-                    return _get_fundamentals_openai_impl(ticker, curr_date, config, cache)
+                    logger.info("📊 [OpenAI] 尝试使用 OpenAI 获取基本面数据...")
+                    return _get_fundamentals_openai_impl(
+                        ticker, curr_date, config, cache
+                    )
                 except Exception as e:
                     logger.warning(f"⚠️ [OpenAI] 获取失败: {e}")
 
@@ -1515,7 +1605,10 @@ def _get_fundamentals_alpha_vantage(ticker, curr_date, cache):
     """
     try:
         logger.info(f"📊 [Alpha Vantage] 获取 {ticker} 的基本面数据...")
-        get_av_fundamentals = getattr(importlib.import_module('trader.flows.providers.us.alpha.fundamentals'), 'get_fundamentals')
+        get_av_fundamentals = getattr(
+            importlib.import_module("trader.flows.providers.us.alpha.fundamentals"),
+            "get_fundamentals",
+        )
 
         result = get_av_fundamentals(ticker, curr_date)
 
@@ -1525,7 +1618,7 @@ def _get_fundamentals_alpha_vantage(ticker, curr_date, cache):
             logger.info(f"✅ [Alpha Vantage] 基本面数据获取成功: {ticker}")
             return result
         else:
-            logger.warning(f"⚠️ [Alpha Vantage] 数据质量不佳")
+            logger.warning("⚠️ [Alpha Vantage] 数据质量不佳")
             return None
     except Exception as e:
         logger.warning(f"⚠️ [Alpha Vantage] 获取失败: {e}")
@@ -1546,7 +1639,7 @@ def _get_fundamentals_yfinance(ticker, curr_date, cache):
     """
     try:
         logger.info(f"📊 [yfinance] 获取 {ticker} 的基本面数据...")
-        yf = importlib.import_module('yfinance')
+        yf = importlib.import_module("yfinance")
 
         ticker_obj = yf.Ticker(ticker.upper())
         info = ticker_obj.info
@@ -1556,41 +1649,41 @@ def _get_fundamentals_yfinance(ticker, curr_date, cache):
             result = f"""# {ticker} 基本面数据 (来源: Yahoo Finance)
 
 ## 公司信息
-- 公司名称: {info.get('longName', 'N/A')}
-- 行业: {info.get('industry', 'N/A')}
-- 板块: {info.get('sector', 'N/A')}
-- 网站: {info.get('website', 'N/A')}
+- 公司名称: {info.get("longName", "N/A")}
+- 行业: {info.get("industry", "N/A")}
+- 板块: {info.get("sector", "N/A")}
+- 网站: {info.get("website", "N/A")}
 
 ## 估值指标
-- 市值: ${info.get('marketCap', 'N/A'):,}
-- PE比率: {info.get('trailingPE', 'N/A')}
-- 前瞻PE: {info.get('forwardPE', 'N/A')}
-- PB比率: {info.get('priceToBook', 'N/A')}
-- PS比率: {info.get('priceToSalesTrailing12Months', 'N/A')}
+- 市值: ${info.get("marketCap", "N/A"):,}
+- PE比率: {info.get("trailingPE", "N/A")}
+- 前瞻PE: {info.get("forwardPE", "N/A")}
+- PB比率: {info.get("priceToBook", "N/A")}
+- PS比率: {info.get("priceToSalesTrailing12Months", "N/A")}
 
 ## 财务指标
-- 总收入: ${info.get('totalRevenue', 'N/A'):,}
-- 毛利润: ${info.get('grossProfits', 'N/A'):,}
-- EBITDA: ${info.get('ebitda', 'N/A'):,}
-- 每股收益(EPS): ${info.get('trailingEps', 'N/A')}
-- 股息率: {info.get('dividendYield', 'N/A')}
+- 总收入: ${info.get("totalRevenue", "N/A"):,}
+- 毛利润: ${info.get("grossProfits", "N/A"):,}
+- EBITDA: ${info.get("ebitda", "N/A"):,}
+- 每股收益(EPS): ${info.get("trailingEps", "N/A")}
+- 股息率: {info.get("dividendYield", "N/A")}
 
 ## 盈利能力
-- 利润率: {info.get('profitMargins', 'N/A')}
-- 营业利润率: {info.get('operatingMargins', 'N/A')}
-- ROE: {info.get('returnOnEquity', 'N/A')}
-- ROA: {info.get('returnOnAssets', 'N/A')}
+- 利润率: {info.get("profitMargins", "N/A")}
+- 营业利润率: {info.get("operatingMargins", "N/A")}
+- ROE: {info.get("returnOnEquity", "N/A")}
+- ROA: {info.get("returnOnAssets", "N/A")}
 
 ## 股价信息
-- 当前价格: ${info.get('currentPrice', 'N/A')}
-- 52周最高: ${info.get('fiftyTwoWeekHigh', 'N/A')}
-- 52周最低: ${info.get('fiftyTwoWeekLow', 'N/A')}
-- 50日均线: ${info.get('fiftyDayAverage', 'N/A')}
-- 200日均线: ${info.get('twoHundredDayAverage', 'N/A')}
+- 当前价格: ${info.get("currentPrice", "N/A")}
+- 52周最高: ${info.get("fiftyTwoWeekHigh", "N/A")}
+- 52周最低: ${info.get("fiftyTwoWeekLow", "N/A")}
+- 50日均线: ${info.get("fiftyDayAverage", "N/A")}
+- 200日均线: ${info.get("twoHundredDayAverage", "N/A")}
 
 ## 分析师评级
-- 目标价: ${info.get('targetMeanPrice', 'N/A')}
-- 推荐评级: {info.get('recommendationKey', 'N/A')}
+- 目标价: ${info.get("targetMeanPrice", "N/A")}
+- 推荐评级: {info.get("recommendationKey", "N/A")}
 
 数据获取时间: {curr_date}
 """
@@ -1599,7 +1692,7 @@ def _get_fundamentals_yfinance(ticker, curr_date, cache):
             logger.info(f"✅ [yfinance] 基本面数据获取成功: {ticker}")
             return result
         else:
-            logger.warning(f"⚠️ [yfinance] 数据不完整")
+            logger.warning("⚠️ [yfinance] 数据不完整")
             return None
     except Exception as e:
         logger.warning(f"⚠️ [yfinance] 获取失败: {e}")
@@ -1668,10 +1761,11 @@ def _get_fundamentals_openai_impl(ticker, curr_date, config, cache):
 
 # ==================== Tushare数据接口 ====================
 
+
 def get_china_stock_data_tushare(
     ticker: Annotated[str, "中国股票代码，如：000001、600036等"],
     start_date: Annotated[str, "开始日期，格式：YYYY-MM-DD"],
-    end_date: Annotated[str, "结束日期，格式：YYYY-MM-DD"]
+    end_date: Annotated[str, "结束日期，格式：YYYY-MM-DD"],
 ) -> str:
     """
     使用Tushare获取中国A股历史数据
@@ -1686,13 +1780,17 @@ def get_china_stock_data_tushare(
         str: 格式化的股票数据报告
     """
     try:
-        get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
+        get_data_source_manager = getattr(
+            importlib.import_module("trader.flows.sources"), "get_data_source_manager"
+        )
 
         logger.debug(f"📊 [Tushare] 获取{ticker}股票数据...")
 
         # 添加详细的股票代码追踪日志
-        logger.info(f"🔍 [股票代码追踪] get_china_stock_data_tushare 接收到的股票代码: '{ticker}' (类型: {type(ticker)})")
-        logger.info(f"🔍 [股票代码追踪] 重定向到data_source_manager")
+        logger.info(
+            f"🔍 [股票代码追踪] get_china_stock_data_tushare 接收到的股票代码: '{ticker}' (类型: {type(ticker)})"
+        )
+        logger.info("🔍 [股票代码追踪] 重定向到data_source_manager")
 
         manager = get_data_source_manager()
         return manager.get_china_stock_data_tushare(ticker, start_date, end_date)
@@ -1703,7 +1801,7 @@ def get_china_stock_data_tushare(
 
 
 def get_china_stock_info_tushare(
-    ticker: Annotated[str, "中国股票代码，如：000001、600036等"]
+    ticker: Annotated[str, "中国股票代码，如：000001、600036等"],
 ) -> str:
     """
     使用Tushare获取中国A股基本信息
@@ -1716,11 +1814,15 @@ def get_china_stock_info_tushare(
         str: 格式化的股票基本信息
     """
     try:
-        get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
+        get_data_source_manager = getattr(
+            importlib.import_module("trader.flows.sources"), "get_data_source_manager"
+        )
 
         logger.debug(f"📊 [Tushare] 获取{ticker}股票信息...")
-        logger.info(f"🔍 [股票代码追踪] get_china_stock_info_tushare 接收到的股票代码: '{ticker}' (类型: {type(ticker)})")
-        logger.info(f"🔍 [股票代码追踪] 直接调用 Tushare 适配器")
+        logger.info(
+            f"🔍 [股票代码追踪] get_china_stock_info_tushare 接收到的股票代码: '{ticker}' (类型: {type(ticker)})"
+        )
+        logger.info("🔍 [股票代码追踪] 直接调用 Tushare 适配器")
 
         manager = get_data_source_manager()
 
@@ -1730,11 +1832,11 @@ def get_china_stock_info_tushare(
 
         # 格式化返回字符串
         if info and isinstance(info, dict):
-            return f"""股票代码: {info.get('symbol', ticker)}
-股票名称: {info.get('name', '未知')}
-所属行业: {info.get('industry', '未知')}
-上市日期: {info.get('list_date', '未知')}
-交易所: {info.get('exchange', '未知')}"""
+            return f"""股票代码: {info.get("symbol", ticker)}
+股票名称: {info.get("name", "未知")}
+所属行业: {info.get("industry", "未知")}
+上市日期: {info.get("list_date", "未知")}
+交易所: {info.get("exchange", "未知")}"""
         else:
             return f"❌ 未找到{ticker}的股票信息"
 
@@ -1744,11 +1846,11 @@ def get_china_stock_info_tushare(
 
 
 def get_china_stock_fundamentals_tushare(
-    ticker: Annotated[str, "中国股票代码，如：000001、600036等"]
+    ticker: Annotated[str, "中国股票代码，如：000001、600036等"],
 ) -> str:
     """
     获取中国A股基本面数据（统一接口）
-    支持多数据源：MongoDB → Tushare → AKShare → 生成分析
+    支持多数据源：PostgreSQL → Tushare → AKShare → 生成分析
 
     Args:
         ticker: 股票代码
@@ -1757,10 +1859,14 @@ def get_china_stock_fundamentals_tushare(
         str: 基本面分析报告
     """
     try:
-        get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
+        get_data_source_manager = getattr(
+            importlib.import_module("trader.flows.sources"), "get_data_source_manager"
+        )
 
         logger.debug(f"📊 获取{ticker}基本面数据...")
-        logger.info(f"🔍 [股票代码追踪] 重定向到data_source_manager.get_fundamentals_data")
+        logger.info(
+            "🔍 [股票代码追踪] 重定向到data_source_manager.get_fundamentals_data"
+        )
 
         manager = get_data_source_manager()
         # 使用新的统一接口，支持多数据源和自动降级
@@ -1773,10 +1879,11 @@ def get_china_stock_fundamentals_tushare(
 
 # ==================== 统一数据源接口 ====================
 
+
 def get_china_stock_data_unified(
     ticker: Annotated[str, "中国股票代码，如：000001、600036等"],
     start_date: Annotated[str, "开始日期，格式：YYYY-MM-DD"],
-    end_date: Annotated[str, "结束日期，格式：YYYY-MM-DD"]
+    end_date: Annotated[str, "结束日期，格式：YYYY-MM-DD"],
 ) -> str:
     """
     统一的中国A股数据获取接口
@@ -1791,8 +1898,10 @@ def get_china_stock_data_unified(
         str: 格式化的股票数据报告
     """
     # 🔧 智能日期范围处理：自动扩展到配置的回溯天数，处理周末/节假日
-    get_trading_date_range = getattr(importlib.import_module('trader.utils.flows'), 'get_trading_date_range')
-    get_settings = getattr(importlib.import_module('app.core.config'), 'get_settings')
+    get_trading_date_range = getattr(
+        importlib.import_module("trader.utils.flows"), "get_trading_date_range"
+    )
+    get_settings = getattr(importlib.import_module("app.core.config"), "get_settings")
 
     original_start_date = start_date
     original_end_date = end_date
@@ -1801,10 +1910,12 @@ def get_china_stock_data_unified(
     try:
         settings = get_settings()
         lookback_days = settings.MARKET_ANALYST_LOOKBACK_DAYS
-        logger.info(f"📅 [配置验证] ===== MARKET_ANALYST_LOOKBACK_DAYS 配置检查 =====")
+        logger.info("📅 [配置验证] ===== MARKET_ANALYST_LOOKBACK_DAYS 配置检查 =====")
         logger.info(f"📅 [配置验证] 从配置文件读取: {lookback_days}天")
-        logger.info(f"📅 [配置验证] 配置来源: app.core.config.Settings")
-        logger.info(f"📅 [配置验证] 环境变量: MARKET_ANALYST_LOOKBACK_DAYS={lookback_days}")
+        logger.info("📅 [配置验证] 配置来源: app.core.config.Settings")
+        logger.info(
+            f"📅 [配置验证] 环境变量: MARKET_ANALYST_LOOKBACK_DAYS={lookback_days}"
+        )
     except Exception as e:
         lookback_days = 30  # 默认30天
         logger.warning(f"⚠️ [配置验证] 无法获取配置，使用默认值: {lookback_days}天")
@@ -1813,32 +1924,41 @@ def get_china_stock_data_unified(
     # 使用 end_date 作为目标日期，向前回溯指定天数
     start_date, end_date = get_trading_date_range(end_date, lookback_days=lookback_days)
 
-    logger.info(f"📅 [智能日期] ===== 日期范围计算结果 =====")
+    logger.info("📅 [智能日期] ===== 日期范围计算结果 =====")
     logger.info(f"📅 [智能日期] 原始输入: {original_start_date} 至 {original_end_date}")
     logger.info(f"📅 [智能日期] 回溯天数: {lookback_days}天")
     logger.info(f"📅 [智能日期] 计算结果: {start_date} 至 {end_date}")
-    logger.info(f"📅 [智能日期] 实际天数: {(datetime.strptime(end_date, '%Y-%m-%d') - datetime.strptime(start_date, '%Y-%m-%d')).days}天")
-    logger.info(f"💡 [智能日期] 说明: 自动扩展日期范围以处理周末、节假日和数据延迟")
+    logger.info(
+        f"📅 [智能日期] 实际天数: {(datetime.strptime(end_date, '%Y-%m-%d') - datetime.strptime(start_date, '%Y-%m-%d')).days}天"
+    )
+    logger.info("💡 [智能日期] 说明: 自动扩展日期范围以处理周末、节假日和数据延迟")
 
     # 记录详细的输入参数
-    logger.info(f"📊 [统一接口] 开始获取中国股票数据",
-               extra={
-                   'function': 'get_china_stock_data_unified',
-                   'ticker': ticker,
-                   'start_date': start_date,
-                   'end_date': end_date,
-                   'event_type': 'unified_data_call_start'
-               })
+    logger.info(
+        "📊 [统一接口] 开始获取中国股票数据",
+        extra={
+            "function": "get_china_stock_data_unified",
+            "ticker": ticker,
+            "start_date": start_date,
+            "end_date": end_date,
+            "event_type": "unified_data_call_start",
+        },
+    )
 
     # 添加详细的股票代码追踪日志
-    logger.info(f"🔍 [股票代码追踪] get_china_stock_data_unified 接收到的原始股票代码: '{ticker}' (类型: {type(ticker)})")
+    logger.info(
+        f"🔍 [股票代码追踪] get_china_stock_data_unified 接收到的原始股票代码: '{ticker}' (类型: {type(ticker)})"
+    )
     logger.info(f"🔍 [股票代码追踪] 股票代码长度: {len(str(ticker))}")
     logger.info(f"🔍 [股票代码追踪] 股票代码字符: {list(str(ticker))}")
 
     start_time = time.time()
 
     try:
-        get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.sources'), 'get_china_stock_data_unified')
+        get_china_stock_data_unified = getattr(
+            importlib.import_module("trader.flows.sources"),
+            "get_china_stock_data_unified",
+        )
 
         result = get_china_stock_data_unified(ticker, start_date, end_date)
 
@@ -1848,49 +1968,60 @@ def get_china_stock_data_unified(
         is_success = result and "❌" not in result and "错误" not in result
 
         if is_success:
-            logger.info(f"✅ [统一接口] 中国股票数据获取成功",
-                       extra={
-                           'function': 'get_china_stock_data_unified',
-                           'ticker': ticker,
-                           'start_date': start_date,
-                           'end_date': end_date,
-                           'duration': duration,
-                           'result_length': result_length,
-                           'result_preview': result[:300] + '...' if result_length > 300 else result,
-                           'event_type': 'unified_data_call_success'
-                       })
+            logger.info(
+                "✅ [统一接口] 中国股票数据获取成功",
+                extra={
+                    "function": "get_china_stock_data_unified",
+                    "ticker": ticker,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "duration": duration,
+                    "result_length": result_length,
+                    "result_preview": result[:300] + "..."
+                    if result_length > 300
+                    else result,
+                    "event_type": "unified_data_call_success",
+                },
+            )
         else:
-            logger.warning(f"⚠️ [统一接口] 中国股票数据质量异常",
-                          extra={
-                              'function': 'get_china_stock_data_unified',
-                              'ticker': ticker,
-                              'start_date': start_date,
-                              'end_date': end_date,
-                              'duration': duration,
-                              'result_length': result_length,
-                              'result_preview': result[:300] + '...' if result_length > 300 else result,
-                              'event_type': 'unified_data_call_warning'
-                          })
+            logger.warning(
+                "⚠️ [统一接口] 中国股票数据质量异常",
+                extra={
+                    "function": "get_china_stock_data_unified",
+                    "ticker": ticker,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "duration": duration,
+                    "result_length": result_length,
+                    "result_preview": result[:300] + "..."
+                    if result_length > 300
+                    else result,
+                    "event_type": "unified_data_call_warning",
+                },
+            )
 
         return result
 
     except Exception as e:
         duration = time.time() - start_time
-        logger.error(f"❌ [统一接口] 获取股票数据失败: {e}",
-                    extra={
-                        'function': 'get_china_stock_data_unified',
-                        'ticker': ticker,
-                        'start_date': start_date,
-                        'end_date': end_date,
-                        'duration': duration,
-                        'error': str(e),
-                        'event_type': 'unified_data_call_error'
-                    }, exc_info=True)
+        logger.error(
+            f"❌ [统一接口] 获取股票数据失败: {e}",
+            extra={
+                "function": "get_china_stock_data_unified",
+                "ticker": ticker,
+                "start_date": start_date,
+                "end_date": end_date,
+                "duration": duration,
+                "error": str(e),
+                "event_type": "unified_data_call_error",
+            },
+            exc_info=True,
+        )
         return f"❌ 获取{ticker}股票数据失败: {e}"
 
 
 def get_china_stock_info_unified(
-    ticker: Annotated[str, "中国股票代码，如：000001、600036等"]
+    ticker: Annotated[str, "中国股票代码，如：000001、600036等"],
 ) -> str:
     """
     统一的中国A股基本信息获取接口
@@ -1903,13 +2034,16 @@ def get_china_stock_info_unified(
         str: 股票基本信息
     """
     try:
-        get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.sources'), 'get_china_stock_info_unified')
+        get_china_stock_info_unified = getattr(
+            importlib.import_module("trader.flows.sources"),
+            "get_china_stock_info_unified",
+        )
 
         logger.info(f"📊 [统一接口] 获取{ticker}基本信息...")
 
         info = get_china_stock_info_unified(ticker)
 
-        if info and info.get('name'):
+        if info and info.get("name"):
             result = f"股票代码: {ticker}\n"
             result += f"股票名称: {info.get('name', '未知')}\n"
             result += f"所属地区: {info.get('area', '未知')}\n"
@@ -1917,9 +2051,9 @@ def get_china_stock_info_unified(
             result += f"上市市场: {info.get('market', '未知')}\n"
             result += f"上市日期: {info.get('list_date', '未知')}\n"
             # 附加快照行情（若存在）
-            cp = info.get('current_price')
-            pct = info.get('change_pct')
-            vol = info.get('volume')
+            cp = info.get("current_price")
+            pct = info.get("change_pct")
+            vol = info.get("volume")
             if cp is not None:
                 result += f"当前价格: {cp}\n"
             if pct is not None:
@@ -1942,7 +2076,7 @@ def get_china_stock_info_unified(
 
 
 def switch_china_data_source(
-    source: Annotated[str, "数据源名称：tushare, akshare, baostock"]
+    source: Annotated[str, "数据源名称：tushare, akshare, baostock"],
 ) -> str:
     """
     切换中国股票数据源
@@ -1954,14 +2088,18 @@ def switch_china_data_source(
         str: 切换结果
     """
     try:
-        get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
-        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
+        get_data_source_manager = getattr(
+            importlib.import_module("trader.flows.sources"), "get_data_source_manager"
+        )
+        ChinaDataSource = getattr(
+            importlib.import_module("trader.flows.sources"), "ChinaDataSource"
+        )
 
         # 映射字符串到枚举（TDX 已移除）
         source_mapping = {
-            'tushare': ChinaDataSource.TUSHARE,
-            'akshare': ChinaDataSource.AKSHARE,
-            'baostock': ChinaDataSource.BAOSTOCK,
+            "tushare": ChinaDataSource.TUSHARE,
+            "akshare": ChinaDataSource.AKSHARE,
+            "baostock": ChinaDataSource.BAOSTOCK,
             # 'tdx': ChinaDataSource.TDX  # 已移除
         }
 
@@ -1989,7 +2127,9 @@ def get_current_china_data_source() -> str:
         str: 当前数据源信息
     """
     try:
-        get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
+        get_data_source_manager = getattr(
+            importlib.import_module("trader.flows.sources"), "get_data_source_manager"
+        )
 
         manager = get_data_source_manager()
         current = manager.get_current_source()
@@ -2008,7 +2148,10 @@ def get_current_china_data_source() -> str:
 
 # ==================== 港股数据接口 ====================
 
-def get_hk_stock_data_unified(symbol: str, start_date: str | None = None, end_date: str | None = None) -> str:
+
+def get_hk_stock_data_unified(
+    symbol: str, start_date: str | None = None, end_date: str | None = None
+) -> str:
     """
     获取港股数据的统一接口（根据用户配置选择数据源）
 
@@ -2024,8 +2167,12 @@ def get_hk_stock_data_unified(symbol: str, start_date: str | None = None, end_da
         logger.info(f"🇭🇰 获取港股数据: {symbol}")
 
         # 🔧 智能日期范围处理：自动扩展到配置的回溯天数，处理周末/节假日
-        get_trading_date_range = getattr(importlib.import_module('trader.utils.flows'), 'get_trading_date_range')
-        get_settings = getattr(importlib.import_module('app.core.config'), 'get_settings')
+        get_trading_date_range = getattr(
+            importlib.import_module("trader.utils.flows"), "get_trading_date_range"
+        )
+        get_settings = getattr(
+            importlib.import_module("app.core.config"), "get_settings"
+        )
 
         original_start_date = start_date
         original_end_date = end_date
@@ -2034,29 +2181,39 @@ def get_hk_stock_data_unified(symbol: str, start_date: str | None = None, end_da
         try:
             settings = get_settings()
             lookback_days = settings.MARKET_ANALYST_LOOKBACK_DAYS
-            logger.info(f"📅 [港股配置验证] MARKET_ANALYST_LOOKBACK_DAYS: {lookback_days}天")
+            logger.info(
+                f"📅 [港股配置验证] MARKET_ANALYST_LOOKBACK_DAYS: {lookback_days}天"
+            )
         except Exception as e:
             lookback_days = 60  # 默认60天
-            logger.warning(f"⚠️ [港股配置验证] 无法获取配置，使用默认值: {lookback_days}天")
+            logger.warning(
+                f"⚠️ [港股配置验证] 无法获取配置，使用默认值: {lookback_days}天"
+            )
             logger.warning(f"⚠️ [港股配置验证] 错误详情: {e}")
 
         # 使用 end_date 作为目标日期，向前回溯指定天数
         target_end_date = end_date or datetime.now().strftime("%Y-%m-%d")
-        start_date, end_date = get_trading_date_range(target_end_date, lookback_days=lookback_days)
+        start_date, end_date = get_trading_date_range(
+            target_end_date, lookback_days=lookback_days
+        )
         if start_date is None or end_date is None:
             raise ValueError("无法计算港股数据日期范围")
 
-        logger.info(f"📅 [港股智能日期] 原始输入: {original_start_date} 至 {original_end_date}")
+        logger.info(
+            f"📅 [港股智能日期] 原始输入: {original_start_date} 至 {original_end_date}"
+        )
         logger.info(f"📅 [港股智能日期] 回溯天数: {lookback_days}天")
         logger.info(f"📅 [港股智能日期] 计算结果: {start_date} 至 {end_date}")
-        logger.info(f"📅 [港股智能日期] 实际天数: {(datetime.strptime(end_date, '%Y-%m-%d') - datetime.strptime(start_date, '%Y-%m-%d')).days}天")
+        logger.info(
+            f"📅 [港股智能日期] 实际天数: {(datetime.strptime(end_date, '%Y-%m-%d') - datetime.strptime(start_date, '%Y-%m-%d')).days}天"
+        )
 
         # 🔥 从数据库读取用户启用的数据源配置
         enabled_sources = _get_enabled_hk_data_sources()
 
         # 按优先级尝试各个数据源
         for source in enabled_sources:
-            if source == 'akshare' and AKSHARE_HK_AVAILABLE:
+            if source == "akshare" and AKSHARE_HK_AVAILABLE:
                 try:
                     logger.info(f"🔄 使用AKShare获取港股数据: {symbol}")
                     result = get_hk_stock_data_akshare(symbol, start_date, end_date)
@@ -2064,11 +2221,11 @@ def get_hk_stock_data_unified(symbol: str, start_date: str | None = None, end_da
                         logger.info(f"✅ AKShare港股数据获取成功: {symbol}")
                         return result
                     else:
-                        logger.warning(f"⚠️ AKShare返回错误结果，尝试下一个数据源")
+                        logger.warning("⚠️ AKShare返回错误结果，尝试下一个数据源")
                 except Exception as e:
                     logger.error(f"⚠️ AKShare港股数据获取失败: {e}，尝试下一个数据源")
 
-            elif source == 'yfinance' and HK_STOCK_AVAILABLE:
+            elif source == "yfinance" and HK_STOCK_AVAILABLE:
                 try:
                     logger.info(f"🔄 使用Yahoo Finance获取港股数据: {symbol}")
                     result = get_hk_stock_data(symbol, start_date, end_date)
@@ -2076,19 +2233,29 @@ def get_hk_stock_data_unified(symbol: str, start_date: str | None = None, end_da
                         logger.info(f"✅ Yahoo Finance港股数据获取成功: {symbol}")
                         return result
                     else:
-                        logger.warning(f"⚠️ Yahoo Finance返回错误结果，尝试下一个数据源")
+                        logger.warning("⚠️ Yahoo Finance返回错误结果，尝试下一个数据源")
                 except Exception as e:
-                    logger.error(f"⚠️ Yahoo Finance港股数据获取失败: {e}，尝试下一个数据源")
+                    logger.error(
+                        f"⚠️ Yahoo Finance港股数据获取失败: {e}，尝试下一个数据源"
+                    )
 
-            elif source == 'finnhub':
+            elif source == "finnhub":
                 try:
                     # 导入美股数据提供器（支持新旧路径）
                     try:
-                        OptimizedUSDataProvider = getattr(importlib.import_module('trader.flows.providers.us'), 'OptimizedUSDataProvider')
+                        OptimizedUSDataProvider = getattr(
+                            importlib.import_module("trader.flows.providers.us"),
+                            "OptimizedUSDataProvider",
+                        )
                         provider = OptimizedUSDataProvider()
                         get_us_stock_data_cached = provider.get_stock_data
                     except ImportError:
-                        get_us_stock_data_cached = getattr(importlib.import_module('trader.flows.providers.us.optimized'), 'get_us_stock_data_cached')
+                        get_us_stock_data_cached = getattr(
+                            importlib.import_module(
+                                "trader.flows.providers.us.optimized"
+                            ),
+                            "get_us_stock_data_cached",
+                        )
 
                     logger.info(f"🔄 使用FINNHUB获取港股数据: {symbol}")
                     result = get_us_stock_data_cached(symbol, start_date, end_date)
@@ -2096,7 +2263,7 @@ def get_hk_stock_data_unified(symbol: str, start_date: str | None = None, end_da
                         logger.info(f"✅ FINNHUB港股数据获取成功: {symbol}")
                         return result
                     else:
-                        logger.warning(f"⚠️ FINNHUB返回错误结果，尝试下一个数据源")
+                        logger.warning("⚠️ FINNHUB返回错误结果，尝试下一个数据源")
                 except Exception as e:
                     logger.error(f"⚠️ FINNHUB港股数据获取失败: {e}，尝试下一个数据源")
 
@@ -2126,53 +2293,69 @@ def get_hk_stock_info_unified(symbol: str) -> Dict:
 
         # 按优先级尝试各个数据源
         for source in enabled_sources:
-            if source == 'akshare' and AKSHARE_HK_AVAILABLE:
+            if source == "akshare" and AKSHARE_HK_AVAILABLE:
                 try:
                     logger.info(f"🔄 使用AKShare获取港股信息: {symbol}")
                     result = get_hk_stock_info_akshare(symbol)
-                    if result and 'error' not in result and not result.get('name', '').startswith('港股'):
-                        logger.info(f"✅ AKShare成功获取港股信息: {symbol} -> {result.get('name', 'N/A')}")
+                    if (
+                        result
+                        and "error" not in result
+                        and not result.get("name", "").startswith("港股")
+                    ):
+                        logger.info(
+                            f"✅ AKShare成功获取港股信息: {symbol} -> {result.get('name', 'N/A')}"
+                        )
                         return result
                     else:
-                        logger.warning(f"⚠️ AKShare返回默认信息，尝试下一个数据源")
+                        logger.warning("⚠️ AKShare返回默认信息，尝试下一个数据源")
                 except Exception as e:
                     logger.error(f"⚠️ AKShare港股信息获取失败: {e}，尝试下一个数据源")
 
-            elif source == 'yfinance' and HK_STOCK_AVAILABLE:
+            elif source == "yfinance" and HK_STOCK_AVAILABLE:
                 try:
                     logger.info(f"🔄 使用Yahoo Finance获取港股信息: {symbol}")
                     result = get_hk_stock_info(symbol)
-                    if result and 'error' not in result and not result.get('name', '').startswith('港股'):
-                        logger.info(f"✅ Yahoo Finance成功获取港股信息: {symbol} -> {result.get('name', 'N/A')}")
+                    if (
+                        result
+                        and "error" not in result
+                        and not result.get("name", "").startswith("港股")
+                    ):
+                        logger.info(
+                            f"✅ Yahoo Finance成功获取港股信息: {symbol} -> {result.get('name', 'N/A')}"
+                        )
                         return result
                     else:
-                        logger.warning(f"⚠️ Yahoo Finance返回默认信息，尝试下一个数据源")
+                        logger.warning("⚠️ Yahoo Finance返回默认信息，尝试下一个数据源")
                 except Exception as e:
-                    logger.error(f"⚠️ Yahoo Finance港股信息获取失败: {e}，尝试下一个数据源")
+                    logger.error(
+                        f"⚠️ Yahoo Finance港股信息获取失败: {e}，尝试下一个数据源"
+                    )
 
         # 所有数据源都失败，返回基本信息
         logger.warning(f"⚠️ 所有启用的数据源都失败，使用默认信息: {symbol}")
         return {
-            'symbol': symbol,
-            'name': f'港股{symbol}',
-            'currency': 'HKD',
-            'exchange': 'HKG',
-            'source': 'fallback'
+            "symbol": symbol,
+            "name": f"港股{symbol}",
+            "currency": "HKD",
+            "exchange": "HKG",
+            "source": "fallback",
         }
 
     except Exception as e:
         logger.error(f"❌ 获取港股信息失败: {e}")
         return {
-            'symbol': symbol,
-            'name': f'港股{symbol}',
-            'currency': 'HKD',
-            'exchange': 'HKG',
-            'source': 'error',
-            'error': str(e)
+            "symbol": symbol,
+            "name": f"港股{symbol}",
+            "currency": "HKD",
+            "exchange": "HKG",
+            "source": "error",
+            "error": str(e),
         }
 
 
-def get_stock_data_by_market(symbol: str, start_date: str | None = None, end_date: str | None = None) -> str:
+def get_stock_data_by_market(
+    symbol: str, start_date: str | None = None, end_date: str | None = None
+) -> str:
     """
     根据股票市场类型自动选择数据源获取数据
 
@@ -2185,28 +2368,46 @@ def get_stock_data_by_market(symbol: str, start_date: str | None = None, end_dat
         str: 格式化的股票数据
     """
     try:
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
 
         market_info = StockUtils.get_market_info(symbol)
-        resolved_start_date = start_date or (datetime.now() - relativedelta(years=1)).strftime("%Y-%m-%d")
+        resolved_start_date = start_date or (
+            datetime.now() - relativedelta(years=1)
+        ).strftime("%Y-%m-%d")
         resolved_end_date = end_date or datetime.now().strftime("%Y-%m-%d")
 
-        if market_info['is_china']:
+        if market_info["is_china"]:
             # 中国A股
-            return get_china_stock_data_unified(symbol, resolved_start_date, resolved_end_date)
-        elif market_info['is_hk']:
+            return get_china_stock_data_unified(
+                symbol, resolved_start_date, resolved_end_date
+            )
+        elif market_info["is_hk"]:
             # 港股
-            return get_hk_stock_data_unified(symbol, resolved_start_date, resolved_end_date)
+            return get_hk_stock_data_unified(
+                symbol, resolved_start_date, resolved_end_date
+            )
         else:
             # 美股或其他
             # 导入美股数据提供器（支持新旧路径）
             try:
-                OptimizedUSDataProvider = getattr(importlib.import_module('trader.flows.providers.us'), 'OptimizedUSDataProvider')
+                OptimizedUSDataProvider = getattr(
+                    importlib.import_module("trader.flows.providers.us"),
+                    "OptimizedUSDataProvider",
+                )
                 provider = OptimizedUSDataProvider()
-                return provider.get_stock_data(symbol, resolved_start_date, resolved_end_date)
+                return provider.get_stock_data(
+                    symbol, resolved_start_date, resolved_end_date
+                )
             except ImportError:
-                get_us_stock_data_cached = getattr(importlib.import_module('trader.flows.providers.us.optimized'), 'get_us_stock_data_cached')
-                return get_us_stock_data_cached(symbol, resolved_start_date, resolved_end_date)
+                get_us_stock_data_cached = getattr(
+                    importlib.import_module("trader.flows.providers.us.optimized"),
+                    "get_us_stock_data_cached",
+                )
+                return get_us_stock_data_cached(
+                    symbol, resolved_start_date, resolved_end_date
+                )
 
     except Exception as e:
         logger.error(f"❌ 获取股票数据失败: {e}")

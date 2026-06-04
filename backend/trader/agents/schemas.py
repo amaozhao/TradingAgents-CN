@@ -23,7 +23,6 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-
 # ---------------------------------------------------------------------------
 # Shared rating types
 # ---------------------------------------------------------------------------
@@ -92,13 +91,15 @@ class ResearchPlan(BaseModel):
 
 def render_research_plan(plan: ResearchPlan) -> str:
     """Render a ResearchPlan to markdown for storage and the trader's prompt context."""
-    return "\n".join([
-        f"**Recommendation**: {plan.recommendation.value}",
-        "",
-        f"**Rationale**: {plan.rationale}",
-        "",
-        f"**Strategic Actions**: {plan.strategic_actions}",
-    ])
+    return "\n".join(
+        [
+            f"**Recommendation**: {plan.recommendation.value}",
+            "",
+            f"**Rationale**: {plan.rationale}",
+            "",
+            f"**Strategic Actions**: {plan.strategic_actions}",
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -156,10 +157,12 @@ def render_trader_proposal(proposal: TraderProposal) -> str:
         parts.extend(["", f"**Stop Loss**: {proposal.stop_loss}"])
     if proposal.position_sizing:
         parts.extend(["", f"**Position Sizing**: {proposal.position_sizing}"])
-    parts.extend([
-        "",
-        f"FINAL TRANSACTION PROPOSAL: **{proposal.action.value.upper()}**",
-    ])
+    parts.extend(
+        [
+            "",
+            f"FINAL TRANSACTION PROPOSAL: **{proposal.action.value.upper()}**",
+        ]
+    )
     return "\n".join(parts)
 
 
@@ -308,10 +311,12 @@ def render_sentiment_report(report: SentimentReport) -> str:
     narrative so the saved report is both human-readable and machine-parseable
     without regex.
     """
-    return "\n".join([
-        f"**Overall Sentiment:** **{report.overall_band.value}** "
-        f"(Score: {report.overall_score:.1f}/10)",
-        f"**Confidence:** {report.confidence.capitalize()}",
-        "",
-        report.narrative,
-    ])
+    return "\n".join(
+        [
+            f"**Overall Sentiment:** **{report.overall_band.value}** "
+            f"(Score: {report.overall_score:.1f}/10)",
+            f"**Confidence:** {report.confidence.capitalize()}",
+            "",
+            report.narrative,
+        ]
+    )

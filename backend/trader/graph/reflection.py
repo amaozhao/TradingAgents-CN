@@ -1,10 +1,12 @@
 # TradingAgents/graph/reflection.py
 
-from typing import Dict, Any
+from typing import Any, Dict
+
 from langchain_openai import ChatOpenAI
 
 # 导入统一日志系统
 from trader.utils.logging.init import get_logger
+
 logger = get_logger("default")
 
 

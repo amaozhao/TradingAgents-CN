@@ -3,16 +3,11 @@
 测试A股数据准备功能
 验证数据库检查和自动同步功能
 """
+
 import importlib
-
-import sys
-import os
-
-# 添加项目根目录到路径
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import logging
 
 from trader.utils.validation import prepare_stock_data
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +37,11 @@ def test_data_preparation():
                 stock_code=stock_code,
                 market_type=market_type,
                 period_days=30,  # 30天历史数据
-                analysis_date=None  # 使用今天
+                analysis_date=None,  # 使用今天
             )
 
             # 打印结果
-            print(f"\n✅ 数据准备结果:")
+            print("\n✅ 数据准备结果:")
             print(f"   - 是否有效: {result.is_valid}")
             print(f"   - 股票代码: {result.stock_code}")
             print(f"   - 股票名称: {result.stock_name}")
@@ -62,7 +57,7 @@ def test_data_preparation():
 
         except Exception as e:
             print(f"\n❌ 测试失败: {e}")
-            traceback = importlib.import_module('traceback')
+            traceback = importlib.import_module("traceback")
             traceback.print_exc()
 
     print(f"\n{'=' * 80}")
@@ -72,9 +67,11 @@ def test_data_preparation():
 
 def test_database_check():
     """测试数据库检查功能"""
-    StockDataPreparer = getattr(importlib.import_module('trader.utils.validation'), 'StockDataPreparer')
-    datetime = getattr(importlib.import_module('datetime'), 'datetime')
-    timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
+    StockDataPreparer = getattr(
+        importlib.import_module("trader.utils.validation"), "StockDataPreparer"
+    )
+    datetime = getattr(importlib.import_module("datetime"), "datetime")
+    timedelta = getattr(importlib.import_module("datetime"), "timedelta")
 
     print("\n" + "=" * 80)
     print("🧪 测试数据库检查功能")
@@ -85,8 +82,8 @@ def test_database_check():
     # 计算日期范围
     end_date = datetime.now()
     start_date = end_date - timedelta(days=30)
-    start_date_str = start_date.strftime('%Y-%m-%d')
-    end_date_str = end_date.strftime('%Y-%m-%d')
+    start_date_str = start_date.strftime("%Y-%m-%d")
+    end_date_str = end_date.strftime("%Y-%m-%d")
 
     test_stocks = ["000001", "600519", "002146"]
 
@@ -95,7 +92,9 @@ def test_database_check():
         print(f"   日期范围: {start_date_str} 到 {end_date_str}")
 
         try:
-            result = preparer._check_database_data(stock_code, start_date_str, end_date_str)
+            result = preparer._check_database_data(
+                stock_code, start_date_str, end_date_str
+            )
 
             print(f"   - 有数据: {result['has_data']}")
             print(f"   - 是最新: {result['is_latest']}")
@@ -109,11 +108,17 @@ def test_database_check():
 
 async def test_data_sync_async():
     """测试数据同步功能（异步版本）"""
-    StockDataPreparer = getattr(importlib.import_module('trader.utils.validation'), 'StockDataPreparer')
-    datetime = getattr(importlib.import_module('datetime'), 'datetime')
-    timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
-    init_database = getattr(importlib.import_module('app.core.database'), 'init_database')
-    close_database = getattr(importlib.import_module('app.core.database'), 'close_database')
+    StockDataPreparer = getattr(
+        importlib.import_module("trader.utils.validation"), "StockDataPreparer"
+    )
+    datetime = getattr(importlib.import_module("datetime"), "datetime")
+    timedelta = getattr(importlib.import_module("datetime"), "timedelta")
+    init_database = getattr(
+        importlib.import_module("app.core.database"), "init_database"
+    )
+    close_database = getattr(
+        importlib.import_module("app.core.database"), "close_database"
+    )
 
     print("\n" + "=" * 80)
     print("🧪 测试数据同步功能（异步）")
@@ -130,8 +135,8 @@ async def test_data_sync_async():
         # 计算日期范围
         end_date = datetime.now()
         start_date = end_date - timedelta(days=30)
-        start_date_str = start_date.strftime('%Y-%m-%d')
-        end_date_str = end_date.strftime('%Y-%m-%d')
+        start_date_str = start_date.strftime("%Y-%m-%d")
+        end_date_str = end_date.strftime("%Y-%m-%d")
 
         # 测试一个股票的同步
         stock_code = "000001"
@@ -140,7 +145,9 @@ async def test_data_sync_async():
         print(f"   日期范围: {start_date_str} 到 {end_date_str}")
 
         try:
-            result = await preparer._trigger_data_sync_async(stock_code, start_date_str, end_date_str)
+            result = await preparer._trigger_data_sync_async(
+                stock_code, start_date_str, end_date_str
+            )
 
             print(f"   - 成功: {result['success']}")
             print(f"   - 消息: {result['message']}")
@@ -149,7 +156,7 @@ async def test_data_sync_async():
 
         except Exception as e:
             print(f"   ❌ 同步失败: {e}")
-            traceback = importlib.import_module('traceback')
+            traceback = importlib.import_module("traceback")
             traceback.print_exc()
 
     finally:
@@ -161,7 +168,7 @@ async def test_data_sync_async():
 
 def test_data_sync():
     """测试数据同步功能（同步包装器）"""
-    asyncio = importlib.import_module('asyncio')
+    asyncio = importlib.import_module("asyncio")
 
     # 运行异步测试
     asyncio.run(test_data_sync_async())
@@ -171,8 +178,12 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="测试A股数据准备功能")
-    parser.add_argument("--test", choices=["all", "prepare", "check", "sync"],
-                       default="all", help="测试类型")
+    parser.add_argument(
+        "--test",
+        choices=["all", "prepare", "check", "sync"],
+        default="all",
+        help="测试类型",
+    )
 
     args = parser.parse_args()
 

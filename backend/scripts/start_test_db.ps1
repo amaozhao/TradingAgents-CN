@@ -1,25 +1,25 @@
-# Start Test Database (MongoDB + Redis only)
+# Start Test Database (PostgreSQL + Redis only)
 # This script starts test database containers for local code testing
 
 $ErrorActionPreference = "Stop"
 
 Write-Host ""
 Write-Host "======================================================================" -ForegroundColor Cyan
-Write-Host "Start Test Database (MongoDB + Redis)" -ForegroundColor Cyan
+Write-Host "Start Test Database (PostgreSQL + Redis)" -ForegroundColor Cyan
 Write-Host "======================================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Check if production database containers are running
 Write-Host "[INFO] Checking production database containers..." -ForegroundColor Yellow
 
-$ProdMongoDB = docker ps --format "{{.Names}}" | Select-String "^trading-agents-mongodb$"
+$ProdPostgreSQL = docker ps --format "{{.Names}}" | Select-String "^trading-agents-postgres$"
 $ProdRedis = docker ps --format "{{.Names}}" | Select-String "^trading-agents-redis$"
 
-if ($ProdMongoDB -or $ProdRedis) {
+if ($ProdPostgreSQL -or $ProdRedis) {
     Write-Host ""
     Write-Host "[WARN] Production database containers are running:" -ForegroundColor Yellow
-    if ($ProdMongoDB) {
-        Write-Host "  - trading-agents-mongodb (port 27017)" -ForegroundColor White
+    if ($ProdPostgreSQL) {
+        Write-Host "  - trading-agents-postgres (port 5432)" -ForegroundColor White
     }
     if ($ProdRedis) {
         Write-Host "  - trading-agents-redis (port 6379)" -ForegroundColor White
@@ -33,9 +33,9 @@ if ($ProdMongoDB -or $ProdRedis) {
         Write-Host ""
         Write-Host "[INFO] Stopping production database containers..." -ForegroundColor Yellow
 
-        if ($ProdMongoDB) {
-            docker stop trading-agents-mongodb | Out-Null
-            Write-Host "  [OK] Stopped: trading-agents-mongodb" -ForegroundColor Green
+        if ($ProdPostgreSQL) {
+            docker stop trading-agents-postgres | Out-Null
+            Write-Host "  [OK] Stopped: trading-agents-postgres" -ForegroundColor Green
         }
         if ($ProdRedis) {
             docker stop trading-agents-redis | Out-Null
@@ -44,7 +44,7 @@ if ($ProdMongoDB -or $ProdRedis) {
     } else {
         Write-Host ""
         Write-Host "[INFO] Cancelled. Please stop production database manually:" -ForegroundColor Yellow
-        Write-Host "  docker stop trading-agents-mongodb trading-agents-redis" -ForegroundColor Gray
+        Write-Host "  docker stop trading-agents-postgres trading-agents-redis" -ForegroundColor Gray
         Write-Host ""
         exit 0
     }
@@ -73,22 +73,22 @@ Write-Host "[OK] Test database started!" -ForegroundColor Green
 Write-Host "======================================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "[INFO] Test database containers:" -ForegroundColor Cyan
-Write-Host "  - trading-agents-mongodb-test (port 27017)" -ForegroundColor White
+Write-Host "  - trading-agents-postgres-test (port 5432)" -ForegroundColor White
 Write-Host "  - trading-agents-redis-test (port 6379)" -ForegroundColor White
 Write-Host ""
 Write-Host "[INFO] Test data volumes:" -ForegroundColor Cyan
-Write-Host "  - trading_agents_test_mongodb_data" -ForegroundColor White
+Write-Host "  - trading_agents_test_postgres_data" -ForegroundColor White
 Write-Host "  - trading_agents_test_redis_data" -ForegroundColor White
 Write-Host ""
 Write-Host "[INFO] Connection strings:" -ForegroundColor Cyan
-Write-Host "  MongoDB: mongodb://admin:trading_agents123@localhost:27017/trading_agents?authSource=admin" -ForegroundColor White
+Write-Host "  PostgreSQL: postgresql://postgres:trading_agents123@localhost:5432/trading_agents_cn" -ForegroundColor White
 Write-Host "  Redis:   redis://:trading_agents123@localhost:6379/0" -ForegroundColor White
 Write-Host ""
 Write-Host "[INFO] Check container status:" -ForegroundColor Yellow
 Write-Host "  docker ps | Select-String 'test'" -ForegroundColor Gray
 Write-Host ""
 Write-Host "[INFO] Check logs:" -ForegroundColor Yellow
-Write-Host "  docker logs -f trading-agents-mongodb-test" -ForegroundColor Gray
+Write-Host "  docker logs -f trading-agents-postgres-test" -ForegroundColor Gray
 Write-Host "  docker logs -f trading-agents-redis-test" -ForegroundColor Gray
 Write-Host ""
 Write-Host "[INFO] Run local backend:" -ForegroundColor Yellow

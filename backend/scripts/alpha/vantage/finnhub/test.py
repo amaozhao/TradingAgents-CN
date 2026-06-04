@@ -4,13 +4,6 @@
 测试 Alpha Vantage 和 Finnhub 数据源
 """
 
-import sys
-from pathlib import Path
-
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
 print("=" * 80)
 print("🧪 测试 Alpha Vantage 和 Finnhub 数据源")
 print("=" * 80)
@@ -20,7 +13,7 @@ print("\n📊 测试 Alpha Vantage GLOBAL_QUOTE API")
 print("-" * 80)
 
 try:
-    from trader.flows.providers.us.alpha.common import get_api_key, _make_api_request
+    from trader.flows.providers.us.alpha.common import _make_api_request, get_api_key
 
     # 检查 API Key
     try:
@@ -39,7 +32,7 @@ try:
 
             if data and "Global Quote" in data:
                 quote = data["Global Quote"]
-                print(f"✅ 成功获取数据:")
+                print("✅ 成功获取数据:")
                 print(f"  股票代码: {quote.get('01. symbol')}")
                 print(f"  最新价格: ${quote.get('05. price')}")
                 print(f"  涨跌额: ${quote.get('09. change')}")
@@ -59,11 +52,12 @@ print("📊 测试 Finnhub Quote API")
 print("-" * 80)
 
 try:
-    import finnhub
     import os
 
+    import finnhub
+
     # 检查 API Key
-    api_key = os.getenv('FINNHUB_API_KEY')
+    api_key = os.getenv("FINNHUB_API_KEY")
     if api_key:
         print(f"✅ Finnhub API Key: {api_key[:8]}...")
 
@@ -73,10 +67,10 @@ try:
         # 测试获取 AAPL 行情
         print("\n测试获取 AAPL 行情...")
         try:
-            quote = client.quote('AAPL')
+            quote = client.quote("AAPL")
 
-            if quote and 'c' in quote:
-                print(f"✅ 成功获取数据:")
+            if quote and "c" in quote:
+                print("✅ 成功获取数据:")
                 print(f"  当前价格: ${quote.get('c')}")
                 print(f"  开盘价: ${quote.get('o')}")
                 print(f"  最高价: ${quote.get('h')}")

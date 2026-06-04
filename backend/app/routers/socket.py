@@ -2,18 +2,21 @@
 WebSocket 通知系统
 替代 SSE + Redis PubSub，解决连接泄漏问题
 """
+
 import asyncio
 import json
 import logging
-from typing import Dict, Optional, Set
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, HTTPException
 from datetime import datetime
+from typing import Dict, Optional, Set
+
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 from app.services.auth import AuthService
 
 router = APIRouter()
 logger = logging.getLogger("webapi.websocket")
+
 
 # 🔥 全局 WebSocket 连接管理器
 class ConnectionManager:
@@ -33,10 +36,14 @@ class ConnectionManager:
                 self.active_connections[user_id] = set()
             self.active_connections[user_id].add(websocket)
 
-            total_connections = sum(len(conns) for conns in self.active_connections.values())
-            logger.info(f"✅ [WS] 新连接: user={user_id}, "
-                       f"该用户连接数={len(self.active_connections[user_id])}, "
-                       f"总连接数={total_connections}")
+            total_connections = sum(
+                len(conns) for conns in self.active_connections.values()
+            )
+            logger.info(
+                f"✅ [WS] 新连接: user={user_id}, "
+                f"该用户连接数={len(self.active_connections[user_id])}, "
+                f"总连接数={total_connections}"
+            )
 
     async def disconnect(self, websocket: WebSocket, user_id: str):
         """断开 WebSocket"""
@@ -46,8 +53,12 @@ class ConnectionManager:
                 if not self.active_connections[user_id]:
                     del self.active_connections[user_id]
 
-            total_connections = sum(len(conns) for conns in self.active_connections.values())
-            logger.info(f"🔌 [WS] 断开连接: user={user_id}, 总连接数={total_connections}")
+            total_connections = sum(
+                len(conns) for conns in self.active_connections.values()
+            )
+            logger.info(
+                f"🔌 [WS] 断开连接: user={user_id}, 总连接数={total_connections}"
+            )
 
     async def send_personal_message(self, message: dict, user_id: str):
         """发送消息给指定用户的所有连接"""
@@ -98,8 +109,13 @@ class ConnectionManager:
         """获取连接统计"""
         return {
             "total_users": len(self.active_connections),
-            "total_connections": sum(len(conns) for conns in self.active_connections.values()),
-            "users": {user_id: len(conns) for user_id, conns in self.active_connections.items()}
+            "total_connections": sum(
+                len(conns) for conns in self.active_connections.values()
+            ),
+            "users": {
+                user_id: len(conns)
+                for user_id, conns in self.active_connections.items()
+            },
         }
 
 
@@ -115,8 +131,7 @@ class WebSocketStatsResponse(BaseModel):
 
 @router.websocket("/ws/notifications")
 async def websocket_notifications_endpoint(
-    websocket: WebSocket,
-    token: str = Query(...)
+    websocket: WebSocket, token: str = Query(...)
 ):
     """
     WebSocket 通知端点
@@ -150,14 +165,16 @@ async def websocket_notifications_endpoint(
     await manager.connect(websocket, user_id)
 
     # 发送连接确认
-    await websocket.send_json({
-        "type": "connected",
-        "data": {
-            "user_id": user_id,
-            "timestamp": datetime.utcnow().isoformat(),
-            "message": "WebSocket 连接成功"
+    await websocket.send_json(
+        {
+            "type": "connected",
+            "data": {
+                "user_id": user_id,
+                "timestamp": datetime.utcnow().isoformat(),
+                "message": "WebSocket 连接成功",
+            },
         }
-    })
+    )
 
     heartbeat_task: Optional[asyncio.Task[None]] = None
 
@@ -167,12 +184,12 @@ async def websocket_notifications_endpoint(
             while True:
                 try:
                     await asyncio.sleep(30)  # 每 30 秒发送一次心跳
-                    await websocket.send_json({
-                        "type": "heartbeat",
-                        "data": {
-                            "timestamp": datetime.utcnow().isoformat()
+                    await websocket.send_json(
+                        {
+                            "type": "heartbeat",
+                            "data": {"timestamp": datetime.utcnow().isoformat()},
                         }
-                    })
+                    )
                 except Exception as e:
                     logger.debug(f"💓 [WS] 心跳发送失败: {e}")
                     break
@@ -208,9 +225,7 @@ async def websocket_notifications_endpoint(
 
 @router.websocket("/ws/tasks/{task_id}")
 async def websocket_task_progress_endpoint(
-    websocket: WebSocket,
-    task_id: str,
-    token: str = Query(...)
+    websocket: WebSocket, task_id: str, token: str = Query(...)
 ):
     """
     WebSocket 任务进度端点
@@ -237,21 +252,22 @@ async def websocket_task_progress_endpoint(
         return
 
     user_id = "admin"
-    channel = f"task_progress:{task_id}"
 
     # 连接 WebSocket
     await websocket.accept()
     logger.info(f"✅ [WS-Task] 新连接: task={task_id}, user={user_id}")
 
     # 发送连接确认
-    await websocket.send_json({
-        "type": "connected",
-        "data": {
-            "task_id": task_id,
-            "timestamp": datetime.utcnow().isoformat(),
-            "message": "已连接任务进度流"
+    await websocket.send_json(
+        {
+            "type": "connected",
+            "data": {
+                "task_id": task_id,
+                "timestamp": datetime.utcnow().isoformat(),
+                "message": "已连接任务进度流",
+            },
         }
-    })
+    )
 
     try:
         # 这里可以从 Redis 或数据库获取任务进度
@@ -259,7 +275,9 @@ async def websocket_task_progress_endpoint(
         while True:
             try:
                 data = await websocket.receive_text()
-                logger.debug(f"📥 [WS-Task] 收到客户端消息: task={task_id}, data={data}")
+                logger.debug(
+                    f"📥 [WS-Task] 收到客户端消息: task={task_id}, data={data}"
+                )
             except WebSocketDisconnect:
                 logger.info(f"🔌 [WS-Task] 客户端主动断开: task={task_id}")
                 break
@@ -286,10 +304,7 @@ async def send_notification_via_websocket(user_id: str, notification: dict):
         user_id: 用户 ID
         notification: 通知数据
     """
-    message = {
-        "type": "notification",
-        "data": notification
-    }
+    message = {"type": "notification", "data": notification}
     await manager.send_personal_message(message, user_id)
 
 
@@ -304,9 +319,6 @@ async def send_task_progress_via_websocket(task_id: str, progress_data: dict):
     # 注意：这里需要知道任务属于哪个用户
     # 可以从数据库查询或在 progress_data 中传递
     # 暂时简化处理
-    message = {
-        "type": "progress",
-        "data": progress_data
-    }
+    message = {"type": "progress", "data": progress_data}
     # 广播给所有连接（生产环境应该只发给任务所属用户）
     await manager.broadcast(message)

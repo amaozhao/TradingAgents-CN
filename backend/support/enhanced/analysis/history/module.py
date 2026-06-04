@@ -2,22 +2,22 @@
 """
 测试增强的分析历史功能
 """
+
 import importlib
-
 import sys
-import os
-from pathlib import Path
 from datetime import datetime, timedelta
-import json
 
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from support.path import REPO_ROOT
+
+project_root = REPO_ROOT
+
 
 def test_load_analysis_results():
     """测试加载分析结果功能"""
     try:
-        load_analysis_results = getattr(importlib.import_module('web.components.analysis'), 'load_analysis_results')
+        load_analysis_results = getattr(
+            importlib.import_module("web.components.analysis"), "load_analysis_results"
+        )
 
         print("🔍 测试加载分析结果...")
 
@@ -28,7 +28,7 @@ def test_load_analysis_results():
         if results:
             # 检查结果结构
             first_result = results[0]
-            required_fields = ['analysis_id', 'timestamp', 'stock_symbol', 'status']
+            required_fields = ["analysis_id", "timestamp", "stock_symbol", "status"]
 
             for field in required_fields:
                 if field in first_result:
@@ -46,8 +46,13 @@ def test_load_analysis_results():
 def test_comparison_functions():
     """测试对比功能"""
     try:
-        calculate_text_similarity = getattr(importlib.import_module('web.components.analysis'), 'calculate_text_similarity')
-        get_report_content = getattr(importlib.import_module('web.components.analysis'), 'get_report_content')
+        calculate_text_similarity = getattr(
+            importlib.import_module("web.components.analysis"),
+            "calculate_text_similarity",
+        )
+        get_report_content = getattr(
+            importlib.import_module("web.components.analysis"), "get_report_content"
+        )
 
         print("🔍 测试对比功能...")
 
@@ -59,13 +64,11 @@ def test_comparison_functions():
 
         # 测试报告内容获取
         mock_result = {
-            'source': 'file_system',
-            'reports': {
-                'final_trade_decision': '买入建议'
-            }
+            "source": "file_system",
+            "reports": {"final_trade_decision": "买入建议"},
         }
 
-        content = get_report_content(mock_result, 'final_trade_decision')
+        content = get_report_content(mock_result, "final_trade_decision")
         print(f"✅ 报告内容获取: {content}")
 
         return True
@@ -78,27 +81,35 @@ def test_comparison_functions():
 def test_chart_functions():
     """测试图表功能"""
     try:
-        pd = importlib.import_module('pandas')
-        render_comprehensive_dashboard = getattr(importlib.import_module('web.components.analysis'), 'render_comprehensive_dashboard')
-        render_time_distribution_charts = getattr(importlib.import_module('web.components.analysis'), 'render_time_distribution_charts')
+        pd = importlib.import_module("pandas")
+        getattr(
+            importlib.import_module("web.components.analysis"),
+            "render_comprehensive_dashboard",
+        )
+        getattr(
+            importlib.import_module("web.components.analysis"),
+            "render_time_distribution_charts",
+        )
 
         print("🔍 测试图表功能...")
 
         # 创建模拟数据
         mock_data = []
         for i in range(10):
-            mock_data.append({
-                'timestamp': datetime.now() - timedelta(days=i),
-                'stock_symbol': f'00000{i % 3}',
-                'status': 'completed' if i % 2 == 0 else 'failed',
-                'analysts_count': 3,
-                'research_depth': 5,
-                'tags_count': 2,
-                'summary_length': 100 + i * 10,
-                'date': (datetime.now() - timedelta(days=i)).date(),
-                'hour': 10 + i % 12,
-                'weekday': i % 7
-            })
+            mock_data.append(
+                {
+                    "timestamp": datetime.now() - timedelta(days=i),
+                    "stock_symbol": f"00000{i % 3}",
+                    "status": "completed" if i % 2 == 0 else "failed",
+                    "analysts_count": 3,
+                    "research_depth": 5,
+                    "tags_count": 2,
+                    "summary_length": 100 + i * 10,
+                    "date": (datetime.now() - timedelta(days=i)).date(),
+                    "hour": 10 + i % 12,
+                    "weekday": i % 7,
+                }
+            )
 
         df = pd.DataFrame(mock_data)
         print(f"✅ 创建模拟数据: {len(df)} 条记录")
@@ -119,20 +130,22 @@ def create_test_data():
         print("🔍 创建测试数据...")
 
         # 确保测试数据目录存在
-        test_data_dir = project_root / "data" / "analysis_results" / "detailed" / "TEST001"
+        test_data_dir = (
+            project_root / "data" / "analysis_results" / "detailed" / "TEST001"
+        )
         test_date_dir = test_data_dir / "2025-07-31" / "reports"
         test_date_dir.mkdir(parents=True, exist_ok=True)
 
         # 创建测试报告
         test_reports = {
-            'final_trade_decision.md': '# 测试交易决策\n\n建议买入',
-            'fundamentals_report.md': '# 测试基本面分析\n\n公司基本面良好',
-            'market_report.md': '# 测试技术分析\n\n技术指标显示上涨趋势'
+            "final_trade_decision.md": "# 测试交易决策\n\n建议买入",
+            "fundamentals_report.md": "# 测试基本面分析\n\n公司基本面良好",
+            "market_report.md": "# 测试技术分析\n\n技术指标显示上涨趋势",
         }
 
         for filename, content in test_reports.items():
             report_file = test_date_dir / filename
-            with open(report_file, 'w', encoding='utf-8') as f:
+            with open(report_file, "w", encoding="utf-8") as f:
                 f.write(content)
 
         print(f"✅ 测试数据创建成功: {test_date_dir}")
@@ -152,7 +165,7 @@ def main():
         ("创建测试数据", create_test_data),
         ("加载分析结果", test_load_analysis_results),
         ("对比功能", test_comparison_functions),
-        ("图表功能", test_chart_functions)
+        ("图表功能", test_chart_functions),
     ]
 
     passed = 0

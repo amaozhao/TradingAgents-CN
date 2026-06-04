@@ -1,8 +1,8 @@
 from types import SimpleNamespace
 
 import pytest
-from bson import ObjectId
 
+from app.db.ids import DocumentId
 from app.services import favorite as favorites_service
 from app.services import tag as tags_service
 
@@ -50,7 +50,7 @@ async def test_remove_favorite_dual_writes_tombstone(monkeypatch):
 @pytest.mark.asyncio
 async def test_create_tag_dual_writes_user_tag(monkeypatch):
     service = tags_service.TagsService()
-    tag_id = ObjectId()
+    tag_id = DocumentId()
     service.db = SimpleNamespace(user_tags=FakeCollection(inserted_id=tag_id))
     dual_write_calls = []
 
@@ -72,7 +72,7 @@ async def test_create_tag_dual_writes_user_tag(monkeypatch):
 @pytest.mark.asyncio
 async def test_delete_tag_dual_writes_tombstone(monkeypatch):
     service = tags_service.TagsService()
-    tag_id = ObjectId()
+    tag_id = DocumentId()
     service.db = SimpleNamespace(
         user_tags=FakeCollection(
             existing={
@@ -101,7 +101,7 @@ async def test_delete_tag_dual_writes_tombstone(monkeypatch):
 
 class FakeCollection:
     def __init__(self, inserted_id=None, existing=None):
-        self.inserted_id = inserted_id or ObjectId()
+        self.inserted_id = inserted_id or DocumentId()
         self.existing = existing
 
     async def create_index(self, *_args, **_kwargs):

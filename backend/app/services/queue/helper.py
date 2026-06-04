@@ -1,14 +1,15 @@
 """
 队列服务的辅助函数（与 Redis 操作相关），便于在主服务中做薄委托。
 """
+
 from __future__ import annotations
+
 import time
 from typing import Any, Dict, cast
+
 from redis.asyncio import Redis
 
 from .key import (
-    READY_LIST,
-    TASK_PREFIX,
     SET_PROCESSING,
     USER_PROCESSING_PREFIX,
     VISIBILITY_TIMEOUT_PREFIX,
@@ -42,7 +43,9 @@ async def unmark_task_processing(r: Redis, task_id: str, user_id: str) -> None:
     await r.srem(SET_PROCESSING, task_id)
 
 
-async def set_visibility_timeout(r: Redis, task_id: str, worker_id: str, visibility_timeout: int) -> None:
+async def set_visibility_timeout(
+    r: Redis, task_id: str, worker_id: str, visibility_timeout: int
+) -> None:
     """设置可见性超时"""
     timeout_key = VISIBILITY_TIMEOUT_PREFIX + task_id
     timeout_data: Dict[str, str] = {

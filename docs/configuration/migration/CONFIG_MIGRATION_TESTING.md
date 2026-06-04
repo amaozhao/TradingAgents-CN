@@ -404,7 +404,7 @@ curl -X POST http://localhost:8000/api/config/reload \
 **原因**: 数据库连接失败或配置格式错误
 
 **解决方案**:
-1. 检查 MongoDB 连接是否正常
+1. 检查 PostgreSQL 连接是否正常
 2. 检查配置数据格式是否正确
 3. 查看详细的错误日志
 

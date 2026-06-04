@@ -3,14 +3,9 @@
 阿里百炼快速修复验证
 验证核心问题是否解决
 """
+
 import importlib
-
 import os
-import sys
-
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
 
 
 def test_adapter_creation():
@@ -19,14 +14,12 @@ def test_adapter_creation():
     print("=" * 40)
 
     try:
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI"
+        )
 
         # 创建适配器（不调用API）
-        llm = ChatDashScopeOpenAI(
-            model="qwen-turbo",
-            temperature=0.1,
-            max_tokens=100
-        )
+        llm = ChatDashScopeOpenAI(model="qwen-turbo", temperature=0.1, max_tokens=100)
 
         print("✅ 适配器创建成功")
         print(f"   类型: {type(llm).__name__}")
@@ -45,8 +38,10 @@ def test_tool_binding_basic():
     print("=" * 40)
 
     try:
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
-        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI"
+        )
+        tool = getattr(importlib.import_module("langchain_core.tools"), "tool")
 
         # 定义简单工具
         @tool
@@ -58,10 +53,10 @@ def test_tool_binding_basic():
         llm = ChatDashScopeOpenAI(model="qwen-turbo", max_tokens=50)
 
         # 绑定工具
-        llm_with_tools = llm.bind_tools([simple_tool])
+        llm.bind_tools([simple_tool])
 
         print("✅ 工具绑定成功")
-        print(f"   绑定的工具数量: 1")
+        print("   绑定的工具数量: 1")
 
         return True
 
@@ -76,8 +71,12 @@ def test_vs_old_adapter():
     print("=" * 40)
 
     try:
-        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        ChatDashScope = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScope"
+        )
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI"
+        )
 
         print("🔄 测试旧适配器...")
         old_llm = ChatDashScope(model="qwen-turbo")
@@ -88,7 +87,7 @@ def test_vs_old_adapter():
         print(f"   新适配器类型: {type(new_llm).__name__}")
 
         # 检查继承关系
-        ChatOpenAI = getattr(importlib.import_module('langchain_openai'), 'ChatOpenAI')
+        ChatOpenAI = getattr(importlib.import_module("langchain_openai"), "ChatOpenAI")
         is_openai_compatible = isinstance(new_llm, ChatOpenAI)
         print(f"   OpenAI兼容: {'✅ 是' if is_openai_compatible else '❌ 否'}")
 
@@ -108,7 +107,7 @@ def test_import_completeness():
         ("ChatDashScopeOpenAI", "trader.llm.adapters"),
         ("create_dashscope_openai_llm", "trader.llm.adapters.dashscope.openai"),
         ("TradingAgentsGraph", "trader.graph.trading"),
-        ("get_china_stock_data_unified", "trader.flows")
+        ("get_china_stock_data_unified", "trader.flows"),
     ]
 
     success_count = 0
@@ -154,9 +153,11 @@ def test_technical_analysis_simulation():
     print("=" * 40)
 
     try:
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
-        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI"
+        )
+        tool = getattr(importlib.import_module("langchain_core.tools"), "tool")
+        getattr(importlib.import_module("langchain_core.messages"), "HumanMessage")
 
         # 模拟股票数据工具
         @tool
@@ -178,7 +179,7 @@ def test_technical_analysis_simulation():
 
         # 创建LLM并绑定工具
         llm = ChatDashScopeOpenAI(model="qwen-turbo", max_tokens=200)
-        llm_with_tools = llm.bind_tools([mock_get_stock_data])
+        llm.bind_tools([mock_get_stock_data])
 
         print("✅ 技术面分析流程模拟成功")
         print("   - LLM创建: ✅")
@@ -209,7 +210,7 @@ def main():
         ("新旧适配器对比", test_vs_old_adapter),
         ("导入完整性", test_import_completeness),
         ("API密钥检测", test_api_key_detection),
-        ("技术面分析模拟", test_technical_analysis_simulation)
+        ("技术面分析模拟", test_technical_analysis_simulation),
     ]
 
     results = []

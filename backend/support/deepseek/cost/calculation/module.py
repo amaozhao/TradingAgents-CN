@@ -2,19 +2,16 @@
 """
 测试DeepSeek成本计算修复
 """
-import importlib
 
+import importlib
 import os
 import sys
-from pathlib import Path
-from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
+
 
 def test_deepseek_pricing_config():
     """测试DeepSeek定价配置"""
@@ -22,7 +19,9 @@ def test_deepseek_pricing_config():
     print("=" * 50)
 
     try:
-        ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
+        ConfigManager = getattr(
+            importlib.import_module("trader.config.manager"), "ConfigManager"
+        )
 
         # 创建配置管理器
         config_manager = ConfigManager()
@@ -48,9 +47,10 @@ def test_deepseek_pricing_config():
 
     except Exception as e:
         print(f"❌ 定价配置测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_deepseek_cost_calculation():
     """测试DeepSeek成本计算"""
@@ -58,7 +58,9 @@ def test_deepseek_cost_calculation():
     print("=" * 50)
 
     try:
-        ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
+        ConfigManager = getattr(
+            importlib.import_module("trader.config.manager"), "ConfigManager"
+        )
 
         # 创建配置管理器
         config_manager = ConfigManager()
@@ -79,7 +81,7 @@ def test_deepseek_cost_calculation():
                 provider="deepseek",
                 model_name="deepseek-chat",
                 input_tokens=input_tokens,
-                output_tokens=output_tokens
+                output_tokens=output_tokens,
             )
 
             print(f"测试用例 {i}:")
@@ -88,22 +90,27 @@ def test_deepseek_cost_calculation():
             print(f"   计算成本: ¥{cost:.6f}")
 
             # 手动验证计算
-            expected_cost = (input_tokens / 1000) * 0.0014 + (output_tokens / 1000) * 0.0028
+            expected_cost = (input_tokens / 1000) * 0.0014 + (
+                output_tokens / 1000
+            ) * 0.0028
             print(f"   预期成本: ¥{expected_cost:.6f}")
-            print(f"   计算正确: {'✅' if abs(cost - expected_cost) < 0.000001 else '❌'}")
+            print(
+                f"   计算正确: {'✅' if abs(cost - expected_cost) < 0.000001 else '❌'}"
+            )
             print()
 
             if cost == 0.0:
-                print(f"❌ 成本计算返回0，说明配置有问题")
+                print("❌ 成本计算返回0，说明配置有问题")
                 return False
 
         return True
 
     except Exception as e:
         print(f"❌ 成本计算测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_token_tracker():
     """测试Token跟踪器"""
@@ -111,8 +118,12 @@ def test_token_tracker():
     print("=" * 50)
 
     try:
-        ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
-        TokenTracker = getattr(importlib.import_module('trader.config.manager'), 'TokenTracker')
+        ConfigManager = getattr(
+            importlib.import_module("trader.config.manager"), "ConfigManager"
+        )
+        TokenTracker = getattr(
+            importlib.import_module("trader.config.manager"), "TokenTracker"
+        )
 
         # 创建配置管理器和Token跟踪器
         config_manager = ConfigManager()
@@ -125,11 +136,11 @@ def test_token_tracker():
             input_tokens=1000,
             output_tokens=500,
             session_id="test_session",
-            analysis_type="test_analysis"
+            analysis_type="test_analysis",
         )
 
         if usage_record:
-            print(f"✅ Token跟踪成功")
+            print("✅ Token跟踪成功")
             print(f"   提供商: {usage_record.provider}")
             print(f"   模型: {usage_record.model_name}")
             print(f"   输入tokens: {usage_record.input_tokens}")
@@ -138,20 +149,21 @@ def test_token_tracker():
             print(f"   会话ID: {usage_record.session_id}")
 
             if usage_record.cost > 0:
-                print(f"✅ 成本计算正确")
+                print("✅ 成本计算正确")
                 return True
             else:
-                print(f"❌ 成本计算仍为0")
+                print("❌ 成本计算仍为0")
                 return False
         else:
-            print(f"❌ Token跟踪失败")
+            print("❌ Token跟踪失败")
             return False
 
     except Exception as e:
         print(f"❌ Token跟踪器测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_deepseek_adapter_integration():
     """测试DeepSeek适配器集成"""
@@ -164,13 +176,13 @@ def test_deepseek_adapter_integration():
             print("⚠️ 未找到DEEPSEEK_API_KEY，跳过适配器测试")
             return True
 
-        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
+        ChatDeepSeek = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"), "ChatDeepSeek"
+        )
 
         # 创建DeepSeek实例
         deepseek_llm = ChatDeepSeek(
-            model="deepseek-chat",
-            temperature=0.1,
-            max_tokens=100
+            model="deepseek-chat", temperature=0.1, max_tokens=100
         )
 
         # 测试简单调用
@@ -182,14 +194,15 @@ def test_deepseek_adapter_integration():
         print(f"📊 响应内容: {result.content[:100]}...")
 
         # 检查是否有成本信息输出
-        print(f"✅ DeepSeek适配器集成测试完成")
+        print("✅ DeepSeek适配器集成测试完成")
         return True
 
     except Exception as e:
         print(f"❌ DeepSeek适配器集成测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主函数"""
@@ -217,7 +230,9 @@ def main():
     print(f"Token跟踪: {'✅ 正确' if tracker_success else '❌ 有问题'}")
     print(f"适配器集成: {'✅ 正确' if adapter_success else '❌ 有问题'}")
 
-    overall_success = config_success and calc_success and tracker_success and adapter_success
+    overall_success = (
+        config_success and calc_success and tracker_success and adapter_success
+    )
 
     if overall_success:
         print("\n🎉 DeepSeek成本计算修复成功！")
@@ -232,6 +247,7 @@ def main():
 
     print("\n🎯 测试完成！")
     return overall_success
+
 
 if __name__ == "__main__":
     success = main()

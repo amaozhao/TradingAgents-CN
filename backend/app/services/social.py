@@ -2,16 +2,16 @@
 社媒消息数据服务
 提供统一的社媒消息存储、查询和分析功能
 """
+
 import importlib
-from typing import Optional, List, Dict, Any, Union
-from datetime import datetime, timedelta
-from dataclasses import dataclass, field
 import logging
-from pymongo import ReplaceOne
-from pymongo.errors import BulkWriteError
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
 from app.core.database import get_database
+from app.db.documentstore import BulkWriteError, ReplaceOne
 from app.db.dual import dual_write_hot_documents
 
 logger = logging.getLogger(__name__)
@@ -20,9 +20,12 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SocialMediaQueryParams:
     """社媒消息查询参数"""
+
     symbol: Optional[str] = None
     symbols: Optional[List[str]] = None
-    platform: Optional[str] = None  # weibo/wechat/douyin/xiaohongshu/zhihu/twitter/reddit
+    platform: Optional[str] = (
+        None  # weibo/wechat/douyin/xiaohongshu/zhihu/twitter/reddit
+    )
     message_type: Optional[str] = None  # post/comment/repost/reply
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
@@ -42,6 +45,7 @@ class SocialMediaQueryParams:
 @dataclass
 class SocialMediaStats:
     """社媒消息统计信息"""
+
     total_count: int = 0
     positive_count: int = 0
     negative_count: int = 0
@@ -81,8 +85,7 @@ class SocialMediaService:
         return self.collection
 
     async def save_social_media_messages(
-        self,
-        messages: List[Dict[str, Any]]
+        self, messages: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
         批量保存社媒消息
@@ -109,7 +112,7 @@ class SocialMediaService:
                 # 使用message_id和platform作为唯一标识
                 filter_dict = {
                     "message_id": message.get("message_id"),
-                    "platform": message.get("platform")
+                    "platform": message.get("platform"),
                 }
 
                 operations.append(ReplaceOne(filter_dict, message, upsert=True))
@@ -125,7 +128,7 @@ class SocialMediaService:
                 "saved": saved_count,
                 "failed": len(messages) - saved_count,
                 "upserted": result.upserted_count,
-                "modified": result.modified_count
+                "modified": result.modified_count,
             }
 
         except BulkWriteError as e:
@@ -133,20 +136,21 @@ class SocialMediaService:
             return {
                 "saved": e.details.get("nUpserted", 0) + e.details.get("nModified", 0),
                 "failed": len(e.details.get("writeErrors", [])),
-                "errors": e.details.get("writeErrors", [])
+                "errors": e.details.get("writeErrors", []),
             }
         except Exception as e:
             self.logger.error(f"❌ 社媒消息保存失败: {e}")
             return {"saved": 0, "failed": len(messages), "error": str(e)}
 
-    async def _dual_write_social_media_messages(self, messages: List[Dict[str, Any]]) -> None:
+    async def _dual_write_social_media_messages(
+        self, messages: List[Dict[str, Any]]
+    ) -> None:
         result = await dual_write_hot_documents("social_media_messages", messages)
         if result.status == "failed":
             self.logger.warning("⚠️ 社媒消息 PostgreSQL 双写失败: %s", result.reason)
 
     async def query_social_media_messages(
-        self,
-        params: SocialMediaQueryParams
+        self, params: SocialMediaQueryParams
     ) -> List[Dict[str, Any]]:
         """
         查询社媒消息
@@ -159,7 +163,9 @@ class SocialMediaService:
         """
         try:
             if settings.POSTGRES_READ_ENABLED:
-                postgres_messages = await self._query_social_media_messages_from_postgres(params)
+                postgres_messages = (
+                    await self._query_social_media_messages_from_postgres(params)
+                )
                 if postgres_messages:
                     return postgres_messages
 
@@ -197,7 +203,9 @@ class SocialMediaService:
                 query["author.influence_score"] = {"$gte": params.min_influence_score}
 
             if params.min_engagement_rate:
-                query["engagement.engagement_rate"] = {"$gte": params.min_engagement_rate}
+                query["engagement.engagement_rate"] = {
+                    "$gte": params.min_engagement_rate
+                }
 
             if params.verified_only:
                 query["author.verified"] = True
@@ -232,20 +240,24 @@ class SocialMediaService:
         params: SocialMediaQueryParams,
     ) -> List[Dict[str, Any]]:
         try:
-            query_social_media_messages = getattr(importlib.import_module('app.db.message'), 'query_social_media_messages')
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            query_social_media_messages = getattr(
+                importlib.import_module("app.db.message"), "query_social_media_messages"
+            )
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
 
             async with get_session_factory()() as session:
                 return await query_social_media_messages(session, params)
         except Exception as e:
-            self.logger.warning(f"PostgreSQL社媒消息查询失败，回退MongoDB: {e}")
+            self.logger.warning(f"PostgreSQL社媒消息查询失败，回退PostgreSQL: {e}")
             return []
 
     async def get_latest_messages(
         self,
         symbol: Optional[str] = None,
         platform: Optional[str] = None,
-        limit: int = 20
+        limit: int = 20,
     ) -> List[Dict[str, Any]]:
         """获取最新社媒消息"""
         params = SocialMediaQueryParams(
@@ -253,7 +265,7 @@ class SocialMediaService:
             platform=platform,
             limit=limit,
             sort_by="publish_time",
-            sort_order=-1
+            sort_order=-1,
         )
         return await self.query_social_media_messages(params)
 
@@ -262,7 +274,7 @@ class SocialMediaService:
         query: str,
         symbol: Optional[str] = None,
         platform: Optional[str] = None,
-        limit: int = 50
+        limit: int = 50,
     ) -> List[Dict[str, Any]]:
         """全文搜索社媒消息"""
         try:
@@ -279,9 +291,7 @@ class SocialMediaService:
             collection = await self._get_collection()
 
             # 构建搜索条件
-            search_query: Dict[str, Any] = {
-                "$text": {"$search": query}
-            }
+            search_query: Dict[str, Any] = {"$text": {"$search": query}}
 
             if symbol:
                 search_query["symbol"] = symbol
@@ -291,8 +301,7 @@ class SocialMediaService:
 
             # 执行搜索
             cursor = collection.find(
-                search_query,
-                {"score": {"$meta": "textScore"}}
+                search_query, {"score": {"$meta": "textScore"}}
             ).sort([("score", {"$meta": "textScore"})])
 
             messages = await cursor.limit(limit).to_list(length=limit)
@@ -313,8 +322,13 @@ class SocialMediaService:
         limit: int = 50,
     ) -> List[Dict[str, Any]]:
         try:
-            search_social_media_messages = getattr(importlib.import_module('app.db.message'), 'search_social_media_messages')
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            search_social_media_messages = getattr(
+                importlib.import_module("app.db.message"),
+                "search_social_media_messages",
+            )
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
 
             async with get_session_factory()() as session:
                 return await search_social_media_messages(
@@ -325,14 +339,14 @@ class SocialMediaService:
                     limit=limit,
                 )
         except Exception as e:
-            self.logger.warning(f"PostgreSQL社媒消息搜索失败，回退MongoDB: {e}")
+            self.logger.warning(f"PostgreSQL社媒消息搜索失败，回退PostgreSQL: {e}")
             return []
 
     async def get_social_media_statistics(
         self,
         symbol: Optional[str] = None,
         start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None
+        end_time: Optional[datetime] = None,
     ) -> SocialMediaStats:
         """获取社媒消息统计信息"""
         try:
@@ -364,28 +378,38 @@ class SocialMediaService:
             if match_stage:
                 pipeline.append({"$match": match_stage})
 
-            pipeline.extend([
-                {
-                    "$group": {
-                        "_id": None,
-                        "total_count": {"$sum": 1},
-                        "positive_count": {
-                            "$sum": {"$cond": [{"$eq": ["$sentiment", "positive"]}, 1, 0]}
-                        },
-                        "negative_count": {
-                            "$sum": {"$cond": [{"$eq": ["$sentiment", "negative"]}, 1, 0]}
-                        },
-                        "neutral_count": {
-                            "$sum": {"$cond": [{"$eq": ["$sentiment", "neutral"]}, 1, 0]}
-                        },
-                        "total_views": {"$sum": "$engagement.views"},
-                        "total_likes": {"$sum": "$engagement.likes"},
-                        "total_shares": {"$sum": "$engagement.shares"},
-                        "total_comments": {"$sum": "$engagement.comments"},
-                        "avg_engagement_rate": {"$avg": "$engagement.engagement_rate"}
+            pipeline.extend(
+                [
+                    {
+                        "$group": {
+                            "_id": None,
+                            "total_count": {"$sum": 1},
+                            "positive_count": {
+                                "$sum": {
+                                    "$cond": [{"$eq": ["$sentiment", "positive"]}, 1, 0]
+                                }
+                            },
+                            "negative_count": {
+                                "$sum": {
+                                    "$cond": [{"$eq": ["$sentiment", "negative"]}, 1, 0]
+                                }
+                            },
+                            "neutral_count": {
+                                "$sum": {
+                                    "$cond": [{"$eq": ["$sentiment", "neutral"]}, 1, 0]
+                                }
+                            },
+                            "total_views": {"$sum": "$engagement.views"},
+                            "total_likes": {"$sum": "$engagement.likes"},
+                            "total_shares": {"$sum": "$engagement.shares"},
+                            "total_comments": {"$sum": "$engagement.comments"},
+                            "avg_engagement_rate": {
+                                "$avg": "$engagement.engagement_rate"
+                            },
+                        }
                     }
-                }
-            ])
+                ]
+            )
 
             # 执行聚合
             result = await collection.aggregate(pipeline).to_list(length=1)
@@ -401,7 +425,7 @@ class SocialMediaService:
                     total_likes=stats_data.get("total_likes", 0),
                     total_shares=stats_data.get("total_shares", 0),
                     total_comments=stats_data.get("total_comments", 0),
-                    avg_engagement_rate=stats_data.get("avg_engagement_rate", 0.0)
+                    avg_engagement_rate=stats_data.get("avg_engagement_rate", 0.0),
                 )
             else:
                 return SocialMediaStats()
@@ -418,8 +442,12 @@ class SocialMediaService:
         end_time: Optional[datetime] = None,
     ) -> Optional[SocialMediaStats]:
         try:
-            get_social_media_stats = getattr(importlib.import_module('app.db.message'), 'get_social_media_stats')
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            get_social_media_stats = getattr(
+                importlib.import_module("app.db.message"), "get_social_media_stats"
+            )
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
 
             async with get_session_factory()() as session:
                 stats = await get_social_media_stats(
@@ -430,12 +458,13 @@ class SocialMediaService:
                 )
             return SocialMediaStats(**stats)
         except Exception as e:
-            self.logger.warning(f"PostgreSQL社媒消息统计失败，回退MongoDB: {e}")
+            self.logger.warning(f"PostgreSQL社媒消息统计失败，回退PostgreSQL: {e}")
             return None
 
 
 # 全局服务实例
 _social_media_service = None
+
 
 async def get_social_media_service() -> SocialMediaService:
     """获取社媒消息数据服务实例"""

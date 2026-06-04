@@ -4,7 +4,6 @@
 """
 
 import os
-import sys
 import traceback
 from datetime import datetime
 
@@ -14,9 +13,9 @@ print("=" * 40)
 # 测试1：检查文件是否存在
 print("\n📁 检查复制的文件...")
 files_to_check = [
-    'backend/trader/flows/cache_manager.py',
-    'backend/trader/flows/optimized_us_data.py',
-    'backend/trader/flows/dataflowsconfig.py'
+    "backend/trader/flows/cache_manager.py",
+    "backend/trader/flows/optimized_us_data.py",
+    "backend/trader/flows/dataflowsconfig.py",
 ]
 
 for file_path in files_to_check:
@@ -31,8 +30,8 @@ print("\n🐍 检查Python语法...")
 for file_path in files_to_check:
     if os.path.exists(file_path):
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                compile(f.read(), file_path, 'exec')
+            with open(file_path, "r", encoding="utf-8") as f:
+                compile(f.read(), file_path, "exec")
             print(f"✅ {file_path} 语法正确")
         except SyntaxError as e:
             print(f"❌ {file_path} 语法错误: {e}")
@@ -44,7 +43,8 @@ print("\n📦 测试模块导入...")
 
 # 测试缓存管理器
 try:
-    from trader.flows.cache import get_cache, StockDataCache
+    from trader.flows.cache import get_cache
+
     print("✅ cache_manager 导入成功")
 
     # 创建缓存实例
@@ -52,7 +52,7 @@ try:
     print(f"✅ 缓存实例创建成功: {type(cache).__name__}")
 
     # 检查缓存目录
-    if hasattr(cache, 'cache_dir'):
+    if hasattr(cache, "cache_dir"):
         print(f"📁 缓存目录: {cache.cache_dir}")
         if cache.cache_dir.exists():
             print("✅ 缓存目录已创建")
@@ -66,6 +66,7 @@ except Exception as e:
 # 测试优化美股数据
 try:
     from trader.flows.providers.us.optimized import get_optimized_us_data_provider
+
     print("✅ optimized_us_data 导入成功")
 
     # 创建数据提供器
@@ -79,6 +80,7 @@ except Exception as e:
 # 测试配置模块
 try:
     from trader.flows.config import get_config
+
     print("✅ config 导入成功")
 
     # 获取配置
@@ -101,7 +103,7 @@ try:
         data=test_data,
         start_date="2024-01-01",
         end_date="2024-12-31",
-        data_source="integration_test"
+        data_source="integration_test",
     )
     print(f"✅ 数据保存成功: {cache_key}")
 
@@ -110,7 +112,7 @@ try:
     if loaded_data == test_data:
         print("✅ 数据加载成功，内容匹配")
     else:
-        print(f"❌ 数据不匹配")
+        print("❌ 数据不匹配")
         print(f"  期望: {test_data}")
         print(f"  实际: {loaded_data}")
 
@@ -119,7 +121,7 @@ try:
         symbol="TEST",
         start_date="2024-01-01",
         end_date="2024-12-31",
-        data_source="integration_test"
+        data_source="integration_test",
     )
 
     if found_key:
@@ -145,7 +147,7 @@ try:
         data="性能测试数据",
         start_date="2024-01-01",
         end_date="2024-12-31",
-        data_source="perf_test"
+        data_source="perf_test",
     )
     save_time = time.time() - start_time
 

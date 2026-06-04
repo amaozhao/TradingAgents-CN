@@ -20,8 +20,6 @@ dependencies = [
     "alembic>=1.17.2",
     "asyncpg>=0.31.0",
     "greenlet>=3.3.0",
-    "motor>=3.7.1",
-    "pymongo>=4.17.0",
     "redis>=8.0.0",
     "sqlalchemy>=2.0.50",
 
@@ -70,6 +68,7 @@ dependencies = [
     "pandas>=3.0.3",
     "plotly>=6.7.0",
     "pyright>=1.1.407",
+    "ruff>=0.15.15",
 
     # 网络爬虫和解析
     "curl-cffi>=0.15.0",  # 模拟真实浏览器TLS指纹，绕过反爬虫检测
@@ -105,10 +104,11 @@ qianfan = ["qianfan>=0.4.12.3"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+pythonpath = ["."]
 python_files = ["test.py"]
-addopts = "--import-mode=importlib -m \"not integration\" -k \"not (test_server_config or test_stock_codes)\""
+addopts = "--import-mode=importlib"
 markers = [
-    "integration: 标记集成/端到端测试（默认跳过）",
+    "integration: 标记集成/端到端测试",
     "unit: 标记单元测试",
 ]
 

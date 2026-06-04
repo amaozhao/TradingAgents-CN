@@ -18,5 +18,5 @@ print()
 # 正确的方法
 suffix = "/v1beta"
 if base_url.endswith(suffix):
-    result = base_url[:-len(suffix)]
+    result = base_url[: -len(suffix)]
     print(f"使用 [:-len(suffix)] = {result}")

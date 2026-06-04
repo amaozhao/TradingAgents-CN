@@ -4,10 +4,11 @@ from typing import Any, Dict, Optional, cast
 
 import pandas as pd
 
-from .tushare import get_tushare_provider
 from trader.utils.logging.manager import get_logger
 
-logger = get_logger('agents')
+from .tushare import get_tushare_provider
+
+logger = get_logger("agents")
 
 
 def _safe_float(x) -> Optional[float]:
@@ -25,38 +26,40 @@ def _safe_float(x) -> Optional[float]:
 def _get_tushare_snapshot(symbol: str) -> Dict[str, Optional[float]]:
     try:
         provider = get_tushare_provider()
-        if not getattr(provider, 'connected', False):
+        if not getattr(provider, "connected", False):
             return {}
         # 先取 ts_code
         info = cast(Any, provider).get_stock_info(symbol)
-        ts_code = info.get('ts_code') if isinstance(info, dict) else None
+        ts_code = info.get("ts_code") if isinstance(info, dict) else None
         if not ts_code:
             return {}
         # daily_basic 拿 pe/pb/total_mv
         api = provider.api
         if api is None:
             return {}
-        db = api.daily_basic(ts_code=ts_code, fields='ts_code,trade_date,pe,pb,total_mv')
+        db = api.daily_basic(
+            ts_code=ts_code, fields="ts_code,trade_date,pe,pb,total_mv"
+        )
         pe = pb = mv = None
         if db is not None and not db.empty:
-            db = db.sort_values('trade_date').iloc[-1]
-            pe = _safe_float(db.get('pe'))
-            pb = _safe_float(db.get('pb'))
-            mv = _safe_float(db.get('total_mv'))
+            db = db.sort_values("trade_date").iloc[-1]
+            pe = _safe_float(db.get("pe"))
+            pb = _safe_float(db.get("pb"))
+            mv = _safe_float(db.get("total_mv"))
         # roe 通过 fina_indicator（若不可用则忽略）
         roe = None
         try:
-            fi = api.fina_indicator(ts_code=ts_code, fields='ts_code,end_date,roe')
+            fi = api.fina_indicator(ts_code=ts_code, fields="ts_code,end_date,roe")
             if fi is not None and not fi.empty:
-                fi = fi.sort_values('end_date').iloc[-1]
-                roe = _safe_float(fi.get('roe'))
+                fi = fi.sort_values("end_date").iloc[-1]
+                roe = _safe_float(fi.get("roe"))
         except Exception:
             pass
         return {
-            'pe': pe,
-            'pb': pb,
-            'market_cap': mv,  # 单位：万元
-            'roe': roe,
+            "pe": pe,
+            "pb": pb,
+            "market_cap": mv,  # 单位：万元
+            "roe": roe,
         }
     except Exception as e:
         logger.debug(f"[fund_snapshot] tushare snapshot failed: {e}")

@@ -44,7 +44,7 @@ export interface CacheBackendInfo {
   system: string
   primary_backend: string
   fallback_enabled: boolean
-  mongodb_available?: boolean
+  postgres_available?: boolean
   redis_available?: boolean
 }
 
@@ -102,4 +102,3 @@ export function getCacheBackendInfo() {
     method: 'get'
   })
 }
-

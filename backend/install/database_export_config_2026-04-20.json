@@ -735,10 +735,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -746,7 +746,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -1523,10 +1523,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -1534,7 +1534,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -2311,10 +2311,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -2322,7 +2322,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -3099,10 +3099,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -3110,7 +3110,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -3887,10 +3887,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -3898,7 +3898,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -4695,10 +4695,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -4706,7 +4706,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -5503,10 +5503,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -5514,7 +5514,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -6311,10 +6311,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -6322,7 +6322,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -7139,10 +7139,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -7150,7 +7150,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -7987,10 +7987,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -7998,7 +7998,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -8815,10 +8815,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -8826,7 +8826,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -9623,10 +9623,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -9634,7 +9634,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -10451,10 +10451,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -10462,7 +10462,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -11259,10 +11259,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -11270,7 +11270,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -12087,10 +12087,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -12098,7 +12098,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -12936,10 +12936,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -12947,7 +12947,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -13826,10 +13826,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -13837,7 +13837,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -14754,10 +14754,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -14765,7 +14765,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -15720,10 +15720,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -15731,7 +15731,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -16724,10 +16724,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -16735,7 +16735,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -17814,10 +17814,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -17825,7 +17825,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -18904,10 +18904,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -18915,7 +18915,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -19950,10 +19950,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -19961,7 +19961,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -20956,10 +20956,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -20967,7 +20967,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -21922,10 +21922,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -21933,7 +21933,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -22848,10 +22848,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -22859,7 +22859,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -23731,10 +23731,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -23742,7 +23742,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -24657,10 +24657,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -24668,7 +24668,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -25627,10 +25627,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -25638,7 +25638,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -26641,10 +26641,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -26652,7 +26652,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -27699,10 +27699,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -27710,7 +27710,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -28801,10 +28801,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -28812,7 +28812,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -29903,10 +29903,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -29914,7 +29914,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",
@@ -31049,10 +31049,10 @@
         "default_data_source": "AKShare",
         "database_configs": [
           {
-            "name": "MongoDB主库",
-            "type": "mongodb",
+            "name": "PostgreSQL主库",
+            "type": "postgres",
             "host": "localhost",
-            "port": 27017,
+            "port": 5432,
             "username": null,
             "password": "",
             "database": "trading_agents",
@@ -31060,7 +31060,7 @@
             "pool_size": 10,
             "max_overflow": 20,
             "enabled": true,
-            "description": "MongoDB主数据库"
+            "description": "PostgreSQL主数据库"
           },
           {
             "name": "Redis缓存",

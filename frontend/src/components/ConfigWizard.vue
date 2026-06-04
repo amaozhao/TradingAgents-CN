@@ -46,27 +46,27 @@
         <div v-if="currentStep === 1" class="step-content">
           <h3>数据库配置</h3>
           <p class="step-description">
-            系统需要连接到 MongoDB 和 Redis 数据库。
+            系统需要连接到 PostgreSQL 和 Redis 数据库。
           </p>
 
           <el-form :model="wizardData" label-width="120px">
-            <el-divider content-position="left">MongoDB 配置</el-divider>
+            <el-divider content-position="left">PostgreSQL 配置</el-divider>
             <el-form-item label="主机地址">
               <el-input
-                v-model="wizardData.mongodb.host"
+                v-model="wizardData.postgres.host"
                 placeholder="localhost"
               />
             </el-form-item>
             <el-form-item label="端口">
               <el-input
-                v-model="wizardData.mongodb.port"
-                placeholder="27017"
+                v-model="wizardData.postgres.port"
+                placeholder="5432"
                 type="number"
               />
             </el-form-item>
             <el-form-item label="数据库名">
               <el-input
-                v-model="wizardData.mongodb.database"
+                v-model="wizardData.postgres.database"
                 placeholder="trading_agents"
               />
             </el-form-item>
@@ -254,7 +254,7 @@
             <h4>配置摘要</h4>
             <el-descriptions :column="1" border>
               <el-descriptions-item label="数据库">
-                MongoDB: {{ wizardData.mongodb.host }}:{{ wizardData.mongodb.port }}
+                PostgreSQL: {{ wizardData.postgres.host }}:{{ wizardData.postgres.port }}
               </el-descriptions-item>
               <el-descriptions-item label="大模型">
                 {{ getProviderName(wizardData.llm.provider) }} - {{ wizardData.llm.modelName }}
@@ -331,7 +331,7 @@ interface DataSourceConfig {
 }
 
 interface WizardData {
-  mongodb: {
+  postgres: {
     host: string
     port: number
     database: string
@@ -371,10 +371,10 @@ const currentStep = ref(0)
 const saving = ref(false)
 
 const wizardData = ref<WizardData>({
-  mongodb: {
+  postgres: {
     host: 'localhost',
-    port: 27017,
-    database: 'trading_agents'
+    port: 5432,
+    database: 'trading_agents_cn'
   },
   redis: {
     host: 'localhost',

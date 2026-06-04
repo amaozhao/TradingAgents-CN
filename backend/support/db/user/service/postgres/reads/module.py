@@ -2,9 +2,9 @@ from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
-from bson import ObjectId
 
 from app.core.config import settings
+from app.db.ids import DocumentId
 from app.services import user as user_service
 
 
@@ -13,7 +13,7 @@ async def test_get_user_by_username_uses_valid_postgres_document(monkeypatch):
     service = user_service.UserService.__new__(user_service.UserService)
     monkeypatch.setattr(settings, "POSTGRES_READ_ENABLED", True)
 
-    user_id = ObjectId()
+    user_id = DocumentId()
 
     async def fake_pg_user(**kwargs):
         assert kwargs["username"] == "demo"
@@ -29,11 +29,13 @@ async def test_get_user_by_username_uses_valid_postgres_document(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_authenticate_user_uses_postgres_and_updates_mongo_with_object_id(monkeypatch):
+async def test_authenticate_user_uses_postgres_and_updates_postgres_with_document_id(
+    monkeypatch,
+):
     service = user_service.UserService.__new__(user_service.UserService)
     service.users_collection = FakeUsersCollection()
     monkeypatch.setattr(settings, "POSTGRES_READ_ENABLED", True)
-    user_id = ObjectId()
+    user_id = DocumentId()
     dual_write_calls = []
 
     async def fake_pg_user(**kwargs):

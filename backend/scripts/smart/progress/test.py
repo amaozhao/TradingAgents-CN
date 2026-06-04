@@ -3,16 +3,10 @@
 测试智能进度跟踪器
 """
 
-import sys
-import os
 import time
 
-# 添加项目根目录到路径
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
-sys.path.insert(0, os.path.join(project_root, 'web'))
-
 from web.utils.tracker import SmartAnalysisProgressTracker
+
 
 def test_progress_tracker():
     """测试智能进度跟踪器"""
@@ -25,20 +19,20 @@ def test_progress_tracker():
             "name": "快速分析 - 2个分析师",
             "analysts": ["market", "fundamentals"],
             "research_depth": 1,
-            "llm_provider": "dashscope"
+            "llm_provider": "dashscope",
         },
         {
             "name": "标准分析 - 3个分析师",
             "analysts": ["market", "fundamentals", "technical"],
             "research_depth": 3,
-            "llm_provider": "deepseek"
+            "llm_provider": "deepseek",
         },
         {
             "name": "深度分析 - 5个分析师",
             "analysts": ["market", "fundamentals", "technical", "sentiment", "risk"],
             "research_depth": 3,
-            "llm_provider": "google"
-        }
+            "llm_provider": "google",
+        },
     ]
 
     for config in test_configs:
@@ -46,9 +40,7 @@ def test_progress_tracker():
         print("-" * 30)
 
         tracker = SmartAnalysisProgressTracker(
-            config["analysts"],
-            config["research_depth"],
-            config["llm_provider"]
+            config["analysts"], config["research_depth"], config["llm_provider"]
         )
 
         print(f"分析师: {config['analysts']}")
@@ -59,7 +51,9 @@ def test_progress_tracker():
 
         print("\n步骤详情:")
         for i, step in enumerate(tracker.analysis_steps):
-            print(f"  {i+1}. {step['name']} - {step['description']} (权重: {step['weight']:.2f})")
+            print(
+                f"  {i + 1}. {step['name']} - {step['description']} (权重: {step['weight']:.2f})"
+            )
 
         print("\n模拟进度更新:")
 
@@ -77,21 +71,21 @@ def test_progress_tracker():
             analyst_name = tracker._get_analyst_display_name(analyst)
             test_messages.append(f"📊 {analyst_name}正在分析...")
 
-        test_messages.extend([
-            "📋 分析完成，正在整理结果...",
-            "✅ 分析成功完成！"
-        ])
+        test_messages.extend(["📋 分析完成，正在整理结果...", "✅ 分析成功完成！"])
 
         for msg in test_messages:
             tracker.update(msg)
             progress = tracker.get_progress_percentage()
             elapsed = tracker.get_elapsed_time()
-            remaining = tracker._estimate_remaining_time(progress/100, elapsed)
+            remaining = tracker._estimate_remaining_time(progress / 100, elapsed)
 
             print(f"    {msg}")
-            print(f"      进度: {progress:.1f}% | 已用: {tracker.format_time(elapsed)} | 剩余: {tracker.format_time(remaining)}")
+            print(
+                f"      进度: {progress:.1f}% | 已用: {tracker.format_time(elapsed)} | 剩余: {tracker.format_time(remaining)}"
+            )
 
             time.sleep(0.1)  # 模拟时间流逝
+
 
 def test_time_estimation():
     """测试时间预估准确性"""
@@ -114,7 +108,10 @@ def test_time_estimation():
     for i, (analysts, depth, provider) in enumerate(configs, 1):
         tracker = SmartAnalysisProgressTracker(analysts, depth, provider)
         estimated = tracker.estimated_duration
-        print(f"{i:2d}   | {len(analysts):6d}   | {depth:2d}   | {provider:8s} | {tracker.format_time(estimated)}")
+        print(
+            f"{i:2d}   | {len(analysts):6d}   | {depth:2d}   | {provider:8s} | {tracker.format_time(estimated)}"
+        )
+
 
 if __name__ == "__main__":
     test_progress_tracker()

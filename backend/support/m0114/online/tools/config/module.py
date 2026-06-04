@@ -3,15 +3,10 @@
 测试新的在线工具配置系统
 验证环境变量和配置文件的集成
 """
+
 import importlib
-
 import os
-import sys
-from pathlib import Path
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
 
 def test_online_tools_config():
     """测试在线工具配置"""
@@ -21,10 +16,10 @@ def test_online_tools_config():
     # 1. 检查环境变量
     print("\n📋 环境变量检查:")
     env_vars = {
-        'ONLINE_TOOLS_ENABLED': os.getenv('ONLINE_TOOLS_ENABLED', '未设置'),
-        'ONLINE_NEWS_ENABLED': os.getenv('ONLINE_NEWS_ENABLED', '未设置'),
-        'REALTIME_DATA_ENABLED': os.getenv('REALTIME_DATA_ENABLED', '未设置'),
-        'OPENAI_ENABLED': os.getenv('OPENAI_ENABLED', '未设置'),
+        "ONLINE_TOOLS_ENABLED": os.getenv("ONLINE_TOOLS_ENABLED", "未设置"),
+        "ONLINE_NEWS_ENABLED": os.getenv("ONLINE_NEWS_ENABLED", "未设置"),
+        "REALTIME_DATA_ENABLED": os.getenv("REALTIME_DATA_ENABLED", "未设置"),
+        "OPENAI_ENABLED": os.getenv("OPENAI_ENABLED", "未设置"),
     }
 
     for var, value in env_vars.items():
@@ -34,12 +29,14 @@ def test_online_tools_config():
     # 2. 测试配置文件读取
     print("\n🔧 配置文件测试:")
     try:
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         config_items = {
-            'online_tools': DEFAULT_CONFIG.get('online_tools'),
-            'online_news': DEFAULT_CONFIG.get('online_news'),
-            'realtime_data': DEFAULT_CONFIG.get('realtime_data'),
+            "online_tools": DEFAULT_CONFIG.get("online_tools"),
+            "online_news": DEFAULT_CONFIG.get("online_news"),
+            "realtime_data": DEFAULT_CONFIG.get("realtime_data"),
         }
 
         for key, value in config_items.items():
@@ -53,9 +50,9 @@ def test_online_tools_config():
     print("\n🧠 配置逻辑验证:")
 
     # 检查在线工具总开关
-    online_tools = DEFAULT_CONFIG.get('online_tools', False)
-    online_news = DEFAULT_CONFIG.get('online_news', False)
-    realtime_data = DEFAULT_CONFIG.get('realtime_data', False)
+    online_tools = DEFAULT_CONFIG.get("online_tools", False)
+    online_news = DEFAULT_CONFIG.get("online_news", False)
+    realtime_data = DEFAULT_CONFIG.get("realtime_data", False)
 
     print(f"   📊 在线工具总开关: {'🟢 启用' if online_tools else '🔴 禁用'}")
     print(f"   📰 在线新闻工具: {'🟢 启用' if online_news else '🔴 禁用'}")
@@ -75,12 +72,17 @@ def test_online_tools_config():
 
     return True
 
+
 def test_toolkit_integration():
     """测试工具包集成"""
     print("\n🔗 工具包集成测试:")
     try:
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 创建工具包实例
         toolkit = Toolkit(config=DEFAULT_CONFIG)
@@ -88,10 +90,10 @@ def test_toolkit_integration():
 
         # 检查在线工具可用性
         online_tools = [
-            'get_google_news',
-            'get_reddit_news',
-            'get_reddit_stock_info',
-            'get_chinese_social_sentiment'
+            "get_google_news",
+            "get_reddit_news",
+            "get_reddit_stock_info",
+            "get_chinese_social_sentiment",
         ]
 
         available_tools = []
@@ -110,6 +112,7 @@ def test_toolkit_integration():
         print(f"   ❌ 工具包集成测试失败: {e}")
         return False
 
+
 def show_config_examples():
     """显示配置示例"""
     print("\n📝 配置示例:")
@@ -120,20 +123,20 @@ def show_config_examples():
             "ONLINE_TOOLS_ENABLED": "false",
             "ONLINE_NEWS_ENABLED": "false",
             "REALTIME_DATA_ENABLED": "false",
-            "说明": "完全离线，使用缓存数据，节省成本"
+            "说明": "完全离线，使用缓存数据，节省成本",
         },
         "测试模式 (部分在线)": {
             "ONLINE_TOOLS_ENABLED": "false",
             "ONLINE_NEWS_ENABLED": "true",
             "REALTIME_DATA_ENABLED": "false",
-            "说明": "新闻在线，数据离线，平衡功能和成本"
+            "说明": "新闻在线，数据离线，平衡功能和成本",
         },
         "生产模式 (完全在线)": {
             "ONLINE_TOOLS_ENABLED": "true",
             "ONLINE_NEWS_ENABLED": "true",
             "REALTIME_DATA_ENABLED": "true",
-            "说明": "完全在线，获取最新数据，适合实盘交易"
-        }
+            "说明": "完全在线，获取最新数据，适合实盘交易",
+        },
     }
 
     for mode, config in examples.items():
@@ -143,6 +146,7 @@ def show_config_examples():
                 print(f"   💡 {value}")
             else:
                 print(f"   {key}={value}")
+
 
 def main():
     """主测试函数"""
@@ -169,6 +173,7 @@ def main():
         print("\n⚠️ 发现问题，请检查配置")
 
     return config_success and toolkit_success
+
 
 if __name__ == "__main__":
     main()

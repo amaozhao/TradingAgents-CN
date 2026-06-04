@@ -1,10 +1,9 @@
 import json
-from pathlib import Path
 
 from scripts.postgres.migration.inventory.script import scan_backend
 
 
-def test_scan_backend_finds_contracts_mongo_access_and_worker_writes(tmp_path):
+def test_scan_backend_finds_contracts_postgres_access_and_worker_writes(tmp_path):
     app_dir = tmp_path / "app"
     router_file = app_dir / "routers" / "items.py"
     service_file = app_dir / "services" / "items_service.py"
@@ -41,20 +40,20 @@ async def get_item_options():
     )
     service_file.write_text(
         """
-from app.core.database import get_mongo_db
+from app.core.database import get_postgres_db
 
 async def load_item():
-    db = get_mongo_db()
+    db = get_postgres_db()
     return await db.items.find_one({"legacy_id": "1"})
 """,
         encoding="utf-8",
     )
     worker_file.write_text(
         """
-from app.core.database import get_mongo_db
+from app.core.database import get_postgres_db
 
 async def persist_item():
-    db = get_mongo_db()
+    db = get_postgres_db()
     collection = db.items
     await collection.update_one({"legacy_id": "1"}, {"$set": {"name": "a"}}, upsert=True)
 """,
@@ -66,16 +65,16 @@ async def persist_item():
     assert inventory["summary"]["response_model_dict_endpoints"] == 3
     assert inventory["summary"]["missing_response_model_endpoints"] == 1
     assert inventory["summary"]["raw_dict_request_bodies"] == 2
-    assert inventory["summary"]["mongo_access_files"] == 2
-    assert inventory["summary"]["mongo_write_operations"] == 1
-    assert inventory["summary"]["worker_mongo_write_files"] == 1
+    assert inventory["summary"]["postgres_access_files"] == 2
+    assert inventory["summary"]["postgres_write_operations"] == 1
+    assert inventory["summary"]["worker_postgres_write_files"] == 1
     assert inventory["contracts"][0]["path"] == "app/routers/items.py"
     assert inventory["missing_response_models"][0]["path"] == "app/routers/items.py"
     assert inventory["missing_response_models"][0]["route"] == "/items/no-model"
     assert inventory["raw_request_bodies"][0]["parameter"] == "payload"
-    assert inventory["mongo_access"][0]["path"] == "app/services/items_service.py"
-    assert inventory["mongo_writes"][0]["operation"] == "update_one"
-    assert inventory["mongo_writes"][0]["collection"] == "items"
+    assert inventory["postgres_access"][0]["path"] == "app/services/items_service.py"
+    assert inventory["postgres_writes"][0]["operation"] == "update_one"
+    assert inventory["postgres_writes"][0]["collection"] == "items"
 
 
 def test_scan_backend_writes_json_report(tmp_path):
@@ -94,7 +93,7 @@ def test_scan_backend_resolves_class_collection_aliases_and_module_constants(tmp
 
     service_file.write_text(
         """
-from app.core.database import get_mongo_db
+from app.core.database import get_postgres_db
 
 DATA_COLLECTION = "stock_basic_info"
 
@@ -104,18 +103,18 @@ class HistoricalService:
         self.collection_name = "operation_logs"
 
     async def initialize(self):
-        db = get_mongo_db()
+        db = get_postgres_db()
         self.collection = db.stock_daily_quotes
 
     async def save_quotes(self, operations):
         await self.collection.bulk_write(operations)
 
     async def write_logs(self, document):
-        db = get_mongo_db()
+        db = get_postgres_db()
         await db[self.collection_name].insert_one(document)
 
 async def save_basic(operations):
-    db = get_mongo_db()
+    db = get_postgres_db()
     collection = db[DATA_COLLECTION]
     await collection.bulk_write(operations)
 """,
@@ -123,7 +122,9 @@ async def save_basic(operations):
     )
 
     inventory = scan_backend(tmp_path)
-    writes = {(item["operation"], item["collection"]) for item in inventory["mongo_writes"]}
+    writes = {
+        (item["operation"], item["collection"]) for item in inventory["postgres_writes"]
+    }
 
     assert ("bulk_write", "stock_daily_quotes") in writes
     assert ("insert_one", "operation_logs") in writes

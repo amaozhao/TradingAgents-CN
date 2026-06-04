@@ -3,12 +3,13 @@
 阿里百炼工具调用测试 - Agent友好版本
 专门为agent执行优化，避免闪退问题
 """
-import importlib
 
+import importlib
 import os
 import sys
 import time
 import traceback
+
 
 # 强制刷新输出
 def flush_print(msg):
@@ -17,19 +18,13 @@ def flush_print(msg):
     sys.stdout.flush()
     time.sleep(0.1)  # 给agent时间捕获输出
 
+
 def main():
     """主测试函数"""
     flush_print("🔬 阿里百炼工具调用测试 - Agent友好版本")
     flush_print("=" * 60)
 
     try:
-        # 添加项目根目录到Python路径
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if project_root not in sys.path:
-            sys.path.insert(0, project_root)
-
-        flush_print("✅ 项目路径配置完成")
-
         # 检查API密钥
         api_key = os.getenv("DASHSCOPE_API_KEY")
         if not api_key:
@@ -42,9 +37,13 @@ def main():
         flush_print("\n🔧 测试1: 基本导入")
         flush_print("-" * 40)
 
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
-        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI"
+        )
+        tool = getattr(importlib.import_module("langchain_core.tools"), "tool")
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
 
         flush_print("✅ 所有模块导入成功")
 
@@ -52,11 +51,7 @@ def main():
         flush_print("\n🔧 测试2: LLM创建")
         flush_print("-" * 40)
 
-        llm = ChatDashScopeOpenAI(
-            model="qwen-turbo",
-            temperature=0.1,
-            max_tokens=200
-        )
+        llm = ChatDashScopeOpenAI(model="qwen-turbo", temperature=0.1, max_tokens=200)
 
         flush_print("✅ LLM实例创建成功")
 
@@ -76,11 +71,9 @@ def main():
         flush_print("\n🔧 测试4: 简单调用")
         flush_print("-" * 40)
 
-        simple_response = llm.invoke([
-            HumanMessage(content="请简单回复：你好")
-        ])
+        simple_response = llm.invoke([HumanMessage(content="请简单回复：你好")])
 
-        flush_print(f"✅ 简单调用成功")
+        flush_print("✅ 简单调用成功")
         flush_print(f"   响应长度: {len(simple_response.content)}字符")
         flush_print(f"   响应内容: {simple_response.content}")
 
@@ -92,7 +85,7 @@ def main():
         prompts = [
             "请调用get_stock_info工具查询AAPL股票信息",
             "我需要AAPL的股票信息，请使用可用的工具",
-            "必须调用get_stock_info工具，参数symbol='AAPL'"
+            "必须调用get_stock_info工具，参数symbol='AAPL'",
         ]
 
         tool_call_success = False
@@ -103,16 +96,16 @@ def main():
             try:
                 response = llm_with_tools.invoke([HumanMessage(content=prompt)])
 
-                tool_calls = getattr(response, 'tool_calls', [])
+                tool_calls = getattr(response, "tool_calls", [])
                 flush_print(f"   工具调用数量: {len(tool_calls)}")
                 flush_print(f"   响应长度: {len(response.content)}字符")
 
                 if len(tool_calls) > 0:
                     flush_print(f"   ✅ 策略{i}成功: 触发了工具调用")
                     for j, tool_call in enumerate(tool_calls):
-                        tool_name = tool_call.get('name', 'unknown')
-                        tool_args = tool_call.get('args', {})
-                        flush_print(f"      工具{j+1}: {tool_name}({tool_args})")
+                        tool_name = tool_call.get("name", "unknown")
+                        tool_args = tool_call.get("args", {})
+                        flush_print(f"      工具{j + 1}: {tool_name}({tool_args})")
                     tool_call_success = True
                     break
                 else:
@@ -135,16 +128,16 @@ def main():
                 test_llm = ChatDashScopeOpenAI(
                     model=model,
                     temperature=0.0,  # 降低温度
-                    max_tokens=100
+                    max_tokens=100,
                 )
 
                 test_llm_with_tools = test_llm.bind_tools([get_stock_info])
 
-                response = test_llm_with_tools.invoke([
-                    HumanMessage(content="请调用get_stock_info工具查询TSLA")
-                ])
+                response = test_llm_with_tools.invoke(
+                    [HumanMessage(content="请调用get_stock_info工具查询TSLA")]
+                )
 
-                tool_calls = getattr(response, 'tool_calls', [])
+                tool_calls = getattr(response, "tool_calls", [])
                 flush_print(f"   {model}: 工具调用数量 = {len(tool_calls)}")
 
                 if len(tool_calls) > 0:
@@ -190,9 +183,10 @@ def main():
         return False
 
     finally:
-        flush_print("\n" + "="*60)
+        flush_print("\n" + "=" * 60)
         flush_print("测试完成！")
         # 不使用input()避免挂起
+
 
 if __name__ == "__main__":
     try:

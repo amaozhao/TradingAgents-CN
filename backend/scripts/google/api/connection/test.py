@@ -3,16 +3,14 @@
 直接调用 .env 中的 GOOGLE_API_KEY，测试 gemini-2.5-flash 模型
 """
 
-import sys
 import os
-from pathlib import Path
-
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+import socket
+import sys
+import time
 
 # 加载 .env 文件
 from dotenv import load_dotenv
+
 load_dotenv()
 
 print("=" * 80)
@@ -20,7 +18,7 @@ print("测试 Google API 连接")
 print("=" * 80)
 
 # 1. 检查 API Key
-google_api_key = os.getenv('GOOGLE_API_KEY')
+google_api_key = os.getenv("GOOGLE_API_KEY")
 if not google_api_key:
     print("❌ 未找到 GOOGLE_API_KEY 环境变量")
     print("请在 .env 文件中设置：GOOGLE_API_KEY=your-api-key")
@@ -33,8 +31,6 @@ print("\n" + "=" * 80)
 print("测试网络连接")
 print("=" * 80)
 
-import socket
-import time
 
 def test_connection(host, port=443, timeout=5):
     """测试 TCP 连接"""
@@ -47,12 +43,9 @@ def test_connection(host, port=443, timeout=5):
     except Exception as e:
         return False, str(e)
 
+
 # 测试 Google API 域名
-hosts = [
-    "generativelanguage.googleapis.com",
-    "www.google.com",
-    "googleapis.com"
-]
+hosts = ["generativelanguage.googleapis.com", "www.google.com", "googleapis.com"]
 
 for host in hosts:
     success, result = test_connection(host)
@@ -75,7 +68,7 @@ try:
         google_api_key=google_api_key,
         temperature=0.7,
         max_tokens=100,
-        timeout=30  # 30秒超时
+        timeout=30,  # 30秒超时
     )
 
     print("✅ LLM 实例创建成功")
@@ -90,7 +83,7 @@ try:
     elapsed = time.time() - start_time
 
     print(f"✅ API 调用成功！耗时: {elapsed:.2f}秒")
-    print(f"\n📥 响应内容:")
+    print("\n📥 响应内容:")
     print(f"   {response.content}")
 
     # 测试工具调用
@@ -116,13 +109,13 @@ try:
 
     print(f"✅ 工具调用测试成功！耗时: {elapsed:.2f}秒")
 
-    if hasattr(response, 'tool_calls') and response.tool_calls:
-        print(f"\n🔧 检测到工具调用:")
+    if hasattr(response, "tool_calls") and response.tool_calls:
+        print("\n🔧 检测到工具调用:")
         for i, tool_call in enumerate(response.tool_calls, 1):
             print(f"   {i}. 工具: {tool_call.get('name')}")
             print(f"      参数: {tool_call.get('args')}")
     else:
-        print(f"\n📥 直接响应:")
+        print("\n📥 直接响应:")
         print(f"   {response.content}")
 
     print("\n" + "=" * 80)
@@ -133,6 +126,7 @@ except Exception as e:
     print(f"\n❌ 测试失败: {e}")
     print("\n详细错误信息:")
     import traceback
+
     traceback.print_exc()
 
     print("\n" + "=" * 80)

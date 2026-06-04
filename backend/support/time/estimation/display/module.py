@@ -3,15 +3,11 @@
 测试时间预估显示效果
 验证用户能够看到分析阶段的时间预估
 """
-import importlib
 
-import os
+import importlib
 import sys
 import time
 
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_time_estimation_display():
     """测试时间预估显示"""
@@ -19,7 +15,9 @@ def test_time_estimation_display():
     print("=" * 80)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
 
         ui = CLIUserInterface()
 
@@ -47,7 +45,9 @@ def test_time_estimation_display():
         # 步骤3: 智能分析阶段（带时间预估）
         ui.show_step_header(3, "智能分析阶段 | AI Analysis Phase (预计耗时约10分钟)")
         ui.show_progress("启动分析师团队...")
-        ui.show_user_message("💡 提示：智能分析包含多个团队协作，请耐心等待约10分钟", "dim")
+        ui.show_user_message(
+            "💡 提示：智能分析包含多个团队协作，请耐心等待约10分钟", "dim"
+        )
         time.sleep(0.5)
 
         # 模拟分析过程
@@ -61,7 +61,7 @@ def test_time_estimation_display():
             ("💼 交易团队制定投资计划...", 0.8),
             ("💼 交易团队计划完成", 0.3),
             ("⚖️ 风险管理团队评估投资风险...", 1.0),
-            ("⚖️ 风险管理团队分析完成", 0.3)
+            ("⚖️ 风险管理团队分析完成", 0.3),
         ]
 
         total_time = 0
@@ -86,16 +86,17 @@ def test_time_estimation_display():
         ui.show_success("📋 分析报告生成完成")
         ui.show_success("🎉 600036 股票分析全部完成！")
 
-        print(f"\n✅ 时间预估显示测试完成")
+        print("\n✅ 时间预估显示测试完成")
         print(f"📊 模拟分析阶段耗时: {total_time:.1f}秒 (实际约10分钟)")
 
         return True
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_user_expectation_management():
     """测试用户期望管理"""
@@ -103,7 +104,9 @@ def test_user_expectation_management():
     print("=" * 80)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
 
         ui = CLIUserInterface()
 
@@ -118,7 +121,9 @@ def test_user_expectation_management():
         print("\n✅ 有时间预估的体验:")
         ui.show_step_header(3, "智能分析阶段 | AI Analysis Phase (预计耗时约10分钟)")
         ui.show_progress("启动分析师团队...")
-        ui.show_user_message("💡 提示：智能分析包含多个团队协作，请耐心等待约10分钟", "dim")
+        ui.show_user_message(
+            "💡 提示：智能分析包含多个团队协作，请耐心等待约10分钟", "dim"
+        )
 
         print("\n📋 改进效果:")
         print("   ✅ 用户知道大概需要等待的时间")
@@ -132,13 +137,16 @@ def test_user_expectation_management():
         print(f"❌ 测试失败: {e}")
         return False
 
+
 def test_time_estimation_scenarios():
     """测试不同时间预估场景"""
     print("\n⏰ 测试不同时间预估场景")
     print("=" * 80)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
 
         ui = CLIUserInterface()
 
@@ -146,18 +154,18 @@ def test_time_estimation_scenarios():
             {
                 "analysts": ["market"],
                 "estimated_time": "3-5分钟",
-                "description": "单个分析师，相对较快"
+                "description": "单个分析师，相对较快",
             },
             {
                 "analysts": ["market", "fundamentals"],
                 "estimated_time": "8-10分钟",
-                "description": "两个分析师，包含研究团队协作"
+                "description": "两个分析师，包含研究团队协作",
             },
             {
                 "analysts": ["market", "fundamentals", "technical", "sentiment"],
                 "estimated_time": "15-20分钟",
-                "description": "全套分析师，完整流程"
-            }
+                "description": "全套分析师，完整流程",
+            },
         ]
 
         print("📊 不同分析师组合的时间预估:")
@@ -172,15 +180,19 @@ def test_time_estimation_scenarios():
             header = f"智能分析阶段 | AI Analysis Phase (预计耗时约{scenario['estimated_time']})"
             ui.show_step_header(3, header)
 
-            if len(scenario['analysts']) > 2:
-                ui.show_user_message("💡 提示：完整分析包含多个团队深度协作，请耐心等待", "dim")
-            elif len(scenario['analysts']) > 1:
-                ui.show_user_message("💡 提示：智能分析包含多个团队协作，请耐心等待", "dim")
+            if len(scenario["analysts"]) > 2:
+                ui.show_user_message(
+                    "💡 提示：完整分析包含多个团队深度协作，请耐心等待", "dim"
+                )
+            elif len(scenario["analysts"]) > 1:
+                ui.show_user_message(
+                    "💡 提示：智能分析包含多个团队协作，请耐心等待", "dim"
+                )
             else:
                 ui.show_user_message("💡 提示：正在进行专业分析，请稍候", "dim")
 
-        print(f"\n✅ 时间预估场景测试完成")
-        print(f"📋 建议：根据选择的分析师数量动态调整时间预估")
+        print("\n✅ 时间预估场景测试完成")
+        print("📋 建议：根据选择的分析师数量动态调整时间预估")
 
         return True
 
@@ -188,13 +200,16 @@ def test_time_estimation_scenarios():
         print(f"❌ 测试失败: {e}")
         return False
 
+
 def test_progress_communication():
     """测试进度沟通策略"""
     print("\n📢 测试进度沟通策略")
     print("=" * 80)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
 
         ui = CLIUserInterface()
 
@@ -208,7 +223,9 @@ def test_progress_communication():
 
         # 策略2: 解释原因
         print("\n策略2: 解释原因")
-        ui.show_user_message("💡 提示：智能分析包含多个团队协作，请耐心等待约10分钟", "dim")
+        ui.show_user_message(
+            "💡 提示：智能分析包含多个团队协作，请耐心等待约10分钟", "dim"
+        )
         print("   ✅ 解释为什么需要这么长时间")
 
         # 策略3: 实时进度更新
@@ -218,7 +235,7 @@ def test_progress_communication():
             "✅ 📈 市场分析完成",
             "✅ 📊 基本面分析完成",
             "🔄 🔬 研究团队开始深度分析...",
-            "✅ 🔬 研究团队分析完成"
+            "✅ 🔬 研究团队分析完成",
         ]
 
         for update in progress_updates:
@@ -236,7 +253,7 @@ def test_progress_communication():
             "25% - 基础分析完成",
             "50% - 研究团队分析完成",
             "75% - 风险评估完成",
-            "100% - 投资决策生成完成"
+            "100% - 投资决策生成完成",
         ]
 
         for milestone in milestones:
@@ -244,17 +261,18 @@ def test_progress_communication():
 
         print("   ✅ 提供清晰的进度里程碑")
 
-        print(f"\n📋 沟通策略总结:")
-        print(f"   1. 设定合理期望 - 告知预估时间")
-        print(f"   2. 解释复杂性 - 说明为什么需要时间")
-        print(f"   3. 实时反馈 - 显示当前进展")
-        print(f"   4. 里程碑标记 - 提供进度感知")
+        print("\n📋 沟通策略总结:")
+        print("   1. 设定合理期望 - 告知预估时间")
+        print("   2. 解释复杂性 - 说明为什么需要时间")
+        print("   3. 实时反馈 - 显示当前进展")
+        print("   4. 里程碑标记 - 提供进度感知")
 
         return True
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         return False
+
 
 def main():
     """主测试函数"""
@@ -287,12 +305,12 @@ def main():
         "时间预估显示效果",
         "用户期望管理",
         "不同时间预估场景",
-        "进度沟通策略"
+        "进度沟通策略",
     ]
 
     for i, (name, result) in enumerate(zip(test_names, results)):
         status = "✅ 通过" if result else "❌ 失败"
-        print(f"{i+1}. {name}: {status}")
+        print(f"{i + 1}. {name}: {status}")
 
     print(f"\n📊 总体结果: {passed}/{total} 测试通过")
 
@@ -319,6 +337,7 @@ def main():
         print("⚠️ 部分测试失败，需要进一步优化")
 
     return passed == total
+
 
 if __name__ == "__main__":
     success = main()

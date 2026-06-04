@@ -2,19 +2,15 @@
 """
 测试DashScope适配器的token统计功能
 """
+
 import importlib
-
 import os
-import sys
 import time
-from datetime import datetime
 
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-
-from trader.llm.adapters.dashscope.native import ChatDashScope
-from trader.config.manager import config_manager, token_tracker
 from langchain_core.messages import HumanMessage
+
+from trader.config.manager import config_manager, token_tracker
+from trader.llm.adapters.dashscope.native import ChatDashScope
 
 
 def test_dashscope_token_tracking():
@@ -32,10 +28,7 @@ def test_dashscope_token_tracking():
         # 初始化DashScope适配器
         print("📝 初始化DashScope适配器...")
         llm = ChatDashScope(
-            model="qwen-turbo",
-            api_key=api_key,
-            temperature=0.7,
-            max_tokens=500
+            model="qwen-turbo", api_key=api_key, temperature=0.7, max_tokens=500
         )
 
         # 获取初始统计
@@ -57,9 +50,7 @@ def test_dashscope_token_tracking():
 
         # 调用LLM（传入session_id和analysis_type）
         response = llm.invoke(
-            test_messages,
-            session_id=session_id,
-            analysis_type="test_analysis"
+            test_messages, session_id=session_id, analysis_type="test_analysis"
         )
 
         print(f"✅ 收到响应: {response.content[:100]}...")
@@ -78,7 +69,9 @@ def test_dashscope_token_tracking():
         cost_increase = updated_cost - initial_cost
         requests_increase = updated_requests - initial_requests
 
-        print(f"📈 变化 - 成本增加: ¥{cost_increase:.4f}, 请求增加: {requests_increase}")
+        print(
+            f"📈 变化 - 成本增加: ¥{cost_increase:.4f}, 请求增加: {requests_increase}"
+        )
 
         # 验证结果
         if requests_increase > 0:
@@ -89,7 +82,7 @@ def test_dashscope_token_tracking():
             dashscope_stats = provider_stats.get("dashscope", {})
 
             if dashscope_stats:
-                print(f"📊 DashScope统计:")
+                print("📊 DashScope统计:")
                 print(f"   - 成本: ¥{dashscope_stats.get('cost', 0):.4f}")
                 print(f"   - 输入tokens: {dashscope_stats.get('input_tokens', 0)}")
                 print(f"   - 输出tokens: {dashscope_stats.get('output_tokens', 0)}")
@@ -106,61 +99,69 @@ def test_dashscope_token_tracking():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
 
-def test_mongodb_storage():
-    """测试MongoDB存储功能"""
-    print("\n🧪 测试MongoDB存储功能...")
+def test_postgres_storage():
+    """测试PostgreSQL token 存储功能"""
+    print("\n🧪 测试PostgreSQL token 存储功能...")
 
-    # 检查是否启用了MongoDB
-    use_mongodb = os.getenv("USE_MONGODB_STORAGE", "false").lower() == "true"
+    # 检查是否启用了 PostgreSQL token 存储
+    use_postgres = os.getenv("USE_POSTGRES_STORAGE", "false").lower() == "true"
 
-    if not use_mongodb:
-        print("ℹ️ MongoDB存储未启用，跳过MongoDB测试")
-        print("要启用MongoDB存储，请在.env文件中设置 USE_MONGODB_STORAGE=true")
+    if not use_postgres:
+        print("ℹ️ PostgreSQL token 存储未启用，跳过 PostgreSQL token 存储测试")
+        print(
+            "要启用PostgreSQL token 存储，请在.env文件中设置 USE_POSTGRES_STORAGE=true"
+        )
         return True
 
-    # 检查MongoDB连接
-    if config_manager.mongodb_storage and config_manager.mongodb_storage.is_connected():
-        print("✅ MongoDB连接正常")
+    # 检查PostgreSQL token 存储连接
+    if (
+        config_manager.postgres_storage
+        and config_manager.postgres_storage.is_connected()
+    ):
+        print("✅ PostgreSQL token 存储连接正常")
 
         # 测试清理功能（清理超过1天的测试记录）
         try:
-            deleted_count = config_manager.mongodb_storage.cleanup_old_records(1)
+            deleted_count = config_manager.postgres_storage.cleanup_old_records(1)
             print(f"🧹 清理了 {deleted_count} 条旧的测试记录")
         except Exception as e:
             print(f"⚠️ 清理旧记录失败: {e}")
 
         return True
     else:
-        print("❌ MongoDB连接失败")
-        print("请检查MongoDB配置和连接字符串")
+        print("❌ PostgreSQL token 存储连接失败")
+        print("请检查 PostgreSQL 配置")
         return False
 
 
 def main():
     """主测试函数"""
-    print("🔬 DashScope Token统计和MongoDB存储测试")
+    print("🔬 DashScope Token统计和PostgreSQL token 存储测试")
     print("=" * 50)
 
     # 显示配置状态
     env_status = config_manager.get_env_config_status()
-    print(f"📋 配置状态:")
+    print("📋 配置状态:")
     print(f"   - .env文件存在: {env_status['env_file_exists']}")
     print(f"   - DashScope API: {env_status['api_keys']['dashscope']}")
 
-    # 检查MongoDB配置
-    use_mongodb = os.getenv("USE_MONGODB_STORAGE", "false").lower() == "true"
-    print(f"   - MongoDB存储: {use_mongodb}")
+    # 检查 PostgreSQL token 存储配置
+    use_postgres = (
+        os.getenv(
+            "USE_POSTGRES_STORAGE", os.getenv("USE_POSTGRES_STORAGE", "false")
+        ).lower()
+        == "true"
+    )
+    print(f"   - PostgreSQL token存储: {use_postgres}")
 
-    if use_mongodb:
-        mongodb_conn = os.getenv("MONGODB_CONNECTION_STRING", "未配置")
-        mongodb_db = os.getenv("MONGODB_DATABASE_NAME", "trading_agents")
-        print(f"   - MongoDB连接: {mongodb_conn}")
-        print(f"   - MongoDB数据库: {mongodb_db}")
+    if use_postgres:
+        postgres_db = os.getenv("POSTGRES_DB", "trading_agents")
+        print(f"   - PostgreSQL数据库: {postgres_db}")
 
     print("\n" + "=" * 50)
 
@@ -171,8 +172,8 @@ def main():
     if not test_dashscope_token_tracking():
         success = False
 
-    # 测试MongoDB存储
-    if not test_mongodb_storage():
+    # 测试PostgreSQL token 存储
+    if not test_postgres_storage():
         success = False
 
     print("\n" + "=" * 50)

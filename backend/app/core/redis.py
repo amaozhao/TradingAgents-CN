@@ -1,12 +1,14 @@
 """
 Redis客户端配置和连接管理
 """
-import importlib
 
+import importlib
 import json
-import redis.asyncio as redis
 import logging
 from typing import Optional
+
+import redis.asyncio as redis
+
 from .config import settings
 
 logger = logging.getLogger(__name__)
@@ -32,7 +34,7 @@ async def init_redis():
             socket_keepalive_options={
                 1: 60,  # TCP_KEEPIDLE: 60秒后开始发送keepalive探测
                 2: 10,  # TCP_KEEPINTVL: 每10秒发送一次探测
-                3: 3,   # TCP_KEEPCNT: 最多发送3次探测
+                3: 3,  # TCP_KEEPCNT: 最多发送3次探测
             },
             health_check_interval=30,  # 每30秒检查一次连接健康状态
         )
@@ -42,7 +44,9 @@ async def init_redis():
 
         # 测试连接
         await redis_client.ping()
-        logger.info(f"✅ Redis连接成功建立 (max_connections={settings.REDIS_MAX_CONNECTIONS})")
+        logger.info(
+            f"✅ Redis连接成功建立 (max_connections={settings.REDIS_MAX_CONNECTIONS})"
+        )
 
     except Exception as e:
         logger.error(f"❌ Redis连接失败: {e}")
@@ -139,12 +143,12 @@ class RedisService:
 
     async def add_to_queue(self, queue_key: str, item: dict):
         """添加项目到队列"""
-        json = importlib.import_module('json')
+        json = importlib.import_module("json")
         await self.redis.lpush(queue_key, json.dumps(item, ensure_ascii=False))
 
     async def pop_from_queue(self, queue_key: str, timeout: int = 1):
         """从队列弹出项目"""
-        json = importlib.import_module('json')
+        json = importlib.import_module("json")
         result = await self.redis.brpop(queue_key, timeout=timeout)
         if result:
             return json.loads(result[1])
@@ -172,7 +176,7 @@ class RedisService:
 
     async def acquire_lock(self, lock_key: str, timeout: int = 30):
         """获取分布式锁"""
-        uuid = importlib.import_module('uuid')
+        uuid = importlib.import_module("uuid")
         lock_value = str(uuid.uuid4())
         acquired = await self.redis.set(lock_key, lock_value, nx=True, ex=timeout)
         if acquired:

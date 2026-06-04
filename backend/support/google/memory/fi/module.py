@@ -2,19 +2,17 @@
 """
 测试修复后的Google AI内存功能
 """
-import importlib
 
+import importlib
 import os
-import sys
-from pathlib import Path
+
 from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
+from support.path import BACKEND_ROOT
 
 # 加载环境变量
-load_dotenv(project_root / ".env", override=True)
+load_dotenv(BACKEND_ROOT / ".env", override=True)
+
 
 def test_google_memory_fixed():
     """测试修复后的Google AI内存功能"""
@@ -22,14 +20,19 @@ def test_google_memory_fixed():
         print("🧪 测试修复后的Google AI内存功能")
         print("=" * 60)
 
-        FinancialSituationMemory = getattr(importlib.import_module('trader.agents.utils.memory'), 'FinancialSituationMemory')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        FinancialSituationMemory = getattr(
+            importlib.import_module("trader.agents.utils.memory"),
+            "FinancialSituationMemory",
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 检查API密钥
-        google_key = os.getenv('GOOGLE_API_KEY')
-        dashscope_key = os.getenv('DASHSCOPE_API_KEY')
+        google_key = os.getenv("GOOGLE_API_KEY")
+        dashscope_key = os.getenv("DASHSCOPE_API_KEY")
 
-        print(f"🔑 API密钥状态:")
+        print("🔑 API密钥状态:")
         print(f"   Google API: {'✅ 已配置' if google_key else '❌ 未配置'}")
         print(f"   阿里百炼API: {'✅ 已配置' if dashscope_key else '❌ 未配置'}")
 
@@ -44,7 +47,7 @@ def test_google_memory_fixed():
         print("\n📊 创建Google AI内存实例...")
         memory = FinancialSituationMemory("test_google_memory", config)
 
-        print(f"✅ 内存实例创建成功")
+        print("✅ 内存实例创建成功")
         print(f"   LLM提供商: {memory.llm_provider}")
         print(f"   嵌入模型: {memory.embedding}")
         print(f"   客户端类型: {type(memory.client)}")
@@ -55,28 +58,35 @@ def test_google_memory_fixed():
 
         try:
             embedding = memory.get_embedding(test_text)
-            print(f"✅ 嵌入生成成功")
+            print("✅ 嵌入生成成功")
             print(f"   嵌入维度: {len(embedding)}")
             print(f"   嵌入预览: {embedding[:5]}...")
 
             # 测试记忆存储
             print("\n💾 测试记忆存储...")
-            memory.add_situations([
-                ("高通胀环境，利率上升，科技股承压", "建议关注现金流稳定的大型科技公司，如苹果、微软等"),
-                ("市场波动加剧，投资者情绪谨慎", "建议分散投资，关注防御性板块")
-            ])
+            memory.add_situations(
+                [
+                    (
+                        "高通胀环境，利率上升，科技股承压",
+                        "建议关注现金流稳定的大型科技公司，如苹果、微软等",
+                    ),
+                    ("市场波动加剧，投资者情绪谨慎", "建议分散投资，关注防御性板块"),
+                ]
+            )
             print("✅ 记忆存储成功")
 
             # 测试记忆检索
             print("\n🔍 测试记忆检索...")
-            similar_memories = memory.get_memories("通胀上升时期的科技股投资", n_matches=2)
-            print(f"✅ 记忆检索成功")
+            similar_memories = memory.get_memories(
+                "通胀上升时期的科技股投资", n_matches=2
+            )
+            print("✅ 记忆检索成功")
             print(f"   检索到 {len(similar_memories)} 条相关记忆")
 
             for i, mem in enumerate(similar_memories, 1):
-                situation = mem['matched_situation']
-                recommendation = mem['recommendation']
-                score = mem['similarity_score']
+                situation = mem["matched_situation"]
+                recommendation = mem["recommendation"]
+                score = mem["similarity_score"]
                 print(f"   记忆{i} (相似度: {score:.3f}):")
                 print(f"     情况: {situation}")
                 print(f"     建议: {recommendation}")
@@ -89,9 +99,10 @@ def test_google_memory_fixed():
 
     except Exception as e:
         print(f"❌ Google AI内存测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         print(traceback.format_exc())
         return False
+
 
 def test_google_trading_agents_with_memory():
     """测试带内存的Google AI TradingAgents"""
@@ -99,12 +110,16 @@ def test_google_trading_agents_with_memory():
         print("\n🧪 测试带内存的Google AI TradingAgents")
         print("=" * 60)
 
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        TradingAgentsGraph = getattr(
+            importlib.import_module("trader.graph.trading"), "TradingAgentsGraph"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 检查API密钥
-        google_key = os.getenv('GOOGLE_API_KEY')
-        dashscope_key = os.getenv('DASHSCOPE_API_KEY')
+        google_key = os.getenv("GOOGLE_API_KEY")
+        dashscope_key = os.getenv("DASHSCOPE_API_KEY")
 
         if not google_key:
             print("❌ Google API密钥未配置")
@@ -124,9 +139,11 @@ def test_google_trading_agents_with_memory():
         config["max_risk_discuss_rounds"] = 1
 
         # 修复路径
-        config["data_dir"] = str(project_root / "data")
-        config["results_dir"] = str(project_root / "results")
-        config["data_cache_dir"] = str(project_root / "trader" / "dataflows" / "data_cache")
+        config["data_dir"] = str(BACKEND_ROOT / "data")
+        config["results_dir"] = str(BACKEND_ROOT / "results")
+        config["data_cache_dir"] = str(
+            BACKEND_ROOT / "trader" / "dataflows" / "data_cache"
+        )
 
         # 创建目录
         os.makedirs(config["data_dir"], exist_ok=True)
@@ -167,13 +184,14 @@ def test_google_trading_agents_with_memory():
 
         except Exception as e:
             print(f"❌ 带内存的股票分析失败: {e}")
-            traceback = importlib.import_module('traceback')
+            traceback = importlib.import_module("traceback")
             print(traceback.format_exc())
             return False
 
     except Exception as e:
         print(f"❌ 带内存的TradingAgents测试失败: {e}")
         return False
+
 
 def main():
     """主测试函数"""
@@ -183,11 +201,11 @@ def main():
     # 运行测试
     results = {}
 
-    results['内存功能'] = test_google_memory_fixed()
-    results['完整TradingAgents'] = test_google_trading_agents_with_memory()
+    results["内存功能"] = test_google_memory_fixed()
+    results["完整TradingAgents"] = test_google_trading_agents_with_memory()
 
     # 总结结果
-    print(f"\n📊 测试结果总结:")
+    print("\n📊 测试结果总结:")
     print("=" * 50)
 
     for test_name, success in results.items():
@@ -209,10 +227,11 @@ def main():
         print("   ✅ 历史经验学习")
     elif successful_tests > 0:
         print("⚠️ 部分功能可用")
-        if results['内存功能'] and not results['完整TradingAgents']:
+        if results["内存功能"] and not results["完整TradingAgents"]:
             print("💡 内存功能正常，但完整流程有其他问题")
     else:
         print("❌ 修复失败，请检查API密钥配置")
+
 
 if __name__ == "__main__":
     main()

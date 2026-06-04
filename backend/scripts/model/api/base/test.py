@@ -1,23 +1,26 @@
 """
 测试脚本：验证模型级别的 API 基础 URL 是否生效
 """
+
 import importlib
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 def main():
     print("=" * 80)
     print("🧪 测试：验证模型级别的 API 基础 URL 配置")
     print("=" * 80)
 
-    MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
-    settings = getattr(importlib.import_module('app.core.config'), 'settings')
-    get_provider_and_url_by_model_sync = getattr(importlib.import_module('app.services.analysis.simple'), 'get_provider_and_url_by_model_sync')
+    create_sync_client = getattr(
+        importlib.import_module("app.db.documentstore"), "create_sync_client"
+    )
+    get_provider_and_url_by_model_sync = getattr(
+        importlib.import_module("app.services.analysis.simple"),
+        "get_provider_and_url_by_model_sync",
+    )
 
     # 连接数据库
-    client = MongoClient(settings.mongo_uri)
-    db = client[settings.mongo_db]
+    client = create_sync_client()
+    db = client["trading_agents"]
 
     # 1. 查看当前数据库中的配置
     print("\n📊 1. 查看数据库中的配置")
@@ -40,7 +43,9 @@ def main():
             print(f"{i}. 模型: {model_name}")
             print(f"   显示名称: {display_name}")
             print(f"   供应商: {provider}")
-            print(f"   API基础URL: {api_base if api_base else '(未配置，使用厂家默认)'}")
+            print(
+                f"   API基础URL: {api_base if api_base else '(未配置，使用厂家默认)'}"
+            )
             print()
     else:
         print("❌ 未找到活跃的系统配置")
@@ -98,9 +103,9 @@ def main():
         print(f"实际的 URL: {actual_url}")
 
         if actual_url == expected_url:
-            print(f"🎯 ✅ 正确！模型级别的 API基础URL 已生效")
+            print("🎯 ✅ 正确！模型级别的 API基础URL 已生效")
         else:
-            print(f"❌ 错误！URL 不匹配")
+            print("❌ 错误！URL 不匹配")
     else:
         print("\n⚠️ 没有找到配置了 API基础URL 的模型")
 
@@ -131,9 +136,9 @@ def main():
         print(f"实际的 URL: {actual_url}")
 
         if actual_url == expected_url:
-            print(f"🎯 ✅ 正确！使用了厂家的默认 URL")
+            print("🎯 ✅ 正确！使用了厂家的默认 URL")
         else:
-            print(f"⚠️ URL 不匹配（可能使用了硬编码的默认值）")
+            print("⚠️ URL 不匹配（可能使用了硬编码的默认值）")
 
     # 4. 模拟添加一个测试模型配置
     print("\n\n📊 4. 模拟测试：添加一个带有自定义 API基础URL 的模型")
@@ -142,34 +147,35 @@ def main():
     test_model_name = "qwen-test-custom-url"
     test_api_base = "https://test-custom-api.example.com/v1"
 
-    print(f"\n添加测试模型配置：")
+    print("\n添加测试模型配置：")
     print(f"  模型名称: {test_model_name}")
-    print(f"  供应商: dashscope")
+    print("  供应商: dashscope")
     print(f"  API基础URL: {test_api_base}")
 
     # 添加到数据库
     if doc:
-        llm_configs.append({
-            "model_name": test_model_name,
-            "display_name": "测试模型 - 自定义URL",
-            "provider": "dashscope",
-            "api_base": test_api_base,
-            "max_tokens": 4000,
-            "temperature": 0.7,
-            "timeout": 60,
-            "retry_times": 3,
-            "enabled": True
-        })
-
-        configs_collection.update_one(
-            {"_id": doc["_id"]},
-            {"$set": {"llm_configs": llm_configs}}
+        llm_configs.append(
+            {
+                "model_name": test_model_name,
+                "display_name": "测试模型 - 自定义URL",
+                "provider": "dashscope",
+                "api_base": test_api_base,
+                "max_tokens": 4000,
+                "temperature": 0.7,
+                "timeout": 60,
+                "retry_times": 3,
+                "enabled": True,
+            }
         )
 
-        print(f"\n✅ 测试模型已添加到数据库")
+        configs_collection.update_one(
+            {"_id": doc["_id"]}, {"$set": {"llm_configs": llm_configs}}
+        )
+
+        print("\n✅ 测试模型已添加到数据库")
 
         # 测试查询
-        print(f"\n测试查询...")
+        print("\n测试查询...")
         result = get_provider_and_url_by_model_sync(test_model_name)
         actual_url = result.get("backend_url")
 
@@ -177,18 +183,17 @@ def main():
         print(f"实际的 URL: {actual_url}")
 
         if actual_url == test_api_base:
-            print(f"\n🎯 ✅ 完美！模型级别的 API基础URL 功能正常工作")
+            print("\n🎯 ✅ 完美！模型级别的 API基础URL 功能正常工作")
         else:
-            print(f"\n❌ 错误！URL 不匹配")
+            print("\n❌ 错误！URL 不匹配")
 
         # 清理测试数据
-        print(f"\n清理测试数据...")
+        print("\n清理测试数据...")
         llm_configs = [c for c in llm_configs if c.get("model_name") != test_model_name]
         configs_collection.update_one(
-            {"_id": doc["_id"]},
-            {"$set": {"llm_configs": llm_configs}}
+            {"_id": doc["_id"]}, {"$set": {"llm_configs": llm_configs}}
         )
-        print(f"✅ 测试数据已清理")
+        print("✅ 测试数据已清理")
 
     client.close()
 
@@ -202,6 +207,7 @@ def main():
     print("  2️⃣ 厂家级别的 默认API地址 (llm_providers.default_base_url)")
     print("  3️⃣ 硬编码的默认值")
     print("\n如果你在界面上配置了模型的 API基础URL，它会优先于厂家的默认URL。")
+
 
 if __name__ == "__main__":
     main()

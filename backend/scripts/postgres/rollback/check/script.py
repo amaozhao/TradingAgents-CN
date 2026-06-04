@@ -8,7 +8,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Mapping
 
-
 FALSE_VALUES = {"0", "false", "no", "off"}
 TRUE_VALUES = {"1", "true", "yes", "on"}
 
@@ -70,7 +69,11 @@ def check_rollback_evidence(
             )
         )
 
-    checks.extend(_check_api_smoke_file(api_smoke_json, require_runtime_state_smoke=require_runtime_state_smoke))
+    checks.extend(
+        _check_api_smoke_file(
+            api_smoke_json, require_runtime_state_smoke=require_runtime_state_smoke
+        )
+    )
 
     consistency_checks = _check_consistency_file(consistency_json)
     if allow_inconsistent_consistency:
@@ -101,7 +104,9 @@ def write_rollback_target_manifest(
     environment = env if env is not None else os.environ
     effective_target_env = target_env or environment.get("TRADING_AGENTS_TARGET_ENV")
     if not effective_target_env:
-        raise ValueError("missing target environment: provide --target-env or TRADING_AGENTS_TARGET_ENV")
+        raise ValueError(
+            "missing target environment: provide --target-env or TRADING_AGENTS_TARGET_ENV"
+        )
     manifest = {
         "schema_version": "1",
         "created_at": datetime.now(UTC).isoformat(),
@@ -112,19 +117,29 @@ def write_rollback_target_manifest(
         "require_explicit_env": True,
         "postgres_read_enabled": environment.get("POSTGRES_READ_ENABLED"),
         "postgres_dual_write_enabled": environment.get("POSTGRES_DUAL_WRITE_ENABLED"),
-        "expected_postgres_read_enabled": environment.get("TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED"),
-        "expected_postgres_dual_write_enabled": environment.get("TRADING_AGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED"),
+        "expected_postgres_read_enabled": environment.get(
+            "TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED"
+        ),
+        "expected_postgres_dual_write_enabled": environment.get(
+            "TRADING_AGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED"
+        ),
         "api_smoke_json": str(api_smoke_json) if api_smoke_json else None,
         "consistency_json": str(consistency_json) if consistency_json else None,
-        "git_commit": environment.get("GIT_COMMIT") or environment.get("SOURCE_VERSION"),
+        "git_commit": environment.get("GIT_COMMIT")
+        or environment.get("SOURCE_VERSION"),
     }
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / "00_target_manifest.json"
-    output_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    output_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
     return output_path
 
 
-def _check_api_smoke_file(path: Path | None, *, require_runtime_state_smoke: bool) -> list[RollbackCheck]:
+def _check_api_smoke_file(
+    path: Path | None, *, require_runtime_state_smoke: bool
+) -> list[RollbackCheck]:
     if path is None:
         return [RollbackCheck("api_smoke_present", False, "missing path")]
     if not path.exists():
@@ -152,7 +167,9 @@ def _check_api_smoke_file(path: Path | None, *, require_runtime_state_smoke: boo
 def _check_migration_state_smoke(payload: dict[str, Any]) -> RollbackCheck:
     checks = payload.get("checks")
     if not isinstance(checks, list):
-        return RollbackCheck("api_smoke_migration_state", False, "api_smoke checks is not a list")
+        return RollbackCheck(
+            "api_smoke_migration_state", False, "api_smoke checks is not a list"
+        )
     for check in checks:
         if not isinstance(check, dict) or check.get("name") != "migration_state":
             continue
@@ -161,7 +178,9 @@ def _check_migration_state_smoke(payload: dict[str, Any]) -> RollbackCheck:
             check.get("status") == "passed",
             f"status={check.get('status')}, detail={check.get('detail')}",
         )
-    return RollbackCheck("api_smoke_migration_state", False, "missing migration_state check")
+    return RollbackCheck(
+        "api_smoke_migration_state", False, "missing migration_state check"
+    )
 
 
 def _check_consistency_file(path: Path | None) -> list[RollbackCheck]:
@@ -209,7 +228,9 @@ def _display_value(value: str | None) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Validate PostgreSQL cutover rollback evidence.")
+    parser = argparse.ArgumentParser(
+        description="Validate PostgreSQL cutover rollback evidence."
+    )
     parser.add_argument("--api-smoke-json", type=Path, required=True)
     parser.add_argument("--consistency-json", type=Path, required=True)
     parser.add_argument("--allow-dual-write-disabled", action="store_true")

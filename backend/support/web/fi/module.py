@@ -2,15 +2,10 @@
 """
 测试Web界面修复
 """
+
 import importlib
-
 import sys
-import os
-from pathlib import Path
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 def test_render_decision_summary():
     """测试render_decision_summary函数修复"""
@@ -32,23 +27,26 @@ def test_render_decision_summary():
         class MockColumn:
             def __enter__(self):
                 return self
+
             def __exit__(self, *args):
                 pass
 
         # 模拟streamlit模块
-        sys.modules['streamlit'] = MockStreamlit()
+        sys.modules["streamlit"] = MockStreamlit()
 
-        render_decision_summary = getattr(importlib.import_module('web.components.result'), 'render_decision_summary')
+        render_decision_summary = getattr(
+            importlib.import_module("web.components.result"), "render_decision_summary"
+        )
 
         print("🧪 测试render_decision_summary修复...")
 
         # 测试中国A股
         china_decision = {
-            'action': '持有',
-            'confidence': 0.75,
-            'risk_score': 0.40,
-            'target_price': 15.00,
-            'reasoning': '基于综合分析的投资建议'
+            "action": "持有",
+            "confidence": 0.75,
+            "risk_score": 0.40,
+            "target_price": 15.00,
+            "reasoning": "基于综合分析的投资建议",
         }
 
         print("\n📈 测试中国A股决策显示:")
@@ -56,11 +54,11 @@ def test_render_decision_summary():
 
         # 测试美股
         us_decision = {
-            'action': '买入',
-            'confidence': 0.80,
-            'risk_score': 0.30,
-            'target_price': 180.00,
-            'reasoning': '基于综合分析的投资建议'
+            "action": "买入",
+            "confidence": 0.80,
+            "risk_score": 0.30,
+            "target_price": 180.00,
+            "reasoning": "基于综合分析的投资建议",
         }
 
         print("\n📈 测试美股决策显示:")
@@ -71,18 +69,19 @@ def test_render_decision_summary():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         print(traceback.format_exc())
         return False
+
 
 def test_currency_detection():
     """测试货币检测逻辑"""
 
     try:
-        re = importlib.import_module('re')
+        re = importlib.import_module("re")
 
         def is_china_stock(ticker_code):
-            return re.match(r'^\d{6}$', str(ticker_code)) if ticker_code else False
+            return re.match(r"^\d{6}$", str(ticker_code)) if ticker_code else False
 
         print("🧪 测试货币检测逻辑...")
 
@@ -114,6 +113,7 @@ def test_currency_detection():
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         return False
+
 
 if __name__ == "__main__":
     print("🧪 开始测试Web界面修复...")

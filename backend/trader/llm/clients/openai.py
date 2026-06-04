@@ -4,9 +4,9 @@ from typing import Any, Optional
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
 
-from .keys import get_api_key_env
 from .base import BaseLLMClient, normalize_content
 from .capabilities import get_capabilities
+from .keys import get_api_key_env
 from .validators import validate_model
 
 
@@ -95,7 +95,10 @@ _PROVIDER_CONFIG = {
     "deepseek": ("https://api.deepseek.com", "DEEPSEEK_API_KEY"),
     "xai": ("https://api.x.ai/v1", "XAI_API_KEY"),
     "qwen": ("https://dashscope.aliyuncs.com/compatible-mode/v1", "DASHSCOPE_API_KEY"),
-    "qwen-cn": ("https://dashscope.aliyuncs.com/compatible-mode/v1", "DASHSCOPE_API_KEY"),
+    "qwen-cn": (
+        "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "DASHSCOPE_API_KEY",
+    ),
     "glm": ("https://api.z.ai/api/paas/v4/", "ZHIPU_API_KEY"),
     "glm-cn": ("https://open.bigmodel.cn/api/paas/v4/", "ZHIPU_API_KEY"),
     "minimax": ("https://api.minimax.io/v1", "MINIMAX_API_KEY"),
@@ -108,7 +111,9 @@ _PROVIDER_CONFIG = {
 }
 
 
-def _resolve_provider_base_url(provider: str, default_base_url: Optional[str] = None) -> Optional[str]:
+def _resolve_provider_base_url(
+    provider: str, default_base_url: Optional[str] = None
+) -> Optional[str]:
     if default_base_url is None and provider in _PROVIDER_CONFIG:
         default_base_url = _PROVIDER_CONFIG[provider][0]
     if provider == "ollama":

@@ -2,11 +2,12 @@
 """
 快速测试股票代码传递问题
 """
+
 import importlib
+import time
 
 import requests
-import time
-import json
+
 
 def quick_test():
     """快速测试股票代码传递"""
@@ -39,19 +40,17 @@ def quick_test():
                 "include_risk": False,
                 "language": "zh-CN",
                 "quick_analysis_model": "qwen-turbo",
-                "deep_analysis_model": "qwen-max"
-            }
+                "deep_analysis_model": "qwen-max",
+            },
         }
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": "Bearer admin_token"
+            "Authorization": "Bearer admin_token",
         }
 
         response = requests.post(
-            f"{base_url}/api/analysis/single",
-            json=analysis_request,
-            headers=headers
+            f"{base_url}/api/analysis/single", json=analysis_request, headers=headers
         )
 
         if response.status_code == 200:
@@ -63,11 +62,10 @@ def quick_test():
             return False
 
         # 3. 等待任务完成
-        print(f"\n3. 等待任务完成...")
+        print("\n3. 等待任务完成...")
         for i in range(60):  # 最多等待5分钟
             status_response = requests.get(
-                f"{base_url}/api/analysis/tasks/{task_id}/status",
-                headers=headers
+                f"{base_url}/api/analysis/tasks/{task_id}/status", headers=headers
             )
 
             if status_response.status_code == 200:
@@ -80,28 +78,32 @@ def quick_test():
                     # 获取结果并检查股票代码
                     result_response = requests.get(
                         f"{base_url}/api/analysis/tasks/{task_id}/result",
-                        headers=headers
+                        headers=headers,
                     )
 
                     if result_response.status_code == 200:
                         result_data = result_response.json()
-                        print(f"\n📊 结果检查:")
-                        print(f"   stock_code: {result_data.get('stock_code', 'NOT_FOUND')}")
-                        print(f"   stock_symbol: {result_data.get('stock_symbol', 'NOT_FOUND')}")
+                        print("\n📊 结果检查:")
+                        print(
+                            f"   stock_code: {result_data.get('stock_code', 'NOT_FOUND')}"
+                        )
+                        print(
+                            f"   stock_symbol: {result_data.get('stock_symbol', 'NOT_FOUND')}"
+                        )
 
                         # 检查保存的文件路径
-                        Path = getattr(importlib.import_module('pathlib'), 'Path')
+                        Path = getattr(importlib.import_module("pathlib"), "Path")
 
                         # 检查是否保存到正确的目录
-                        correct_dir = Path(f"data/analysis_results/000003/2025-08-20")
-                        unknown_dir = Path(f"data/analysis_results/UNKNOWN/2025-08-20")
+                        correct_dir = Path("data/analysis_results/000003/2025-08-20")
+                        unknown_dir = Path("data/analysis_results/UNKNOWN/2025-08-20")
 
                         if correct_dir.exists():
                             print(f"✅ 文件保存到正确目录: {correct_dir}")
                         elif unknown_dir.exists():
                             print(f"❌ 文件仍保存到UNKNOWN目录: {unknown_dir}")
                         else:
-                            print(f"❌ 找不到保存的文件")
+                            print("❌ 找不到保存的文件")
 
                         return True
                     else:
@@ -109,17 +111,18 @@ def quick_test():
                         return False
 
                 elif status == "failed":
-                    print(f"❌ 分析任务失败")
+                    print("❌ 分析任务失败")
                     return False
 
             time.sleep(5)
 
-        print(f"⏰ 任务执行超时")
+        print("⏰ 任务执行超时")
         return False
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         return False
+
 
 if __name__ == "__main__":
     success = quick_test()

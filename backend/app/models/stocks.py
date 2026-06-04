@@ -2,16 +2,19 @@
 股票数据模型 - 基于现有集合扩展
 采用方案B: 在现有集合基础上扩展字段，保持向后兼容
 """
-from datetime import datetime, date
-from typing import Optional, Dict, Any, List, Literal
+
+from datetime import datetime
+from typing import Any, Dict, List, Literal, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
-from bson import ObjectId
+
+from app.db.ids import DocumentId
 
 
 def to_str_id(v: Any) -> str:
-    """ObjectId转字符串工具函数"""
+    """DocumentId转字符串工具函数"""
     try:
-        if isinstance(v, ObjectId):
+        if isinstance(v, DocumentId):
             return str(v)
         return str(v)
     except Exception:
@@ -27,6 +30,7 @@ CurrencyType = Literal["CNY", "HKD", "USD"]  # 货币类型
 
 class MarketInfo(BaseModel):
     """市场信息结构 - 新增字段"""
+
     market: MarketType = Field(..., description="市场标识")
     exchange: ExchangeType = Field(..., description="交易所代码")
     exchange_name: str = Field(..., description="交易所名称")
@@ -37,6 +41,7 @@ class MarketInfo(BaseModel):
 
 class TechnicalIndicators(BaseModel):
     """技术指标结构 - 分类扩展设计"""
+
     # 趋势指标
     trend: Optional[Dict[str, float]] = Field(None, description="趋势指标")
     # 震荡指标
@@ -56,6 +61,7 @@ class StockBasicInfoExtended(BaseModel):
     股票基础信息扩展模型 - 基于现有 stock_basic_info 集合
     统一使用 symbol 作为主要股票代码字段
     """
+
     # === 标准化字段 (主要字段) ===
     symbol: str = Field(..., description="6位股票代码", pattern=r"^\d{6}$")
     full_symbol: str = Field(..., description="完整标准化代码(如 000001.SZ)")
@@ -124,7 +130,6 @@ class StockBasicInfoExtended(BaseModel):
                 "symbol": "000001",
                 "full_symbol": "000001.SZ",
                 "name": "平安银行",
-
                 # 基础信息
                 "area": "深圳",
                 "industry": "银行",
@@ -133,17 +138,16 @@ class StockBasicInfoExtended(BaseModel):
                 "total_mv": 2500.0,
                 "pe": 5.2,
                 "pb": 0.8,
-
                 # 扩展字段
                 "market_info": {
                     "market": "CN",
                     "exchange": "SZSE",
                     "exchange_name": "深圳证券交易所",
                     "currency": "CNY",
-                    "timezone": "Asia/Shanghai"
+                    "timezone": "Asia/Shanghai",
                 },
                 "status": "L",
-                "data_version": 1
+                "data_version": 1,
             }
         },
     )
@@ -154,6 +158,7 @@ class MarketQuotesExtended(BaseModel):
     实时行情扩展模型 - 基于现有 market_quotes 集合
     统一使用 symbol 作为主要股票代码字段
     """
+
     # === 标准化字段 (主要字段) ===
     symbol: str = Field(..., description="6位股票代码", pattern=r"^\d{6}$")
     full_symbol: Optional[str] = Field(None, description="完整标准化代码")
@@ -201,7 +206,6 @@ class MarketQuotesExtended(BaseModel):
                 "symbol": "000001",
                 "full_symbol": "000001.SZ",
                 "market": "CN",
-
                 # 行情字段
                 "close": 12.65,
                 "pct_chg": 1.61,
@@ -210,11 +214,10 @@ class MarketQuotesExtended(BaseModel):
                 "high": 12.80,
                 "low": 12.30,
                 "trade_date": "2024-01-15",
-
                 # 扩展字段
                 "current_price": 12.65,
                 "change": 0.20,
-                "volume": 125000000
+                "volume": 125000000,
             }
         },
     )
@@ -223,6 +226,7 @@ class MarketQuotesExtended(BaseModel):
 # 数据库操作相关的响应模型
 class StockBasicInfoResponse(BaseModel):
     """股票基础信息API响应模型"""
+
     success: bool = True
     data: Optional[StockBasicInfoExtended] = None
     message: str = ""
@@ -230,6 +234,7 @@ class StockBasicInfoResponse(BaseModel):
 
 class MarketQuotesResponse(BaseModel):
     """实时行情API响应模型"""
+
     success: bool = True
     data: Optional[MarketQuotesExtended] = None
     message: str = ""
@@ -237,6 +242,7 @@ class MarketQuotesResponse(BaseModel):
 
 class StockListResponse(BaseModel):
     """股票列表API响应模型"""
+
     success: bool = True
     data: Optional[List[StockBasicInfoExtended]] = None
     total: int = 0

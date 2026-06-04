@@ -4,20 +4,15 @@
 测试数据目录配置CLI功能
 Test Data Directory Configuration CLI Features
 """
-import importlib
 
+import importlib
 import os
 import sys
 import tempfile
-import shutil
-from pathlib import Path
-
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
 
 from trader.config.manager import config_manager
-from trader.flows.config import get_data_dir, set_data_dir, initialize_config
+from trader.flows.config import get_data_dir, initialize_config, set_data_dir
+
 
 def test_data_dir_configuration():
     """
@@ -44,14 +39,16 @@ def test_data_dir_configuration():
 
         # 验证目录是否创建
         if os.path.exists(custom_data_dir):
-            print("✅ 自定义数据目录创建成功 | Custom data directory created successfully")
+            print(
+                "✅ 自定义数据目录创建成功 | Custom data directory created successfully"
+            )
 
             # 检查子目录结构
             expected_subdirs = [
                 "finnhub",
                 "finnhub/news",
                 "finnhub/insider_sentiment",
-                "finnhub/insider_transactions"
+                "finnhub/insider_transactions",
             ]
 
             for subdir in expected_subdirs:
@@ -70,17 +67,23 @@ def test_data_dir_configuration():
 
         # 设置环境变量
         os.environ["TRADING_AGENTS_DATA_DIR"] = env_data_dir
-        print(f"设置环境变量 | Setting environment variable: TRADING_AGENTS_DATA_DIR={env_data_dir}")
+        print(
+            f"设置环境变量 | Setting environment variable: TRADING_AGENTS_DATA_DIR={env_data_dir}"
+        )
 
         # 重新初始化配置以读取环境变量
         initialize_config()
         env_current_data_dir = get_data_dir()
-        print(f"环境变量数据目录 | Environment variable data directory: {env_current_data_dir}")
+        print(
+            f"环境变量数据目录 | Environment variable data directory: {env_current_data_dir}"
+        )
 
         if env_current_data_dir == env_data_dir:
             print("✅ 环境变量配置生效 | Environment variable configuration effective")
         else:
-            print("❌ 环境变量配置未生效 | Environment variable configuration not effective")
+            print(
+                "❌ 环境变量配置未生效 | Environment variable configuration not effective"
+            )
 
         # 清理环境变量
         del os.environ["TRADING_AGENTS_DATA_DIR"]
@@ -88,9 +91,9 @@ def test_data_dir_configuration():
     # 4. 测试配置管理器集成
     print("\n4. 测试配置管理器集成 | Testing Configuration Manager Integration")
     settings = config_manager.load_settings()
-    print(f"配置管理器设置 | Configuration manager settings:")
+    print("配置管理器设置 | Configuration manager settings:")
     for key, value in settings.items():
-        if 'dir' in key.lower():
+        if "dir" in key.lower():
             print(f"  {key}: {value}")
 
     # 5. 测试目录自动创建功能
@@ -98,7 +101,10 @@ def test_data_dir_configuration():
     config_manager.ensure_directories_exist()
     print("✅ 目录自动创建功能测试完成 | Auto directory creation test completed")
 
-    print("\n=== 数据目录配置测试完成 | Data Directory Configuration Test Completed ===")
+    print(
+        "\n=== 数据目录配置测试完成 | Data Directory Configuration Test Completed ==="
+    )
+
 
 def test_cli_commands():
     """
@@ -125,6 +131,7 @@ def test_cli_commands():
     print("5. 运行配置演示脚本 | Run configuration demo script:")
     print("   python examples/data/dir/config/demo/example.py")
 
+
 def main():
     """
     主测试函数
@@ -142,7 +149,9 @@ def main():
 
         print("\n🎉 所有测试完成！| All tests completed!")
         print("\n📝 总结 | Summary:")
-        print("✅ 数据目录配置功能已实现 | Data directory configuration feature implemented")
+        print(
+            "✅ 数据目录配置功能已实现 | Data directory configuration feature implemented"
+        )
         print("✅ 支持自定义路径设置 | Custom path setting supported")
         print("✅ 支持环境变量配置 | Environment variable configuration supported")
         print("✅ 集成配置管理器 | Configuration manager integrated")
@@ -151,11 +160,12 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 测试过程中出现错误 | Error during testing: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return 1
 
     return 0
+
 
 if __name__ == "__main__":
     exit_code = main()

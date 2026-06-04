@@ -3,14 +3,15 @@
 财务数据同步服务
 统一管理三数据源的财务数据同步
 """
-import importlib
-import asyncio
-import logging
-from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field
 
-from app.core.database import get_mongo_db
+import asyncio
+import importlib
+import logging
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
+from app.core.database import get_postgres_db
 from app.services.market.financial import get_financial_data_service
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class FinancialSyncStats:
     """财务数据同步统计"""
+
     total_symbols: int = 0
     success_count: int = 0
     error_count: int = 0
@@ -38,8 +40,10 @@ class FinancialSyncStats:
             "start_time": self.start_time.isoformat() if self.start_time else None,
             "end_time": self.end_time.isoformat() if self.end_time else None,
             "duration": self.duration,
-            "success_rate": round(self.success_count / max(self.total_symbols, 1) * 100, 2),
-            "errors": self.errors[:10]  # 只返回前10个错误
+            "success_rate": round(
+                self.success_count / max(self.total_symbols, 1) * 100, 2
+            ),
+            "errors": self.errors[:10],  # 只返回前10个错误
         }
 
 
@@ -54,18 +58,27 @@ class FinancialDataSyncService:
     async def initialize(self):
         """初始化服务"""
         try:
-            self.db = get_mongo_db()
+            self.db = get_postgres_db()
             self.financial_service = await get_financial_data_service()
 
-            get_akshare_provider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'get_akshare_provider')
-            get_baostock_provider = getattr(importlib.import_module('trader.flows.providers.china.baostock'), 'get_baostock_provider')
-            get_tushare_provider = getattr(importlib.import_module('trader.flows.providers.china.tushare'), 'get_tushare_provider')
+            get_akshare_provider = getattr(
+                importlib.import_module("trader.flows.providers.china.akshare"),
+                "get_akshare_provider",
+            )
+            get_baostock_provider = getattr(
+                importlib.import_module("trader.flows.providers.china.baostock"),
+                "get_baostock_provider",
+            )
+            get_tushare_provider = getattr(
+                importlib.import_module("trader.flows.providers.china.tushare"),
+                "get_tushare_provider",
+            )
 
             # 初始化数据源提供者
             self.providers = {
                 "tushare": get_tushare_provider(),
                 "akshare": get_akshare_provider(),
-                "baostock": get_baostock_provider()
+                "baostock": get_baostock_provider(),
             }
 
             logger.info("✅ 财务数据同步服务初始化成功")
@@ -80,7 +93,7 @@ class FinancialDataSyncService:
         data_sources: Optional[List[str]] = None,
         report_types: Optional[List[str]] = None,
         batch_size: int = 50,
-        delay_seconds: float = 1.0
+        delay_seconds: float = 1.0,
     ) -> Dict[str, FinancialSyncStats]:
         """
         同步财务数据
@@ -104,7 +117,9 @@ class FinancialDataSyncService:
         if report_types is None:
             report_types = ["quarterly", "annual"]  # 同时同步季报和年报
 
-        logger.info(f"🔄 开始财务数据同步: 数据源={data_sources}, 报告类型={report_types}")
+        logger.info(
+            f"🔄 开始财务数据同步: 数据源={data_sources}, 报告类型={report_types}"
+        )
 
         # 获取股票列表
         if symbols is None:
@@ -131,14 +146,16 @@ class FinancialDataSyncService:
                 symbols=symbols,
                 report_types=report_types,
                 batch_size=batch_size,
-                delay_seconds=delay_seconds
+                delay_seconds=delay_seconds,
             )
 
             results[data_source] = stats
 
-            logger.info(f"✅ {data_source} 财务数据同步完成: "
-                       f"成功 {stats.success_count}/{stats.total_symbols} "
-                       f"({stats.success_count/max(stats.total_symbols,1)*100:.1f}%)")
+            logger.info(
+                f"✅ {data_source} 财务数据同步完成: "
+                f"成功 {stats.success_count}/{stats.total_symbols} "
+                f"({stats.success_count / max(stats.total_symbols, 1) * 100:.1f}%)"
+            )
 
         return results
 
@@ -148,7 +165,7 @@ class FinancialDataSyncService:
         symbols: List[str],
         report_types: List[str],
         batch_size: int,
-        delay_seconds: float
+        delay_seconds: float,
     ) -> FinancialSyncStats:
         """同步单个数据源的财务数据"""
         stats = FinancialSyncStats()
@@ -166,10 +183,12 @@ class FinancialDataSyncService:
 
         # 批量处理股票
         for i in range(0, len(symbols), batch_size):
-            batch_symbols = symbols[i:i + batch_size]
+            batch_symbols = symbols[i : i + batch_size]
 
-            logger.info(f"📈 {data_source} 处理批次 {i//batch_size + 1}: "
-                       f"{len(batch_symbols)} 只股票")
+            logger.info(
+                f"📈 {data_source} 处理批次 {i // batch_size + 1}: "
+                f"{len(batch_symbols)} 只股票"
+            )
 
             # 并发处理批次内的股票
             tasks = []
@@ -178,7 +197,7 @@ class FinancialDataSyncService:
                     symbol=symbol,
                     data_source=data_source,
                     provider=provider,
-                    report_types=report_types
+                    report_types=report_types,
                 )
                 tasks.append(task)
 
@@ -191,13 +210,17 @@ class FinancialDataSyncService:
 
                 if isinstance(result, Exception):
                     stats.error_count += 1
-                    stats.errors.append({
-                        "symbol": symbol,
-                        "data_source": data_source,
-                        "error": str(result),
-                        "timestamp": datetime.now(timezone.utc).isoformat()
-                    })
-                    logger.error(f"❌ {symbol} 财务数据同步失败 ({data_source}): {result}")
+                    stats.errors.append(
+                        {
+                            "symbol": symbol,
+                            "data_source": data_source,
+                            "error": str(result),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        }
+                    )
+                    logger.error(
+                        f"❌ {symbol} 财务数据同步失败 ({data_source}): {result}"
+                    )
                 elif result:
                     stats.success_count += 1
                     logger.debug(f"✅ {symbol} 财务数据同步成功 ({data_source})")
@@ -215,11 +238,7 @@ class FinancialDataSyncService:
         return stats
 
     async def _sync_symbol_financial_data(
-        self,
-        symbol: str,
-        data_source: str,
-        provider: Any,
-        report_types: List[str]
+        self, symbol: str, data_source: str, provider: Any, report_types: List[str]
     ) -> bool:
         """同步单只股票的财务数据"""
         try:
@@ -237,7 +256,7 @@ class FinancialDataSyncService:
                     symbol=symbol,
                     financial_data=financial_data,
                     data_source=data_source,
-                    report_type=report_type
+                    report_type=report_type,
                 )
                 saved_count += count
 
@@ -254,11 +273,13 @@ class FinancialDataSyncService:
                 {
                     "$or": [
                         {"market_info.market": "CN"},  # 新数据结构
-                        {"category": "stock_cn"},      # 旧数据结构
-                        {"market": {"$in": ["主板", "创业板", "科创板", "北交所"]}}  # 按市场类型
+                        {"category": "stock_cn"},  # 旧数据结构
+                        {
+                            "market": {"$in": ["主板", "创业板", "科创板", "北交所"]}
+                        },  # 按市场类型
                     ]
                 },
-                {"code": 1}
+                {"code": 1},
             )
 
             symbols = [doc["code"] async for doc in cursor]
@@ -284,9 +305,7 @@ class FinancialDataSyncService:
             return {}
 
     async def sync_single_stock(
-        self,
-        symbol: str,
-        data_sources: Optional[List[str]] = None
+        self, symbol: str, data_sources: Optional[List[str]] = None
     ) -> Dict[str, bool]:
         """同步单只股票的财务数据"""
         if self.db is None:
@@ -313,7 +332,7 @@ class FinancialDataSyncService:
                     symbol=symbol,
                     data_source=data_source,
                     provider=provider,
-                    report_types=["quarterly"]
+                    report_types=["quarterly"],
                 )
 
                 results[data_source] = result

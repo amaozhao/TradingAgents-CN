@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 _ALIASES = {
     "dashscope": "qwen",
     "alibaba": "qwen",

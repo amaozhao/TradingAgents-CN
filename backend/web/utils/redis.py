@@ -2,13 +2,15 @@
 基于Redis的会话管理器 - 最可靠的跨页面刷新状态持久化方案
 """
 
-import streamlit as st
-import json
-import time
 import hashlib
 import importlib
+import json
 import os
-from typing import Optional, Dict, Any
+import time
+from typing import Any, Dict, Optional
+
+import streamlit as st
+
 
 class RedisSessionManager:
     """基于Redis的会话管理器"""
@@ -23,17 +25,17 @@ class RedisSessionManager:
         """初始化Redis连接"""
         try:
             # 首先检查REDIS_ENABLED环境变量
-            redis_enabled = os.getenv('REDIS_ENABLED', 'false').lower()
-            if redis_enabled != 'true':
+            redis_enabled = os.getenv("REDIS_ENABLED", "false").lower()
+            if redis_enabled != "true":
                 return False
 
-            redis = importlib.import_module('redis')
+            redis = importlib.import_module("redis")
 
             # 从环境变量获取Redis配置
-            redis_host = os.getenv('REDIS_HOST', 'localhost')
-            redis_port = int(os.getenv('REDIS_PORT', 6379))
-            redis_password = os.getenv('REDIS_PASSWORD', None)
-            redis_db = int(os.getenv('REDIS_DB', 0))
+            redis_host = os.getenv("REDIS_HOST", "localhost")
+            redis_port = int(os.getenv("REDIS_PORT", 6379))
+            redis_password = os.getenv("REDIS_PASSWORD", None)
+            redis_db = int(os.getenv("REDIS_DB", 0))
 
             # 创建Redis连接
             self.redis_client = redis.Redis(
@@ -43,7 +45,7 @@ class RedisSessionManager:
                 db=redis_db,
                 decode_responses=True,
                 socket_timeout=5,
-                socket_connect_timeout=5
+                socket_connect_timeout=5,
             )
 
             # 测试连接
@@ -52,8 +54,8 @@ class RedisSessionManager:
 
         except Exception as e:
             # 只有在Redis启用时才显示连接失败警告
-            redis_enabled = os.getenv('REDIS_ENABLED', 'false').lower()
-            if redis_enabled == 'true':
+            redis_enabled = os.getenv("REDIS_ENABLED", "false").lower()
+            if redis_enabled == "true":
                 st.warning(f"⚠️ Redis连接失败，使用文件存储: {e}")
             return False
 
@@ -61,7 +63,9 @@ class RedisSessionManager:
         """生成会话键"""
         try:
             # 尝试获取Streamlit的session信息
-            if hasattr(st, 'session_state') and hasattr(st.session_state, '_get_session_id'):
+            if hasattr(st, "session_state") and hasattr(
+                st.session_state, "_get_session_id"
+            ):
                 session_id = st.session_state._get_session_id()
                 return f"{self.session_prefix}{session_id}"
 
@@ -70,8 +74,8 @@ class RedisSessionManager:
             wsh = importlib.import_module("streamlit.web.server.websocket_headers")
             headers = wsh.get_websocket_headers()
 
-            user_agent = headers.get('User-Agent', 'unknown')
-            x_forwarded_for = headers.get('X-Forwarded-For', 'unknown')
+            user_agent = headers.get("User-Agent", "unknown")
+            x_forwarded_for = headers.get("X-Forwarded-For", "unknown")
 
             # 生成基于用户信息的唯一标识
             unique_str = f"{user_agent}_{x_forwarded_for}_{int(time.time() / 3600)}"  # 按小时分组
@@ -81,12 +85,19 @@ class RedisSessionManager:
 
         except Exception:
             # 最后的fallback：使用时间戳
-            timestamp_hash = hashlib.md5(str(int(time.time() / 3600)).encode()).hexdigest()[:16]
+            timestamp_hash = hashlib.md5(
+                str(int(time.time() / 3600)).encode()
+            ).hexdigest()[:16]
             return f"{self.session_prefix}timestamp_{timestamp_hash}"
 
-    def save_analysis_state(self, analysis_id: str, status: str = "running",
-                           stock_symbol: str = "", market_type: str = "",
-                           form_config: Dict[str, Any] = None):
+    def save_analysis_state(
+        self,
+        analysis_id: str,
+        status: str = "running",
+        stock_symbol: str = "",
+        market_type: str = "",
+        form_config: Dict[str, Any] = None,
+    ):
         """保存分析状态和表单配置"""
         try:
             session_data = {
@@ -95,7 +106,7 @@ class RedisSessionManager:
                 "stock_symbol": stock_symbol,
                 "market_type": market_type,
                 "timestamp": time.time(),
-                "last_update": time.time()
+                "last_update": time.time(),
             }
 
             # 添加表单配置
@@ -109,7 +120,7 @@ class RedisSessionManager:
                 self.redis_client.setex(
                     session_key,
                     self.max_age_hours * 3600,  # 过期时间（秒）
-                    json.dumps(session_data)
+                    json.dumps(session_data),
                 )
             else:
                 # 保存到文件（fallback）
@@ -117,7 +128,7 @@ class RedisSessionManager:
 
             # 同时保存到session state
             st.session_state.current_analysis_id = analysis_id
-            st.session_state.analysis_running = (status == 'running')
+            st.session_state.analysis_running = status == "running"
             st.session_state.last_stock_symbol = stock_symbol
             st.session_state.last_market_type = market_type
 
@@ -160,7 +171,12 @@ class RedisSessionManager:
                 self._delete_file(session_key)
 
             # 清除session state
-            keys_to_remove = ['current_analysis_id', 'analysis_running', 'last_stock_symbol', 'last_market_type']
+            keys_to_remove = [
+                "current_analysis_id",
+                "analysis_running",
+                "last_stock_symbol",
+                "last_market_type",
+            ]
             for key in keys_to_remove:
                 if key in st.session_state:
                     del st.session_state[key]
@@ -171,11 +187,11 @@ class RedisSessionManager:
     def _save_to_file(self, session_key: str, session_data: Dict[str, Any]):
         """保存到文件（fallback方案）"""
         try:
-            os = importlib.import_module('os')
+            os = importlib.import_module("os")
             os.makedirs("./data", exist_ok=True)
 
             filename = f"./data/{session_key.replace(':', '_')}.json"
-            with open(filename, 'w', encoding='utf-8') as f:
+            with open(filename, "w", encoding="utf-8") as f:
                 json.dump(session_data, f, ensure_ascii=False, indent=2)
 
         except Exception as e:
@@ -186,7 +202,7 @@ class RedisSessionManager:
         try:
             filename = f"./data/{session_key.replace(':', '_')}.json"
             if os.path.exists(filename):
-                with open(filename, 'r', encoding='utf-8') as f:
+                with open(filename, "r", encoding="utf-8") as f:
                     data = json.load(f)
 
                 # 检查是否过期
@@ -222,7 +238,9 @@ class RedisSessionManager:
                 "use_redis": self.use_redis,
                 "session_key": session_key,
                 "redis_connected": False,
-                "session_state_keys": [k for k in st.session_state.keys() if 'analysis' in k.lower()]
+                "session_state_keys": [
+                    k for k in st.session_state.keys() if "analysis" in k.lower()
+                ],
             }
 
             if self.use_redis and self.redis_client:
@@ -230,9 +248,9 @@ class RedisSessionManager:
                     self.redis_client.ping()
                     debug_info["redis_connected"] = True
                     debug_info["redis_info"] = {
-                        "host": os.getenv('REDIS_HOST', 'localhost'),
-                        "port": os.getenv('REDIS_PORT', 6379),
-                        "db": os.getenv('REDIS_DB', 0)
+                        "host": os.getenv("REDIS_HOST", "localhost"),
+                        "port": os.getenv("REDIS_PORT", 6379),
+                        "db": os.getenv("REDIS_DB", 0),
                     }
 
                     # 检查会话数据
@@ -250,30 +268,38 @@ class RedisSessionManager:
         except Exception as e:
             return {"error": str(e)}
 
+
 # 全局Redis会话管理器实例
 redis = RedisSessionManager()
+
 
 def get_persistent_analysis_id() -> Optional[str]:
     """获取持久化的分析ID（优先级：session state > Redis会话 > Redis分析数据）"""
     try:
         # 1. 首先检查session state
-        if st.session_state.get('current_analysis_id'):
+        if st.session_state.get("current_analysis_id"):
             return st.session_state.current_analysis_id
 
         # 2. 检查Redis会话数据
         session_data = redis.load_analysis_state()
         if session_data:
-            analysis_id = session_data.get('analysis_id')
+            analysis_id = session_data.get("analysis_id")
             if analysis_id:
                 # 恢复到session state
                 st.session_state.current_analysis_id = analysis_id
-                st.session_state.analysis_running = (session_data.get('status') == 'running')
-                st.session_state.last_stock_symbol = session_data.get('stock_symbol', '')
-                st.session_state.last_market_type = session_data.get('market_type', '')
+                st.session_state.analysis_running = (
+                    session_data.get("status") == "running"
+                )
+                st.session_state.last_stock_symbol = session_data.get(
+                    "stock_symbol", ""
+                )
+                st.session_state.last_market_type = session_data.get("market_type", "")
                 return analysis_id
 
         # 3. 最后从Redis/文件恢复最新分析
-        get_latest_analysis_id = getattr(importlib.import_module('web.utils.progress'), 'get_latest_analysis_id')
+        get_latest_analysis_id = getattr(
+            importlib.import_module("web.utils.progress"), "get_latest_analysis_id"
+        )
         latest_id = get_latest_analysis_id()
         if latest_id:
             st.session_state.current_analysis_id = latest_id
@@ -285,13 +311,18 @@ def get_persistent_analysis_id() -> Optional[str]:
         st.warning(f"⚠️ 获取持久化分析ID失败: {e}")
         return None
 
-def set_persistent_analysis_id(analysis_id: str, status: str = "running",
-                              stock_symbol: str = "", market_type: str = ""):
+
+def set_persistent_analysis_id(
+    analysis_id: str,
+    status: str = "running",
+    stock_symbol: str = "",
+    market_type: str = "",
+):
     """设置持久化的分析ID"""
     try:
         # 设置到session state
         st.session_state.current_analysis_id = analysis_id
-        st.session_state.analysis_running = (status == 'running')
+        st.session_state.analysis_running = status == "running"
         st.session_state.last_stock_symbol = stock_symbol
         st.session_state.last_market_type = market_type
 

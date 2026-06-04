@@ -2,14 +2,11 @@
 """
 测试改进的港股工具
 """
-import importlib
 
+import importlib
 import os
 import sys
 
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_improved_hk_provider():
     """测试改进的港股提供器"""
@@ -17,7 +14,10 @@ def test_improved_hk_provider():
     print("=" * 80)
 
     try:
-        get_improved_hk_provider = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_improved_hk_provider')
+        get_improved_hk_provider = getattr(
+            importlib.import_module("trader.flows.providers.hk.improved"),
+            "get_improved_hk_provider",
+        )
 
         provider = get_improved_hk_provider()
         print("✅ 改进港股提供器初始化成功")
@@ -25,26 +25,26 @@ def test_improved_hk_provider():
         # 测试不同格式的港股代码
         test_symbols = [
             "0700.HK",  # 腾讯控股
-            "0700",     # 腾讯控股（无后缀）
-            "00700",    # 腾讯控股（5位）
+            "0700",  # 腾讯控股（无后缀）
+            "00700",  # 腾讯控股（5位）
             "0941.HK",  # 中国移动
-            "1299",     # 友邦保险
+            "1299",  # 友邦保险
             "9988.HK",  # 阿里巴巴
-            "3690",     # 美团
+            "3690",  # 美团
             "1234.HK",  # 不存在的股票
         ]
 
-        print(f"\n📊 测试港股公司名称获取:")
+        print("\n📊 测试港股公司名称获取:")
         for symbol in test_symbols:
             try:
                 company_name = provider.get_company_name(symbol)
                 print(f"   {symbol:10} -> {company_name}")
 
                 # 验证不是默认格式
-                if not company_name.startswith('港股'):
-                    print(f"      ✅ 成功获取具体公司名称")
+                if not company_name.startswith("港股"):
+                    print("      ✅ 成功获取具体公司名称")
                 else:
-                    print(f"      ⚠️ 使用默认格式")
+                    print("      ⚠️ 使用默认格式")
 
             except Exception as e:
                 print(f"   {symbol:10} -> ❌ 错误: {e}")
@@ -53,9 +53,10 @@ def test_improved_hk_provider():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_analyst_integration():
     """测试分析师集成"""
@@ -63,9 +64,17 @@ def test_analyst_integration():
     print("=" * 80)
 
     try:
-        _get_company_name = getattr(importlib.import_module('trader.agents.analysts.market'), '_get_company_name')
-        _get_company_name_for_fundamentals = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), '_get_company_name_for_fundamentals')
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        _get_company_name = getattr(
+            importlib.import_module("trader.agents.analysts.market"),
+            "_get_company_name",
+        )
+        _get_company_name_for_fundamentals = getattr(
+            importlib.import_module("trader.agents.analysts.fundamentals"),
+            "_get_company_name_for_fundamentals",
+        )
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
 
         test_hk_symbols = ["0700.HK", "0941.HK", "1299.HK"]
 
@@ -85,7 +94,9 @@ def test_analyst_integration():
 
             # 测试基本面分析师
             try:
-                fundamentals_name = _get_company_name_for_fundamentals(symbol, market_info)
+                fundamentals_name = _get_company_name_for_fundamentals(
+                    symbol, market_info
+                )
                 print(f"   基本面分析师: {fundamentals_name}")
             except Exception as e:
                 print(f"   基本面分析师: ❌ {e}")
@@ -94,9 +105,10 @@ def test_analyst_integration():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_cache_functionality():
     """测试缓存功能"""
@@ -104,15 +116,18 @@ def test_cache_functionality():
     print("=" * 80)
 
     try:
-        get_improved_hk_provider = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_improved_hk_provider')
-        time = importlib.import_module('time')
+        get_improved_hk_provider = getattr(
+            importlib.import_module("trader.flows.providers.hk.improved"),
+            "get_improved_hk_provider",
+        )
+        time = importlib.import_module("time")
 
         provider = get_improved_hk_provider()
 
         # 使用新的缓存路径（避免根目录污染）
-        cache_dir = os.path.join('data', 'cache', 'hk')
+        cache_dir = os.path.join("data", "cache", "hk")
         os.makedirs(cache_dir, exist_ok=True)
-        cache_file = os.path.join(cache_dir, 'hk_stock_cache.json')
+        cache_file = os.path.join(cache_dir, "hk_stock_cache.json")
 
         # 清理可能存在的缓存文件
         if os.path.exists(cache_file):
@@ -148,8 +163,8 @@ def test_cache_functionality():
             print("✅ 缓存文件已创建")
 
             # 读取缓存内容
-            json = importlib.import_module('json')
-            with open(cache_file, 'r', encoding='utf-8') as f:
+            json = importlib.import_module("json")
+            with open(cache_file, "r", encoding="utf-8") as f:
                 cache_data = json.load(f)
 
             print(f"📄 缓存条目数: {len(cache_data)}")
@@ -162,9 +177,10 @@ def test_cache_functionality():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主测试函数"""
@@ -190,15 +206,11 @@ def main():
     passed = sum(results)
     total = len(results)
 
-    test_names = [
-        "改进港股提供器",
-        "分析师集成测试",
-        "缓存功能测试"
-    ]
+    test_names = ["改进港股提供器", "分析师集成测试", "缓存功能测试"]
 
     for i, (name, result) in enumerate(zip(test_names, results)):
         status = "✅ 通过" if result else "❌ 失败"
-        print(f"{i+1}. {name}: {status}")
+        print(f"{i + 1}. {name}: {status}")
 
     print(f"\n📊 总体结果: {passed}/{total} 测试通过")
 
@@ -215,6 +227,7 @@ def main():
         pass
 
     return passed == total
+
 
 if __name__ == "__main__":
     success = main()

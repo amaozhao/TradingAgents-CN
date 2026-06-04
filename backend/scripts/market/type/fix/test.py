@@ -3,14 +3,8 @@
 测试市场类型修复
 验证报告保存和查询时是否正确包含 market_type 字段
 """
+
 import importlib
-
-import sys
-from pathlib import Path
-
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 from trader.utils.stocks import StockUtils
 
@@ -25,17 +19,17 @@ def test_market_type_detection():
         ("000001", "A股"),  # 深圳A股
         ("600000", "A股"),  # 上海A股
         ("00700", "港股"),  # 港股（5位）
-        ("0700", "港股"),   # 港股（4位）
+        ("0700", "港股"),  # 港股（4位）
         ("00700.HK", "港股"),  # 港股（带后缀）
-        ("AAPL", "美股"),   # 美股
-        ("TSLA", "美股"),   # 美股
+        ("AAPL", "美股"),  # 美股
+        ("TSLA", "美股"),  # 美股
     ]
 
     market_type_map = {
         "china_a": "A股",
         "hong_kong": "港股",
         "us": "美股",
-        "unknown": "A股"
+        "unknown": "A股",
     }
 
     for stock_code, expected_market in test_cases:
@@ -43,19 +37,21 @@ def test_market_type_detection():
         market_type = market_type_map.get(market_info.get("market", "unknown"), "A股")
 
         status = "✅" if market_type == expected_market else "❌"
-        print(f"{status} {stock_code:12s} -> {market_type:6s} (期望: {expected_market})")
+        print(
+            f"{status} {stock_code:12s} -> {market_type:6s} (期望: {expected_market})"
+        )
 
         if market_type != expected_market:
             print(f"   详细信息: {market_info}")
 
 
-def test_mongodb_document_structure():
-    """测试 MongoDB 文档结构"""
+def test_postgres_document_structure():
+    """测试 PostgreSQL 文档结构"""
     print("\n" + "=" * 60)
-    print("测试 MongoDB 文档结构")
+    print("测试 PostgreSQL 文档结构")
     print("=" * 60)
 
-    datetime = getattr(importlib.import_module('datetime'), 'datetime')
+    datetime = getattr(importlib.import_module("datetime"), "datetime")
 
     stock_symbol = "000001"
     market_info = StockUtils.get_market_info(stock_symbol)
@@ -63,7 +59,7 @@ def test_mongodb_document_structure():
         "china_a": "A股",
         "hong_kong": "港股",
         "us": "美股",
-        "unknown": "A股"
+        "unknown": "A股",
     }
     market_type = market_type_map.get(market_info.get("market", "unknown"), "A股")
 
@@ -74,7 +70,7 @@ def test_mongodb_document_structure():
         "analysis_id": analysis_id,
         "stock_symbol": stock_symbol,
         "market_type": market_type,  # 关键字段
-        "analysis_date": timestamp.strftime('%Y-%m-%d'),
+        "analysis_date": timestamp.strftime("%Y-%m-%d"),
         "timestamp": timestamp,
         "status": "completed",
         "source": "test",
@@ -86,7 +82,7 @@ def test_mongodb_document_structure():
         "updated_at": timestamp,
     }
 
-    print(f"✅ 文档结构正确")
+    print("✅ 文档结构正确")
     print(f"   analysis_id: {document['analysis_id']}")
     print(f"   stock_symbol: {document['stock_symbol']}")
     print(f"   market_type: {document['market_type']}")
@@ -99,12 +95,12 @@ def test_mongodb_document_structure():
     if missing_fields:
         print(f"❌ 缺少必需字段: {missing_fields}")
     else:
-        print(f"✅ 所有必需字段都存在")
+        print("✅ 所有必需字段都存在")
 
 
 if __name__ == "__main__":
     test_market_type_detection()
-    test_mongodb_document_structure()
+    test_postgres_document_structure()
 
     print("\n" + "=" * 60)
     print("测试完成")

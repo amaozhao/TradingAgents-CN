@@ -1,21 +1,18 @@
 """
 改进的港股功能测试
 """
+
 import importlib
 
-import sys
-import os
-
-# 添加项目根目录到路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_stock_recognition():
     """测试股票识别功能"""
     print("🧪 测试股票识别功能...")
 
     try:
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
 
         test_cases = [
             ("0700.HK", "港股", "HK$"),
@@ -29,14 +26,19 @@ def test_stock_recognition():
 
             print(f"  {ticker}:")
             print(f"    市场: {market_info['market_name']}")
-            print(f"    货币: {market_info['currency_name']} ({market_info['currency_symbol']})")
+            print(
+                f"    货币: {market_info['currency_name']} ({market_info['currency_symbol']})"
+            )
             print(f"    数据源: {market_info['data_source']}")
 
             # 验证结果
-            if expected_market in market_info['market_name'] and market_info['currency_symbol'] == expected_currency:
-                print(f"    ✅ 识别正确")
+            if (
+                expected_market in market_info["market_name"]
+                and market_info["currency_symbol"] == expected_currency
+            ):
+                print("    ✅ 识别正确")
             else:
-                print(f"    ❌ 识别错误")
+                print("    ❌ 识别错误")
                 return False
 
         print("✅ 股票识别功能测试通过")
@@ -46,18 +48,22 @@ def test_stock_recognition():
         print(f"❌ 股票识别功能测试失败: {e}")
         return False
 
+
 def test_hk_data_unified():
     """测试港股统一数据接口"""
     print("\n🧪 测试港股统一数据接口...")
 
     try:
-        get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
-        datetime = getattr(importlib.import_module('datetime'), 'datetime')
-        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
+        get_hk_stock_data_unified = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "get_hk_stock_data_unified",
+        )
+        datetime = getattr(importlib.import_module("datetime"), "datetime")
+        timedelta = getattr(importlib.import_module("datetime"), "timedelta")
 
         # 设置测试日期
-        end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
 
         # 测试腾讯港股
         symbol = "0700.HK"
@@ -73,7 +79,7 @@ def test_hk_data_unified():
                 ("港股数据报告", "包含标题"),
                 ("HK$", "包含港币符号"),
                 ("香港交易所", "包含交易所信息"),
-                (symbol, "包含股票代码")
+                (symbol, "包含股票代码"),
             ]
 
             for check_text, description in checks:
@@ -92,26 +98,30 @@ def test_hk_data_unified():
         print(f"❌ 港股统一数据接口测试失败: {e}")
         return False
 
+
 def test_hk_info_unified():
     """测试港股信息统一接口"""
     print("\n🧪 测试港股信息统一接口...")
 
     try:
-        get_hk_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_info_unified')
+        get_hk_stock_info_unified = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "get_hk_stock_info_unified",
+        )
 
         symbol = "0700.HK"
         print(f"  获取 {symbol} 信息...")
 
         info = get_hk_stock_info_unified(symbol)
 
-        if info and 'symbol' in info:
+        if info and "symbol" in info:
             print(f"    ✅ 股票代码: {info['symbol']}")
             print(f"    ✅ 股票名称: {info['name']}")
             print(f"    ✅ 货币: {info['currency']}")
             print(f"    ✅ 交易所: {info['exchange']}")
 
             # 验证港股特有信息
-            if info['currency'] == 'HKD' and info['exchange'] == 'HKG':
+            if info["currency"] == "HKD" and info["exchange"] == "HKG":
                 print("    ✅ 港股信息正确")
             else:
                 print("    ⚠️ 港股信息可能不完整")
@@ -126,23 +136,23 @@ def test_hk_info_unified():
         print(f"❌ 港股信息统一接口测试失败: {e}")
         return False
 
+
 def test_market_auto_selection():
     """测试市场自动选择功能"""
     print("\n🧪 测试市场自动选择功能...")
 
     try:
-        get_stock_data_by_market = getattr(importlib.import_module('trader.flows.interface'), 'get_stock_data_by_market')
-        datetime = getattr(importlib.import_module('datetime'), 'datetime')
-        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
+        get_stock_data_by_market = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "get_stock_data_by_market",
+        )
+        datetime = getattr(importlib.import_module("datetime"), "datetime")
+        timedelta = getattr(importlib.import_module("datetime"), "timedelta")
 
-        end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        end_date = datetime.now().strftime("%Y-%m-%d")
+        start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
 
-        test_symbols = [
-            ("0700.HK", "港股"),
-            ("000001", "A股"),
-            ("AAPL", "美股")
-        ]
+        test_symbols = [("0700.HK", "港股"), ("000001", "A股"), ("AAPL", "美股")]
 
         for symbol, market_type in test_symbols:
             print(f"  测试 {symbol} ({market_type})...")
@@ -161,6 +171,7 @@ def test_market_auto_selection():
         print(f"❌ 市场自动选择功能测试失败: {e}")
         return False
 
+
 def main():
     """运行所有测试"""
     print("🇭🇰 开始改进的港股功能测试")
@@ -170,7 +181,7 @@ def main():
         test_stock_recognition,
         test_hk_data_unified,
         test_hk_info_unified,
-        test_market_auto_selection
+        test_market_auto_selection,
     ]
 
     passed = 0
@@ -196,6 +207,7 @@ def main():
         print("  - 提供演示模式数据")
     else:
         print("⚠️ 部分测试失败，但核心功能正常")
+
 
 if __name__ == "__main__":
     main()

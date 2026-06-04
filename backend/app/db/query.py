@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Select, text
@@ -10,9 +9,9 @@ from sqlalchemy.dialects import postgresql
 from app.db.financial import build_financial_data_query
 from app.db.operation import build_operation_log_select
 from app.db.paper import build_paper_orders_select, build_paper_positions_select
+from app.db.preference import build_user_favorites_select, build_user_tags_select
 from app.db.screening import build_screening_select
 from app.db.stock import build_list_stock_daily_quotes, build_stock_list
-from app.db.preference import build_user_favorites_select, build_user_tags_select
 from app.models.operations import OperationLogQuery
 
 
@@ -51,7 +50,11 @@ def representative_query_plan_specs() -> list[QueryPlanSpec]:
                 order_by=[{"field": "total_mv", "direction": "desc"}],
                 source="tushare",
             ),
-            required_columns=("stock_basic_info.industry", "stock_basic_info.pe", "market_quotes.pct_chg"),
+            required_columns=(
+                "stock_basic_info.industry",
+                "stock_basic_info.pe",
+                "market_quotes.pct_chg",
+            ),
         ),
         QueryPlanSpec(
             name="stock_list_page",
@@ -62,7 +65,11 @@ def representative_query_plan_specs() -> list[QueryPlanSpec]:
                 page=1,
                 page_size=50,
             ),
-            required_columns=("stock_basic_info.source", "stock_basic_info.market", "stock_basic_info.industry"),
+            required_columns=(
+                "stock_basic_info.source",
+                "stock_basic_info.market",
+                "stock_basic_info.industry",
+            ),
         ),
         QueryPlanSpec(
             name="daily_quotes_range",
@@ -75,7 +82,11 @@ def representative_query_plan_specs() -> list[QueryPlanSpec]:
                 period="daily",
                 limit=120,
             ),
-            required_columns=("stock_daily_quotes.trade_date", "stock_daily_quotes.market", "stock_daily_quotes.data_source"),
+            required_columns=(
+                "stock_daily_quotes.trade_date",
+                "stock_daily_quotes.market",
+                "stock_daily_quotes.data_source",
+            ),
         ),
         QueryPlanSpec(
             name="financial_data",
@@ -85,7 +96,11 @@ def representative_query_plan_specs() -> list[QueryPlanSpec]:
                 data_source="tushare",
                 limit=20,
             ),
-            required_columns=("stock_financial_data.code", "stock_financial_data.report_period", "stock_financial_data.data_source"),
+            required_columns=(
+                "stock_financial_data.code",
+                "stock_financial_data.report_period",
+                "stock_financial_data.data_source",
+            ),
         ),
         QueryPlanSpec(
             name="operation_logs_page",
@@ -103,7 +118,12 @@ def representative_query_plan_specs() -> list[QueryPlanSpec]:
                 offset=0,
                 limit=50,
             ),
-            required_columns=("operation_logs.timestamp", "operation_logs.action_type", "operation_logs.success", "operation_logs.user_id"),
+            required_columns=(
+                "operation_logs.timestamp",
+                "operation_logs.action_type",
+                "operation_logs.success",
+                "operation_logs.user_id",
+            ),
         ),
         QueryPlanSpec(
             name="user_favorites",
@@ -123,7 +143,11 @@ def representative_query_plan_specs() -> list[QueryPlanSpec]:
         QueryPlanSpec(
             name="paper_orders",
             statement=build_paper_orders_select("user-1", limit=50),
-            required_columns=("paper_orders.user_id", "paper_orders.deleted", "paper_orders.created_at"),
+            required_columns=(
+                "paper_orders.user_id",
+                "paper_orders.deleted",
+                "paper_orders.created_at",
+            ),
         ),
     ]
 
@@ -166,13 +190,11 @@ async def collect_query_plans(session) -> list[QueryPlanResult]:
 
 
 def assert_required_plans_do_not_filter_payload(results: list[QueryPlanResult]) -> None:
-    offenders = [
-        result.name
-        for result in results
-        if result.uses_payload_filter
-    ]
+    offenders = [result.name for result in results if result.uses_payload_filter]
     if offenders:
-        raise AssertionError(f"Representative high-frequency queries use JSONB payload filters: {offenders}")
+        raise AssertionError(
+            f"Representative high-frequency queries use JSONB payload filters: {offenders}"
+        )
 
 
 def _where_clause_uses_payload(sql: str) -> bool:

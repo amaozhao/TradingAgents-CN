@@ -3,26 +3,24 @@ Multi-source stock basics synchronization service
 - Supports multiple data sources with fallback mechanism
 - Priority: Tushare > AKShare > BaoStock
 - Fetches A-share stock basic info with extended financial metrics
-- Upserts into MongoDB collection `stock_basic_info`
+- Upserts into PostgreSQL collection `stock_basic_info`
 - Provides unified interface for different data sources
 """
+
 from __future__ import annotations
-import importlib
 
 import asyncio
+import importlib
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from pymongo import UpdateOne
-
-from app.core.database import get_mongo_db
+from app.core.database import get_postgres_db
+from app.db.documentstore import UpdateOne
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
 from app.services.basics import add_financial_metrics as _add_financial_metrics_util
-
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +32,7 @@ JOB_KEY = "stock_basics_multi_source"
 
 class DataSourcePriority(Enum):
     """数据源优先级枚举"""
+
     TUSHARE = 1
     AKSHARE = 2
     BAOSTOCK = 3
@@ -42,6 +41,7 @@ class DataSourcePriority(Enum):
 @dataclass
 class SyncStats:
     """同步统计信息"""
+
     job: str = JOB_KEY
     data_type: str = "stock_basics"  # 添加data_type字段以符合数据库索引要求
     status: str = "idle"
@@ -70,15 +70,20 @@ class MultiSourceBasicsSyncService:
         if self._last_status:
             return self._last_status
 
-        db = get_mongo_db()
+        db = get_postgres_db()
         doc = await db[STATUS_COLLECTION].find_one({"job": JOB_KEY})
         if doc:
-            # 移除MongoDB的_id字段以避免序列化问题
+            # 移除PostgreSQL的_id字段以避免序列化问题
             doc.pop("_id", None)
+            if doc.get("status") == "running" and not self._running:
+                doc["status"] = "failed"
+                doc["message"] = "上次同步任务异常中断，请重新启动同步"
+                doc["finished_at"] = datetime.now().isoformat()
+                await self._persist_status(db, doc)
             return doc
         return {"job": JOB_KEY, "status": "never_run"}
 
-    async def _persist_status(self, db: AsyncIOMotorDatabase, stats: Dict[str, Any]) -> None:
+    async def _persist_status(self, db: Any, stats: Dict[str, Any]) -> None:
         """持久化同步状态"""
         stats["job"] = JOB_KEY
 
@@ -86,32 +91,34 @@ class MultiSourceBasicsSyncService:
         # 基于 data_type 和 job 进行更新或插入
         filter_query = {
             "data_type": stats.get("data_type", "stock_basics"),
-            "job": JOB_KEY
+            "job": JOB_KEY,
         }
 
         await db[STATUS_COLLECTION].update_one(
-            filter_query,
-            {"$set": stats},
-            upsert=True
+            filter_query, {"$set": stats}, upsert=True
         )
         result = await dual_write_hot_document(STATUS_COLLECTION, stats)
         if result.status not in {"written", "skipped"}:
-            logger.warning("PostgreSQL dual-write failed for %s: %s", STATUS_COLLECTION, result.reason)
+            logger.warning(
+                "PostgreSQL dual-write failed for %s: %s",
+                STATUS_COLLECTION,
+                result.reason,
+            )
 
         self._last_status = {k: v for k, v in stats.items() if k != "_id"}
 
     async def _execute_bulk_write_with_retry(
         self,
-        db: AsyncIOMotorDatabase,
+        db: Any,
         operations: List,
         documents: Optional[List[Dict[str, Any]]] = None,
-        max_retries: int = 3
+        max_retries: int = 3,
     ) -> Tuple[int, int]:
         """
         执行批量写入，带重试机制
 
         Args:
-            db: MongoDB数据库实例
+            db: PostgreSQL数据库实例
             operations: 批量操作列表
             max_retries: 最大重试次数
 
@@ -126,9 +133,15 @@ class MultiSourceBasicsSyncService:
             try:
                 result = await db[COLLECTION_NAME].bulk_write(operations, ordered=False)
                 if documents:
-                    dual_result = await dual_write_hot_documents(COLLECTION_NAME, documents)
+                    dual_result = await dual_write_hot_documents(
+                        COLLECTION_NAME, documents
+                    )
                     if dual_result.status not in {"written", "skipped"}:
-                        logger.warning("PostgreSQL dual-write failed for %s: %s", COLLECTION_NAME, dual_result.reason)
+                        logger.warning(
+                            "PostgreSQL dual-write failed for %s: %s",
+                            COLLECTION_NAME,
+                            dual_result.reason,
+                        )
                 inserted = result.upserted_count
                 updated = result.modified_count
                 logger.debug(f"✅ 批量写入成功: 新增 {inserted}, 更新 {updated}")
@@ -137,8 +150,10 @@ class MultiSourceBasicsSyncService:
             except asyncio.TimeoutError as e:
                 retry_count += 1
                 if retry_count < max_retries:
-                    wait_time = 2 ** retry_count  # 指数退避：2秒、4秒、8秒
-                    logger.warning(f"⚠️ 批量写入超时 (第{retry_count}次重试)，等待{wait_time}秒后重试...")
+                    wait_time = 2**retry_count  # 指数退避：2秒、4秒、8秒
+                    logger.warning(
+                        f"⚠️ 批量写入超时 (第{retry_count}次重试)，等待{wait_time}秒后重试..."
+                    )
                     await asyncio.sleep(wait_time)
                 else:
                     logger.error(f"❌ 批量写入失败，已重试{max_retries}次: {e}")
@@ -150,7 +165,9 @@ class MultiSourceBasicsSyncService:
 
         return inserted, updated
 
-    async def run_full_sync(self, force: bool = False, preferred_sources: Optional[List[str]] = None) -> Dict[str, Any]:
+    async def run_full_sync(
+        self, force: bool = False, preferred_sources: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
         """
         运行完整同步
 
@@ -161,11 +178,13 @@ class MultiSourceBasicsSyncService:
         preferred_sources = preferred_sources or []
         async with self._lock:
             if self._running and not force:
-                logger.info("Multi-source stock basics sync already running; skip start")
+                logger.info(
+                    "Multi-source stock basics sync already running; skip start"
+                )
                 return await self.get_status()
             self._running = True
 
-        db = get_mongo_db()
+        db = get_postgres_db()
         stats = SyncStats()
         stats.started_at = datetime.now().isoformat()
         stats.status = "running"
@@ -173,14 +192,19 @@ class MultiSourceBasicsSyncService:
 
         try:
             # Step 1: 获取数据源管理器
-            DataSourceManager = getattr(importlib.import_module('app.services.sources.manager'), 'DataSourceManager')
+            DataSourceManager = getattr(
+                importlib.import_module("app.services.sources.manager"),
+                "DataSourceManager",
+            )
             manager = DataSourceManager()
             available_adapters = manager.get_available_adapters()
 
             if not available_adapters:
                 raise RuntimeError("No available data sources found")
 
-            logger.info(f"Available data sources: {[adapter.name for adapter in available_adapters]}")
+            logger.info(
+                f"Available data sources: {[adapter.name for adapter in available_adapters]}"
+            )
 
             # 如果指定了优先数据源，记录日志
             if preferred_sources:
@@ -193,20 +217,34 @@ class MultiSourceBasicsSyncService:
             if stock_df is None or getattr(stock_df, "empty", True):
                 raise RuntimeError("All data sources failed to provide stock list")
 
+            total_stocks = len(stock_df)
+            stats.total = total_stocks
             stats.data_sources_used.append(f"stock_list:{source_used}")
-            logger.info(f"Successfully fetched {len(stock_df)} stocks from {source_used}")
+            stats.message = f"已获取股票列表，数据源: {source_used}"
+            await self._persist_status(db, stats.__dict__.copy())
+            logger.info(
+                f"Successfully fetched {total_stocks} stocks from {source_used}"
+            )
 
             # Step 3: 获取最新交易日期和财务数据
+            stats.message = "正在查找最新交易日"
+            await self._persist_status(db, stats.__dict__.copy())
             latest_trade_date = await asyncio.to_thread(
                 manager.find_latest_trade_date_with_fallback, preferred_sources
             )
             stats.last_trade_date = latest_trade_date
+            stats.message = f"最新交易日: {latest_trade_date or '未找到'}"
+            await self._persist_status(db, stats.__dict__.copy())
 
             daily_data_map = {}
             daily_source = ""
             if latest_trade_date:
+                stats.message = f"正在获取 {latest_trade_date} 日基础数据"
+                await self._persist_status(db, stats.__dict__.copy())
                 daily_df, daily_source = await asyncio.to_thread(
-                    manager.get_daily_basic_with_fallback, latest_trade_date, preferred_sources
+                    manager.get_daily_basic_with_fallback,
+                    latest_trade_date,
+                    preferred_sources,
                 )
                 if daily_df is not None and not daily_df.empty:
                     for _, row in daily_df.iterrows():
@@ -214,15 +252,20 @@ class MultiSourceBasicsSyncService:
                         if ts_code:
                             daily_data_map[ts_code] = row.to_dict()
                     stats.data_sources_used.append(f"daily_data:{daily_source}")
+                    stats.message = f"已获取日基础数据，数据源: {daily_source}"
+                else:
+                    stats.message = "未获取到日基础数据，继续同步基础信息"
+                await self._persist_status(db, stats.__dict__.copy())
 
             # Step 5: 处理和更新数据（分批处理）
             ops = []
             postgres_docs = []
             inserted = updated = errors = 0
             batch_size = 500  # 🔥 每批处理 500 只股票，避免超时
-            total_stocks = len(stock_df)
 
             logger.info(f"🚀 开始处理 {total_stocks} 只股票，数据源: {source_used}")
+            stats.message = f"正在处理 {total_stocks} 只股票"
+            await self._persist_status(db, stats.__dict__.copy())
 
             for idx, (_, row) in enumerate(stock_df.iterrows(), 1):
                 try:
@@ -262,7 +305,9 @@ class MultiSourceBasicsSyncService:
                         daily_metrics = daily_data_map[ts_code]
 
                     # 生成 full_symbol（确保不为空）
-                    full_symbol = ts_code if ts_code else self._generate_full_symbol(code)
+                    full_symbol = (
+                        ts_code if ts_code else self._generate_full_symbol(code)
+                    )
 
                     # 🔥 确定数据源标识
                     # 根据实际使用的数据源设置 source 字段
@@ -293,28 +338,59 @@ class MultiSourceBasicsSyncService:
                     self._add_financial_metrics(doc, daily_metrics)
 
                     # 🔥 使用 (code, source) 联合查询条件
-                    ops.append(UpdateOne({"code": code, "source": data_source}, {"$set": doc}, upsert=True))
+                    ops.append(
+                        UpdateOne(
+                            {"code": code, "source": data_source},
+                            {"$set": doc},
+                            upsert=True,
+                        )
+                    )
                     postgres_docs.append(doc)
 
                 except Exception as e:
-                    logger.error(f"Error processing stock {row.get('ts_code', 'unknown')}: {e}")
+                    logger.error(
+                        f"Error processing stock {row.get('ts_code', 'unknown')}: {e}"
+                    )
                     errors += 1
 
                 # 🔥 分批执行数据库操作
                 if len(ops) >= batch_size or idx == total_stocks:
                     if ops:
                         progress_pct = (idx / total_stocks) * 100
-                        logger.info(f"📝 执行批量写入: {len(ops)} 条记录 ({idx}/{total_stocks}, {progress_pct:.1f}%)")
+                        logger.info(
+                            f"📝 执行批量写入: {len(ops)} 条记录 ({idx}/{total_stocks}, {progress_pct:.1f}%)"
+                        )
 
-                        batch_inserted, batch_updated = await self._execute_bulk_write_with_retry(db, ops, postgres_docs)
+                        (
+                            batch_inserted,
+                            batch_updated,
+                        ) = await self._execute_bulk_write_with_retry(
+                            db, ops, postgres_docs
+                        )
 
                         if batch_inserted > 0 or batch_updated > 0:
                             inserted += batch_inserted
                             updated += batch_updated
-                            logger.info(f"✅ 批量写入完成: 新增 {batch_inserted}, 更新 {batch_updated} | 累计: 新增 {inserted}, 更新 {updated}, 错误 {errors}")
+                            stats.inserted = inserted
+                            stats.updated = updated
+                            stats.errors = errors
+                            stats.message = f"已处理 {idx}/{total_stocks} 只股票"
+                            await self._persist_status(db, stats.__dict__.copy())
+                            logger.info(
+                                f"✅ 批量写入完成: 新增 {batch_inserted}, 更新 {batch_updated} | 累计: 新增 {inserted}, 更新 {updated}, 错误 {errors}"
+                            )
                         else:
                             errors += len(ops)
-                            logger.warning(f"⚠️ 批量写入失败，标记 {len(ops)} 条记录为错误")
+                            stats.inserted = inserted
+                            stats.updated = updated
+                            stats.errors = errors
+                            stats.message = (
+                                f"批量写入失败，已处理 {idx}/{total_stocks} 只股票"
+                            )
+                            await self._persist_status(db, stats.__dict__.copy())
+                            logger.warning(
+                                f"⚠️ 批量写入失败，标记 {len(ops)} 条记录为错误"
+                            )
 
                         ops = []  # 清空操作列表
                         postgres_docs = []
@@ -326,6 +402,7 @@ class MultiSourceBasicsSyncService:
             stats.errors = errors
             stats.status = "success" if errors == 0 else "success_with_errors"
             stats.finished_at = datetime.now().isoformat()
+            stats.message = "同步完成"
 
             await self._persist_status(db, stats.__dict__.copy())
             logger.info(
@@ -344,8 +421,6 @@ class MultiSourceBasicsSyncService:
         finally:
             async with self._lock:
                 self._running = False
-
-
 
     def _add_financial_metrics(self, doc: Dict, daily_metrics: Dict) -> None:
         """委托到 basics_sync.processing.add_financial_metrics"""
@@ -373,11 +448,11 @@ class MultiSourceBasicsSyncService:
             return code
 
         # 根据代码前缀判断交易所
-        if code.startswith(('60', '68', '90')):  # 上海证券交易所
+        if code.startswith(("60", "68", "90")):  # 上海证券交易所
             return f"{code}.SS"
-        elif code.startswith(('00', '30', '20')):  # 深圳证券交易所
+        elif code.startswith(("00", "30", "20")):  # 深圳证券交易所
             return f"{code}.SZ"
-        elif code.startswith(('8', '4')):  # 北京证券交易所
+        elif code.startswith(("8", "4")):  # 北京证券交易所
             return f"{code}.BJ"
         else:
             # 无法识别的代码，返回原始代码（确保不为空）
@@ -386,6 +461,7 @@ class MultiSourceBasicsSyncService:
 
 # 全局服务实例
 _multi_source_sync_service = None
+
 
 def get_multi_source_sync_service() -> MultiSourceBasicsSyncService:
     """获取多数据源同步服务实例"""

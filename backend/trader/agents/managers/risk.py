@@ -1,9 +1,10 @@
 import time
-import json
+
+from trader.agents.utils.instruments import build_instrument_context
 
 # 导入统一日志系统
 from trader.utils.logging.init import get_logger
-from trader.agents.utils.instruments import build_instrument_context
+
 logger = get_logger("default")
 
 
@@ -27,7 +28,7 @@ def create_risk_manager(llm, memory):
         if memory is not None:
             past_memories = memory.get_memories(curr_situation, n_matches=2)
         else:
-            logger.warning(f"⚠️ [DEBUG] memory为None，跳过历史记忆检索")
+            logger.warning("⚠️ [DEBUG] memory为None，跳过历史记忆检索")
             past_memories = []
 
         past_memory_str = ""
@@ -63,7 +64,7 @@ def create_risk_manager(llm, memory):
         # 粗略估算 token 数量（中文约 1.5-2 字符/token，英文约 4 字符/token）
         estimated_tokens = int(prompt_length / 1.8)  # 保守估计
 
-        logger.info(f"📊 [Risk Manager] Prompt 统计:")
+        logger.info("📊 [Risk Manager] Prompt 统计:")
         logger.info(f"   - 辩论历史长度: {len(history)} 字符")
         logger.info(f"   - 交易员计划长度: {len(trader_plan)} 字符")
         logger.info(f"   - 历史记忆长度: {len(past_memory_str)} 字符")
@@ -77,7 +78,9 @@ def create_risk_manager(llm, memory):
 
         while retry_count < max_retries:
             try:
-                logger.info(f"🔄 [Risk Manager] 调用LLM生成交易决策 (尝试 {retry_count + 1}/{max_retries})")
+                logger.info(
+                    f"🔄 [Risk Manager] 调用LLM生成交易决策 (尝试 {retry_count + 1}/{max_retries})"
+                )
 
                 # ⏱️ 记录开始时间
                 start_time = time.time()
@@ -87,7 +90,7 @@ def create_risk_manager(llm, memory):
                 # ⏱️ 记录结束时间
                 elapsed_time = time.time() - start_time
 
-                if response and hasattr(response, 'content') and response.content:
+                if response and hasattr(response, "content") and response.content:
                     response_content = response.content.strip()
 
                     # 📊 统计响应信息
@@ -96,39 +99,48 @@ def create_risk_manager(llm, memory):
 
                     # 尝试获取实际的 token 使用情况（如果 LLM 返回了）
                     usage_info = ""
-                    if hasattr(response, 'response_metadata') and response.response_metadata:
+                    if (
+                        hasattr(response, "response_metadata")
+                        and response.response_metadata
+                    ):
                         metadata = response.response_metadata
-                        if 'token_usage' in metadata:
-                            token_usage = metadata['token_usage']
+                        if "token_usage" in metadata:
+                            token_usage = metadata["token_usage"]
                             usage_info = f", 实际Token: 输入={token_usage.get('prompt_tokens', 'N/A')} 输出={token_usage.get('completion_tokens', 'N/A')} 总计={token_usage.get('total_tokens', 'N/A')}"
 
                     logger.info(f"⏱️ [Risk Manager] LLM调用耗时: {elapsed_time:.2f}秒")
-                    logger.info(f"📊 [Risk Manager] 响应统计: {response_length} 字符, 估算~{estimated_output_tokens} tokens{usage_info}")
+                    logger.info(
+                        f"📊 [Risk Manager] 响应统计: {response_length} 字符, 估算~{estimated_output_tokens} tokens{usage_info}"
+                    )
 
                     if len(response_content) > 10:  # 确保响应有实质内容
-                        logger.info(f"✅ [Risk Manager] LLM调用成功")
+                        logger.info("✅ [Risk Manager] LLM调用成功")
                         break
                     else:
-                        logger.warning(f"⚠️ [Risk Manager] LLM响应内容过短: {len(response_content)} 字符")
+                        logger.warning(
+                            f"⚠️ [Risk Manager] LLM响应内容过短: {len(response_content)} 字符"
+                        )
                         response_content = ""
                 else:
-                    logger.warning(f"⚠️ [Risk Manager] LLM响应为空或无效")
+                    logger.warning("⚠️ [Risk Manager] LLM响应为空或无效")
                     response_content = ""
 
             except Exception as e:
                 elapsed_time = time.time() - start_time
-                logger.error(f"❌ [Risk Manager] LLM调用失败 (尝试 {retry_count + 1}): {str(e)}")
+                logger.error(
+                    f"❌ [Risk Manager] LLM调用失败 (尝试 {retry_count + 1}): {str(e)}"
+                )
                 logger.error(f"⏱️ [Risk Manager] 失败前耗时: {elapsed_time:.2f}秒")
                 response_content = ""
 
             retry_count += 1
             if retry_count < max_retries and not response_content:
-                logger.info(f"🔄 [Risk Manager] 等待2秒后重试...")
+                logger.info("🔄 [Risk Manager] 等待2秒后重试...")
                 time.sleep(2)
 
         # 如果所有重试都失败，生成默认决策
         if not response_content:
-            logger.error(f"❌ [Risk Manager] 所有LLM调用尝试失败，使用默认决策")
+            logger.error("❌ [Risk Manager] 所有LLM调用尝试失败，使用默认决策")
             response_content = f"""**默认建议：持有**
 
 由于技术原因无法生成详细分析，基于当前市场状况和风险控制原则，建议对{company_name}采取持有策略。
@@ -149,9 +161,13 @@ def create_risk_manager(llm, memory):
             "judge_decision": response_content,
             "history": risk_debate_state["history"],
             "risky_history": risk_debate_state["risky_history"],
-            "aggressive_history": risk_debate_state.get("aggressive_history", risk_debate_state["risky_history"]),
+            "aggressive_history": risk_debate_state.get(
+                "aggressive_history", risk_debate_state["risky_history"]
+            ),
             "safe_history": risk_debate_state["safe_history"],
-            "conservative_history": risk_debate_state.get("conservative_history", risk_debate_state["safe_history"]),
+            "conservative_history": risk_debate_state.get(
+                "conservative_history", risk_debate_state["safe_history"]
+            ),
             "neutral_history": risk_debate_state["neutral_history"],
             "latest_speaker": "Judge",
             "current_risky_response": risk_debate_state["current_risky_response"],
@@ -168,7 +184,9 @@ def create_risk_manager(llm, memory):
             "count": risk_debate_state["count"],
         }
 
-        logger.info(f"📋 [Risk Manager] 最终决策生成完成，内容长度: {len(response_content)} 字符")
+        logger.info(
+            f"📋 [Risk Manager] 最终决策生成完成，内容长度: {len(response_content)} 字符"
+        )
 
         return {
             "risk_debate_state": new_risk_debate_state,

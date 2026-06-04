@@ -1,5 +1,7 @@
-from langchain_core.tools import tool
 from typing import Annotated
+
+from langchain_core.tools import tool
+
 from trader.flows.interface import route_to_vendor
 
 

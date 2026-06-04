@@ -1,21 +1,18 @@
 """
 测试当所有数据源都获取不到数据时，是否会抛出异常
 """
-import importlib
-import sys
-from pathlib import Path
 
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+import importlib
 
 # 设置日志级别为 INFO
 import logging
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s | %(name)-20s | %(levelname)-8s | %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s | %(name)-20s | %(levelname)-8s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
+
 
 def test_no_data_error():
     """测试无数据时的异常处理"""
@@ -29,14 +26,16 @@ def test_no_data_error():
     try:
         # 导入数据提供者
         print("\n📦 步骤1: 导入 OptimizedChinaDataProvider...")
-        OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
+        OptimizedChinaDataProvider = getattr(
+            importlib.import_module("trader.flows.china"), "OptimizedChinaDataProvider"
+        )
 
         provider = OptimizedChinaDataProvider()
-        print(f"✅ Provider 初始化成功")
+        print("✅ Provider 初始化成功")
 
         # 尝试获取财务指标
         print(f"\n📊 步骤2: 尝试获取 {test_symbol} 的财务指标...")
-        print(f"   预期行为: 应该抛出 ValueError 异常")
+        print("   预期行为: 应该抛出 ValueError 异常")
         print(f"   异常信息: 无法获取股票 {test_symbol} 的财务数据")
 
         print("\n" + "=" * 70)
@@ -50,13 +49,13 @@ def test_no_data_error():
 
     except ValueError as e:
         print("\n" + "=" * 70)
-        print(f"✅ 测试成功：正确抛出了 ValueError 异常")
+        print("✅ 测试成功：正确抛出了 ValueError 异常")
         print(f"   异常信息: {e}")
         print("=" * 70)
 
     except Exception as e:
         print("\n" + "=" * 70)
-        print(f"⚠️ 测试部分成功：抛出了异常，但类型不是 ValueError")
+        print("⚠️ 测试部分成功：抛出了异常，但类型不是 ValueError")
         print(f"   异常类型: {type(e).__name__}")
         print(f"   异常信息: {e}")
         print("=" * 70)
@@ -70,9 +69,11 @@ def test_no_data_error():
 
     try:
         print(f"\n📊 尝试获取 {test_symbol} 的财务指标...")
-        print(f"   预期行为: 应该成功返回财务指标")
+        print("   预期行为: 应该成功返回财务指标")
 
-        OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
+        OptimizedChinaDataProvider = getattr(
+            importlib.import_module("trader.flows.china"), "OptimizedChinaDataProvider"
+        )
         provider = OptimizedChinaDataProvider()
 
         print("\n" + "=" * 70)
@@ -80,7 +81,7 @@ def test_no_data_error():
         metrics = provider._estimate_financial_metrics(test_symbol, "6.67")
 
         print("\n" + "=" * 70)
-        print(f"✅ 测试成功：成功获取财务指标")
+        print("✅ 测试成功：成功获取财务指标")
         print(f"   ROE: {metrics.get('roe')}")
         print(f"   ROA: {metrics.get('roa')}")
         print(f"   净利率: {metrics.get('net_margin')}")
@@ -89,11 +90,11 @@ def test_no_data_error():
 
     except Exception as e:
         print("\n" + "=" * 70)
-        print(f"❌ 测试失败：不应该抛出异常")
+        print("❌ 测试失败：不应该抛出异常")
         print(f"   异常类型: {type(e).__name__}")
         print(f"   异常信息: {e}")
         print("=" * 70)
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
     # 总结

@@ -1,14 +1,9 @@
 """
 测试Web版本港股功能
 """
+
 import importlib
 
-import sys
-import os
-
-# 添加项目根目录到路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_analysis_form_hk_support():
     """测试分析表单港股支持"""
@@ -16,10 +11,10 @@ def test_analysis_form_hk_support():
 
     try:
         # 模拟Streamlit环境
-        st = importlib.import_module('streamlit')
+        importlib.import_module("streamlit")
 
         # 这里我们只能测试导入是否成功
-        render_analysis_form = getattr(importlib.import_module('web.components.form'), 'render_analysis_form')
+        getattr(importlib.import_module("web.components.form"), "render_analysis_form")
 
         print("  ✅ 分析表单组件导入成功")
         print("  ✅ 港股选项已添加到市场选择")
@@ -30,13 +25,18 @@ def test_analysis_form_hk_support():
         print(f"❌ 分析表单港股支持测试失败: {e}")
         return False
 
+
 def test_analysis_runner_hk_support():
     """测试分析运行器港股支持"""
     print("\n🧪 测试分析运行器港股支持...")
 
     try:
-        validate_analysis_params = getattr(importlib.import_module('web.utils.analysis'), 'validate_analysis_params')
-        generate_demo_results = getattr(importlib.import_module('web.utils.analysis'), 'generate_demo_results')
+        validate_analysis_params = getattr(
+            importlib.import_module("web.utils.analysis"), "validate_analysis_params"
+        )
+        generate_demo_results = getattr(
+            importlib.import_module("web.utils.analysis"), "generate_demo_results"
+        )
 
         # 测试港股代码验证
         print("  测试港股代码验证...")
@@ -49,7 +49,7 @@ def test_analysis_runner_hk_support():
                 analysis_date="2024-01-01",
                 analysts=["market"],
                 research_depth=3,
-                market_type="港股"
+                market_type="港股",
             )
             if not errors:
                 print(f"    ✅ {code} 验证通过")
@@ -65,7 +65,7 @@ def test_analysis_runner_hk_support():
                 analysis_date="2024-01-01",
                 analysts=["market"],
                 research_depth=3,
-                market_type="港股"
+                market_type="港股",
             )
             if errors:
                 print(f"    ✅ {code} 正确识别为无效")
@@ -85,18 +85,18 @@ def test_analysis_runner_hk_support():
             llm_provider="dashscope",
             llm_model="qwen-plus",
             error_msg="测试错误",
-            market_type="港股"
+            market_type="港股",
         )
 
-        if demo_results and 'decision' in demo_results:
-            decision = demo_results['decision']
-            if 'reasoning' in decision and "港股" in decision['reasoning']:
+        if demo_results and "decision" in demo_results:
+            decision = demo_results["decision"]
+            if "reasoning" in decision and "港股" in decision["reasoning"]:
                 print("    ✅ 港股演示结果包含正确的市场标识")
             else:
                 print("    ⚠️ 港股演示结果缺少市场标识")
 
-            if 'state' in demo_results and 'market_report' in demo_results['state']:
-                market_report = demo_results['state']['market_report']
+            if "state" in demo_results and "market_report" in demo_results["state"]:
+                market_report = demo_results["state"]["market_report"]
                 if "HK$" in market_report:
                     print("    ✅ 港股演示结果使用正确的货币符号")
                 else:
@@ -108,9 +108,10 @@ def test_analysis_runner_hk_support():
 
     except Exception as e:
         print(f"❌ 分析运行器港股支持测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_stock_symbol_formatting():
     """测试股票代码格式化"""
@@ -123,14 +124,14 @@ def test_stock_symbol_formatting():
             ("0700.HK", "港股", "0700.HK"),
             ("9988", "港股", "9988.HK"),
             ("AAPL", "美股", "AAPL"),
-            ("000001", "A股", "000001")
+            ("000001", "A股", "000001"),
         ]
 
         for input_code, market_type, expected in test_cases:
             # 模拟格式化逻辑
             if market_type == "港股":
                 formatted = input_code.upper()
-                if not formatted.endswith('.HK'):
+                if not formatted.endswith(".HK"):
                     if formatted.isdigit():
                         formatted = f"{formatted.zfill(4)}.HK"
             elif market_type == "美股":
@@ -141,7 +142,9 @@ def test_stock_symbol_formatting():
             if formatted == expected:
                 print(f"    ✅ {input_code} ({market_type}) -> {formatted}")
             else:
-                print(f"    ❌ {input_code} ({market_type}) -> {formatted}, 期望: {expected}")
+                print(
+                    f"    ❌ {input_code} ({market_type}) -> {formatted}, 期望: {expected}"
+                )
                 return False
 
         print("  ✅ 股票代码格式化测试通过")
@@ -150,6 +153,7 @@ def test_stock_symbol_formatting():
     except Exception as e:
         print(f"❌ 股票代码格式化测试失败: {e}")
         return False
+
 
 def test_market_type_integration():
     """测试市场类型集成"""
@@ -162,33 +166,37 @@ def test_market_type_integration():
                 "market_type": "港股",
                 "symbol": "0700.HK",
                 "currency": "HK$",
-                "expected_features": ["港股", "HK$", "香港"]
+                "expected_features": ["港股", "HK$", "香港"],
             },
             {
                 "market_type": "A股",
                 "symbol": "000001",
                 "currency": "¥",
-                "expected_features": ["A股", "¥", "人民币"]
+                "expected_features": ["A股", "¥", "人民币"],
             },
             {
                 "market_type": "美股",
                 "symbol": "AAPL",
                 "currency": "$",
-                "expected_features": ["美股", "$", "美元"]
-            }
+                "expected_features": ["美股", "$", "美元"],
+            },
         ]
 
         for config in market_configs:
             print(f"  测试{config['market_type']}配置...")
 
             # 验证市场类型识别
-            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
-            market_info = StockUtils.get_market_info(config['symbol'])
+            StockUtils = getattr(
+                importlib.import_module("trader.utils.stocks"), "StockUtils"
+            )
+            market_info = StockUtils.get_market_info(config["symbol"])
 
-            if config['currency'] == market_info['currency_symbol']:
+            if config["currency"] == market_info["currency_symbol"]:
                 print(f"    ✅ 货币符号正确: {config['currency']}")
             else:
-                print(f"    ❌ 货币符号错误: 期望{config['currency']}, 实际{market_info['currency_symbol']}")
+                print(
+                    f"    ❌ 货币符号错误: 期望{config['currency']}, 实际{market_info['currency_symbol']}"
+                )
 
         print("  ✅ 市场类型集成测试通过")
         return True
@@ -196,6 +204,7 @@ def test_market_type_integration():
     except Exception as e:
         print(f"❌ 市场类型集成测试失败: {e}")
         return False
+
 
 def main():
     """运行所有Web港股测试"""
@@ -206,7 +215,7 @@ def main():
         test_analysis_form_hk_support,
         test_analysis_runner_hk_support,
         test_stock_symbol_formatting,
-        test_market_type_integration
+        test_market_type_integration,
     ]
 
     passed = 0
@@ -232,6 +241,7 @@ def main():
         print("  - 港股专用演示数据")
     else:
         print("⚠️ 部分测试失败，但核心功能可能正常")
+
 
 if __name__ == "__main__":
     main()

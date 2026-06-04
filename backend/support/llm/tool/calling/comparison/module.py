@@ -2,20 +2,15 @@
 """
 测试不同LLM模型在工具调用和技术分析方面的行为差异
 """
+
 import importlib
-
 import os
-import sys
-from pathlib import Path
-from dotenv import load_dotenv
-import json
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
+
 
 def test_deepseek_tool_calling():
     """测试DeepSeek的工具调用行为"""
@@ -24,16 +19,15 @@ def test_deepseek_tool_calling():
 
     try:
         # 直接导入DeepSeek适配器，避免导入dashscope
-        sys = importlib.import_module('sys')
-        sys.path.insert(0, str(project_root / "trader" / "llm_adapters"))
-        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
-        BaseTool = getattr(importlib.import_module('langchain_core.tools'), 'BaseTool')
+        importlib.import_module("sys")
+        ChatDeepSeek = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"), "ChatDeepSeek"
+        )
+        BaseTool = getattr(importlib.import_module("langchain_core.tools"), "BaseTool")
 
         # 创建DeepSeek实例
         deepseek_llm = ChatDeepSeek(
-            model="deepseek-chat",
-            temperature=0.1,
-            max_tokens=2000
+            model="deepseek-chat", temperature=0.1, max_tokens=2000
         )
 
         # 创建模拟的股票数据工具
@@ -82,26 +76,29 @@ def test_deepseek_tool_calling():
         result = chain.invoke(prompt)
 
         print(f"📊 DeepSeek响应类型: {type(result)}")
-        print(f"📊 DeepSeek工具调用数量: {len(result.tool_calls) if hasattr(result, 'tool_calls') else 0}")
+        print(
+            f"📊 DeepSeek工具调用数量: {len(result.tool_calls) if hasattr(result, 'tool_calls') else 0}"
+        )
         print(f"📊 DeepSeek响应内容长度: {len(result.content)}")
-        print(f"📊 DeepSeek响应内容前500字符:")
+        print("📊 DeepSeek响应内容前500字符:")
         print("-" * 50)
         print(result.content[:500])
         print("-" * 50)
 
-        if hasattr(result, 'tool_calls') and result.tool_calls:
-            print(f"📊 DeepSeek工具调用详情:")
+        if hasattr(result, "tool_calls") and result.tool_calls:
+            print("📊 DeepSeek工具调用详情:")
             for i, call in enumerate(result.tool_calls):
-                print(f"   工具{i+1}: {call.get('name', 'unknown')}")
+                print(f"   工具{i + 1}: {call.get('name', 'unknown')}")
                 print(f"   参数: {call.get('args', {})}")
 
         return result
 
     except Exception as e:
         print(f"❌ DeepSeek测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return None
+
 
 def test_dashscope_tool_calling():
     """测试百炼模型的工具调用行为"""
@@ -109,14 +106,15 @@ def test_dashscope_tool_calling():
     print("=" * 60)
 
     try:
-        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters.dashscope.native'), 'ChatDashScope')
-        BaseTool = getattr(importlib.import_module('langchain_core.tools'), 'BaseTool')
+        ChatDashScope = getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.native"),
+            "ChatDashScope",
+        )
+        BaseTool = getattr(importlib.import_module("langchain_core.tools"), "BaseTool")
 
         # 创建百炼实例
         dashscope_llm = ChatDashScope(
-            model="qwen-plus",
-            temperature=0.1,
-            max_tokens=2000
+            model="qwen-plus", temperature=0.1, max_tokens=2000
         )
 
         # 创建相同的模拟工具
@@ -165,26 +163,29 @@ def test_dashscope_tool_calling():
         result = chain.invoke(prompt)
 
         print(f"📊 百炼响应类型: {type(result)}")
-        print(f"📊 百炼工具调用数量: {len(result.tool_calls) if hasattr(result, 'tool_calls') else 0}")
+        print(
+            f"📊 百炼工具调用数量: {len(result.tool_calls) if hasattr(result, 'tool_calls') else 0}"
+        )
         print(f"📊 百炼响应内容长度: {len(result.content)}")
-        print(f"📊 百炼响应内容前500字符:")
+        print("📊 百炼响应内容前500字符:")
         print("-" * 50)
         print(result.content[:500])
         print("-" * 50)
 
-        if hasattr(result, 'tool_calls') and result.tool_calls:
-            print(f"📊 百炼工具调用详情:")
+        if hasattr(result, "tool_calls") and result.tool_calls:
+            print("📊 百炼工具调用详情:")
             for i, call in enumerate(result.tool_calls):
-                print(f"   工具{i+1}: {call.get('name', 'unknown')}")
+                print(f"   工具{i + 1}: {call.get('name', 'unknown')}")
                 print(f"   参数: {call.get('args', {})}")
 
         return result
 
     except Exception as e:
         print(f"❌ 百炼测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return None
+
 
 def compare_results(deepseek_result, dashscope_result):
     """对比两个模型的结果"""
@@ -193,10 +194,18 @@ def compare_results(deepseek_result, dashscope_result):
 
     if deepseek_result and dashscope_result:
         # 工具调用对比
-        deepseek_tools = len(deepseek_result.tool_calls) if hasattr(deepseek_result, 'tool_calls') else 0
-        dashscope_tools = len(dashscope_result.tool_calls) if hasattr(dashscope_result, 'tool_calls') else 0
+        deepseek_tools = (
+            len(deepseek_result.tool_calls)
+            if hasattr(deepseek_result, "tool_calls")
+            else 0
+        )
+        dashscope_tools = (
+            len(dashscope_result.tool_calls)
+            if hasattr(dashscope_result, "tool_calls")
+            else 0
+        )
 
-        print(f"📊 工具调用对比:")
+        print("📊 工具调用对比:")
         print(f"   DeepSeek: {deepseek_tools} 次工具调用")
         print(f"   百炼: {dashscope_tools} 次工具调用")
 
@@ -204,38 +213,51 @@ def compare_results(deepseek_result, dashscope_result):
         deepseek_length = len(deepseek_result.content)
         dashscope_length = len(dashscope_result.content)
 
-        print(f"\n📝 响应内容对比:")
+        print("\n📝 响应内容对比:")
         print(f"   DeepSeek: {deepseek_length} 字符")
         print(f"   百炼: {dashscope_length} 字符")
 
         # 内容类型分析
-        print(f"\n🔍 内容类型分析:")
+        print("\n🔍 内容类型分析:")
 
         # 检查是否包含实际数据分析
-        deepseek_has_data = any(keyword in deepseek_result.content for keyword in ["¥6.56", "RSI", "MACD", "万科A"])
-        dashscope_has_data = any(keyword in dashscope_result.content for keyword in ["¥6.56", "RSI", "MACD", "万科A"])
+        deepseek_has_data = any(
+            keyword in deepseek_result.content
+            for keyword in ["¥6.56", "RSI", "MACD", "万科A"]
+        )
+        dashscope_has_data = any(
+            keyword in dashscope_result.content
+            for keyword in ["¥6.56", "RSI", "MACD", "万科A"]
+        )
 
         print(f"   DeepSeek包含实际数据: {'✅' if deepseek_has_data else '❌'}")
         print(f"   百炼包含实际数据: {'✅' if dashscope_has_data else '❌'}")
 
         # 检查是否只是描述过程
-        deepseek_describes_process = any(keyword in deepseek_result.content for keyword in ["首先", "然后", "接下来", "步骤"])
-        dashscope_describes_process = any(keyword in dashscope_result.content for keyword in ["首先", "然后", "接下来", "步骤"])
+        deepseek_describes_process = any(
+            keyword in deepseek_result.content
+            for keyword in ["首先", "然后", "接下来", "步骤"]
+        )
+        dashscope_describes_process = any(
+            keyword in dashscope_result.content
+            for keyword in ["首先", "然后", "接下来", "步骤"]
+        )
 
         print(f"   DeepSeek描述分析过程: {'⚠️' if deepseek_describes_process else '✅'}")
         print(f"   百炼描述分析过程: {'⚠️' if dashscope_describes_process else '✅'}")
 
         # 总结
-        print(f"\n📋 总结:")
+        print("\n📋 总结:")
         if deepseek_tools > 0 and deepseek_has_data:
-            print(f"   ✅ DeepSeek: 正确调用工具并分析数据")
+            print("   ✅ DeepSeek: 正确调用工具并分析数据")
         else:
-            print(f"   ❌ DeepSeek: 未正确执行工具调用或数据分析")
+            print("   ❌ DeepSeek: 未正确执行工具调用或数据分析")
 
         if dashscope_tools > 0 and dashscope_has_data:
-            print(f"   ✅ 百炼: 正确调用工具并分析数据")
+            print("   ✅ 百炼: 正确调用工具并分析数据")
         else:
-            print(f"   ❌ 百炼: 未正确执行工具调用或数据分析")
+            print("   ❌ 百炼: 未正确执行工具调用或数据分析")
+
 
 def main():
     """主函数"""
@@ -266,6 +288,7 @@ def main():
 
     print("\n" + "=" * 80)
     print("🎯 测试完成！")
+
 
 if __name__ == "__main__":
     main()

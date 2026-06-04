@@ -2,17 +2,13 @@
 """
 测试新闻情绪分析和关键词提取功能
 """
-import importlib
+
 import asyncio
+import importlib
 import sys
-from pathlib import Path
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from trader.flows.providers.china.akshare import get_akshare_provider
 from app.core.database import close_database
+from trader.flows.providers.china.akshare import get_akshare_provider
 
 
 async def test_sentiment_analysis():
@@ -33,10 +29,7 @@ async def test_sentiment_analysis():
         print(f"🔍 获取 {test_symbol} 的新闻数据...")
         print()
 
-        news_data = await provider.get_stock_news(
-            symbol=test_symbol,
-            limit=5
-        )
+        news_data = await provider.get_stock_news(symbol=test_symbol, limit=5)
 
         # 3. 显示新闻数据及分析结果
         if news_data:
@@ -62,7 +55,7 @@ async def test_sentiment_analysis():
                 print()
 
                 # 显示部分内容
-                content = news.get('content', '')
+                content = news.get("content", "")
                 if content:
                     print(f"内容摘要: {content[:100]}...")
                 print()
@@ -73,7 +66,7 @@ async def test_sentiment_analysis():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         sys.exit(1)
     finally:

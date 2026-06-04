@@ -3,23 +3,25 @@
 最终统一工具架构测试
 验证所有修复是否完成，LLM只能调用统一工具
 """
-import importlib
 
-import os
+import importlib
 import sys
 
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
 
 def test_complete_unified_architecture():
     """测试完整的统一工具架构"""
     print("🔧 测试完整的统一工具架构...")
 
     try:
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
+        TradingAgentsGraph = getattr(
+            importlib.import_module("trader.graph.trading"), "TradingAgentsGraph"
+        )
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -43,14 +45,18 @@ def test_complete_unified_architecture():
         print(f"  基本面分析工具: {fundamentals_tool_names}")
 
         # 检查是否包含统一工具
-        if 'get_stock_fundamentals_unified' in fundamentals_tool_names:
-            print(f"    ✅ 包含统一基本面工具")
+        if "get_stock_fundamentals_unified" in fundamentals_tool_names:
+            print("    ✅ 包含统一基本面工具")
         else:
-            print(f"    ❌ 缺少统一基本面工具")
+            print("    ❌ 缺少统一基本面工具")
             return False
 
         # 检查是否还有旧工具
-        old_tools = ['get_china_stock_data', 'get_china_fundamentals', 'get_fundamentals_openai']
+        old_tools = [
+            "get_china_stock_data",
+            "get_china_fundamentals",
+            "get_fundamentals_openai",
+        ]
         for old_tool in old_tools:
             if old_tool in fundamentals_tool_names:
                 print(f"    ❌ 仍包含旧工具: {old_tool}")
@@ -63,10 +69,10 @@ def test_complete_unified_architecture():
         print(f"  市场分析工具: {market_tool_names}")
 
         # 检查是否包含统一工具
-        if 'get_stock_market_data_unified' in market_tool_names:
-            print(f"    ✅ 包含统一市场数据工具")
+        if "get_stock_market_data_unified" in market_tool_names:
+            print("    ✅ 包含统一市场数据工具")
         else:
-            print(f"    ❌ 缺少统一市场数据工具")
+            print("    ❌ 缺少统一市场数据工具")
             return False
 
         print("✅ 完整统一工具架构测试通过")
@@ -74,7 +80,7 @@ def test_complete_unified_architecture():
 
     except Exception as e:
         print(f"❌ 完整统一工具架构测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -84,9 +90,16 @@ def test_llm_tool_calling_simulation():
     print("\n🔧 模拟LLM工具调用测试...")
 
     try:
-        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        create_fundamentals_analyst = getattr(
+            importlib.import_module("trader.agents.analysts.fundamentals"),
+            "create_fundamentals_analyst",
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -107,8 +120,11 @@ def test_llm_tool_calling_simulation():
                 print(f"    🔧 LLM绑定工具: {[tool.name for tool in tools]}")
 
                 # 验证只绑定了统一工具
-                if len(tools) == 1 and tools[0].name == 'get_stock_fundamentals_unified':
-                    print(f"    ✅ 正确绑定统一基本面工具")
+                if (
+                    len(tools) == 1
+                    and tools[0].name == "get_stock_fundamentals_unified"
+                ):
+                    print("    ✅ 正确绑定统一基本面工具")
                     return self
                 else:
                     print(f"    ❌ 绑定了错误的工具: {[tool.name for tool in tools]}")
@@ -118,18 +134,21 @@ def test_llm_tool_calling_simulation():
                 # 模拟正确的工具调用
                 class MockResult:
                     def __init__(self):
-                        self.tool_calls = [{
-                            'name': 'get_stock_fundamentals_unified',
-                            'args': {
-                                'ticker': '0700.HK',
-                                'start_date': '2025-05-28',
-                                'end_date': '2025-07-14',
-                                'curr_date': '2025-07-14'
-                            },
-                            'id': 'mock_call_id',
-                            'type': 'tool_call'
-                        }]
+                        self.tool_calls = [
+                            {
+                                "name": "get_stock_fundamentals_unified",
+                                "args": {
+                                    "ticker": "0700.HK",
+                                    "start_date": "2025-05-28",
+                                    "end_date": "2025-07-14",
+                                    "curr_date": "2025-07-14",
+                                },
+                                "id": "mock_call_id",
+                                "type": "tool_call",
+                            }
+                        ]
                         self.content = ""
+
                 return MockResult()
 
         # 创建模拟LLM
@@ -142,7 +161,7 @@ def test_llm_tool_calling_simulation():
         state = {
             "trade_date": "2025-07-14",
             "company_of_interest": "0700.HK",
-            "messages": [("human", "分析0700.HK")]
+            "messages": [("human", "分析0700.HK")],
         }
 
         print(f"  测试港股基本面分析: {state['company_of_interest']}")
@@ -150,12 +169,12 @@ def test_llm_tool_calling_simulation():
         # 调用分析师
         result = analyst(state)
 
-        print(f"  ✅ 基本面分析师调用完成")
+        print("  ✅ 基本面分析师调用完成")
         print(f"  返回结果类型: {type(result)}")
 
         # 验证结果
-        if isinstance(result, dict) and 'messages' in result:
-            print(f"  ✅ 返回了正确的消息格式")
+        if isinstance(result, dict) and "messages" in result:
+            print("  ✅ 返回了正确的消息格式")
             return True
         else:
             print(f"  ❌ 返回格式错误: {result}")
@@ -163,7 +182,7 @@ def test_llm_tool_calling_simulation():
 
     except Exception as e:
         print(f"❌ LLM工具调用模拟测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -173,8 +192,12 @@ def test_unified_tools_functionality():
     print("\n🔧 测试统一工具功能...")
 
     try:
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True
@@ -191,17 +214,19 @@ def test_unified_tools_functionality():
             print(f"\n  测试 {ticker} ({expected_market}):")
 
             try:
-                result = toolkit.get_stock_fundamentals_unified.invoke({
-                    'ticker': ticker,
-                    'start_date': '2025-06-14',
-                    'end_date': '2025-07-14',
-                    'curr_date': '2025-07-14'
-                })
+                result = toolkit.get_stock_fundamentals_unified.invoke(
+                    {
+                        "ticker": ticker,
+                        "start_date": "2025-06-14",
+                        "end_date": "2025-07-14",
+                        "curr_date": "2025-07-14",
+                    }
+                )
 
                 if expected_market in result and expected_currency in result:
                     print(f"    ✅ 统一基本面工具正确处理{expected_market}")
                 else:
-                    print(f"    ⚠️ 统一基本面工具处理结果可能有问题")
+                    print("    ⚠️ 统一基本面工具处理结果可能有问题")
                     print(f"    结果前200字符: {result[:200]}...")
 
             except Exception as e:

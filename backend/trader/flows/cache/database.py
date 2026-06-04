@@ -1,116 +1,107 @@
 #!/usr/bin/env python3
 """
-MongoDB + Redis 数据库缓存管理器
+PostgreSQL + Redis 数据库缓存管理器
 提供高性能的股票数据缓存和持久化存储
 """
-import importlib
 
-import os
-import json
-import pickle
 import hashlib
+import importlib
+import json
+import os
 from datetime import datetime, timedelta
+from typing import Any, Dict, Optional, Union
 from zoneinfo import ZoneInfo
-from trader.config.runtime import get_timezone_name
 
-from typing import Optional, Dict, Any, List, Union
 import pandas as pd
+
+from app.db.documentstore import create_sync_client
+from trader.config.runtime import get_timezone_name
 
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
-logger = get_logger('agents')
 
-# MongoDB
-try:
-    from pymongo import MongoClient
-    from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
-    MONGODB_AVAILABLE = True
-except ImportError:
-    MONGODB_AVAILABLE = False
-    logger.warning(f"⚠️ pymongo 未安装，MongoDB功能不可用")
+logger = get_logger("agents")
+
+POSTGRES_AVAILABLE = True
 
 # Redis
 try:
     import redis
-    from redis.exceptions import ConnectionError as RedisConnectionError
+
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
-    logger.warning(f"⚠️ redis 未安装，Redis功能不可用")
+    logger.warning("⚠️ redis 未安装，Redis功能不可用")
 
 
 class DatabaseCacheManager:
-    """MongoDB + Redis 数据库缓存管理器"""
+    """PostgreSQL + Redis 数据库缓存管理器"""
 
-    def __init__(self,
-                 mongodb_url: Optional[str] = None,
-                 redis_url: Optional[str] = None,
-                 mongodb_db: str = "trading_agents",
-                 redis_db: int = 0):
+    def __init__(
+        self,
+        postgres_url: Optional[str] = None,
+        redis_url: Optional[str] = None,
+        postgres_db: str = "trading_agents",
+        redis_db: int = 0,
+    ):
         """
         初始化数据库缓存管理器
 
         Args:
-            mongodb_url: MongoDB连接URL，默认使用配置文件端口
+            postgres_url: PostgreSQL连接URL，默认使用配置文件端口
             redis_url: Redis连接URL，默认使用配置文件端口
-            mongodb_db: MongoDB数据库名
+            postgres_db: PostgreSQL数据库名
             redis_db: Redis数据库编号
         """
         # 从配置文件获取正确的端口
-        mongodb_port = os.getenv("MONGODB_PORT", "27018")
+        postgres_port = os.getenv("POSTGRES_PORT", "27018")
         redis_port = os.getenv("REDIS_PORT", "6380")
-        mongodb_password = os.getenv("MONGODB_PASSWORD", "trading_agents123")
+        postgres_password = os.getenv("POSTGRES_PASSWORD", "trading_agents123")
         redis_password = os.getenv("REDIS_PASSWORD", "trading_agents123")
 
-        self.mongodb_url = mongodb_url or os.getenv("MONGODB_URL", f"mongodb://admin:{mongodb_password}@localhost:{mongodb_port}")
-        self.redis_url = redis_url or os.getenv("REDIS_URL", f"redis://:{redis_password}@localhost:{redis_port}")
-        self.mongodb_db_name = mongodb_db
+        self.postgres_url = postgres_url or os.getenv(
+            "POSTGRES_URL",
+            f"postgres://admin:{postgres_password}@localhost:{postgres_port}",
+        )
+        self.redis_url = redis_url or os.getenv(
+            "REDIS_URL", f"redis://:{redis_password}@localhost:{redis_port}"
+        )
+        self.postgres_db_name = postgres_db
         self.redis_db = redis_db
 
         # 初始化连接
-        self.mongodb_client: Any = None
-        self.mongodb_db: Any = None
+        self.postgres_client: Any = None
+        self.postgres_db: Any = None
         self.redis_client: Any = None
 
-        self._init_mongodb()
+        self._init_postgres()
         self._init_redis()
 
-        logger.info(f"🗄️ 数据库缓存管理器初始化完成")
-        logger.error(f"   MongoDB: {'✅ 已连接' if self.mongodb_client else '❌ 未连接'}")
+        logger.info("🗄️ 数据库缓存管理器初始化完成")
+        logger.error(
+            f"   PostgreSQL: {'✅ 已连接' if self.postgres_client else '❌ 未连接'}"
+        )
         logger.error(f"   Redis: {'✅ 已连接' if self.redis_client else '❌ 未连接'}")
 
-    def _init_mongodb(self):
-        """初始化MongoDB连接"""
-        if not MONGODB_AVAILABLE:
+    def _init_postgres(self):
+        """初始化PostgreSQL文档存储兼容连接"""
+        if not POSTGRES_AVAILABLE:
             return
 
         try:
-            # 从环境变量读取超时配置，使用合理的默认值
-            os = importlib.import_module('os')
-            connect_timeout = int(os.getenv("MONGO_CONNECT_TIMEOUT_MS", "30000"))
-            socket_timeout = int(os.getenv("MONGO_SOCKET_TIMEOUT_MS", "60000"))
-            server_selection_timeout = int(os.getenv("MONGO_SERVER_SELECTION_TIMEOUT_MS", "5000"))
-
-            self.mongodb_client = MongoClient(
-                self.mongodb_url,
-                serverSelectionTimeoutMS=server_selection_timeout,
-                connectTimeoutMS=connect_timeout,
-                socketTimeoutMS=socket_timeout
-            )
-            # 测试连接
-            self.mongodb_client.admin.command('ping')
-            self.mongodb_db = self.mongodb_client[self.mongodb_db_name]
+            self.postgres_client = create_sync_client()
+            self.postgres_client.admin.command("ping")
+            self.postgres_db = self.postgres_client.get_database(self.postgres_db_name)
 
             # 创建索引
-            self._create_mongodb_indexes()
+            self._create_postgres_indexes()
 
-            logger.info(f"✅ MongoDB连接成功: {self.mongodb_url}")
-            logger.info(f"⏱️  超时配置: connectTimeout={connect_timeout}ms, socketTimeout={socket_timeout}ms")
+            logger.info("✅ PostgreSQL文档存储缓存连接成功")
 
         except Exception as e:
-            logger.error(f"❌ MongoDB连接失败: {e}")
-            self.mongodb_client = None
-            self.mongodb_db = None
+            logger.error(f"❌ PostgreSQL文档存储缓存连接失败: {e}")
+            self.postgres_client = None
+            self.postgres_db = None
 
     def _init_redis(self):
         """初始化Redis连接"""
@@ -123,7 +114,7 @@ class DatabaseCacheManager:
                 db=self.redis_db,
                 socket_timeout=5,
                 socket_connect_timeout=5,
-                decode_responses=True
+                decode_responses=True,
             )
             # 测试连接
             self.redis_client.ping()
@@ -134,44 +125,37 @@ class DatabaseCacheManager:
             logger.error(f"❌ Redis连接失败: {e}")
             self.redis_client = None
 
-    def _create_mongodb_indexes(self):
-        """创建MongoDB索引"""
-        if self.mongodb_db is None:
+    def _create_postgres_indexes(self):
+        """创建PostgreSQL索引"""
+        if self.postgres_db is None:
             return
 
         try:
             # 股票数据集合索引
-            stock_collection = self.mongodb_db.stock_data
-            stock_collection.create_index([
-                ("symbol", 1),
-                ("data_source", 1),
-                ("start_date", 1),
-                ("end_date", 1)
-            ])
+            stock_collection = self.postgres_db.stock_data
+            stock_collection.create_index(
+                [("symbol", 1), ("data_source", 1), ("start_date", 1), ("end_date", 1)]
+            )
             stock_collection.create_index([("created_at", 1)])
 
             # 新闻数据集合索引
-            news_collection = self.mongodb_db.news_data
-            news_collection.create_index([
-                ("symbol", 1),
-                ("data_source", 1),
-                ("date_range", 1)
-            ])
+            news_collection = self.postgres_db.news_data
+            news_collection.create_index(
+                [("symbol", 1), ("data_source", 1), ("date_range", 1)]
+            )
             news_collection.create_index([("created_at", 1)])
 
             # 基本面数据集合索引
-            fundamentals_collection = self.mongodb_db.fundamentals_data
-            fundamentals_collection.create_index([
-                ("symbol", 1),
-                ("data_source", 1),
-                ("analysis_date", 1)
-            ])
+            fundamentals_collection = self.postgres_db.fundamentals_data
+            fundamentals_collection.create_index(
+                [("symbol", 1), ("data_source", 1), ("analysis_date", 1)]
+            )
             fundamentals_collection.create_index([("created_at", 1)])
 
-            logger.info(f"✅ MongoDB索引创建完成")
+            logger.info("✅ PostgreSQL索引创建完成")
 
         except Exception as e:
-            logger.error(f"⚠️ MongoDB索引创建失败: {e}")
+            logger.error(f"⚠️ PostgreSQL索引创建失败: {e}")
 
     def _generate_cache_key(self, data_type: str, symbol: str, **kwargs) -> str:
         """生成缓存键"""
@@ -182,11 +166,17 @@ class DatabaseCacheManager:
         cache_key = hashlib.md5(params_str.encode()).hexdigest()[:16]
         return f"{data_type}:{symbol}:{cache_key}"
 
-    def save_stock_data(self, symbol: str, data: Union[pd.DataFrame, str],
-                       start_date: Optional[str] = None, end_date: Optional[str] = None,
-                       data_source: str = "unknown", market_type: Optional[str] = None) -> str:
+    def save_stock_data(
+        self,
+        symbol: str,
+        data: Union[pd.DataFrame, str],
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        data_source: str = "unknown",
+        market_type: Optional[str] = None,
+    ) -> str:
         """
-        保存股票数据到MongoDB和Redis
+        保存股票数据到PostgreSQL和Redis
 
         Args:
             symbol: 股票代码
@@ -199,17 +189,20 @@ class DatabaseCacheManager:
         Returns:
             cache_key: 缓存键
         """
-        cache_key = self._generate_cache_key("stock", symbol,
-                                           start_date=start_date,
-                                           end_date=end_date,
-                                           source=data_source)
+        cache_key = self._generate_cache_key(
+            "stock",
+            symbol,
+            start_date=start_date,
+            end_date=end_date,
+            source=data_source,
+        )
 
         # 自动推断市场类型
         if market_type is None:
             # 根据股票代码格式推断市场类型
-            re = importlib.import_module('re')
+            re = importlib.import_module("re")
 
-            if re.match(r'^\d{6}$', symbol):  # 6位数字为A股
+            if re.match(r"^\d{6}$", symbol):  # 6位数字为A股
                 market_type = "china"
             else:  # 其他格式为美股
                 market_type = "us"
@@ -224,25 +217,25 @@ class DatabaseCacheManager:
             "end_date": end_date,
             "data_source": data_source,
             "created_at": datetime.now(ZoneInfo(get_timezone_name())),
-            "updated_at": datetime.now(ZoneInfo(get_timezone_name()))
+            "updated_at": datetime.now(ZoneInfo(get_timezone_name())),
         }
 
         # 处理数据格式
         if isinstance(data, pd.DataFrame):
-            doc["data"] = data.to_json(orient='records', date_format='iso')
+            doc["data"] = data.to_json(orient="records", date_format="iso")
             doc["data_format"] = "dataframe_json"
         else:
             doc["data"] = str(data)
             doc["data_format"] = "text"
 
-        # 保存到MongoDB（持久化）
-        if self.mongodb_db is not None:
+        # 保存到PostgreSQL（持久化）
+        if self.postgres_db is not None:
             try:
-                collection = self.mongodb_db.stock_data
+                collection = self.postgres_db.stock_data
                 collection.replace_one({"_id": cache_key}, doc, upsert=True)
-                logger.info(f"💾 股票数据已保存到MongoDB: {symbol} -> {cache_key}")
+                logger.info(f"💾 股票数据已保存到PostgreSQL: {symbol} -> {cache_key}")
             except Exception as e:
-                logger.error(f"⚠️ MongoDB保存失败: {e}")
+                logger.error(f"⚠️ PostgreSQL保存失败: {e}")
 
         # 保存到Redis（快速缓存，6小时过期）
         if self.redis_client:
@@ -252,12 +245,12 @@ class DatabaseCacheManager:
                     "data_format": doc["data_format"],
                     "symbol": symbol,
                     "data_source": data_source,
-                    "created_at": doc["created_at"].isoformat()
+                    "created_at": doc["created_at"].isoformat(),
                 }
                 self.redis_client.setex(
                     cache_key,
                     6 * 3600,  # 6小时过期
-                    json.dumps(redis_data, ensure_ascii=False)
+                    json.dumps(redis_data, ensure_ascii=False),
                 )
                 logger.info(f"⚡ 股票数据已缓存到Redis: {symbol} -> {cache_key}")
             except Exception as e:
@@ -266,7 +259,7 @@ class DatabaseCacheManager:
         return cache_key
 
     def load_stock_data(self, cache_key: str) -> Optional[Union[pd.DataFrame, str]]:
-        """从Redis或MongoDB加载股票数据"""
+        """从Redis或PostgreSQL加载股票数据"""
 
         # 首先尝试从Redis加载（更快）
         if self.redis_client:
@@ -277,20 +270,20 @@ class DatabaseCacheManager:
                     logger.info(f"⚡ 从Redis加载数据: {cache_key}")
 
                     if data_dict["data_format"] == "dataframe_json":
-                        return pd.read_json(data_dict["data"], orient='records')
+                        return pd.read_json(data_dict["data"], orient="records")
                     else:
                         return data_dict["data"]
             except Exception as e:
                 logger.error(f"⚠️ Redis加载失败: {e}")
 
-        # 如果Redis没有，从MongoDB加载
-        if self.mongodb_db is not None:
+        # 如果Redis没有，从PostgreSQL加载
+        if self.postgres_db is not None:
             try:
-                collection = self.mongodb_db.stock_data
+                collection = self.postgres_db.stock_data
                 doc = collection.find_one({"_id": cache_key})
 
                 if doc:
-                    logger.info(f"💾 从MongoDB加载数据: {cache_key}")
+                    logger.info(f"💾 从PostgreSQL加载数据: {cache_key}")
 
                     # 同时更新到Redis缓存
                     if self.redis_client:
@@ -300,53 +293,60 @@ class DatabaseCacheManager:
                                 "data_format": doc["data_format"],
                                 "symbol": doc["symbol"],
                                 "data_source": doc["data_source"],
-                                "created_at": doc["created_at"].isoformat()
+                                "created_at": doc["created_at"].isoformat(),
                             }
                             self.redis_client.setex(
                                 cache_key,
                                 6 * 3600,
-                                json.dumps(redis_data, ensure_ascii=False)
+                                json.dumps(redis_data, ensure_ascii=False),
                             )
-                            logger.info(f"⚡ 数据已同步到Redis缓存")
+                            logger.info("⚡ 数据已同步到Redis缓存")
                         except Exception as e:
                             logger.error(f"⚠️ Redis同步失败: {e}")
 
                     if doc["data_format"] == "dataframe_json":
-                        return pd.read_json(doc["data"], orient='records')
+                        return pd.read_json(doc["data"], orient="records")
                     else:
                         return doc["data"]
 
             except Exception as e:
-                logger.error(f"⚠️ MongoDB加载失败: {e}")
+                logger.error(f"⚠️ PostgreSQL加载失败: {e}")
 
         return None
 
-    def find_cached_stock_data(self, symbol: str, start_date: Optional[str] = None,
-                              end_date: Optional[str] = None, data_source: Optional[str] = None,
-                              max_age_hours: int = 6) -> Optional[str]:
+    def find_cached_stock_data(
+        self,
+        symbol: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        data_source: Optional[str] = None,
+        max_age_hours: int = 6,
+    ) -> Optional[str]:
         """查找匹配的缓存数据"""
 
         # 生成精确匹配的缓存键
-        exact_key = self._generate_cache_key("stock", symbol,
-                                           start_date=start_date,
-                                           end_date=end_date,
-                                           source=data_source)
+        exact_key = self._generate_cache_key(
+            "stock",
+            symbol,
+            start_date=start_date,
+            end_date=end_date,
+            source=data_source,
+        )
 
         # 检查Redis中是否有精确匹配
         if self.redis_client and self.redis_client.exists(exact_key):
             logger.info(f"⚡ Redis中找到精确匹配: {symbol} -> {exact_key}")
             return exact_key
 
-        # 检查MongoDB中的匹配项
-        if self.mongodb_db is not None:
+        # 检查PostgreSQL中的匹配项
+        if self.postgres_db is not None:
             try:
-                collection = self.mongodb_db.stock_data
-                cutoff_time = datetime.now(ZoneInfo(get_timezone_name())) - timedelta(hours=max_age_hours)
+                collection = self.postgres_db.stock_data
+                cutoff_time = datetime.now(ZoneInfo(get_timezone_name())) - timedelta(
+                    hours=max_age_hours
+                )
 
-                query = {
-                    "symbol": symbol,
-                    "created_at": {"$gte": cutoff_time}
-                }
+                query = {"symbol": symbol, "created_at": {"$gte": cutoff_time}}
 
                 if data_source:
                     query["data_source"] = data_source
@@ -359,23 +359,27 @@ class DatabaseCacheManager:
 
                 if doc:
                     cache_key = doc["_id"]
-                    logger.info(f"💾 MongoDB中找到匹配: {symbol} -> {cache_key}")
+                    logger.info(f"💾 PostgreSQL中找到匹配: {symbol} -> {cache_key}")
                     return cache_key
 
             except Exception as e:
-                logger.error(f"⚠️ MongoDB查询失败: {e}")
+                logger.error(f"⚠️ PostgreSQL查询失败: {e}")
 
         logger.error(f"❌ 未找到有效缓存: {symbol}")
         return None
 
-    def save_news_data(self, symbol: str, news_data: str,
-                      start_date: Optional[str] = None, end_date: Optional[str] = None,
-                      data_source: str = "unknown") -> str:
-        """保存新闻数据到MongoDB和Redis"""
-        cache_key = self._generate_cache_key("news", symbol,
-                                           start_date=start_date,
-                                           end_date=end_date,
-                                           source=data_source)
+    def save_news_data(
+        self,
+        symbol: str,
+        news_data: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        data_source: str = "unknown",
+    ) -> str:
+        """保存新闻数据到PostgreSQL和Redis"""
+        cache_key = self._generate_cache_key(
+            "news", symbol, start_date=start_date, end_date=end_date, source=data_source
+        )
 
         doc = {
             "_id": cache_key,
@@ -387,17 +391,17 @@ class DatabaseCacheManager:
             "data_source": data_source,
             "data": news_data,
             "created_at": datetime.now(ZoneInfo(get_timezone_name())),
-            "updated_at": datetime.now(ZoneInfo(get_timezone_name()))
+            "updated_at": datetime.now(ZoneInfo(get_timezone_name())),
         }
 
-        # 保存到MongoDB
-        if self.mongodb_db is not None:
+        # 保存到PostgreSQL
+        if self.postgres_db is not None:
             try:
-                collection = self.mongodb_db.news_data
+                collection = self.postgres_db.news_data
                 collection.replace_one({"_id": cache_key}, doc, upsert=True)
-                logger.info(f"📰 新闻数据已保存到MongoDB: {symbol} -> {cache_key}")
+                logger.info(f"📰 新闻数据已保存到PostgreSQL: {symbol} -> {cache_key}")
             except Exception as e:
-                logger.error(f"⚠️ MongoDB保存失败: {e}")
+                logger.error(f"⚠️ PostgreSQL保存失败: {e}")
 
         # 保存到Redis（24小时过期）
         if self.redis_client:
@@ -406,12 +410,12 @@ class DatabaseCacheManager:
                     "data": news_data,
                     "symbol": symbol,
                     "data_source": data_source,
-                    "created_at": doc["created_at"].isoformat()
+                    "created_at": doc["created_at"].isoformat(),
                 }
                 self.redis_client.setex(
                     cache_key,
                     24 * 3600,  # 24小时过期
-                    json.dumps(redis_data, ensure_ascii=False)
+                    json.dumps(redis_data, ensure_ascii=False),
                 )
                 logger.info(f"⚡ 新闻数据已缓存到Redis: {symbol} -> {cache_key}")
             except Exception as e:
@@ -419,16 +423,22 @@ class DatabaseCacheManager:
 
         return cache_key
 
-    def save_fundamentals_data(self, symbol: str, fundamentals_data: str,
-                              analysis_date: Optional[str] = None,
-                              data_source: str = "unknown") -> str:
-        """保存基本面数据到MongoDB和Redis"""
+    def save_fundamentals_data(
+        self,
+        symbol: str,
+        fundamentals_data: str,
+        analysis_date: Optional[str] = None,
+        data_source: str = "unknown",
+    ) -> str:
+        """保存基本面数据到PostgreSQL和Redis"""
         if not analysis_date:
-            analysis_date = datetime.now(ZoneInfo(get_timezone_name())).strftime("%Y-%m-%d")
+            analysis_date = datetime.now(ZoneInfo(get_timezone_name())).strftime(
+                "%Y-%m-%d"
+            )
 
-        cache_key = self._generate_cache_key("fundamentals", symbol,
-                                           date=analysis_date,
-                                           source=data_source)
+        cache_key = self._generate_cache_key(
+            "fundamentals", symbol, date=analysis_date, source=data_source
+        )
 
         doc = {
             "_id": cache_key,
@@ -438,17 +448,17 @@ class DatabaseCacheManager:
             "data_source": data_source,
             "data": fundamentals_data,
             "created_at": datetime.now(ZoneInfo(get_timezone_name())),
-            "updated_at": datetime.now(ZoneInfo(get_timezone_name()))
+            "updated_at": datetime.now(ZoneInfo(get_timezone_name())),
         }
 
-        # 保存到MongoDB
-        if self.mongodb_db is not None:
+        # 保存到PostgreSQL
+        if self.postgres_db is not None:
             try:
-                collection = self.mongodb_db.fundamentals_data
+                collection = self.postgres_db.fundamentals_data
                 collection.replace_one({"_id": cache_key}, doc, upsert=True)
-                logger.info(f"💼 基本面数据已保存到MongoDB: {symbol} -> {cache_key}")
+                logger.info(f"💼 基本面数据已保存到PostgreSQL: {symbol} -> {cache_key}")
             except Exception as e:
-                logger.error(f"⚠️ MongoDB保存失败: {e}")
+                logger.error(f"⚠️ PostgreSQL保存失败: {e}")
 
         # 保存到Redis（24小时过期）
         if self.redis_client:
@@ -458,12 +468,12 @@ class DatabaseCacheManager:
                     "symbol": symbol,
                     "data_source": data_source,
                     "analysis_date": analysis_date,
-                    "created_at": doc["created_at"].isoformat()
+                    "created_at": doc["created_at"].isoformat(),
                 }
                 self.redis_client.setex(
                     cache_key,
                     24 * 3600,  # 24小时过期
-                    json.dumps(redis_data, ensure_ascii=False)
+                    json.dumps(redis_data, ensure_ascii=False),
                 )
                 logger.info(f"⚡ 基本面数据已缓存到Redis: {symbol} -> {cache_key}")
             except Exception as e:
@@ -475,82 +485,96 @@ class DatabaseCacheManager:
         """获取缓存统计信息"""
         # 标准统计格式（与 file_cache 保持一致）
         stats: Dict[str, Any] = {
-            'total_files': 0,
-            'stock_data_count': 0,
-            'news_count': 0,
-            'fundamentals_count': 0,
-            'total_size': 0,  # 字节
-            'total_size_mb': 0,  # MB
-            'skipped_count': 0
+            "total_files": 0,
+            "stock_data_count": 0,
+            "news_count": 0,
+            "fundamentals_count": 0,
+            "total_size": 0,  # 字节
+            "total_size_mb": 0,  # MB
+            "skipped_count": 0,
         }
 
         # 详细的后端信息
         backend_info = {
-            "mongodb": {"available": self.mongodb_db is not None, "collections": {}},
-            "redis": {"available": self.redis_client is not None, "keys": 0, "memory_usage": "N/A"}
+            "postgres": {"available": self.postgres_db is not None, "collections": {}},
+            "redis": {
+                "available": self.redis_client is not None,
+                "keys": 0,
+                "memory_usage": "N/A",
+            },
         }
 
-        # MongoDB统计
+        # PostgreSQL统计
         total_size_bytes = 0
-        if self.mongodb_db is not None:
+        if self.postgres_db is not None:
             try:
                 for collection_name in ["stock_data", "news_data", "fundamentals_data"]:
-                    collection = self.mongodb_db[collection_name]
+                    collection = self.postgres_db[collection_name]
                     count = collection.count_documents({})
-                    size = self.mongodb_db.command("collStats", collection_name).get("size", 0)
-                    backend_info["mongodb"]["collections"][collection_name] = {
+                    size = self.postgres_db.command("collStats", collection_name).get(
+                        "size", 0
+                    )
+                    backend_info["postgres"]["collections"][collection_name] = {
                         "count": count,
-                        "size_mb": round(size / (1024 * 1024), 2)
+                        "size_mb": round(size / (1024 * 1024), 2),
                     }
 
                     # 累加到标准统计
                     total_size_bytes += size
-                    stats['total_files'] += count
+                    stats["total_files"] += count
 
                     # 按类型分类
                     if collection_name == "stock_data":
-                        stats['stock_data_count'] += count
+                        stats["stock_data_count"] += count
                     elif collection_name == "news_data":
-                        stats['news_count'] += count
+                        stats["news_count"] += count
                     elif collection_name == "fundamentals_data":
-                        stats['fundamentals_count'] += count
+                        stats["fundamentals_count"] += count
 
             except Exception as e:
-                logger.error(f"⚠️ MongoDB统计获取失败: {e}")
+                logger.error(f"⚠️ PostgreSQL统计获取失败: {e}")
 
         # Redis统计
         if self.redis_client:
             try:
                 info = self.redis_client.info()
                 backend_info["redis"]["keys"] = info.get("db0", {}).get("keys", 0)
-                backend_info["redis"]["memory_usage"] = f"{info.get('used_memory_human', 'N/A')}"
+                backend_info["redis"]["memory_usage"] = (
+                    f"{info.get('used_memory_human', 'N/A')}"
+                )
             except Exception as e:
                 logger.error(f"⚠️ Redis统计获取失败: {e}")
 
         # 设置总大小
-        stats['total_size'] = total_size_bytes
-        stats['total_size_mb'] = round(total_size_bytes / (1024 * 1024), 2)
+        stats["total_size"] = total_size_bytes
+        stats["total_size_mb"] = round(total_size_bytes / (1024 * 1024), 2)
 
         # 添加后端详细信息
-        stats['backend_info'] = backend_info
+        stats["backend_info"] = backend_info
 
         return stats
 
     def clear_old_cache(self, max_age_days: int = 7):
         """清理过期缓存"""
-        cutoff_time = datetime.now(ZoneInfo(get_timezone_name())) - timedelta(days=max_age_days)
+        cutoff_time = datetime.now(ZoneInfo(get_timezone_name())) - timedelta(
+            days=max_age_days
+        )
         cleared_count = 0
 
-        # 清理MongoDB
-        if self.mongodb_db is not None:
+        # 清理PostgreSQL
+        if self.postgres_db is not None:
             try:
                 for collection_name in ["stock_data", "news_data", "fundamentals_data"]:
-                    collection = self.mongodb_db[collection_name]
-                    result = collection.delete_many({"created_at": {"$lt": cutoff_time}})
+                    collection = self.postgres_db[collection_name]
+                    result = collection.delete_many(
+                        {"created_at": {"$lt": cutoff_time}}
+                    )
                     cleared_count += result.deleted_count
-                    logger.info(f"🧹 MongoDB {collection_name} 清理了 {result.deleted_count} 条记录")
+                    logger.info(
+                        f"🧹 PostgreSQL {collection_name} 清理了 {result.deleted_count} 条记录"
+                    )
             except Exception as e:
-                logger.error(f"⚠️ MongoDB清理失败: {e}")
+                logger.error(f"⚠️ PostgreSQL清理失败: {e}")
 
         # Redis会自动过期，不需要手动清理
         logger.info(f"🧹 总共清理了 {cleared_count} 条过期记录")
@@ -558,17 +582,18 @@ class DatabaseCacheManager:
 
     def close(self):
         """关闭数据库连接"""
-        if self.mongodb_client:
-            self.mongodb_client.close()
-            logger.info(f"🔒 MongoDB连接已关闭")
+        if self.postgres_client:
+            self.postgres_client.close()
+            logger.info("🔒 PostgreSQL连接已关闭")
 
         if self.redis_client:
             self.redis_client.close()
-            logger.info(f"🔒 Redis连接已关闭")
+            logger.info("🔒 Redis连接已关闭")
 
 
 # 全局数据库缓存实例
 _db_cache_instance = None
+
 
 def get_db_cache() -> DatabaseCacheManager:
     """获取全局数据库缓存实例"""

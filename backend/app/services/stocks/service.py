@@ -1,23 +1,19 @@
 """
 股票数据服务层 - 统一数据访问接口
-基于现有MongoDB集合，提供标准化的数据访问服务
+基于现有PostgreSQL集合，提供标准化的数据访问服务
 """
+
 import importlib
 import logging
-from datetime import datetime, date
-from typing import Optional, Dict, Any, List
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
-from app.core.database import get_mongo_db
+from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document
 from app.models.stocks import (
-    StockBasicInfoExtended,
     MarketQuotesExtended,
-    MarketInfo,
-    MarketType,
-    ExchangeType,
-    CurrencyType
+    StockBasicInfoExtended,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,9 +30,7 @@ class StockDataService:
         self.market_quotes_collection = "market_quotes"
 
     async def get_stock_basic_info(
-        self,
-        symbol: str,
-        source: Optional[str] = None
+        self, symbol: str, source: Optional[str] = None
     ) -> Optional[StockBasicInfoExtended]:
         """
         获取股票基础信息
@@ -50,9 +44,11 @@ class StockDataService:
             if settings.POSTGRES_READ_ENABLED:
                 pg_doc = await self._get_stock_basic_info_from_postgres(symbol, source)
                 if pg_doc:
-                    return StockBasicInfoExtended(**self._standardize_basic_info(pg_doc))
+                    return StockBasicInfoExtended(
+                        **self._standardize_basic_info(pg_doc)
+                    )
 
-            db = get_mongo_db()
+            db = get_postgres_db()
             symbol6 = str(symbol).zfill(6)
 
             # 🔥 构建查询条件
@@ -70,7 +66,9 @@ class StockDataService:
                 for src in source_priority:
                     query_with_source = query.copy()
                     query_with_source["source"] = src
-                    doc = await db[self.basic_info_collection].find_one(query_with_source, {"_id": 0})
+                    doc = await db[self.basic_info_collection].find_one(
+                        query_with_source, {"_id": 0}
+                    )
                     if doc:
                         logger.debug(f"✅ 使用数据源: {src}")
                         break
@@ -78,8 +76,7 @@ class StockDataService:
                 # 如果所有数据源都没有，尝试不带 source 条件查询（兼容旧数据）
                 if not doc:
                     doc = await db[self.basic_info_collection].find_one(
-                        {"$or": [{"symbol": symbol6}, {"code": symbol6}]},
-                        {"_id": 0}
+                        {"$or": [{"symbol": symbol6}, {"code": symbol6}]}, {"_id": 0}
                     )
                     if doc:
                         logger.warning(f"⚠️ 使用旧数据（无 source 字段）: {symbol6}")
@@ -108,15 +105,16 @@ class StockDataService:
             if settings.POSTGRES_READ_ENABLED:
                 pg_doc = await self._get_market_quotes_from_postgres(symbol)
                 if pg_doc:
-                    return MarketQuotesExtended(**self._standardize_market_quotes(pg_doc))
+                    return MarketQuotesExtended(
+                        **self._standardize_market_quotes(pg_doc)
+                    )
 
-            db = get_mongo_db()
+            db = get_postgres_db()
             symbol6 = str(symbol).zfill(6)
 
             # 从现有集合查询 (优先使用symbol字段，兼容code字段)
             doc = await db[self.market_quotes_collection].find_one(
-                {"$or": [{"symbol": symbol6}, {"code": symbol6}]},
-                {"_id": 0}
+                {"$or": [{"symbol": symbol6}, {"code": symbol6}]}, {"_id": 0}
             )
 
             if not doc:
@@ -137,7 +135,7 @@ class StockDataService:
         industry: Optional[str] = None,
         page: int = 1,
         page_size: int = 20,
-        source: Optional[str] = None
+        source: Optional[str] = None,
     ) -> List[StockBasicInfoExtended]:
         """
         获取股票列表
@@ -165,24 +163,28 @@ class StockDataService:
                         for doc in pg_docs
                     ]
 
-            db = get_mongo_db()
+            db = get_postgres_db()
 
             # 🔥 获取数据源优先级配置
             if not source:
-                UnifiedConfigManager = getattr(importlib.import_module('app.core.unified'), 'UnifiedConfigManager')
+                UnifiedConfigManager = getattr(
+                    importlib.import_module("app.core.unified"), "UnifiedConfigManager"
+                )
                 config = UnifiedConfigManager()
                 data_source_configs = await config.get_data_source_configs_async()
 
                 # 提取启用的数据源，按优先级排序
                 enabled_sources = [
-                    ds.type.lower() for ds in data_source_configs
-                    if ds.enabled and ds.type.lower() in ['tushare', 'akshare', 'baostock']
+                    ds.type.lower()
+                    for ds in data_source_configs
+                    if ds.enabled
+                    and ds.type.lower() in ["tushare", "akshare", "baostock"]
                 ]
 
                 if not enabled_sources:
-                    enabled_sources = ['tushare', 'akshare', 'baostock']
+                    enabled_sources = ["tushare", "akshare", "baostock"]
 
-                source = enabled_sources[0] if enabled_sources else 'tushare'
+                source = enabled_sources[0] if enabled_sources else "tushare"
 
             # 构建查询条件
             query = {"source": source}  # 🔥 添加数据源筛选
@@ -193,10 +195,12 @@ class StockDataService:
 
             # 分页查询
             skip = (page - 1) * page_size
-            cursor = db[self.basic_info_collection].find(
-                query,
-                {"_id": 0}
-            ).skip(skip).limit(page_size)
+            cursor = (
+                db[self.basic_info_collection]
+                .find(query, {"_id": 0})
+                .skip(skip)
+                .limit(page_size)
+            )
 
             docs = await cursor.to_list(length=page_size)
 
@@ -218,24 +222,38 @@ class StockDataService:
         source: Optional[str],
     ) -> Optional[Dict[str, Any]]:
         try:
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
-            get_stock_basic_info = getattr(importlib.import_module('app.db.stock'), 'get_stock_basic_info')
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
+            get_stock_basic_info = getattr(
+                importlib.import_module("app.db.stock"), "get_stock_basic_info"
+            )
 
             async with get_session_factory()() as session:
                 return await get_stock_basic_info(session, symbol, source)
         except Exception as e:
-            logger.warning(f"PostgreSQL股票基础信息查询失败，回退MongoDB symbol={symbol}: {e}")
+            logger.warning(
+                f"PostgreSQL股票基础信息查询失败，回退PostgreSQL symbol={symbol}: {e}"
+            )
             return None
 
-    async def _get_market_quotes_from_postgres(self, symbol: str) -> Optional[Dict[str, Any]]:
+    async def _get_market_quotes_from_postgres(
+        self, symbol: str
+    ) -> Optional[Dict[str, Any]]:
         try:
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
-            get_market_quote = getattr(importlib.import_module('app.db.stock'), 'get_market_quote')
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
+            get_market_quote = getattr(
+                importlib.import_module("app.db.stock"), "get_market_quote"
+            )
 
             async with get_session_factory()() as session:
                 return await get_market_quote(session, symbol)
         except Exception as e:
-            logger.warning(f"PostgreSQL行情查询失败，回退MongoDB symbol={symbol}: {e}")
+            logger.warning(
+                f"PostgreSQL行情查询失败，回退PostgreSQL symbol={symbol}: {e}"
+            )
             return None
 
     async def _get_stock_list_from_postgres(
@@ -248,8 +266,12 @@ class StockDataService:
         source: Optional[str],
     ) -> List[Dict[str, Any]]:
         try:
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
-            list_stocks = getattr(importlib.import_module('app.db.stock'), 'list_stocks')
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
+            list_stocks = getattr(
+                importlib.import_module("app.db.stock"), "list_stocks"
+            )
 
             effective_source = source or await self._get_preferred_source()
             async with get_session_factory()() as session:
@@ -262,27 +284,27 @@ class StockDataService:
                     page_size=page_size,
                 )
         except Exception as e:
-            logger.warning(f"PostgreSQL股票列表查询失败，回退MongoDB: {e}")
+            logger.warning(f"PostgreSQL股票列表查询失败，回退PostgreSQL: {e}")
             return []
 
     async def _get_preferred_source(self) -> str:
-        UnifiedConfigManager = getattr(importlib.import_module('app.core.unified'), 'UnifiedConfigManager')
+        UnifiedConfigManager = getattr(
+            importlib.import_module("app.core.unified"), "UnifiedConfigManager"
+        )
 
         config = UnifiedConfigManager()
         data_source_configs = await config.get_data_source_configs_async()
         enabled_sources = [
-            ds.type.lower() for ds in data_source_configs
-            if ds.enabled and ds.type.lower() in ['tushare', 'akshare', 'baostock']
+            ds.type.lower()
+            for ds in data_source_configs
+            if ds.enabled and ds.type.lower() in ["tushare", "akshare", "baostock"]
         ]
         if not enabled_sources:
-            enabled_sources = ['tushare', 'akshare', 'baostock']
-        return enabled_sources[0] if enabled_sources else 'tushare'
+            enabled_sources = ["tushare", "akshare", "baostock"]
+        return enabled_sources[0] if enabled_sources else "tushare"
 
     async def update_stock_basic_info(
-        self,
-        symbol: str,
-        update_data: Dict[str, Any],
-        source: str = "tushare"
+        self, symbol: str, update_data: Dict[str, Any], source: str = "tushare"
     ) -> bool:
         """
         更新股票基础信息
@@ -294,7 +316,7 @@ class StockDataService:
             bool: 更新是否成功
         """
         try:
-            db = get_mongo_db()
+            db = get_postgres_db()
             symbol6 = str(symbol).zfill(6)
 
             # 添加更新时间
@@ -314,9 +336,7 @@ class StockDataService:
 
             # 🔥 执行更新 (使用 code + source 联合查询)
             result = await db[self.basic_info_collection].update_one(
-                {"code": symbol6, "source": source},
-                {"$set": update_data},
-                upsert=True
+                {"code": symbol6, "source": source}, {"$set": update_data}, upsert=True
             )
             await dual_write_hot_document("stock_basic_info", update_data)
 
@@ -327,9 +347,7 @@ class StockDataService:
             return False
 
     async def update_market_quotes(
-        self,
-        symbol: str,
-        quote_data: Dict[str, Any]
+        self, symbol: str, quote_data: Dict[str, Any]
     ) -> bool:
         """
         更新实时行情数据
@@ -340,7 +358,7 @@ class StockDataService:
             bool: 更新是否成功
         """
         try:
-            db = get_mongo_db()
+            db = get_postgres_db()
             symbol6 = str(symbol).zfill(6)
 
             # 添加更新时间
@@ -356,9 +374,7 @@ class StockDataService:
 
             # 执行更新 (使用symbol字段作为查询条件)
             result = await db[self.market_quotes_collection].update_one(
-                {"symbol": symbol6},
-                {"$set": quote_data},
-                upsert=True
+                {"symbol": symbol6}, {"$set": quote_data}, upsert=True
             )
             await dual_write_hot_document("market_quotes", quote_data)
 
@@ -388,11 +404,11 @@ class StockDataService:
         if "full_symbol" not in result or not result["full_symbol"]:
             if symbol and len(symbol) == 6:
                 # 根据代码判断交易所
-                if symbol.startswith(('60', '68', '90')):
+                if symbol.startswith(("60", "68", "90")):
                     result["full_symbol"] = f"{symbol}.SS"
                     exchange = "SSE"
                     exchange_name = "上海证券交易所"
-                elif symbol.startswith(('00', '30', '20')):
+                elif symbol.startswith(("00", "30", "20")):
                     result["full_symbol"] = f"{symbol}.SZ"
                     exchange = "SZSE"
                     exchange_name = "深圳证券交易所"
@@ -423,8 +439,8 @@ class StockDataService:
                 "trading_hours": {
                     "open": "09:30",
                     "close": "15:00",
-                    "lunch_break": ["11:30", "13:00"]
-                }
+                    "lunch_break": ["11:30", "13:00"],
+                },
             }
 
         # 字段映射和标准化
@@ -466,7 +482,7 @@ class StockDataService:
         # 生成完整代码和市场标识 (优先使用已有的full_symbol)
         if "full_symbol" not in result or not result["full_symbol"]:
             if symbol and len(symbol) == 6:
-                if symbol.startswith(('60', '68', '90')):
+                if symbol.startswith(("60", "68", "90")):
                     result["full_symbol"] = f"{symbol}.SS"
                 else:
                     result["full_symbol"] = f"{symbol}.SZ"
@@ -490,6 +506,7 @@ class StockDataService:
 
 # 全局服务实例
 _stock_data_service = None
+
 
 def get_stock_data_service() -> StockDataService:
     """获取股票数据服务实例"""

@@ -3,14 +3,9 @@
 简单的AKShare测试
 验证修复后的导入是否正常
 """
+
 import importlib
 
-import sys
-import os
-
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
 
 def test_basic_imports():
     """测试基本导入"""
@@ -19,7 +14,7 @@ def test_basic_imports():
 
     try:
         # 测试AKShare直接导入
-        ak = importlib.import_module('akshare')
+        ak = importlib.import_module("akshare")
         print(f"✅ AKShare导入成功: {ak.__version__}")
     except Exception as e:
         print(f"❌ AKShare导入失败: {e}")
@@ -27,7 +22,7 @@ def test_basic_imports():
 
     try:
         # 测试dataflows模块导入
-        akshareutils = getattr(importlib.import_module('trader.flows'), 'akshareutils')
+        getattr(importlib.import_module("trader.flows"), "akshareutils")
         print("✅ akshare_utils模块导入成功")
     except Exception as e:
         print(f"❌ akshare_utils模块导入失败: {e}")
@@ -35,7 +30,7 @@ def test_basic_imports():
 
     try:
         # 测试数据源管理器导入
-        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
+        getattr(importlib.import_module("trader.flows.sources"), "DataSourceManager")
         print("✅ DataSourceManager导入成功")
     except Exception as e:
         print(f"❌ DataSourceManager导入失败: {e}")
@@ -43,13 +38,16 @@ def test_basic_imports():
 
     return True
 
+
 def test_akshare_provider():
     """测试AKShare提供器"""
     print("\n🔍 测试AKShare提供器")
     print("=" * 40)
 
     try:
-        get_akshare_provider = getattr(importlib.import_module('trader.flows.akshare'), 'get_akshare_provider')
+        get_akshare_provider = getattr(
+            importlib.import_module("trader.flows.akshare"), "get_akshare_provider"
+        )
         provider = get_akshare_provider()
         print(f"✅ AKShare提供器创建成功，连接状态: {provider.connected}")
 
@@ -65,9 +63,10 @@ def test_akshare_provider():
         return True
     except Exception as e:
         print(f"❌ AKShare提供器测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_data_source_manager():
     """测试数据源管理器"""
@@ -75,8 +74,12 @@ def test_data_source_manager():
     print("=" * 40)
 
     try:
-        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
-        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
+        DataSourceManager = getattr(
+            importlib.import_module("trader.flows.sources"), "DataSourceManager"
+        )
+        ChinaDataSource = getattr(
+            importlib.import_module("trader.flows.sources"), "ChinaDataSource"
+        )
 
         # 检查AKShare枚举
         akshare_enum = ChinaDataSource.AKSHARE
@@ -90,7 +93,7 @@ def test_data_source_manager():
         available = [s.value for s in manager.available_sources]
         print(f"✅ 可用数据源: {available}")
 
-        if 'akshare' in available:
+        if "akshare" in available:
             print("✅ AKShare在可用数据源中")
         else:
             print("⚠️ AKShare不在可用数据源中")
@@ -98,9 +101,10 @@ def test_data_source_manager():
         return True
     except Exception as e:
         print(f"❌ 数据源管理器测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主测试函数"""
@@ -136,17 +140,18 @@ def main():
         print("❌ AKShare功能存在问题")
         return False
 
+
 if __name__ == "__main__":
     success = main()
 
     if success:
-        print(f"\n🎯 分支管理建议:")
+        print("\n🎯 分支管理建议:")
         print("✅ AKShare功能基本正常")
         print("✅ 可以删除以下重复分支:")
         print("   - feature/akshare-integration")
         print("   - feature/akshare-integration-clean")
         print("✅ 保留 feature/tushare-integration（包含完整功能）")
     else:
-        print(f"\n⚠️ 建议:")
+        print("\n⚠️ 建议:")
         print("1. 先修复AKShare集成问题")
         print("2. 再考虑分支清理")

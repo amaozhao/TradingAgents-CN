@@ -1,41 +1,37 @@
 """
 Database status and connection checks, extracted from DatabaseService.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Dict
 
-from app.core.database import get_mongo_db, get_redis_client
 from app.core.config import settings
+from app.core.database import get_postgres_db, get_redis_client
 
 
-async def get_mongodb_status() -> Dict[str, Any]:
+async def get_postgres_status() -> Dict[str, Any]:
     try:
-        db = get_mongo_db()
+        db = get_postgres_db()
         await db.command("ping")
-        server_info = await db.command("buildInfo")
-        server_status = await db.command("serverStatus")
         return {
             "connected": True,
-            "host": settings.MONGODB_HOST,
-            "port": settings.MONGODB_PORT,
-            "database": settings.mongo_db,
-            "database_identity": settings.mongo_db_identity,
-            "version": server_info.get("version", "Unknown"),
-            "uptime": server_status.get("uptime", 0),
-            "connections": server_status.get("connections", {}),
-            "memory": server_status.get("mem", {}),
+            "type": "postgresql",
+            "host": settings.POSTGRES_HOST,
+            "port": settings.POSTGRES_PORT,
+            "database": settings.POSTGRES_DB,
+            "version": "PostgreSQL document store",
             "connected_at": datetime.utcnow().isoformat(),
         }
     except Exception as e:
         return {
             "connected": False,
             "error": str(e),
-            "host": settings.MONGODB_HOST,
-            "port": settings.MONGODB_PORT,
-            "database": settings.mongo_db,
-            "database_identity": settings.mongo_db_identity,
+            "type": "postgresql",
+            "host": settings.POSTGRES_HOST,
+            "port": settings.POSTGRES_PORT,
+            "database": settings.POSTGRES_DB,
         }
 
 
@@ -67,20 +63,24 @@ async def get_redis_status() -> Dict[str, Any]:
 
 
 async def get_database_status() -> Dict[str, Any]:
-    mongodb_status = await get_mongodb_status()
+    postgres_status = await get_postgres_status()
     redis_status = await get_redis_status()
-    return {"mongodb": mongodb_status, "redis": redis_status}
+    return {"postgres": postgres_status, "redis": redis_status}
 
 
-async def test_mongodb_connection() -> Dict[str, Any]:
+async def test_postgres_connection() -> Dict[str, Any]:
     try:
-        db = get_mongo_db()
+        db = get_postgres_db()
         start = datetime.utcnow()
         await db.command("ping")
         took_ms = (datetime.utcnow() - start).total_seconds() * 1000
-        return {"success": True, "response_time_ms": round(took_ms, 2), "message": "MongoDB连接正常"}
+        return {
+            "success": True,
+            "response_time_ms": round(took_ms, 2),
+            "message": "PostgreSQL连接正常",
+        }
     except Exception as e:
-        return {"success": False, "error": str(e), "message": "MongoDB连接失败"}
+        return {"success": False, "error": str(e), "message": "PostgreSQL连接失败"}
 
 
 async def test_redis_connection() -> Dict[str, Any]:
@@ -89,12 +89,20 @@ async def test_redis_connection() -> Dict[str, Any]:
         start = datetime.utcnow()
         await redis_client.ping()
         took_ms = (datetime.utcnow() - start).total_seconds() * 1000
-        return {"success": True, "response_time_ms": round(took_ms, 2), "message": "Redis连接正常"}
+        return {
+            "success": True,
+            "response_time_ms": round(took_ms, 2),
+            "message": "Redis连接正常",
+        }
     except Exception as e:
         return {"success": False, "error": str(e), "message": "Redis连接失败"}
 
 
 async def test_connections() -> Dict[str, Any]:
-    mongodb = await test_mongodb_connection()
+    postgres = await test_postgres_connection()
     redis = await test_redis_connection()
-    return {"mongodb": mongodb, "redis": redis, "overall": mongodb["success"] and redis["success"]}
+    return {
+        "postgres": postgres,
+        "redis": redis,
+        "overall": postgres["success"] and redis["success"],
+    }

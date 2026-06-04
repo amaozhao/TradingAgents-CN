@@ -6,9 +6,17 @@
 """
 
 import asyncio
-import pytest
+import importlib
+import sys
 from concurrent.futures import ThreadPoolExecutor
-from trader.flows.sources import DataSourceManager
+
+
+def get_data_source_manager_class():
+    module = importlib.import_module("trader.flows.sources")
+    if not hasattr(module, "DataSourceManager"):
+        sys.modules.pop("trader.flows.sources", None)
+        module = importlib.import_module("trader.flows.sources")
+    return module.DataSourceManager
 
 
 def test_asyncio_in_thread_pool():
@@ -47,6 +55,7 @@ def test_data_source_manager_in_thread_pool():
 
     def get_stock_data():
         """在线程池中获取股票数据"""
+        DataSourceManager = get_data_source_manager_class()
         manager = DataSourceManager()
         # 这应该不会抛出 RuntimeError
         # 注意：实际数据获取可能失败（如果没有配置API key），但不应该是事件循环错误
@@ -55,7 +64,7 @@ def test_data_source_manager_in_thread_pool():
                 symbol="000001",
                 start_date="2025-01-01",
                 end_date="2025-01-10",
-                period="daily"
+                period="daily",
             )
             return result
         except Exception as e:
@@ -72,7 +81,9 @@ def test_data_source_manager_in_thread_pool():
 
         # 验证不是事件循环错误
         assert "There is no current event loop" not in str(result)
-        print(f"✅ 测试通过，结果: {result[:200] if isinstance(result, str) else result}")
+        print(
+            f"✅ 测试通过，结果: {result[:200] if isinstance(result, str) else result}"
+        )
 
 
 def test_multiple_threads():

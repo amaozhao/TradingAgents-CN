@@ -5,13 +5,14 @@
 """
 
 import asyncio
-import requests
 import json
-from typing import Dict, Any
+
+import requests
 
 # 配置
 BASE_URL = "http://localhost:8000"
 FRONTEND_URL = "http://localhost:3000"
+
 
 async def test_industry_screening():
     """测试行业筛选功能"""
@@ -20,10 +21,9 @@ async def test_industry_screening():
 
     # 1. 获取访问令牌
     print("\n1. 获取访问令牌...")
-    auth_response = requests.post(f"{BASE_URL}/api/auth/login", json={
-        "username": "admin",
-        "password": "admin123"
-    })
+    auth_response = requests.post(
+        f"{BASE_URL}/api/auth/login", json={"username": "admin", "password": "admin123"}
+    )
 
     if auth_response.status_code != 200:
         print(f"❌ 登录失败: {auth_response.status_code}")
@@ -40,18 +40,20 @@ async def test_industry_screening():
         "conditions": {
             "logic": "AND",
             "children": [
-                {"field": "market_cap", "op": "between", "value": [5000000, 9007199254740991]}
-            ]
+                {
+                    "field": "market_cap",
+                    "op": "between",
+                    "value": [5000000, 9007199254740991],
+                }
+            ],
         },
         "order_by": [{"field": "market_cap", "direction": "desc"}],
         "limit": 10,
-        "offset": 0
+        "offset": 0,
     }
 
     response = requests.post(
-        f"{BASE_URL}/api/screening/run",
-        json=market_cap_only_payload,
-        headers=headers
+        f"{BASE_URL}/api/screening/run", json=market_cap_only_payload, headers=headers
     )
 
     if response.status_code == 200:
@@ -78,19 +80,21 @@ async def test_industry_screening():
         "conditions": {
             "logic": "AND",
             "children": [
-                {"field": "market_cap", "op": "between", "value": [5000000, 9007199254740991]},
-                {"field": "industry", "op": "in", "value": ["银行"]}
-            ]
+                {
+                    "field": "market_cap",
+                    "op": "between",
+                    "value": [5000000, 9007199254740991],
+                },
+                {"field": "industry", "op": "in", "value": ["银行"]},
+            ],
         },
         "order_by": [{"field": "market_cap", "direction": "desc"}],
         "limit": 10,
-        "offset": 0
+        "offset": 0,
     }
 
     response = requests.post(
-        f"{BASE_URL}/api/screening/run",
-        json=industry_payload,
-        headers=headers
+        f"{BASE_URL}/api/screening/run", json=industry_payload, headers=headers
     )
 
     if response.status_code == 200:
@@ -103,7 +107,9 @@ async def test_industry_screening():
         for item in items:
             industry = item.get("industry", "")
             is_bank = "银行" in industry
-            print(f"   {item['code']} - {item['name']} - {industry} {'✅' if is_bank else '❌'}")
+            print(
+                f"   {item['code']} - {item['name']} - {industry} {'✅' if is_bank else '❌'}"
+            )
             if not is_bank:
                 all_banks = False
 
@@ -121,6 +127,7 @@ async def test_industry_screening():
         print(f"   响应内容: {response.text}")
         return False
 
+
 def test_frontend_payload():
     """测试前端修复后会发送的payload格式"""
     print("\n4. 测试前端修复后的payload格式...")
@@ -131,19 +138,24 @@ def test_frontend_payload():
         "conditions": {
             "logic": "AND",
             "children": [
-                {"field": "market_cap", "op": "between", "value": [500 * 10000, 9007199254740991]},  # 大盘股
-                {"field": "industry", "op": "in", "value": ["银行"]}  # 银行行业
-            ]
+                {
+                    "field": "market_cap",
+                    "op": "between",
+                    "value": [500 * 10000, 9007199254740991],
+                },  # 大盘股
+                {"field": "industry", "op": "in", "value": ["银行"]},  # 银行行业
+            ],
         },
         "order_by": [{"field": "market_cap", "direction": "desc"}],
         "limit": 50,
-        "offset": 0
+        "offset": 0,
     }
 
     print("前端修复后会发送的payload:")
     print(json.dumps(frontend_payload, indent=2, ensure_ascii=False))
 
     return frontend_payload
+
 
 if __name__ == "__main__":
     # 测试前端payload格式

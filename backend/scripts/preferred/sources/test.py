@@ -1,8 +1,10 @@
 """
 测试 preferred_sources 参数是否生效
 """
-import importlib
+
 import asyncio
+import importlib
+
 from app.core.database import init_db
 from app.services.sources.manager import DataSourceManager
 
@@ -38,7 +40,7 @@ async def test_preferred_sources_akshare():
     print("=" * 80)
 
     manager = DataSourceManager()
-    preferred = ['akshare']
+    preferred = ["akshare"]
 
     print(f"\n指定优先数据源: {preferred}")
     print("\n尝试获取股票列表...")
@@ -46,7 +48,7 @@ async def test_preferred_sources_akshare():
 
     if df is not None and not df.empty:
         print(f"✅ 成功从 {source} 获取 {len(df)} 只股票")
-        if source == 'akshare':
+        if source == "akshare":
             print("✅ 验证通过：使用了指定的优先数据源")
         else:
             print(f"⚠️  警告：期望使用 akshare，但实际使用了 {source}")
@@ -63,7 +65,7 @@ async def test_preferred_sources_baostock():
     print("=" * 80)
 
     manager = DataSourceManager()
-    preferred = ['baostock']
+    preferred = ["baostock"]
 
     print(f"\n指定优先数据源: {preferred}")
     print("\n尝试获取股票列表...")
@@ -71,7 +73,7 @@ async def test_preferred_sources_baostock():
 
     if df is not None and not df.empty:
         print(f"✅ 成功从 {source} 获取 {len(df)} 只股票")
-        if source == 'baostock':
+        if source == "baostock":
             print("✅ 验证通过：使用了指定的优先数据源")
         else:
             print(f"⚠️  警告：期望使用 baostock，但实际使用了 {source}")
@@ -88,7 +90,7 @@ async def test_preferred_sources_multiple():
     print("=" * 80)
 
     manager = DataSourceManager()
-    preferred = ['baostock', 'akshare']
+    preferred = ["baostock", "akshare"]
 
     print(f"\n指定优先数据源: {preferred}")
     print("期望顺序: baostock → akshare → tushare")
@@ -114,7 +116,7 @@ async def test_preferred_sources_invalid():
     print("=" * 80)
 
     manager = DataSourceManager()
-    preferred = ['invalid_source', 'akshare']
+    preferred = ["invalid_source", "akshare"]
 
     print(f"\n指定优先数据源: {preferred}")
     print("期望行为: 忽略不存在的数据源，使用 akshare")
@@ -123,7 +125,7 @@ async def test_preferred_sources_invalid():
 
     if df is not None and not df.empty:
         print(f"✅ 成功从 {source} 获取 {len(df)} 只股票")
-        if source == 'akshare':
+        if source == "akshare":
             print("✅ 验证通过：正确忽略了不存在的数据源")
         else:
             print(f"⚠️  警告：期望使用 akshare，但实际使用了 {source}")
@@ -139,7 +141,10 @@ async def test_api_integration():
     print("测试6: API集成测试")
     print("=" * 80)
 
-    get_multi_source_sync_service = getattr(importlib.import_module('app.services.sync.source'), 'get_multi_source_sync_service')
+    get_multi_source_sync_service = getattr(
+        importlib.import_module("app.services.sync.source"),
+        "get_multi_source_sync_service",
+    )
 
     service = get_multi_source_sync_service()
 
@@ -147,15 +152,14 @@ async def test_api_integration():
     print("注意: 这是一个完整的同步测试，可能需要较长时间...")
 
     user_input = input("\n是否继续？(y/N): ").strip().lower()
-    if user_input not in ['y', 'yes']:
+    if user_input not in ["y", "yes"]:
         print("⏭️  跳过API集成测试")
         return
 
     print("\n开始同步...")
     try:
         result = await service.run_full_sync(
-            force=False,
-            preferred_sources=['akshare', 'baostock']
+            force=False, preferred_sources=["akshare", "baostock"]
         )
 
         print("\n同步结果:")
@@ -165,19 +169,19 @@ async def test_api_integration():
         print(f"  更新: {result.get('updated', 0)}")
         print(f"  错误: {result.get('errors', 0)}")
 
-        if result.get('data_sources_used'):
+        if result.get("data_sources_used"):
             print(f"  使用的数据源: {result['data_sources_used']}")
 
             # 验证是否使用了指定的优先数据源
-            sources_str = str(result['data_sources_used'])
-            if 'akshare' in sources_str or 'baostock' in sources_str:
+            sources_str = str(result["data_sources_used"])
+            if "akshare" in sources_str or "baostock" in sources_str:
                 print("✅ 验证通过：使用了指定的优先数据源")
             else:
                 print("⚠️  警告：没有使用指定的优先数据源")
 
     except Exception as e:
         print(f"❌ 同步失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
     print()
@@ -219,4 +223,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\n❌ 测试出错: {e}")
         import traceback
+
         traceback.print_exc()

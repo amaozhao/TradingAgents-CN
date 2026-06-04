@@ -2,17 +2,14 @@
 """
 测试数据库导入导出功能
 """
-import importlib
-
-import sys
-from pathlib import Path
-
-# 添加项目根目录到路径
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import asyncio
+import importlib
 import json
-from app.core.database import get_mongo_db_sync
+from pathlib import Path
+
+from app.core.database import get_postgres_db_sync
+
 
 async def test_export_import():
     """测试导出和导入功能"""
@@ -21,7 +18,7 @@ async def test_export_import():
     print("=" * 80)
 
     # 获取数据库连接
-    db = get_mongo_db_sync()
+    db = get_postgres_db_sync()
 
     # 1. 导出测试数据
     print("\n1️⃣ 导出测试数据")
@@ -40,14 +37,14 @@ async def test_export_import():
     # 序列化为 JSON
     def serialize_doc(doc):
         """序列化文档"""
-        ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
-        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        DocumentId = getattr(importlib.import_module("app.db.ids"), "DocumentId")
+        datetime = getattr(importlib.import_module("datetime"), "datetime")
 
         if isinstance(doc, dict):
             return {k: serialize_doc(v) for k, v in doc.items()}
         elif isinstance(doc, list):
             return [serialize_doc(item) for item in doc]
-        elif isinstance(doc, ObjectId):
+        elif isinstance(doc, DocumentId):
             return str(doc)
         elif isinstance(doc, datetime):
             return doc.isoformat()
@@ -60,8 +57,10 @@ async def test_export_import():
     export_file = Path("data/test_export.json")
     export_file.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(export_file, 'w', encoding='utf-8') as f:
-        json.dump({"system_configs": [serialized_config]}, f, indent=2, ensure_ascii=False)
+    with open(export_file, "w", encoding="utf-8") as f:
+        json.dump(
+            {"system_configs": [serialized_config]}, f, indent=2, ensure_ascii=False
+        )
 
     print(f"✅ 导出数据到文件: {export_file}")
     print(f"   文件大小: {export_file.stat().st_size / 1024:.2f} KB")
@@ -71,10 +70,10 @@ async def test_export_import():
     print("-" * 80)
 
     # 读取导出的文件
-    with open(export_file, 'r', encoding='utf-8') as f:
+    with open(export_file, "r", encoding="utf-8") as f:
         import_data = json.load(f)
 
-    print(f"✅ 读取导入文件成功")
+    print("✅ 读取导入文件成功")
     print(f"   包含集合: {list(import_data.keys())}")
     print(f"   system_configs 文档数: {len(import_data['system_configs'])}")
 
@@ -84,8 +83,7 @@ async def test_export_import():
 
     # 检测是否为多集合导出格式
     is_multi_collection = isinstance(import_data, dict) and all(
-        isinstance(k, str) and isinstance(v, list)
-        for k, v in import_data.items()
+        isinstance(k, str) and isinstance(v, list) for k, v in import_data.items()
     )
 
     if is_multi_collection:
@@ -99,17 +97,17 @@ async def test_export_import():
     print("\n4️⃣ 检查数据源配置")
     print("-" * 80)
 
-    if 'system_configs' in import_data:
-        config_doc = import_data['system_configs'][0]
-        data_source_configs = config_doc.get('data_source_configs', [])
+    if "system_configs" in import_data:
+        config_doc = import_data["system_configs"][0]
+        data_source_configs = config_doc.get("data_source_configs", [])
 
         print(f"✅ 数据源配置数量: {len(data_source_configs)}")
 
         for ds in data_source_configs:
-            name = ds.get('name', 'N/A')
-            ds_type = ds.get('type', 'N/A')
-            enabled = ds.get('enabled', False)
-            has_api_key = bool(ds.get('api_key'))
+            name = ds.get("name", "N/A")
+            ds_type = ds.get("type", "N/A")
+            enabled = ds.get("enabled", False)
+            has_api_key = bool(ds.get("api_key"))
 
             status = "✅" if enabled else "❌"
             api_key_status = "🔑" if has_api_key else "🔓"
@@ -120,16 +118,16 @@ async def test_export_import():
     print("\n5️⃣ 检查市场分类配置")
     print("-" * 80)
 
-    if 'system_configs' in import_data:
-        config_doc = import_data['system_configs'][0]
-        market_categories = config_doc.get('market_categories', [])
+    if "system_configs" in import_data:
+        config_doc = import_data["system_configs"][0]
+        market_categories = config_doc.get("market_categories", [])
 
         print(f"✅ 市场分类数量: {len(market_categories)}")
 
         for cat in market_categories:
-            cat_id = cat.get('id', 'N/A')
-            name = cat.get('name', 'N/A')
-            enabled = cat.get('enabled', False)
+            cat_id = cat.get("id", "N/A")
+            name = cat.get("name", "N/A")
+            enabled = cat.get("enabled", False)
 
             status = "✅" if enabled else "❌"
             print(f"   {status} {name} ({cat_id})")
@@ -137,6 +135,7 @@ async def test_export_import():
     print("\n" + "=" * 80)
     print("✅ 测试完成")
     print("=" * 80)
+
 
 if __name__ == "__main__":
     asyncio.run(test_export_import())

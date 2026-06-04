@@ -5,7 +5,9 @@ from scripts.postgres.cutover.gate.script import build_gate_steps, run_gate
 
 
 def test_build_gate_steps_includes_required_cutover_gates():
-    steps = build_gate_steps(sample_limit=250, compile_only_query_plan=True, include_api_smoke=True)
+    steps = build_gate_steps(
+        sample_limit=250, compile_only_query_plan=True, include_api_smoke=True
+    )
 
     assert [step.name for step in steps] == [
         "inventory",
@@ -30,7 +32,7 @@ def test_build_gate_steps_can_include_runtime_log_check(tmp_path):
         require_runtime_startup_gate=False,
         require_runtime_dual_write=False,
         allow_runtime_dual_write_failures=True,
-        allow_runtime_mongo_only=True,
+        allow_runtime_postgres_only=True,
     )
 
     assert [step.name for step in steps] == [
@@ -43,15 +45,19 @@ def test_build_gate_steps_can_include_runtime_log_check(tmp_path):
     ]
     runtime_step = steps[-1]
     assert runtime_step.output_file == "runtime_log_check.json"
-    assert "backend/scripts/postgres/runtime/log/check/script.py" in runtime_step.command
+    assert (
+        "backend/scripts/postgres/runtime/log/check/script.py" in runtime_step.command
+    )
     assert str(log_path) in runtime_step.command
     assert "--no-require-startup-gate" in runtime_step.command
     assert "--no-require-dual-write" in runtime_step.command
     assert "--allow-dual-write-failures" in runtime_step.command
-    assert "--allow-mongo-only" in runtime_step.command
+    assert "--allow-postgres-only" in runtime_step.command
 
 
-def test_cutover_gate_dry_run_writes_summary_without_running_commands(tmp_path, monkeypatch):
+def test_cutover_gate_dry_run_writes_summary_without_running_commands(
+    tmp_path, monkeypatch
+):
     monkeypatch.setenv("POSTGRES_PASSWORD", "secret-postgres")
     monkeypatch.setenv("TRADING_AGENTS_API_TOKEN", "secret-token")
     monkeypatch.setenv("TRADING_AGENTS_API_BASE_URL", "https://example.invalid")
@@ -88,7 +94,9 @@ def test_cutover_gate_dry_run_records_runtime_log_step_without_reading_log(tmp_p
     assert summary["results"][-1]["output_file"].endswith("runtime_log_check.json")
 
 
-def test_cutover_gate_writes_non_secret_target_manifest_when_target_is_named(tmp_path, monkeypatch):
+def test_cutover_gate_writes_non_secret_target_manifest_when_target_is_named(
+    tmp_path, monkeypatch
+):
     monkeypatch.setenv("POSTGRES_PASSWORD", "secret-postgres")
     monkeypatch.setenv("TRADING_AGENTS_API_TOKEN", "secret-token")
     monkeypatch.setenv("POSTGRES_READ_ENABLED", "true")
@@ -107,7 +115,9 @@ def test_cutover_gate_writes_non_secret_target_manifest_when_target_is_named(tmp
         target_phase="post-read",
     )
 
-    manifest = json.loads((tmp_path / "00_target_manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads(
+        (tmp_path / "00_target_manifest.json").read_text(encoding="utf-8")
+    )
     assert manifest["target_env"] == "trading_agents-test"
     assert manifest["target_phase"] == "post-read"
     assert manifest["include_api_smoke"] is True
@@ -117,11 +127,13 @@ def test_cutover_gate_writes_non_secret_target_manifest_when_target_is_named(tmp
     assert "secret-postgres" not in json.dumps(manifest)
 
 
-def test_cutover_gate_require_explicit_env_fails_fast_when_target_env_missing(tmp_path, monkeypatch):
+def test_cutover_gate_require_explicit_env_fails_fast_when_target_env_missing(
+    tmp_path, monkeypatch
+):
     for name in [
         "DATABASE_URL",
-        "MONGODB_HOST",
-        "MONGODB_DATABASE",
+        "POSTGRES_HOST",
+        "POSTGRES_DB",
         "POSTGRES_HOST",
         "POSTGRES_DB",
         "POSTGRES_USER",
@@ -149,16 +161,25 @@ def test_cutover_gate_require_explicit_env_fails_fast_when_target_env_missing(tm
     assert summary["all_passed"] is False
     assert [result["name"] for result in summary["results"]] == ["target_env_preflight"]
     assert summary["results"][0]["status"] == "failed"
-    assert "MONGODB_HOST" in summary["results"][0]["detail"]
+    assert "POSTGRES_HOST" in summary["results"][0]["detail"]
     assert "POSTGRES_PASSWORD" in summary["results"][0]["detail"]
     assert "TRADING_AGENTS_API_BASE_URL" in summary["results"][0]["detail"]
-    assert "TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED" in summary["results"][0]["detail"]
-    assert "TRADING_AGENTS_TARGET_ENV or --target-env" in summary["results"][0]["detail"]
-    assert "TRADING_AGENTS_CUTOVER_PHASE or --target-phase" in summary["results"][0]["detail"]
+    assert (
+        "TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED" in summary["results"][0]["detail"]
+    )
+    assert (
+        "TRADING_AGENTS_TARGET_ENV or --target-env" in summary["results"][0]["detail"]
+    )
+    assert (
+        "TRADING_AGENTS_CUTOVER_PHASE or --target-phase"
+        in summary["results"][0]["detail"]
+    )
     assert not (tmp_path / "00_target_manifest.json").exists()
 
 
-def test_cutover_gate_does_not_write_incomplete_manifest_when_preflight_fails(tmp_path, monkeypatch):
+def test_cutover_gate_does_not_write_incomplete_manifest_when_preflight_fails(
+    tmp_path, monkeypatch
+):
     _set_required_target_env(monkeypatch)
     monkeypatch.delenv("TRADING_AGENTS_TARGET_ENV", raising=False)
 
@@ -173,13 +194,17 @@ def test_cutover_gate_does_not_write_incomplete_manifest_when_preflight_fails(tm
     )
 
     assert summary["all_passed"] is False
-    assert "TRADING_AGENTS_TARGET_ENV or --target-env" in summary["results"][0]["detail"]
+    assert (
+        "TRADING_AGENTS_TARGET_ENV or --target-env" in summary["results"][0]["detail"]
+    )
     assert not (tmp_path / "00_target_manifest.json").exists()
 
 
-def test_cutover_gate_require_explicit_env_passes_and_runs_gates_with_target_env(tmp_path, monkeypatch):
-    monkeypatch.setenv("MONGODB_HOST", "mongo.example.internal")
-    monkeypatch.setenv("MONGODB_DATABASE", "trading_agents_cn")
+def test_cutover_gate_require_explicit_env_passes_and_runs_gates_with_target_env(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("POSTGRES_HOST", "postgres.example.internal")
+    monkeypatch.setenv("POSTGRES_DB", "trading_agents_cn")
     monkeypatch.setenv("POSTGRES_HOST", "postgres.example.internal")
     monkeypatch.setenv("POSTGRES_DB", "trading_agents_cn")
     monkeypatch.setenv("POSTGRES_USER", "postgres")
@@ -192,7 +217,11 @@ def test_cutover_gate_require_explicit_env_passes_and_runs_gates_with_target_env
     def fake_run(command, cwd, stdout, stderr, text, check):
         command_text = " ".join(command)
         if "postgres_migration_inventory.py" in command_text:
-            stdout.write(json.dumps({"response_model_dict_endpoints": 0, "raw_dict_request_bodies": 0}))
+            stdout.write(
+                json.dumps(
+                    {"response_model_dict_endpoints": 0, "raw_dict_request_bodies": 0}
+                )
+            )
         elif "postgres_consistency_check.py" in command_text:
             stdout.write(json.dumps({"all_consistent": True}))
         elif "postgres_query_plan_check.py" in command_text:
@@ -204,7 +233,13 @@ def test_cutover_gate_require_explicit_env_passes_and_runs_gates_with_target_env
                 json.dumps(
                     {
                         "all_passed": True,
-                        "checks": [{"name": "migration_state", "status": "passed", "detail": "ok"}],
+                        "checks": [
+                            {
+                                "name": "migration_state",
+                                "status": "passed",
+                                "detail": "ok",
+                            }
+                        ],
                     }
                 )
             )
@@ -291,16 +326,25 @@ def test_cutover_gate_rejects_rollback_phase_for_cutover_gate(tmp_path, monkeypa
 
     assert summary["all_passed"] is False
     assert summary["results"][0]["name"] == "target_env_preflight"
-    assert "rollback phase requires postgres_rollback_check.py" in summary["results"][0]["detail"]
+    assert (
+        "rollback phase requires postgres_rollback_check.py"
+        in summary["results"][0]["detail"]
+    )
 
 
-def test_cutover_gate_fails_when_successful_consistency_command_reports_inconsistent_json(tmp_path, monkeypatch):
+def test_cutover_gate_fails_when_successful_consistency_command_reports_inconsistent_json(
+    tmp_path, monkeypatch
+):
     def fake_run(command, cwd, stdout, stderr, text, check):
         command_text = " ".join(command)
         if "postgres_consistency_check.py" in command_text:
             stdout.write(json.dumps({"all_consistent": False}))
         elif "postgres_migration_inventory.py" in command_text:
-            stdout.write(json.dumps({"response_model_dict_endpoints": 0, "raw_dict_request_bodies": 0}))
+            stdout.write(
+                json.dumps(
+                    {"response_model_dict_endpoints": 0, "raw_dict_request_bodies": 0}
+                )
+            )
         elif "postgres_query_plan_check.py" in command_text:
             stdout.write(json.dumps({"all_required_without_payload_filter": True}))
         elif "postgres_cutover_smoke.py" in command_text:
@@ -319,17 +363,25 @@ def test_cutover_gate_fails_when_successful_consistency_command_reports_inconsis
         dry_run=False,
     )
 
-    consistency = next(result for result in summary["results"] if result["name"] == "consistency")
+    consistency = next(
+        result for result in summary["results"] if result["name"] == "consistency"
+    )
     assert summary["all_passed"] is False
     assert consistency["status"] == "failed"
     assert "all_consistent" in consistency["detail"]
 
 
-def test_cutover_gate_fails_when_successful_smoke_command_reports_failed_checks(tmp_path, monkeypatch):
+def test_cutover_gate_fails_when_successful_smoke_command_reports_failed_checks(
+    tmp_path, monkeypatch
+):
     def fake_run(command, cwd, stdout, stderr, text, check):
         command_text = " ".join(command)
         if "postgres_migration_inventory.py" in command_text:
-            stdout.write(json.dumps({"response_model_dict_endpoints": 0, "raw_dict_request_bodies": 0}))
+            stdout.write(
+                json.dumps(
+                    {"response_model_dict_endpoints": 0, "raw_dict_request_bodies": 0}
+                )
+            )
         elif "postgres_consistency_check.py" in command_text:
             stdout.write(json.dumps({"all_consistent": True}))
         elif "postgres_query_plan_check.py" in command_text:
@@ -350,15 +402,17 @@ def test_cutover_gate_fails_when_successful_smoke_command_reports_failed_checks(
         dry_run=False,
     )
 
-    smoke = next(result for result in summary["results"] if result["name"] == "data_path_smoke")
+    smoke = next(
+        result for result in summary["results"] if result["name"] == "data_path_smoke"
+    )
     assert summary["all_passed"] is False
     assert smoke["status"] == "failed"
     assert "all_passed" in smoke["detail"]
 
 
 def _set_required_target_env(monkeypatch):
-    monkeypatch.setenv("MONGODB_HOST", "mongo.example.internal")
-    monkeypatch.setenv("MONGODB_DATABASE", "trading_agents_cn")
+    monkeypatch.setenv("POSTGRES_HOST", "postgres.example.internal")
+    monkeypatch.setenv("POSTGRES_DB", "trading_agents_cn")
     monkeypatch.setenv("POSTGRES_HOST", "postgres.example.internal")
     monkeypatch.setenv("POSTGRES_DB", "trading_agents_cn")
     monkeypatch.setenv("POSTGRES_USER", "postgres")

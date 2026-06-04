@@ -6,13 +6,8 @@
 2. stock_hk_indicator_eniu - 亿牛港股指标
 3. stock_financial_hk_analysis_indicator_em - 东方财富港股财务分析指标
 """
+
 import importlib
-
-import sys
-import os
-
-# 添加项目根目录到路径
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 
 def test_stock_hk_valuation_baidu():
@@ -24,7 +19,7 @@ def test_stock_hk_valuation_baidu():
     test_symbols = ["00005", "00700", "09988"]  # 汇丰控股、腾讯、阿里巴巴
 
     try:
-        ak = importlib.import_module('akshare')
+        ak = importlib.import_module("akshare")
 
         for symbol in test_symbols:
             print(f"\n📊 测试股票: {symbol}")
@@ -35,19 +30,19 @@ def test_stock_hk_valuation_baidu():
                 if df is not None and not df.empty:
                     print(f"   ✅ 成功获取数据，共 {len(df)} 条记录")
                     print(f"   📋 列名: {list(df.columns)}")
-                    print(f"   📈 最新数据:")
+                    print("   📈 最新数据:")
                     print(df.tail(3).to_string(index=False))
                 else:
-                    print(f"   ⚠️ 返回空数据")
+                    print("   ⚠️ 返回空数据")
 
             except Exception as e:
                 print(f"   ❌ 调用失败: {e}")
-                traceback = importlib.import_module('traceback')
+                traceback = importlib.import_module("traceback")
                 traceback.print_exc()
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 
@@ -60,7 +55,7 @@ def test_stock_hk_indicator_eniu():
     test_symbols = ["00005", "00700", "09988"]
 
     try:
-        ak = importlib.import_module('akshare')
+        ak = importlib.import_module("akshare")
 
         for symbol in test_symbols:
             print(f"\n📊 测试股票: {symbol}")
@@ -71,17 +66,17 @@ def test_stock_hk_indicator_eniu():
                 if df is not None and not df.empty:
                     print(f"   ✅ 成功获取数据，共 {len(df)} 条记录")
                     print(f"   📋 列名: {list(df.columns)}")
-                    print(f"   📈 最新数据:")
+                    print("   📈 最新数据:")
                     print(df.tail(3).to_string(index=False))
                 else:
-                    print(f"   ⚠️ 返回空数据")
+                    print("   ⚠️ 返回空数据")
 
             except Exception as e:
                 print(f"   ❌ 调用失败: {e}")
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 
@@ -94,7 +89,7 @@ def test_stock_financial_hk_analysis_indicator_em():
     test_symbols = ["01810", "00700", "09988"]  # 小米、腾讯、阿里巴巴
 
     try:
-        ak = importlib.import_module('akshare')
+        ak = importlib.import_module("akshare")
 
         for symbol in test_symbols:
             print(f"\n📊 测试股票: {symbol}")
@@ -105,26 +100,33 @@ def test_stock_financial_hk_analysis_indicator_em():
                 if df is not None and not df.empty:
                     print(f"   ✅ 成功获取数据，共 {len(df)} 条记录")
                     print(f"   📋 列名: {list(df.columns)}")
-                    print(f"   📈 最新数据:")
+                    print("   📈 最新数据:")
                     print(df.tail(1).to_string(index=False))
 
                     # 查找 PE、PB 相关字段
-                    pe_pb_cols = [col for col in df.columns if any(keyword in col.lower() for keyword in ['pe', 'pb', '市盈', '市净', 'ratio'])]
+                    pe_pb_cols = [
+                        col
+                        for col in df.columns
+                        if any(
+                            keyword in col.lower()
+                            for keyword in ["pe", "pb", "市盈", "市净", "ratio"]
+                        )
+                    ]
                     if pe_pb_cols:
                         print(f"\n   🔍 找到 PE/PB 相关字段: {pe_pb_cols}")
-                        print(f"   📊 PE/PB 数据:")
+                        print("   📊 PE/PB 数据:")
                         print(df[pe_pb_cols].tail(1).to_string(index=False))
                 else:
-                    print(f"   ⚠️ 返回空数据")
+                    print("   ⚠️ 返回空数据")
 
             except Exception as e:
                 print(f"   ❌ 调用失败: {e}")
-                traceback = importlib.import_module('traceback')
+                traceback = importlib.import_module("traceback")
                 traceback.print_exc()
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 
@@ -135,7 +137,7 @@ def test_stock_hk_spot_em():
     print("=" * 80)
 
     try:
-        ak = importlib.import_module('akshare')
+        ak = importlib.import_module("akshare")
 
         df = ak.stock_hk_spot_em()
 
@@ -145,7 +147,7 @@ def test_stock_hk_spot_em():
 
             # 查找汇丰控股
             test_symbol = "01810"  # 小米
-            matched = df[df['代码'] == test_symbol]
+            matched = df[df["代码"] == test_symbol]
 
             if not matched.empty:
                 print(f"\n   📈 {test_symbol} 的数据:")
@@ -154,17 +156,24 @@ def test_stock_hk_spot_em():
                     print(f"     {col}: {row[col]}")
 
                 # 查找 PE、PB 相关字段
-                pe_pb_cols = [col for col in df.columns if any(keyword in col for keyword in ['PE', 'PB', '市盈', '市净', '估值'])]
+                pe_pb_cols = [
+                    col
+                    for col in df.columns
+                    if any(
+                        keyword in col
+                        for keyword in ["PE", "PB", "市盈", "市净", "估值"]
+                    )
+                ]
                 if pe_pb_cols:
                     print(f"\n   🔍 找到 PE/PB 相关字段: {pe_pb_cols}")
             else:
                 print(f"\n   ⚠️ 未找到 {test_symbol} 的数据")
         else:
-            print(f"   ⚠️ 返回空数据")
+            print("   ⚠️ 返回空数据")
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 

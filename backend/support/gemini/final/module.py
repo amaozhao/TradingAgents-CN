@@ -2,19 +2,17 @@
 """
 最终测试修复后的Gemini集成
 """
-import importlib
 
+import importlib
 import os
-import sys
-from pathlib import Path
+
 from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
+from support.path import BACKEND_ROOT
 
 # 加载环境变量
-load_dotenv(project_root / ".env", override=True)
+load_dotenv(BACKEND_ROOT / ".env", override=True)
+
 
 def test_gemini_trading_agents():
     """测试修复后的Gemini与TradingAgents集成"""
@@ -22,11 +20,15 @@ def test_gemini_trading_agents():
         print("🧪 测试修复后的Gemini与TradingAgents集成")
         print("=" * 60)
 
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        TradingAgentsGraph = getattr(
+            importlib.import_module("trader.graph.trading"), "TradingAgentsGraph"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 检查API密钥
-        google_api_key = os.getenv('GOOGLE_API_KEY')
+        google_api_key = os.getenv("GOOGLE_API_KEY")
         if not google_api_key:
             print("❌ Google API密钥未配置")
             return False
@@ -42,9 +44,11 @@ def test_gemini_trading_agents():
         config["memory_enabled"] = True
 
         # 修复路径
-        config["data_dir"] = str(project_root / "data")
-        config["results_dir"] = str(project_root / "results")
-        config["data_cache_dir"] = str(project_root / "trader" / "dataflows" / "data_cache")
+        config["data_dir"] = str(BACKEND_ROOT / "data")
+        config["results_dir"] = str(BACKEND_ROOT / "results")
+        config["data_cache_dir"] = str(
+            BACKEND_ROOT / "trader" / "dataflows" / "data_cache"
+        )
 
         # 创建目录
         os.makedirs(config["data_dir"], exist_ok=True)
@@ -74,7 +78,12 @@ def test_gemini_trading_agents():
                 print(f"   最终决策: {decision}")
 
                 # 检查各种报告
-                reports = ["market_report", "sentiment_report", "news_report", "fundamentals_report"]
+                reports = [
+                    "market_report",
+                    "sentiment_report",
+                    "news_report",
+                    "fundamentals_report",
+                ]
                 for report_name in reports:
                     if report_name in state and state[report_name]:
                         report_content = state[report_name]
@@ -89,15 +98,16 @@ def test_gemini_trading_agents():
 
         except Exception as e:
             print(f"❌ 股票分析失败: {e}")
-            traceback = importlib.import_module('traceback')
+            traceback = importlib.import_module("traceback")
             print(traceback.format_exc())
             return False
 
     except Exception as e:
         print(f"❌ TradingAgents集成测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         print(traceback.format_exc())
         return False
+
 
 def test_gemini_basic():
     """基础Gemini功能测试"""
@@ -105,14 +115,16 @@ def test_gemini_basic():
         print("🧪 基础Gemini功能测试")
         print("=" * 50)
 
-        ChatGoogleGenerativeAI = getattr(importlib.import_module('langchain_google_genai'), 'ChatGoogleGenerativeAI')
+        ChatGoogleGenerativeAI = getattr(
+            importlib.import_module("langchain_google_genai"), "ChatGoogleGenerativeAI"
+        )
 
         # 创建LangChain Gemini实例
         llm = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash-lite-preview-06-17",
             temperature=0.1,
             max_tokens=500,
-            google_api_key=os.getenv('GOOGLE_API_KEY')
+            google_api_key=os.getenv("GOOGLE_API_KEY"),
         )
 
         print("✅ Gemini实例创建成功")
@@ -134,13 +146,14 @@ def test_gemini_basic():
         print(f"❌ 基础功能测试失败: {e}")
         return False
 
+
 def main():
     """主测试函数"""
     print("🧪 Gemini最终集成测试")
     print("=" * 70)
 
     # 检查环境变量
-    google_api_key = os.getenv('GOOGLE_API_KEY')
+    google_api_key = os.getenv("GOOGLE_API_KEY")
     if not google_api_key:
         print("❌ Google API密钥未配置")
         print("💡 请在.env文件中设置 GOOGLE_API_KEY")
@@ -151,14 +164,14 @@ def main():
 
     print("第1步: 基础功能测试")
     print("-" * 30)
-    results['基础功能'] = test_gemini_basic()
+    results["基础功能"] = test_gemini_basic()
 
     print("\n第2步: TradingAgents集成测试")
     print("-" * 30)
-    results['TradingAgents集成'] = test_gemini_trading_agents()
+    results["TradingAgents集成"] = test_gemini_trading_agents()
 
     # 总结结果
-    print(f"\n📊 最终测试结果总结:")
+    print("\n📊 最终测试结果总结:")
     print("=" * 50)
 
     for test_name, success in results.items():
@@ -180,12 +193,13 @@ def main():
         print("   5. Gemini在多语言和推理能力方面表现优秀")
     elif successful_tests > 0:
         print("⚠️ Gemini部分功能可用")
-        if results['基础功能'] and not results['TradingAgents集成']:
+        if results["基础功能"] and not results["TradingAgents集成"]:
             print("💡 基础功能正常，但TradingAgents集成有问题")
             print("   建议检查配置和依赖")
     else:
         print("❌ Gemini模型不可用")
         print("💡 请检查API密钥、网络连接和依赖安装")
+
 
 if __name__ == "__main__":
     main()

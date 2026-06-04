@@ -2,19 +2,16 @@
 """
 测试DeepSeek使用ReAct Agent的修复效果
 """
-import importlib
 
+import importlib
 import os
 import sys
-from pathlib import Path
-from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
+
 
 def test_deepseek_react_market_analyst():
     """测试DeepSeek的ReAct市场分析师"""
@@ -27,16 +24,23 @@ def test_deepseek_react_market_analyst():
             print("⚠️ 未找到DEEPSEEK_API_KEY，无法测试")
             return False
 
-        create_market_analyst_react = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst_react')
-        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        create_market_analyst_react = getattr(
+            importlib.import_module("trader.agents.analysts.market"),
+            "create_market_analyst_react",
+        )
+        ChatDeepSeek = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"), "ChatDeepSeek"
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 创建DeepSeek LLM
         deepseek_llm = ChatDeepSeek(
-            model="deepseek-chat",
-            temperature=0.1,
-            max_tokens=2000
+            model="deepseek-chat", temperature=0.1, max_tokens=2000
         )
 
         # 创建工具包
@@ -51,7 +55,7 @@ def test_deepseek_react_market_analyst():
         state = {
             "company_of_interest": "000002",
             "trade_date": "2025-07-08",
-            "messages": []
+            "messages": [],
         }
 
         print(f"📊 开始分析股票: {state['company_of_interest']}")
@@ -59,22 +63,27 @@ def test_deepseek_react_market_analyst():
         # 执行分析
         result = market_analyst(state)
 
-        print(f"📊 分析结果:")
+        print("📊 分析结果:")
         print(f"   消息数量: {len(result.get('messages', []))}")
 
-        market_report = result.get('market_report', '')
+        market_report = result.get("market_report", "")
         print(f"   市场报告长度: {len(market_report)}")
-        print(f"   市场报告前500字符:")
+        print("   市场报告前500字符:")
         print("-" * 50)
         print(market_report[:500])
         print("-" * 50)
 
         # 检查报告质量
-        has_data = any(keyword in market_report for keyword in ["¥", "RSI", "MACD", "万科", "技术指标", "6.56"])
+        has_data = any(
+            keyword in market_report
+            for keyword in ["¥", "RSI", "MACD", "万科", "技术指标", "6.56"]
+        )
         has_analysis = len(market_report) > 500
-        not_placeholder = "正在调用工具" not in market_report and "(调用工具" not in market_report
+        not_placeholder = (
+            "正在调用工具" not in market_report and "(调用工具" not in market_report
+        )
 
-        print(f"📊 报告质量检查:")
+        print("📊 报告质量检查:")
         print(f"   包含实际数据: {'✅' if has_data else '❌'}")
         print(f"   分析内容充实: {'✅' if has_analysis else '❌'}")
         print(f"   非占位符内容: {'✅' if not_placeholder else '❌'}")
@@ -100,9 +109,10 @@ def test_deepseek_react_market_analyst():
 
     except Exception as e:
         print(f"❌ DeepSeek ReAct市场分析师测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_graph_setup_logic():
     """测试图设置逻辑是否正确选择ReAct模式"""
@@ -110,8 +120,12 @@ def test_graph_setup_logic():
     print("=" * 60)
 
     try:
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.setup'), 'TradingAgentsGraph')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        TradingAgentsGraph = getattr(
+            importlib.import_module("trader.graph.setup"), "TradingAgentsGraph"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 模拟DeepSeek配置
         config = DEFAULT_CONFIG.copy()
@@ -119,7 +133,7 @@ def test_graph_setup_logic():
         config["deep_think_llm"] = "deepseek-chat"
         config["quick_think_llm"] = "deepseek-chat"
 
-        print(f"📊 配置信息:")
+        print("📊 配置信息:")
         print(f"   LLM提供商: {config['llm_provider']}")
         print(f"   深度思考模型: {config['deep_think_llm']}")
         print(f"   快速思考模型: {config['quick_think_llm']}")
@@ -128,17 +142,18 @@ def test_graph_setup_logic():
         graph = TradingAgentsGraph(config)
 
         # 设置分析师（这会触发选择逻辑）
-        print(f"\n📈 设置市场分析师...")
+        print("\n📈 设置市场分析师...")
         graph.setup_and_compile(selected_analysts=["market"])
 
-        print(f"✅ 图设置完成")
+        print("✅ 图设置完成")
         return True
 
     except Exception as e:
         print(f"❌ 图设置逻辑测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主函数"""
@@ -156,7 +171,9 @@ def main():
     print("=" * 60)
 
     print(f"图设置逻辑: {'✅ 正确' if setup_success else '❌ 有问题'}")
-    print(f"DeepSeek ReAct分析师: {'✅ 修复成功' if analyst_success else '❌ 仍需修复'}")
+    print(
+        f"DeepSeek ReAct分析师: {'✅ 修复成功' if analyst_success else '❌ 仍需修复'}"
+    )
 
     overall_success = setup_success and analyst_success
 
@@ -174,6 +191,7 @@ def main():
 
     print("\n🎯 测试完成！")
     return overall_success
+
 
 if __name__ == "__main__":
     success = main()

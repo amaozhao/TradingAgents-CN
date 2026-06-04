@@ -23,11 +23,43 @@ from app.db.base import Base
 
 
 class JsonbLegacyMixin:
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     legacy_id: Mapped[str] = mapped_column(String(64), nullable=False)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class PostgresDocument(Base):
+    __tablename__ = "postgres_documents"
+    __table_args__ = (
+        UniqueConstraint(
+            "collection",
+            "document_id",
+            name="uq_postgres_documents_collection_document_id",
+        ),
+        Index("ix_postgres_documents_collection", "collection"),
+        Index("ix_postgres_documents_updated_at", "updated_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    collection: Mapped[str] = mapped_column(String(128), nullable=False)
+    document_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class StockBasicInfo(JsonbLegacyMixin, Base):
@@ -83,7 +115,13 @@ class StockDailyQuote(JsonbLegacyMixin, Base):
     __tablename__ = "stock_daily_quotes"
     __table_args__ = (
         UniqueConstraint("legacy_id", name="uq_stock_daily_quotes_legacy_id"),
-        UniqueConstraint("symbol", "trade_date", "data_source", "period", name="uq_stock_daily_quotes_symbol_date_source_period"),
+        UniqueConstraint(
+            "symbol",
+            "trade_date",
+            "data_source",
+            "period",
+            name="uq_stock_daily_quotes_symbol_date_source_period",
+        ),
         Index("ix_stock_daily_quotes_symbol_date", "symbol", "trade_date"),
         Index("ix_stock_daily_quotes_trade_date", "trade_date"),
         Index("ix_stock_daily_quotes_market_source", "market", "data_source"),
@@ -112,7 +150,12 @@ class StockFinancialData(JsonbLegacyMixin, Base):
     __tablename__ = "stock_financial_data"
     __table_args__ = (
         UniqueConstraint("legacy_id", name="uq_stock_financial_data_legacy_id"),
-        UniqueConstraint("code", "data_source", "report_period", name="uq_stock_financial_data_code_source_period"),
+        UniqueConstraint(
+            "code",
+            "data_source",
+            "report_period",
+            name="uq_stock_financial_data_code_source_period",
+        ),
         Index("ix_stock_financial_data_report_period", "report_period"),
     )
 
@@ -151,7 +194,9 @@ class AnalysisTask(JsonbLegacyMixin, Base):
     __table_args__ = (
         UniqueConstraint("legacy_id", name="uq_analysis_tasks_legacy_id"),
         UniqueConstraint("task_id", name="uq_analysis_tasks_task_id"),
-        Index("ix_analysis_tasks_user_status_created", "user_id", "status", "created_at"),
+        Index(
+            "ix_analysis_tasks_user_status_created", "user_id", "status", "created_at"
+        ),
         Index("ix_analysis_tasks_task_id", "task_id"),
     )
 
@@ -168,7 +213,12 @@ class AnalysisReport(JsonbLegacyMixin, Base):
         UniqueConstraint("legacy_id", name="uq_analysis_reports_legacy_id"),
         UniqueConstraint("analysis_id", name="uq_analysis_reports_analysis_id"),
         Index("ix_analysis_reports_task_id", "task_id"),
-        Index("ix_analysis_reports_user_symbol_date", "user_id", "stock_symbol", "analysis_date"),
+        Index(
+            "ix_analysis_reports_user_symbol_date",
+            "user_id",
+            "stock_symbol",
+            "analysis_date",
+        ),
         Index("ix_analysis_reports_analysis_id", "analysis_id"),
     )
 
@@ -185,7 +235,9 @@ class AnalysisBatchDocument(JsonbLegacyMixin, Base):
     __table_args__ = (
         UniqueConstraint("legacy_id", name="uq_analysis_batches_legacy_id"),
         UniqueConstraint("batch_id", name="uq_analysis_batches_batch_id"),
-        Index("ix_analysis_batches_user_status_created", "user_id", "status", "created_at"),
+        Index(
+            "ix_analysis_batches_user_status_created", "user_id", "status", "created_at"
+        ),
     )
 
     batch_id: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -241,7 +293,12 @@ class SchedulerExecution(JsonbLegacyMixin, Base):
     __tablename__ = "scheduler_executions"
     __table_args__ = (
         UniqueConstraint("legacy_id", name="uq_scheduler_executions_legacy_id"),
-        Index("ix_scheduler_executions_job_status_timestamp", "job_id", "status", "timestamp"),
+        Index(
+            "ix_scheduler_executions_job_status_timestamp",
+            "job_id",
+            "status",
+            "timestamp",
+        ),
     )
 
     job_id: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -256,7 +313,9 @@ class SchedulerHistoryDocument(JsonbLegacyMixin, Base):
     __tablename__ = "scheduler_history"
     __table_args__ = (
         UniqueConstraint("legacy_id", name="uq_scheduler_history_legacy_id"),
-        Index("ix_scheduler_history_job_status_timestamp", "job_id", "status", "timestamp"),
+        Index(
+            "ix_scheduler_history_job_status_timestamp", "job_id", "status", "timestamp"
+        ),
     )
 
     job_id: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -469,7 +528,12 @@ class TokenUsageDocument(JsonbLegacyMixin, Base):
     __tablename__ = "token_usage"
     __table_args__ = (
         UniqueConstraint("legacy_id", name="uq_token_usage_legacy_id"),
-        Index("ix_token_usage_provider_model_timestamp", "provider", "model_name", "timestamp"),
+        Index(
+            "ix_token_usage_provider_model_timestamp",
+            "provider",
+            "model_name",
+            "timestamp",
+        ),
         Index("ix_token_usage_session", "session_id"),
     )
 
@@ -514,7 +578,9 @@ class SocialMediaMessageDocument(JsonbLegacyMixin, Base):
     __tablename__ = "social_media_messages"
     __table_args__ = (
         UniqueConstraint("legacy_id", name="uq_social_media_messages_legacy_id"),
-        UniqueConstraint("message_id", "platform", name="uq_social_media_messages_message_platform"),
+        UniqueConstraint(
+            "message_id", "platform", name="uq_social_media_messages_message_platform"
+        ),
         Index("ix_social_media_symbol_publish", "symbol", "publish_time"),
         Index("ix_social_media_platform_type", "platform", "message_type"),
         Index("ix_social_media_sentiment_importance", "sentiment", "importance"),

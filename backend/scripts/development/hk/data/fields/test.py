@@ -3,18 +3,11 @@
 测试 AKShare 港股历史数据接口返回的字段
 检查字段映射是否正确
 """
+
 import importlib
-
-import sys
-from pathlib import Path
-
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+from datetime import datetime, timedelta
 
 import akshare as ak
-import pandas as pd
-from datetime import datetime, timedelta
 
 
 def test_hk_stock_data_fields():
@@ -90,18 +83,18 @@ def test_hk_stock_data_fields():
         print()
 
         # 检查 AKShare 返回的字段
-        if '开盘' in df_recent.columns:
-            print(f"✅ '开盘' 字段存在")
-        if '收盘' in df_recent.columns:
-            print(f"✅ '收盘' 字段存在")
-        if '最高' in df_recent.columns:
-            print(f"✅ '最高' 字段存在")
-        if '最低' in df_recent.columns:
-            print(f"✅ '最低' 字段存在")
-        if '成交量' in df_recent.columns:
-            print(f"✅ '成交量' 字段存在")
-        if '成交额' in df_recent.columns:
-            print(f"✅ '成交额' 字段存在")
+        if "开盘" in df_recent.columns:
+            print("✅ '开盘' 字段存在")
+        if "收盘" in df_recent.columns:
+            print("✅ '收盘' 字段存在")
+        if "最高" in df_recent.columns:
+            print("✅ '最高' 字段存在")
+        if "最低" in df_recent.columns:
+            print("✅ '最低' 字段存在")
+        if "成交量" in df_recent.columns:
+            print("✅ '成交量' 字段存在")
+        if "成交额" in df_recent.columns:
+            print("✅ '成交额' 字段存在")
 
         print()
 
@@ -127,14 +120,16 @@ def test_hk_stock_data_fields():
             print(f"  收盘: {yesterday.get('close', 'N/A')}")
 
             print("\n⚠️  注意:")
-            print(f"  今日开盘 ({today.get('open', 'N/A')}) 应该接近昨日收盘 ({yesterday.get('close', 'N/A')})")
-            print(f"  如果今日开盘 = 638.000，昨日收盘应该 ≈ 644.000")
+            print(
+                f"  今日开盘 ({today.get('open', 'N/A')}) 应该接近昨日收盘 ({yesterday.get('close', 'N/A')})"
+            )
+            print("  如果今日开盘 = 638.000，昨日收盘应该 ≈ 644.000")
 
             # 检查是否有 "昨收" 字段
-            if 'pre_close' in df_recent.columns:
+            if "pre_close" in df_recent.columns:
                 print(f"\n✅ 发现 'pre_close' 字段: {today.get('pre_close', 'N/A')}")
             else:
-                print(f"\n⚠️  没有 'pre_close' 字段，需要从前一天的 'close' 获取")
+                print("\n⚠️  没有 'pre_close' 字段，需要从前一天的 'close' 获取")
                 print(f"   昨收 (计算) = {yesterday.get('close', 'N/A')}")
 
         print()
@@ -177,14 +172,14 @@ def test_hk_stock_data_fields():
 
         # 检查昨收字段
         if mapped_data["pre_close"] is None:
-            print(f"  ⚠️  pre_close 字段为 None，需要从前一天的 close 获取")
+            print("  ⚠️  pre_close 字段为 None，需要从前一天的 close 获取")
             if len(df_recent) >= 2:
-                yesterday_close = df_recent.iloc[-2].get('close')
+                yesterday_close = df_recent.iloc[-2].get("close")
                 print(f"  💡 解决方案: pre_close = 前一天的 close = {yesterday_close}")
 
     except Exception as e:
         print(f"❌ 错误: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 
@@ -209,7 +204,7 @@ def test_multiple_stocks():
             df = ak.stock_hk_daily(symbol=symbol, adjust="qfq")
 
             if df is None or df.empty:
-                print(f"  ❌ 未获取到数据")
+                print("  ❌ 未获取到数据")
                 continue
 
             latest = df.iloc[-1]
@@ -222,11 +217,11 @@ def test_multiple_stocks():
             print(f"  成交量: {latest.get('volume', 'N/A')}")
 
             # 检查是否有昨收字段
-            if 'pre_close' in df.columns:
+            if "pre_close" in df.columns:
                 print(f"  昨收: {latest.get('pre_close', 'N/A')}")
             else:
                 if len(df) >= 2:
-                    yesterday_close = df.iloc[-2].get('close', 'N/A')
+                    yesterday_close = df.iloc[-2].get("close", "N/A")
                     print(f"  昨收 (计算): {yesterday_close}")
 
         except Exception as e:

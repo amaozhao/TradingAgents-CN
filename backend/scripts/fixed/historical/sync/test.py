@@ -2,14 +2,15 @@
 """
 测试修复后的历史数据同步
 """
-import importlib
+
 import asyncio
+import importlib
 import logging
-from datetime import datetime, timedelta
-from trader.flows.providers.tushare import TushareProvider
-from app.services.market.historical import get_historical_data_service
+
 from app.core.database import init_database
-from trader.config.databases import get_mongodb_client
+from app.services.market.historical import get_historical_data_service
+from trader.config.databases import get_postgres_client
+from trader.flows.providers.tushare import TushareProvider
 
 # 设置日志
 logging.basicConfig(level=logging.INFO)
@@ -27,7 +28,7 @@ async def test_fixed_historical_sync():
     start_date = "2024-01-01"
     end_date = "2024-01-10"  # 测试10天的数据
 
-    print(f"📊 测试参数:")
+    print("📊 测试参数:")
     print(f"   股票代码: {test_symbol}")
     print(f"   日期范围: {start_date} 到 {end_date}")
     print()
@@ -44,22 +45,21 @@ async def test_fixed_historical_sync():
         print("   ✅ 初始化完成")
 
         # 2. 检查数据库状态（保存前）
-        print(f"\n2️⃣ 检查数据库状态（保存前）")
-        client = get_mongodb_client()
-        db = client.get_database('trading_agents')
+        print("\n2️⃣ 检查数据库状态（保存前）")
+        client = get_postgres_client()
+        db = client.get_database("trading_agents")
         collection = db.stock_daily_quotes
 
         before_count = collection.count_documents({"symbol": test_symbol})
-        before_tushare_count = collection.count_documents({
-            "symbol": test_symbol,
-            "data_source": "tushare"
-        })
+        before_tushare_count = collection.count_documents(
+            {"symbol": test_symbol, "data_source": "tushare"}
+        )
 
         print(f"   📊 {test_symbol} 总记录数: {before_count}")
         print(f"   📊 {test_symbol} Tushare记录数: {before_tushare_count}")
 
         # 3. 获取历史数据
-        print(f"\n3️⃣ 获取历史数据")
+        print("\n3️⃣ 获取历史数据")
         df = await provider.get_historical_data(test_symbol, start_date, end_date)
 
         if df is None or df.empty:
@@ -69,25 +69,24 @@ async def test_fixed_historical_sync():
         print(f"   ✅ 获取到 {len(df)} 条记录")
 
         # 4. 保存历史数据
-        print(f"\n4️⃣ 保存历史数据")
+        print("\n4️⃣ 保存历史数据")
         saved_count = await service.save_historical_data(
             symbol=test_symbol,
             data=df,
             data_source="tushare",
             market="CN",
-            period="daily"
+            period="daily",
         )
 
         print(f"   ✅ 保存完成: {saved_count} 条记录")
 
         # 5. 检查数据库状态（保存后）
-        print(f"\n5️⃣ 检查数据库状态（保存后）")
+        print("\n5️⃣ 检查数据库状态（保存后）")
 
         after_count = collection.count_documents({"symbol": test_symbol})
-        after_tushare_count = collection.count_documents({
-            "symbol": test_symbol,
-            "data_source": "tushare"
-        })
+        after_tushare_count = collection.count_documents(
+            {"symbol": test_symbol, "data_source": "tushare"}
+        )
 
         print(f"   📊 {test_symbol} 总记录数: {after_count}")
         print(f"   📊 {test_symbol} Tushare记录数: {after_tushare_count}")
@@ -95,29 +94,31 @@ async def test_fixed_historical_sync():
         print(f"   📈 新增Tushare记录数: {after_tushare_count - before_tushare_count}")
 
         # 6. 验证保存的数据
-        print(f"\n6️⃣ 验证保存的数据")
+        print("\n6️⃣ 验证保存的数据")
 
-        saved_records = list(collection.find(
-            {
-                "symbol": test_symbol,
-                "data_source": "tushare",
-                "trade_date": {"$gte": start_date, "$lte": end_date}
-            },
-            sort=[("trade_date", 1)]
-        ))
+        saved_records = list(
+            collection.find(
+                {
+                    "symbol": test_symbol,
+                    "data_source": "tushare",
+                    "trade_date": {"$gte": start_date, "$lte": end_date},
+                },
+                sort=[("trade_date", 1)],
+            )
+        )
 
         print(f"   📋 指定日期范围内的记录: {len(saved_records)} 条")
 
         if saved_records:
             print("   📊 前5条记录:")
             for i, record in enumerate(saved_records[:5]):
-                trade_date = record.get('trade_date', 'N/A')
-                close = record.get('close', 'N/A')
-                volume = record.get('volume', 'N/A')
-                print(f"     {i+1}. {trade_date}: 收盘={close}, 成交量={volume}")
+                trade_date = record.get("trade_date", "N/A")
+                close = record.get("close", "N/A")
+                volume = record.get("volume", "N/A")
+                print(f"     {i + 1}. {trade_date}: 收盘={close}, 成交量={volume}")
 
         # 7. 结果评估
-        print(f"\n7️⃣ 结果评估")
+        print("\n7️⃣ 结果评估")
 
         if saved_count > 0:
             print("   ✅ 数据保存成功")
@@ -138,7 +139,7 @@ async def test_fixed_historical_sync():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
     print("\n" + "=" * 60)

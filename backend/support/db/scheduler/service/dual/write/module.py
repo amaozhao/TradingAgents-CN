@@ -1,14 +1,16 @@
 from types import SimpleNamespace
 
 import pytest
-from bson import ObjectId
 
+from app.db.ids import DocumentId
 from app.services import scheduler as scheduler_service
 
 
 @pytest.mark.asyncio
 async def test_record_job_action_dual_writes_scheduler_history(monkeypatch):
-    service = scheduler_service.SchedulerService.__new__(scheduler_service.SchedulerService)
+    service = scheduler_service.SchedulerService.__new__(
+        scheduler_service.SchedulerService
+    )
     service.scheduler = FakeScheduler()
     service.db = SimpleNamespace(scheduler_history=FakeAsyncCollection())
     dual_write_calls = []
@@ -29,7 +31,9 @@ async def test_record_job_action_dual_writes_scheduler_history(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_update_job_metadata_dual_writes_scheduler_metadata(monkeypatch):
-    service = scheduler_service.SchedulerService.__new__(scheduler_service.SchedulerService)
+    service = scheduler_service.SchedulerService.__new__(
+        scheduler_service.SchedulerService
+    )
     service.scheduler = FakeScheduler()
     service.db = SimpleNamespace(scheduler_metadata=FakeAsyncCollection())
     dual_write_calls = []
@@ -40,7 +44,9 @@ async def test_update_job_metadata_dual_writes_scheduler_metadata(monkeypatch):
 
     monkeypatch.setattr(scheduler_service, "dual_write_hot_document", fake_dual_write)
 
-    assert await service.update_job_metadata("daily_sync", "每日同步", "盘后同步") is True
+    assert (
+        await service.update_job_metadata("daily_sync", "每日同步", "盘后同步") is True
+    )
 
     assert dual_write_calls[0][0] == "scheduler_metadata"
     assert dual_write_calls[0][1]["job_id"] == "daily_sync"
@@ -48,12 +54,18 @@ async def test_update_job_metadata_dual_writes_scheduler_metadata(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_record_job_execution_dual_writes_insert_and_completion_update(monkeypatch):
-    running_id = ObjectId()
-    service = scheduler_service.SchedulerService.__new__(scheduler_service.SchedulerService)
+async def test_record_job_execution_dual_writes_insert_and_completion_update(
+    monkeypatch,
+):
+    running_id = DocumentId()
+    service = scheduler_service.SchedulerService.__new__(
+        scheduler_service.SchedulerService
+    )
     service.scheduler = FakeScheduler()
     service.db = SimpleNamespace(
-        scheduler_executions=FakeAsyncCollection(existing={"_id": running_id, "job_id": "daily_sync", "status": "running"})
+        scheduler_executions=FakeAsyncCollection(
+            existing={"_id": running_id, "job_id": "daily_sync", "status": "running"}
+        )
     )
     dual_write_calls = []
 
@@ -64,7 +76,9 @@ async def test_record_job_execution_dual_writes_insert_and_completion_update(mon
     monkeypatch.setattr(scheduler_service, "dual_write_hot_document", fake_dual_write)
 
     await service._record_job_execution("daily_sync", "running", progress=10)
-    await service._record_job_execution("daily_sync", "success", execution_time=1.2, progress=100)
+    await service._record_job_execution(
+        "daily_sync", "success", execution_time=1.2, progress=100
+    )
 
     assert dual_write_calls[0][0] == "scheduler_executions"
     assert dual_write_calls[0][1]["status"] == "running"
@@ -80,7 +94,7 @@ class FakeScheduler:
 
 class FakeAsyncCollection:
     def __init__(self, existing=None):
-        self.inserted_id = ObjectId()
+        self.inserted_id = DocumentId()
         self.existing = existing
 
     async def insert_one(self, document):

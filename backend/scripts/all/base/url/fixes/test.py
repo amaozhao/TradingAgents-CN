@@ -1,10 +1,10 @@
 """
 完整测试：验证所有 base_url 修复
 """
+
 import importlib
 import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 def test_create_llm_by_provider():
     """测试 create_llm_by_provider 函数"""
@@ -12,7 +12,9 @@ def test_create_llm_by_provider():
     print("🧪 测试 1: create_llm_by_provider 函数")
     print("=" * 80)
 
-    create_llm_by_provider = getattr(importlib.import_module('trader.graph.trading'), 'create_llm_by_provider')
+    create_llm_by_provider = getattr(
+        importlib.import_module("trader.graph.trading"), "create_llm_by_provider"
+    )
 
     custom_url = "https://dashscope.aliyuncs.com/api/v2"
 
@@ -24,18 +26,18 @@ def test_create_llm_by_provider():
         backend_url=custom_url,
         temperature=0.1,
         max_tokens=2000,
-        timeout=60
+        timeout=60,
     )
 
-    print(f"✅ LLM 创建成功")
+    print("✅ LLM 创建成功")
     print(f"   模型: {llm.model_name}")
     print(f"   base_url: {llm.openai_api_base}")
 
     if llm.openai_api_base == custom_url:
-        print(f"🎯 ✅ base_url 正确")
+        print("🎯 ✅ base_url 正确")
         return True
     else:
-        print(f"❌ base_url 不正确")
+        print("❌ base_url 不正确")
         print(f"   期望: {custom_url}")
         print(f"   实际: {llm.openai_api_base}")
         return False
@@ -47,8 +49,12 @@ def test_trading_graph_init():
     print("🧪 测试 2: TradingAgentsGraph 初始化")
     print("=" * 80)
 
-    TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
-    DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+    TradingAgentsGraph = getattr(
+        importlib.import_module("trader.graph.trading"), "TradingAgentsGraph"
+    )
+    DEFAULT_CONFIG = getattr(
+        importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+    )
 
     custom_url = "https://dashscope.aliyuncs.com/api/v2"
 
@@ -60,11 +66,14 @@ def test_trading_graph_init():
     config["quick_think_llm"] = "qwen-turbo"
     config["backend_url"] = custom_url  # 添加自定义 URL
     config["online_tools"] = False  # 关闭在线工具以加快测试
-    config["selected_analysts"] = {0: "fundamentals_analyst", 1: "market_analyst"}  # 修复配置格式
+    config["selected_analysts"] = {
+        0: "fundamentals_analyst",
+        1: "market_analyst",
+    }  # 修复配置格式
 
     graph = TradingAgentsGraph(config)
 
-    print(f"✅ TradingGraph 创建成功")
+    print("✅ TradingGraph 创建成功")
     print(f"   Deep thinking LLM: {graph.deep_thinking_llm.model_name}")
     print(f"   Deep thinking base_url: {graph.deep_thinking_llm.openai_api_base}")
     print(f"   Quick thinking LLM: {graph.quick_thinking_llm.model_name}")
@@ -73,17 +82,17 @@ def test_trading_graph_init():
     success = True
 
     if graph.deep_thinking_llm.openai_api_base == custom_url:
-        print(f"🎯 ✅ Deep thinking LLM base_url 正确")
+        print("🎯 ✅ Deep thinking LLM base_url 正确")
     else:
-        print(f"❌ Deep thinking LLM base_url 不正确")
+        print("❌ Deep thinking LLM base_url 不正确")
         print(f"   期望: {custom_url}")
         print(f"   实际: {graph.deep_thinking_llm.openai_api_base}")
         success = False
 
     if graph.quick_thinking_llm.openai_api_base == custom_url:
-        print(f"🎯 ✅ Quick thinking LLM base_url 正确")
+        print("🎯 ✅ Quick thinking LLM base_url 正确")
     else:
-        print(f"❌ Quick thinking LLM base_url 不正确")
+        print("❌ Quick thinking LLM base_url 不正确")
         print(f"   期望: {custom_url}")
         print(f"   实际: {graph.quick_thinking_llm.openai_api_base}")
         success = False
@@ -97,23 +106,27 @@ def test_fundamentals_analyst():
     print("🧪 测试 3: 基本面分析师")
     print("=" * 80)
 
-    ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
-    create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
-    Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-    DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+    ChatDashScopeOpenAI = getattr(
+        importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI"
+    )
+    create_fundamentals_analyst = getattr(
+        importlib.import_module("trader.agents.analysts.fundamentals"),
+        "create_fundamentals_analyst",
+    )
+    Toolkit = getattr(importlib.import_module("trader.agents.utils.utils"), "Toolkit")
+    DEFAULT_CONFIG = getattr(
+        importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+    )
 
     custom_url = "https://dashscope.aliyuncs.com/api/v2"
 
     print(f"\n创建 LLM，使用自定义 URL: {custom_url}")
 
     llm = ChatDashScopeOpenAI(
-        model="qwen-turbo",
-        base_url=custom_url,
-        temperature=0.1,
-        max_tokens=2000
+        model="qwen-turbo", base_url=custom_url, temperature=0.1, max_tokens=2000
     )
 
-    print(f"✅ LLM 创建成功")
+    print("✅ LLM 创建成功")
     print(f"   模型: {llm.model_name}")
     print(f"   base_url: {llm.openai_api_base}")
 
@@ -123,19 +136,19 @@ def test_fundamentals_analyst():
     toolkit = Toolkit(config)
 
     # 创建基本面分析师
-    print(f"\n创建基本面分析师...")
-    analyst = create_fundamentals_analyst(llm, toolkit)
+    print("\n创建基本面分析师...")
+    create_fundamentals_analyst(llm, toolkit)
 
-    print(f"✅ 基本面分析师创建成功")
+    print("✅ 基本面分析师创建成功")
 
     # 模拟分析师内部创建新 LLM 实例的逻辑
-    print(f"\n模拟分析师内部创建新 LLM 实例...")
+    print("\n模拟分析师内部创建新 LLM 实例...")
 
-    if hasattr(llm, '__class__') and 'DashScope' in llm.__class__.__name__:
-        print(f"✅ 检测到阿里百炼模型")
+    if hasattr(llm, "__class__") and "DashScope" in llm.__class__.__name__:
+        print("✅ 检测到阿里百炼模型")
 
         # 获取原始 LLM 的 base_url
-        original_base_url = getattr(llm, 'openai_api_base', None)
+        original_base_url = getattr(llm, "openai_api_base", None)
         print(f"✅ 获取原始 base_url: {original_base_url}")
 
         # 创建新实例
@@ -143,23 +156,23 @@ def test_fundamentals_analyst():
             model=llm.model_name,
             base_url=original_base_url if original_base_url else None,
             temperature=llm.temperature,
-            max_tokens=getattr(llm, 'max_tokens', 2000)
+            max_tokens=getattr(llm, "max_tokens", 2000),
         )
 
-        print(f"✅ 创建新 LLM 实例")
+        print("✅ 创建新 LLM 实例")
         print(f"   模型: {fresh_llm.model_name}")
         print(f"   base_url: {fresh_llm.openai_api_base}")
 
         if fresh_llm.openai_api_base == custom_url:
-            print(f"\n🎯 ✅ 完美！新实例的 base_url 正确")
+            print("\n🎯 ✅ 完美！新实例的 base_url 正确")
             return True
         else:
-            print(f"\n❌ 错误！新实例的 base_url 不正确")
+            print("\n❌ 错误！新实例的 base_url 不正确")
             print(f"   期望: {custom_url}")
             print(f"   实际: {fresh_llm.openai_api_base}")
             return False
     else:
-        print(f"⚠️ 未检测到阿里百炼模型")
+        print("⚠️ 未检测到阿里百炼模型")
         return False
 
 
@@ -176,7 +189,7 @@ def main():
         results.append(("create_llm_by_provider", result))
     except Exception as e:
         print(f"\n❌ 测试 1 失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         results.append(("create_llm_by_provider", False))
 
@@ -193,7 +206,7 @@ def main():
         results.append(("基本面分析师", result))
     except Exception as e:
         print(f"\n❌ 测试 3 失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         results.append(("基本面分析师", False))
 

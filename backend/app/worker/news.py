@@ -2,12 +2,12 @@
 新闻数据同步服务
 支持多数据源新闻数据同步和情绪分析
 """
+
 import importlib
-import asyncio
 import logging
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from app.services.market.news import get_news_data_service
 from trader.flows.news.real.time import RealtimeNewsAggregator
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class NewsSyncStats:
     """新闻同步统计"""
+
     total_processed: int = 0
     successful_saves: int = 0
     failed_saves: int = 0
@@ -60,7 +61,10 @@ class NewsDataSyncService:
     async def _get_tushare_provider(self):
         """获取Tushare提供者"""
         if self._tushare_provider is None:
-            get_tushare_provider = getattr(importlib.import_module('trader.flows.providers.china.tushare'), 'get_tushare_provider')
+            get_tushare_provider = getattr(
+                importlib.import_module("trader.flows.providers.china.tushare"),
+                "get_tushare_provider",
+            )
             self._tushare_provider = get_tushare_provider()
             await self._tushare_provider.connect()
         return self._tushare_provider
@@ -68,7 +72,10 @@ class NewsDataSyncService:
     async def _get_akshare_provider(self):
         """获取AKShare提供者"""
         if self._akshare_provider is None:
-            get_akshare_provider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'get_akshare_provider')
+            get_akshare_provider = getattr(
+                importlib.import_module("trader.flows.providers.china.akshare"),
+                "get_akshare_provider",
+            )
 
             self._akshare_provider = get_akshare_provider()
             await self._akshare_provider.connect()
@@ -85,7 +92,7 @@ class NewsDataSyncService:
         symbol: str,
         data_sources: Optional[List[str]] = None,
         hours_back: int = 24,
-        max_news_per_source: int = 50
+        max_news_per_source: int = 50,
     ) -> NewsSyncStats:
         """
         同步单只股票的新闻数据
@@ -119,7 +126,9 @@ class NewsDataSyncService:
                     if tushare_news:
                         all_news.extend(tushare_news)
                         stats.sources_used.append("tushare")
-                        self.logger.info(f"✅ Tushare新闻获取成功: {len(tushare_news)}条")
+                        self.logger.info(
+                            f"✅ Tushare新闻获取成功: {len(tushare_news)}条"
+                        )
                 except Exception as e:
                     self.logger.error(f"❌ Tushare新闻获取失败: {e}")
 
@@ -132,7 +141,9 @@ class NewsDataSyncService:
                     if akshare_news:
                         all_news.extend(akshare_news)
                         stats.sources_used.append("akshare")
-                        self.logger.info(f"✅ AKShare新闻获取成功: {len(akshare_news)}条")
+                        self.logger.info(
+                            f"✅ AKShare新闻获取成功: {len(akshare_news)}条"
+                        )
                 except Exception as e:
                     self.logger.error(f"❌ AKShare新闻获取失败: {e}")
 
@@ -175,10 +186,7 @@ class NewsDataSyncService:
             return stats
 
     async def _sync_tushare_news(
-        self,
-        symbol: str,
-        hours_back: int,
-        max_news: int
+        self, symbol: str, hours_back: int, max_news: int
     ) -> List[Dict[str, Any]]:
         """同步Tushare新闻"""
         try:
@@ -190,9 +198,7 @@ class NewsDataSyncService:
 
             # 获取新闻数据，传递hours_back参数
             news_data = await provider.get_stock_news(
-                symbol=symbol,
-                limit=max_news,
-                hours_back=hours_back
+                symbol=symbol, limit=max_news, hours_back=hours_back
             )
 
             if news_data:
@@ -211,7 +217,10 @@ class NewsDataSyncService:
 
         except Exception as e:
             # 详细的错误处理
-            if any(keyword in str(e).lower() for keyword in ['权限', 'permission', 'unauthorized']):
+            if any(
+                keyword in str(e).lower()
+                for keyword in ["权限", "permission", "unauthorized"]
+            ):
                 self.logger.warning(f"⚠️ Tushare新闻接口需要单独开通权限: {e}")
             elif "积分" in str(e) or "point" in str(e).lower():
                 self.logger.warning(f"⚠️ Tushare积分不足: {e}")
@@ -220,10 +229,7 @@ class NewsDataSyncService:
             return []
 
     async def _sync_akshare_news(
-        self,
-        symbol: str,
-        hours_back: int,
-        max_news: int
+        self, symbol: str, hours_back: int, max_news: int
     ) -> List[Dict[str, Any]]:
         """同步AKShare新闻"""
         try:
@@ -252,10 +258,7 @@ class NewsDataSyncService:
             return []
 
     async def _sync_realtime_news(
-        self,
-        symbol: str,
-        hours_back: int,
-        max_news: int
+        self, symbol: str, hours_back: int, max_news: int
     ) -> List[Dict[str, Any]]:
         """同步实时新闻"""
         try:
@@ -282,7 +285,9 @@ class NewsDataSyncService:
             self.logger.error(f"❌ 实时新闻同步失败: {e}")
             return []
 
-    def _standardize_tushare_news(self, news: Dict[str, Any], symbol: str) -> Optional[Dict[str, Any]]:
+    def _standardize_tushare_news(
+        self, news: Dict[str, Any], symbol: str
+    ) -> Optional[Dict[str, Any]]:
         """标准化Tushare新闻数据"""
         try:
             return {
@@ -295,16 +300,22 @@ class NewsDataSyncService:
                 "author": news.get("author", ""),
                 "publish_time": news.get("publish_time"),
                 "category": self._classify_news_category(news.get("title", "")),
-                "sentiment": self._analyze_sentiment(news.get("title", "") + " " + news.get("content", "")),
+                "sentiment": self._analyze_sentiment(
+                    news.get("title", "") + " " + news.get("content", "")
+                ),
                 "importance": self._assess_importance(news.get("title", "")),
-                "keywords": self._extract_keywords(news.get("title", "") + " " + news.get("content", "")),
-                "data_source": "tushare"
+                "keywords": self._extract_keywords(
+                    news.get("title", "") + " " + news.get("content", "")
+                ),
+                "data_source": "tushare",
             }
         except Exception as e:
             self.logger.error(f"❌ 标准化Tushare新闻失败: {e}")
             return None
 
-    def _standardize_akshare_news(self, news: Dict[str, Any], symbol: str) -> Optional[Dict[str, Any]]:
+    def _standardize_akshare_news(
+        self, news: Dict[str, Any], symbol: str
+    ) -> Optional[Dict[str, Any]]:
         """标准化AKShare新闻数据"""
         try:
             return {
@@ -317,32 +328,44 @@ class NewsDataSyncService:
                 "author": news.get("author", ""),
                 "publish_time": news.get("publish_time"),
                 "category": self._classify_news_category(news.get("title", "")),
-                "sentiment": self._analyze_sentiment(news.get("title", "") + " " + news.get("content", "")),
+                "sentiment": self._analyze_sentiment(
+                    news.get("title", "") + " " + news.get("content", "")
+                ),
                 "importance": self._assess_importance(news.get("title", "")),
-                "keywords": self._extract_keywords(news.get("title", "") + " " + news.get("content", "")),
-                "data_source": "akshare"
+                "keywords": self._extract_keywords(
+                    news.get("title", "") + " " + news.get("content", "")
+                ),
+                "data_source": "akshare",
             }
         except Exception as e:
             self.logger.error(f"❌ 标准化AKShare新闻失败: {e}")
             return None
 
-    def _standardize_realtime_news(self, news_item, symbol: str) -> Optional[Dict[str, Any]]:
+    def _standardize_realtime_news(
+        self, news_item, symbol: str
+    ) -> Optional[Dict[str, Any]]:
         """标准化实时新闻数据"""
         try:
             return {
                 "symbol": symbol,
                 "title": news_item.title,
                 "content": news_item.content,
-                "summary": news_item.content[:200] + "..." if len(news_item.content) > 200 else news_item.content,
+                "summary": news_item.content[:200] + "..."
+                if len(news_item.content) > 200
+                else news_item.content,
                 "url": news_item.url,
                 "source": news_item.source,
                 "author": "",
                 "publish_time": news_item.publish_time,
                 "category": self._classify_news_category(news_item.title),
-                "sentiment": self._analyze_sentiment(news_item.title + " " + news_item.content),
+                "sentiment": self._analyze_sentiment(
+                    news_item.title + " " + news_item.content
+                ),
                 "importance": self._assess_importance(news_item.title),
-                "keywords": self._extract_keywords(news_item.title + " " + news_item.content),
-                "data_source": "realtime"
+                "keywords": self._extract_keywords(
+                    news_item.title + " " + news_item.content
+                ),
+                "data_source": "realtime",
             }
         except Exception as e:
             self.logger.error(f"❌ 标准化实时新闻失败: {e}")
@@ -352,7 +375,9 @@ class NewsDataSyncService:
         """分类新闻类别"""
         title_lower = title.lower()
 
-        if any(word in title_lower for word in ["年报", "季报", "业绩", "财报", "公告"]):
+        if any(
+            word in title_lower for word in ["年报", "季报", "业绩", "财报", "公告"]
+        ):
             return "company_announcement"
         elif any(word in title_lower for word in ["政策", "央行", "监管", "法规"]):
             return "policy_news"
@@ -367,8 +392,26 @@ class NewsDataSyncService:
         """分析情绪"""
         text_lower = text.lower()
 
-        positive_words = ["增长", "上涨", "利好", "盈利", "成功", "突破", "创新", "优秀"]
-        negative_words = ["下跌", "亏损", "风险", "问题", "困难", "下滑", "减少", "警告"]
+        positive_words = [
+            "增长",
+            "上涨",
+            "利好",
+            "盈利",
+            "成功",
+            "突破",
+            "创新",
+            "优秀",
+        ]
+        negative_words = [
+            "下跌",
+            "亏损",
+            "风险",
+            "问题",
+            "困难",
+            "下滑",
+            "减少",
+            "警告",
+        ]
 
         positive_count = sum(1 for word in positive_words if word in text_lower)
         negative_count = sum(1 for word in negative_words if word in text_lower)
@@ -400,8 +443,22 @@ class NewsDataSyncService:
         keywords = []
 
         common_keywords = [
-            "业绩", "年报", "季报", "增长", "利润", "营收", "股价", "投资",
-            "市场", "行业", "政策", "监管", "风险", "机会", "创新", "发展"
+            "业绩",
+            "年报",
+            "季报",
+            "增长",
+            "利润",
+            "营收",
+            "股价",
+            "投资",
+            "市场",
+            "行业",
+            "政策",
+            "监管",
+            "风险",
+            "机会",
+            "创新",
+            "发展",
         ]
 
         for keyword in common_keywords:
@@ -410,7 +467,9 @@ class NewsDataSyncService:
 
         return keywords[:10]  # 最多返回10个关键词
 
-    def _deduplicate_news(self, news_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _deduplicate_news(
+        self, news_list: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """去重新闻"""
         seen = set()
         unique_news = []
@@ -428,7 +487,7 @@ class NewsDataSyncService:
         self,
         data_sources: Optional[List[str]] = None,
         hours_back: int = 24,
-        max_news_per_source: int = 100
+        max_news_per_source: int = 100,
     ) -> NewsSyncStats:
         """
         同步市场新闻
@@ -464,7 +523,9 @@ class NewsDataSyncService:
 
                     if news_items:
                         for news_item in news_items:
-                            standardized = self._standardize_realtime_news(news_item, "MARKET")
+                            standardized = self._standardize_realtime_news(
+                                news_item, "MARKET"
+                            )
                             if standardized:
                                 all_news.append(standardized)
 
@@ -502,6 +563,7 @@ class NewsDataSyncService:
 
 # 全局服务实例
 _sync_service_instance = None
+
 
 async def get_news_data_sync_service() -> NewsDataSyncService:
     """获取新闻数据同步服务实例"""

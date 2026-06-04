@@ -2,19 +2,16 @@
 """
 实际测试DeepSeek成本计算修复效果
 """
-import importlib
 
+import importlib
 import os
 import sys
-from pathlib import Path
-from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
+
 
 def test_real_deepseek_analysis():
     """测试真实的DeepSeek股票分析，观察成本计算"""
@@ -27,18 +24,25 @@ def test_real_deepseek_analysis():
         return False
 
     try:
-        create_market_analyst_react = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst_react')
-        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        create_market_analyst_react = getattr(
+            importlib.import_module("trader.agents.analysts.market"),
+            "create_market_analyst_react",
+        )
+        ChatDeepSeek = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"), "ChatDeepSeek"
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         print("🔧 初始化DeepSeek分析师...")
 
         # 创建DeepSeek LLM
         deepseek_llm = ChatDeepSeek(
-            model="deepseek-chat",
-            temperature=0.1,
-            max_tokens=1000
+            model="deepseek-chat", temperature=0.1, max_tokens=1000
         )
 
         # 创建工具包
@@ -57,7 +61,7 @@ def test_real_deepseek_analysis():
         state = {
             "company_of_interest": "000002",
             "trade_date": "2025-07-08",
-            "messages": []
+            "messages": [],
         }
 
         # 执行分析
@@ -66,7 +70,7 @@ def test_real_deepseek_analysis():
         print("-" * 50)
         print("📋 分析完成！")
 
-        market_report = result.get('market_report', '')
+        market_report = result.get("market_report", "")
         print(f"📊 市场报告长度: {len(market_report)}")
 
         if len(market_report) > 500:
@@ -79,9 +83,10 @@ def test_real_deepseek_analysis():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_simple_deepseek_call():
     """测试简单的DeepSeek调用，观察成本"""
@@ -94,15 +99,15 @@ def test_simple_deepseek_call():
         return False
 
     try:
-        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
+        ChatDeepSeek = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"), "ChatDeepSeek"
+        )
 
         print("🔧 创建DeepSeek实例...")
 
         # 创建DeepSeek实例
         deepseek_llm = ChatDeepSeek(
-            model="deepseek-chat",
-            temperature=0.1,
-            max_tokens=200
+            model="deepseek-chat", temperature=0.1, max_tokens=200
         )
 
         print("📤 发送测试请求...")
@@ -110,7 +115,9 @@ def test_simple_deepseek_call():
         print("-" * 30)
 
         # 测试调用
-        result = deepseek_llm.invoke("请简要分析一下当前A股市场的整体趋势，不超过100字。")
+        result = deepseek_llm.invoke(
+            "请简要分析一下当前A股市场的整体趋势，不超过100字。"
+        )
 
         print("-" * 30)
         print("📋 调用完成！")
@@ -121,9 +128,10 @@ def test_simple_deepseek_call():
 
     except Exception as e:
         print(f"❌ 简单调用测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_multiple_calls():
     """测试多次调用，观察累计成本"""
@@ -136,22 +144,18 @@ def test_multiple_calls():
         return False
 
     try:
-        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
+        ChatDeepSeek = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"), "ChatDeepSeek"
+        )
 
         print("🔧 创建DeepSeek实例...")
 
         # 创建DeepSeek实例
         deepseek_llm = ChatDeepSeek(
-            model="deepseek-chat",
-            temperature=0.1,
-            max_tokens=100
+            model="deepseek-chat", temperature=0.1, max_tokens=100
         )
 
-        questions = [
-            "什么是股票？",
-            "什么是技术分析？",
-            "什么是基本面分析？"
-        ]
+        questions = ["什么是股票？", "什么是技术分析？", "什么是基本面分析？"]
 
         print(f"📤 发送{len(questions)}个测试请求...")
         print("⏱️ 请观察每次调用的成本计算...")
@@ -169,9 +173,10 @@ def test_multiple_calls():
 
     except Exception as e:
         print(f"❌ 多次调用测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主函数"""
@@ -189,8 +194,8 @@ def main():
     multiple_success = test_multiple_calls()
 
     # 测试实际分析（可选，比较耗时）
-    print(f"\n❓ 是否要测试完整的股票分析？（比较耗时，约1-2分钟）")
-    print(f"   如果只想验证成本计算，前面的测试已经足够了。")
+    print("\n❓ 是否要测试完整的股票分析？（比较耗时，约1-2分钟）")
+    print("   如果只想验证成本计算，前面的测试已经足够了。")
 
     # 这里我们跳过完整分析，因为比较耗时
     analysis_success = True  # test_real_deepseek_analysis()
@@ -216,6 +221,7 @@ def main():
 
     print("\n🎯 测试完成！")
     return overall_success
+
 
 if __name__ == "__main__":
     success = main()

@@ -3,9 +3,9 @@
 验证后端 API 是否正常工作
 """
 
+from typing import Dict
+
 import requests
-import json
-from typing import Dict, Any
 
 # 配置
 BASE_URL = "http://localhost:8000"
@@ -20,8 +20,7 @@ def login() -> str:
     """登录并获取 token"""
     print("🔐 正在登录...")
     response = requests.post(
-        f"{BASE_URL}/api/auth/login",
-        json={"username": USERNAME, "password": PASSWORD}
+        f"{BASE_URL}/api/auth/login", json={"username": USERNAME, "password": PASSWORD}
     )
 
     if response.status_code == 200:
@@ -40,19 +39,13 @@ def login() -> str:
 
 def get_headers() -> Dict[str, str]:
     """获取请求头"""
-    return {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
+    return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 
 def test_get_jobs():
     """测试获取任务列表"""
     print("\n📋 测试获取任务列表...")
-    response = requests.get(
-        f"{BASE_URL}/api/scheduler/jobs",
-        headers=get_headers()
-    )
+    response = requests.get(f"{BASE_URL}/api/scheduler/jobs", headers=get_headers())
 
     if response.status_code == 200:
         data = response.json()
@@ -62,7 +55,9 @@ def test_get_jobs():
 
             # 显示前 5 个任务
             for i, job in enumerate(jobs[:5], 1):
-                print(f"  {i}. {job['name']} - {job['trigger']} - {'已暂停' if job['paused'] else '运行中'}")
+                print(
+                    f"  {i}. {job['name']} - {job['trigger']} - {'已暂停' if job['paused'] else '运行中'}"
+                )
 
             return jobs
         else:
@@ -77,20 +72,19 @@ def test_get_jobs():
 def test_get_stats():
     """测试获取统计信息"""
     print("\n📊 测试获取统计信息...")
-    response = requests.get(
-        f"{BASE_URL}/api/scheduler/stats",
-        headers=get_headers()
-    )
+    response = requests.get(f"{BASE_URL}/api/scheduler/stats", headers=get_headers())
 
     if response.status_code == 200:
         data = response.json()
         if data.get("success"):
             stats = data["data"]
-            print(f"✅ 获取统计信息成功")
+            print("✅ 获取统计信息成功")
             print(f"   总任务数: {stats['total_jobs']}")
             print(f"   运行中: {stats['running_jobs']}")
             print(f"   已暂停: {stats['paused_jobs']}")
-            print(f"   调度器状态: {'运行中' if stats['scheduler_running'] else '已停止'}")
+            print(
+                f"   调度器状态: {'运行中' if stats['scheduler_running'] else '已停止'}"
+            )
             return stats
         else:
             print(f"❌ 获取统计信息失败: {data.get('message')}")
@@ -104,15 +98,14 @@ def test_get_job_detail(job_id: str):
     """测试获取任务详情"""
     print(f"\n🔍 测试获取任务详情: {job_id}")
     response = requests.get(
-        f"{BASE_URL}/api/scheduler/jobs/{job_id}",
-        headers=get_headers()
+        f"{BASE_URL}/api/scheduler/jobs/{job_id}", headers=get_headers()
     )
 
     if response.status_code == 200:
         data = response.json()
         if data.get("success"):
             job = data["data"]
-            print(f"✅ 获取任务详情成功")
+            print("✅ 获取任务详情成功")
             print(f"   任务名称: {job['name']}")
             print(f"   触发器: {job['trigger']}")
             print(f"   状态: {'已暂停' if job['paused'] else '运行中'}")
@@ -130,8 +123,7 @@ def test_pause_job(job_id: str):
     """测试暂停任务"""
     print(f"\n⏸️  测试暂停任务: {job_id}")
     response = requests.post(
-        f"{BASE_URL}/api/scheduler/jobs/{job_id}/pause",
-        headers=get_headers()
+        f"{BASE_URL}/api/scheduler/jobs/{job_id}/pause", headers=get_headers()
     )
 
     if response.status_code == 200:
@@ -152,8 +144,7 @@ def test_resume_job(job_id: str):
     """测试恢复任务"""
     print(f"\n▶️  测试恢复任务: {job_id}")
     response = requests.post(
-        f"{BASE_URL}/api/scheduler/jobs/{job_id}/resume",
-        headers=get_headers()
+        f"{BASE_URL}/api/scheduler/jobs/{job_id}/resume", headers=get_headers()
     )
 
     if response.status_code == 200:
@@ -175,14 +166,10 @@ def test_get_history(job_id: str = None):
         print(f"\n📜 测试获取任务执行历史: {job_id}")
         url = f"{BASE_URL}/api/scheduler/jobs/{job_id}/history"
     else:
-        print(f"\n📜 测试获取所有执行历史")
+        print("\n📜 测试获取所有执行历史")
         url = f"{BASE_URL}/api/scheduler/history"
 
-    response = requests.get(
-        url,
-        headers=get_headers(),
-        params={"limit": 10}
-    )
+    response = requests.get(url, headers=get_headers(), params={"limit": 10})
 
     if response.status_code == 200:
         data = response.json()
@@ -193,7 +180,9 @@ def test_get_history(job_id: str = None):
 
             # 显示前 5 条记录
             for i, record in enumerate(history[:5], 1):
-                print(f"  {i}. {record['job_id']} - {record['action']} - {record['status']} - {record['timestamp']}")
+                print(
+                    f"  {i}. {record['job_id']} - {record['action']} - {record['status']} - {record['timestamp']}"
+                )
 
             return history
         else:
@@ -207,16 +196,13 @@ def test_get_history(job_id: str = None):
 def test_health():
     """测试健康检查"""
     print("\n💚 测试健康检查...")
-    response = requests.get(
-        f"{BASE_URL}/api/scheduler/health",
-        headers=get_headers()
-    )
+    response = requests.get(f"{BASE_URL}/api/scheduler/health", headers=get_headers())
 
     if response.status_code == 200:
         data = response.json()
         if data.get("success"):
             health = data["data"]
-            print(f"✅ 健康检查成功")
+            print("✅ 健康检查成功")
             print(f"   状态: {health['status']}")
             print(f"   运行中: {health['running']}")
             print(f"   时间: {health['timestamp']}")
@@ -247,7 +233,7 @@ def main():
     test_health()
 
     # 3. 测试获取统计信息
-    stats = test_get_stats()
+    test_get_stats()
 
     # 4. 测试获取任务列表
     jobs = test_get_jobs()

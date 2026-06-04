@@ -9,27 +9,31 @@ Alpha Vantage API 公共模块
 
 参考原版 TradingAgents 实现
 """
-import importlib
 
+import importlib
+import json
 import os
 import time
-import json
-import requests
-from typing import Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, Optional
+
+import requests
 
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
-logger = get_logger('agents')
+
+logger = get_logger("agents")
 
 
 class AlphaVantageRateLimitError(Exception):
     """Alpha Vantage 速率限制错误"""
+
     pass
 
 
 class AlphaVantageAPIError(Exception):
     """Alpha Vantage API 错误"""
+
     pass
 
 
@@ -45,32 +49,41 @@ def _get_api_key_from_database() -> Optional[str]:
     """
     try:
         logger.debug("🔍 [DB查询] 开始从数据库读取 Alpha Vantage API Key...")
-        get_mongo_db_sync = getattr(importlib.import_module('app.core.database'), 'get_mongo_db_sync')
-        db = get_mongo_db_sync()
+        get_postgres_db_sync = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db_sync"
+        )
+        db = get_postgres_db_sync()
         config_collection = db.system_configs
 
         # 获取最新的激活配置
         logger.debug("🔍 [DB查询] 查询 is_active=True 的配置...")
         config_data = config_collection.find_one(
-            {"is_active": True},
-            sort=[("version", -1)]
+            {"is_active": True}, sort=[("version", -1)]
         )
 
         if config_data:
-            logger.debug(f"✅ [DB查询] 找到激活配置，版本: {config_data.get('version')}")
-            if config_data.get('data_source_configs'):
-                logger.debug(f"✅ [DB查询] 配置中有 {len(config_data['data_source_configs'])} 个数据源")
-                for ds_config in config_data['data_source_configs']:
-                    ds_type = ds_config.get('type')
+            logger.debug(
+                f"✅ [DB查询] 找到激活配置，版本: {config_data.get('version')}"
+            )
+            if config_data.get("data_source_configs"):
+                logger.debug(
+                    f"✅ [DB查询] 配置中有 {len(config_data['data_source_configs'])} 个数据源"
+                )
+                for ds_config in config_data["data_source_configs"]:
+                    ds_type = ds_config.get("type")
                     logger.debug(f"🔍 [DB查询] 检查数据源: {ds_type}")
-                    if ds_type == 'alpha_vantage':
-                        api_key = ds_config.get('api_key')
-                        logger.debug(f"✅ [DB查询] 找到 Alpha Vantage 配置，api_key 长度: {len(api_key) if api_key else 0}")
+                    if ds_type == "alpha_vantage":
+                        api_key = ds_config.get("api_key")
+                        logger.debug(
+                            f"✅ [DB查询] 找到 Alpha Vantage 配置，api_key 长度: {len(api_key) if api_key else 0}"
+                        )
                         if api_key and not api_key.startswith("your_"):
-                            logger.debug(f"✅ [DB查询] API Key 有效 (长度: {len(api_key)})")
+                            logger.debug(
+                                f"✅ [DB查询] API Key 有效 (长度: {len(api_key)})"
+                            )
                             return api_key
                         else:
-                            logger.debug(f"⚠️ [DB查询] API Key 无效或为占位符")
+                            logger.debug("⚠️ [DB查询] API Key 无效或为占位符")
             else:
                 logger.debug("⚠️ [DB查询] 配置中没有 data_source_configs")
         else:
@@ -119,7 +132,9 @@ def get_api_key() -> str:
     # 3. 从配置文件获取
     logger.debug("🔍 [步骤3] 读取配置文件中的 API Key...")
     try:
-        ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
+        ConfigManager = getattr(
+            importlib.import_module("trader.config.manager"), "ConfigManager"
+        )
         config_manager = ConfigManager()
         api_key = config_manager.load_settings().get("ALPHA_VANTAGE_API_KEY")
         if api_key:
@@ -160,10 +175,7 @@ def format_datetime_for_api(date_str: str) -> str:
 
 
 def _make_api_request(
-    function: str,
-    params: Dict[str, Any],
-    max_retries: int = 3,
-    retry_delay: int = 2
+    function: str, params: Dict[str, Any], max_retries: int = 3, retry_delay: int = 2
 ) -> Dict[str, Any] | str:
     """
     发起 Alpha Vantage API 请求
@@ -185,11 +197,7 @@ def _make_api_request(
     base_url = "https://www.alphavantage.co/query"
 
     # 构建请求参数
-    request_params = {
-        "function": function,
-        "apikey": api_key,
-        **params
-    }
+    request_params = {"function": function, "apikey": api_key, **params}
 
     logger.debug(f"📡 [Alpha Vantage] 请求 {function}: {params}")
 
@@ -245,7 +253,9 @@ def _make_api_request(
             return data
 
         except requests.exceptions.Timeout:
-            logger.warning(f"⚠️ [Alpha Vantage] 请求超时 (尝试 {attempt + 1}/{max_retries})")
+            logger.warning(
+                f"⚠️ [Alpha Vantage] 请求超时 (尝试 {attempt + 1}/{max_retries})"
+            )
             if attempt < max_retries - 1:
                 time.sleep(retry_delay)
                 continue
@@ -262,13 +272,19 @@ def _make_api_request(
 
         except json.JSONDecodeError as e:
             logger.error(f"❌ [Alpha Vantage] JSON 解析失败: {e}")
-            raise AlphaVantageAPIError(f"Failed to parse Alpha Vantage API response: {e}")
+            raise AlphaVantageAPIError(
+                f"Failed to parse Alpha Vantage API response: {e}"
+            )
 
     # 所有重试都失败
-    raise AlphaVantageAPIError(f"Failed to get data from Alpha Vantage after {max_retries} attempts")
+    raise AlphaVantageAPIError(
+        f"Failed to get data from Alpha Vantage after {max_retries} attempts"
+    )
 
 
-def format_response_as_string(data: Dict[str, Any], title: str = "Alpha Vantage Data") -> str:
+def format_response_as_string(
+    data: Dict[str, Any], title: str = "Alpha Vantage Data"
+) -> str:
     """
     将 API 响应格式化为字符串
 
@@ -282,7 +298,9 @@ def format_response_as_string(data: Dict[str, Any], title: str = "Alpha Vantage 
     try:
         # 添加头部信息
         header = f"# {title}\n"
-        header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        header += (
+            f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        )
 
         # 转换为 JSON 字符串（格式化）
         json_str = json.dumps(data, indent=2, ensure_ascii=False)

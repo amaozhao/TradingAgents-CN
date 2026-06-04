@@ -27,10 +27,14 @@ class DualWriteBatchResult:
     reason: str = ""
 
 
-def log_mongo_only_write(collection: str, reason: str) -> DualWriteResult:
-    """Record an intentional Mongo-only write during the staged migration."""
+def log_postgres_only_write(collection: str, reason: str) -> DualWriteResult:
+    """Record a write that remains only in the PostgreSQL document store."""
 
-    logger.warning("Mongo-only write retained during PostgreSQL migration: collection=%s reason=%s", collection, reason)
+    logger.warning(
+        "PostgreSQL document-only write retained: collection=%s reason=%s",
+        collection,
+        reason,
+    )
     return DualWriteResult(status="skipped", collection=collection, reason=reason)
 
 
@@ -51,7 +55,9 @@ async def dual_write_hot_document(
     )
     if result.status == "written":
         return DualWriteResult(status="written", collection=collection)
-    return DualWriteResult(status=result.status, collection=collection, reason=result.reason)
+    return DualWriteResult(
+        status=result.status, collection=collection, reason=result.reason
+    )
 
 
 async def dual_write_hot_documents(
@@ -62,7 +68,9 @@ async def dual_write_hot_documents(
     enabled: bool | None = None,
     fail_open: bool | None = None,
 ) -> DualWriteBatchResult:
-    effective_enabled = settings.POSTGRES_DUAL_WRITE_ENABLED if enabled is None else enabled
+    effective_enabled = (
+        settings.POSTGRES_DUAL_WRITE_ENABLED if enabled is None else enabled
+    )
     statement_builder = HOT_COLLECTIONS.get(collection)
     if not effective_enabled:
         _log_dual_write_event(
@@ -98,7 +106,9 @@ async def dual_write_hot_documents(
             reason="unsupported_collection",
         )
 
-    effective_fail_open = settings.POSTGRES_DUAL_WRITE_FAIL_OPEN if fail_open is None else fail_open
+    effective_fail_open = (
+        settings.POSTGRES_DUAL_WRITE_FAIL_OPEN if fail_open is None else fail_open
+    )
     written = 0
     legacy_ids: list[str] = []
     statement_groups: list[list[Any]] = []

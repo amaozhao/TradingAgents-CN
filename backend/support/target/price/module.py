@@ -2,22 +2,18 @@
 """
 测试优化后的目标价生成系统
 """
+
 import importlib
 
-import sys
-import os
-from pathlib import Path
-
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
 
 def test_signal_processor():
     """测试信号处理器的价格提取功能"""
     print("🧪 测试信号处理器价格提取功能...")
 
     try:
-        SignalProcessor = getattr(importlib.import_module('trader.graph.signals'), 'SignalProcessor')
+        SignalProcessor = getattr(
+            importlib.import_module("trader.graph.signals"), "SignalProcessor"
+        )
 
         processor = SignalProcessor()
 
@@ -56,12 +52,15 @@ def test_signal_processor():
         print(f"❌ 信号处理器测试失败: {e}")
         return False
 
+
 def test_smart_price_estimation():
     """测试智能价格推算功能"""
     print("\n🧪 测试智能价格推算功能...")
 
     try:
-        SignalProcessor = getattr(importlib.import_module('trader.graph.signals'), 'SignalProcessor')
+        SignalProcessor = getattr(
+            importlib.import_module("trader.graph.signals"), "SignalProcessor"
+        )
 
         processor = SignalProcessor()
 
@@ -69,7 +68,7 @@ def test_smart_price_estimation():
         test_cases = [
             ("当前价格100美元，预期上涨20%", "buy", 120.0),
             ("现价50元，建议卖出，预计下跌10%", "sell", 45.0),
-            ("股价200港元，持有，预期涨幅5%", "hold", 210.0)
+            ("股价200港元，持有，预期涨幅5%", "hold", 210.0),
         ]
 
         for text, action, expected in test_cases:
@@ -82,13 +81,16 @@ def test_smart_price_estimation():
         print(f"❌ 智能推算测试失败: {e}")
         return False
 
+
 def test_trader_prompt():
     """测试交易员提示词是否包含目标价要求"""
     print("\n🧪 检查交易员提示词优化...")
 
     try:
-        trader_node = getattr(importlib.import_module('trader.agents.trader'), 'trader_node')
-        inspect = importlib.import_module('inspect')
+        trader_node = getattr(
+            importlib.import_module("trader.agents.trader"), "trader_node"
+        )
+        inspect = importlib.import_module("inspect")
 
         # 获取trader_node函数的源代码
         source = inspect.getsource(trader_node)
@@ -113,6 +115,7 @@ def test_trader_prompt():
     except Exception as e:
         print(f"❌ 交易员提示词检查失败: {e}")
         return False
+
 
 def main():
     """主测试函数"""
@@ -149,6 +152,7 @@ def main():
     print("   1. 运行完整的股票分析流程测试")
     print("   2. 验证实际LLM响应中的目标价生成")
     print("   3. 测试不同类型股票的分析效果")
+
 
 if __name__ == "__main__":
     main()

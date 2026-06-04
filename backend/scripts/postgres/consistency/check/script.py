@@ -1,37 +1,49 @@
 from __future__ import annotations
-import importlib
 
 import argparse
 import asyncio
+import importlib
 import json
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.db.consistency import compare_hot_collections, consistency_summary_to_dict
 
 
 async def _run_cli(sample_limit: int) -> dict:
-    close_mongodb_only = getattr(importlib.import_module('app.core.database'), 'close_mongodb_only')
-    get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
-    init_mongodb_only = getattr(importlib.import_module('app.core.database'), 'init_mongodb_only')
-    close_postgres = getattr(importlib.import_module('app.db.session'), 'close_postgres')
-    get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
-    init_postgres = getattr(importlib.import_module('app.db.session'), 'init_postgres')
+    close_postgres_document_store_only = getattr(
+        importlib.import_module("app.core.database"),
+        "close_postgres_document_store_only",
+    )
+    get_postgres_db = getattr(
+        importlib.import_module("app.core.database"), "get_postgres_db"
+    )
+    init_postgres_document_store_only = getattr(
+        importlib.import_module("app.core.database"),
+        "init_postgres_document_store_only",
+    )
+    close_postgres = getattr(
+        importlib.import_module("app.db.session"), "close_postgres"
+    )
+    get_session_factory = getattr(
+        importlib.import_module("app.db.session"), "get_session_factory"
+    )
+    init_postgres = getattr(importlib.import_module("app.db.session"), "init_postgres")
 
-    await init_mongodb_only()
+    await init_postgres_document_store_only()
     await init_postgres()
     try:
-        results = await compare_hot_collections(get_mongo_db(), get_session_factory(), sample_limit=sample_limit)
+        results = await compare_hot_collections(
+            get_postgres_db(), get_session_factory(), sample_limit=sample_limit
+        )
         return consistency_summary_to_dict(results)
     finally:
         await close_postgres()
-        await close_mongodb_only()
+        await close_postgres_document_store_only()
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Compare MongoDB and PostgreSQL hot collection consistency.")
+    parser = argparse.ArgumentParser(
+        description="Compare PostgreSQL and PostgreSQL hot collection consistency."
+    )
     parser.add_argument("--sample-limit", type=int, default=500)
     parser.add_argument(
         "--allow-inconsistent",

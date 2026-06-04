@@ -1,8 +1,10 @@
-import logging
 import contextvars
+import logging
 
 # Shared contextvar for trace id across the whole process
-trace_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("trace_id", default="-")
+trace_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "trace_id", default="-"
+)
 
 
 class LoggingContextFilter(logging.Filter):

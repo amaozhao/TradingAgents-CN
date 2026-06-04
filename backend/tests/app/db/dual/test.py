@@ -7,7 +7,7 @@ from app.db.dual import (
     DualWriteResult,
     dual_write_hot_document,
     dual_write_hot_documents,
-    log_mongo_only_write,
+    log_postgres_only_write,
 )
 
 
@@ -19,7 +19,9 @@ async def test_dual_write_skips_when_disabled():
         enabled=False,
     )
 
-    assert result == DualWriteResult(status="skipped", collection="market_quotes", reason="disabled")
+    assert result == DualWriteResult(
+        status="skipped", collection="market_quotes", reason="disabled"
+    )
 
 
 @pytest.mark.asyncio
@@ -33,7 +35,9 @@ async def test_dual_write_executes_known_hot_collection():
         enabled=True,
     )
 
-    assert result == DualWriteResult(status="written", collection="market_quotes", reason="")
+    assert result == DualWriteResult(
+        status="written", collection="market_quotes", reason=""
+    )
     assert len(session.executed) == 1
     assert session.commits == 1
 
@@ -181,13 +185,13 @@ async def test_dual_write_batch_skips_when_disabled():
     )
 
 
-def test_log_mongo_only_write_warns(caplog):
+def test_log_postgres_only_write_warns(caplog):
     logger = logging.getLogger("app.db.dual")
     caplog.set_level(logging.WARNING, logger=logger.name)
     logger.addHandler(caplog.handler)
 
     try:
-        result = log_mongo_only_write("sync_status", "pending_postgres_status_table")
+        result = log_postgres_only_write("sync_status", "pending_postgres_status_table")
     finally:
         logger.removeHandler(caplog.handler)
 
@@ -196,7 +200,7 @@ def test_log_mongo_only_write_warns(caplog):
         collection="sync_status",
         reason="pending_postgres_status_table",
     )
-    assert "Mongo-only write retained during PostgreSQL migration" in caplog.text
+    assert "PostgreSQL document-only write retained" in caplog.text
     assert "sync_status" in caplog.text
 
 

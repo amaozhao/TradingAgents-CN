@@ -2,27 +2,34 @@
 统一配置管理系统
 整合 config/、trader/config/ 和 webapi 的配置管理
 """
-import importlib
 
+import importlib
 import json
 import os
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
-from datetime import datetime
-import asyncio
-from dataclasses import dataclass, asdict, field
+from typing import Any, Dict, List, Optional
 
 from app.models.config import (
-    LLMConfig, DataSourceConfig, DatabaseConfig, SystemConfig,
-    ModelProvider, DataSourceType, DatabaseType
+    DatabaseConfig,
+    DatabaseType,
+    DataSourceConfig,
+    DataSourceType,
+    LLMConfig,
+    SystemConfig,
 )
 
 
 @dataclass
 class ConfigPaths:
     """配置文件路径"""
+
     root_config_dir: Path = Path("config")
-    trading_agents_config_dir: Path = field(default_factory=lambda: Path(__file__).resolve().parents[2] / "trader" / "config")
+    trading_agents_config_dir: Path = field(
+        default_factory=lambda: (
+            Path(__file__).resolve().parents[2] / "trader" / "config"
+        )
+    )
     webapi_config_dir: Path = Path("data/config")
 
     # 具体配置文件
@@ -63,7 +70,7 @@ class UnifiedConfigManager:
             return self._cache[cache_key]
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
             if cache_key:
@@ -77,12 +84,14 @@ class UnifiedConfigManager:
             print(f"配置文件格式错误 {file_path}: {e}")
             return {}
 
-    def _save_json_file(self, file_path: Path, data: Any, cache_key: Optional[str] = None):
+    def _save_json_file(
+        self, file_path: Path, data: Any, cache_key: Optional[str] = None
+    ):
         """保存JSON文件"""
         # 确保目录存在
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
         if cache_key:
@@ -115,7 +124,7 @@ class UnifiedConfigManager:
                     max_tokens=model.get("max_tokens", 4000),
                     temperature=model.get("temperature", 0.7),
                     enabled=model.get("enabled", True),
-                    description=f"{model.get('provider', '')} {model.get('model_name', '')}"
+                    description=f"{model.get('provider', '')} {model.get('model_name', '')}",
                 )
                 llm_configs.append(llm_config)
             except Exception as e:
@@ -138,14 +147,16 @@ class UnifiedConfigManager:
                 "base_url": llm_config.api_base,
                 "max_tokens": llm_config.max_tokens,
                 "temperature": llm_config.temperature,
-                "enabled": llm_config.enabled
+                "enabled": llm_config.enabled,
             }
 
             # 查找并更新现有配置，或添加新配置
             updated = False
             for i, model in enumerate(legacy_models):
-                if (model.get("provider") == legacy_model["provider"] and
-                    model.get("model_name") == legacy_model["model_name"]):
+                if (
+                    model.get("provider") == legacy_model["provider"]
+                    and model.get("model_name") == legacy_model["model_name"]
+                ):
                     legacy_models[i] = legacy_model
                     updated = True
                     break
@@ -169,19 +180,23 @@ class UnifiedConfigManager:
     def save_system_settings(self, settings: Dict[str, Any]) -> bool:
         """保存系统设置（保留现有字段，添加新字段映射）"""
         try:
-            print(f"📝 [unified_config] save_system_settings 被调用")
+            print("📝 [unified_config] save_system_settings 被调用")
             print(f"📝 [unified_config] 接收到的 settings 包含 {len(settings)} 项")
 
             # 检查关键字段
             if "quick_analysis_model" in settings:
-                print(f"  ✓ [unified_config] 包含 quick_analysis_model: {settings['quick_analysis_model']}")
+                print(
+                    f"  ✓ [unified_config] 包含 quick_analysis_model: {settings['quick_analysis_model']}"
+                )
             else:
-                print(f"  ⚠️  [unified_config] 不包含 quick_analysis_model")
+                print("  ⚠️  [unified_config] 不包含 quick_analysis_model")
 
             if "deep_analysis_model" in settings:
-                print(f"  ✓ [unified_config] 包含 deep_analysis_model: {settings['deep_analysis_model']}")
+                print(
+                    f"  ✓ [unified_config] 包含 deep_analysis_model: {settings['deep_analysis_model']}"
+                )
             else:
-                print(f"  ⚠️  [unified_config] 不包含 deep_analysis_model")
+                print("  ⚠️  [unified_config] 不包含 deep_analysis_model")
 
             # 读取现有配置
             print(f"📖 [unified_config] 读取现有配置文件: {self.paths.settings_json}")
@@ -196,32 +211,40 @@ class UnifiedConfigManager:
             # 添加字段名映射（新字段名 -> 旧字段名）
             if "quick_analysis_model" in settings:
                 merged_settings["quick_think_llm"] = settings["quick_analysis_model"]
-                print(f"  ✓ [unified_config] 映射 quick_analysis_model -> quick_think_llm: {settings['quick_analysis_model']}")
+                print(
+                    f"  ✓ [unified_config] 映射 quick_analysis_model -> quick_think_llm: {settings['quick_analysis_model']}"
+                )
 
             if "deep_analysis_model" in settings:
                 merged_settings["deep_think_llm"] = settings["deep_analysis_model"]
-                print(f"  ✓ [unified_config] 映射 deep_analysis_model -> deep_think_llm: {settings['deep_analysis_model']}")
+                print(
+                    f"  ✓ [unified_config] 映射 deep_analysis_model -> deep_think_llm: {settings['deep_analysis_model']}"
+                )
 
             # 打印最终要保存的配置
-            print(f"💾 [unified_config] 即将保存到文件:")
+            print("💾 [unified_config] 即将保存到文件:")
             if "quick_think_llm" in merged_settings:
                 print(f"  ✓ quick_think_llm: {merged_settings['quick_think_llm']}")
             if "deep_think_llm" in merged_settings:
                 print(f"  ✓ deep_think_llm: {merged_settings['deep_think_llm']}")
             if "quick_analysis_model" in merged_settings:
-                print(f"  ✓ quick_analysis_model: {merged_settings['quick_analysis_model']}")
+                print(
+                    f"  ✓ quick_analysis_model: {merged_settings['quick_analysis_model']}"
+                )
             if "deep_analysis_model" in merged_settings:
-                print(f"  ✓ deep_analysis_model: {merged_settings['deep_analysis_model']}")
+                print(
+                    f"  ✓ deep_analysis_model: {merged_settings['deep_analysis_model']}"
+                )
 
             # 保存合并后的配置
             print(f"💾 [unified_config] 保存到文件: {self.paths.settings_json}")
             self._save_json_file(self.paths.settings_json, merged_settings, "settings")
-            print(f"✅ [unified_config] 配置保存成功")
+            print("✅ [unified_config] 配置保存成功")
 
             return True
         except Exception as e:
             print(f"❌ [unified_config] 保存系统设置失败: {e}")
-            traceback = importlib.import_module('traceback')
+            traceback = importlib.import_module("traceback")
             print(traceback.format_exc())
             return False
 
@@ -229,7 +252,9 @@ class UnifiedConfigManager:
         """获取默认模型（向后兼容）"""
         settings = self.get_system_settings()
         # 优先返回快速分析模型，保持向后兼容
-        return settings.get("quick_analysis_model", settings.get("default_model", "qwen-turbo"))
+        return settings.get(
+            "quick_analysis_model", settings.get("default_model", "qwen-turbo")
+        )
 
     def set_default_model(self, model_name: str) -> bool:
         """设置默认模型（向后兼容）"""
@@ -241,13 +266,17 @@ class UnifiedConfigManager:
         """获取快速分析模型"""
         settings = self.get_system_settings()
         # 优先读取新字段名，如果不存在则读取旧字段名（向后兼容）
-        return settings.get("quick_analysis_model") or settings.get("quick_think_llm", "qwen-turbo")
+        return settings.get("quick_analysis_model") or settings.get(
+            "quick_think_llm", "qwen-turbo"
+        )
 
     def get_deep_analysis_model(self) -> str:
         """获取深度分析模型"""
         settings = self.get_system_settings()
         # 优先读取新字段名，如果不存在则读取旧字段名（向后兼容）
-        return settings.get("deep_analysis_model") or settings.get("deep_think_llm", "qwen-max")
+        return settings.get("deep_analysis_model") or settings.get(
+            "deep_think_llm", "qwen-max"
+        )
 
     def set_analysis_models(self, quick_model: str, deep_model: str) -> bool:
         """设置分析模型"""
@@ -262,20 +291,23 @@ class UnifiedConfigManager:
         """获取数据源配置 - 优先从数据库读取，回退到硬编码（同步版本）"""
         try:
             # 🔥 优先从数据库读取配置（使用同步连接）
-            get_mongo_db_sync = getattr(importlib.import_module('app.core.database'), 'get_mongo_db_sync')
-            db = get_mongo_db_sync()
+            get_postgres_db_sync = getattr(
+                importlib.import_module("app.core.database"), "get_postgres_db_sync"
+            )
+            db = get_postgres_db_sync()
             config_collection = db.system_configs
 
             # 获取最新的激活配置
             config_data = config_collection.find_one(
-                {"is_active": True},
-                sort=[("version", -1)]
+                {"is_active": True}, sort=[("version", -1)]
             )
 
-            if config_data and config_data.get('data_source_configs'):
+            if config_data and config_data.get("data_source_configs"):
                 # 从数据库读取到配置
-                data_source_configs = config_data.get('data_source_configs', [])
-                print(f"✅ [unified_config] 从数据库读取到 {len(data_source_configs)} 个数据源配置")
+                data_source_configs = config_data.get("data_source_configs", [])
+                print(
+                    f"✅ [unified_config] 从数据库读取到 {len(data_source_configs)} 个数据源配置"
+                )
 
                 # 转换为 DataSourceConfig 对象
                 result = []
@@ -283,7 +315,9 @@ class UnifiedConfigManager:
                     try:
                         result.append(DataSourceConfig(**ds_config))
                     except Exception as e:
-                        print(f"⚠️ [unified_config] 解析数据源配置失败: {e}, 配置: {ds_config}")
+                        print(
+                            f"⚠️ [unified_config] 解析数据源配置失败: {e}, 配置: {ds_config}"
+                        )
                         continue
 
                 # 按优先级排序（数字越大优先级越高）
@@ -305,7 +339,7 @@ class UnifiedConfigManager:
             endpoint="https://akshare.akfamily.xyz",
             enabled=True,
             priority=1,
-            description="AKShare开源金融数据接口"
+            description="AKShare开源金融数据接口",
         )
         data_sources.append(akshare_config)
 
@@ -318,7 +352,7 @@ class UnifiedConfigManager:
                 endpoint="http://api.tushare.pro",
                 enabled=True,
                 priority=2,
-                description="Tushare专业金融数据接口"
+                description="Tushare专业金融数据接口",
             )
             data_sources.append(tushare_config)
 
@@ -330,20 +364,23 @@ class UnifiedConfigManager:
         """获取数据源配置 - 优先从数据库读取，回退到硬编码（异步版本）"""
         try:
             # 🔥 优先从数据库读取配置（使用异步连接）
-            get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
-            db = get_mongo_db()
+            get_postgres_db = getattr(
+                importlib.import_module("app.core.database"), "get_postgres_db"
+            )
+            db = get_postgres_db()
             config_collection = db.system_configs
 
             # 获取最新的激活配置
             config_data = await config_collection.find_one(
-                {"is_active": True},
-                sort=[("version", -1)]
+                {"is_active": True}, sort=[("version", -1)]
             )
 
-            if config_data and config_data.get('data_source_configs'):
+            if config_data and config_data.get("data_source_configs"):
                 # 从数据库读取到配置
-                data_source_configs = config_data.get('data_source_configs', [])
-                print(f"✅ [unified_config] 从数据库读取到 {len(data_source_configs)} 个数据源配置")
+                data_source_configs = config_data.get("data_source_configs", [])
+                print(
+                    f"✅ [unified_config] 从数据库读取到 {len(data_source_configs)} 个数据源配置"
+                )
 
                 # 转换为 DataSourceConfig 对象
                 result = []
@@ -351,7 +388,9 @@ class UnifiedConfigManager:
                     try:
                         result.append(DataSourceConfig(**ds_config))
                     except Exception as e:
-                        print(f"⚠️ [unified_config] 解析数据源配置失败: {e}, 配置: {ds_config}")
+                        print(
+                            f"⚠️ [unified_config] 解析数据源配置失败: {e}, 配置: {ds_config}"
+                        )
                         continue
 
                 # 按优先级排序（数字越大优先级越高）
@@ -373,7 +412,7 @@ class UnifiedConfigManager:
             endpoint="https://akshare.akfamily.xyz",
             enabled=True,
             priority=1,
-            description="AKShare开源金融数据接口"
+            description="AKShare开源金融数据接口",
         )
         data_sources.append(akshare_config)
 
@@ -386,7 +425,7 @@ class UnifiedConfigManager:
                 endpoint="http://api.tushare.pro",
                 enabled=True,
                 priority=2,
-                description="Tushare专业金融数据接口"
+                description="Tushare专业金融数据接口",
             )
             data_sources.append(tushare_config)
 
@@ -399,7 +438,7 @@ class UnifiedConfigManager:
                 endpoint="https://finnhub.io/api/v1",
                 enabled=True,
                 priority=3,
-                description="Finnhub股票数据接口"
+                description="Finnhub股票数据接口",
             )
             data_sources.append(finnhub_config)
 
@@ -411,19 +450,18 @@ class UnifiedConfigManager:
         """获取数据库配置"""
         configs = []
 
-        settings = getattr(importlib.import_module('app.core.config'), 'settings')
+        settings = getattr(importlib.import_module("app.core.config"), "settings")
 
-        # MongoDB配置
-        mongodb_config = DatabaseConfig(
-            name="MongoDB主库",
-            type=DatabaseType.MONGODB,
-            host=os.getenv("MONGODB_HOST", "localhost"),
-            port=int(os.getenv("MONGODB_PORT", "27017")),
-            database=os.getenv("MONGODB_DATABASE", "") or os.getenv("MONGODB_DATABASE_NAME", "") or settings.mongo_db,
+        postgres_config = DatabaseConfig(
+            name="PostgreSQL主库",
+            type=DatabaseType.POSTGRESQL,
+            host=settings.POSTGRES_HOST,
+            port=settings.POSTGRES_PORT,
+            database=settings.POSTGRES_DB,
             enabled=True,
-            description="MongoDB主数据库"
+            description="PostgreSQL主数据库和文档存储",
         )
-        configs.append(mongodb_config)
+        configs.append(postgres_config)
 
         # Redis配置
         redis_config = DatabaseConfig(
@@ -433,7 +471,7 @@ class UnifiedConfigManager:
             port=int(os.getenv("REDIS_PORT", "6379")),
             database=os.getenv("REDIS_DB", "0"),
             enabled=True,
-            description="Redis缓存数据库"
+            description="Redis缓存数据库",
         )
         configs.append(redis_config)
 
@@ -452,7 +490,7 @@ class UnifiedConfigManager:
                 data_source_configs=self.get_data_source_configs(),
                 default_data_source="AKShare",
                 database_configs=self.get_database_configs(),
-                system_settings=self.get_system_settings()
+                system_settings=self.get_system_settings(),
             )
             return config
         except Exception as e:
@@ -464,7 +502,7 @@ class UnifiedConfigManager:
                 llm_configs=[],
                 data_source_configs=[],
                 database_configs=[],
-                system_settings={}
+                system_settings={},
             )
 
     def sync_to_legacy_format(self, system_config: SystemConfig) -> bool:
@@ -482,12 +520,20 @@ class UnifiedConfigManager:
 
             # 映射新字段名到旧字段名
             if "quick_analysis_model" in system_config.system_settings:
-                settings["quick_think_llm"] = system_config.system_settings["quick_analysis_model"]
-                settings["quick_analysis_model"] = system_config.system_settings["quick_analysis_model"]
+                settings["quick_think_llm"] = system_config.system_settings[
+                    "quick_analysis_model"
+                ]
+                settings["quick_analysis_model"] = system_config.system_settings[
+                    "quick_analysis_model"
+                ]
 
             if "deep_analysis_model" in system_config.system_settings:
-                settings["deep_think_llm"] = system_config.system_settings["deep_analysis_model"]
-                settings["deep_analysis_model"] = system_config.system_settings["deep_analysis_model"]
+                settings["deep_think_llm"] = system_config.system_settings[
+                    "deep_analysis_model"
+                ]
+                settings["deep_analysis_model"] = system_config.system_settings[
+                    "deep_analysis_model"
+                ]
 
             if system_config.default_llm:
                 settings["default_model"] = system_config.default_llm

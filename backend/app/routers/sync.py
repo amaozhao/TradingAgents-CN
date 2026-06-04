@@ -2,8 +2,9 @@
 Sync router for stock basics synchronization
 - POST /api/sync/stock_basics/run -> trigger full sync
 - GET  /api/sync/stock_basics/status -> get last status
-Requires MongoDB initialized by app lifespan.
+Requires PostgreSQL initialized by app lifespan.
 """
+
 from __future__ import annotations
 
 from typing import Any

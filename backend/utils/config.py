@@ -5,17 +5,10 @@ Data Directory Configuration Utilities
 为项目中的其他模块提供统一的数据目录访问接口
 """
 
-import os
-import sys
 import importlib
+import os
 from pathlib import Path
-from typing import Optional, Union
-
-# 添加后端源码目录到 Python 路径，数据目录仍位于仓库根目录
-backend_root = Path(__file__).resolve().parent.parent
-project_root = backend_root.parent
-if str(backend_root) not in sys.path:
-    sys.path.insert(0, str(backend_root))
+from typing import Optional
 
 try:
     data_manager_module = importlib.import_module("scripts.unified_data_manager")
@@ -29,16 +22,16 @@ except ImportError:
 
         # 基本路径映射
         path_mapping = {
-            'data_root': 'data',
-            'cache': 'data/cache',
-            'analysis': 'data/analysis',
-            'sessions': 'data/sessions',
-            'logs': 'data/logs',
-            'config': 'data/config',
-            'temp': 'data/temp',
+            "data_root": "data",
+            "cache": "data/cache",
+            "analysis": "data/analysis",
+            "sessions": "data/sessions",
+            "logs": "data/logs",
+            "config": "data/config",
+            "temp": "data/temp",
         }
 
-        path_str = path_mapping.get(key, f'data/{key}')
+        path_str = path_mapping.get(key, f"data/{key}")
         path = project_root / path_str
 
         if create:
@@ -60,11 +53,11 @@ def get_cache_dir(subdir: Optional[str] = None, create: bool = True) -> Path:
         Path: 缓存目录路径
     """
     if subdir:
-        cache_path = get_data_path('cache', create=create) / subdir
+        cache_path = get_data_path("cache", create=create) / subdir
         if create:
             cache_path.mkdir(parents=True, exist_ok=True)
         return cache_path
-    return get_data_path('cache', create=create)
+    return get_data_path("cache", create=create)
 
 
 def get_results_dir(subdir: Optional[str] = None, create: bool = True) -> Path:
@@ -79,11 +72,11 @@ def get_results_dir(subdir: Optional[str] = None, create: bool = True) -> Path:
         Path: 结果目录路径
     """
     if subdir:
-        results_path = get_data_path('analysis', create=create) / subdir
+        results_path = get_data_path("analysis", create=create) / subdir
         if create:
             results_path.mkdir(parents=True, exist_ok=True)
         return results_path
-    return get_data_path('analysis', create=create)
+    return get_data_path("analysis", create=create)
 
 
 def get_sessions_dir(subdir: Optional[str] = None, create: bool = True) -> Path:
@@ -98,11 +91,11 @@ def get_sessions_dir(subdir: Optional[str] = None, create: bool = True) -> Path:
         Path: 会话目录路径
     """
     if subdir:
-        sessions_path = get_data_path('sessions', create=create) / subdir
+        sessions_path = get_data_path("sessions", create=create) / subdir
         if create:
             sessions_path.mkdir(parents=True, exist_ok=True)
         return sessions_path
-    return get_data_path('sessions', create=create)
+    return get_data_path("sessions", create=create)
 
 
 def get_logs_dir(subdir: Optional[str] = None, create: bool = True) -> Path:
@@ -117,11 +110,11 @@ def get_logs_dir(subdir: Optional[str] = None, create: bool = True) -> Path:
         Path: 日志目录路径
     """
     if subdir:
-        logs_path = get_data_path('logs', create=create) / subdir
+        logs_path = get_data_path("logs", create=create) / subdir
         if create:
             logs_path.mkdir(parents=True, exist_ok=True)
         return logs_path
-    return get_data_path('logs', create=create)
+    return get_data_path("logs", create=create)
 
 
 def get_config_dir(subdir: Optional[str] = None, create: bool = True) -> Path:
@@ -136,11 +129,11 @@ def get_config_dir(subdir: Optional[str] = None, create: bool = True) -> Path:
         Path: 配置目录路径
     """
     if subdir:
-        config_path = get_data_path('config', create=create) / subdir
+        config_path = get_data_path("config", create=create) / subdir
         if create:
             config_path.mkdir(parents=True, exist_ok=True)
         return config_path
-    return get_data_path('config', create=create)
+    return get_data_path("config", create=create)
 
 
 def get_temp_dir(subdir: Optional[str] = None, create: bool = True) -> Path:
@@ -155,11 +148,11 @@ def get_temp_dir(subdir: Optional[str] = None, create: bool = True) -> Path:
         Path: 临时目录路径
     """
     if subdir:
-        temp_path = get_data_path('temp', create=create) / subdir
+        temp_path = get_data_path("temp", create=create) / subdir
         if create:
             temp_path.mkdir(parents=True, exist_ok=True)
         return temp_path
-    return get_data_path('temp', create=create)
+    return get_data_path("temp", create=create)
 
 
 # 兼容性函数 - 为现有代码提供向后兼容
@@ -170,47 +163,47 @@ def get_analysis_dir() -> Path:
 
 def get_stock_data_cache_dir() -> Path:
     """获取股票数据缓存目录"""
-    return get_cache_dir('stock_data')
+    return get_cache_dir("stock_data")
 
 
 def get_news_data_cache_dir() -> Path:
     """获取新闻数据缓存目录"""
-    return get_cache_dir('news_data')
+    return get_cache_dir("news_data")
 
 
 def get_fundamentals_cache_dir() -> Path:
     """获取基本面数据缓存目录"""
-    return get_cache_dir('fundamentals')
+    return get_cache_dir("fundamentals")
 
 
 def get_metadata_cache_dir() -> Path:
     """获取元数据缓存目录"""
-    return get_cache_dir('metadata')
+    return get_cache_dir("metadata")
 
 
 def get_web_sessions_dir() -> Path:
     """获取Web会话目录"""
-    return get_sessions_dir('web_sessions')
+    return get_sessions_dir("web_sessions")
 
 
 def get_cli_sessions_dir() -> Path:
     """获取CLI会话目录"""
-    return get_sessions_dir('cli_sessions')
+    return get_sessions_dir("cli_sessions")
 
 
 def get_application_logs_dir() -> Path:
     """获取应用程序日志目录"""
-    return get_logs_dir('application')
+    return get_logs_dir("application")
 
 
 def get_operations_logs_dir() -> Path:
     """获取操作日志目录"""
-    return get_logs_dir('operations')
+    return get_logs_dir("operations")
 
 
 def get_user_activities_logs_dir() -> Path:
     """获取用户活动日志目录"""
-    return get_logs_dir('user_activities')
+    return get_logs_dir("user_activities")
 
 
 # 环境变量检查函数
@@ -222,22 +215,22 @@ def check_data_directory_config() -> dict:
         dict: 配置状态信息
     """
     env_vars = [
-        'TRADING_AGENTS_DATA_DIR',
-        'TRADING_AGENTS_CACHE_DIR',
-        'TRADING_AGENTS_RESULTS_DIR',
-        'TRADING_AGENTS_SESSIONS_DIR',
-        'TRADING_AGENTS_LOGS_DIR',
-        'TRADING_AGENTS_CONFIG_DIR',
-        'TRADING_AGENTS_TEMP_DIR',
+        "TRADING_AGENTS_DATA_DIR",
+        "TRADING_AGENTS_CACHE_DIR",
+        "TRADING_AGENTS_RESULTS_DIR",
+        "TRADING_AGENTS_SESSIONS_DIR",
+        "TRADING_AGENTS_LOGS_DIR",
+        "TRADING_AGENTS_CONFIG_DIR",
+        "TRADING_AGENTS_TEMP_DIR",
     ]
 
     config_status = {}
     for var in env_vars:
         value = os.getenv(var)
         config_status[var] = {
-            'set': value is not None,
-            'value': value,
-            'exists': Path(value).exists() if value else False
+            "set": value is not None,
+            "value": value,
+            "exists": Path(value).exists() if value else False,
         }
 
     return config_status
@@ -251,11 +244,11 @@ def print_data_directory_status():
     status = check_data_directory_config()
 
     for var, info in status.items():
-        status_icon = "✅" if info['set'] else "❌"
-        exists_icon = "📁" if info['exists'] else "❓"
+        status_icon = "✅" if info["set"] else "❌"
+        exists_icon = "📁" if info["exists"] else "❓"
 
         print(f"{status_icon} {var}")
-        if info['set']:
+        if info["set"]:
             print(f"   值: {info['value']}")
             print(f"   {exists_icon} 目录存在: {'是' if info['exists'] else '否'}")
         else:
@@ -263,5 +256,5 @@ def print_data_directory_status():
         print()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print_data_directory_status()

@@ -1,14 +1,15 @@
 import time
-import json
 
 from trader.agents.schemas import ResearchPlan, render_research_plan
 from trader.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
 )
+from trader.agents.utils.utils import get_instrument_context_from_state
+
 # 导入统一日志系统
 from trader.utils.logging.init import get_logger
-from trader.agents.utils.utils import get_instrument_context_from_state
+
 logger = get_logger("default")
 
 
@@ -16,7 +17,7 @@ def create_research_manager(llm, memory=None):
     structured_llm = bind_structured(llm, ResearchPlan, "Research Manager")
 
     def research_manager_node(state) -> dict:
-        ticker = state["company_of_interest"]
+        state["company_of_interest"]
         instrument_context = get_instrument_context_from_state(state)
         history = state["investment_debate_state"].get("history", "")
         market_research_report = state.get("market_report", "")
@@ -32,7 +33,7 @@ def create_research_manager(llm, memory=None):
         if memory is not None:
             past_memories = memory.get_memories(curr_situation, n_matches=2)
         else:
-            logger.warning(f"⚠️ [DEBUG] memory为None，跳过历史记忆检索")
+            logger.warning("⚠️ [DEBUG] memory为None，跳过历史记忆检索")
             past_memories = []
 
         past_memory_str = ""
@@ -85,7 +86,7 @@ def create_research_manager(llm, memory=None):
         prompt_length = len(prompt)
         estimated_tokens = int(prompt_length / 1.8)
 
-        logger.info(f"📊 [Research Manager] Prompt 统计:")
+        logger.info("📊 [Research Manager] Prompt 统计:")
         logger.info(f"   - 辩论历史长度: {len(history)} 字符")
         logger.info(f"   - 总 Prompt 长度: {prompt_length} 字符")
         logger.info(f"   - 估算输入 Token: ~{estimated_tokens} tokens")
@@ -109,7 +110,9 @@ def create_research_manager(llm, memory=None):
         estimated_output_tokens = int(response_length / 1.8)
 
         logger.info(f"⏱️ [Research Manager] LLM调用耗时: {elapsed_time:.2f}秒")
-        logger.info(f"📊 [Research Manager] 响应统计: {response_length} 字符, 估算~{estimated_output_tokens} tokens")
+        logger.info(
+            f"📊 [Research Manager] 响应统计: {response_length} 字符, 估算~{estimated_output_tokens} tokens"
+        )
 
         new_investment_debate_state = {
             "judge_decision": investment_plan,

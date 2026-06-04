@@ -3,31 +3,30 @@
 AKShare数据初始化CLI工具
 用于首次部署时的数据初始化和管理
 """
-import asyncio
+
 import argparse
+import asyncio
 import logging
+import os
 import sys
 from datetime import datetime
-from pathlib import Path
-import os
 from typing import Optional
 
-# 添加项目根目录到Python路径
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from app.core.database import init_database, get_mongo_db, close_database
+from app.core.database import close_database, get_postgres_db, init_database
 from app.worker.akshare.init import get_akshare_init_service
 from app.worker.akshare.sync import get_akshare_sync_service
 
 # 配置日志
-os.makedirs(os.path.join('data', 'logs'), exist_ok=True)
+os.makedirs(os.path.join("data", "logs"), exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(os.path.join('data', 'logs', 'akshare_init.log'), encoding='utf-8')
-    ]
+        logging.FileHandler(
+            os.path.join("data", "logs", "akshare_init.log"), encoding="utf-8"
+        ),
+    ],
 )
 logger = logging.getLogger(__name__)
 
@@ -38,31 +37,28 @@ async def check_database_status():
     print("📊 检查数据库状态...")
 
     try:
-        db = get_mongo_db()
+        db = get_postgres_db()
 
         # 检查基础信息
         basic_count = await db.stock_basic_info.count_documents({})
-        extended_count = await db.stock_basic_info.count_documents({
-            "full_symbol": {"$exists": True},
-            "market_info": {"$exists": True}
-        })
+        extended_count = await db.stock_basic_info.count_documents(
+            {"full_symbol": {"$exists": True}, "market_info": {"$exists": True}}
+        )
 
         # 获取最新更新时间
-        latest_basic = await db.stock_basic_info.find_one(
-            {}, sort=[("updated_at", -1)]
-        )
+        latest_basic = await db.stock_basic_info.find_one({}, sort=[("updated_at", -1)])
 
         print(f"  📋 股票基础信息: {basic_count:,}条")
         if basic_count > 0:
-            print(f"     扩展字段覆盖: {extended_count:,}条 ({extended_count/basic_count*100:.1f}%)")
+            print(
+                f"     扩展字段覆盖: {extended_count:,}条 ({extended_count / basic_count * 100:.1f}%)"
+            )
             if latest_basic and latest_basic.get("updated_at"):
                 print(f"     最新更新: {latest_basic['updated_at']}")
 
         # 检查行情数据
         quotes_count = await db.market_quotes.count_documents({})
-        latest_quotes = await db.market_quotes.find_one(
-            {}, sort=[("updated_at", -1)]
-        )
+        latest_quotes = await db.market_quotes.find_one({}, sort=[("updated_at", -1)])
 
         print(f"  📈 行情数据: {quotes_count:,}条")
         if quotes_count > 0 and latest_quotes and latest_quotes.get("updated_at"):
@@ -90,7 +86,7 @@ async def run_full_initialization(
     historical_days: int,
     force: bool = False,
     multi_period: bool = False,
-    sync_items: Optional[list] = None
+    sync_items: Optional[list] = None,
 ):
     """运行完整初始化"""
     print("=" * 50)
@@ -100,7 +96,7 @@ async def run_full_initialization(
     if sync_items:
         print(f"📋 同步项目: {', '.join(sync_items)}")
     elif multi_period:
-        print(f"📊 多周期模式: 日线、周线、月线")
+        print("📊 多周期模式: 日线、周线、月线")
 
     try:
         service = await get_akshare_init_service()
@@ -109,7 +105,7 @@ async def run_full_initialization(
             historical_days=historical_days,
             skip_if_exists=not force,
             enable_multi_period=multi_period,
-            sync_items=sync_items
+            sync_items=sync_items,
         )
 
         print("\n" + "=" * 50)
@@ -118,7 +114,7 @@ async def run_full_initialization(
         print(f"  ⏱️ 耗时: {result['duration']:.2f}秒")
         print(f"  📈 进度: {result['progress']}")
 
-        data_summary = result.get('data_summary', {})
+        data_summary = result.get("data_summary", {})
         print(f"  📋 基础信息: {data_summary.get('basic_info_count', 0):,}条")
         print(f"  📊 历史数据: {data_summary.get('daily_records', 0):,}条")
         if multi_period:
@@ -129,12 +125,14 @@ async def run_full_initialization(
         print(f"  📈 行情数据: {data_summary.get('quotes_count', 0):,}条")
         print(f"  📰 新闻数据: {data_summary.get('news_count', 0):,}条")
 
-        if result.get('errors'):
+        if result.get("errors"):
             print(f"  ⚠️ 错误数量: {len(result['errors'])}")
-            for error in result['errors'][:3]:  # 只显示前3个错误
-                print(f"     - {error.get('step', 'Unknown')}: {error.get('error', 'Unknown error')}")
+            for error in result["errors"][:3]:  # 只显示前3个错误
+                print(
+                    f"     - {error.get('step', 'Unknown')}: {error.get('error', 'Unknown error')}"
+                )
 
-        return result['success']
+        return result["success"]
 
     except Exception as e:
         print(f"❌ 初始化失败: {e}")
@@ -150,13 +148,13 @@ async def run_basic_sync_only():
         service = await get_akshare_sync_service()
         result = await service.sync_stock_basic_info(force_update=True)
 
-        print(f"✅ 基础信息同步完成:")
+        print("✅ 基础信息同步完成:")
         print(f"  📊 处理总数: {result.get('total_processed', 0):,}")
         print(f"  ✅ 成功数量: {result.get('success_count', 0):,}")
         print(f"  ❌ 错误数量: {result.get('error_count', 0):,}")
         print(f"  ⏱️ 耗时: {result.get('duration', 0):.2f}秒")
 
-        return result.get('success_count', 0) > 0
+        return result.get("success_count", 0) > 0
 
     except Exception as e:
         print(f"❌ 基础信息同步失败: {e}")
@@ -183,7 +181,7 @@ async def test_akshare_connection():
                 # 显示前5只股票
                 print("  前5只股票:")
                 for i, stock in enumerate(stock_list[:5]):
-                    print(f"    {i+1}. {stock.get('code')} - {stock.get('name')}")
+                    print(f"    {i + 1}. {stock.get('code')} - {stock.get('name')}")
             else:
                 print("⚠️ 获取股票列表失败")
 
@@ -261,19 +259,29 @@ async def main():
     """主函数"""
     parser = argparse.ArgumentParser(
         description="AKShare数据初始化工具",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     # 操作选项
     parser.add_argument("--check-only", action="store_true", help="仅检查数据库状态")
-    parser.add_argument("--test-connection", action="store_true", help="测试AKShare连接")
+    parser.add_argument(
+        "--test-connection", action="store_true", help="测试AKShare连接"
+    )
     parser.add_argument("--basic-only", action="store_true", help="仅同步基础信息")
     parser.add_argument("--full", action="store_true", help="运行完整初始化")
 
     # 配置选项
-    parser.add_argument("--historical-days", type=int, default=365, help="历史数据天数（默认365）")
-    parser.add_argument("--multi-period", action="store_true", help="同步多周期数据（日线、周线、月线）")
-    parser.add_argument("--sync-items", type=str, help="指定要同步的数据类型（逗号分隔），可选: basic_info,historical,weekly,monthly,financial,quotes,news")
+    parser.add_argument(
+        "--historical-days", type=int, default=365, help="历史数据天数（默认365）"
+    )
+    parser.add_argument(
+        "--multi-period", action="store_true", help="同步多周期数据（日线、周线、月线）"
+    )
+    parser.add_argument(
+        "--sync-items",
+        type=str,
+        help="指定要同步的数据类型（逗号分隔），可选: basic_info,historical,weekly,monthly,financial,quotes,news",
+    )
     parser.add_argument("--force", action="store_true", help="强制重新初始化")
     parser.add_argument("--help-detail", action="store_true", help="显示详细帮助信息")
 
@@ -319,9 +327,17 @@ async def main():
             # 解析sync_items参数
             sync_items = None
             if args.sync_items:
-                sync_items = [item.strip() for item in args.sync_items.split(',')]
+                sync_items = [item.strip() for item in args.sync_items.split(",")]
                 # 验证sync_items
-                valid_items = ['basic_info', 'historical', 'weekly', 'monthly', 'financial', 'quotes', 'news']
+                valid_items = [
+                    "basic_info",
+                    "historical",
+                    "weekly",
+                    "monthly",
+                    "financial",
+                    "quotes",
+                    "news",
+                ]
                 invalid_items = [item for item in sync_items if item not in valid_items]
                 if invalid_items:
                     print(f"❌ 无效的同步项目: {', '.join(invalid_items)}")
@@ -329,10 +345,7 @@ async def main():
                     return
 
             success = await run_full_initialization(
-                args.historical_days,
-                args.force,
-                args.multi_period,
-                sync_items or []
+                args.historical_days, args.force, args.multi_period, sync_items or []
             )
 
         print("\n" + "=" * 50)

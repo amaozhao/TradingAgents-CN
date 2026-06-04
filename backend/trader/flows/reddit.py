@@ -47,13 +47,15 @@ DEFAULT_SUBREDDITS = ("wallstreetbets", "stocks", "investing")
 
 
 def _search_qs(ticker: str, limit: int) -> str:
-    return urlencode({
-        "q": ticker,
-        "restrict_sr": "on",
-        "sort": "new",
-        "t": "week",  # last 7 days
-        "limit": limit,
-    })
+    return urlencode(
+        {
+            "q": ticker,
+            "restrict_sr": "on",
+            "sort": "new",
+            "t": "week",  # last 7 days
+            "limit": limit,
+        }
+    )
 
 
 def _iso_to_timestamp(iso_str: Optional[str]) -> Optional[float]:
@@ -103,16 +105,20 @@ def _fetch_subreddit_rss(
         title_el = entry.find("atom:title", _ATOM_NS)
         published_el = entry.find("atom:published", _ATOM_NS)
         content_el = entry.find("atom:content", _ATOM_NS)
-        posts.append({
-            "title": (title_el.text if title_el is not None else "") or "",
-            "score": None,
-            "num_comments": None,
-            "created_utc": _iso_to_timestamp(
-                published_el.text if published_el is not None else None
-            ),
-            "selftext": _strip_html((content_el.text if content_el is not None else "") or ""),
-            "source": "rss",
-        })
+        posts.append(
+            {
+                "title": (title_el.text if title_el is not None else "") or "",
+                "score": None,
+                "num_comments": None,
+                "created_utc": _iso_to_timestamp(
+                    published_el.text if published_el is not None else None
+                ),
+                "selftext": _strip_html(
+                    (content_el.text if content_el is not None else "") or ""
+                ),
+                "source": "rss",
+            }
+        )
     return posts
 
 
@@ -132,7 +138,9 @@ def _fetch_subreddit(
     except (HTTPError, URLError, json.JSONDecodeError, TimeoutError) as exc:
         logger.warning(
             "Reddit JSON fetch failed for r/%s · %s: %s — falling back to RSS feed.",
-            sub, ticker, exc,
+            sub,
+            ticker,
+            exc,
         )
         return _fetch_subreddit_rss(ticker, sub, limit, timeout)
 
@@ -158,7 +166,9 @@ def fetch_reddit_posts(
         posts = _fetch_subreddit(ticker, sub, limit_per_sub, timeout)
         total_posts += len(posts)
         if not posts:
-            blocks.append(f"r/{sub}: <no posts found mentioning {ticker.upper()} in the past 7 days>")
+            blocks.append(
+                f"r/{sub}: <no posts found mentioning {ticker.upper()} in the past 7 days>"
+            )
             continue
 
         via_rss = any(p.get("source") == "rss" for p in posts)

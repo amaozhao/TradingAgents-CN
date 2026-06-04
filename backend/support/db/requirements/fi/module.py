@@ -4,17 +4,16 @@
 验证 backend/pyproject.toml 中的数据库依赖兼容性
 """
 
+import importlib
 import os
 import sys
 import tomllib
-import importlib
 from pathlib import Path
 
-# 添加仓库根目录和 backend 源码目录到 Python 路径
-backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-project_root = os.path.dirname(backend_root)
-sys.path.insert(0, project_root)
-sys.path.insert(0, backend_root)
+from support.path import BACKEND_ROOT, REPO_ROOT
+
+backend_root = BACKEND_ROOT
+project_root = REPO_ROOT
 
 
 def test_python_version_check():
@@ -23,10 +22,14 @@ def test_python_version_check():
 
     current_version = sys.version_info
     if current_version >= (3, 13):
-        print(f"  ✅ Python {current_version.major}.{current_version.minor}.{current_version.micro} 符合要求")
+        print(
+            f"  ✅ Python {current_version.major}.{current_version.minor}.{current_version.micro} 符合要求"
+        )
         return True
     else:
-        print(f"  ❌ Python {current_version.major}.{current_version.minor}.{current_version.micro} 版本过低")
+        print(
+            f"  ❌ Python {current_version.major}.{current_version.minor}.{current_version.micro} 版本过低"
+        )
         return False
 
 
@@ -35,7 +38,7 @@ def test_pickle_compatibility():
     print("🔧 测试pickle兼容性...")
 
     try:
-        pickle = importlib.import_module('pickle')
+        pickle = importlib.import_module("pickle")
 
         # 检查协议版本
         max_protocol = pickle.HIGHEST_PROTOCOL
@@ -81,12 +84,13 @@ def test_pyproject_dependency_syntax():
             return False
 
         required_database_packages = {
-            "pymongo": "pymongo>=",
-            "motor": "motor>=",
+            "asyncpg": "asyncpg>=",
             "redis": "redis>=",
+            "sqlalchemy": "sqlalchemy>=",
         }
         missing = [
-            name for name, prefix in required_database_packages.items()
+            name
+            for name, prefix in required_database_packages.items()
             if not any(dep.startswith(prefix) for dep in dependencies)
         ]
 
@@ -95,14 +99,15 @@ def test_pyproject_dependency_syntax():
             return False
 
         unpinned = [
-            dep for dep in dependencies
-            if ">=" not in dep and not dep.startswith("#")
+            dep for dep in dependencies if ">=" not in dep and not dep.startswith("#")
         ]
         if unpinned:
             print(f"  ❌ 存在非最小版本依赖声明: {unpinned}")
             return False
 
-        print(f"  ✅ backend/pyproject.toml 依赖检查通过，有效包数量: {len(dependencies)}")
+        print(
+            f"  ✅ backend/pyproject.toml 依赖检查通过，有效包数量: {len(dependencies)}"
+        )
         return True
 
     except Exception as e:
@@ -116,9 +121,9 @@ def test_package_installation_simulation():
 
     # 模拟检查每个包的可用性
     packages_to_check = [
-        "pymongo",
-        "motor",
+        "asyncpg",
         "redis",
+        "sqlalchemy",
         "pandas",
     ]
 
@@ -153,7 +158,8 @@ def test_deprecated_requirements_files_removed():
     ]
 
     remaining = [
-        file_name for file_name in deprecated_files
+        file_name
+        for file_name in deprecated_files
         if (Path(project_root) / file_name).exists()
     ]
 

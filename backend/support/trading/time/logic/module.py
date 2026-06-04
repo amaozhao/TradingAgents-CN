@@ -6,15 +6,11 @@
 """
 
 import sys
-from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-# 添加项目根目录到 Python 路径
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from app.services.quotes.ingestion import QuotesIngestionService
 from app.core.config import settings
+from app.services.quotes.ingestion import QuotesIngestionService
 
 
 def test_trading_time_logic():
@@ -79,7 +75,9 @@ def test_trading_time_logic():
         if "✨" in description:
             buffer_period_tests.append((time_str, result, expected))
 
-        print(f"{time_str:^8} | {str(expected):^6} | {str(result):^6} | {status:^8} | {description}")
+        print(
+            f"{time_str:^8} | {str(expected):^6} | {str(result):^6} | {status:^8} | {description}"
+        )
 
     print("-" * 80)
 
@@ -93,20 +91,26 @@ def test_trading_time_logic():
     print("\n" + "=" * 80)
     print("收盘后缓冲期测试总结")
     print("=" * 80)
-    print(f"\n配置的同步间隔: {settings.QUOTES_INGEST_INTERVAL_SECONDS} 秒 ({settings.QUOTES_INGEST_INTERVAL_SECONDS / 60} 分钟)")
-    print(f"缓冲期时长: 30 分钟 (15:00-15:30)")
+    print(
+        f"\n配置的同步间隔: {settings.QUOTES_INGEST_INTERVAL_SECONDS} 秒 ({settings.QUOTES_INGEST_INTERVAL_SECONDS / 60} 分钟)"
+    )
+    print("缓冲期时长: 30 分钟 (15:00-15:30)")
     print(f"理论同步次数: {30 * 60 // settings.QUOTES_INGEST_INTERVAL_SECONDS} 次")
 
     print("\n缓冲期内的同步机会：")
     for i, (time_str, result, expected) in enumerate(buffer_period_tests, 1):
         status = "✅" if result == expected else "❌"
-        print(f"  {status} 第{i}次机会: {time_str} - {'可以同步' if result else '不能同步'}")
+        print(
+            f"  {status} 第{i}次机会: {time_str} - {'可以同步' if result else '不能同步'}"
+        )
 
     print("\n💡 说明：")
     print("  - 收盘时间是 15:00")
     print("  - 缓冲期延长到 15:30，增加 30 分钟")
     print(f"  - 假设同步间隔为 {settings.QUOTES_INGEST_INTERVAL_SECONDS / 60} 分钟")
-    print(f"  - 在缓冲期内可以进行 {30 * 60 // settings.QUOTES_INGEST_INTERVAL_SECONDS} 次同步")
+    print(
+        f"  - 在缓冲期内可以进行 {30 * 60 // settings.QUOTES_INGEST_INTERVAL_SECONDS} 次同步"
+    )
     print("  - 大大降低了错过收盘价的风险！")
 
     return all_passed

@@ -2,10 +2,11 @@
 """
 测试系统设置元数据 API
 """
+
 import importlib
 
 import requests
-import json
+
 
 def main():
     """主函数"""
@@ -18,7 +19,7 @@ def main():
         login_response = requests.post(
             "http://127.0.0.1:8000/api/auth/login",
             json={"username": "admin", "password": "admin123"},
-            timeout=5
+            timeout=5,
         )
 
         if login_response.status_code != 200:
@@ -27,14 +28,14 @@ def main():
 
         token = login_response.json().get("data", {}).get("access_token")
         if not token:
-            print(f"❌ 无法获取 token")
+            print("❌ 无法获取 token")
             return
 
         # 获取元数据
         response = requests.get(
             "http://127.0.0.1:8000/api/config/settings/meta",
             headers={"Authorization": f"Bearer {token}"},
-            timeout=5
+            timeout=5,
         )
 
         if response.status_code == 200:
@@ -55,10 +56,16 @@ def main():
                     print(f"    has_value: {item.get('has_value')}")
 
             # 检查是否有 quick_analysis_model 和 deep_analysis_model
-            quick_meta = next((item for item in items if item.get("key") == "quick_analysis_model"), None)
-            deep_meta = next((item for item in items if item.get("key") == "deep_analysis_model"), None)
+            quick_meta = next(
+                (item for item in items if item.get("key") == "quick_analysis_model"),
+                None,
+            )
+            deep_meta = next(
+                (item for item in items if item.get("key") == "deep_analysis_model"),
+                None,
+            )
 
-            print(f"\n\n检查关键字段:")
+            print("\n\n检查关键字段:")
             print(f"  quick_analysis_model 元数据: {quick_meta}")
             print(f"  deep_analysis_model 元数据: {deep_meta}")
 
@@ -70,7 +77,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 错误: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 

@@ -11,6 +11,7 @@ from typing import Optional
 @dataclass
 class UsageRecord:
     """使用记录"""
+
     timestamp: str  # 时间戳
     provider: str  # 供应商
     model_name: str  # 模型名称
@@ -25,6 +26,7 @@ class UsageRecord:
 @dataclass
 class ModelConfig:
     """模型配置"""
+
     provider: str  # 供应商：dashscope, openai, google, etc.
     model_name: str  # 模型名称
     api_key: str  # API密钥
@@ -37,6 +39,7 @@ class ModelConfig:
 @dataclass
 class PricingConfig:
     """定价配置"""
+
     provider: str  # 供应商
     model_name: str  # 模型名称
     input_price_per_1k: float  # 输入token价格（每1000个token）

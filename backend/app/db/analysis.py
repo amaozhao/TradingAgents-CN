@@ -38,14 +38,20 @@ async def get_analysis_task_by_task_id(session, task_id: str) -> dict[str, Any] 
     return _task_to_dict(row) if row else None
 
 
-async def get_analysis_report_by_task_id(session, task_id: str) -> dict[str, Any] | None:
+async def get_analysis_report_by_task_id(
+    session, task_id: str
+) -> dict[str, Any] | None:
     result = await session.execute(build_analysis_report_by_task_id_select(task_id))
     row = result.scalars().first()
     return _report_to_dict(row) if row else None
 
 
-async def get_analysis_report_by_analysis_id(session, analysis_id: str) -> dict[str, Any] | None:
-    result = await session.execute(build_analysis_report_by_analysis_id_select(analysis_id))
+async def get_analysis_report_by_analysis_id(
+    session, analysis_id: str
+) -> dict[str, Any] | None:
+    result = await session.execute(
+        build_analysis_report_by_analysis_id_select(analysis_id)
+    )
     row = result.scalars().first()
     return _report_to_dict(row) if row else None
 
@@ -59,7 +65,9 @@ async def list_user_analysis_tasks(
     offset: int = 0,
 ) -> list[dict[str, Any]]:
     result = await session.execute(
-        build_user_analysis_tasks_select(user_id, status=status, limit=limit, offset=offset)
+        build_user_analysis_tasks_select(
+            user_id, status=status, limit=limit, offset=offset
+        )
     )
     return [_task_to_dict(row) for row in result.scalars()]
 
@@ -76,8 +84,10 @@ def _task_to_dict(row: AnalysisTask) -> dict[str, Any]:
         "stock_code": payload.get("stock_code") or row.stock_symbol,
         "status": row.status,
         "progress": row.progress,
-        "created_at": payload.get("created_at") or (row.created_at.isoformat() if row.created_at else None),
-        "updated_at": payload.get("updated_at") or (row.updated_at.isoformat() if row.updated_at else None),
+        "created_at": payload.get("created_at")
+        or (row.created_at.isoformat() if row.created_at else None),
+        "updated_at": payload.get("updated_at")
+        or (row.updated_at.isoformat() if row.updated_at else None),
     }
     data.pop("_id", None)
     return {key: value for key, value in data.items() if value is not None}
@@ -92,10 +102,13 @@ def _report_to_dict(row: AnalysisReport) -> dict[str, Any]:
         "task_id": row.task_id or payload.get("task_id"),
         "user_id": row.user_id,
         "stock_symbol": row.stock_symbol,
-        "analysis_date": payload.get("analysis_date") or (row.analysis_date.isoformat() if row.analysis_date else None),
+        "analysis_date": payload.get("analysis_date")
+        or (row.analysis_date.isoformat() if row.analysis_date else None),
         "summary": row.summary,
-        "created_at": payload.get("created_at") or (row.created_at.isoformat() if row.created_at else None),
-        "updated_at": payload.get("updated_at") or (row.updated_at.isoformat() if row.updated_at else None),
+        "created_at": payload.get("created_at")
+        or (row.created_at.isoformat() if row.created_at else None),
+        "updated_at": payload.get("updated_at")
+        or (row.updated_at.isoformat() if row.updated_at else None),
     }
     data.pop("_id", None)
     return {key: value for key, value in data.items() if value is not None}

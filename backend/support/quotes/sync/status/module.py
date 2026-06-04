@@ -8,17 +8,13 @@
 3. 状态获取功能
 """
 
-import sys
 import asyncio
-from pathlib import Path
-from datetime import datetime, time as dtime
+import sys
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
-# 添加项目根目录到 Python 路径
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from app.services.quotes.ingestion import QuotesIngestionService
 from app.core.config import settings
+from app.services.quotes.ingestion import QuotesIngestionService
 
 
 def test_trading_time_logic():
@@ -70,7 +66,9 @@ def test_trading_time_logic():
         if result != expected:
             all_passed = False
 
-        print(f"{time_str:6s} | 预期: {str(expected):5s} | 实际: {str(result):5s} | {status} | {description}")
+        print(
+            f"{time_str:6s} | 预期: {str(expected):5s} | 实际: {str(result):5s} | {status} | {description}"
+        )
 
     print("-" * 80)
     if all_passed:
@@ -92,10 +90,7 @@ async def test_status_record_and_get():
     # 测试记录状态
     print("\n📝 测试记录同步状态...")
     await service._record_sync_status(
-        success=True,
-        source="tushare",
-        records_count=5440,
-        error_msg=None
+        success=True, source="tushare", records_count=5440, error_msg=None
     )
     print("✅ 状态记录成功")
 
@@ -112,8 +107,16 @@ async def test_status_record_and_get():
     # 验证状态
     checks = [
         ("last_sync_time", lambda v: v is not None, "最后同步时间应该存在"),
-        ("interval_seconds", lambda v: v == settings.QUOTES_INGEST_INTERVAL_SECONDS, "同步间隔应该正确"),
-        ("interval_minutes", lambda v: v == settings.QUOTES_INGEST_INTERVAL_SECONDS / 60, "同步间隔（分钟）应该正确"),
+        (
+            "interval_seconds",
+            lambda v: v == settings.QUOTES_INGEST_INTERVAL_SECONDS,
+            "同步间隔应该正确",
+        ),
+        (
+            "interval_minutes",
+            lambda v: v == settings.QUOTES_INGEST_INTERVAL_SECONDS / 60,
+            "同步间隔（分钟）应该正确",
+        ),
         ("data_source", lambda v: v == "tushare", "数据源应该是 tushare"),
         ("success", lambda v: v is True, "成功状态应该是 True"),
         ("records_count", lambda v: v == 5440, "记录数应该是 5440"),
@@ -154,10 +157,7 @@ async def test_error_status():
     # 记录错误状态
     print("\n📝 测试记录错误状态...")
     await service._record_sync_status(
-        success=False,
-        source="akshare_eastmoney",
-        records_count=0,
-        error_msg="API 限流"
+        success=False, source="akshare_eastmoney", records_count=0, error_msg="API 限流"
     )
     print("✅ 错误状态记录成功")
 

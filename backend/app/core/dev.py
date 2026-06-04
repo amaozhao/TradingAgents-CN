@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import List, Optional
+from typing import List
 
 
 class DevConfig:
@@ -20,46 +20,37 @@ class DevConfig:
         "*.pyc",
         "*.pyo",
         "*.pyd",
-
         # 版本控制
         ".git",
         ".gitignore",
-
         # 测试和缓存
         ".pytest_cache",
         ".coverage",
         "htmlcov",
-
         # 日志文件
         "*.log",
         "logs",
-
         # 临时文件
         "*.tmp",
         "*.temp",
         "*.swp",
         "*.swo",
-
         # 系统文件
         ".DS_Store",
         "Thumbs.db",
         "desktop.ini",
-
         # IDE文件
         ".vscode",
         ".idea",
         "*.sublime-*",
-
         # 数据文件
         "*.db",
         "*.sqlite",
         "*.sqlite3",
-
         # 配置文件（避免敏感信息重载）
         ".env",
         ".env.local",
         ".env.production",
-
         # 文档和静态文件
         "*.md",
         "*.txt",
@@ -67,7 +58,6 @@ class DevConfig:
         "*.yaml",
         "*.yml",
         "*.toml",
-
         # 前端文件
         "node_modules",
         "dist",
@@ -75,17 +65,14 @@ class DevConfig:
         "*.js",
         "*.css",
         "*.html",
-
         # 其他
         "requirements*.txt",
         "Dockerfile*",
-        "docker-compose*"
+        "docker-compose*",
     ]
 
     # 只监控的文件类型
-    RELOAD_INCLUDES: List[str] = [
-        "*.py"
-    ]
+    RELOAD_INCLUDES: List[str] = ["*.py"]
 
     # 重载延迟（秒）
     RELOAD_DELAY: float = 0.5
@@ -105,7 +92,7 @@ class DevConfig:
             "log_level": cls.LOG_LEVEL,
             "access_log": cls.ACCESS_LOG,
             # 确保使用我们自定义的日志配置
-            "log_config": None  # 禁用uvicorn默认日志配置，使用我们的配置
+            "log_config": None,  # 禁用uvicorn默认日志配置，使用我们的配置
         }
 
     @classmethod
@@ -114,9 +101,9 @@ class DevConfig:
         # 设置统一的日志格式
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S',
-            force=True  # 强制重新配置，覆盖之前的设置
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+            force=True,  # 强制重新配置，覆盖之前的设置
         )
 
         if debug:

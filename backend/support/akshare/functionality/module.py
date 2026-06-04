@@ -3,30 +3,34 @@
 AKShare功能检查测试
 检查当前分支中AKShare的可用性和功能完整性
 """
-import importlib
 
-import sys
+import importlib
 import os
 import traceback
-from typing import Dict, Any, List
+
 
 def test_akshare_import():
     """测试AKShare库导入"""
     print("🔍 测试AKShare库导入...")
     try:
-        ak = importlib.import_module('akshare')
+        ak = importlib.import_module("akshare")
         print(f"✅ AKShare导入成功，版本: {ak.__version__}")
         return True, ak
     except ImportError as e:
         print(f"❌ AKShare导入失败: {e}")
         return False, None
 
+
 def test_data_source_manager():
     """测试数据源管理器中的AKShare支持"""
     print("\n🔍 测试数据源管理器...")
     try:
-        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
-        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
+        DataSourceManager = getattr(
+            importlib.import_module("trader.flows.sources"), "DataSourceManager"
+        )
+        ChinaDataSource = getattr(
+            importlib.import_module("trader.flows.sources"), "ChinaDataSource"
+        )
 
         # 检查AKShare是否在枚举中
         akshare_enum = ChinaDataSource.AKSHARE
@@ -37,7 +41,7 @@ def test_data_source_manager():
 
         # 检查AKShare是否在可用数据源中
         available_sources = [s.value for s in manager.available_sources]
-        if 'akshare' in available_sources:
+        if "akshare" in available_sources:
             print("✅ AKShare在可用数据源列表中")
         else:
             print("⚠️ AKShare不在可用数据源列表中")
@@ -48,11 +52,14 @@ def test_data_source_manager():
         traceback.print_exc()
         return False, None
 
+
 def test_akshare_adapter():
     """测试AKShare适配器"""
     print("\n🔍 测试AKShare适配器...")
     try:
-        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
+        DataSourceManager = getattr(
+            importlib.import_module("trader.flows.sources"), "DataSourceManager"
+        )
 
         manager = DataSourceManager()
 
@@ -71,6 +78,7 @@ def test_akshare_adapter():
         traceback.print_exc()
         return False, None
 
+
 def test_akshare_utils_file():
     """检查akshare_utils.py文件是否存在"""
     print("\n🔍 检查akshare_utils.py文件...")
@@ -81,7 +89,9 @@ def test_akshare_utils_file():
         print(f"✅ 找到AKShare工具文件: {akshare_utils_path}")
 
         try:
-            get_akshare_provider = getattr(importlib.import_module('trader.flows.akshare'), 'get_akshare_provider')
+            getattr(
+                importlib.import_module("trader.flows.akshare"), "get_akshare_provider"
+            )
             print("✅ get_akshare_provider函数导入成功")
             return True
         except ImportError as e:
@@ -90,6 +100,7 @@ def test_akshare_utils_file():
     else:
         print(f"❌ AKShare工具文件不存在: {akshare_utils_path}")
         return False
+
 
 def test_akshare_basic_functionality():
     """测试AKShare基本功能"""
@@ -112,7 +123,13 @@ def test_akshare_basic_functionality():
 
         # 测试获取股票历史数据
         print("\n📈 测试获取股票历史数据...")
-        stock_data = ak.stock_zh_a_hist(symbol="000001", period="daily", start_date="20241201", end_date="20241210", adjust="")
+        stock_data = ak.stock_zh_a_hist(
+            symbol="000001",
+            period="daily",
+            start_date="20241201",
+            end_date="20241210",
+            adjust="",
+        )
         if stock_data is not None and not stock_data.empty:
             print(f"✅ 获取股票数据成功，共{len(stock_data)}条记录")
             print(f"   最新数据: {stock_data.tail(1).to_dict('records')}")
@@ -127,12 +144,16 @@ def test_akshare_basic_functionality():
         traceback.print_exc()
         return False
 
+
 def test_data_source_switching():
     """测试数据源切换功能"""
     print("\n🔍 测试数据源切换功能...")
 
     try:
-        switch_china_data_source = getattr(importlib.import_module('trader.flows.interface'), 'switch_china_data_source')
+        switch_china_data_source = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "switch_china_data_source",
+        )
 
         # 尝试切换到AKShare
         result = switch_china_data_source("akshare")
@@ -150,15 +171,22 @@ def test_data_source_switching():
         traceback.print_exc()
         return False
 
+
 def test_unified_data_interface():
     """测试统一数据接口"""
     print("\n🔍 测试统一数据接口...")
 
     try:
-        get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
+        get_china_stock_data_unified = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "get_china_stock_data_unified",
+        )
 
         # 设置使用AKShare数据源
-        switch_china_data_source = getattr(importlib.import_module('trader.flows.interface'), 'switch_china_data_source')
+        switch_china_data_source = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "switch_china_data_source",
+        )
         switch_china_data_source("akshare")
 
         # 测试获取股票数据
@@ -176,6 +204,7 @@ def test_unified_data_interface():
         print(f"❌ 统一数据接口测试失败: {e}")
         traceback.print_exc()
         return False
+
 
 def create_missing_akshare_utils():
     """如果缺失，创建基本的akshare_utils.py文件"""
@@ -268,7 +297,7 @@ def get_akshare_provider() -> AKShareProvider:
 '''
 
         try:
-            with open(akshare_utils_path, 'w', encoding='utf-8') as f:
+            with open(akshare_utils_path, "w", encoding="utf-8") as f:
                 f.write(akshare_utils_content)
             print(f"✅ 创建akshare_utils.py成功: {akshare_utils_path}")
             return True
@@ -279,6 +308,7 @@ def get_akshare_provider() -> AKShareProvider:
         print("✅ akshare_utils.py文件已存在")
         return True
 
+
 def main():
     """主测试函数"""
     print("🔍 AKShare功能完整性检查")
@@ -287,32 +317,32 @@ def main():
     test_results = {}
 
     # 1. 测试AKShare库导入
-    test_results['akshare_import'] = test_akshare_import()[0]
+    test_results["akshare_import"] = test_akshare_import()[0]
 
     # 2. 检查akshare_utils.py文件
-    test_results['akshare_utils_file'] = test_akshare_utils_file()
+    test_results["akshare_utils_file"] = test_akshare_utils_file()
 
     # 3. 如果文件不存在，尝试创建
-    if not test_results['akshare_utils_file']:
-        test_results['create_akshare_utils'] = create_missing_akshare_utils()
+    if not test_results["akshare_utils_file"]:
+        test_results["create_akshare_utils"] = create_missing_akshare_utils()
 
     # 4. 测试数据源管理器
-    test_results['data_source_manager'] = test_data_source_manager()[0]
+    test_results["data_source_manager"] = test_data_source_manager()[0]
 
     # 5. 测试AKShare适配器
-    test_results['akshare_adapter'] = test_akshare_adapter()[0]
+    test_results["akshare_adapter"] = test_akshare_adapter()[0]
 
     # 6. 测试AKShare基本功能
-    test_results['akshare_basic'] = test_akshare_basic_functionality()
+    test_results["akshare_basic"] = test_akshare_basic_functionality()
 
     # 7. 测试数据源切换
-    test_results['data_source_switching'] = test_data_source_switching()
+    test_results["data_source_switching"] = test_data_source_switching()
 
     # 8. 测试统一数据接口
-    test_results['unified_interface'] = test_unified_data_interface()
+    test_results["unified_interface"] = test_unified_data_interface()
 
     # 总结结果
-    print(f"\n📊 AKShare功能检查总结")
+    print("\n📊 AKShare功能检查总结")
     print("=" * 60)
 
     passed = sum(test_results.values())
@@ -332,6 +362,7 @@ def main():
         print("❌ AKShare功能存在严重问题，需要修复")
 
     return passed == total
+
 
 if __name__ == "__main__":
     main()

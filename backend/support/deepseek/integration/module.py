@@ -2,19 +2,18 @@
 """
 DeepSeek V3集成测试
 """
-import importlib
 
-import sys
+import importlib
 import os
-from pathlib import Path
+import sys
+
 from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from support.path import BACKEND_ROOT
 
 # 加载环境变量
-load_dotenv(project_root / ".env", override=True)
+load_dotenv(BACKEND_ROOT / ".env", override=True)
+
 
 def test_deepseek_availability():
     """测试DeepSeek可用性"""
@@ -40,13 +39,19 @@ def test_deepseek_availability():
 
     return True
 
+
 def test_deepseek_adapter():
     """测试DeepSeek适配器"""
     print("\n🧪 测试DeepSeek适配器...")
 
     try:
-        DeepSeekAdapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'DeepSeekAdapter')
-        create_deepseek_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_adapter')
+        DeepSeekAdapter = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"), "DeepSeekAdapter"
+        )
+        create_deepseek_adapter = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"),
+            "create_deepseek_adapter",
+        )
 
         # 测试适配器创建
         adapter = create_deepseek_adapter(model="deepseek-chat")
@@ -67,19 +72,29 @@ def test_deepseek_adapter():
         print(f"❌ 适配器测试失败: {e}")
         return False
 
+
 def test_deepseek_connection():
     """测试DeepSeek连接"""
     print("\n🔗 测试DeepSeek连接...")
 
     try:
-        create_deepseek_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_adapter')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        create_deepseek_adapter = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"),
+            "create_deepseek_adapter",
+        )
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
 
         # 创建适配器
         adapter = create_deepseek_adapter(model="deepseek-chat")
 
         # 测试简单对话
-        messages = [HumanMessage(content="你好，请简单介绍一下股票投资的基本概念，控制在50字以内")]
+        messages = [
+            HumanMessage(
+                content="你好，请简单介绍一下股票投资的基本概念，控制在50字以内"
+            )
+        ]
         response = adapter.chat(messages)
         print(f"✅ 模型响应: {response[:100]}...")
 
@@ -93,13 +108,17 @@ def test_deepseek_connection():
         print(f"❌ 连接测试失败: {e}")
         return False
 
+
 def test_deepseek_tools():
     """测试DeepSeek工具调用"""
     print("\n🛠️ 测试工具调用功能...")
 
     try:
-        tool = getattr(importlib.import_module('langchain.tools'), 'tool')
-        create_deepseek_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_adapter')
+        tool = getattr(importlib.import_module("langchain.tools"), "tool")
+        create_deepseek_adapter = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"),
+            "create_deepseek_adapter",
+        )
 
         # 定义测试工具
         @tool
@@ -132,13 +151,18 @@ def test_deepseek_tools():
         print(f"❌ 工具调用测试失败: {e}")
         return False
 
+
 def test_deepseek_trading_graph():
     """测试DeepSeek在交易图中的集成"""
     print("\n📊 测试交易图集成...")
 
     try:
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
+        TradingAgentsGraph = getattr(
+            importlib.import_module("trader.graph.trading"), "TradingAgentsGraph"
+        )
 
         # 创建DeepSeek配置
         config = DEFAULT_CONFIG.copy()
@@ -146,10 +170,10 @@ def test_deepseek_trading_graph():
         config["deep_think_llm"] = "deepseek-chat"
         config["quick_think_llm"] = "deepseek-chat"
         config["max_debate_rounds"] = 1  # 减少测试时间
-        config["online_tools"] = False   # 禁用在线工具以加快测试
+        config["online_tools"] = False  # 禁用在线工具以加快测试
 
         # 创建交易图
-        ta = TradingAgentsGraph(debug=True, config=config)
+        TradingAgentsGraph(debug=True, config=config)
         print("✅ 交易图创建成功")
 
         # 注意：这里不执行实际分析，只测试初始化
@@ -161,12 +185,16 @@ def test_deepseek_trading_graph():
         print(f"❌ 交易图集成测试失败: {e}")
         return False
 
+
 def test_deepseek_models():
     """测试不同DeepSeek模型"""
     print("\n🎯 测试不同DeepSeek模型...")
 
     try:
-        create_deepseek_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_adapter')
+        create_deepseek_adapter = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"),
+            "create_deepseek_adapter",
+        )
 
         models_to_test = ["deepseek-chat"]  # 仅测试最适合股票分析的模型
 
@@ -184,6 +212,7 @@ def test_deepseek_models():
         print(f"❌ 模型测试失败: {e}")
         return False
 
+
 def main():
     """主测试函数"""
     print("🎯 DeepSeek V3集成测试")
@@ -200,7 +229,7 @@ def main():
 
     results = []
     for test_name, test_func in tests:
-        print(f"\n{'='*20} {test_name} {'='*20}")
+        print(f"\n{'=' * 20} {test_name} {'=' * 20}")
         try:
             result = test_func()
             results.append((test_name, result))
@@ -209,9 +238,9 @@ def main():
             results.append((test_name, False))
 
     # 总结结果
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("📋 测试结果总结:")
-    print("="*50)
+    print("=" * 50)
 
     passed = 0
     for test_name, result in results:
@@ -233,6 +262,7 @@ def main():
         print(f"\n⚠️ {len(results) - passed} 项测试失败，请检查配置和依赖")
 
     return passed == len(results)
+
 
 if __name__ == "__main__":
     success = main()

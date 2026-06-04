@@ -3,17 +3,16 @@
 测试多数据源同步功能
 验证数据源分级和fallback机制
 """
-import os
-import sys
-import requests
-import json
+
 import time
-from typing import Dict, Any
+from typing import Any, Dict
 
-# 添加项目根目录到路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+import requests
 
-def test_api_endpoint(url: str, method: str = "GET", data: Dict = None) -> Dict[str, Any]:
+
+def test_api_endpoint(
+    url: str, method: str = "GET", data: Dict = None
+) -> Dict[str, Any]:
     """测试API端点"""
     try:
         if method.upper() == "GET":
@@ -26,16 +25,21 @@ def test_api_endpoint(url: str, method: str = "GET", data: Dict = None) -> Dict[
         if response.ok:
             return {"success": True, "data": response.json()}
         else:
-            return {"success": False, "error": f"HTTP {response.status_code}: {response.text}"}
+            return {
+                "success": False,
+                "error": f"HTTP {response.status_code}: {response.text}",
+            }
 
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+
 def print_section(title: str):
     """打印章节标题"""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"🔍 {title}")
-    print('='*60)
+    print("=" * 60)
+
 
 def print_result(test_name: str, result: Dict[str, Any]):
     """打印测试结果"""
@@ -53,6 +57,7 @@ def print_result(test_name: str, result: Dict[str, Any]):
     else:
         print(f"❌ {test_name}: 失败")
         print(f"   错误: {result['error']}")
+
 
 def main():
     """主测试函数"""
@@ -101,21 +106,23 @@ def main():
 
         if recommendations.get("primary_source"):
             primary = recommendations["primary_source"]
-            print(f"\n💡 推荐主数据源: {primary['name']} (优先级: {primary['priority']})")
+            print(
+                f"\n💡 推荐主数据源: {primary['name']} (优先级: {primary['priority']})"
+            )
             print(f"   原因: {primary['reason']}")
 
         if recommendations.get("fallback_sources"):
-            print(f"\n🔄 备用数据源:")
+            print("\n🔄 备用数据源:")
             for fallback in recommendations["fallback_sources"]:
                 print(f"   - {fallback['name']} (优先级: {fallback['priority']})")
 
         if recommendations.get("suggestions"):
-            print(f"\n📋 建议:")
+            print("\n📋 建议:")
             for suggestion in recommendations["suggestions"]:
                 print(f"   • {suggestion}")
 
         if recommendations.get("warnings"):
-            print(f"\n⚠️  警告:")
+            print("\n⚠️  警告:")
             for warning in recommendations["warnings"]:
                 print(f"   • {warning}")
 
@@ -127,7 +134,7 @@ def main():
 
     if result["success"] and "data" in result:
         status_data = result["data"]
-        print(f"\n📊 同步状态详情:")
+        print("\n📊 同步状态详情:")
         print(f"   状态: {status_data.get('status', 'unknown')}")
         print(f"   任务: {status_data.get('job', 'unknown')}")
         if status_data.get("last_trade_date"):
@@ -138,20 +145,26 @@ def main():
     # 5. 运行多数据源同步（可选）
     print_section("多数据源同步测试")
 
-    user_input = input("\n是否运行完整的多数据源同步？这可能需要几分钟时间。(y/N): ").strip().lower()
+    user_input = (
+        input("\n是否运行完整的多数据源同步？这可能需要几分钟时间。(y/N): ")
+        .strip()
+        .lower()
+    )
 
-    if user_input in ['y', 'yes']:
+    if user_input in ["y", "yes"]:
         print("🔄 开始多数据源同步...")
         start_time = time.time()
 
-        result = test_api_endpoint(f"{base_url}/api/sync/multi-source/stock_basics/run", "POST")
+        result = test_api_endpoint(
+            f"{base_url}/api/sync/multi-source/stock_basics/run", "POST"
+        )
         print_result("运行多数据源同步", result)
 
         if result["success"] and "data" in result:
             sync_data = result["data"]
             duration = time.time() - start_time
 
-            print(f"\n📈 同步结果:")
+            print("\n📈 同步结果:")
             print(f"   状态: {sync_data.get('status', 'unknown')}")
             print(f"   总数: {sync_data.get('total', 0)}")
             print(f"   插入: {sync_data.get('inserted', 0)}")
@@ -169,8 +182,10 @@ def main():
 
     user_input = input("\n是否测试指定数据源优先级？(y/N): ").strip().lower()
 
-    if user_input in ['y', 'yes']:
-        preferred_sources = input("请输入优先使用的数据源（用逗号分隔，如: akshare,baostock）: ").strip()
+    if user_input in ["y", "yes"]:
+        preferred_sources = input(
+            "请输入优先使用的数据源（用逗号分隔，如: akshare,baostock）: "
+        ).strip()
 
         if preferred_sources:
             print(f"🎯 使用指定数据源优先级: {preferred_sources}")
@@ -181,7 +196,7 @@ def main():
 
             if result["success"] and "data" in result:
                 sync_data = result["data"]
-                print(f"\n📈 指定数据源同步结果:")
+                print("\n📈 指定数据源同步结果:")
                 print(f"   状态: {sync_data.get('status', 'unknown')}")
                 if sync_data.get("data_sources_used"):
                     print(f"   实际使用的数据源: {sync_data['data_sources_used']}")
@@ -195,6 +210,7 @@ def main():
     print("   2. 配置多个数据源以提供冗余")
     print("   3. 定期检查数据源状态")
     print("   4. 根据需要调整数据源优先级")
+
 
 if __name__ == "__main__":
     main()

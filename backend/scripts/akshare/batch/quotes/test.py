@@ -2,11 +2,6 @@
 """测试 AKShare 批量获取行情功能"""
 
 import asyncio
-import sys
-from pathlib import Path
-
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 from app.core.database import init_database
 from trader.flows.providers.china.akshare import AKShareProvider

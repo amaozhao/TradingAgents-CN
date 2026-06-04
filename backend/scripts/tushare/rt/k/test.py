@@ -2,21 +2,15 @@
 测试 Tushare rt_k 接口
 验证修复后的实时行情同步功能
 """
+
 import asyncio
-import sys
-from pathlib import Path
-
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from trader.flows.providers.china.tushare import TushareProvider
-from app.worker.tushare.sync import TushareSyncService
 import logging
 
+from app.worker.tushare.sync import TushareSyncService
+from trader.flows.providers.china.tushare import TushareProvider
+
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s | %(name)s | %(levelname)-8s | %(message)s'
+    level=logging.INFO, format="%(asctime)s | %(name)s | %(levelname)-8s | %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -49,10 +43,12 @@ async def test_rt_k_interface():
             # 显示前5只股票
             logger.info("\n📈 前5只股票行情示例：")
             for i, (symbol, quote) in enumerate(list(quotes_map.items())[:5]):
-                logger.info(f"  {i+1}. {symbol} - {quote.get('name', 'N/A')}")
-                logger.info(f"     当前价: {quote.get('close', 'N/A')}, "
-                          f"涨跌幅: {quote.get('pct_chg', 'N/A')}%, "
-                          f"成交额: {quote.get('amount', 'N/A')}")
+                logger.info(f"  {i + 1}. {symbol} - {quote.get('name', 'N/A')}")
+                logger.info(
+                    f"     当前价: {quote.get('close', 'N/A')}, "
+                    f"涨跌幅: {quote.get('pct_chg', 'N/A')}%, "
+                    f"成交额: {quote.get('amount', 'N/A')}"
+                )
 
             return True
         else:
@@ -81,8 +77,10 @@ async def test_single_stock():
             quote = await provider.get_stock_quotes(symbol)
             if quote:
                 logger.info(f"✅ {symbol} - {quote.get('name', 'N/A')}")
-                logger.info(f"   当前价: {quote.get('close', 'N/A')}, "
-                          f"涨跌幅: {quote.get('pct_chg', 'N/A')}%")
+                logger.info(
+                    f"   当前价: {quote.get('close', 'N/A')}, "
+                    f"涨跌幅: {quote.get('pct_chg', 'N/A')}%"
+                )
             else:
                 logger.warning(f"⚠️ {symbol} 未获取到数据")
         except Exception as e:
@@ -123,17 +121,19 @@ async def test_sync_service():
     logger.info(f"  失败: {result.get('error_count', 0)} 只")
     logger.info(f"  耗时: {result.get('duration', 0):.2f} 秒")
 
-    if result.get('skipped_non_trading_time'):
+    if result.get("skipped_non_trading_time"):
         logger.info("  ⏸️ 因非交易时间而跳过")
 
-    if result.get('stopped_by_rate_limit'):
+    if result.get("stopped_by_rate_limit"):
         logger.warning("  ⚠️ 因API限流而停止")
 
-    if result.get('errors'):
+    if result.get("errors"):
         logger.warning(f"  ⚠️ 错误数量: {len(result['errors'])}")
         # 显示前3个错误
-        for i, error in enumerate(result['errors'][:3]):
-            logger.warning(f"    {i+1}. {error.get('code', 'N/A')}: {error.get('error', 'N/A')}")
+        for i, error in enumerate(result["errors"][:3]):
+            logger.warning(
+                f"    {i + 1}. {error.get('code', 'N/A')}: {error.get('error', 'N/A')}"
+            )
 
 
 async def main():

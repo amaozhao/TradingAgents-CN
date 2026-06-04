@@ -5,22 +5,19 @@ def test_settings_defaults_and_env_override(monkeypatch):
     # Override a few env vars
     monkeypatch.setenv("PORT", "8123")
     monkeypatch.setenv("DEBUG", "false")
-    monkeypatch.setenv("MONGODB_USERNAME", "user")
-    monkeypatch.setenv("MONGODB_PASSWORD", "pass")
-    monkeypatch.setenv("MONGODB_HOST", "dbhost")
-    monkeypatch.setenv("MONGODB_PORT", "27018")
-    monkeypatch.setenv("MONGODB_DATABASE", "testdb")
-    monkeypatch.setenv("MONGODB_AUTH_SOURCE", "admin")
+    monkeypatch.setenv("POSTGRES_USER", "user")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "pass")
+    monkeypatch.setenv("POSTGRES_HOST", "dbhost")
+    monkeypatch.setenv("POSTGRES_PORT", "5433")
+    monkeypatch.setenv("POSTGRES_DB", "testdb")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
 
     s = Settings()  # instantiate fresh to pick up env
 
     assert s.PORT == 8123
     assert s.DEBUG is False
 
-    # URI should include credentials when provided
-    uri = s.mongo_uri
-    assert uri.startswith("mongodb://user:pass@dbhost:27018/")
-    assert uri.endswith("testdb?authSource=admin")
+    assert s.postgres_url == "postgresql+asyncpg://user:pass@dbhost:5433/testdb"
 
 
 def test_redis_url_builds(monkeypatch):
@@ -64,7 +61,10 @@ def test_postgres_url_builds_from_parts(monkeypatch):
 
     s = Settings()
 
-    assert s.postgres_url == "postgresql+asyncpg://trader:secret@127.0.0.1:5433/trading_agents_test"
+    assert (
+        s.postgres_url
+        == "postgresql+asyncpg://trader:secret@127.0.0.1:5433/trading_agents_test"
+    )
 
 
 def test_postgres_url_uses_safe_default_parts(monkeypatch):
@@ -77,4 +77,7 @@ def test_postgres_url_uses_safe_default_parts(monkeypatch):
 
     s = Settings()
 
-    assert s.postgres_url == "postgresql+asyncpg://postgres:postgres@localhost:5432/trading_agents_cn"
+    assert (
+        s.postgres_url
+        == "postgresql+asyncpg://postgres:postgres@localhost:5432/trading_agents_cn"
+    )

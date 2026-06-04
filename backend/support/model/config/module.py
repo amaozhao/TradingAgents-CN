@@ -5,37 +5,35 @@
 """
 
 import asyncio
-import json
+from typing import Optional
+
 import aiohttp
-from typing import Dict, Any, Optional
 
 BASE_URL = "http://localhost:8001"
 
 # 全局访问令牌
 access_token: Optional[str] = None
 
+
 async def login():
     """登录获取访问令牌"""
     global access_token
     print("🔐 正在登录...")
 
-    login_data = {
-        "username": "admin",
-        "password": "admin123"
-    }
+    login_data = {"username": "admin", "password": "admin123"}
 
     async with aiohttp.ClientSession() as session:
         try:
             async with session.post(
                 f"{BASE_URL}/api/auth/login",
                 json=login_data,
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
             ) as response:
                 if response.status == 200:
                     result = await response.json()
                     if result.get("success"):
                         access_token = result["data"]["access_token"]
-                        print(f"✅ 登录成功，获取访问令牌")
+                        print("✅ 登录成功，获取访问令牌")
                         return True
                     else:
                         print(f"❌ 登录失败: {result.get('message', '未知错误')}")
@@ -48,14 +46,16 @@ async def login():
             print(f"❌ 登录请求异常: {e}")
             return False
 
+
 def get_auth_headers():
     """获取认证头"""
     if access_token:
         return {
             "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
     return {"Content-Type": "application/json"}
+
 
 async def test_add_llm_config():
     """测试添加LLM配置"""
@@ -71,17 +71,12 @@ async def test_add_llm_config():
         "temperature": 0.7,
         "enabled": True,
         "description": "用于测试的模型配置",
-
         # 模型能力字段
         "capability_level": 3,
         "suitable_roles": ["both"],
         "features": ["tool_calling", "reasoning"],
         "recommended_depths": ["基础", "标准", "深度"],
-        "performance_metrics": {
-            "speed": 4,
-            "cost": 3,
-            "quality": 4
-        }
+        "performance_metrics": {"speed": 4, "cost": 3, "quality": 4},
     }
 
     async with aiohttp.ClientSession() as session:
@@ -90,7 +85,7 @@ async def test_add_llm_config():
             async with session.post(
                 f"{BASE_URL}/api/config/llm",
                 json=config_data,
-                headers=get_auth_headers()
+                headers=get_auth_headers(),
             ) as response:
                 if response.status == 200:
                     result = await response.json()
@@ -104,6 +99,7 @@ async def test_add_llm_config():
             print(f"❌ 请求异常: {e}")
             return False
 
+
 async def test_get_llm_configs():
     """测试获取LLM配置"""
     print("🧪 测试获取LLM配置...")
@@ -111,8 +107,7 @@ async def test_get_llm_configs():
     async with aiohttp.ClientSession() as session:
         try:
             async with session.get(
-                f"{BASE_URL}/api/config/llm",
-                headers=get_auth_headers()
+                f"{BASE_URL}/api/config/llm", headers=get_auth_headers()
             ) as response:
                 if response.status == 200:
                     configs = await response.json()
@@ -146,6 +141,7 @@ async def test_get_llm_configs():
             print(f"❌ 请求异常: {e}")
             return False
 
+
 async def test_model_capability_service():
     """测试模型能力服务"""
     print("🧪 测试模型能力服务...")
@@ -156,11 +152,11 @@ async def test_model_capability_service():
             async with session.post(
                 f"{BASE_URL}/api/model-capabilities/recommend",
                 json={"research_depth": "标准"},
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
             ) as response:
                 if response.status == 200:
                     result = await response.json()
-                    print(f"✅ 模型推荐成功:")
+                    print("✅ 模型推荐成功:")
                     print(f"   - 快速模型: {result.get('data', {}).get('quick_model')}")
                     print(f"   - 深度模型: {result.get('data', {}).get('deep_model')}")
                     print(f"   - 推荐理由: {result.get('data', {}).get('reason')}")
@@ -173,6 +169,7 @@ async def test_model_capability_service():
             print(f"❌ 请求异常: {e}")
             return False
 
+
 async def test_delete_test_config():
     """删除测试配置"""
     print("🧪 清理测试配置...")
@@ -181,7 +178,7 @@ async def test_delete_test_config():
         try:
             async with session.delete(
                 f"{BASE_URL}/api/config/llm/qwen/qwen-test-model",
-                headers=get_auth_headers()
+                headers=get_auth_headers(),
             ) as response:
                 if response.status == 200:
                     result = await response.json()
@@ -194,6 +191,7 @@ async def test_delete_test_config():
         except Exception as e:
             print(f"⚠️ 删除请求异常: {e}")
             return False
+
 
 async def main():
     """主测试函数"""
@@ -237,6 +235,7 @@ async def main():
         print("🎉 所有测试通过！配置功能正常工作。")
     else:
         print("⚠️ 部分测试失败，请检查配置。")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

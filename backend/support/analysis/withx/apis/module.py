@@ -2,19 +2,17 @@
 """
 测试在完整分析中使用Google和Reddit API
 """
-import importlib
 
+import importlib
 import os
-import sys
-from pathlib import Path
+
 from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
+from support.path import BACKEND_ROOT
 
 # 加载环境变量
-load_dotenv(project_root / ".env", override=True)
+load_dotenv(BACKEND_ROOT / ".env", override=True)
+
 
 def test_news_analyst_with_google():
     """测试新闻分析师使用Google工具"""
@@ -22,10 +20,19 @@ def test_news_analyst_with_google():
         print("🧪 测试新闻分析师使用Google工具")
         print("=" * 60)
 
-        create_news_analyst = getattr(importlib.import_module('trader.agents.analysts.news'), 'create_news_analyst')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        create_news_analyst = getattr(
+            importlib.import_module("trader.agents.analysts.news"),
+            "create_news_analyst",
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        ChatDashScope = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScope"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -44,13 +51,15 @@ def test_news_analyst_with_google():
         print("✅ 新闻分析师创建成功")
 
         # 创建测试状态
-        AgentState = getattr(importlib.import_module('trader.agents.utils.states'), 'AgentState')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        getattr(importlib.import_module("trader.agents.utils.states"), "AgentState")
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
 
         test_state = {
             "messages": [HumanMessage(content="分析AAPL的新闻情况")],
             "company_of_interest": "AAPL",
-            "trade_date": "2025-06-27"
+            "trade_date": "2025-06-27",
         }
 
         print("📰 开始新闻分析...")
@@ -74,9 +83,10 @@ def test_news_analyst_with_google():
 
     except Exception as e:
         print(f"❌ 新闻分析师测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         print(traceback.format_exc())
         return False
+
 
 def test_social_analyst_with_reddit():
     """测试社交媒体分析师使用Reddit工具"""
@@ -84,10 +94,19 @@ def test_social_analyst_with_reddit():
         print("\n🧪 测试社交媒体分析师使用Reddit工具")
         print("=" * 60)
 
-        create_social_media_analyst = getattr(importlib.import_module('trader.agents.analysts.social'), 'create_social_media_analyst')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        create_social_media_analyst = getattr(
+            importlib.import_module("trader.agents.analysts.social"),
+            "create_social_media_analyst",
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        ChatDashScope = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScope"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -106,12 +125,14 @@ def test_social_analyst_with_reddit():
         print("✅ 社交媒体分析师创建成功")
 
         # 创建测试状态
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
 
         test_state = {
             "messages": [HumanMessage(content="分析AAPL的社交媒体情绪")],
             "company_of_interest": "AAPL",
-            "trade_date": "2025-06-27"
+            "trade_date": "2025-06-27",
         }
 
         print("💭 开始社交媒体分析...")
@@ -135,9 +156,10 @@ def test_social_analyst_with_reddit():
 
     except Exception as e:
         print(f"❌ 社交媒体分析师测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         print(traceback.format_exc())
         return False
+
 
 def main():
     """主测试函数"""
@@ -154,21 +176,21 @@ def main():
         return
 
     print("🔑 API密钥状态:")
-    print(f"   阿里百炼: ✅ 已配置")
+    print("   阿里百炼: ✅ 已配置")
     print(f"   Google: {'✅ 已配置' if google_key else '❌ 未配置'}")
     print(f"   Reddit: {'✅ 已配置' if reddit_id else '❌ 未配置'}")
 
     # 运行测试
     results = {}
 
-    print("\n" + "="*70)
-    results['新闻分析师+Google'] = test_news_analyst_with_google()
+    print("\n" + "=" * 70)
+    results["新闻分析师+Google"] = test_news_analyst_with_google()
 
-    print("\n" + "="*70)
-    results['社交媒体分析师+Reddit'] = test_social_analyst_with_reddit()
+    print("\n" + "=" * 70)
+    results["社交媒体分析师+Reddit"] = test_social_analyst_with_reddit()
 
     # 总结结果
-    print(f"\n📊 测试结果总结:")
+    print("\n📊 测试结果总结:")
     print("=" * 50)
 
     for test_name, success in results.items():
@@ -188,6 +210,7 @@ def main():
         print("   3. 同时选择多个分析师可以获得更全面的分析")
     else:
         print("⚠️ 部分API工具需要进一步配置")
+
 
 if __name__ == "__main__":
     main()

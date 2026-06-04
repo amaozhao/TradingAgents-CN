@@ -3,29 +3,25 @@
 阿里百炼大模型集成测试脚本
 用于验证 TradingAgents 中的阿里百炼集成是否正常工作
 """
-import importlib
 
+import importlib
 import os
 import sys
-from pathlib import Path
-
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
 
 from dotenv import load_dotenv
 
 # 加载 .env 文件
 load_dotenv()
 
+
 def test_import():
     """测试导入是否正常"""
     print("🔍 测试1: 检查模块导入...")
     try:
-        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
+        getattr(importlib.import_module("trader.llm.adapters"), "ChatDashScope")
         print("✅ ChatDashScope 导入成功")
 
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        getattr(importlib.import_module("trader.graph.trading"), "TradingAgentsGraph")
         print("✅ TradingAgentsGraph 导入成功")
 
         return True
@@ -33,12 +29,13 @@ def test_import():
         print(f"❌ 导入失败: {e}")
         return False
 
+
 def test_api_key():
     """测试API密钥配置"""
     print("\n🔍 测试2: 检查API密钥配置...")
 
-    dashscope_key = os.getenv('DASHSCOPE_API_KEY')
-    finnhub_key = os.getenv('FINNHUB_API_KEY')
+    dashscope_key = os.getenv("DASHSCOPE_API_KEY")
+    finnhub_key = os.getenv("FINNHUB_API_KEY")
 
     if not dashscope_key:
         print("❌ 未找到 DASHSCOPE_API_KEY 环境变量")
@@ -56,22 +53,23 @@ def test_api_key():
 
     return True
 
+
 def test_dashscope_connection():
     """测试阿里百炼连接"""
     print("\n🔍 测试3: 检查阿里百炼连接...")
 
     try:
-        dashscope = importlib.import_module('dashscope')
-        Generation = getattr(importlib.import_module('dashscope'), 'Generation')
+        dashscope = importlib.import_module("dashscope")
+        Generation = getattr(importlib.import_module("dashscope"), "Generation")
 
         # 设置API密钥
-        dashscope.api_key = os.getenv('DASHSCOPE_API_KEY')
+        dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
 
         # 测试简单调用
         response = Generation.call(
             model="qwen-turbo",
             messages=[{"role": "user", "content": "你好，请回复'连接成功'"}],
-            result_format="message"
+            result_format="message",
         )
 
         if response.status_code == 200:
@@ -86,13 +84,18 @@ def test_dashscope_connection():
         print(f"❌ 阿里百炼连接测试失败: {e}")
         return False
 
+
 def test_langchain_adapter():
     """测试LangChain适配器"""
     print("\n🔍 测试4: 检查LangChain适配器...")
 
     try:
-        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        ChatDashScope = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScope"
+        )
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
 
         # 创建适配器实例
         llm = ChatDashScope(model="qwen-turbo")
@@ -108,13 +111,18 @@ def test_langchain_adapter():
         print(f"❌ LangChain适配器测试失败: {e}")
         return False
 
+
 def test_trading_graph_config():
     """测试TradingGraph配置"""
     print("\n🔍 测试5: 检查TradingGraph配置...")
 
     try:
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        TradingAgentsGraph = getattr(
+            importlib.import_module("trader.graph.trading"), "TradingAgentsGraph"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         # 创建阿里百炼配置
         config = DEFAULT_CONFIG.copy()
@@ -123,7 +131,7 @@ def test_trading_graph_config():
         config["quick_think_llm"] = "qwen-turbo"
 
         # 尝试初始化（不运行分析）
-        ta = TradingAgentsGraph(debug=False, config=config)
+        TradingAgentsGraph(debug=False, config=config)
 
         print("✅ TradingGraph 配置成功")
         print(f"   深度思考模型: {config['deep_think_llm']}")
@@ -133,6 +141,7 @@ def test_trading_graph_config():
     except Exception as e:
         print(f"❌ TradingGraph 配置失败: {e}")
         return False
+
 
 def main():
     """主测试函数"""
@@ -174,6 +183,7 @@ def main():
         print("   4. 查看详细错误信息")
 
     return passed == total
+
 
 if __name__ == "__main__":
     success = main()

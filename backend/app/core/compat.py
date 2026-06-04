@@ -6,15 +6,12 @@
 
 ⚠️ 此模块仅用于向后兼容，新代码应直接使用 ConfigService
 """
-import importlib
 
-import os
 import asyncio
-from typing import Dict, Any, Optional, List
-from functools import lru_cache
+import importlib
+import os
 import warnings
-
-from app.core.config import settings
+from typing import Any, Dict, List, Optional
 
 
 class ConfigManagerCompat:
@@ -37,7 +34,7 @@ class ConfigManagerCompat:
                 "Please migrate to app.services.config.ConfigService. "
                 "Use app.services.config.ConfigService for new code.",
                 DeprecationWarning,
-                stacklevel=3
+                stacklevel=3,
             )
             self._warned = True
 
@@ -65,7 +62,9 @@ class ConfigManagerCompat:
         """
         try:
             # 尝试从新配置系统加载
-            config_service = getattr(importlib.import_module('app.services.config'), 'config_service')
+            config_service = getattr(
+                importlib.import_module("app.services.config"), "config_service"
+            )
 
             # 在同步上下文中运行异步代码
             loop = asyncio.get_event_loop()
@@ -93,12 +92,16 @@ class ConfigManagerCompat:
             bool: 是否保存成功
         """
         try:
-            config_service = getattr(importlib.import_module('app.services.config'), 'config_service')
+            config_service = getattr(
+                importlib.import_module("app.services.config"), "config_service"
+            )
 
             loop = asyncio.get_event_loop()
             if loop.is_running():
                 # 如果事件循环正在运行，无法保存
-                warnings.warn("Cannot save settings in running event loop", RuntimeWarning)
+                warnings.warn(
+                    "Cannot save settings in running event loop", RuntimeWarning
+                )
                 return False
             else:
                 loop.run_until_complete(
@@ -117,7 +120,9 @@ class ConfigManagerCompat:
             List[Dict[str, Any]]: 模型配置列表
         """
         try:
-            config_service = getattr(importlib.import_module('app.services.config'), 'config_service')
+            config_service = getattr(
+                importlib.import_module("app.services.config"), "config_service"
+            )
 
             loop = asyncio.get_event_loop()
             if loop.is_running():
@@ -142,7 +147,9 @@ class ConfigManagerCompat:
 
         return []
 
-    def get_model_config(self, provider: str, model_name: str) -> Optional[Dict[str, Any]]:
+    def get_model_config(
+        self, provider: str, model_name: str
+    ) -> Optional[Dict[str, Any]]:
         """
         获取指定模型的配置
 
@@ -194,7 +201,7 @@ class TokenTrackerCompat:
         model_name: str,
         input_tokens: int,
         output_tokens: int,
-        cost: float = 0.0
+        cost: float = 0.0,
     ):
         """
         记录 Token 使用量

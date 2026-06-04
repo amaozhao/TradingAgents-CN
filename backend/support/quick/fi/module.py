@@ -3,9 +3,10 @@
 快速测试修复效果
 """
 
-import requests
 import time
-import json
+
+import requests
+
 
 def quick_test():
     """快速测试修复效果"""
@@ -18,15 +19,9 @@ def quick_test():
     try:
         # 1. 登录获取token
         print("1. 登录获取token...")
-        login_data = {
-            "username": "admin",
-            "password": "admin123"
-        }
+        login_data = {"username": "admin", "password": "admin123"}
 
-        login_response = requests.post(
-            f"{base_url}/api/auth/login",
-            json=login_data
-        )
+        login_response = requests.post(f"{base_url}/api/auth/login", json=login_data)
 
         if login_response.status_code == 200:
             login_result = login_response.json()
@@ -49,19 +44,17 @@ def quick_test():
                 "include_risk": False,
                 "language": "zh-CN",
                 "quick_analysis_model": "qwen-turbo",
-                "deep_analysis_model": "qwen-max"
-            }
+                "deep_analysis_model": "qwen-max",
+            },
         }
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {access_token}"
+            "Authorization": f"Bearer {access_token}",
         }
 
         response = requests.post(
-            f"{base_url}/api/analysis/single",
-            json=analysis_request,
-            headers=headers
+            f"{base_url}/api/analysis/single", json=analysis_request, headers=headers
         )
 
         if response.status_code == 200:
@@ -74,11 +67,10 @@ def quick_test():
             return False
 
         # 3. 等待任务完成
-        print(f"\n3. 等待任务完成...")
+        print("\n3. 等待任务完成...")
         for i in range(60):  # 最多等待5分钟
             status_response = requests.get(
-                f"{base_url}/api/analysis/tasks/{task_id}/status",
-                headers=headers
+                f"{base_url}/api/analysis/tasks/{task_id}/status", headers=headers
             )
 
             if status_response.status_code == 200:
@@ -98,12 +90,13 @@ def quick_test():
 
             time.sleep(5)
 
-        print(f"⏰ 任务执行超时")
+        print("⏰ 任务执行超时")
         return False
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         return False
+
 
 if __name__ == "__main__":
     success = quick_test()

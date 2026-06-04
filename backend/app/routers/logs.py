@@ -2,10 +2,11 @@
 日志管理API路由
 提供日志查询、过滤和导出功能
 """
-import importlib
 
+import importlib
 import logging
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -20,6 +21,7 @@ logger = logging.getLogger("webapi")
 # 请求模型
 class LogReadRequest(BaseModel):
     """日志读取请求"""
+
     filename: str = Field(..., description="日志文件名")
     lines: int = Field(default=1000, ge=1, le=10000, description="读取行数")
     level: Optional[str] = Field(default=None, description="日志级别过滤")
@@ -30,7 +32,10 @@ class LogReadRequest(BaseModel):
 
 class LogExportRequest(BaseModel):
     """日志导出请求"""
-    filenames: Optional[List[str]] = Field(default=None, description="要导出的文件名列表（空表示全部）")
+
+    filenames: Optional[List[str]] = Field(
+        default=None, description="要导出的文件名列表（空表示全部）"
+    )
     level: Optional[str] = Field(default=None, description="日志级别过滤")
     start_time: Optional[str] = Field(default=None, description="开始时间（ISO格式）")
     end_time: Optional[str] = Field(default=None, description="结束时间（ISO格式）")
@@ -40,6 +45,7 @@ class LogExportRequest(BaseModel):
 # 响应模型
 class LogFileInfo(BaseModel):
     """日志文件信息"""
+
     name: str
     path: str
     size: int
@@ -50,6 +56,7 @@ class LogFileInfo(BaseModel):
 
 class LogContentResponse(BaseModel):
     """日志内容响应"""
+
     filename: str
     lines: List[str]
     stats: dict
@@ -57,6 +64,7 @@ class LogContentResponse(BaseModel):
 
 class LogStatisticsResponse(BaseModel):
     """日志统计响应"""
+
     total_files: int
     total_size_mb: float
     error_files: int
@@ -66,14 +74,13 @@ class LogStatisticsResponse(BaseModel):
 
 class LogDeleteResponse(BaseModel):
     """日志删除响应"""
+
     success: bool
     message: str
 
 
 @router.get("/files", response_model=List[LogFileInfo])
-async def list_log_files(
-    current_user: dict = Depends(get_current_user)
-):
+async def list_log_files(current_user: dict = Depends(get_current_user)):
     """
     获取所有日志文件列表
 
@@ -94,8 +101,7 @@ async def list_log_files(
 
 @router.post("/read", response_model=LogContentResponse)
 async def read_log_file(
-    request: LogReadRequest,
-    current_user: dict = Depends(get_current_user)
+    request: LogReadRequest, current_user: dict = Depends(get_current_user)
 ):
     """
     读取日志文件内容
@@ -107,7 +113,9 @@ async def read_log_file(
     - start_time/end_time: 时间范围
     """
     try:
-        logger.info(f"📖 用户 {current_user['username']} 读取日志文件: {request.filename}")
+        logger.info(
+            f"📖 用户 {current_user['username']} 读取日志文件: {request.filename}"
+        )
 
         service = get_log_export_service()
         content = service.read_log_file(
@@ -116,7 +124,7 @@ async def read_log_file(
             level=request.level,
             keyword=request.keyword,
             start_time=request.start_time,
-            end_time=request.end_time
+            end_time=request.end_time,
         )
 
         return content
@@ -130,8 +138,7 @@ async def read_log_file(
 
 @router.post("/export", response_model=None)
 async def export_logs(
-    request: LogExportRequest,
-    current_user: dict = Depends(get_current_user)
+    request: LogExportRequest, current_user: dict = Depends(get_current_user)
 ):
     """
     导出日志文件
@@ -154,11 +161,11 @@ async def export_logs(
             level=request.level,
             start_time=request.start_time,
             end_time=request.end_time,
-            format=request.format
+            format=request.format,
         )
 
         # 返回文件下载
-        os = importlib.import_module('os')
+        os = importlib.import_module("os")
         filename = os.path.basename(export_path)
         media_type = "application/zip" if request.format == "zip" else "text/plain"
 
@@ -166,7 +173,7 @@ async def export_logs(
             path=export_path,
             filename=filename,
             media_type=media_type,
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     except ValueError as e:
@@ -179,7 +186,7 @@ async def export_logs(
 @router.get("/statistics", response_model=LogStatisticsResponse)
 async def get_log_statistics(
     days: int = Query(default=7, ge=1, le=30, description="统计最近几天的日志"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     获取日志统计信息
@@ -205,8 +212,7 @@ async def get_log_statistics(
 
 @router.delete("/files/{filename}", response_model=LogDeleteResponse)
 async def delete_log_file(
-    filename: str,
-    current_user: dict = Depends(get_current_user)
+    filename: str, current_user: dict = Depends(get_current_user)
 ):
     """
     删除日志文件
@@ -223,15 +229,12 @@ async def delete_log_file(
             raise HTTPException(status_code=404, detail="日志文件不存在")
 
         # 安全检查：只允许删除 .log 文件
-        if not filename.endswith('.log') and not '.log.' in filename:
+        if not filename.endswith(".log") and ".log." not in filename:
             raise HTTPException(status_code=400, detail="只能删除日志文件")
 
         file_path.unlink()
 
-        return {
-            "success": True,
-            "message": f"日志文件已删除: {filename}"
-        }
+        return {"success": True, "message": f"日志文件已删除: {filename}"}
 
     except HTTPException:
         raise

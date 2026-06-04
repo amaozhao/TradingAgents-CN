@@ -3,14 +3,10 @@
 测试重复进度提示修复效果
 验证分析师完成提示不会重复显示
 """
-import importlib
 
-import os
+import importlib
 import sys
 
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_duplicate_prevention():
     """测试重复提示防止机制"""
@@ -18,7 +14,9 @@ def test_duplicate_prevention():
     print("=" * 60)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
 
         ui = CLIUserInterface()
 
@@ -30,7 +28,7 @@ def test_duplicate_prevention():
 
         # 模拟多次市场分析完成
         for i in range(4):
-            print(f"第{i+1}次 market_report 事件:")
+            print(f"第{i + 1}次 market_report 事件:")
 
             # 检查是否已经完成过
             if "market_report" not in completed_analysts:
@@ -40,12 +38,12 @@ def test_duplicate_prevention():
             else:
                 print("   🔇 跳过重复提示（已完成）")
 
-        print(f"\n📊 模拟重复的基本面分析完成事件:")
+        print("\n📊 模拟重复的基本面分析完成事件:")
         print("-" * 40)
 
         # 模拟多次基本面分析完成
         for i in range(3):
-            print(f"第{i+1}次 fundamentals_report 事件:")
+            print(f"第{i + 1}次 fundamentals_report 事件:")
 
             if "fundamentals_report" not in completed_analysts:
                 ui.show_success("📊 基本面分析完成")
@@ -54,16 +52,17 @@ def test_duplicate_prevention():
             else:
                 print("   🔇 跳过重复提示（已完成）")
 
-        print(f"\n✅ 重复提示防止机制测试完成")
-        print(f"📋 结果: 每个分析师只显示一次完成提示")
+        print("\n✅ 重复提示防止机制测试完成")
+        print("📋 结果: 每个分析师只显示一次完成提示")
 
         return True
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_stream_chunk_simulation():
     """模拟流式处理中的chunk重复"""
@@ -71,7 +70,9 @@ def test_stream_chunk_simulation():
     print("=" * 60)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
 
         ui = CLIUserInterface()
         completed_analysts = set()
@@ -82,14 +83,17 @@ def test_stream_chunk_simulation():
             {"market_report": "市场分析第1部分...市场分析第2部分..."},
             {"market_report": "市场分析完整报告..."},
             {"fundamentals_report": "基本面分析第1部分..."},
-            {"market_report": "市场分析完整报告...", "fundamentals_report": "基本面分析完整报告..."},
+            {
+                "market_report": "市场分析完整报告...",
+                "fundamentals_report": "基本面分析完整报告...",
+            },
         ]
 
         print("📊 处理模拟的流式chunk:")
         print("-" * 40)
 
         for i, chunk in enumerate(mock_chunks):
-            print(f"\n处理 Chunk {i+1}: {list(chunk.keys())}")
+            print(f"\n处理 Chunk {i + 1}: {list(chunk.keys())}")
 
             # 处理市场分析报告
             if "market_report" in chunk and chunk["market_report"]:
@@ -109,8 +113,8 @@ def test_stream_chunk_simulation():
                 else:
                     print("   🔇 跳过重复的基本面分析完成提示")
 
-        print(f"\n✅ 流式处理重复防止测试完成")
-        print(f"📋 结果: 即使多个chunk包含相同报告，也只显示一次完成提示")
+        print("\n✅ 流式处理重复防止测试完成")
+        print("📋 结果: 即使多个chunk包含相同报告，也只显示一次完成提示")
 
         return True
 
@@ -118,13 +122,16 @@ def test_stream_chunk_simulation():
         print(f"❌ 测试失败: {e}")
         return False
 
+
 def test_analyst_completion_order():
     """测试分析师完成顺序"""
     print("\n📈 测试分析师完成顺序")
     print("=" * 60)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
 
         ui = CLIUserInterface()
         completed_analysts = set()
@@ -134,7 +141,7 @@ def test_analyst_completion_order():
             ("market_report", "📈 市场分析完成"),
             ("fundamentals_report", "📊 基本面分析完成"),
             ("technical_report", "🔍 技术分析完成"),
-            ("sentiment_report", "💭 情感分析完成")
+            ("sentiment_report", "💭 情感分析完成"),
         ]
 
         print("📊 模拟分析师按顺序完成:")
@@ -150,7 +157,7 @@ def test_analyst_completion_order():
             else:
                 print("   🔇 已完成，跳过")
 
-        print(f"\n📊 模拟重复完成事件:")
+        print("\n📊 模拟重复完成事件:")
         print("-" * 40)
 
         # 模拟某些分析师重复完成
@@ -164,7 +171,7 @@ def test_analyst_completion_order():
             else:
                 print("   🔇 已完成，跳过重复提示")
 
-        print(f"\n✅ 分析师完成顺序测试完成")
+        print("\n✅ 分析师完成顺序测试完成")
         print(f"📋 已完成的分析师: {completed_analysts}")
 
         return True
@@ -173,13 +180,16 @@ def test_analyst_completion_order():
         print(f"❌ 测试失败: {e}")
         return False
 
+
 def test_real_scenario_simulation():
     """模拟真实场景"""
     print("\n🎭 模拟真实分析场景")
     print("=" * 60)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
 
         ui = CLIUserInterface()
         completed_analysts = set()
@@ -197,11 +207,11 @@ def test_real_scenario_simulation():
             "获取市场数据...",
             "分析价格趋势...",
             "计算技术指标...",
-            "生成市场报告..."
+            "生成市场报告...",
         ]
 
         for i, output in enumerate(market_outputs):
-            print(f"   市场分析步骤 {i+1}: {output}")
+            print(f"   市场分析步骤 {i + 1}: {output}")
 
             # 每个步骤都可能触发report更新
             if i == len(market_outputs) - 1:  # 最后一步才算真正完成
@@ -213,14 +223,10 @@ def test_real_scenario_simulation():
 
         # 模拟基本面分析师
         print("\n📊 基本面分析师工作过程:")
-        fundamentals_outputs = [
-            "获取财务数据...",
-            "分析财务指标...",
-            "评估公司价值..."
-        ]
+        fundamentals_outputs = ["获取财务数据...", "分析财务指标...", "评估公司价值..."]
 
         for i, output in enumerate(fundamentals_outputs):
-            print(f"   基本面分析步骤 {i+1}: {output}")
+            print(f"   基本面分析步骤 {i + 1}: {output}")
 
             if i == len(fundamentals_outputs) - 1:
                 if "fundamentals_report" not in completed_analysts:
@@ -229,14 +235,15 @@ def test_real_scenario_simulation():
                 else:
                     print("   🔇 跳过重复提示")
 
-        print(f"\n✅ 真实场景模拟完成")
-        print(f"📋 结果: 每个分析师只显示一次完成提示，避免了重复")
+        print("\n✅ 真实场景模拟完成")
+        print("📋 结果: 每个分析师只显示一次完成提示，避免了重复")
 
         return True
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         return False
+
 
 def main():
     """主测试函数"""
@@ -269,12 +276,12 @@ def main():
         "重复提示防止机制",
         "流式处理chunk重复",
         "分析师完成顺序",
-        "真实场景模拟"
+        "真实场景模拟",
     ]
 
     for i, (name, result) in enumerate(zip(test_names, results)):
         status = "✅ 通过" if result else "❌ 失败"
-        print(f"{i+1}. {name}: {status}")
+        print(f"{i + 1}. {name}: {status}")
 
     print(f"\n📊 总体结果: {passed}/{total} 测试通过")
 
@@ -299,6 +306,7 @@ def main():
         print("⚠️ 部分测试失败，需要进一步优化")
 
     return passed == total
+
 
 if __name__ == "__main__":
     success = main()

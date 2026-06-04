@@ -18,13 +18,13 @@ from app.db.model import (
     SchedulerExecution,
     SchedulerHistoryDocument,
     SchedulerMetadataDocument,
+    SocialMediaMessageDocument,
     StockBasicInfo,
     StockDailyQuote,
     StockFinancialData,
     StockNewsDocument,
-    SystemConfigDocument,
     SyncStatusDocument,
-    SocialMediaMessageDocument,
+    SystemConfigDocument,
     TokenUsageDocument,
     UserAccount,
     UserFavorite,
@@ -32,8 +32,8 @@ from app.db.model import (
     UserTag,
 )
 from app.db.write import (
-    build_analysis_report_upsert,
     build_analysis_batch_upsert,
+    build_analysis_report_upsert,
     build_analysis_result_upsert,
     build_analysis_task_upsert,
     build_database_backup_upsert,
@@ -49,13 +49,13 @@ from app.db.write import (
     build_scheduler_execution_upsert,
     build_scheduler_history_upsert,
     build_scheduler_metadata_upsert,
+    build_social_media_message_upsert,
     build_stock_basic_info_upsert,
     build_stock_daily_quote_upsert,
     build_stock_financial_data_upsert,
     build_stock_news_upsert,
-    build_system_config_document_upsert,
     build_sync_status_upsert,
-    build_social_media_message_upsert,
+    build_system_config_document_upsert,
     build_token_usage_upsert,
     build_user_account_upsert,
     build_user_favorite_upsert,
@@ -137,7 +137,9 @@ def test_analysis_task_upsert_conflicts_on_task_id():
 
 
 def test_analysis_report_upsert_conflicts_on_analysis_id():
-    statement = build_analysis_report_upsert({"analysis_id": "analysis-1", "summary": "buy"})
+    statement = build_analysis_report_upsert(
+        {"analysis_id": "analysis-1", "summary": "buy"}
+    )
     sql = _compile(statement)
 
     assert "INSERT INTO analysis_reports" in sql
@@ -147,7 +149,9 @@ def test_analysis_report_upsert_conflicts_on_analysis_id():
 
 def test_analysis_batch_and_result_upserts_use_expected_conflicts():
     batch = build_analysis_batch_upsert({"batch_id": "batch-1", "user_id": "user-1"})
-    result = build_analysis_result_upsert({"legacy_id": "result-1", "task_id": "task-1"})
+    result = build_analysis_result_upsert(
+        {"legacy_id": "result-1", "task_id": "task-1"}
+    )
 
     assert "INSERT INTO analysis_batches" in _compile(batch)
     assert "ON CONFLICT (batch_id) DO UPDATE" in _compile(batch)
@@ -158,7 +162,9 @@ def test_analysis_batch_and_result_upserts_use_expected_conflicts():
 
 
 def test_sync_status_upsert_conflicts_on_job():
-    statement = build_sync_status_upsert({"job": "example_sdk_sync", "status": "completed"})
+    statement = build_sync_status_upsert(
+        {"job": "example_sdk_sync", "status": "completed"}
+    )
     sql = _compile(statement)
 
     assert "INSERT INTO sync_status" in sql
@@ -179,7 +185,11 @@ def test_scheduler_execution_upsert_conflicts_on_legacy_id():
 
 def test_scheduler_history_and_metadata_upserts_use_expected_conflicts():
     history = build_scheduler_history_upsert(
-        {"job_id": "daily_sync", "action": "trigger", "timestamp": "2026-06-03T11:00:00"}
+        {
+            "job_id": "daily_sync",
+            "action": "trigger",
+            "timestamp": "2026-06-03T11:00:00",
+        }
     )
     metadata = build_scheduler_metadata_upsert(
         {"job_id": "daily_sync", "display_name": "每日同步"}
@@ -268,7 +278,11 @@ def test_user_account_upsert_conflicts_on_username():
 
 def test_security_session_upserts_use_expected_conflicts():
     session = build_user_session_upsert(
-        {"session_id": "sess-1", "user_id": "user-1", "expires_at": "2026-06-04T00:00:00"}
+        {
+            "session_id": "sess-1",
+            "user_id": "user-1",
+            "expires_at": "2026-06-04T00:00:00",
+        }
     )
     attempt = build_login_attempt_upsert(
         {"legacy_id": "attempt-1", "username": "admin", "success": False}
@@ -295,7 +309,9 @@ def test_operational_upserts_conflict_on_legacy_id():
 
 
 def test_dynamic_business_upserts_use_expected_conflicts():
-    notification = build_notification_upsert({"legacy_id": "notif-1", "user_id": "user-1"})
+    notification = build_notification_upsert(
+        {"legacy_id": "notif-1", "user_id": "user-1"}
+    )
     usage = build_token_usage_upsert(
         {
             "provider": "dashscope",
@@ -304,8 +320,12 @@ def test_dynamic_business_upserts_use_expected_conflicts():
             "timestamp": "2026-06-03T10:00:00",
         }
     )
-    internal = build_internal_message_upsert({"message_id": "msg-1", "symbol": "000001"})
-    social = build_social_media_message_upsert({"message_id": "social-1", "platform": "weibo"})
+    internal = build_internal_message_upsert(
+        {"message_id": "msg-1", "symbol": "000001"}
+    )
+    social = build_social_media_message_upsert(
+        {"message_id": "social-1", "platform": "weibo"}
+    )
 
     assert "INSERT INTO notifications" in _compile(notification)
     assert "ON CONFLICT (legacy_id) DO UPDATE" in _compile(notification)

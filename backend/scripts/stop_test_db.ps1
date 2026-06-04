@@ -1,11 +1,11 @@
-# Stop Test Database (MongoDB + Redis only)
+# Stop Test Database (PostgreSQL + Redis only)
 # This script stops test database containers
 
 $ErrorActionPreference = "Stop"
 
 Write-Host ""
 Write-Host "======================================================================" -ForegroundColor Cyan
-Write-Host "Stop Test Database (MongoDB + Redis)" -ForegroundColor Cyan
+Write-Host "Stop Test Database (PostgreSQL + Redis)" -ForegroundColor Cyan
 Write-Host "======================================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -20,14 +20,14 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "======================================================================" -ForegroundColor Green
     Write-Host ""
     Write-Host "[INFO] Test data volumes are preserved:" -ForegroundColor Cyan
-    Write-Host "  - trading_agents_test_mongodb_data" -ForegroundColor White
+    Write-Host "  - trading_agents_test_postgres_data" -ForegroundColor White
     Write-Host "  - trading_agents_test_redis_data" -ForegroundColor White
     Write-Host ""
     Write-Host "[INFO] To remove test data volumes:" -ForegroundColor Yellow
-    Write-Host "  docker volume rm trading_agents_test_mongodb_data trading_agents_test_redis_data" -ForegroundColor Gray
+    Write-Host "  docker volume rm trading_agents_test_postgres_data trading_agents_test_redis_data" -ForegroundColor Gray
     Write-Host ""
     Write-Host "[INFO] To start production database:" -ForegroundColor Yellow
-    Write-Host "  docker start trading-agents-mongodb trading-agents-redis" -ForegroundColor Gray
+    Write-Host "  docker start trading-agents-postgres trading-agents-redis" -ForegroundColor Gray
     Write-Host ""
 } else {
     Write-Host ""

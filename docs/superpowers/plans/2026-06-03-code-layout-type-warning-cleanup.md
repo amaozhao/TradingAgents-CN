@@ -119,7 +119,7 @@ cd backend && conda run -n trader pytest -q
   - missing optional handling
   - untyped or wrongly typed function signatures
   - wrong async/sync return types
-  - incompatible Pydantic/Mongo/ObjectId model fields
+  - incompatible Pydantic/PostgreSQL document-id model fields
   - tests relying on dynamically shaped dicts
 - [x] Pyright is configured as a zero-diagnostic backend gate for the formal backend packages and tests. Legacy dynamic-boundary diagnostics are disabled in `backend/pyrightconfig.json`; rename/import breakages are still covered by compile, collection, and runtime smoke gates.
 - [x] Acceptance gate:
@@ -144,7 +144,7 @@ cd backend && conda run -n trader pytest -q -W error
   - deprecation warnings: update API usage
   - pytest collection warnings: rename classes/functions or fixtures
   - asyncio warnings: close tasks, event loops, clients, and database handles
-  - resource warnings: close files, sockets, HTTP clients, Mongo/Redis clients
+  - resource warnings: close files, sockets, HTTP clients, PostgreSQL/Redis clients
   - Pydantic warnings: update model config, serializers, validators, and field aliases
 - [x] If a third-party library emits an unavoidable warning from outside this repo, first isolate a minimal reproduction.
 - [x] Acceptance gate: backend test commands finish with no warnings printed and no warning suppressions masking owned code.

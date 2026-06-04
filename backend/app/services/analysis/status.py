@@ -3,15 +3,16 @@
 Extracted from AnalysisService to reduce file size and improve modularity
 without changing external behavior.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
-from app.core.database import get_mongo_db
-from app.core.redis import get_redis_service, RedisKeys
+from app.core.database import get_postgres_db
+from app.core.redis import RedisKeys, get_redis_service
 from app.db.dual import dual_write_hot_document
-from app.models.analysis import AnalysisStatus, AnalysisResult
+from app.models.analysis import AnalysisResult, AnalysisStatus
 
 
 async def perform_update_task_status(
@@ -20,11 +21,11 @@ async def perform_update_task_status(
     progress: int,
     result: Optional[AnalysisResult] = None,
 ) -> None:
-    """Update a task's status in MongoDB and Redis.
+    """Update a task's status in PostgreSQL and Redis.
 
     Mirrors the original logic in AnalysisService._update_task_status.
     """
-    db = get_mongo_db()
+    db = get_postgres_db()
     redis_service = get_redis_service()
 
     update_data: Dict[str, Any] = {
@@ -66,7 +67,7 @@ async def perform_update_task_status_with_tracker(
 
     Mirrors the original logic in AnalysisService._update_task_status_with_tracker.
     """
-    db = get_mongo_db()
+    db = get_postgres_db()
     redis_service = get_redis_service()
 
     progress_data = tracker.to_dict()

@@ -2,17 +2,13 @@
 """
 测试 monkey patch 是否在 Docker 环境中生效
 """
-import importlib
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import asyncio
+import importlib
 import logging
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s | %(levelname)-8s | %(message)s'
+    level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(message)s"
 )
 
 logger = logging.getLogger(__name__)
@@ -25,20 +21,27 @@ async def main():
 
     # 1. 检查初始状态
     logger.info("\n【步骤1】检查 requests 初始状态")
-    requests = importlib.import_module('requests')
-    logger.info(f"  requests._akshare_headers_patched: {hasattr(requests, '_akshare_headers_patched')}")
+    requests = importlib.import_module("requests")
+    logger.info(
+        f"  requests._akshare_headers_patched: {hasattr(requests, '_akshare_headers_patched')}"
+    )
     logger.info(f"  requests.get 类型: {type(requests.get)}")
 
     # 2. 导入 AKShare 提供器
     logger.info("\n【步骤2】导入 AKShare 提供器")
-    get_akshare_provider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'get_akshare_provider')
+    get_akshare_provider = getattr(
+        importlib.import_module("trader.flows.providers.china.akshare"),
+        "get_akshare_provider",
+    )
 
     provider = get_akshare_provider()
     logger.info(f"  提供器连接状态: {provider.connected}")
 
     # 3. 再次检查 requests 状态
     logger.info("\n【步骤3】检查 requests 状态（初始化后）")
-    logger.info(f"  requests._akshare_headers_patched: {hasattr(requests, '_akshare_headers_patched')}")
+    logger.info(
+        f"  requests._akshare_headers_patched: {hasattr(requests, '_akshare_headers_patched')}"
+    )
     logger.info(f"  requests.get 类型: {type(requests.get)}")
     logger.info(f"  requests.get 名称: {requests.get.__name__}")
 
@@ -46,14 +49,14 @@ async def main():
     logger.info("\n【步骤4】测试 HTTP 请求")
     try:
         resp = requests.get("https://httpbin.org/headers", timeout=5)
-        user_agent = resp.json().get('headers', {}).get('User-Agent', 'N/A')
-        logger.info(f"  ✅ 请求成功")
+        user_agent = resp.json().get("headers", {}).get("User-Agent", "N/A")
+        logger.info("  ✅ 请求成功")
         logger.info(f"  User-Agent: {user_agent}")
 
-        if 'Mozilla' in user_agent:
-            logger.info(f"  ✅ Monkey patch 生效！（使用了浏览器 User-Agent）")
+        if "Mozilla" in user_agent:
+            logger.info("  ✅ Monkey patch 生效！（使用了浏览器 User-Agent）")
         else:
-            logger.warning(f"  ⚠️ Monkey patch 可能未生效（使用了默认 User-Agent）")
+            logger.warning("  ⚠️ Monkey patch 可能未生效（使用了默认 User-Agent）")
     except Exception as e:
         logger.error(f"  ❌ 请求失败: {e}")
 
@@ -64,10 +67,10 @@ async def main():
         if news_list:
             logger.info(f"  ✅ 获取新闻成功: {len(news_list)} 条")
         else:
-            logger.warning(f"  ⚠️ 未获取到新闻")
+            logger.warning("  ⚠️ 未获取到新闻")
     except Exception as e:
         logger.error(f"  ❌ 获取新闻失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
     logger.info("\n" + "=" * 60)

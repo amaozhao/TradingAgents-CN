@@ -1,13 +1,13 @@
-import re
-import logging
 import io
+import logging
+import re
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.middleware.requests import RequestIDMiddleware
-from app.core.logs import setup_logging
 from app.core.context import LoggingContextFilter
-
+from app.core.logs import setup_logging
+from app.middleware.requests import RequestIDMiddleware
 
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 

@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 
 // 数据库状态接口
 export interface DatabaseStatus {
-  mongodb: {
+  postgres: {
     connected: boolean
     host: string
     port: number
@@ -62,7 +62,7 @@ export interface BackupInfo {
 
 // 连接测试结果接口
 export interface ConnectionTestResult {
-  mongodb: {
+  postgres: {
     success: boolean
     response_time_ms?: number
     message: string

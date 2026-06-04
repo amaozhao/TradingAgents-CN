@@ -1,5 +1,5 @@
-
 from support.registry import export_module as _export_module
+
 _export_module(globals(), "support.deepseek.react.fi.module")
 _export_module(globals(), "support.gemini.simple.module")
 _export_module(globals(), "support.hk.source.fi.module")

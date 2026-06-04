@@ -3,15 +3,8 @@
 LLM技术面分析调试测试
 专门诊断阿里百炼vs DeepSeek在技术面分析中的差异
 """
+
 import importlib
-
-import os
-import sys
-from datetime import datetime
-
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
 
 
 def test_dashscope_technical_analysis():
@@ -20,21 +13,24 @@ def test_dashscope_technical_analysis():
     print("=" * 60)
 
     try:
-        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters.dashscope.native'), 'ChatDashScope')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        ChatDashScope = getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.native"),
+            "ChatDashScope",
+        )
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
 
         # 创建阿里百炼模型
-        llm = ChatDashScope(
-            model="qwen-plus-latest",
-            temperature=0.1,
-            max_tokens=2000
-        )
+        llm = ChatDashScope(model="qwen-plus-latest", temperature=0.1, max_tokens=2000)
 
         print("✅ 阿里百炼模型创建成功")
 
         # 测试简单对话
         print("🔄 测试简单对话...")
-        simple_messages = [HumanMessage(content="请简单介绍股票技术分析的概念，控制在100字以内。")]
+        simple_messages = [
+            HumanMessage(content="请简单介绍股票技术分析的概念，控制在100字以内。")
+        ]
         simple_response = llm.invoke(simple_messages)
         print(f"📊 简单对话响应长度: {len(simple_response.content)}字符")
         print(f"📋 简单对话内容: {simple_response.content[:200]}...")
@@ -79,7 +75,7 @@ def test_dashscope_technical_analysis():
 
     except Exception as e:
         print(f"❌ 阿里百炼测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -90,21 +86,23 @@ def test_deepseek_technical_analysis():
     print("=" * 60)
 
     try:
-        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        ChatDeepSeek = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"), "ChatDeepSeek"
+        )
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
 
         # 创建DeepSeek模型
-        llm = ChatDeepSeek(
-            model="deepseek-chat",
-            temperature=0.1,
-            max_tokens=2000
-        )
+        llm = ChatDeepSeek(model="deepseek-chat", temperature=0.1, max_tokens=2000)
 
         print("✅ DeepSeek模型创建成功")
 
         # 测试简单对话
         print("🔄 测试简单对话...")
-        simple_messages = [HumanMessage(content="请简单介绍股票技术分析的概念，控制在100字以内。")]
+        simple_messages = [
+            HumanMessage(content="请简单介绍股票技术分析的概念，控制在100字以内。")
+        ]
         simple_response = llm.invoke(simple_messages)
         print(f"📊 简单对话响应长度: {len(simple_response.content)}字符")
         print(f"📋 简单对话内容: {simple_response.content[:200]}...")
@@ -149,7 +147,7 @@ def test_deepseek_technical_analysis():
 
     except Exception as e:
         print(f"❌ DeepSeek测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -160,32 +158,48 @@ def test_message_sequence_handling():
     print("=" * 60)
 
     try:
-        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters.dashscope.native'), 'ChatDashScope')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
-        AIMessage = getattr(importlib.import_module('langchain_core.messages'), 'AIMessage')
-        ToolMessage = getattr(importlib.import_module('langchain_core.messages'), 'ToolMessage')
+        ChatDashScope = getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.native"),
+            "ChatDashScope",
+        )
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
+        AIMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "AIMessage"
+        )
+        ToolMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "ToolMessage"
+        )
 
         # 创建阿里百炼模型
-        llm = ChatDashScope(
-            model="qwen-plus-latest",
-            temperature=0.1,
-            max_tokens=2000
-        )
+        llm = ChatDashScope(model="qwen-plus-latest", temperature=0.1, max_tokens=2000)
 
         print("✅ 阿里百炼模型创建成功")
 
         # 模拟复杂的消息序列（类似技术面分析中的情况）
         messages = [
             HumanMessage(content="请分析股票600036的技术面"),
-            AIMessage(content="我需要获取股票数据来进行分析", tool_calls=[
-                {
-                    "name": "get_china_stock_data",
-                    "args": {"stock_code": "600036", "start_date": "2025-06-10", "end_date": "2025-07-10"},
-                    "id": "call_1"
-                }
-            ]),
-            ToolMessage(content="股票代码: 600036\n股票名称: 招商银行\n当前价格: ¥47.13\n涨跌幅: -1.03%\n成交量: 61.5万手", tool_call_id="call_1"),
-            HumanMessage(content="""现在请基于上述工具获取的数据，生成详细的技术分析报告。
+            AIMessage(
+                content="我需要获取股票数据来进行分析",
+                tool_calls=[
+                    {
+                        "name": "get_china_stock_data",
+                        "args": {
+                            "stock_code": "600036",
+                            "start_date": "2025-06-10",
+                            "end_date": "2025-07-10",
+                        },
+                        "id": "call_1",
+                    }
+                ],
+            ),
+            ToolMessage(
+                content="股票代码: 600036\n股票名称: 招商银行\n当前价格: ¥47.13\n涨跌幅: -1.03%\n成交量: 61.5万手",
+                tool_call_id="call_1",
+            ),
+            HumanMessage(
+                content="""现在请基于上述工具获取的数据，生成详细的技术分析报告。
 
 要求：
 1. 报告必须基于工具返回的真实数据进行分析
@@ -199,7 +213,8 @@ def test_message_sequence_handling():
 - 技术指标解读
 - 支撑阻力位分析
 - 成交量分析
-- 投资建议""")
+- 投资建议"""
+            ),
         ]
 
         print("🔄 测试复杂消息序列...")
@@ -216,7 +231,7 @@ def test_message_sequence_handling():
 
     except Exception as e:
         print(f"❌ 复杂消息序列测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -227,8 +242,13 @@ def test_max_tokens_impact():
     print("=" * 60)
 
     try:
-        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters.dashscope.native'), 'ChatDashScope')
-        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        ChatDashScope = getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.native"),
+            "ChatDashScope",
+        )
+        HumanMessage = getattr(
+            importlib.import_module("langchain_core.messages"), "HumanMessage"
+        )
 
         prompt = """请生成一份详细的股票技术分析报告，要求不少于800字，包含：
 1. 价格趋势分析
@@ -248,9 +268,7 @@ def test_max_tokens_impact():
             print(f"\n🔄 测试max_tokens={max_tokens}...")
 
             llm = ChatDashScope(
-                model="qwen-plus-latest",
-                temperature=0.1,
-                max_tokens=max_tokens
+                model="qwen-plus-latest", temperature=0.1, max_tokens=max_tokens
             )
 
             messages = [HumanMessage(content=prompt)]
@@ -286,7 +304,7 @@ def main():
         ("阿里百炼技术面分析", test_dashscope_technical_analysis),
         ("DeepSeek技术面分析", test_deepseek_technical_analysis),
         ("复杂消息序列处理", test_message_sequence_handling),
-        ("max_tokens参数影响", test_max_tokens_impact)
+        ("max_tokens参数影响", test_max_tokens_impact),
     ]
 
     results = []

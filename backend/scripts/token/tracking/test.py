@@ -2,17 +2,11 @@
 """
 测试 Token 跟踪功能
 """
-import importlib
 
-import os
-import sys
 import asyncio
-from pathlib import Path
+import importlib
 from datetime import datetime
 
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 async def main():
     """测试 token 跟踪"""
@@ -22,15 +16,19 @@ async def main():
 
     # 1. 初始化数据库
     print("\n1️⃣ 初始化数据库连接...")
-    init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
-    get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
+    init_db = getattr(importlib.import_module("app.core.database"), "init_db")
+    get_postgres_db = getattr(
+        importlib.import_module("app.core.database"), "get_postgres_db"
+    )
     await init_db()
     print("✅ 数据库连接成功")
 
     # 2. 创建测试使用记录
     print("\n2️⃣ 创建测试使用记录...")
-    UsageStatisticsService = getattr(importlib.import_module('app.services.usage'), 'UsageStatisticsService')
-    UsageRecord = getattr(importlib.import_module('app.models.config'), 'UsageRecord')
+    UsageStatisticsService = getattr(
+        importlib.import_module("app.services.usage"), "UsageStatisticsService"
+    )
+    UsageRecord = getattr(importlib.import_module("app.models.config"), "UsageRecord")
 
     usage_service = UsageStatisticsService()
 
@@ -44,7 +42,7 @@ async def main():
         cost=0.006,  # 假设成本
         session_id="test_session_001",
         analysis_type="stock_analysis",
-        stock_code="000001"
+        stock_code="000001",
     )
 
     success = await usage_service.add_usage_record(test_record)
@@ -57,7 +55,7 @@ async def main():
 
     # 3. 验证记录是否保存
     print("\n3️⃣ 验证记录是否保存...")
-    db = get_mongo_db()
+    db = get_postgres_db()
     count = await db.usage_records.count_documents({})
     print(f"📊 总记录数: {count}")
 
@@ -78,16 +76,18 @@ async def main():
     print("\n4️⃣ 测试统计功能...")
     stats = await usage_service.get_usage_statistics(days=7)
 
-    print(f"📊 统计结果：")
+    print("📊 统计结果：")
     print(f"  • 总请求数: {stats.total_requests}")
     print(f"  • 总输入 Token: {stats.total_input_tokens}")
     print(f"  • 总输出 Token: {stats.total_output_tokens}")
     print(f"  • 总成本: ¥{stats.total_cost:.4f}")
 
     if stats.by_provider:
-        print(f"\n  按供应商统计：")
+        print("\n  按供应商统计：")
         for provider, data in stats.by_provider.items():
-            print(f"    • {provider}: {data.get('requests', 0)} 次请求, ¥{data.get('cost', 0):.4f}")
+            print(
+                f"    • {provider}: {data.get('requests', 0)} 次请求, ¥{data.get('cost', 0):.4f}"
+            )
 
     print("\n" + "=" * 60)
     print("✅ Token 跟踪功能测试完成")

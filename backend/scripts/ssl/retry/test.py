@@ -2,17 +2,14 @@
 """
 测试 SSL 重试机制
 """
-import importlib
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import asyncio
+import importlib
 import logging
+import sys
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s | %(levelname)-8s | %(message)s'
+    level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(message)s"
 )
 
 logger = logging.getLogger(__name__)
@@ -25,10 +22,13 @@ async def main():
 
     # 导入 AKShare 提供器
     logger.info("\n【步骤1】导入 AKShare 提供器")
-    get_akshare_provider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'get_akshare_provider')
+    get_akshare_provider = getattr(
+        importlib.import_module("trader.flows.providers.china.akshare"),
+        "get_akshare_provider",
+    )
 
     provider = get_akshare_provider()
-    logger.info(f"  ✅ 提供器初始化完成")
+    logger.info("  ✅ 提供器初始化完成")
     logger.info(f"  连接状态: {provider.connected}")
 
     # 测试连接
@@ -57,7 +57,7 @@ async def main():
                 logger.info(f"    标题: {first_news.get('title', 'N/A')[:60]}...")
                 logger.info(f"    时间: {first_news.get('published_at', 'N/A')}")
             else:
-                logger.warning(f"    ⚠️ 未获取到新闻")
+                logger.warning("    ⚠️ 未获取到新闻")
                 fail_count += 1
 
         except Exception as e:
@@ -66,7 +66,7 @@ async def main():
 
     # 统计结果
     logger.info("\n" + "=" * 80)
-    logger.info(f"📊 测试结果统计")
+    logger.info("📊 测试结果统计")
     logger.info(f"  总计: {len(test_symbols)} 只股票")
     logger.info(f"  成功: {success_count} 只")
     logger.info(f"  失败: {fail_count} 只")

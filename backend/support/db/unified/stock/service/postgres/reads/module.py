@@ -6,7 +6,7 @@ from app.services.stocks.unified import UnifiedStockService
 
 @pytest.mark.asyncio
 async def test_get_daily_quotes_uses_postgres_when_enabled(monkeypatch):
-    service = UnifiedStockService(FakeMongoDB({}))
+    service = UnifiedStockService(FakePostgreSQL({}))
     monkeypatch.setattr(settings, "POSTGRES_READ_ENABLED", True)
 
     async def fake_pg(**kwargs):
@@ -49,7 +49,7 @@ async def test_get_daily_quotes_uses_postgres_when_enabled(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_get_daily_quotes_falls_back_to_market_mongo_collection(monkeypatch):
+async def test_get_daily_quotes_falls_back_to_market_postgres_collection(monkeypatch):
     collection = FakeCollection(
         [
             {
@@ -59,7 +59,7 @@ async def test_get_daily_quotes_falls_back_to_market_mongo_collection(monkeypatc
             }
         ]
     )
-    service = UnifiedStockService(FakeMongoDB({"stock_daily_quotes_hk": collection}))
+    service = UnifiedStockService(FakePostgreSQL({"stock_daily_quotes_hk": collection}))
     monkeypatch.setattr(settings, "POSTGRES_READ_ENABLED", True)
 
     async def fake_pg(**_kwargs):
@@ -73,7 +73,7 @@ async def test_get_daily_quotes_falls_back_to_market_mongo_collection(monkeypatc
     assert result[0]["trade_date"] == "2026-06-03"
 
 
-class FakeMongoDB:
+class FakePostgreSQL:
     def __init__(self, collections):
         self.collections = collections
 

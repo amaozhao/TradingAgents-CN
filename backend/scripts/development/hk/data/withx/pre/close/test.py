@@ -3,14 +3,8 @@
 测试港股数据工具是否正确显示昨收字段
 """
 
-import sys
-import os
-
-# 添加项目根目录到 Python 路径
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-sys.path.insert(0, project_root)
-
 from trader.flows.providers.hk.improved import get_hk_stock_data_akshare
+
 
 def test_hk_data_with_preclose():
     """测试港股数据是否包含昨收字段"""
@@ -67,23 +61,23 @@ def test_hk_data_with_preclose():
     print()
 
     # 从结果中提取最后一天的数据
-    lines = result.split('\n')
+    lines = result.split("\n")
     for i, line in enumerate(lines):
-        if '2025-11-07' in line:
-            print(f"实际值（工具返回）:")
+        if "2025-11-07" in line:
+            print("实际值（工具返回）:")
             print(f"  {line}")
 
             # 解析数据
             parts = line.split()
             if len(parts) >= 9:
-                date = parts[0]
+                parts[0]
                 open_price = float(parts[1])
                 high = float(parts[2])
                 low = float(parts[3])
                 close = float(parts[4])
-                pre_close = float(parts[5]) if parts[5] != 'NaN' else None
-                change = float(parts[6]) if parts[6] != 'NaN' else None
-                pct_change = float(parts[7]) if parts[7] != 'NaN' else None
+                pre_close = float(parts[5]) if parts[5] != "NaN" else None
+                change = float(parts[6]) if parts[6] != "NaN" else None
+                pct_change = float(parts[7]) if parts[7] != "NaN" else None
 
                 print()
                 print("解析结果:")
@@ -134,6 +128,7 @@ def test_hk_data_with_preclose():
                     print(f"  ❌ 涨跌幅错误: 预期 -1.55%, 实际 {pct_change}%")
 
             break
+
 
 if __name__ == "__main__":
     test_hk_data_with_preclose()

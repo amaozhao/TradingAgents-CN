@@ -3,18 +3,14 @@
 配置迁移测试脚本
 测试配置迁移工具的功能
 """
-import importlib
 
+import asyncio
+import importlib
 import os
 import sys
-import asyncio
-from pathlib import Path
-
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 from scripts.migrate.config.to.web.api.script import ConfigMigrator
+from support.path import BACKEND_ROOT
 from trader.config.manager import ConfigManager
 
 
@@ -30,12 +26,14 @@ async def test_migration():
     models = config_manager.load_models()
     print(f"   📋 找到 {len(models)} 个模型配置")
     for model in models[:3]:  # 只显示前3个
-        print(f"      - {model.provider}/{model.model_name} ({'启用' if model.enabled else '禁用'})")
+        print(
+            f"      - {model.provider}/{model.model_name} ({'启用' if model.enabled else '禁用'})"
+        )
 
     # 检查系统设置
     settings = config_manager.load_settings()
     print(f"   ⚙️ 找到 {len(settings)} 个系统设置")
-    key_settings = ['default_provider', 'default_model', 'enable_cost_tracking']
+    key_settings = ["default_provider", "default_model", "enable_cost_tracking"]
     for key in key_settings:
         if key in settings:
             print(f"      - {key}: {settings[key]}")
@@ -66,7 +64,9 @@ async def test_migration():
         test_model = models[0]
         try:
             converted = migrator._convert_model_config(test_model)
-            print(f"   ✅ 模型配置转换成功: {test_model.provider}/{test_model.model_name}")
+            print(
+                f"   ✅ 模型配置转换成功: {test_model.provider}/{test_model.model_name}"
+            )
             print(f"      转换后: {converted.provider.value}/{converted.model_name}")
         except Exception as e:
             print(f"   ❌ 模型配置转换失败: {e}")
@@ -89,7 +89,7 @@ def test_config_files():
     """测试配置文件的存在性"""
     print("\n📁 检查配置文件...")
 
-    config_dir = project_root / "config"
+    config_dir = BACKEND_ROOT / "config"
     files_to_check = ["models.json", "pricing.json", "settings.json", "usage.json"]
 
     for file_name in files_to_check:
@@ -97,10 +97,12 @@ def test_config_files():
         if file_path.exists():
             print(f"   ✅ {file_name} 存在")
             try:
-                json = importlib.import_module('json')
-                with open(file_path, 'r', encoding='utf-8') as f:
+                json = importlib.import_module("json")
+                with open(file_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                print(f"      包含 {len(data) if isinstance(data, list) else '1'} 项数据")
+                print(
+                    f"      包含 {len(data) if isinstance(data, list) else '1'} 项数据"
+                )
             except Exception as e:
                 print(f"      ⚠️ 读取失败: {e}")
         else:
@@ -111,7 +113,7 @@ def test_env_file():
     """测试.env文件"""
     print("\n🔐 检查环境变量文件...")
 
-    env_file = project_root / ".env"
+    env_file = BACKEND_ROOT / ".env"
     if env_file.exists():
         print("   ✅ .env 文件存在")
 
@@ -119,8 +121,8 @@ def test_env_file():
         key_vars = [
             "DASHSCOPE_API_KEY",
             "OPENAI_API_KEY",
-            "MONGODB_CONNECTION_STRING",
-            "MONGODB_DATABASE_NAME"
+            "POSTGRES_DB",
+            "POSTGRES_HOST",
         ]
 
         for var in key_vars:

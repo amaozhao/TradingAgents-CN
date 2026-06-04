@@ -44,7 +44,9 @@ async def test_update_llm_provider_dual_writes_partial_provider_document(monkeyp
 
     monkeypatch.setattr(config_service, "dual_write_hot_document", fake_dual_write)
 
-    result = await service.update_llm_provider("provider-1", {"display_name": "Provider"})
+    result = await service.update_llm_provider(
+        "provider-1", {"display_name": "Provider"}
+    )
 
     assert result is True
     assert dual_write_calls[0][0] == "llm_providers"
@@ -59,7 +61,7 @@ class FakeCollection:
 
     async def insert_one(self, document):
         self.inserted = document
-        return SimpleNamespace(inserted_id="mongo-id")
+        return SimpleNamespace(inserted_id="postgres-id")
 
     async def update_one(self, *_args, **_kwargs):
         return SimpleNamespace(matched_count=1, modified_count=1)

@@ -6,6 +6,7 @@
 # 导入 AKShare 提供器
 try:
     from .akshare import AKShareProvider
+
     AKSHARE_AVAILABLE = True
 except ImportError:
     AKShareProvider = None
@@ -14,6 +15,7 @@ except ImportError:
 # 导入 Tushare 提供器
 try:
     from .tushare import TushareProvider
+
     TUSHARE_AVAILABLE = True
 except ImportError:
     TushareProvider = None
@@ -22,6 +24,7 @@ except ImportError:
 # 导入 Baostock 提供器
 try:
     from .baostock import BaoStockProvider
+
     BaostockProvider = BaoStockProvider
     BAOSTOCK_AVAILABLE = True
 except ImportError:
@@ -32,19 +35,20 @@ except ImportError:
 # 导入基本面快照工具
 try:
     from .fundamentals import get_cn_fund_snapshot as get_fundamentals_snapshot
+
     FUNDAMENTALS_SNAPSHOT_AVAILABLE = True
 except ImportError:
     get_fundamentals_snapshot = None
     FUNDAMENTALS_SNAPSHOT_AVAILABLE = False
 
 __all__ = [
-    'AKShareProvider',
-    'AKSHARE_AVAILABLE',
-    'TushareProvider',
-    'TUSHARE_AVAILABLE',
-    'BaoStockProvider',
-    'BaostockProvider',
-    'BAOSTOCK_AVAILABLE',
-    'get_fundamentals_snapshot',
-    'FUNDAMENTALS_SNAPSHOT_AVAILABLE',
+    "AKShareProvider",
+    "AKSHARE_AVAILABLE",
+    "TushareProvider",
+    "TUSHARE_AVAILABLE",
+    "BaoStockProvider",
+    "BaostockProvider",
+    "BAOSTOCK_AVAILABLE",
+    "get_fundamentals_snapshot",
+    "FUNDAMENTALS_SNAPSHOT_AVAILABLE",
 ]

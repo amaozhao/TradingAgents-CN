@@ -14,18 +14,24 @@ def test_stocks_router_does_not_use_dict_response_model():
 
 
 @pytest.mark.asyncio
-async def test_stocks_router_quote_helper_uses_stock_service_when_postgres_enabled(monkeypatch):
+async def test_stocks_router_quote_helper_uses_stock_service_when_postgres_enabled(
+    monkeypatch,
+):
     monkeypatch.setattr(settings, "POSTGRES_READ_ENABLED", True)
 
     class FakeStockDataService:
         async def get_market_quotes(self, code):
             assert code == "000001"
-            return SimpleNamespace(model_dump=lambda exclude_none=True: {"code": code, "close": 10.2})
+            return SimpleNamespace(
+                model_dump=lambda exclude_none=True: {"code": code, "close": 10.2}
+            )
 
         async def get_stock_basic_info(self, code, source=None):
             assert code == "000001"
             assert source is None
-            return SimpleNamespace(model_dump=lambda exclude_none=True: {"code": code, "name": "平安银行"})
+            return SimpleNamespace(
+                model_dump=lambda exclude_none=True: {"code": code, "name": "平安银行"}
+            )
 
     monkeypatch.setattr(stocks, "StockDataService", FakeStockDataService)
 
@@ -59,10 +65,16 @@ async def test_stocks_router_financial_helper_uses_financial_service(monkeypatch
             assert code == "000001"
             assert data_source == "tushare"
             assert limit == 1
-            return [{"code": code, "data_source": data_source, "report_period": "2025Q4"}]
+            return [
+                {"code": code, "data_source": data_source, "report_period": "2025Q4"}
+            ]
 
     monkeypatch.setattr(stocks, "FinancialDataService", FakeFinancialDataService)
 
     result = await stocks._get_cn_financial_from_service("000001", "tushare")
 
-    assert result == {"code": "000001", "data_source": "tushare", "report_period": "2025Q4"}
+    assert result == {
+        "code": "000001",
+        "data_source": "tushare",
+        "report_period": "2025Q4",
+    }

@@ -1,9 +1,10 @@
-import os
-import requests
-import pandas as pd
 import json
+import os
 from datetime import datetime
 from io import StringIO
+
+import pandas as pd
+import requests
 
 API_BASE_URL = "https://www.alphavantage.co/query"
 
@@ -15,6 +16,7 @@ class AlphaVantageNotConfiguredError(ValueError):
     already catch ValueError, while letting the routing layer distinguish a
     "vendor unavailable" condition from a genuine data error.
     """
+
     pass
 
 
@@ -27,11 +29,12 @@ def get_api_key() -> str:
         )
     return api_key
 
+
 def format_datetime_for_api(date_input) -> str:
     """Convert various date formats to YYYYMMDDTHHMM format required by Alpha Vantage API."""
     if isinstance(date_input, str):
         # If already in correct format, return as-is
-        if len(date_input) == 13 and 'T' in date_input:
+        if len(date_input) == 13 and "T" in date_input:
             return date_input
         # Try to parse common date formats
         try:
@@ -46,11 +49,16 @@ def format_datetime_for_api(date_input) -> str:
     elif isinstance(date_input, datetime):
         return date_input.strftime("%Y%m%dT%H%M")
     else:
-        raise ValueError(f"Date must be string or datetime object, got {type(date_input)}")
+        raise ValueError(
+            f"Date must be string or datetime object, got {type(date_input)}"
+        )
+
 
 class AlphaVantageRateLimitError(Exception):
     """Exception raised when Alpha Vantage API rate limit is exceeded."""
+
     pass
+
 
 def _make_api_request(function_name: str, params: dict) -> dict | str:
     """Helper function to make API requests and handle responses.
@@ -60,14 +68,16 @@ def _make_api_request(function_name: str, params: dict) -> dict | str:
     """
     # Create a copy of params to avoid modifying the original
     api_params = params.copy()
-    api_params.update({
-        "function": function_name,
-        "apikey": get_api_key(),
-        "source": "trading_agents",
-    })
+    api_params.update(
+        {
+            "function": function_name,
+            "apikey": get_api_key(),
+            "source": "trading_agents",
+        }
+    )
 
     # Handle entitlement parameter if present in params or global variable
-    current_entitlement = globals().get('_current_entitlement')
+    current_entitlement = globals().get("_current_entitlement")
     entitlement = api_params.get("entitlement") or current_entitlement
 
     if entitlement:
@@ -87,14 +97,18 @@ def _make_api_request(function_name: str, params: dict) -> dict | str:
         # Check for rate limit error
         if "Information" in response_json:
             info_message = response_json["Information"]
-            if "rate limit" in info_message.lower() or "api key" in info_message.lower():
-                raise AlphaVantageRateLimitError(f"Alpha Vantage rate limit exceeded: {info_message}")
+            if (
+                "rate limit" in info_message.lower()
+                or "api key" in info_message.lower()
+            ):
+                raise AlphaVantageRateLimitError(
+                    f"Alpha Vantage rate limit exceeded: {info_message}"
+                )
     except json.JSONDecodeError:
         # Response is not JSON (likely CSV data), which is normal
         pass
 
     return response_text
-
 
 
 def _filter_csv_by_date_range(csv_data: str, start_date: str, end_date: str) -> str:

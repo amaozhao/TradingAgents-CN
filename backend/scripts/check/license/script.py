@@ -7,9 +7,9 @@ License Check Script
 Check the license status of various components in the project
 """
 
-import os
 import sys
 from pathlib import Path
+
 
 def check_license_file(file_path: Path, component_name: str) -> bool:
     """检查许可证文件是否存在并包含必要信息"""
@@ -18,7 +18,7 @@ def check_license_file(file_path: Path, component_name: str) -> bool:
         return False
 
     try:
-        content = file_path.read_text(encoding='utf-8')
+        content = file_path.read_text(encoding="utf-8")
 
         # 检查是否包含版权声明
         if "Copyright" not in content and "版权所有" not in content:
@@ -36,6 +36,7 @@ def check_license_file(file_path: Path, component_name: str) -> bool:
     except Exception as e:
         print(f"❌ {component_name}: 读取许可证文件失败 - {e}")
         return False
+
 
 def main():
     """主函数"""
@@ -69,7 +70,9 @@ def main():
         print("✅ 许可证说明文档存在")
 
     # 检查商业许可证模板
-    commercial_template = project_root / "docs" / "legal" / "COMMERCIAL_LICENSE_TEMPLATE.md"
+    commercial_template = (
+        project_root / "docs" / "legal" / "COMMERCIAL_LICENSE_TEMPLATE.md"
+    )
     if not commercial_template.exists():
         print("❌ 商业许可证模板不存在 - docs/legal/COMMERCIAL_LICENSE_TEMPLATE.md")
         all_good = False
@@ -86,6 +89,7 @@ def main():
         print("⚠️  发现许可证问题，请检查上述错误")
         print("⚠️  License issues found, please check the errors above")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

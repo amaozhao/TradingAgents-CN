@@ -22,17 +22,29 @@ class NormalizeProviderKeysScriptTests(unittest.TestCase):
         db = _FakeDb(
             llm_providers=[
                 {"_id": "1", "name": "qwen", "display_name": "Qwen", "aliases": []},
-                {"_id": "2", "name": "dashscope", "display_name": "DashScope", "aliases": []},
+                {
+                    "_id": "2",
+                    "name": "dashscope",
+                    "display_name": "DashScope",
+                    "aliases": [],
+                },
             ]
         )
         calls = []
 
-        with patch(
-            "app.scripts.keys._dual_write_document",
-            lambda collection, document: calls.append((collection, document.copy())),
-        ), patch(
-            "app.scripts.keys._dual_write_documents",
-            lambda collection, documents: calls.append((collection, [doc.copy() for doc in documents])),
+        with (
+            patch(
+                "app.scripts.keys._dual_write_document",
+                lambda collection, document: calls.append(
+                    (collection, document.copy())
+                ),
+            ),
+            patch(
+                "app.scripts.keys._dual_write_documents",
+                lambda collection, documents: calls.append(
+                    (collection, [doc.copy() for doc in documents])
+                ),
+            ),
         ):
             summary = normalize_llm_providers(db)
 
@@ -62,7 +74,10 @@ class NormalizeProviderKeysScriptTests(unittest.TestCase):
             summary = normalize_system_configs(db)
 
         self.assertEqual(summary["system_configs_changed"], 1)
-        self.assertEqual(db.system_configs.updates[0][1]["$set"]["llm_configs"][0]["provider"], "qwen")
+        self.assertEqual(
+            db.system_configs.updates[0][1]["$set"]["llm_configs"][0]["provider"],
+            "qwen",
+        )
         self.assertEqual(calls[0][0], "system_configs")
         self.assertEqual(calls[0][1]["llm_configs"][0]["provider"], "qwen")
 
@@ -75,12 +90,19 @@ class NormalizeProviderKeysScriptTests(unittest.TestCase):
         )
         calls = []
 
-        with patch(
-            "app.scripts.keys._dual_write_document",
-            lambda collection, document: calls.append((collection, document.copy())),
-        ), patch(
-            "app.scripts.keys._dual_write_documents",
-            lambda collection, documents: calls.append((collection, [doc.copy() for doc in documents])),
+        with (
+            patch(
+                "app.scripts.keys._dual_write_document",
+                lambda collection, document: calls.append(
+                    (collection, document.copy())
+                ),
+            ),
+            patch(
+                "app.scripts.keys._dual_write_documents",
+                lambda collection, documents: calls.append(
+                    (collection, [doc.copy() for doc in documents])
+                ),
+            ),
         ):
             summary = normalize_model_catalog(db)
 

@@ -27,7 +27,6 @@ from trader.agents.schemas import (
 )
 from trader.agents.trader.trader import create_trader
 
-
 # ---------------------------------------------------------------------------
 # Render functions
 # ---------------------------------------------------------------------------
@@ -36,7 +35,9 @@ from trader.agents.trader.trader import create_trader
 @pytest.mark.unit
 class TestRenderTraderProposal:
     def test_minimal_required_fields(self):
-        p = TraderProposal(action=TraderAction.HOLD, reasoning="Balanced setup; no edge.")
+        p = TraderProposal(
+            action=TraderAction.HOLD, reasoning="Balanced setup; no edge."
+        )
         md = render_trader_proposal(p)
         assert "**Action**: Hold" in md
         assert "**Reasoning**: Balanced setup; no edge." in md
@@ -158,7 +159,9 @@ class TestTraderAgent:
             "FINAL TRANSACTION PROPOSAL: **SELL**"
         )
         llm = MagicMock()
-        llm.with_structured_output.side_effect = NotImplementedError("provider unsupported")
+        llm.with_structured_output.side_effect = NotImplementedError(
+            "provider unsupported"
+        )
         llm.invoke.return_value = MagicMock(content=plain_response)
         trader = create_trader(llm)
         result = trader(_make_trader_state())
@@ -230,7 +233,9 @@ class TestResearchManagerAgent:
     def test_falls_back_to_freetext_when_structured_unavailable(self):
         plain_response = "**Recommendation**: Sell\n\n**Rationale**: ...\n\n**Strategic Actions**: ..."
         llm = MagicMock()
-        llm.with_structured_output.side_effect = NotImplementedError("provider unsupported")
+        llm.with_structured_output.side_effect = NotImplementedError(
+            "provider unsupported"
+        )
         llm.invoke.return_value = MagicMock(content=plain_response)
         rm = create_research_manager(llm)
         result = rm(_make_rm_state())
@@ -277,16 +282,20 @@ class TestRenderSentimentReport:
     def test_all_six_bands_render(self):
         for band in SentimentBand:
             report = SentimentReport(
-                overall_band=band, overall_score=5.0,
-                confidence="medium", narrative="n",
+                overall_band=band,
+                overall_score=5.0,
+                confidence="medium",
+                narrative="n",
             )
             assert band.value in render_sentiment_report(report)
 
     def test_score_out_of_range_rejected(self):
         with pytest.raises(ValidationError):
             SentimentReport(
-                overall_band=SentimentBand.BULLISH, overall_score=11.0,
-                confidence="high", narrative="n",
+                overall_band=SentimentBand.BULLISH,
+                overall_score=11.0,
+                confidence="high",
+                narrative="n",
             )
 
 
@@ -304,7 +313,8 @@ def _structured_sentiment_llm(captured: dict, report: SentimentReport | None = N
     a real SentimentReport so render_sentiment_report works."""
     if report is None:
         report = SentimentReport(
-            overall_band=SentimentBand.BULLISH, overall_score=7.5,
+            overall_band=SentimentBand.BULLISH,
+            overall_score=7.5,
             confidence="high",
             narrative="StockTwits 75% bullish. News constructive. Reddit upbeat.",
         )
@@ -322,8 +332,10 @@ class TestSentimentAnalystAgent:
     def test_structured_path_produces_rendered_markdown(self):
         captured = {}
         report = SentimentReport(
-            overall_band=SentimentBand.MILDLY_BEARISH, overall_score=4.0,
-            confidence="medium", narrative="Mixed signals across sources.",
+            overall_band=SentimentBand.MILDLY_BEARISH,
+            overall_score=4.0,
+            confidence="medium",
+            narrative="Mixed signals across sources.",
         )
         analyst = create_sentiment_analyst(_structured_sentiment_llm(captured, report))
         sr = analyst(_make_sentiment_state())["sentiment_report"]
@@ -340,15 +352,22 @@ class TestSentimentAnalystAgent:
 
     def test_prompt_contains_ticker(self):
         captured = {}
-        create_sentiment_analyst(_structured_sentiment_llm(captured))(_make_sentiment_state())
+        create_sentiment_analyst(_structured_sentiment_llm(captured))(
+            _make_sentiment_state()
+        )
         assert any("NVDA" in str(m) for m in captured["prompt"])
 
     def test_falls_back_to_freetext_when_structured_unavailable(self):
         plain = "**Overall Sentiment:** **Bearish** (Score: 3.0/10)\n**Confidence:** Low\n\nLimited data."
         llm = MagicMock()
-        llm.with_structured_output.side_effect = NotImplementedError("provider unsupported")
+        llm.with_structured_output.side_effect = NotImplementedError(
+            "provider unsupported"
+        )
         llm.invoke.return_value = MagicMock(content=plain)
-        assert create_sentiment_analyst(llm)(_make_sentiment_state())["sentiment_report"] == plain
+        assert (
+            create_sentiment_analyst(llm)(_make_sentiment_state())["sentiment_report"]
+            == plain
+        )
 
     def test_falls_back_to_freetext_when_structured_call_fails(self):
         plain = "Fallback free-text sentiment."
@@ -357,4 +376,7 @@ class TestSentimentAnalystAgent:
         llm = MagicMock()
         llm.with_structured_output.return_value = structured
         llm.invoke.return_value = MagicMock(content=plain)
-        assert create_sentiment_analyst(llm)(_make_sentiment_state())["sentiment_report"] == plain
+        assert (
+            create_sentiment_analyst(llm)(_make_sentiment_state())["sentiment_report"]
+            == plain
+        )

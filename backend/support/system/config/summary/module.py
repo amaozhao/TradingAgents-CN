@@ -1,6 +1,3 @@
-import io
-import json
-import logging
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -30,7 +27,7 @@ def test_config_summary_masks_sensitive_fields_with_auth():
 
     # Sensitive keys should exist and be masked as '***' (even if original is empty)
     for key in [
-        "MONGODB_PASSWORD",
+        "POSTGRES_PASSWORD",
         "REDIS_PASSWORD",
         "JWT_SECRET",
         "CSRF_SECRET",
@@ -40,10 +37,10 @@ def test_config_summary_masks_sensitive_fields_with_auth():
         assert s[key] == "***"
 
     # Derived URIs should be present and credentials masked if any
-    assert "MONGO_URI" in s
+    assert "POSTGRES_URL" in s
     assert "REDIS_URL" in s
-    if any(x in s["MONGO_URI"] for x in ["@", ":***@"]):
-        assert ":***@" in s["MONGO_URI"]
+    if any(x in s["POSTGRES_URL"] for x in ["@", ":***@"]):
+        assert ":***@" in s["POSTGRES_URL"]
     if ":" in s["REDIS_URL"]:
         # If password was present, it must be masked
         assert "redis://:" in s["REDIS_URL"]
@@ -53,5 +50,5 @@ def test_config_summary_masks_sensitive_fields_with_auth():
             assert "redis://:***@" in s["REDIS_URL"]
 
     # A few non-sensitive keys should be present for sanity
-    for key in ["DEBUG", "HOST", "PORT", "MONGODB_HOST", "REDIS_HOST"]:
+    for key in ["DEBUG", "HOST", "PORT", "POSTGRES_HOST", "REDIS_HOST"]:
         assert key in s

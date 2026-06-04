@@ -4,15 +4,8 @@
 测试统一配置管理系统与现有系统的兼容性
 """
 
-import sys
-import os
-import json
 import asyncio
-from pathlib import Path
-
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+import sys
 
 from app.core.unified import unified_config
 from app.models.config import LLMConfig, ModelProvider
@@ -55,7 +48,7 @@ async def test_write_legacy_configs():
             max_tokens=4000,
             temperature=0.7,
             enabled=True,
-            description="测试配置"
+            description="测试配置",
         )
 
         # 保存到传统格式
@@ -69,8 +62,7 @@ async def test_write_legacy_configs():
         # 验证保存结果
         legacy_models = unified_config.get_legacy_models()
         test_model_found = any(
-            model.get("model_name") == "test-gpt-3.5-turbo"
-            for model in legacy_models
+            model.get("model_name") == "test-gpt-3.5-turbo" for model in legacy_models
         )
 
         if test_model_found:
@@ -81,13 +73,12 @@ async def test_write_legacy_configs():
 
         # 清理测试数据
         legacy_models = [
-            model for model in legacy_models
+            model
+            for model in legacy_models
             if model.get("model_name") != "test-gpt-3.5-turbo"
         ]
         unified_config._save_json_file(
-            unified_config.paths.models_json,
-            legacy_models,
-            "models"
+            unified_config.paths.models_json, legacy_models, "models"
         )
         print("  ✅ 清理测试数据完成")
 
@@ -191,7 +182,9 @@ async def test_data_source_configs():
 
         print(f"  ✅ 数据源数量: {len(data_sources)}")
         for ds in data_sources:
-            print(f"    - {ds.name}: {ds.type.value} ({'启用' if ds.enabled else '禁用'})")
+            print(
+                f"    - {ds.name}: {ds.type.value} ({'启用' if ds.enabled else '禁用'})"
+            )
 
         return True
     except Exception as e:
@@ -282,7 +275,7 @@ async def main():
     print("🎯 测试结果摘要:")
     print(f"  ✅ 通过: {passed} 个测试")
     print(f"  ❌ 失败: {failed} 个测试")
-    print(f"  📊 成功率: {passed/(passed+failed)*100:.1f}%")
+    print(f"  📊 成功率: {passed / (passed + failed) * 100:.1f}%")
 
     if failed == 0:
         print("\n🎉 所有测试通过！配置兼容性良好。")

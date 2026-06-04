@@ -4,21 +4,16 @@
 """
 
 import asyncio
-import sys
-import os
 from datetime import datetime, timezone
 
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-
-from app.core.database import init_db, get_mongo_db
+from app.core.database import get_postgres_db, init_db
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
-from app.models.config import LLMProvider
 from trader.llm.clients.providers import canonical_aliases
 
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
 
 async def init_providers():
     """初始化大模型厂家数据"""
@@ -26,7 +21,7 @@ async def init_providers():
 
     # 初始化数据库连接
     await init_db()
-    db = get_mongo_db()
+    db = get_postgres_db()
     providers_collection = db.llm_providers
 
     # 预设厂家数据
@@ -39,7 +34,15 @@ async def init_providers():
             "api_doc_url": "https://platform.openai.com/docs",
             "default_base_url": "https://api.openai.com/v1",
             "is_active": True,
-            "supported_features": ["chat", "completion", "embedding", "image", "vision", "function_calling", "streaming"]
+            "supported_features": [
+                "chat",
+                "completion",
+                "embedding",
+                "image",
+                "vision",
+                "function_calling",
+                "streaming",
+            ],
         },
         {
             "name": "anthropic",
@@ -49,7 +52,12 @@ async def init_providers():
             "api_doc_url": "https://docs.anthropic.com",
             "default_base_url": "https://api.anthropic.com",
             "is_active": True,
-            "supported_features": ["chat", "completion", "function_calling", "streaming"]
+            "supported_features": [
+                "chat",
+                "completion",
+                "function_calling",
+                "streaming",
+            ],
         },
         {
             "name": "google",
@@ -59,7 +67,14 @@ async def init_providers():
             "api_doc_url": "https://ai.google.dev/docs",
             "default_base_url": "https://generativelanguage.googleapis.com/v1beta",
             "is_active": True,
-            "supported_features": ["chat", "completion", "embedding", "vision", "function_calling", "streaming"]
+            "supported_features": [
+                "chat",
+                "completion",
+                "embedding",
+                "vision",
+                "function_calling",
+                "streaming",
+            ],
         },
         {
             "name": "glm",
@@ -70,7 +85,13 @@ async def init_providers():
             "default_base_url": "https://open.bigmodel.cn/api/paas/v4",
             "aliases": canonical_aliases("glm"),
             "is_active": True,
-            "supported_features": ["chat", "completion", "embedding", "function_calling", "streaming"]
+            "supported_features": [
+                "chat",
+                "completion",
+                "embedding",
+                "function_calling",
+                "streaming",
+            ],
         },
         {
             "name": "deepseek",
@@ -80,7 +101,12 @@ async def init_providers():
             "api_doc_url": "https://platform.deepseek.com/api-docs",
             "default_base_url": "https://api.deepseek.com",
             "is_active": True,
-            "supported_features": ["chat", "completion", "function_calling", "streaming"]
+            "supported_features": [
+                "chat",
+                "completion",
+                "function_calling",
+                "streaming",
+            ],
         },
         {
             "name": "qwen",
@@ -91,7 +117,13 @@ async def init_providers():
             "default_base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
             "aliases": canonical_aliases("qwen"),
             "is_active": True,
-            "supported_features": ["chat", "completion", "embedding", "function_calling", "streaming"]
+            "supported_features": [
+                "chat",
+                "completion",
+                "embedding",
+                "function_calling",
+                "streaming",
+            ],
         },
         {
             "name": "siliconflow",
@@ -101,7 +133,13 @@ async def init_providers():
             "api_doc_url": "https://docs.siliconflow.cn",
             "default_base_url": "https://api.siliconflow.cn/v1",
             "is_active": True,
-            "supported_features": ["chat", "completion", "embedding", "function_calling", "streaming"]
+            "supported_features": [
+                "chat",
+                "completion",
+                "embedding",
+                "function_calling",
+                "streaming",
+            ],
         },
         {
             "name": "302ai",
@@ -111,7 +149,15 @@ async def init_providers():
             "api_doc_url": "https://doc.302.ai",
             "default_base_url": "https://api.302.ai/v1",
             "is_active": True,
-            "supported_features": ["chat", "completion", "embedding", "image", "vision", "function_calling", "streaming"]
+            "supported_features": [
+                "chat",
+                "completion",
+                "embedding",
+                "image",
+                "vision",
+                "function_calling",
+                "streaming",
+            ],
         },
         {
             "name": "aihubmix",
@@ -121,8 +167,15 @@ async def init_providers():
             "api_doc_url": "https://docs.aihubmix.com/cn/quick-start",
             "default_base_url": "https://aihubmix.com/v1",
             "is_active": True,
-            "supported_features": ["chat", "completion", "embedding", "vision", "function_calling", "streaming"]
-        }
+            "supported_features": [
+                "chat",
+                "completion",
+                "embedding",
+                "vision",
+                "function_calling",
+                "streaming",
+            ],
+        },
     ]
 
     # 清除现有数据
@@ -151,9 +204,12 @@ async def init_providers():
 
         result = await providers_collection.insert_one(provider_data)
         await dual_write_hot_document("llm_providers", provider_data)
-        print(f"✅ 添加厂家: {provider_data['display_name']} (ID: {result.inserted_id})")
+        print(
+            f"✅ 添加厂家: {provider_data['display_name']} (ID: {result.inserted_id})"
+        )
 
     print(f"🎉 成功初始化 {len(providers_data)} 个厂家数据")
+
 
 if __name__ == "__main__":
     asyncio.run(init_providers())

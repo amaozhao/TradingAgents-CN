@@ -1,8 +1,8 @@
 from types import SimpleNamespace
 
 import pytest
-from bson import ObjectId
 
+from app.db.ids import DocumentId
 from app.services.market import news as news_data_service
 
 
@@ -41,7 +41,7 @@ async def test_save_news_data_dual_writes_standardized_documents(monkeypatch):
 async def test_delete_old_news_dual_writes_tombstones(monkeypatch):
     existing = [
         {
-            "_id": ObjectId(),
+            "_id": DocumentId(),
             "symbol": "000001",
             "title": "旧新闻",
             "url": "https://example.com/news/old",

@@ -2,11 +2,11 @@
 """
 简单的系统测试 - 验证配置和缓存系统
 """
-import importlib
 
+import importlib
 import sys
-import os
 from pathlib import Path
+
 
 def test_basic_system():
     """测试基本系统功能"""
@@ -20,12 +20,14 @@ def test_basic_system():
         print(f"✅ 配置文件存在: {config_file}")
 
         try:
-            json = importlib.import_module('json')
-            with open(config_file, 'r', encoding='utf-8') as f:
+            json = importlib.import_module("json")
+            with open(config_file, "r", encoding="utf-8") as f:
                 config = json.load(f)
             print("✅ 配置文件格式正确")
             print(f"  主要缓存后端: {config['cache']['primary_backend']}")
-            print(f"  MongoDB启用: {config['database']['mongodb']['enabled']}")
+            print(
+                f"  PostgreSQL启用: {config['database'].get('postgresql', {}).get('enabled', True)}"
+            )
             print(f"  Redis启用: {config['database']['redis']['enabled']}")
         except Exception as e:
             print(f"❌ 配置文件解析失败: {e}")
@@ -35,33 +37,35 @@ def test_basic_system():
     # 2. 检查数据库包
     print("\n📦 检查数据库包...")
 
-    # 检查pymongo
+    # 检查 PostgreSQL document store
     try:
-        pymongo = importlib.import_module('pymongo')
-        print("✅ pymongo 已安装")
+        create_sync_client = getattr(
+            importlib.import_module("app.db.documentstore"), "create_sync_client"
+        )
+        print("✅ PostgreSQL document store 可导入")
 
-        # 尝试连接MongoDB
+        # 尝试连接 PostgreSQL document store
         try:
-            client = pymongo.MongoClient('localhost', 27017, serverSelectionTimeoutMS=2000)
-            client.server_info()
+            client = create_sync_client()
+            client.admin.command("ping")
             client.close()
-            print("✅ MongoDB 连接成功")
-            mongodb_available = True
+            print("✅ PostgreSQL document store 连接成功")
+            postgres_available = True
         except Exception:
-            print("❌ MongoDB 连接失败（正常，如果没有安装MongoDB）")
-            mongodb_available = False
+            print("❌ PostgreSQL document store 连接失败")
+            postgres_available = False
     except ImportError:
-        print("❌ pymongo 未安装")
-        mongodb_available = False
+        print("❌ PostgreSQL document store 不可导入")
+        postgres_available = False
 
     # 检查redis
     try:
-        redis = importlib.import_module('redis')
+        redis = importlib.import_module("redis")
         print("✅ redis 已安装")
 
         # 尝试连接Redis
         try:
-            r = redis.Redis(host='localhost', port=6379, socket_timeout=2)
+            r = redis.Redis(host="localhost", port=6379, socket_timeout=2)
             r.ping()
             print("✅ Redis 连接成功")
             redis_available = True
@@ -75,7 +79,9 @@ def test_basic_system():
     # 3. 测试缓存系统
     print("\n💾 测试缓存系统...")
     try:
-        get_cache = getattr(importlib.import_module('trader.flows.cache.integrated'), 'get_cache')
+        get_cache = getattr(
+            importlib.import_module("trader.flows.cache.integrated"), "get_cache"
+        )
 
         cache = get_cache()
         print("✅ 缓存系统初始化成功")
@@ -92,7 +98,7 @@ def test_basic_system():
             data=test_data,
             start_date="2024-01-01",
             end_date="2024-12-31",
-            data_source="simple_test"
+            data_source="simple_test",
         )
         print(f"✅ 数据保存成功: {cache_key}")
 
@@ -106,14 +112,16 @@ def test_basic_system():
 
     except Exception as e:
         print(f"❌ 缓存系统测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
     # 4. 测试数据库管理器
     print("\n🔧 测试数据库管理器...")
     try:
-        get_database_manager = getattr(importlib.import_module('trader.config.databases'), 'get_database_manager')
+        get_database_manager = getattr(
+            importlib.import_module("trader.config.databases"), "get_database_manager"
+        )
 
         db_manager = get_database_manager()
         print("✅ 数据库管理器创建成功")
@@ -123,13 +131,15 @@ def test_basic_system():
 
         print("📊 数据库状态:")
         print(f"  数据库可用: {'✅ 是' if status['database_available'] else '❌ 否'}")
-        print(f"  MongoDB: {'✅ 可用' if status['mongodb']['available'] else '❌ 不可用'}")
+        print(
+            f"  PostgreSQL: {'✅ 可用' if status['postgres']['available'] else '❌ 不可用'}"
+        )
         print(f"  Redis: {'✅ 可用' if status['redis']['available'] else '❌ 不可用'}")
         print(f"  缓存后端: {status['cache_backend']}")
 
     except Exception as e:
         print(f"❌ 数据库管理器测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -138,7 +148,7 @@ def test_basic_system():
     print("✅ 缓存系统正常工作")
     print("✅ 数据库管理器正常工作")
 
-    if mongodb_available or redis_available:
+    if postgres_available or redis_available:
         print("✅ 数据库可用，系统运行在高性能模式")
     else:
         print("✅ 数据库不可用，系统运行在文件缓存模式")
@@ -152,6 +162,7 @@ def test_basic_system():
 
     return True
 
+
 def main():
     """主函数"""
     try:
@@ -160,7 +171,7 @@ def main():
         if success:
             print("\n🎉 系统测试完成!")
             print("\n💡 下一步:")
-            print("1. 如需高性能，可以安装并启动MongoDB/Redis")
+            print("1. 如需高性能，请确保 PostgreSQL/Redis 可用")
             print("2. 运行完整的股票分析测试")
             print("3. 使用Web界面进行交互式分析")
 
@@ -168,9 +179,10 @@ def main():
 
     except Exception as e:
         print(f"❌ 系统测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 if __name__ == "__main__":
     success = main()

@@ -2,19 +2,15 @@
 """
 调试文件加载问题
 """
+
 import importlib
-
-import os
 import sys
-from pathlib import Path
-from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
+
 
 def test_file_loading():
     """测试文件加载"""
@@ -22,7 +18,9 @@ def test_file_loading():
     print("=" * 80)
 
     try:
-        ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
+        ConfigManager = getattr(
+            importlib.import_module("trader.config.manager"), "ConfigManager"
+        )
 
         print("🔧 创建ConfigManager...")
         config_manager = ConfigManager()
@@ -43,7 +41,9 @@ def test_file_loading():
         if deepseek_configs:
             print("✅ 找到DeepSeek配置:")
             for config in deepseek_configs:
-                print(f"   - {config.model_name}: 输入¥{config.input_price_per_1k}/1K, 输出¥{config.output_price_per_1k}/1K")
+                print(
+                    f"   - {config.model_name}: 输入¥{config.input_price_per_1k}/1K, 输出¥{config.output_price_per_1k}/1K"
+                )
         else:
             print("❌ 未找到DeepSeek配置")
 
@@ -51,9 +51,10 @@ def test_file_loading():
 
     except Exception as e:
         print(f"❌ 文件加载测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主函数"""
@@ -71,6 +72,7 @@ def main():
         print("\n❌ 文件加载测试失败")
 
     return success
+
 
 if __name__ == "__main__":
     success = main()

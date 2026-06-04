@@ -11,33 +11,30 @@
 使用方法：
     python scripts/test/hk/sync/test.py
 """
-import importlib
 
 import asyncio
-import sys
+import importlib
 import logging
-from pathlib import Path
-
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+import sys
 
 # 配置日志
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
 
 async def test_hk_yfinance_sync():
     """测试港股 yfinance 数据源同步"""
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("🧪 测试港股 yfinance 数据源同步")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     try:
-        run_hk_yfinance_basic_info_sync = getattr(importlib.import_module('app.worker.hk.sync'), 'run_hk_yfinance_basic_info_sync')
+        run_hk_yfinance_basic_info_sync = getattr(
+            importlib.import_module("app.worker.hk.sync"),
+            "run_hk_yfinance_basic_info_sync",
+        )
 
         # 执行同步
         await run_hk_yfinance_basic_info_sync()
@@ -47,19 +44,22 @@ async def test_hk_yfinance_sync():
 
     except Exception as e:
         logger.error(f"❌ yfinance 同步测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
 
 async def test_hk_akshare_sync():
     """测试港股 akshare 数据源同步"""
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("🧪 测试港股 AKShare 数据源同步")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     try:
-        run_hk_akshare_basic_info_sync = getattr(importlib.import_module('app.worker.hk.sync'), 'run_hk_akshare_basic_info_sync')
+        run_hk_akshare_basic_info_sync = getattr(
+            importlib.import_module("app.worker.hk.sync"),
+            "run_hk_akshare_basic_info_sync",
+        )
 
         # 执行同步
         await run_hk_akshare_basic_info_sync()
@@ -69,21 +69,23 @@ async def test_hk_akshare_sync():
 
     except Exception as e:
         logger.error(f"❌ AKShare 同步测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
 
 async def verify_hk_data():
     """验证港股数据存储"""
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("🔍 验证港股数据存储")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     try:
-        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
+        get_postgres_db = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db"
+        )
 
-        db = get_mongo_db()
+        db = get_postgres_db()
         collection = db.stock_basic_info_hk
 
         # 统计各数据源的记录数
@@ -91,19 +93,19 @@ async def verify_hk_data():
         akshare_count = await collection.count_documents({"source": "akshare"})
         total_count = await collection.count_documents({})
 
-        logger.info(f"📊 数据统计:")
+        logger.info("📊 数据统计:")
         logger.info(f"  - yfinance 数据源: {yfinance_count} 条记录")
         logger.info(f"  - akshare 数据源: {akshare_count} 条记录")
         logger.info(f"  - 总计: {total_count} 条记录")
 
         # 显示示例数据
         if total_count > 0:
-            logger.info(f"\n📋 示例数据:")
+            logger.info("\n📋 示例数据:")
 
             # yfinance 示例
             yfinance_sample = await collection.find_one({"source": "yfinance"})
             if yfinance_sample:
-                logger.info(f"\n  yfinance 示例:")
+                logger.info("\n  yfinance 示例:")
                 logger.info(f"    代码: {yfinance_sample.get('code')}")
                 logger.info(f"    名称: {yfinance_sample.get('name')}")
                 logger.info(f"    市场: {yfinance_sample.get('market')}")
@@ -113,7 +115,7 @@ async def verify_hk_data():
             # akshare 示例
             akshare_sample = await collection.find_one({"source": "akshare"})
             if akshare_sample:
-                logger.info(f"\n  akshare 示例:")
+                logger.info("\n  akshare 示例:")
                 logger.info(f"    代码: {akshare_sample.get('code')}")
                 logger.info(f"    名称: {akshare_sample.get('name')}")
                 logger.info(f"    市场: {akshare_sample.get('market')}")
@@ -121,7 +123,7 @@ async def verify_hk_data():
                 logger.info(f"    更新时间: {akshare_sample.get('updated_at')}")
 
         # 验证索引
-        logger.info(f"\n📋 索引验证:")
+        logger.info("\n📋 索引验证:")
         indexes = await collection.list_indexes().to_list(length=None)
         for idx in indexes:
             logger.info(f"  - {idx['name']}: {idx.get('key', {})}")
@@ -131,22 +133,27 @@ async def verify_hk_data():
 
     except Exception as e:
         logger.error(f"❌ 数据验证失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
 
 async def test_unified_service():
     """测试统一数据访问服务"""
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("🧪 测试统一数据访问服务")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     try:
-        UnifiedStockService = getattr(importlib.import_module('app.services.stocks.unified'), 'UnifiedStockService')
-        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
+        UnifiedStockService = getattr(
+            importlib.import_module("app.services.stocks.unified"),
+            "UnifiedStockService",
+        )
+        get_postgres_db = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db"
+        )
 
-        db = get_mongo_db()
+        db = get_postgres_db()
         service = UnifiedStockService(db)
 
         # 测试查询港股数据（按优先级自动选择数据源）
@@ -155,11 +162,13 @@ async def test_unified_service():
         # 查询腾讯控股 00700
         stock_info = await service.get_stock_info("HK", "00700")
         if stock_info:
-            logger.info(f"  ✅ 查询成功: {stock_info.get('code')} - {stock_info.get('name')}")
+            logger.info(
+                f"  ✅ 查询成功: {stock_info.get('code')} - {stock_info.get('name')}"
+            )
             logger.info(f"     数据源: {stock_info.get('source')}")
             logger.info(f"     市场: {stock_info.get('market')}")
         else:
-            logger.warning(f"  ⚠️ 未找到数据: 00700")
+            logger.warning("  ⚠️ 未找到数据: 00700")
 
         # 测试指定数据源查询
         logger.info("\n📊 测试指定数据源查询:")
@@ -167,30 +176,36 @@ async def test_unified_service():
         # 指定 yfinance 数据源
         stock_info_yf = await service.get_stock_info("HK", "00700", source="yfinance")
         if stock_info_yf:
-            logger.info(f"  ✅ yfinance: {stock_info_yf.get('code')} - {stock_info_yf.get('name')}")
+            logger.info(
+                f"  ✅ yfinance: {stock_info_yf.get('code')} - {stock_info_yf.get('name')}"
+            )
         else:
-            logger.warning(f"  ⚠️ yfinance 未找到数据")
+            logger.warning("  ⚠️ yfinance 未找到数据")
 
         # 指定 akshare 数据源
         stock_info_ak = await service.get_stock_info("HK", "00700", source="akshare")
         if stock_info_ak:
-            logger.info(f"  ✅ akshare: {stock_info_ak.get('code')} - {stock_info_ak.get('name')}")
+            logger.info(
+                f"  ✅ akshare: {stock_info_ak.get('code')} - {stock_info_ak.get('name')}"
+            )
         else:
-            logger.warning(f"  ⚠️ akshare 未找到数据")
+            logger.warning("  ⚠️ akshare 未找到数据")
 
         # 测试搜索功能
         logger.info("\n📊 测试搜索功能:")
         search_results = await service.search_stocks("HK", "腾讯", limit=5)
         logger.info(f"  搜索 '腾讯' 结果: {len(search_results)} 条")
         for result in search_results:
-            logger.info(f"    - {result.get('code')}: {result.get('name')} (数据源: {result.get('source')})")
+            logger.info(
+                f"    - {result.get('code')}: {result.get('name')} (数据源: {result.get('source')})"
+            )
 
         logger.info("\n✅ 统一服务测试完成")
         return True
 
     except Exception as e:
         logger.error(f"❌ 统一服务测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -202,7 +217,7 @@ async def main():
     # 初始化数据库连接
     logger.info("📊 初始化数据库连接...")
     try:
-        init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
+        init_db = getattr(importlib.import_module("app.core.database"), "init_db")
         await init_db()
         logger.info("✅ 数据库连接初始化成功")
     except Exception as e:
@@ -213,7 +228,7 @@ async def main():
         "yfinance_sync": False,
         "akshare_sync": False,
         "data_verify": False,
-        "unified_service": False
+        "unified_service": False,
     }
 
     # 1. 测试 yfinance 同步
@@ -229,9 +244,9 @@ async def main():
     results["unified_service"] = await test_unified_service()
 
     # 显示测试结果
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "=" * 60)
     logger.info("📊 测试结果汇总")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     for test_name, result in results.items():
         status = "✅ 通过" if result else "❌ 失败"

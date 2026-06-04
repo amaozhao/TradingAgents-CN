@@ -6,6 +6,7 @@ import unittest
 import pytest
 
 import trader.default as default_config
+from support.registry import export_module as _export_module
 from trader.flows.config import get_config, set_config
 
 
@@ -60,7 +61,7 @@ class DataflowsConfigIsolationTests(unittest.TestCase):
         self.assertEqual(fresh["tool_vendors"]["get_stock_data"], "alpha_vantage")
         self.assertEqual(fresh["tool_vendors"]["get_news"], "alpha_vantage")
 
-from support.registry import export_module as _export_module
+
 _export_module(globals(), "support.quick.module")
 _export_module(globals(), "support.data.config.cli.module")
 _export_module(globals(), "support.openai.config.fi.module")

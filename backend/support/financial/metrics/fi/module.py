@@ -4,18 +4,16 @@
 测试财务指标修复效果
 验证是否使用真实财务数据而不是分类估算
 """
-import importlib
 
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import importlib
+import logging
 
 from trader.flows.china import OptimizedChinaDataProvider
-import logging
 
 # 设置日志级别
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
 
 def test_financial_metrics():
     """测试财务指标获取"""
@@ -50,10 +48,12 @@ def test_financial_metrics():
                 print(f"❓ {symbol}: 数据来源不明确")
 
             # 提取关键财务指标
-            lines = fundamentals.split('\n')
+            lines = fundamentals.split("\n")
             pe_line = next((line for line in lines if "市盈率(PE)" in line), None)
             pb_line = next((line for line in lines if "市净率(PB)" in line), None)
-            roe_line = next((line for line in lines if "净资产收益率(ROE)" in line), None)
+            roe_line = next(
+                (line for line in lines if "净资产收益率(ROE)" in line), None
+            )
 
             if pe_line:
                 print(f"  PE: {pe_line.split(':')[1].strip()}")
@@ -65,13 +65,16 @@ def test_financial_metrics():
         except Exception as e:
             print(f"❌ {symbol}: 测试失败 - {e}")
 
+
 def test_tushare_connection():
     """测试Tushare连接"""
     print("\n🔧 测试Tushare连接")
     print("=" * 80)
 
     try:
-        get_tushare_provider = getattr(importlib.import_module('trader.flows.tushare'), 'get_tushare_provider')
+        get_tushare_provider = getattr(
+            importlib.import_module("trader.flows.tushare"), "get_tushare_provider"
+        )
 
         provider = get_tushare_provider()
         if provider.connected:
@@ -83,8 +86,12 @@ def test_tushare_connection():
 
             if financial_data:
                 print(f"✅ 成功获取{test_symbol}财务数据")
-                print(f"  资产负债表: {len(financial_data.get('balance_sheet', []))}条记录")
-                print(f"  利润表: {len(financial_data.get('income_statement', []))}条记录")
+                print(
+                    f"  资产负债表: {len(financial_data.get('balance_sheet', []))}条记录"
+                )
+                print(
+                    f"  利润表: {len(financial_data.get('income_statement', []))}条记录"
+                )
                 print(f"  现金流量表: {len(financial_data.get('cash_flow', []))}条记录")
             else:
                 print(f"⚠️ 未获取到{test_symbol}财务数据")
@@ -93,6 +100,7 @@ def test_tushare_connection():
 
     except Exception as e:
         print(f"❌ Tushare测试失败: {e}")
+
 
 def main():
     """主函数"""
@@ -111,6 +119,7 @@ def main():
     print("- ✅ 表示使用真实财务数据")
     print("- ⚠️ 表示使用估算数据（Tushare不可用时的备用方案）")
     print("- ❌ 表示测试失败")
+
 
 if __name__ == "__main__":
     main()

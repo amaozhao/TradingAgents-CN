@@ -4,16 +4,14 @@ TradingAgents-CN 安装验证脚本
 用于验证系统安装是否正确
 """
 
-import sys
-import os
 import importlib
-from pathlib import Path
-from typing import Dict, List, Tuple
+import sys
+from typing import Dict
 
-# 添加后端源码目录到路径，仓库根目录用于检查配置/数据文件
-backend_root = Path(__file__).resolve().parent.parent
-project_root = backend_root.parent
-sys.path.insert(0, str(backend_root))
+from support.path import REPO_ROOT
+
+project_root = REPO_ROOT
+
 
 class InstallationTester:
     """安装验证测试器"""
@@ -28,19 +26,22 @@ class InstallationTester:
 
         version = sys.version_info
         if version.major == 3 and version.minor >= 13:
-            self.results.append(f"✅ Python版本: {version.major}.{version.minor}.{version.micro}")
+            self.results.append(
+                f"✅ Python版本: {version.major}.{version.minor}.{version.micro}"
+            )
             return True
         else:
-            self.errors.append(f"❌ Python版本过低: {version.major}.{version.minor}.{version.micro} (需要3.13+)")
+            self.errors.append(
+                f"❌ Python版本过低: {version.major}.{version.minor}.{version.micro} (需要3.13+)"
+            )
             return False
 
     def test_virtual_environment(self) -> bool:
         """测试虚拟环境"""
         print("🔧 检查虚拟环境...")
 
-        in_venv = (
-            hasattr(sys, 'real_prefix') or
-            (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix)
+        in_venv = hasattr(sys, "real_prefix") or (
+            hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix
         )
 
         if in_venv:
@@ -55,11 +56,11 @@ class InstallationTester:
         print("📦 检查核心模块...")
 
         core_modules = [
-            'trader',
-            'trader.config',
-            'trader.llm.adapters',
-            'trader.agents',
-            'trader.flows'
+            "trader",
+            "trader.config",
+            "trader.llm.adapters",
+            "trader.agents",
+            "trader.flows",
         ]
 
         success = True
@@ -78,16 +79,16 @@ class InstallationTester:
         print("📚 检查依赖包...")
 
         dependencies = [
-            ('streamlit', 'Web框架'),
-            ('pandas', '数据处理'),
-            ('numpy', '数值计算'),
-            ('requests', 'HTTP请求'),
-            ('yfinance', '股票数据'),
-            ('openai', 'OpenAI客户端'),
-            ('langchain', 'LangChain框架'),
-            ('plotly', '图表绘制'),
-            ('redis', 'Redis客户端'),
-            ('pymongo', 'MongoDB客户端')
+            ("streamlit", "Web框架"),
+            ("pandas", "数据处理"),
+            ("numpy", "数值计算"),
+            ("requests", "HTTP请求"),
+            ("yfinance", "股票数据"),
+            ("openai", "OpenAI客户端"),
+            ("langchain", "LangChain框架"),
+            ("plotly", "图表绘制"),
+            ("redis", "Redis客户端"),
+            ("asyncpg", "PostgreSQL客户端"),
         ]
 
         success = True
@@ -106,12 +107,12 @@ class InstallationTester:
         print("⚙️ 检查配置文件...")
 
         config_files = [
-            ('VERSION', '版本文件'),
-            ('.env.example', '环境变量模板'),
-            ('config/settings.json', '设置配置'),
-            ('config/models.json', '模型配置'),
-            ('config/pricing.json', '价格配置'),
-            ('config/logging.toml', '日志配置')
+            ("VERSION", "版本文件"),
+            (".env.example", "环境变量模板"),
+            ("config/settings.json", "设置配置"),
+            ("config/models.json", "模型配置"),
+            ("config/pricing.json", "价格配置"),
+            ("config/logging.toml", "日志配置"),
         ]
 
         success = True
@@ -130,27 +131,27 @@ class InstallationTester:
         print("🔑 检查环境变量...")
 
         # 检查.env文件
-        env_file = project_root / '.env'
+        env_file = project_root / ".env"
         if env_file.exists():
             self.results.append("✅ 环境变量文件: .env 存在")
 
             # 读取并检查关键配置
             try:
-                with open(env_file, 'r', encoding='utf-8') as f:
+                with open(env_file, "r", encoding="utf-8") as f:
                     content = f.read()
 
                 # 检查是否有API密钥配置
                 api_keys = [
-                    'OPENAI_API_KEY',
-                    'DASHSCOPE_API_KEY',
-                    'DEEPSEEK_API_KEY',
-                    'QIANFAN_ACCESS_KEY',
-                    'TUSHARE_TOKEN'
+                    "OPENAI_API_KEY",
+                    "DASHSCOPE_API_KEY",
+                    "DEEPSEEK_API_KEY",
+                    "QIANFAN_ACCESS_KEY",
+                    "TUSHARE_TOKEN",
                 ]
 
                 configured_apis = []
                 for key in api_keys:
-                    if key in content and not content.count(f'{key}=your_') > 0:
+                    if key in content and not content.count(f"{key}=your_") > 0:
                         configured_apis.append(key)
 
                 if configured_apis:
@@ -172,9 +173,9 @@ class InstallationTester:
         print("🌐 检查Web应用...")
 
         web_files = [
-            ('backend/web/app.py', 'Streamlit主应用'),
-            ('backend/web/components/sidebar.py', '侧边栏组件'),
-            ('backend/web/run_web.py', '启动脚本')
+            ("backend/web/app.py", "Streamlit主应用"),
+            ("backend/web/components/sidebar.py", "侧边栏组件"),
+            ("backend/web/run_web.py", "启动脚本"),
         ]
 
         success = True
@@ -192,11 +193,7 @@ class InstallationTester:
         """测试数据目录"""
         print("📁 检查数据目录...")
 
-        data_dirs = [
-            'data',
-            'data/cache',
-            'logs'
-        ]
+        data_dirs = ["data", "data/cache", "logs"]
 
         for dir_path in data_dirs:
             full_path = project_root / dir_path
@@ -218,14 +215,14 @@ class InstallationTester:
         print("=" * 60)
 
         tests = [
-            ('Python版本', self.test_python_version),
-            ('虚拟环境', self.test_virtual_environment),
-            ('核心模块', self.test_core_modules),
-            ('依赖包', self.test_dependencies),
-            ('配置文件', self.test_config_files),
-            ('环境变量', self.test_environment_variables),
-            ('Web应用', self.test_web_application),
-            ('数据目录', self.test_data_directories)
+            ("Python版本", self.test_python_version),
+            ("虚拟环境", self.test_virtual_environment),
+            ("核心模块", self.test_core_modules),
+            ("依赖包", self.test_dependencies),
+            ("配置文件", self.test_config_files),
+            ("环境变量", self.test_environment_variables),
+            ("Web应用", self.test_web_application),
+            ("数据目录", self.test_data_directories),
         ]
 
         test_results = {}
@@ -264,11 +261,11 @@ class InstallationTester:
         total_tests = len(test_results)
         passed_tests = sum(test_results.values())
 
-        print(f"\n📈 测试统计:")
+        print("\n📈 测试统计:")
         print(f"  总测试数: {total_tests}")
         print(f"  通过测试: {passed_tests}")
         print(f"  失败测试: {total_tests - passed_tests}")
-        print(f"  成功率: {passed_tests/total_tests*100:.1f}%")
+        print(f"  成功率: {passed_tests / total_tests * 100:.1f}%")
 
         if passed_tests == total_tests:
             print("\n🎉 恭喜！安装验证全部通过！")
@@ -277,6 +274,7 @@ class InstallationTester:
         else:
             print("\n⚠️ 安装验证发现问题，请根据上述错误信息进行修复。")
             print("   参考文档: docs/overview/quick-start.md")
+
 
 def main():
     """主函数"""
@@ -289,6 +287,7 @@ def main():
         return 0
     else:
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

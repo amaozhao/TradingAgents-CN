@@ -6,7 +6,6 @@ from sqlalchemy import Select, and_, asc, desc, func, literal, select
 
 from app.db.model import MarketQuote, StockBasicInfo, StockFinancialData
 
-
 FIELD_COLUMNS = {
     "code": StockBasicInfo.code,
     "symbol": StockBasicInfo.code,
@@ -58,7 +57,10 @@ def build_screening_count(*, conditions: list[dict[str, Any]], source: str) -> S
         .select_from(StockBasicInfo)
         .outerjoin(
             MarketQuote,
-            and_(MarketQuote.code == StockBasicInfo.code, MarketQuote.source == StockBasicInfo.source),
+            and_(
+                MarketQuote.code == StockBasicInfo.code,
+                MarketQuote.source == StockBasicInfo.source,
+            ),
         )
         .outerjoin(
             StockFinancialData,
@@ -71,8 +73,12 @@ def build_screening_count(*, conditions: list[dict[str, Any]], source: str) -> S
     )
 
 
-async def screen_stocks(session, *, conditions, limit: int, offset: int, order_by, source: str):
-    total_result = await session.execute(build_screening_count(conditions=conditions, source=source))
+async def screen_stocks(
+    session, *, conditions, limit: int, offset: int, order_by, source: str
+):
+    total_result = await session.execute(
+        build_screening_count(conditions=conditions, source=source)
+    )
     total = total_result.scalar_one()
 
     rows_result = await session.execute(
@@ -121,7 +127,10 @@ def _base_select() -> Select:
         .select_from(StockBasicInfo)
         .outerjoin(
             MarketQuote,
-            and_(MarketQuote.code == StockBasicInfo.code, MarketQuote.source == StockBasicInfo.source),
+            and_(
+                MarketQuote.code == StockBasicInfo.code,
+                MarketQuote.source == StockBasicInfo.source,
+            ),
         )
         .outerjoin(
             StockFinancialData,

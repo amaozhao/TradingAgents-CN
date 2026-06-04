@@ -6,38 +6,46 @@ Minimal tests for:
 
 These tests avoid touching real DB/Redis by mocking.
 """
-import importlib
 
 import asyncio
-from fastapi import FastAPI, Depends
+import importlib
+
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 # Import router and dependencies to override
 from app.routers import sse as sse_router_mod
-from app.routers.sse import router as sse_router
 from app.routers.auth import get_current_user
-from app.services.queue.service import QueueService, get_queue_service as real_get_queue_service
+from app.routers.sse import router as sse_router
+from app.services.queue.service import QueueService
+from app.services.queue.service import get_queue_service as real_get_queue_service
 
 
 # ---------- Helpers / Fakes ----------
 class FakePubSub:
     async def subscribe(self, channel: str):
         return None
+
     async def get_message(self, ignore_subscribe_messages: bool = True):
         await asyncio.sleep(0.01)
         return None
+
     async def unsubscribe(self, *channels):
         return None
+
     async def close(self):
         return None
+
 
 class FakeRedis:
     def pubsub(self):
         return FakePubSub()
 
+
 class FakeQueueService:
     async def get_task(self, task_id: str):
         return {"id": task_id, "user": "u1"}
+
     async def get_batch(self, batch_id: str):
         return {"id": batch_id, "user": "u1", "tasks": []}
 
@@ -53,12 +61,14 @@ def make_test_app(fake_queue_service: QueueService):
     # Override route-level queue service dependency used for pre-checks
     def _get_qsvc():
         return fake_queue_service
+
     app.dependency_overrides[real_get_queue_service] = _get_qsvc
 
     return app
 
 
 # ---------- Tests: SSE ----------
+
 
 def test_sse_task_connected_event(monkeypatch):
     # Monkeypatch Redis client inside module to our fake
@@ -82,7 +92,7 @@ def test_sse_batch_connected_event(monkeypatch):
     monkeypatch.setattr(sse_router_mod, "get_redis_client", lambda: FakeRedis())
     # Also patch queue_service.get_redis_client because batch generator constructs
     # a QueueService via get_queue_service() inside the generator
-    qsvc_mod = importlib.import_module('app.services.queue.service')
+    qsvc_mod = importlib.import_module("app.services.queue.service")
     monkeypatch.setattr(qsvc_mod, "get_redis_client", lambda: FakeRedis())
 
     app = make_test_app(FakeQueueService())
@@ -98,15 +108,17 @@ def test_sse_batch_connected_event(monkeypatch):
 
 # ---------- Tests: Worker config ----------
 
+
 def test_worker_intervals_env_and_dynamic_override(monkeypatch):
     # Import in-scope to ensure monkeypatch targets the module objects
-    analysis_worker = importlib.import_module('app.worker.analysis')
+    analysis_worker = importlib.import_module("app.worker.analysis")
 
     # Replace settings object with a lightweight dummy carrying needed fields
     class _DummySettings:
         WORKER_HEARTBEAT_INTERVAL = 30
         QUEUE_POLL_INTERVAL_SECONDS = 1.0
         QUEUE_CLEANUP_INTERVAL_SECONDS = 60.0
+
     monkeypatch.setattr(analysis_worker, "settings", _DummySettings())
 
     # Ensure start() does not touch real DB/Redis and finishes immediately
@@ -129,6 +141,7 @@ def test_worker_intervals_env_and_dynamic_override(monkeypatch):
         user_concurrent_limit = 0
         global_concurrent_limit = 0
         visibility_timeout = 0
+
     monkeypatch.setattr(analysis_worker, "get_queue_service", lambda: _QS())
 
     # Dynamic overrides to be applied inside start()
@@ -140,9 +153,16 @@ def test_worker_intervals_env_and_dynamic_override(monkeypatch):
         "max_concurrent_tasks": 2,
         "default_analysis_timeout": 123,
     }
+
     async def _fake_eff():
         return dynamic
-    monkeypatch.setattr(analysis_worker.config_provider, "get_effective_system_settings", _fake_eff, raising=False)
+
+    monkeypatch.setattr(
+        analysis_worker.config_provider,
+        "get_effective_system_settings",
+        _fake_eff,
+        raising=False,
+    )
 
     # Instantiate with ENV values
     w = analysis_worker.AnalysisWorker(worker_id="wtest")

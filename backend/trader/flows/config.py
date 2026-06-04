@@ -1,7 +1,7 @@
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 import trader.default as default_config
 

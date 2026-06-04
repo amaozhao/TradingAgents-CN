@@ -4,38 +4,43 @@ DeepSeek LLM适配器，支持Token使用统计
 
 import os
 import time
-from typing import Any, Dict, List, Optional, Union, cast
-from langchain_core.messages import BaseMessage, AIMessage, HumanMessage, SystemMessage
-from langchain_core.outputs import ChatGeneration, ChatResult
-from langchain_openai import ChatOpenAI
+from typing import Any, Dict, List, Optional, Union
+
 from langchain_core.callbacks import CallbackManagerForLLMRun
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.outputs import ChatResult
+from langchain_openai import ChatOpenAI
 
 # 导入统一日志系统
 from trader.utils.logging.init import setup_llm_logging
 
 # 导入日志模块
 from trader.utils.logging.manager import get_logger, get_logger_manager
-logger = get_logger('agents')
+
+logger = get_logger("agents")
 logger = setup_llm_logging()
 
 
 try:
     from app.utils.keys import is_valid_api_key
 except ImportError:
+
     def is_valid_api_key(api_key: Optional[str]) -> bool:
         if not api_key or len(api_key) <= 10:
             return False
-        if api_key.startswith('your_') or api_key.startswith('your-'):
+        if api_key.startswith("your_") or api_key.startswith("your-"):
             return False
-        if api_key.endswith('_here') or api_key.endswith('-here'):
+        if api_key.endswith("_here") or api_key.endswith("-here"):
             return False
-        if '...' in api_key:
+        if "..." in api_key:
             return False
         return True
+
 
 # 导入token跟踪器
 try:
     from trader.config.manager import token_tracker
+
     TOKEN_TRACKING_ENABLED = True
     logger.info("✅ Token跟踪功能已启用")
 except ImportError:
@@ -57,7 +62,7 @@ class ChatDeepSeek(ChatOpenAI):
         base_url: str = "https://api.deepseek.com",
         temperature: float = 0.1,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         初始化DeepSeek适配器
@@ -81,7 +86,9 @@ class ChatDeepSeek(ChatOpenAI):
                 api_key = env_api_key
                 logger.info("✅ [DeepSeek初始化] 使用环境变量中的有效 API Key")
             elif env_api_key:
-                logger.warning("⚠️ [DeepSeek初始化] 环境变量中的 API Key 无效（可能是占位符），将被忽略")
+                logger.warning(
+                    "⚠️ [DeepSeek初始化] 环境变量中的 API Key 无效（可能是占位符），将被忽略"
+                )
                 api_key = None
             else:
                 api_key = None
@@ -113,11 +120,11 @@ class ChatDeepSeek(ChatOpenAI):
         """
 
         # 记录开始时间
-        start_time = time.time()
+        time.time()
 
         # 提取并移除自定义参数，避免传递给父类
-        session_id = kwargs.pop('session_id', None)
-        analysis_type = kwargs.pop('analysis_type', None)
+        session_id = kwargs.pop("session_id", None)
+        analysis_type = kwargs.pop("analysis_type", None)
 
         try:
             # 调用父类方法生成响应
@@ -128,28 +135,32 @@ class ChatDeepSeek(ChatOpenAI):
             output_tokens = 0
 
             # 尝试从响应中提取token使用量
-            if hasattr(result, 'llm_output') and result.llm_output:
-                token_usage = result.llm_output.get('token_usage', {})
+            if hasattr(result, "llm_output") and result.llm_output:
+                token_usage = result.llm_output.get("token_usage", {})
                 if token_usage:
-                    input_tokens = token_usage.get('prompt_tokens', 0)
-                    output_tokens = token_usage.get('completion_tokens', 0)
+                    input_tokens = token_usage.get("prompt_tokens", 0)
+                    output_tokens = token_usage.get("completion_tokens", 0)
 
             # 如果没有获取到token使用量，进行估算
             if input_tokens == 0 and output_tokens == 0:
                 input_tokens = self._estimate_input_tokens(messages)
                 output_tokens = self._estimate_output_tokens(result)
-                logger.debug(f"🔍 [DeepSeek] 使用估算token: 输入={input_tokens}, 输出={output_tokens}")
+                logger.debug(
+                    f"🔍 [DeepSeek] 使用估算token: 输入={input_tokens}, 输出={output_tokens}"
+                )
             else:
-                logger.info(f"📊 [DeepSeek] 实际token使用: 输入={input_tokens}, 输出={output_tokens}")
+                logger.info(
+                    f"📊 [DeepSeek] 实际token使用: 输入={input_tokens}, 输出={output_tokens}"
+                )
 
             # 记录token使用量
             if TOKEN_TRACKING_ENABLED and (input_tokens > 0 or output_tokens > 0):
                 try:
                     # 使用提取的参数或生成默认值
                     if session_id is None:
-                        session_id = f"deepseek_{hash(str(messages))%10000}"
+                        session_id = f"deepseek_{hash(str(messages)) % 10000}"
                     if analysis_type is None:
-                        analysis_type = 'stock_analysis'
+                        analysis_type = "stock_analysis"
 
                     # 记录使用量
                     usage_record = token_tracker.track_usage(
@@ -158,27 +169,35 @@ class ChatDeepSeek(ChatOpenAI):
                         input_tokens=input_tokens,
                         output_tokens=output_tokens,
                         session_id=session_id,
-                        analysis_type=analysis_type
+                        analysis_type=analysis_type,
                     )
 
                     if usage_record:
                         if usage_record.cost == 0.0:
-                            logger.warning(f"⚠️ [DeepSeek] 成本计算为0，可能配置有问题")
+                            logger.warning("⚠️ [DeepSeek] 成本计算为0，可能配置有问题")
                         else:
-                            logger.info(f"💰 [DeepSeek] 本次调用成本: ¥{usage_record.cost:.6f}")
+                            logger.info(
+                                f"💰 [DeepSeek] 本次调用成本: ¥{usage_record.cost:.6f}"
+                            )
 
                         # 使用统一日志管理器的Token记录方法
                         logger_manager = get_logger_manager()
                         logger_manager.log_token_usage(
-                            logger, "deepseek", self.model_name,
-                            input_tokens, output_tokens, usage_record.cost,
-                            session_id
+                            logger,
+                            "deepseek",
+                            self.model_name,
+                            input_tokens,
+                            output_tokens,
+                            usage_record.cost,
+                            session_id,
                         )
                     else:
-                        logger.warning(f"⚠️ [DeepSeek] 未创建使用记录")
+                        logger.warning("⚠️ [DeepSeek] 未创建使用记录")
 
                 except Exception as track_error:
-                    logger.error(f"⚠️ [DeepSeek] Token统计失败: {track_error}", exc_info=True)
+                    logger.error(
+                        f"⚠️ [DeepSeek] Token统计失败: {track_error}", exc_info=True
+                    )
 
             return result
 
@@ -198,7 +217,7 @@ class ChatDeepSeek(ChatOpenAI):
         """
         total_chars = 0
         for message in messages:
-            if hasattr(message, 'content'):
+            if hasattr(message, "content"):
                 total_chars += len(str(message.content))
 
         # 粗略估算：中文约1.5字符/token，英文约4字符/token
@@ -218,7 +237,9 @@ class ChatDeepSeek(ChatOpenAI):
         """
         total_chars = 0
         for generation in result.generations:
-            if hasattr(generation, 'message') and hasattr(generation.message, 'content'):
+            if hasattr(generation, "message") and hasattr(
+                generation.message, "content"
+            ):
                 total_chars += len(str(generation.message.content))
 
         # 粗略估算：2字符/token
@@ -266,7 +287,7 @@ def create_deepseek_llm(
     model: str = "deepseek-chat",
     temperature: float = 0.1,
     max_tokens: Optional[int] = None,
-    **kwargs
+    **kwargs,
 ) -> ChatDeepSeek:
     """
     创建DeepSeek LLM实例的便捷函数
@@ -281,10 +302,7 @@ def create_deepseek_llm(
         ChatDeepSeek实例
     """
     return ChatDeepSeek(
-        model=model,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        **kwargs
+        model=model, temperature=temperature, max_tokens=max_tokens, **kwargs
     )
 
 

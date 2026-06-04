@@ -1,8 +1,9 @@
 """
 测试基本面接口是否使用实时市值计算PS
 """
+
 import asyncio
-from app.core.database import get_mongo_db
+
 from app.routers.stocks import get_fundamentals
 
 

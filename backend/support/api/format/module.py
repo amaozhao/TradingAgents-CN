@@ -3,9 +3,10 @@
 测试API返回的数据格式
 """
 
-import requests
 import time
-import json
+
+import requests
+
 
 def test_api_format():
     """测试API返回的数据格式"""
@@ -18,15 +19,9 @@ def test_api_format():
     try:
         # 1. 登录获取token
         print("1. 登录获取token...")
-        login_data = {
-            "username": "admin",
-            "password": "admin123"
-        }
+        login_data = {"username": "admin", "password": "admin123"}
 
-        login_response = requests.post(
-            f"{base_url}/api/auth/login",
-            json=login_data
-        )
+        login_response = requests.post(f"{base_url}/api/auth/login", json=login_data)
 
         if login_response.status_code == 200:
             login_result = login_response.json()
@@ -49,19 +44,17 @@ def test_api_format():
                 "include_risk": False,
                 "language": "zh-CN",
                 "quick_analysis_model": "qwen-turbo",
-                "deep_analysis_model": "qwen-max"
-            }
+                "deep_analysis_model": "qwen-max",
+            },
         }
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {access_token}"
+            "Authorization": f"Bearer {access_token}",
         }
 
         response = requests.post(
-            f"{base_url}/api/analysis/single",
-            json=analysis_request,
-            headers=headers
+            f"{base_url}/api/analysis/single", json=analysis_request, headers=headers
         )
 
         if response.status_code == 200:
@@ -74,11 +67,10 @@ def test_api_format():
             return False
 
         # 3. 等待任务完成
-        print(f"\n3. 等待任务完成...")
+        print("\n3. 等待任务完成...")
         for i in range(60):  # 最多等待5分钟
             status_response = requests.get(
-                f"{base_url}/api/analysis/tasks/{task_id}/status",
-                headers=headers
+                f"{base_url}/api/analysis/tasks/{task_id}/status", headers=headers
             )
 
             if status_response.status_code == 200:
@@ -98,35 +90,38 @@ def test_api_format():
 
             time.sleep(5)
         else:
-            print(f"⏰ 任务执行超时")
+            print("⏰ 任务执行超时")
             return False
 
         # 4. 测试API返回的数据格式
-        print(f"\n4. 测试API返回的数据格式...")
+        print("\n4. 测试API返回的数据格式...")
         result_response = requests.get(
-            f"{base_url}/api/analysis/tasks/{task_id}/result",
-            headers=headers
+            f"{base_url}/api/analysis/tasks/{task_id}/result", headers=headers
         )
 
         if result_response.status_code == 200:
             result_data = result_response.json()
             data = result_data["data"]
 
-            print(f"✅ 成功获取分析结果")
+            print("✅ 成功获取分析结果")
             print(f"   stock_symbol: {data.get('stock_symbol')}")
             print(f"   analysts: {data.get('analysts', [])}")
 
             # 检查reports字段的数据类型
-            reports = data.get('reports', {})
+            reports = data.get("reports", {})
             if reports:
                 print(f"✅ API返回包含 {len(reports)} 个报告:")
                 for report_type, content in reports.items():
                     content_type = type(content).__name__
                     if isinstance(content, str):
-                        print(f"   ✅ {report_type}: {content_type} ({len(content)} 字符)")
+                        print(
+                            f"   ✅ {report_type}: {content_type} ({len(content)} 字符)"
+                        )
                         # 检查内容是否包含有效的文本
                         if len(content.strip()) > 10:
-                            print(f"      预览: {content[:100].replace(chr(10), ' ')}...")
+                            print(
+                                f"      预览: {content[:100].replace(chr(10), ' ')}..."
+                            )
                         else:
                             print(f"      ⚠️ 内容过短: '{content}'")
                     else:
@@ -134,8 +129,13 @@ def test_api_format():
                         print(f"      值: {content}")
 
                 # 验证前端期望的字段
-                expected_fields = ['market_report', 'fundamentals_report', 'investment_plan', 'final_trade_decision']
-                print(f"\n🎯 检查前端期望的字段:")
+                expected_fields = [
+                    "market_report",
+                    "fundamentals_report",
+                    "investment_plan",
+                    "final_trade_decision",
+                ]
+                print("\n🎯 检查前端期望的字段:")
                 for field in expected_fields:
                     if field in reports:
                         content = reports[field]
@@ -148,7 +148,7 @@ def test_api_format():
 
                 return True
             else:
-                print(f"❌ API返回未包含reports字段")
+                print("❌ API返回未包含reports字段")
                 return False
         else:
             print(f"❌ 获取API结果失败: {result_response.status_code}")
@@ -158,6 +158,7 @@ def test_api_format():
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         return False
+
 
 if __name__ == "__main__":
     success = test_api_format()

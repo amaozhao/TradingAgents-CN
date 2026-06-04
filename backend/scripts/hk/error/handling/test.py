@@ -3,15 +3,11 @@
 港股错误处理测试脚本
 测试港股网络限制时的错误处理和用户提示
 """
-import importlib
 
-import sys
-import os
+import importlib
 import time
 from datetime import datetime
 
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def test_hk_network_limitation_handling():
     """测试港股网络限制的错误处理"""
@@ -19,7 +15,9 @@ def test_hk_network_limitation_handling():
     print("=" * 80)
 
     try:
-        prepare_stock_data = getattr(importlib.import_module('trader.utils.validation'), 'prepare_stock_data')
+        prepare_stock_data = getattr(
+            importlib.import_module("trader.utils.validation"), "prepare_stock_data"
+        )
 
         # 测试港股代码（可能遇到网络限制）
         hk_test_cases = [
@@ -27,21 +25,23 @@ def test_hk_network_limitation_handling():
             {"code": "9988.HK", "name": "阿里巴巴"},
             {"code": "3690.HK", "name": "美团"},
             {"code": "1810.HK", "name": "小米集团"},
-            {"code": "9999.HK", "name": "不存在的港股"}  # 测试不存在的股票
+            {"code": "9999.HK", "name": "不存在的港股"},  # 测试不存在的股票
         ]
 
         for i, test_case in enumerate(hk_test_cases, 1):
-            print(f"\n📊 测试 {i}/{len(hk_test_cases)}: {test_case['code']} ({test_case['name']})")
+            print(
+                f"\n📊 测试 {i}/{len(hk_test_cases)}: {test_case['code']} ({test_case['name']})"
+            )
             print("-" * 60)
 
             start_time = time.time()
 
             # 测试港股数据准备
             result = prepare_stock_data(
-                stock_code=test_case['code'],
+                stock_code=test_case["code"],
                 market_type="港股",
                 period_days=7,  # 较短时间测试
-                analysis_date=datetime.now().strftime('%Y-%m-%d')
+                analysis_date=datetime.now().strftime("%Y-%m-%d"),
             )
 
             end_time = time.time()
@@ -59,21 +59,24 @@ def test_hk_network_limitation_handling():
                 print(f"ℹ️ 基本信息: {'✅' if result.has_basic_info else '❌'}")
             else:
                 print(f"❌ 错误信息: {result.error_message}")
-                print(f"💡 详细建议:")
+                print("💡 详细建议:")
 
                 # 显示详细建议（支持多行）
-                suggestion_lines = result.suggestion.split('\n')
+                suggestion_lines = result.suggestion.split("\n")
                 for line in suggestion_lines:
                     if line.strip():
                         print(f"   {line}")
 
                 # 检查是否为网络限制问题
-                if "网络限制" in result.error_message or "Rate limited" in result.error_message:
-                    print(f"🌐 检测到网络限制问题 - 错误处理正确")
+                if (
+                    "网络限制" in result.error_message
+                    or "Rate limited" in result.error_message
+                ):
+                    print("🌐 检测到网络限制问题 - 错误处理正确")
                 elif "不存在" in result.error_message:
-                    print(f"🔍 检测到股票不存在 - 错误处理正确")
+                    print("🔍 检测到股票不存在 - 错误处理正确")
                 else:
-                    print(f"⚠️ 其他类型错误")
+                    print("⚠️ 其他类型错误")
 
             # 添加延迟避免过于频繁的请求
             if i < len(hk_test_cases):
@@ -84,9 +87,10 @@ def test_hk_network_limitation_handling():
 
     except Exception as e:
         print(f"❌ 测试过程中发生异常: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_error_message_formatting():
     """测试错误消息格式化"""
@@ -94,7 +98,9 @@ def test_error_message_formatting():
     print("=" * 60)
 
     try:
-        StockDataPreparer = getattr(importlib.import_module('trader.utils.validation'), 'StockDataPreparer')
+        StockDataPreparer = getattr(
+            importlib.import_module("trader.utils.validation"), "StockDataPreparer"
+        )
 
         preparer = StockDataPreparer()
 
@@ -113,7 +119,7 @@ def test_error_message_formatting():
             "等待5-10分钟",
             "常见港股代码格式",
             "腾讯控股：0700.HK",
-            "稍后重试"
+            "稍后重试",
         ]
 
         missing_elements = []
@@ -132,13 +138,16 @@ def test_error_message_formatting():
         print(f"❌ 错误消息格式化测试异常: {e}")
         return False
 
+
 def test_web_cli_integration():
     """测试Web和CLI界面的错误处理集成"""
     print("\n🖥️ Web和CLI错误处理集成测试")
     print("=" * 60)
 
     try:
-        prepare_stock_data = getattr(importlib.import_module('trader.utils.validation'), 'prepare_stock_data')
+        prepare_stock_data = getattr(
+            importlib.import_module("trader.utils.validation"), "prepare_stock_data"
+        )
 
         # 模拟一个可能遇到网络限制的港股
         result = prepare_stock_data("0700.HK", "港股", 7)
@@ -147,11 +156,11 @@ def test_web_cli_integration():
         if not result.is_valid:
             # 模拟Web界面的错误返回
             web_response = {
-                'success': False,
-                'error': result.error_message,
-                'suggestion': result.suggestion,
-                'stock_symbol': "0700.HK",
-                'market_type': "港股"
+                "success": False,
+                "error": result.error_message,
+                "suggestion": result.suggestion,
+                "stock_symbol": "0700.HK",
+                "market_type": "港股",
             }
 
             print(f"   错误: {web_response['error']}")
@@ -175,6 +184,7 @@ def test_web_cli_integration():
         print(f"❌ Web和CLI集成测试异常: {e}")
         return False
 
+
 if __name__ == "__main__":
     print("🧪 港股错误处理完整测试")
     print("=" * 80)
@@ -196,7 +206,7 @@ if __name__ == "__main__":
         all_passed = False
 
     # 最终结果
-    print(f"\n🏁 港股错误处理测试结果")
+    print("\n🏁 港股错误处理测试结果")
     print("=" * 80)
     if all_passed:
         print("🎉 所有测试通过！港股错误处理机制工作正常")

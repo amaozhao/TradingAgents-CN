@@ -3,9 +3,10 @@
 测试最终的.env配置系统
 验证启用开关是否正常工作
 """
-import importlib
 
+import importlib
 import os
+
 
 def test_final_config():
     """测试最终配置"""
@@ -14,7 +15,7 @@ def test_final_config():
 
     # 1. 检查.env文件
     print("\n📁 检查.env文件...")
-    if os.path.exists('.env'):
+    if os.path.exists(".env"):
         print("✅ .env文件存在")
     else:
         print("❌ .env文件不存在")
@@ -22,22 +23,24 @@ def test_final_config():
 
     # 2. 读取启用开关
     print("\n🔧 检查启用开关...")
-    mongodb_enabled = os.getenv("MONGODB_ENABLED", "false").lower() == "true"
+    postgres_enabled = os.getenv("POSTGRES_ENABLED", "false").lower() == "true"
     redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() == "true"
 
-    print(f"MONGODB_ENABLED: {os.getenv('MONGODB_ENABLED', 'false')} -> {mongodb_enabled}")
+    print(
+        f"POSTGRES_ENABLED: {os.getenv('POSTGRES_ENABLED', 'false')} -> {postgres_enabled}"
+    )
     print(f"REDIS_ENABLED: {os.getenv('REDIS_ENABLED', 'false')} -> {redis_enabled}")
 
     # 3. 显示配置信息
     print("\n📊 数据库配置:")
 
-    if mongodb_enabled:
-        print("MongoDB: ✅ 启用")
-        print(f"  Host: {os.getenv('MONGODB_HOST', 'localhost')}")
-        print(f"  Port: {os.getenv('MONGODB_PORT', '27017')}")
-        print(f"  Database: {os.getenv('MONGODB_DATABASE', 'trading_agents')}")
+    if postgres_enabled:
+        print("PostgreSQL: ✅ 启用")
+        print(f"  Host: {os.getenv('POSTGRES_HOST', 'localhost')}")
+        print(f"  Port: {os.getenv('POSTGRES_PORT', '5432')}")
+        print(f"  Database: {os.getenv('POSTGRES_DB', 'trading_agents')}")
     else:
-        print("MongoDB: ❌ 禁用")
+        print("PostgreSQL: ❌ 禁用")
 
     if redis_enabled:
         print("Redis: ✅ 启用")
@@ -50,7 +53,9 @@ def test_final_config():
     # 4. 测试数据库管理器
     print("\n🔧 测试数据库管理器...")
     try:
-        get_database_manager = getattr(importlib.import_module('trader.config.databases'), 'get_database_manager')
+        get_database_manager = getattr(
+            importlib.import_module("trader.config.databases"), "get_database_manager"
+        )
 
         db_manager = get_database_manager()
         print("✅ 数据库管理器创建成功")
@@ -61,24 +66,28 @@ def test_final_config():
         print("📊 检测结果:")
         print(f"  数据库可用: {'✅ 是' if status['database_available'] else '❌ 否'}")
 
-        mongodb_info = status['mongodb']
-        print(f"  MongoDB: {'✅ 可用' if mongodb_info['available'] else '❌ 不可用'}")
+        postgres_info = status["postgres"]
+        print(
+            f"  PostgreSQL: {'✅ 可用' if postgres_info['available'] else '❌ 不可用'}"
+        )
 
-        redis_info = status['redis']
+        redis_info = status["redis"]
         print(f"  Redis: {'✅ 可用' if redis_info['available'] else '❌ 不可用'}")
 
         print(f"  缓存后端: {status['cache_backend']}")
 
     except Exception as e:
         print(f"❌ 数据库管理器测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
     # 5. 测试缓存系统
     print("\n💾 测试缓存系统...")
     try:
-        get_cache = getattr(importlib.import_module('trader.flows.cache.integrated'), 'get_cache')
+        get_cache = getattr(
+            importlib.import_module("trader.flows.cache.integrated"), "get_cache"
+        )
 
         cache = get_cache()
         print("✅ 缓存系统创建成功")
@@ -94,7 +103,7 @@ def test_final_config():
             data=test_data,
             start_date="2024-01-01",
             end_date="2024-12-31",
-            data_source="final_test"
+            data_source="final_test",
         )
         print(f"✅ 数据保存成功: {cache_key}")
 
@@ -108,26 +117,27 @@ def test_final_config():
 
     except Exception as e:
         print(f"❌ 缓存系统测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
     # 6. 总结
     print("\n📊 配置总结:")
     print("✅ 使用.env文件进行配置")
-    print("✅ 通过MONGODB_ENABLED和REDIS_ENABLED控制启用状态")
+    print("✅ 通过POSTGRES_ENABLED和REDIS_ENABLED控制启用状态")
     print("✅ 默认情况下数据库都是禁用的")
     print("✅ 系统使用文件缓存，性能良好")
     print("✅ 可以通过修改.env文件启用数据库")
 
     print("\n💡 使用说明:")
-    print("1. 默认配置：MONGODB_ENABLED=false, REDIS_ENABLED=false")
-    print("2. 启用MongoDB：将MONGODB_ENABLED设置为true")
+    print("1. 默认配置：POSTGRES_ENABLED=false, REDIS_ENABLED=false")
+    print("2. 启用PostgreSQL：将POSTGRES_ENABLED设置为true")
     print("3. 启用Redis：将REDIS_ENABLED设置为true")
     print("4. 系统会自动检测并使用启用的数据库")
     print("5. 如果数据库不可用，自动降级到文件缓存")
 
     return True
+
 
 def main():
     """主函数"""
@@ -147,9 +157,10 @@ def main():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 if __name__ == "__main__":
     success = main()

@@ -3,13 +3,9 @@
 测试股票基本信息获取的降级机制
 验证当Tushare失败时是否有备用方案
 """
+
 import importlib
 
-import sys
-import os
-
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def test_tushare_stock_info_failure():
     """测试Tushare股票信息获取失败的情况"""
@@ -25,14 +21,20 @@ def test_tushare_stock_info_failure():
 
         try:
             # 1. 测试Tushare直接获取
-            print(f"🔍 步骤1: 测试Tushare直接获取...")
-            get_china_stock_info_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_tushare')
+            print("🔍 步骤1: 测试Tushare直接获取...")
+            get_china_stock_info_tushare = getattr(
+                importlib.import_module("trader.flows.interface"),
+                "get_china_stock_info_tushare",
+            )
             tushare_result = get_china_stock_info_tushare(code)
             print(f"✅ Tushare结果: {tushare_result}")
 
             # 2. 测试统一接口
-            print(f"🔍 步骤2: 测试统一接口...")
-            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
+            print("🔍 步骤2: 测试统一接口...")
+            get_china_stock_info_unified = getattr(
+                importlib.import_module("trader.flows.interface"),
+                "get_china_stock_info_unified",
+            )
             unified_result = get_china_stock_info_unified(code)
             print(f"✅ 统一接口结果: {unified_result}")
 
@@ -47,6 +49,7 @@ def test_tushare_stock_info_failure():
         except Exception as e:
             print(f"❌ 测试{code}失败: {e}")
 
+
 def test_akshare_stock_info():
     """测试AKShare是否支持股票基本信息获取"""
     print("\n🔍 测试AKShare股票基本信息获取能力")
@@ -60,22 +63,26 @@ def test_akshare_stock_info():
 
         try:
             # 直接测试AKShare
-            ak = importlib.import_module('akshare')
+            ak = importlib.import_module("akshare")
 
             # 尝试获取股票基本信息
             try:
                 # 方法1: 股票信息
                 stock_info = ak.stock_individual_info_em(symbol=code)
-                print(f"✅ AKShare个股信息: {stock_info.head() if not stock_info.empty else '空数据'}")
+                print(
+                    f"✅ AKShare个股信息: {stock_info.head() if not stock_info.empty else '空数据'}"
+                )
             except Exception as e:
                 print(f"❌ AKShare个股信息失败: {e}")
 
             try:
                 # 方法2: 股票基本信息
                 stock_basic = ak.stock_zh_a_spot_em()
-                stock_data = stock_basic[stock_basic['代码'] == code]
+                stock_data = stock_basic[stock_basic["代码"] == code]
                 if not stock_data.empty:
-                    print(f"✅ AKShare基本信息: {stock_data[['代码', '名称', '涨跌幅', '现价']].iloc[0].to_dict()}")
+                    print(
+                        f"✅ AKShare基本信息: {stock_data[['代码', '名称', '涨跌幅', '现价']].iloc[0].to_dict()}"
+                    )
                 else:
                     print(f"❌ AKShare基本信息: 未找到{code}")
             except Exception as e:
@@ -83,6 +90,7 @@ def test_akshare_stock_info():
 
         except Exception as e:
             print(f"❌ AKShare测试失败: {e}")
+
 
 def test_baostock_stock_info():
     """测试BaoStock是否支持股票基本信息获取"""
@@ -92,11 +100,11 @@ def test_baostock_stock_info():
     test_codes = ["sh.603985", "sz.000001", "sz.300033"]
 
     try:
-        bs = importlib.import_module('baostock')
+        bs = importlib.import_module("baostock")
 
         # 登录BaoStock
         lg = bs.login()
-        if lg.error_code != '0':
+        if lg.error_code != "0":
             print(f"❌ BaoStock登录失败: {lg.error_msg}")
             return
 
@@ -109,15 +117,15 @@ def test_baostock_stock_info():
             try:
                 # 获取股票基本信息
                 rs = bs.query_stock_basic(code=code)
-                if rs.error_code == '0':
+                if rs.error_code == "0":
                     data_list = []
-                    while (rs.error_code == '0') & rs.next():
+                    while (rs.error_code == "0") & rs.next():
                         data_list.append(rs.get_row_data())
 
                     if data_list:
                         print(f"✅ BaoStock基本信息: {data_list[0]}")
                     else:
-                        print(f"❌ BaoStock基本信息: 无数据")
+                        print("❌ BaoStock基本信息: 无数据")
                 else:
                     print(f"❌ BaoStock查询失败: {rs.error_msg}")
 
@@ -132,41 +140,45 @@ def test_baostock_stock_info():
     except Exception as e:
         print(f"❌ BaoStock测试失败: {e}")
 
+
 def analyze_current_fallback_mechanism():
     """分析当前的降级机制"""
     print("\n🔍 分析当前降级机制")
     print("=" * 50)
 
     try:
-        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
+        DataSourceManager = getattr(
+            importlib.import_module("trader.flows.sources"), "DataSourceManager"
+        )
 
         # 检查DataSourceManager的方法
         manager = DataSourceManager()
 
         print("📊 DataSourceManager可用方法:")
-        methods = [method for method in dir(manager) if not method.startswith('_')]
+        methods = [method for method in dir(manager) if not method.startswith("_")]
         for method in methods:
             print(f"   - {method}")
 
         # 检查是否有股票信息的降级方法
-        if hasattr(manager, '_try_fallback_sources'):
+        if hasattr(manager, "_try_fallback_sources"):
             print("✅ 有_try_fallback_sources方法 (用于历史数据)")
         else:
             print("❌ 没有_try_fallback_sources方法")
 
-        if hasattr(manager, '_try_fallback_stock_info'):
+        if hasattr(manager, "_try_fallback_stock_info"):
             print("✅ 有_try_fallback_stock_info方法 (用于基本信息)")
         else:
             print("❌ 没有_try_fallback_stock_info方法")
 
         # 检查get_stock_info方法的实现
-        inspect = importlib.import_module('inspect')
+        inspect = importlib.import_module("inspect")
         source = inspect.getsource(manager.get_stock_info)
-        print(f"\n📝 get_stock_info方法源码:")
+        print("\n📝 get_stock_info方法源码:")
         print(source)
 
     except Exception as e:
         print(f"❌ 分析失败: {e}")
+
 
 if __name__ == "__main__":
     print("🧪 股票基本信息降级机制测试")

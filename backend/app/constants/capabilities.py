@@ -99,7 +99,11 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "qwen-turbo": {
         "capability_level": 1,
         "suitable_roles": [ModelRole.QUICK_ANALYSIS],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.FAST_RESPONSE, ModelFeature.COST_EFFECTIVE],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.FAST_RESPONSE,
+            ModelFeature.COST_EFFECTIVE,
+        ],
         "recommended_depths": ["快速", "基础"],
         "performance_metrics": {"speed": 5, "cost": 5, "quality": 3},
         "description": "通义千问轻量版，快速响应，适合数据收集",
@@ -115,7 +119,11 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "qwen-max": {
         "capability_level": 4,
         "suitable_roles": [ModelRole.BOTH],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.LONG_CONTEXT, ModelFeature.REASONING],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.LONG_CONTEXT,
+            ModelFeature.REASONING,
+        ],
         "recommended_depths": ["标准", "深度", "全面"],
         "performance_metrics": {"speed": 3, "cost": 2, "quality": 5},
         "description": "通义千问旗舰版，强大推理能力",
@@ -123,7 +131,11 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "qwen3-max": {
         "capability_level": 5,
         "suitable_roles": [ModelRole.DEEP_ANALYSIS],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.LONG_CONTEXT, ModelFeature.REASONING],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.LONG_CONTEXT,
+            ModelFeature.REASONING,
+        ],
         "recommended_depths": ["深度", "全面"],
         "performance_metrics": {"speed": 2, "cost": 1, "quality": 5},
         "description": "通义千问长文本版，超长上下文",
@@ -132,7 +144,11 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "gpt-3.5-turbo": {
         "capability_level": 1,
         "suitable_roles": [ModelRole.QUICK_ANALYSIS],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.FAST_RESPONSE, ModelFeature.COST_EFFECTIVE],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.FAST_RESPONSE,
+            ModelFeature.COST_EFFECTIVE,
+        ],
         "recommended_depths": ["快速", "基础"],
         "performance_metrics": {"speed": 5, "cost": 5, "quality": 3},
         "description": "GPT-3.5 Turbo，快速且经济",
@@ -148,7 +164,12 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "gpt-4-turbo": {
         "capability_level": 4,
         "suitable_roles": [ModelRole.BOTH],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.LONG_CONTEXT, ModelFeature.REASONING, ModelFeature.VISION],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.LONG_CONTEXT,
+            ModelFeature.REASONING,
+            ModelFeature.VISION,
+        ],
         "recommended_depths": ["标准", "深度", "全面"],
         "performance_metrics": {"speed": 4, "cost": 2, "quality": 5},
         "description": "GPT-4 Turbo，更快更强",
@@ -156,7 +177,11 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "gpt-4o-mini": {
         "capability_level": 2,
         "suitable_roles": [ModelRole.BOTH],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.FAST_RESPONSE, ModelFeature.COST_EFFECTIVE],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.FAST_RESPONSE,
+            ModelFeature.COST_EFFECTIVE,
+        ],
         "recommended_depths": ["快速", "基础", "标准"],
         "performance_metrics": {"speed": 5, "cost": 5, "quality": 3},
         "description": "GPT-4o Mini，经济实惠",
@@ -189,7 +214,11 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "deepseek-chat": {
         "capability_level": 3,
         "suitable_roles": [ModelRole.BOTH],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.LONG_CONTEXT, ModelFeature.COST_EFFECTIVE],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.LONG_CONTEXT,
+            ModelFeature.COST_EFFECTIVE,
+        ],
         "recommended_depths": ["基础", "标准", "深度"],
         "performance_metrics": {"speed": 4, "cost": 5, "quality": 4},
         "description": "DeepSeek Chat，性价比高",
@@ -214,7 +243,11 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "ernie-4.0-turbo": {
         "capability_level": 4,
         "suitable_roles": [ModelRole.BOTH],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.REASONING, ModelFeature.FAST_RESPONSE],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.REASONING,
+            ModelFeature.FAST_RESPONSE,
+        ],
         "recommended_depths": ["标准", "深度", "全面"],
         "performance_metrics": {"speed": 4, "cost": 2, "quality": 5},
         "description": "文心一言4.0 Turbo，旗舰版本",
@@ -223,7 +256,11 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "glm-3-turbo": {
         "capability_level": 1,
         "suitable_roles": [ModelRole.QUICK_ANALYSIS],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.FAST_RESPONSE, ModelFeature.COST_EFFECTIVE],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.FAST_RESPONSE,
+            ModelFeature.COST_EFFECTIVE,
+        ],
         "recommended_depths": ["快速", "基础"],
         "performance_metrics": {"speed": 5, "cost": 5, "quality": 3},
         "description": "智谱GLM-3 Turbo，快速版本",
@@ -239,7 +276,11 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "glm-4-plus": {
         "capability_level": 4,
         "suitable_roles": [ModelRole.BOTH],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.LONG_CONTEXT, ModelFeature.REASONING],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.LONG_CONTEXT,
+            ModelFeature.REASONING,
+        ],
         "recommended_depths": ["标准", "深度", "全面"],
         "performance_metrics": {"speed": 3, "cost": 2, "quality": 5},
         "description": "智谱GLM-4 Plus，旗舰版本",
@@ -256,7 +297,11 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "claude-3-sonnet": {
         "capability_level": 3,
         "suitable_roles": [ModelRole.BOTH],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.LONG_CONTEXT, ModelFeature.VISION],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.LONG_CONTEXT,
+            ModelFeature.VISION,
+        ],
         "recommended_depths": ["基础", "标准", "深度"],
         "performance_metrics": {"speed": 4, "cost": 3, "quality": 4},
         "description": "Claude 3 Sonnet，平衡版本",
@@ -264,7 +309,12 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "claude-3-opus": {
         "capability_level": 4,
         "suitable_roles": [ModelRole.BOTH],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.LONG_CONTEXT, ModelFeature.REASONING, ModelFeature.VISION],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.LONG_CONTEXT,
+            ModelFeature.REASONING,
+            ModelFeature.VISION,
+        ],
         "recommended_depths": ["标准", "深度", "全面"],
         "performance_metrics": {"speed": 3, "cost": 2, "quality": 5},
         "description": "Claude 3 Opus，旗舰版本",
@@ -272,7 +322,12 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "claude-3.5-sonnet": {
         "capability_level": 5,
         "suitable_roles": [ModelRole.BOTH],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.LONG_CONTEXT, ModelFeature.REASONING, ModelFeature.VISION],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.LONG_CONTEXT,
+            ModelFeature.REASONING,
+            ModelFeature.VISION,
+        ],
         "recommended_depths": ["标准", "深度", "全面"],
         "performance_metrics": {"speed": 4, "cost": 2, "quality": 5},
         "description": "Claude 3.5 Sonnet，最新旗舰",
@@ -289,7 +344,12 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "gemini-1.5-pro": {
         "capability_level": 4,
         "suitable_roles": [ModelRole.BOTH],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.LONG_CONTEXT, ModelFeature.REASONING, ModelFeature.VISION],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.LONG_CONTEXT,
+            ModelFeature.REASONING,
+            ModelFeature.VISION,
+        ],
         "recommended_depths": ["标准", "深度", "全面"],
         "performance_metrics": {"speed": 4, "cost": 3, "quality": 5},
         "description": "Gemini 1.5 Pro，长上下文旗舰",
@@ -297,7 +357,11 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "gemini-1.5-flash": {
         "capability_level": 2,
         "suitable_roles": [ModelRole.QUICK_ANALYSIS],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.FAST_RESPONSE, ModelFeature.COST_EFFECTIVE],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.FAST_RESPONSE,
+            ModelFeature.COST_EFFECTIVE,
+        ],
         "recommended_depths": ["快速", "基础", "标准"],
         "performance_metrics": {"speed": 5, "cost": 5, "quality": 3},
         "description": "Gemini 1.5 Flash，快速响应版本",
@@ -318,7 +382,11 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "gemini-2.5-flash-lite-preview-06-17": {
         "capability_level": 2,
         "suitable_roles": [ModelRole.QUICK_ANALYSIS],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.FAST_RESPONSE, ModelFeature.COST_EFFECTIVE],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.FAST_RESPONSE,
+            ModelFeature.COST_EFFECTIVE,
+        ],
         "recommended_depths": ["快速", "基础"],
         "performance_metrics": {"speed": 5, "cost": 5, "quality": 3},
         "description": "Gemini 2.5 Flash Lite，轻量预览版",
@@ -343,7 +411,11 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
     "moonshot-v1-128k": {
         "capability_level": 4,
         "suitable_roles": [ModelRole.DEEP_ANALYSIS],
-        "features": [ModelFeature.TOOL_CALLING, ModelFeature.LONG_CONTEXT, ModelFeature.REASONING],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.LONG_CONTEXT,
+            ModelFeature.REASONING,
+        ],
         "recommended_depths": ["标准", "深度", "全面"],
         "performance_metrics": {"speed": 2, "cost": 2, "quality": 5},
         "description": "Moonshot V1 128K，超长上下文旗舰",
@@ -366,7 +438,11 @@ def get_model_capability_badge(level: int) -> Dict[str, str]:
 def get_role_badge(role: ModelRole) -> Dict[str, str]:
     """获取角色徽章样式"""
     badges = {
-        ModelRole.QUICK_ANALYSIS: {"text": "快速分析", "color": "success", "icon": "⚡"},
+        ModelRole.QUICK_ANALYSIS: {
+            "text": "快速分析",
+            "color": "success",
+            "icon": "⚡",
+        },
         ModelRole.DEEP_ANALYSIS: {"text": "深度推理", "color": "warning", "icon": "🧠"},
         ModelRole.BOTH: {"text": "通用", "color": "primary", "icon": "🎯"},
     }
@@ -377,7 +453,11 @@ def get_feature_badge(feature: ModelFeature) -> Dict[str, str]:
     """获取特性徽章样式"""
     badges = {
         ModelFeature.TOOL_CALLING: {"text": "工具调用", "color": "info", "icon": "🔧"},
-        ModelFeature.LONG_CONTEXT: {"text": "长上下文", "color": "success", "icon": "📚"},
+        ModelFeature.LONG_CONTEXT: {
+            "text": "长上下文",
+            "color": "success",
+            "icon": "📚",
+        },
         ModelFeature.REASONING: {"text": "强推理", "color": "warning", "icon": "🧠"},
         ModelFeature.VISION: {"text": "视觉", "color": "primary", "icon": "👁️"},
         ModelFeature.FAST_RESPONSE: {"text": "快速", "color": "success", "icon": "⚡"},

@@ -3,7 +3,7 @@
 ## 📋 测试概述
 
 **测试时间**: 2025-10-07 09:28-09:30
-**测试环境**: Windows 11, Python 3.11, MongoDB + Redis
+**测试环境**: Windows 11, Python 3.11, PostgreSQL + Redis
 **测试方式**: 启动后端服务，观察配置桥接日志
 
 ## ✅ 测试结果

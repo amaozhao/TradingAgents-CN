@@ -2,19 +2,16 @@
 """
 运行完整的股票分析，观察DeepSeek成本计算的详细日志
 """
-import importlib
 
+import importlib
 import os
 import sys
-from pathlib import Path
-from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
+
 
 def test_full_stock_analysis():
     """运行完整的股票分析"""
@@ -27,24 +24,30 @@ def test_full_stock_analysis():
         return False
 
     try:
-        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.setup'), 'TradingAgentsGraph')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        TradingAgentsGraph = getattr(
+            importlib.import_module("trader.graph.setup"), "TradingAgentsGraph"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         print("🔧 初始化交易分析图...")
 
         # 配置DeepSeek
         config = DEFAULT_CONFIG.copy()
-        config.update({
-            "llm_provider": "deepseek",
-            "deep_think_llm": "deepseek-chat",
-            "quick_think_llm": "deepseek-chat",
-            "max_debate_rounds": 1,  # 减少轮次，节省时间
-            "max_risk_discuss_rounds": 1,
-            "online_tools": True,
-            "memory_enabled": False
-        })
+        config.update(
+            {
+                "llm_provider": "deepseek",
+                "deep_think_llm": "deepseek-chat",
+                "quick_think_llm": "deepseek-chat",
+                "max_debate_rounds": 1,  # 减少轮次，节省时间
+                "max_risk_discuss_rounds": 1,
+                "online_tools": True,
+                "memory_enabled": False,
+            }
+        )
 
-        print(f"📊 配置信息:")
+        print("📊 配置信息:")
         print(f"   LLM提供商: {config['llm_provider']}")
         print(f"   深度思考模型: {config['deep_think_llm']}")
         print(f"   快速思考模型: {config['quick_think_llm']}")
@@ -53,34 +56,34 @@ def test_full_stock_analysis():
         graph = TradingAgentsGraph(config)
 
         # 设置分析师（只选择市场分析师，减少复杂度）
-        print(f"📈 设置分析师...")
+        print("📈 设置分析师...")
         graph.setup_and_compile(selected_analysts=["market"])
 
-        print(f"✅ 图设置完成")
+        print("✅ 图设置完成")
 
         # 准备输入
         input_data = {
             "company_of_interest": "300059",  # 东方财富
-            "trade_date": "2025-07-08"
+            "trade_date": "2025-07-08",
         }
 
         print(f"\n📊 开始分析股票: {input_data['company_of_interest']}")
         print(f"📅 交易日期: {input_data['trade_date']}")
-        print("\n" + "="*100)
+        print("\n" + "=" * 100)
         print("开始完整分析流程，请观察DeepSeek成本计算的详细日志：")
-        print("="*100)
+        print("=" * 100)
 
         # 运行分析
         result = graph.run(input_data)
 
-        print("="*100)
+        print("=" * 100)
         print("分析完成！")
-        print("="*100)
+        print("=" * 100)
 
         # 输出结果摘要
         if result and "decision" in result:
             decision = result["decision"]
-            print(f"\n📋 分析结果摘要:")
+            print("\n📋 分析结果摘要:")
             print(f"   投资建议: {decision.get('action', 'N/A')}")
             print(f"   置信度: {decision.get('confidence', 'N/A')}")
             print(f"   目标价格: {decision.get('target_price', 'N/A')}")
@@ -93,9 +96,10 @@ def test_full_stock_analysis():
 
     except Exception as e:
         print(f"❌ 完整分析测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主函数"""
@@ -115,6 +119,7 @@ def main():
         print("\n❌ 完整分析测试失败")
 
     return success
+
 
 if __name__ == "__main__":
     success = main()

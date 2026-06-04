@@ -1,8 +1,9 @@
 """
 统一API响应格式工具
 """
-from datetime import datetime
-from typing import Any, Optional, Dict
+
+from typing import Any, Dict
+
 from app.utils.timezone import now_tz
 
 
@@ -14,7 +15,7 @@ def ok(data: Any = None, message: str = "ok") -> Dict[str, Any]:
         "success": True,
         "data": data,
         "message": message,
-        "timestamp": now_tz().isoformat()
+        "timestamp": now_tz().isoformat(),
     }
 
 
@@ -25,6 +26,5 @@ def fail(message: str = "error", code: int = 500, data: Any = None) -> Dict[str,
         "data": data,
         "message": message,
         "code": code,
-        "timestamp": now_tz().isoformat()
+        "timestamp": now_tz().isoformat(),
     }
-

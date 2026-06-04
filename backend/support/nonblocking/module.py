@@ -5,9 +5,10 @@
 """
 
 import asyncio
-import aiohttp
 import time
-import json
+
+import aiohttp
+
 
 async def test_non_blocking_analysis():
     """测试非阻塞分析功能"""
@@ -15,10 +16,7 @@ async def test_non_blocking_analysis():
     base_url = "http://localhost:8000"
 
     # 首先登录获取token
-    login_data = {
-        "username": "admin",
-        "password": "admin123"
-    }
+    login_data = {"username": "admin", "password": "admin123"}
 
     async with aiohttp.ClientSession() as session:
         print("🔐 正在登录...")
@@ -42,16 +40,16 @@ async def test_non_blocking_analysis():
                 "research_depth": "标准",
                 "selected_analysts": ["market", "fundamentals"],
                 "quick_analysis_model": "qwen-turbo",
-                "deep_analysis_model": "qwen-plus"
-            }
+                "deep_analysis_model": "qwen-plus",
+            },
         }
 
         print("📊 提交分析任务...")
         start_time = time.time()
 
-        async with session.post(f"{base_url}/api/analysis/single",
-                               json=analysis_data,
-                               headers=headers) as resp:
+        async with session.post(
+            f"{base_url}/api/analysis/single", json=analysis_data, headers=headers
+        ) as resp:
             submit_time = time.time() - start_time
             print(f"⏱️ 任务提交耗时: {submit_time:.2f}秒")
 
@@ -82,8 +80,9 @@ async def test_non_blocking_analysis():
 
         # 测试任务状态查询
         test_start = time.time()
-        async with session.get(f"{base_url}/api/analysis/tasks/{task_id}/status",
-                              headers=headers) as resp:
+        async with session.get(
+            f"{base_url}/api/analysis/tasks/{task_id}/status", headers=headers
+        ) as resp:
             status_time = time.time() - test_start
             print(f"📋 任务状态响应时间: {status_time:.2f}秒 - 状态: {resp.status}")
 
@@ -95,14 +94,16 @@ async def test_non_blocking_analysis():
         print("\n⏳ 等待5秒后再次检查任务状态...")
         await asyncio.sleep(5)
 
-        async with session.get(f"{base_url}/api/analysis/tasks/{task_id}/status",
-                              headers=headers) as resp:
+        async with session.get(
+            f"{base_url}/api/analysis/tasks/{task_id}/status", headers=headers
+        ) as resp:
             if resp.status == 200:
                 status_result = await resp.json()
                 print(f"📊 5秒后任务状态: {status_result['data']['status']}")
                 print(f"📈 任务进度: {status_result['data'].get('progress', 0)}%")
             else:
                 print(f"❌ 状态查询失败: {resp.status}")
+
 
 async def test_concurrent_requests():
     """测试并发请求"""
@@ -123,10 +124,11 @@ async def test_concurrent_requests():
 
     print("🏥 并发健康检查结果:")
     for i, (status, duration) in enumerate(results):
-        print(f"  请求 {i+1}: 状态 {status}, 耗时 {duration:.3f}秒")
+        print(f"  请求 {i + 1}: 状态 {status}, 耗时 {duration:.3f}秒")
 
     avg_time = sum(duration for _, duration in results) / len(results)
     print(f"📊 平均响应时间: {avg_time:.3f}秒")
+
 
 if __name__ == "__main__":
     print("🧪 开始测试后端非阻塞功能")

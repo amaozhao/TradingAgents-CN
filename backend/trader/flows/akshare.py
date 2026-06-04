@@ -1,7 +1,6 @@
 """Compatibility helpers for legacy AKShare dataflow imports."""
 
 import asyncio
-from typing import Optional
 
 import pandas as pd
 

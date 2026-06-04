@@ -41,7 +41,9 @@ async def list_paper_positions(session, user_id: str) -> list[dict[str, Any]]:
     return [_document_to_dict(row) for row in result.scalars()]
 
 
-async def list_paper_orders(session, user_id: str, *, limit: int) -> list[dict[str, Any]]:
+async def list_paper_orders(
+    session, user_id: str, *, limit: int
+) -> list[dict[str, Any]]:
     result = await session.execute(build_paper_orders_select(user_id, limit=limit))
     return [_document_to_dict(row) for row in result.scalars()]
 
@@ -52,8 +54,10 @@ def _document_to_dict(row) -> dict[str, Any]:
         **payload,
         "legacy_id": row.legacy_id,
         "user_id": row.user_id,
-        "created_at": payload.get("created_at") or (row.created_at.isoformat() if row.created_at else None),
-        "updated_at": payload.get("updated_at") or (row.updated_at.isoformat() if row.updated_at else None),
+        "created_at": payload.get("created_at")
+        or (row.created_at.isoformat() if row.created_at else None),
+        "updated_at": payload.get("updated_at")
+        or (row.updated_at.isoformat() if row.updated_at else None),
     }
     if hasattr(row, "code"):
         data["code"] = row.code

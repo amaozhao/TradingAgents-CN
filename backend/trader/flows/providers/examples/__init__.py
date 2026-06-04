@@ -7,7 +7,7 @@
 from .sdk import ExampleSDKProvider
 
 __all__ = [
-    'ExampleSDKProvider',
+    "ExampleSDKProvider",
 ]
 
 

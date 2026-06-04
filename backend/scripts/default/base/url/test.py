@@ -6,18 +6,14 @@
 2. 创建分析配置
 3. 验证 backend_url 是否使用了 default_base_url
 """
+
 import importlib
 
-import sys
-from pathlib import Path
-
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from pymongo import MongoClient
-from app.core.config import settings
-from app.services.analysis.simple import create_analysis_config, get_provider_and_url_by_model_sync
+from app.db.documentstore import create_sync_client
+from app.services.analysis.simple import (
+    create_analysis_config,
+    get_provider_and_url_by_model_sync,
+)
 
 
 def test_default_base_url():
@@ -28,8 +24,8 @@ def test_default_base_url():
     print("=" * 60)
 
     # 连接数据库
-    client = MongoClient(settings.mongo_uri)
-    db = client[settings.mongo_db]
+    client = create_sync_client()
+    db = client["trading_agents"]
     providers_collection = db.llm_providers
 
     # 测试厂家
@@ -53,10 +49,9 @@ def test_default_base_url():
         print(f"\n2️⃣ 修改 default_base_url 为: {test_url}")
 
         providers_collection.update_one(
-            {"name": test_provider},
-            {"$set": {"default_base_url": test_url}}
+            {"name": test_provider}, {"$set": {"default_base_url": test_url}}
         )
-        print(f"✅ 修改成功")
+        print("✅ 修改成功")
 
         # 3️⃣ 测试 get_provider_and_url_by_model_sync
         print(f"\n3️⃣ 测试 get_provider_and_url_by_model_sync('{test_model}')...")
@@ -66,19 +61,19 @@ def test_default_base_url():
         if provider_info["backend_url"] == test_url:
             print(f"✅ backend_url 正确: {provider_info['backend_url']}")
         else:
-            print(f"❌ backend_url 错误!")
+            print("❌ backend_url 错误!")
             print(f"   期望: {test_url}")
             print(f"   实际: {provider_info['backend_url']}")
 
         # 4️⃣ 测试 create_analysis_config
-        print(f"\n4️⃣ 测试 create_analysis_config...")
+        print("\n4️⃣ 测试 create_analysis_config...")
         config = create_analysis_config(
             research_depth=3,
             selected_analysts=["market", "fundamentals"],
             quick_model=test_model,
             deep_model=test_model,
             llm_provider=test_provider,
-            market_type="A股"
+            market_type="A股",
         )
 
         print(f"   配置中的 backend_url: {config.get('backend_url')}")
@@ -86,24 +81,22 @@ def test_default_base_url():
         if config.get("backend_url") == test_url:
             print(f"✅ 配置中的 backend_url 正确: {config['backend_url']}")
         else:
-            print(f"❌ 配置中的 backend_url 错误!")
+            print("❌ 配置中的 backend_url 错误!")
             print(f"   期望: {test_url}")
             print(f"   实际: {config.get('backend_url')}")
 
         # 5️⃣ 恢复原始配置
-        print(f"\n5️⃣ 恢复原始配置...")
+        print("\n5️⃣ 恢复原始配置...")
         if original_url:
             providers_collection.update_one(
-                {"name": test_provider},
-                {"$set": {"default_base_url": original_url}}
+                {"name": test_provider}, {"$set": {"default_base_url": original_url}}
             )
             print(f"✅ 已恢复为: {original_url}")
         else:
             providers_collection.update_one(
-                {"name": test_provider},
-                {"$unset": {"default_base_url": ""}}
+                {"name": test_provider}, {"$unset": {"default_base_url": ""}}
             )
-            print(f"✅ 已删除 default_base_url 字段")
+            print("✅ 已删除 default_base_url 字段")
 
         print("\n" + "=" * 60)
         print("✅ 测试完成")
@@ -111,7 +104,7 @@ def test_default_base_url():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
         # 尝试恢复原始配置
@@ -119,10 +112,10 @@ def test_default_base_url():
             if original_url:
                 providers_collection.update_one(
                     {"name": test_provider},
-                    {"$set": {"default_base_url": original_url}}
+                    {"$set": {"default_base_url": original_url}},
                 )
-                print(f"✅ 已恢复原始配置")
-        except:
+                print("✅ 已恢复原始配置")
+        except Exception:
             pass
 
     finally:

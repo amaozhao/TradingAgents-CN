@@ -3,20 +3,20 @@
 重启API服务并测试保存功能的脚本
 """
 
-import requests
 import time
-import json
-import subprocess
-import os
 from pathlib import Path
+
+import requests
+
 
 def check_api_running():
     """检查API是否在运行"""
     try:
         response = requests.get("http://localhost:8000/api/health", timeout=5)
         return response.status_code == 200
-    except:
+    except Exception:
         return False
+
 
 def test_analysis_with_save():
     """测试分析功能和保存功能"""
@@ -47,20 +47,18 @@ def test_analysis_with_save():
                 "include_risk": False,
                 "language": "zh-CN",
                 "quick_analysis_model": "qwen-turbo",
-                "deep_analysis_model": "qwen-max"
-            }
+                "deep_analysis_model": "qwen-max",
+            },
         }
 
         # 添加认证头
         headers = {
             "Content-Type": "application/json",
-            "Authorization": "Bearer admin_token"
+            "Authorization": "Bearer admin_token",
         }
 
         response = requests.post(
-            f"{base_url}/api/analysis/single",
-            json=analysis_request,
-            headers=headers
+            f"{base_url}/api/analysis/single", json=analysis_request, headers=headers
         )
 
         if response.status_code == 200:
@@ -73,14 +71,13 @@ def test_analysis_with_save():
             return False
 
         # 3. 监控任务状态
-        print(f"\n3. 监控任务状态...")
+        print("\n3. 监控任务状态...")
         max_wait_time = 300  # 最多等待5分钟
         start_time = time.time()
 
         while time.time() - start_time < max_wait_time:
             status_response = requests.get(
-                f"{base_url}/api/analysis/tasks/{task_id}/status",
-                headers=headers
+                f"{base_url}/api/analysis/tasks/{task_id}/status", headers=headers
             )
 
             if status_response.status_code == 200:
@@ -95,7 +92,7 @@ def test_analysis_with_save():
                     print("✅ 分析任务完成!")
 
                     # 4. 检查文件保存
-                    print(f"\n4. 检查文件保存...")
+                    print("\n4. 检查文件保存...")
 
                     # 检查data目录
                     data_dir = Path("data/analysis_results/000002/2025-08-20")
@@ -111,28 +108,28 @@ def test_analysis_with_save():
                                 for file in report_files:
                                     print(f"   - {file.name}")
                             else:
-                                print(f"⚠️ reports目录存在但没有报告文件")
+                                print("⚠️ reports目录存在但没有报告文件")
                         else:
-                            print(f"❌ reports目录不存在")
+                            print("❌ reports目录不存在")
                     else:
                         print(f"❌ 分析结果目录不存在: {data_dir}")
 
                     # 5. 获取分析结果
-                    print(f"\n5. 获取分析结果...")
+                    print("\n5. 获取分析结果...")
                     result_response = requests.get(
                         f"{base_url}/api/analysis/tasks/{task_id}/result",
-                        headers=headers
+                        headers=headers,
                     )
 
                     if result_response.status_code == 200:
                         result_data = result_response.json()
-                        print(f"✅ 成功获取分析结果")
+                        print("✅ 成功获取分析结果")
                         print(f"   股票代码: {result_data.get('stock_code')}")
                         print(f"   分析日期: {result_data.get('analysis_date')}")
 
                         # 检查结果内容
-                        if 'detailed_analysis' in result_data:
-                            detailed = result_data['detailed_analysis']
+                        if "detailed_analysis" in result_data:
+                            detailed = result_data["detailed_analysis"]
                             print(f"   详细分析: {type(detailed)}")
                             if isinstance(detailed, dict):
                                 print(f"   详细分析键: {list(detailed.keys())}")
@@ -159,6 +156,7 @@ def test_analysis_with_save():
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         return False
+
 
 if __name__ == "__main__":
     success = test_analysis_with_save()

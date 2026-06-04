@@ -4,14 +4,12 @@
 测试更新后的统一基本面分析函数
 验证300750的估值指标是否正确显示
 """
+
 import importlib
 
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from trader.default import DEFAULT_CONFIG
 from trader.agents.utils.utils import Toolkit
+from trader.default import DEFAULT_CONFIG
+
 
 def test_300750_fundamentals():
     """测试300750的基本面分析"""
@@ -19,7 +17,7 @@ def test_300750_fundamentals():
 
     # 设置研究深度
     config = DEFAULT_CONFIG.copy()
-    config['research_depth'] = '标准'
+    config["research_depth"] = "标准"
 
     # 创建Toolkit实例
     toolkit = Toolkit(config=config)
@@ -30,7 +28,7 @@ def test_300750_fundamentals():
 
     try:
         result = toolkit.get_stock_fundamentals_unified(ticker)
-        print(f"✅ 成功获取基本面数据")
+        print("✅ 成功获取基本面数据")
 
         # 检查是否包含估值指标
         if "PE" in result or "市盈率" in result:
@@ -44,16 +42,17 @@ def test_300750_fundamentals():
             print("❌ 未发现PB估值指标")
 
         # 打印完整的分析结果
-        print(f"\n" + "="*80)
-        print(f"📋 完整分析结果:")
-        print("="*80)
+        print("\n" + "=" * 80)
+        print("📋 完整分析结果:")
+        print("=" * 80)
         print(result)
-        print("="*80)
+        print("=" * 80)
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     test_300750_fundamentals()

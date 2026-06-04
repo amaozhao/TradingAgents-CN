@@ -4,7 +4,9 @@ from app.db.preference import build_user_favorites_select, build_user_tags_selec
 
 
 def test_user_favorites_select_filters_user_and_deleted_split_columns():
-    sql = str(build_user_favorites_select("user-1").compile(dialect=postgresql.dialect()))
+    sql = str(
+        build_user_favorites_select("user-1").compile(dialect=postgresql.dialect())
+    )
 
     assert "FROM user_favorites" in sql
     assert "user_favorites.user_id =" in sql

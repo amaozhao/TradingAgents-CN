@@ -12,6 +12,7 @@ Usage:
   # 3) Run:
   #    python scripts/qianfan/connect/test.py
 """
+
 import importlib
 import os
 import sys
@@ -21,11 +22,13 @@ from typing import Optional
 # Try to load .env if python-dotenv is available
 try:
     from dotenv import load_dotenv  # type: ignore
+
     load_dotenv()
 except Exception:
     pass
 
 from langchain_core.messages import HumanMessage
+
 from trader.llm.adapters.openai.base import (
     create_openai_compatible_llm,
 )
@@ -52,8 +55,12 @@ def main() -> int:
     print(f"SECRET_KEY set  : {'YES' if sk else 'NO'}")
 
     if not api_key and (not ak or not sk):
-        print("[ERROR] QIANFAN_API_KEY is missing, or QIANFAN_ACCESS_KEY and/or QIANFAN_SECRET_KEY are missing.")
-        print("Please set QIANFAN_API_KEY, or both QIANFAN_ACCESS_KEY and QIANFAN_SECRET_KEY in your .env file and re-run.")
+        print(
+            "[ERROR] QIANFAN_API_KEY is missing, or QIANFAN_ACCESS_KEY and/or QIANFAN_SECRET_KEY are missing."
+        )
+        print(
+            "Please set QIANFAN_API_KEY, or both QIANFAN_ACCESS_KEY and QIANFAN_SECRET_KEY in your .env file and re-run."
+        )
         return 2
 
     try:
@@ -87,7 +94,7 @@ def main() -> int:
         return 0
     except Exception as e:
         print(f"[ERROR] LLM call failed: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return 4
 

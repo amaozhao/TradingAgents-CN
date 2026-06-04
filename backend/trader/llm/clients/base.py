@@ -1,6 +1,6 @@
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Optional
-import warnings
 
 
 def normalize_content(response):
@@ -8,8 +8,11 @@ def normalize_content(response):
     content = getattr(response, "content", None)
     if isinstance(content, list):
         texts = [
-            item.get("text", "") if isinstance(item, dict) and item.get("type") == "text"
-            else item if isinstance(item, str) else ""
+            item.get("text", "")
+            if isinstance(item, dict) and item.get("type") == "text"
+            else item
+            if isinstance(item, str)
+            else ""
             for item in content
         ]
         response.content = "\n".join(text for text in texts if text)

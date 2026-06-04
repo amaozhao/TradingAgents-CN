@@ -8,7 +8,7 @@
 
 ### Docker容器化部署
 - ✅ **一键部署**: Docker Compose完整环境
-- ✅ **服务编排**: Web应用、MongoDB、Redis集成
+- ✅ **服务编排**: Web应用、PostgreSQL、Redis集成
 - ✅ **开发优化**: Volume映射，实时代码同步
 
 ### 专业报告导出
@@ -105,7 +105,7 @@ FINNHUB_API_KEY=your_finnhub_api_key_here
 GOOGLE_API_KEY=your_google_api_key_here
 
 # 数据库配置 (可选，默认禁用)
-MONGODB_ENABLED=false
+POSTGRES_ENABLED=true
 REDIS_ENABLED=false
 ```
 

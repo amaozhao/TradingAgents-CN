@@ -2,18 +2,19 @@
 # -*- coding: utf-8 -*-
 """测试定时任务管理功能"""
 
-import requests
-import json
 from datetime import datetime
 
+import requests
+
 BASE_URL = "http://localhost:8000"
+
 
 def get_auth_token():
     """获取认证token"""
     try:
         response = requests.post(
             f"{BASE_URL}/api/auth/login",
-            json={"username": "admin", "password": "admin123"}
+            json={"username": "admin", "password": "admin123"},
         )
         if response.status_code == 200:
             data = response.json()
@@ -66,13 +67,15 @@ def test_get_job_detail(token, job_id):
 
     try:
         headers = {"Authorization": f"Bearer {token}"}
-        response = requests.get(f"{BASE_URL}/api/scheduler/jobs/{job_id}", headers=headers)
+        response = requests.get(
+            f"{BASE_URL}/api/scheduler/jobs/{job_id}", headers=headers
+        )
 
         if response.status_code == 200:
             result = response.json()
             job = result.get("data", {})
-            print(f"✅ 获取任务详情成功")
-            print(f"\n任务详情:")
+            print("✅ 获取任务详情成功")
+            print("\n任务详情:")
             print(f"  - ID: {job.get('id')}")
             print(f"  - 名称: {job.get('name')}")
             print(f"  - 函数: {job.get('func')}")
@@ -97,7 +100,9 @@ def test_pause_job(token, job_id):
 
     try:
         headers = {"Authorization": f"Bearer {token}"}
-        response = requests.post(f"{BASE_URL}/api/scheduler/jobs/{job_id}/pause", headers=headers)
+        response = requests.post(
+            f"{BASE_URL}/api/scheduler/jobs/{job_id}/pause", headers=headers
+        )
 
         if response.status_code == 200:
             result = response.json()
@@ -119,7 +124,9 @@ def test_resume_job(token, job_id):
 
     try:
         headers = {"Authorization": f"Bearer {token}"}
-        response = requests.post(f"{BASE_URL}/api/scheduler/jobs/{job_id}/resume", headers=headers)
+        response = requests.post(
+            f"{BASE_URL}/api/scheduler/jobs/{job_id}/resume", headers=headers
+        )
 
         if response.status_code == 200:
             result = response.json()
@@ -141,7 +148,9 @@ def test_trigger_job(token, job_id):
 
     try:
         headers = {"Authorization": f"Bearer {token}"}
-        response = requests.post(f"{BASE_URL}/api/scheduler/jobs/{job_id}/trigger", headers=headers)
+        response = requests.post(
+            f"{BASE_URL}/api/scheduler/jobs/{job_id}/trigger", headers=headers
+        )
 
         if response.status_code == 200:
             result = response.json()
@@ -168,8 +177,8 @@ def test_get_stats(token):
         if response.status_code == 200:
             result = response.json()
             stats = result.get("data", {})
-            print(f"✅ 获取统计信息成功")
-            print(f"\n统计信息:")
+            print("✅ 获取统计信息成功")
+            print("\n统计信息:")
             print(f"  - 总任务数: {stats.get('total_jobs')}")
             print(f"  - 运行中任务数: {stats.get('running_jobs')}")
             print(f"  - 暂停任务数: {stats.get('paused_jobs')}")
@@ -191,7 +200,9 @@ def test_get_history(token):
 
     try:
         headers = {"Authorization": f"Bearer {token}"}
-        response = requests.get(f"{BASE_URL}/api/scheduler/history?limit=10", headers=headers)
+        response = requests.get(
+            f"{BASE_URL}/api/scheduler/history?limit=10", headers=headers
+        )
 
         if response.status_code == 200:
             result = response.json()

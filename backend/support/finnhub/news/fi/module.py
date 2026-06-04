@@ -8,47 +8,43 @@
 2. 新闻数据文件路径是否存在
 3. 错误处理是否正常工作
 """
+
 import importlib
-
 import os
-import sys
-from pathlib import Path
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from trader.flows.config import get_config, set_config
-from trader.flows.interface import get_finnhub_news
+from trader.flows.config import get_config
 from trader.flows.finnhub import get_data_in_range
+from trader.flows.interface import get_finnhub_news
+
 
 def test_data_dir_config():
     """测试数据目录配置"""
     print("=== 测试数据目录配置 ===")
 
     config = get_config()
-    data_dir = config.get('data_dir')
+    data_dir = config.get("data_dir")
 
     print(f"当前数据目录配置: {data_dir}")
     print(f"数据目录是否存在: {os.path.exists(data_dir) if data_dir else False}")
 
     # 检查是否为跨平台路径
     if data_dir:
-        if '/' in data_dir and '\\' in data_dir:
+        if "/" in data_dir and "\\" in data_dir:
             print("⚠️ 警告: 数据目录路径混合了Unix和Windows分隔符")
-        elif data_dir.startswith('/Users/') and os.name == 'nt':
+        elif data_dir.startswith("/Users/") and os.name == "nt":
             print("⚠️ 警告: 在Windows系统上使用了Unix路径")
         else:
             print("✅ 数据目录路径格式正确")
 
     return data_dir
 
+
 def test_finnhub_news_path():
     """测试Finnhub新闻数据路径"""
     print("\n=== 测试Finnhub新闻数据路径 ===")
 
     config = get_config()
-    data_dir = config.get('data_dir')
+    data_dir = config.get("data_dir")
 
     if not data_dir:
         print("❌ 数据目录未配置")
@@ -56,7 +52,9 @@ def test_finnhub_news_path():
 
     # 测试AAPL新闻数据路径
     ticker = "AAPL"
-    news_data_path = os.path.join(data_dir, "finnhub_data", "news_data", f"{ticker}_data_formatted.json")
+    news_data_path = os.path.join(
+        data_dir, "finnhub_data", "news_data", f"{ticker}_data_formatted.json"
+    )
 
     print(f"新闻数据文件路径: {news_data_path}")
     print(f"文件是否存在: {os.path.exists(news_data_path)}")
@@ -74,12 +72,13 @@ def test_finnhub_news_path():
 
     return os.path.exists(news_data_path)
 
+
 def test_get_data_in_range():
     """测试get_data_in_range函数的错误处理"""
     print("\n=== 测试get_data_in_range错误处理 ===")
 
     config = get_config()
-    data_dir = config.get('data_dir')
+    data_dir = config.get("data_dir")
 
     if not data_dir:
         print("❌ 数据目录未配置")
@@ -91,12 +90,13 @@ def test_get_data_in_range():
         start_date="2025-01-01",
         end_date="2025-01-02",
         data_type="news_data",
-        data_dir=data_dir
+        data_dir=data_dir,
     )
 
     print(f"不存在股票的返回结果: {result}")
     print(f"返回结果类型: {type(result)}")
     print(f"是否为空字典: {result == {}}")
+
 
 def test_get_finnhub_news():
     """测试get_finnhub_news函数"""
@@ -104,20 +104,19 @@ def test_get_finnhub_news():
 
     # 测试不存在的股票代码
     result = get_finnhub_news(
-        ticker="NONEXISTENT",
-        curr_date="2025-01-02",
-        look_back_days=7
+        ticker="NONEXISTENT", curr_date="2025-01-02", look_back_days=7
     )
 
     print(f"函数返回结果: {result[:200]}...")  # 只显示前200个字符
     print(f"是否包含错误信息: {'无法获取' in result}")
+
 
 def create_sample_data_structure():
     """创建示例数据目录结构"""
     print("\n=== 创建示例数据目录结构 ===")
 
     config = get_config()
-    data_dir = config.get('data_dir')
+    data_dir = config.get("data_dir")
 
     if not data_dir:
         print("❌ 数据目录未配置")
@@ -137,19 +136,20 @@ def create_sample_data_structure():
             "2025-01-01": [
                 {
                     "headline": "Apple发布新产品",
-                    "summary": "苹果公司今日发布了新的产品线..."
+                    "summary": "苹果公司今日发布了新的产品线...",
                 }
             ]
         }
 
-        json = importlib.import_module('json')
-        with open(sample_file, 'w', encoding='utf-8') as f:
+        json = importlib.import_module("json")
+        with open(sample_file, "w", encoding="utf-8") as f:
             json.dump(sample_data, f, ensure_ascii=False, indent=2)
 
         print(f"✅ 创建示例数据文件: {sample_file}")
 
     except Exception as e:
         print(f"❌ 创建目录结构失败: {e}")
+
 
 def main():
     """主测试函数"""
@@ -184,6 +184,7 @@ def main():
     print("2. 运行数据下载脚本获取新闻数据")
     print("3. 检查数据目录权限")
     print(f"4. 确认数据目录存在: {data_dir}")
+
 
 if __name__ == "__main__":
     main()

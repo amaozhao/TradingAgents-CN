@@ -2,15 +2,10 @@
 """
 测试进度显示功能
 """
+
 import importlib
-
 import time
-import sys
-from pathlib import Path
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
 
 def test_progress_callback():
     """测试进度回调功能"""
@@ -33,7 +28,7 @@ def test_progress_callback():
         "初始化分析引擎...",
         "开始分析 AAPL 股票，这可能需要几分钟时间...",
         "分析完成，正在整理结果...",
-        "✅ 分析成功完成！"
+        "✅ 分析成功完成！",
     ]
 
     print("🧪 测试进度回调功能")
@@ -45,10 +40,13 @@ def test_progress_callback():
 
     print("✅ 进度回调测试完成！")
 
+
 def test_progress_tracker():
     """测试进度跟踪器"""
     try:
-        AnalysisProgressTracker = getattr(importlib.import_module('web.utils.tracker'), 'AnalysisProgressTracker')
+        AnalysisProgressTracker = getattr(
+            importlib.import_module("web.utils.tracker"), "AnalysisProgressTracker"
+        )
 
         print("🧪 测试进度跟踪器")
         print("=" * 50)
@@ -72,7 +70,7 @@ def test_progress_tracker():
             "获取股票数据...",
             "进行技术分析...",
             "分析完成，正在整理结果...",
-            "✅ 分析成功完成！"
+            "✅ 分析成功完成！",
         ]
 
         for step in steps:
@@ -85,6 +83,7 @@ def test_progress_tracker():
     except Exception as e:
         print(f"❌ 进度跟踪器测试失败: {e}")
         return False
+
 
 def main():
     """主测试函数"""
@@ -99,6 +98,7 @@ def main():
     test_progress_tracker()
 
     print("\n🎉 所有测试完成！")
+
 
 if __name__ == "__main__":
     main()

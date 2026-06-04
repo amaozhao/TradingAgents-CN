@@ -3,16 +3,15 @@
 财务数据服务
 统一管理三数据源的财务数据存储和查询
 """
-import importlib
 
+import importlib
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 
-from pymongo import ReplaceOne
-
 from app.core.config import settings
-from app.core.database import get_mongo_db
+from app.core.database import get_postgres_db
+from app.db.documentstore import ReplaceOne
 from app.db.dual import dual_write_hot_documents
 
 logger = logging.getLogger(__name__)
@@ -28,9 +27,9 @@ class FinancialDataService:
     async def initialize(self):
         """初始化服务"""
         try:
-            self.db = get_mongo_db()
+            self.db = get_postgres_db()
             if self.db is None:
-                raise Exception("MongoDB数据库未初始化")
+                raise Exception("PostgreSQL数据库未初始化")
 
             # 🔥 确保索引存在（提升查询和 upsert 性能）
             await self._ensure_indexes()
@@ -56,21 +55,31 @@ class FinancialDataService:
             )
 
             # 2. 股票代码索引（查询单只股票的财务数据）
-            await collection.create_index([("symbol", 1)], name="symbol_index", background=True)
+            await collection.create_index(
+                [("symbol", 1)], name="symbol_index", background=True
+            )
 
             # 3. 报告期索引（按时间范围查询）
-            await collection.create_index([("report_period", -1)], name="report_period_index", background=True)
+            await collection.create_index(
+                [("report_period", -1)], name="report_period_index", background=True
+            )
 
             # 4. 复合索引：股票代码+报告期（常用查询）
             await collection.create_index(
-                [("symbol", 1), ("report_period", -1)], name="symbol_period_index", background=True
+                [("symbol", 1), ("report_period", -1)],
+                name="symbol_period_index",
+                background=True,
             )
 
             # 5. 报告类型索引（按季报/年报筛选）
-            await collection.create_index([("report_type", 1)], name="report_type_index", background=True)
+            await collection.create_index(
+                [("report_type", 1)], name="report_type_index", background=True
+            )
 
             # 6. 更新时间索引（数据维护）
-            await collection.create_index([("updated_at", -1)], name="updated_at_index", background=True)
+            await collection.create_index(
+                [("updated_at", -1)], name="updated_at_index", background=True
+            )
 
             logger.info("✅ 财务数据索引检查完成")
         except Exception as e:
@@ -131,7 +140,11 @@ class FinancialDataService:
                         "data_source": data_item["data_source"],
                     }
 
-                    operations.append(ReplaceOne(filter=filter_doc, replacement=data_item, upsert=True))
+                    operations.append(
+                        ReplaceOne(
+                            filter=filter_doc, replacement=data_item, upsert=True
+                        )
+                    )
                     saved_count += 1
             else:
                 # 单期数据
@@ -141,15 +154,25 @@ class FinancialDataService:
                     "data_source": standardized_data["data_source"],
                 }
 
-                operations.append(ReplaceOne(filter=filter_doc, replacement=standardized_data, upsert=True))
+                operations.append(
+                    ReplaceOne(
+                        filter=filter_doc, replacement=standardized_data, upsert=True
+                    )
+                )
                 saved_count = 1
 
             # 执行批量操作
             if operations:
                 result = await collection.bulk_write(operations)
                 actual_saved = result.upserted_count + result.modified_count
-                postgres_documents = standardized_data if isinstance(standardized_data, list) else [standardized_data]
-                await dual_write_hot_documents("stock_financial_data", postgres_documents)
+                postgres_documents = (
+                    standardized_data
+                    if isinstance(standardized_data, list)
+                    else [standardized_data]
+                )
+                await dual_write_hot_documents(
+                    "stock_financial_data", postgres_documents
+                )
 
                 logger.info(f"✅ {symbol} 财务数据保存完成: {actual_saved}条记录")
                 return actual_saved
@@ -190,7 +213,9 @@ class FinancialDataService:
                 limit=limit,
             )
             if postgres_results:
-                logger.info(f"📊 PostgreSQL查询财务数据: {symbol} 返回 {len(postgres_results)} 条记录")
+                logger.info(
+                    f"📊 PostgreSQL查询财务数据: {symbol} 返回 {len(postgres_results)} 条记录"
+                )
                 return postgres_results
 
         if self.db is None:
@@ -237,8 +262,12 @@ class FinancialDataService:
         limit: int | None,
     ) -> List[Dict[str, Any]]:
         try:
-            get_financial_data = getattr(importlib.import_module('app.db.financial'), 'get_financial_data')
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            get_financial_data = getattr(
+                importlib.import_module("app.db.financial"), "get_financial_data"
+            )
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
 
             async with get_session_factory()() as session:
                 return await get_financial_data(
@@ -250,14 +279,18 @@ class FinancialDataService:
                     limit=limit,
                 )
         except Exception as e:
-            logger.warning(f"PostgreSQL财务数据查询失败，回退MongoDB symbol={symbol}: {e}")
+            logger.warning(
+                f"PostgreSQL财务数据查询失败，回退PostgreSQL symbol={symbol}: {e}"
+            )
             return []
 
     async def get_latest_financial_data(
         self, symbol: str, data_source: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """获取最新财务数据"""
-        results = await self.get_financial_data(symbol=symbol, data_source=data_source, limit=1)
+        results = await self.get_financial_data(
+            symbol=symbol, data_source=data_source, limit=1
+        )
 
         return results[0] if results else None
 
@@ -274,7 +307,10 @@ class FinancialDataService:
             pipeline = [
                 {
                     "$group": {
-                        "_id": {"data_source": "$data_source", "report_type": "$report_type"},
+                        "_id": {
+                            "data_source": "$data_source",
+                            "report_type": "$report_type",
+                        },
                         "count": {"$sum": 1},
                         "latest_period": {"$max": "$report_period"},
                         "symbols": {"$addToSet": "$symbol"},
@@ -333,11 +369,17 @@ class FinancialDataService:
 
             # 根据数据源进行不同的标准化处理
             if data_source == "tushare":
-                return self._standardize_tushare_data(symbol, financial_data, market, report_period, report_type, now)
+                return self._standardize_tushare_data(
+                    symbol, financial_data, market, report_period, report_type, now
+                )
             elif data_source == "akshare":
-                return self._standardize_akshare_data(symbol, financial_data, market, report_period, report_type, now)
+                return self._standardize_akshare_data(
+                    symbol, financial_data, market, report_period, report_type, now
+                )
             elif data_source == "baostock":
-                return self._standardize_baostock_data(symbol, financial_data, market, report_period, report_type, now)
+                return self._standardize_baostock_data(
+                    symbol, financial_data, market, report_period, report_type, now
+                )
             else:
                 logger.warning(f"⚠️ 不支持的数据源: {data_source}")
                 return None
@@ -363,7 +405,8 @@ class FinancialDataService:
             "full_symbol": self._get_full_symbol(symbol, market),
             "market": market,
             "report_period": report_period or financial_data.get("report_period"),
-            "report_type": report_type or financial_data.get("report_type", "quarterly"),
+            "report_type": report_type
+            or financial_data.get("report_type", "quarterly"),
             "data_source": "tushare",
             "created_at": now,
             "updated_at": now,
@@ -399,7 +442,8 @@ class FinancialDataService:
             "symbol": symbol,
             "full_symbol": self._get_full_symbol(symbol, market),
             "market": market,
-            "report_period": report_period or self._extract_latest_period(financial_data),
+            "report_period": report_period
+            or self._extract_latest_period(financial_data),
             "report_type": report_type,
             "data_source": "akshare",
             "created_at": now,
@@ -463,19 +507,27 @@ class FinancialDataService:
         # 如果无法提取，使用当前季度
         return self._generate_current_period()
 
-    def _extract_akshare_indicators(self, financial_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_akshare_indicators(
+        self, financial_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """从AKShare数据中提取关键财务指标"""
         indicators = {}
 
         # 从主要财务指标中提取
         if "main_indicators" in financial_data and financial_data["main_indicators"]:
-            main_data = financial_data["main_indicators"][0] if financial_data["main_indicators"] else {}
-            indicators.update({
-                "revenue": self._safe_float(main_data.get("营业收入")),
-                "net_income": self._safe_float(main_data.get("净利润")),
-                "total_assets": self._safe_float(main_data.get("总资产")),
-                "total_equity": self._safe_float(main_data.get("股东权益合计")),
-            })
+            main_data = (
+                financial_data["main_indicators"][0]
+                if financial_data["main_indicators"]
+                else {}
+            )
+            indicators.update(
+                {
+                    "revenue": self._safe_float(main_data.get("营业收入")),
+                    "net_income": self._safe_float(main_data.get("净利润")),
+                    "total_assets": self._safe_float(main_data.get("总资产")),
+                    "total_equity": self._safe_float(main_data.get("股东权益合计")),
+                }
+            )
 
             # 🔥 新增：提取 ROE（净资产收益率）
             roe = main_data.get("净资产收益率(ROE)") or main_data.get("净资产收益率")
@@ -489,17 +541,29 @@ class FinancialDataService:
 
         # 从资产负债表中提取
         if "balance_sheet" in financial_data and financial_data["balance_sheet"]:
-            balance_data = financial_data["balance_sheet"][0] if financial_data["balance_sheet"] else {}
-            indicators.update({
-                "total_liab": self._safe_float(balance_data.get("负债合计")),
-                "cash_and_equivalents": self._safe_float(balance_data.get("货币资金")),
-            })
+            balance_data = (
+                financial_data["balance_sheet"][0]
+                if financial_data["balance_sheet"]
+                else {}
+            )
+            indicators.update(
+                {
+                    "total_liab": self._safe_float(balance_data.get("负债合计")),
+                    "cash_and_equivalents": self._safe_float(
+                        balance_data.get("货币资金")
+                    ),
+                }
+            )
 
             # 🔥 如果主要指标中没有负债率，从资产负债表计算
             if "debt_to_assets" not in indicators:
                 total_liab = indicators.get("total_liab")
                 total_assets = indicators.get("total_assets")
-                if total_liab is not None and total_assets is not None and total_assets > 0:
+                if (
+                    total_liab is not None
+                    and total_assets is not None
+                    and total_assets > 0
+                ):
                     indicators["debt_to_assets"] = (total_liab / total_assets) * 100
 
         return indicators

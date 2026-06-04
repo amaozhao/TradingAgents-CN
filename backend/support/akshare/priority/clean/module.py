@@ -4,13 +4,14 @@
 强制重新加载模块以避免缓存问题
 """
 
+import importlib
 import os
 import sys
-import importlib
 
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
+from support.path import BACKEND_ROOT
+
+project_root = str(BACKEND_ROOT)
+
 
 def clean_import_test():
     """清理导入测试"""
@@ -19,11 +20,7 @@ def clean_import_test():
 
     try:
         # 清理可能的模块缓存
-        modules_to_clean = [
-            'trader.flows.sources',
-            'trader.flows',
-            'trading_agents'
-        ]
+        modules_to_clean = ["trader.flows.sources", "trader.flows", "trading_agents"]
 
         for module_name in modules_to_clean:
             if module_name in sys.modules:
@@ -31,8 +28,12 @@ def clean_import_test():
                 del sys.modules[module_name]
 
         # 重新导入
-        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
-        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
+        DataSourceManager = getattr(
+            importlib.import_module("trader.flows.sources"), "DataSourceManager"
+        )
+        ChinaDataSource = getattr(
+            importlib.import_module("trader.flows.sources"), "ChinaDataSource"
+        )
 
         # 创建数据源管理器
         manager = DataSourceManager()
@@ -51,9 +52,10 @@ def clean_import_test():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_env_variable_directly():
     """直接测试环境变量"""
@@ -62,18 +64,21 @@ def test_env_variable_directly():
 
     try:
         # 检查环境变量
-        env_value = os.getenv('DEFAULT_CHINA_DATA_SOURCE')
+        env_value = os.getenv("DEFAULT_CHINA_DATA_SOURCE")
         print(f"📊 环境变量 DEFAULT_CHINA_DATA_SOURCE: {env_value}")
 
         # 检查.env文件
-        env_file_path = os.path.join(project_root, '.env')
+        env_file_path = os.path.join(project_root, ".env")
         if os.path.exists(env_file_path):
             print(f"📄 .env文件存在: {env_file_path}")
-            with open(env_file_path, 'r', encoding='utf-8') as f:
+            with open(env_file_path, "r", encoding="utf-8") as f:
                 content = f.read()
-                if 'DEFAULT_CHINA_DATA_SOURCE' in content:
-                    for line in content.split('\n'):
-                        if 'DEFAULT_CHINA_DATA_SOURCE' in line and not line.strip().startswith('#'):
+                if "DEFAULT_CHINA_DATA_SOURCE" in content:
+                    for line in content.split("\n"):
+                        if (
+                            "DEFAULT_CHINA_DATA_SOURCE" in line
+                            and not line.strip().startswith("#")
+                        ):
                             print(f"📊 .env文件中的设置: {line.strip()}")
                             break
         else:
@@ -81,9 +86,9 @@ def test_env_variable_directly():
 
         # 手动加载.env文件
         try:
-            load_dotenv = getattr(importlib.import_module('dotenv'), 'load_dotenv')
+            load_dotenv = getattr(importlib.import_module("dotenv"), "load_dotenv")
             load_dotenv()
-            env_value_after_load = os.getenv('DEFAULT_CHINA_DATA_SOURCE')
+            env_value_after_load = os.getenv("DEFAULT_CHINA_DATA_SOURCE")
             print(f"📊 加载.env后的环境变量: {env_value_after_load}")
         except ImportError:
             print("⚠️ python-dotenv未安装，无法自动加载.env文件")
@@ -92,9 +97,10 @@ def test_env_variable_directly():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_manual_env_setting():
     """手动设置环境变量测试"""
@@ -103,12 +109,12 @@ def test_manual_env_setting():
 
     try:
         # 手动设置环境变量
-        os.environ['DEFAULT_CHINA_DATA_SOURCE'] = 'akshare'
-        print(f"📊 手动设置环境变量: DEFAULT_CHINA_DATA_SOURCE=akshare")
+        os.environ["DEFAULT_CHINA_DATA_SOURCE"] = "akshare"
+        print("📊 手动设置环境变量: DEFAULT_CHINA_DATA_SOURCE=akshare")
 
         # 清理模块缓存
         modules_to_clean = [
-            'trader.flows.sources',
+            "trader.flows.sources",
         ]
 
         for module_name in modules_to_clean:
@@ -116,8 +122,12 @@ def test_manual_env_setting():
                 del sys.modules[module_name]
 
         # 重新导入
-        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
-        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
+        DataSourceManager = getattr(
+            importlib.import_module("trader.flows.sources"), "DataSourceManager"
+        )
+        ChinaDataSource = getattr(
+            importlib.import_module("trader.flows.sources"), "ChinaDataSource"
+        )
 
         manager = DataSourceManager()
 
@@ -128,14 +138,17 @@ def test_manual_env_setting():
             print("✅ 手动设置环境变量后，默认数据源正确为AKShare")
             return True
         else:
-            print(f"❌ 手动设置环境变量后，默认数据源仍然错误: {manager.default_source.value}")
+            print(
+                f"❌ 手动设置环境变量后，默认数据源仍然错误: {manager.default_source.value}"
+            )
             return False
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_fallback_order():
     """测试备用数据源顺序"""
@@ -144,52 +157,59 @@ def test_fallback_order():
 
     try:
         # 确保环境变量设置
-        os.environ['DEFAULT_CHINA_DATA_SOURCE'] = 'akshare'
+        os.environ["DEFAULT_CHINA_DATA_SOURCE"] = "akshare"
 
         # 清理并重新导入
-        if 'trader.flows.sources' in sys.modules:
-            del sys.modules['trader.flows.sources']
+        if "trader.flows.sources" in sys.modules:
+            del sys.modules["trader.flows.sources"]
 
-        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
+        DataSourceManager = getattr(
+            importlib.import_module("trader.flows.sources"), "DataSourceManager"
+        )
 
         manager = DataSourceManager()
 
         # 检查源代码中的fallback_order
-        inspect = importlib.import_module('inspect')
+        inspect = importlib.import_module("inspect")
         source_code = inspect.getsource(manager._try_fallback_sources)
 
         print("📊 检查备用数据源顺序...")
 
         # 查找fallback_order定义
-        lines = source_code.split('\n')
+        lines = source_code.split("\n")
         in_fallback_order = False
         fallback_sources = []
 
         for line in lines:
-            if 'fallback_order = [' in line:
+            if "fallback_order = [" in line:
                 in_fallback_order = True
                 continue
             elif in_fallback_order:
-                if ']' in line:
+                if "]" in line:
                     break
-                if 'ChinaDataSource.' in line:
-                    source_name = line.strip().replace('ChinaDataSource.', '').replace(',', '')
+                if "ChinaDataSource." in line:
+                    source_name = (
+                        line.strip().replace("ChinaDataSource.", "").replace(",", "")
+                    )
                     fallback_sources.append(source_name)
 
         print(f"📊 备用数据源顺序: {fallback_sources}")
 
-        if fallback_sources and fallback_sources[0] == 'AKSHARE':
+        if fallback_sources and fallback_sources[0] == "AKSHARE":
             print("✅ 备用数据源顺序正确: AKShare排在第一位")
             return True
         else:
-            print(f"❌ 备用数据源顺序错误: 期望AKSHARE在第一位，实际顺序: {fallback_sources}")
+            print(
+                f"❌ 备用数据源顺序错误: 期望AKSHARE在第一位，实际顺序: {fallback_sources}"
+            )
             return False
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主测试函数"""
@@ -234,6 +254,7 @@ def main():
     else:
         print("⚠️ 部分测试失败，需要进一步检查。")
         return False
+
 
 if __name__ == "__main__":
     success = main()

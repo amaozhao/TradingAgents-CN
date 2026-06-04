@@ -6,10 +6,12 @@ WebSocket 连接管理器
 import asyncio
 import json
 import logging
-from typing import Dict, Set, Any
-from fastapi import WebSocket, WebSocketDisconnect
+from typing import Any, Dict, Set
+
+from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)
+
 
 class WebSocketManager:
     """WebSocket 连接管理器"""
@@ -77,8 +79,10 @@ class WebSocketManager:
                 total += len(connections)
             return total
 
+
 # 全局实例
 _websocket_manager = None
+
 
 def get_websocket_manager() -> WebSocketManager:
     """获取 WebSocket 管理器实例"""

@@ -1,12 +1,15 @@
-import importlib
 import asyncio
+import importlib
 from types import SimpleNamespace
 from typing import Any, Dict, List
 
 
 def test_enhanced_screening_enriches_from_db(monkeypatch):
     # Late import to patch module symbols correctly
-    EnhancedScreeningService = getattr(importlib.import_module('app.services.screening.enhanced'), 'EnhancedScreeningService')
+    EnhancedScreeningService = getattr(
+        importlib.import_module("app.services.screening.enhanced"),
+        "EnhancedScreeningService",
+    )
 
     # Fake DB layer
     class FakeCursor:
@@ -36,19 +39,21 @@ def test_enhanced_screening_enriches_from_db(monkeypatch):
         {"code": "600000", "close": 9.9, "pct_chg": -0.5, "amount": 8.76e7},
     ]
 
-    # Patch get_mongo_db used inside enhanced_screening_service module
-    ess_mod = importlib.import_module('app.services.screening.enhanced')
+    # Patch get_postgres_db used inside enhanced_screening_service module
+    ess_mod = importlib.import_module("app.services.screening.enhanced")
 
-    def _fake_get_mongo_db():
+    def _fake_get_postgres_db():
         return FakeDB(quotes_docs)
 
-    monkeypatch.setattr(ess_mod, "get_mongo_db", _fake_get_mongo_db, raising=True)
+    monkeypatch.setattr(ess_mod, "get_postgres_db", _fake_get_postgres_db, raising=True)
 
     # Patch condition analysis to force DB path
     def _fake_analyze(_self, _conditions):
         return {"can_use_database": True, "needs_technical_indicators": False}
 
-    monkeypatch.setattr(EnhancedScreeningService, "_analyze_conditions", _fake_analyze, raising=True)
+    monkeypatch.setattr(
+        EnhancedScreeningService, "_analyze_conditions", _fake_analyze, raising=True
+    )
 
     # Patch db_service.screen_stocks to return minimal items with codes
     class _FakeDbService:
@@ -56,7 +61,10 @@ def test_enhanced_screening_enriches_from_db(monkeypatch):
             items = [
                 {"code": "1", "name": "平安银行"},
                 {"code": "600000", "name": "浦发银行"},
-                {"code": "300750", "name": "宁德时代"},  # not present in quotes -> stays None
+                {
+                    "code": "300750",
+                    "name": "宁德时代",
+                },  # not present in quotes -> stays None
             ]
             total = len(items)
             return items, total
@@ -78,8 +86,11 @@ def test_enhanced_screening_enriches_from_db(monkeypatch):
 
 
 def test_quotes_ingestion_run_once_writes_bulk(monkeypatch):
-    QuotesIngestionService = getattr(importlib.import_module('app.services.quotes.ingestion'), 'QuotesIngestionService')
-    qis_mod = importlib.import_module('app.services.quotes.ingestion')
+    QuotesIngestionService = getattr(
+        importlib.import_module("app.services.quotes.ingestion"),
+        "QuotesIngestionService",
+    )
+    qis_mod = importlib.import_module("app.services.quotes.ingestion")
 
     # Fake DataSourceManager to avoid external calls
     class _FakeManager:
@@ -123,10 +134,10 @@ def test_quotes_ingestion_run_once_writes_bulk(monkeypatch):
 
     fake_db = _FakeDB()
 
-    def _fake_get_mongo_db():
+    def _fake_get_postgres_db():
         return fake_db
 
-    monkeypatch.setattr(qis_mod, "get_mongo_db", _fake_get_mongo_db, raising=True)
+    monkeypatch.setattr(qis_mod, "get_postgres_db", _fake_get_postgres_db, raising=True)
     dual_write_document_calls = []
     dual_write_documents_calls = []
 
@@ -138,31 +149,46 @@ def test_quotes_ingestion_run_once_writes_bulk(monkeypatch):
         dual_write_documents_calls.append((collection, documents))
         return SimpleNamespace(status="success", reason=None)
 
-    monkeypatch.setattr(qis_mod, "dual_write_hot_document", _fake_dual_write_document, raising=True)
-    monkeypatch.setattr(qis_mod, "dual_write_hot_documents", _fake_dual_write_documents, raising=True)
+    monkeypatch.setattr(
+        qis_mod, "dual_write_hot_document", _fake_dual_write_document, raising=True
+    )
+    monkeypatch.setattr(
+        qis_mod, "dual_write_hot_documents", _fake_dual_write_documents, raising=True
+    )
 
     async def _run():
         svc = QuotesIngestionService()
         # Force trading time to True
-        monkeypatch.setattr(QuotesIngestionService, "_is_trading_time", lambda self, now=None: True, raising=True)
+        monkeypatch.setattr(
+            QuotesIngestionService,
+            "_is_trading_time",
+            lambda self, now=None: True,
+            raising=True,
+        )
         await svc.run_once()
         # Verify that two upsert operations were generated
         assert fake_db._coll.last_ops is not None
         assert len(fake_db._coll.last_ops) == 2
         assert dual_write_documents_calls[0][0] == "market_quotes"
-        assert [doc["code"] for doc in dual_write_documents_calls[0][1]] == ["000001", "600000"]
+        assert [doc["code"] for doc in dual_write_documents_calls[0][1]] == [
+            "000001",
+            "600000",
+        ]
         assert all(doc["source"] == "fake" for doc in dual_write_documents_calls[0][1])
         assert dual_write_document_calls[0][0] == "quotes_ingestion_status"
         assert dual_write_document_calls[0][1]["job"] == "quotes_ingestion"
         assert dual_write_document_calls[0][1]["success"] is True
 
-    asyncio = importlib.import_module('asyncio')
+    asyncio = importlib.import_module("asyncio")
     asyncio.run(_run())
 
 
 def test_quotes_ingestion_status_dual_writes(monkeypatch):
-    QuotesIngestionService = getattr(importlib.import_module('app.services.quotes.ingestion'), 'QuotesIngestionService')
-    qis_mod = importlib.import_module('app.services.quotes.ingestion')
+    QuotesIngestionService = getattr(
+        importlib.import_module("app.services.quotes.ingestion"),
+        "QuotesIngestionService",
+    )
+    qis_mod = importlib.import_module("app.services.quotes.ingestion")
 
     class _FakeStatusCollection:
         def __init__(self):
@@ -183,15 +209,17 @@ def test_quotes_ingestion_status_dual_writes(monkeypatch):
     fake_db = _FakeDB()
     dual_write_calls = []
 
-    def _fake_get_mongo_db():
+    def _fake_get_postgres_db():
         return fake_db
 
     async def _fake_dual_write(collection, document):
         dual_write_calls.append((collection, document))
         return SimpleNamespace(status="success", reason=None)
 
-    monkeypatch.setattr(qis_mod, "get_mongo_db", _fake_get_mongo_db, raising=True)
-    monkeypatch.setattr(qis_mod, "dual_write_hot_document", _fake_dual_write, raising=True)
+    monkeypatch.setattr(qis_mod, "get_postgres_db", _fake_get_postgres_db, raising=True)
+    monkeypatch.setattr(
+        qis_mod, "dual_write_hot_document", _fake_dual_write, raising=True
+    )
 
     async def _run():
         svc = QuotesIngestionService()

@@ -16,7 +16,9 @@ async def test_save_financial_data_dual_writes_standardized_records(monkeypatch)
     async def fake_dual_write(collection, documents):
         dual_write_calls.append((collection, documents))
 
-    monkeypatch.setattr(financial_data_service, "dual_write_hot_documents", fake_dual_write)
+    monkeypatch.setattr(
+        financial_data_service, "dual_write_hot_documents", fake_dual_write
+    )
 
     saved = await service.save_financial_data(
         symbol="000001",

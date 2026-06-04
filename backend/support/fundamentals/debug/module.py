@@ -2,20 +2,30 @@
 """
 调试基本面分析师的工具选择问题
 """
-import importlib
 
-import os
+import importlib
 import sys
+
 
 def test_fundamentals_analyst_directly():
     """直接测试基本面分析师函数"""
     print("🔧 直接测试基本面分析师...")
 
     try:
-        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'ChatDashScopeOpenAI')
+        create_fundamentals_analyst = getattr(
+            importlib.import_module("trader.agents.analysts.fundamentals"),
+            "create_fundamentals_analyst",
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
+        getattr(
+            importlib.import_module("trader.llm.adapters.dashscope.openai"),
+            "ChatDashScopeOpenAI",
+        )
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -34,6 +44,7 @@ def test_fundamentals_analyst_directly():
                     def __init__(self):
                         self.tool_calls = []
                         self.content = "模拟分析结果"
+
                 return MockResult()
 
         llm = MockLLM()
@@ -45,23 +56,23 @@ def test_fundamentals_analyst_directly():
         state = {
             "trade_date": "2025-07-14",
             "company_of_interest": "0700.HK",
-            "messages": []
+            "messages": [],
         }
 
         print(f"  测试港股: {state['company_of_interest']}")
-        print(f"  调用基本面分析师...")
+        print("  调用基本面分析师...")
 
         # 调用分析师（这会触发工具选择逻辑）
         result = analyst(state)
 
-        print(f"  ✅ 基本面分析师调用完成")
+        print("  ✅ 基本面分析师调用完成")
         print(f"  结果类型: {type(result)}")
 
         return True
 
     except Exception as e:
         print(f"❌ 直接测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -71,7 +82,9 @@ def test_stock_utils_import():
     print("\n🔧 测试StockUtils导入...")
 
     try:
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
 
         # 测试港股识别
         ticker = "0700.HK"
@@ -83,11 +96,11 @@ def test_stock_utils_import():
         print(f"  是否A股: {market_info['is_china']}")
         print(f"  是否美股: {market_info['is_us']}")
 
-        if market_info['is_hk']:
-            print(f"  ✅ StockUtils正确识别港股")
+        if market_info["is_hk"]:
+            print("  ✅ StockUtils正确识别港股")
             return True
         else:
-            print(f"  ❌ StockUtils未能识别港股")
+            print("  ❌ StockUtils未能识别港股")
             return False
 
     except Exception as e:
@@ -100,8 +113,12 @@ def test_toolkit_hk_tools():
     print("\n🔧 测试工具包港股工具...")
 
     try:
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True
@@ -109,9 +126,9 @@ def test_toolkit_hk_tools():
 
         # 检查港股工具是否存在
         hk_tools = [
-            'get_hk_stock_data_unified',
-            'get_china_stock_data',
-            'get_fundamentals_openai'
+            "get_hk_stock_data_unified",
+            "get_china_stock_data",
+            "get_fundamentals_openai",
         ]
 
         for tool_name in hk_tools:
@@ -138,7 +155,7 @@ def test_import_paths():
         "trader.agents.analysts.fundamentals",
         "trader.utils.stocks",
         "trader.agents.utils.utils",
-        "trader.default"
+        "trader.default",
     ]
 
     for import_path in imports_to_test:

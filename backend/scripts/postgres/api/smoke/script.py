@@ -3,13 +3,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 from dataclasses import asdict, dataclass
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-
 
 DEFAULT_TIMEOUT_SECONDS = 15
 
@@ -57,7 +55,10 @@ class ApiClient:
     ) -> tuple[int, Any]:
         query = ""
         if params:
-            query = "?" + urlencode({key: value for key, value in params.items() if value is not None}, doseq=True)
+            query = "?" + urlencode(
+                {key: value for key, value in params.items() if value is not None},
+                doseq=True,
+            )
         url = f"{self.base_url}{path}{query}"
         data = None
         headers = {"Accept": "application/json"}
@@ -119,12 +120,17 @@ def run_api_smoke(
                 ],
             }
 
-    checks = _build_checks(auth_available=bool(token), allow_missing_auth=allow_missing_auth)
+    checks = _build_checks(
+        auth_available=bool(token), allow_missing_auth=allow_missing_auth
+    )
     results = [_run_check(client, check) for check in checks]
     return {
         "all_passed": all(result.status != "failed" for result in results),
         "base_url": base_url,
-        "auth": {"mode": auth_detail if token else "missing", "authenticated": bool(token)},
+        "auth": {
+            "mode": auth_detail if token else "missing",
+            "authenticated": bool(token),
+        },
         "checks": [asdict(result) for result in results],
     }
 
@@ -142,35 +148,149 @@ def _build_checks(*, auth_available: bool, allow_missing_auth: bool) -> list[Api
 
     def auth_check(**kwargs) -> ApiCheck:
         if auth_skip and allow_missing_auth:
-            return ApiCheck(**kwargs, auth_required=True, optional=True, skip_reason=auth_skip)
+            return ApiCheck(
+                **kwargs, auth_required=True, optional=True, skip_reason=auth_skip
+            )
         return ApiCheck(**kwargs, auth_required=True)
 
     checks = [
         ApiCheck("health", "GET", "/api/health", require_data=True),
         ApiCheck("readyz", "GET", "/api/readyz", require_success_field=False),
-        ApiCheck("financial_data", "GET", f"/api/financial-data/query/{stock_code}", params={"limit": 1}, require_data=True),
-        ApiCheck("internal_messages_health", "GET", "/api/internal-messages/health", require_data=False),
-        ApiCheck("internal_messages_query", "POST", "/api/internal-messages/query", body={"symbol": symbol, "limit": 5}, require_data=True),
-        ApiCheck("internal_messages_search", "GET", "/api/internal-messages/search", params={"query": search_query, "symbol": symbol, "limit": 5}, require_data=True),
-        ApiCheck("internal_messages_stats", "GET", "/api/internal-messages/statistics", params={"symbol": symbol, "hours_back": 168}, require_data=True),
-        ApiCheck("social_media_health", "GET", "/api/social-media/health", require_data=False),
-        ApiCheck("social_media_query", "POST", "/api/social-media/query", body={"symbol": symbol, "limit": 5}, require_data=True),
-        ApiCheck("social_media_search", "GET", "/api/social-media/search", params={"query": search_query, "symbol": symbol, "limit": 5}, require_data=True),
-        ApiCheck("social_media_stats", "GET", "/api/social-media/statistics", params={"symbol": symbol, "hours_back": 168}, require_data=True),
-        ApiCheck("model_capabilities", "GET", "/api/model-capabilities/default-configs", require_data=True),
-        auth_check(name="auth_me", method="GET", path="/api/auth/me", require_data=True),
-        auth_check(name="stock_quote", method="GET", path=f"/api/stocks/{stock_code}/quote", require_data=True),
-        auth_check(name="stock_fundamentals", method="GET", path=f"/api/stocks/{stock_code}/fundamentals", require_data=True),
-        auth_check(name="stock_search", method="GET", path="/api/markets/CN/stocks/search", params={"q": stock_code, "limit": 5}, require_data=True),
-        auth_check(name="market_stock_info", method="GET", path=f"/api/markets/CN/stocks/{stock_code}/info", require_data=True),
-        auth_check(name="daily_quotes", method="GET", path=f"/api/markets/CN/stocks/{stock_code}/daily", params={"limit": 5}, require_data=True),
-        auth_check(name="favorites", method="GET", path="/api/favorites/", require_data=False),
+        ApiCheck(
+            "financial_data",
+            "GET",
+            f"/api/financial-data/query/{stock_code}",
+            params={"limit": 1},
+            require_data=True,
+        ),
+        ApiCheck(
+            "internal_messages_health",
+            "GET",
+            "/api/internal-messages/health",
+            require_data=False,
+        ),
+        ApiCheck(
+            "internal_messages_query",
+            "POST",
+            "/api/internal-messages/query",
+            body={"symbol": symbol, "limit": 5},
+            require_data=True,
+        ),
+        ApiCheck(
+            "internal_messages_search",
+            "GET",
+            "/api/internal-messages/search",
+            params={"query": search_query, "symbol": symbol, "limit": 5},
+            require_data=True,
+        ),
+        ApiCheck(
+            "internal_messages_stats",
+            "GET",
+            "/api/internal-messages/statistics",
+            params={"symbol": symbol, "hours_back": 168},
+            require_data=True,
+        ),
+        ApiCheck(
+            "social_media_health", "GET", "/api/social-media/health", require_data=False
+        ),
+        ApiCheck(
+            "social_media_query",
+            "POST",
+            "/api/social-media/query",
+            body={"symbol": symbol, "limit": 5},
+            require_data=True,
+        ),
+        ApiCheck(
+            "social_media_search",
+            "GET",
+            "/api/social-media/search",
+            params={"query": search_query, "symbol": symbol, "limit": 5},
+            require_data=True,
+        ),
+        ApiCheck(
+            "social_media_stats",
+            "GET",
+            "/api/social-media/statistics",
+            params={"symbol": symbol, "hours_back": 168},
+            require_data=True,
+        ),
+        ApiCheck(
+            "model_capabilities",
+            "GET",
+            "/api/model-capabilities/default-configs",
+            require_data=True,
+        ),
+        auth_check(
+            name="auth_me", method="GET", path="/api/auth/me", require_data=True
+        ),
+        auth_check(
+            name="stock_quote",
+            method="GET",
+            path=f"/api/stocks/{stock_code}/quote",
+            require_data=True,
+        ),
+        auth_check(
+            name="stock_fundamentals",
+            method="GET",
+            path=f"/api/stocks/{stock_code}/fundamentals",
+            require_data=True,
+        ),
+        auth_check(
+            name="stock_search",
+            method="GET",
+            path="/api/markets/CN/stocks/search",
+            params={"q": stock_code, "limit": 5},
+            require_data=True,
+        ),
+        auth_check(
+            name="market_stock_info",
+            method="GET",
+            path=f"/api/markets/CN/stocks/{stock_code}/info",
+            require_data=True,
+        ),
+        auth_check(
+            name="daily_quotes",
+            method="GET",
+            path=f"/api/markets/CN/stocks/{stock_code}/daily",
+            params={"limit": 5},
+            require_data=True,
+        ),
+        auth_check(
+            name="favorites", method="GET", path="/api/favorites/", require_data=False
+        ),
         auth_check(name="tags", method="GET", path="/api/tags/", require_data=False),
-        auth_check(name="paper_account", method="GET", path="/api/paper/account", require_data=True),
-        auth_check(name="operation_logs", method="GET", path="/api/system/logs/list", params={"page": 1, "page_size": 5}, require_data=True),
-        auth_check(name="operation_log_stats", method="GET", path="/api/system/logs/stats", require_data=True),
-        auth_check(name="news_query", method="GET", path=f"/api/news-data/query/{symbol}", params={"limit": 5, "hours_back": 87600}, require_data=True),
-        auth_check(name="config_system", method="GET", path="/api/config/system", require_data=True),
+        auth_check(
+            name="paper_account",
+            method="GET",
+            path="/api/paper/account",
+            require_data=True,
+        ),
+        auth_check(
+            name="operation_logs",
+            method="GET",
+            path="/api/system/logs/list",
+            params={"page": 1, "page_size": 5},
+            require_data=True,
+        ),
+        auth_check(
+            name="operation_log_stats",
+            method="GET",
+            path="/api/system/logs/stats",
+            require_data=True,
+        ),
+        auth_check(
+            name="news_query",
+            method="GET",
+            path=f"/api/news-data/query/{symbol}",
+            params={"limit": 5, "hours_back": 87600},
+            require_data=True,
+        ),
+        auth_check(
+            name="config_system",
+            method="GET",
+            path="/api/config/system",
+            require_data=True,
+        ),
     ]
     if expected_migration_settings:
         checks.append(
@@ -183,8 +303,22 @@ def _build_checks(*, auth_available: bool, allow_missing_auth: bool) -> list[Api
             )
         )
     if task_id:
-        checks.append(auth_check(name="analysis_task_status", method="GET", path=f"/api/analysis/tasks/{task_id}/status", require_data=True))
-        checks.append(auth_check(name="analysis_task_result", method="GET", path=f"/api/analysis/tasks/{task_id}/result", require_data=True))
+        checks.append(
+            auth_check(
+                name="analysis_task_status",
+                method="GET",
+                path=f"/api/analysis/tasks/{task_id}/status",
+                require_data=True,
+            )
+        )
+        checks.append(
+            auth_check(
+                name="analysis_task_result",
+                method="GET",
+                path=f"/api/analysis/tasks/{task_id}/result",
+                require_data=True,
+            )
+        )
     else:
         checks.append(
             ApiCheck(
@@ -243,7 +377,11 @@ def _run_check(client: ApiClient, check: ApiCheck) -> ApiCheckResult:
             status_code=status_code,
             sample=payload,
         )
-    if check.require_success_field and isinstance(payload, dict) and payload.get("success") is False:
+    if (
+        check.require_success_field
+        and isinstance(payload, dict)
+        and payload.get("success") is False
+    ):
         return ApiCheckResult(
             name=check.name,
             status="failed",
@@ -302,7 +440,10 @@ def _expected_migration_settings() -> dict[str, bool]:
     expected: dict[str, bool] = {}
     for env_name, setting_name in (
         ("TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED", "POSTGRES_READ_ENABLED"),
-        ("TRADING_AGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED", "POSTGRES_DUAL_WRITE_ENABLED"),
+        (
+            "TRADING_AGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED",
+            "POSTGRES_DUAL_WRITE_ENABLED",
+        ),
     ):
         raw = os.getenv(env_name)
         if raw is not None:
@@ -348,7 +489,10 @@ def _sample_payload(payload: Any) -> Any:
     if isinstance(payload, dict):
         sample = dict(payload)
         if isinstance(sample.get("data"), list):
-            sample["data"] = {"list_length": len(sample["data"]), "first": sample["data"][0] if sample["data"] else None}
+            sample["data"] = {
+                "list_length": len(sample["data"]),
+                "first": sample["data"][0] if sample["data"] else None,
+            }
         if isinstance(sample.get("data"), dict):
             data = sample["data"]
             sample["data"] = {
@@ -369,12 +513,21 @@ def _decode_json(payload: str) -> Any:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Smoke-test deployed TradingAgents API after PostgreSQL read cutover.")
-    parser.add_argument("--base-url", default=os.getenv("TRADING_AGENTS_API_BASE_URL", "http://127.0.0.1:8000"))
+    parser = argparse.ArgumentParser(
+        description="Smoke-test deployed TradingAgents API after PostgreSQL read cutover."
+    )
+    parser.add_argument(
+        "--base-url",
+        default=os.getenv("TRADING_AGENTS_API_BASE_URL", "http://127.0.0.1:8000"),
+    )
     parser.add_argument("--token", default=os.getenv("TRADING_AGENTS_API_TOKEN"))
     parser.add_argument("--username", default=os.getenv("TRADING_AGENTS_API_USERNAME"))
     parser.add_argument("--password", default=os.getenv("TRADING_AGENTS_API_PASSWORD"))
-    parser.add_argument("--timeout", type=int, default=int(os.getenv("TRADING_AGENTS_API_TIMEOUT", DEFAULT_TIMEOUT_SECONDS)))
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=int(os.getenv("TRADING_AGENTS_API_TIMEOUT", DEFAULT_TIMEOUT_SECONDS)),
+    )
     parser.add_argument("--allow-missing-auth", action="store_true")
     parser.add_argument("--pretty", action="store_true")
     args = parser.parse_args()
@@ -387,7 +540,14 @@ def main() -> None:
         timeout=args.timeout,
         allow_missing_auth=args.allow_missing_auth,
     )
-    print(json.dumps(result, ensure_ascii=False, indent=2 if args.pretty else None, sort_keys=True))
+    print(
+        json.dumps(
+            result,
+            ensure_ascii=False,
+            indent=2 if args.pretty else None,
+            sort_keys=True,
+        )
+    )
     if not result["all_passed"]:
         raise SystemExit(1)
 

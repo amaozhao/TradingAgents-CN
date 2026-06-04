@@ -1,9 +1,9 @@
 """yfinance-based news data fetching functions."""
 
+from datetime import datetime
 from typing import Optional
 
 import yfinance as yf
-from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 from ..config import get_config
@@ -138,11 +138,13 @@ def get_global_news_yfinance(
 
     try:
         for query in search_queries:
-            search = yf_retry(lambda q=query: yf.Search(
-                query=q,
-                news_count=limit,
-                enable_fuzzy_query=True,
-            ))
+            search = yf_retry(
+                lambda q=query: yf.Search(
+                    query=q,
+                    news_count=limit,
+                    enable_fuzzy_query=True,
+                )
+            )
 
             if search is not None and search.news:
                 for article in search.news:
@@ -176,7 +178,11 @@ def get_global_news_yfinance(
                 data = _extract_article_data(article)
                 # Skip articles published after curr_date (look-ahead guard)
                 if data.get("pub_date"):
-                    pub_naive = data["pub_date"].replace(tzinfo=None) if hasattr(data["pub_date"], "replace") else data["pub_date"]
+                    pub_naive = (
+                        data["pub_date"].replace(tzinfo=None)
+                        if hasattr(data["pub_date"], "replace")
+                        else data["pub_date"]
+                    )
                     if pub_naive > curr_dt + relativedelta(days=1):
                         continue
                 title = data["title"]

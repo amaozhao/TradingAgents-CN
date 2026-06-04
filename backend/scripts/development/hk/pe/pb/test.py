@@ -6,13 +6,9 @@
 2. 查看是否包含 PE、PB、市盈率、市净率等估值指标
 3. 测试其他可能的 AKShare 港股接口
 """
+
 import importlib
 
-import sys
-import os
-
-# 添加项目根目录到路径
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 def test_akshare_hk_spot():
     """测试 AKShare 港股实时行情接口"""
@@ -21,19 +17,19 @@ def test_akshare_hk_spot():
     print("=" * 80)
 
     try:
-        ak = importlib.import_module('akshare')
+        ak = importlib.import_module("akshare")
 
         # 获取港股实时行情
         df = ak.stock_hk_spot()
 
         print(f"\n✅ 成功获取数据，共 {len(df)} 条记录")
-        print(f"\n📊 数据列名:")
+        print("\n📊 数据列名:")
         for i, col in enumerate(df.columns, 1):
             print(f"  {i}. {col}")
 
         # 查找汇丰控股 (00005)
         test_symbol = "00005"
-        matched = df[df['代码'] == test_symbol]
+        matched = df[df["代码"] == test_symbol]
 
         if not matched.empty:
             print(f"\n📈 {test_symbol} 的数据:")
@@ -42,12 +38,12 @@ def test_akshare_hk_spot():
                 print(f"  {col}: {row[col]}")
         else:
             print(f"\n⚠️ 未找到 {test_symbol} 的数据")
-            print(f"\n前5条数据示例:")
+            print("\n前5条数据示例:")
             print(df.head())
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 
@@ -58,18 +54,25 @@ def test_akshare_hk_valuation():
     print("=" * 80)
 
     try:
-        ak = importlib.import_module('akshare')
+        ak = importlib.import_module("akshare")
 
         # 列出所有包含 'hk' 和 'valuation' 或 'pe' 或 'pb' 的接口
         all_functions = dir(ak)
-        hk_functions = [f for f in all_functions if 'hk' in f.lower()]
+        hk_functions = [f for f in all_functions if "hk" in f.lower()]
 
         print(f"\n📋 AKShare 中包含 'hk' 的接口 (共 {len(hk_functions)} 个):")
         for func in hk_functions:
             print(f"  - {func}")
 
         # 查找估值相关的接口
-        valuation_keywords = ['valuation', 'pe', 'pb', 'ratio', 'indicator', 'fundamental']
+        valuation_keywords = [
+            "valuation",
+            "pe",
+            "pb",
+            "ratio",
+            "indicator",
+            "fundamental",
+        ]
         print(f"\n🔍 查找估值相关接口 (关键词: {valuation_keywords}):")
 
         for keyword in valuation_keywords:
@@ -81,7 +84,7 @@ def test_akshare_hk_valuation():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 
@@ -95,12 +98,21 @@ def test_akshare_hk_individual_stock():
 
     # 测试可能的接口
     test_functions = [
-        ('stock_hk_daily', {'symbol': test_symbol, 'adjust': ''}),
-        ('stock_hk_hist', {'symbol': test_symbol, 'period': 'daily', 'start_date': '20241101', 'end_date': '20241109', 'adjust': ''}),
+        ("stock_hk_daily", {"symbol": test_symbol, "adjust": ""}),
+        (
+            "stock_hk_hist",
+            {
+                "symbol": test_symbol,
+                "period": "daily",
+                "start_date": "20241101",
+                "end_date": "20241109",
+                "adjust": "",
+            },
+        ),
     ]
 
     try:
-        ak = importlib.import_module('akshare')
+        ak = importlib.import_module("akshare")
 
         for func_name, kwargs in test_functions:
             print(f"\n📊 测试接口: {func_name}")
@@ -114,19 +126,19 @@ def test_akshare_hk_individual_stock():
                     if df is not None and not df.empty:
                         print(f"   ✅ 成功获取数据，共 {len(df)} 条记录")
                         print(f"   📋 列名: {list(df.columns)}")
-                        print(f"   📈 最新数据:")
+                        print("   📈 最新数据:")
                         print(df.tail(1).to_string(index=False))
                     else:
-                        print(f"   ⚠️ 返回空数据")
+                        print("   ⚠️ 返回空数据")
                 else:
-                    print(f"   ⚠️ 接口不存在")
+                    print("   ⚠️ 接口不存在")
 
             except Exception as e:
                 print(f"   ❌ 调用失败: {e}")
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 
@@ -137,11 +149,11 @@ def test_tushare_hk():
     print("=" * 80)
 
     try:
-        ts = importlib.import_module('tushare')
-        get_config = getattr(importlib.import_module('trader.config'), 'get_config')
+        ts = importlib.import_module("tushare")
+        get_config = getattr(importlib.import_module("trader.config"), "get_config")
 
         config = get_config()
-        tushare_token = config.get('tushare_token')
+        tushare_token = config.get("tushare_token")
 
         if not tushare_token:
             print("⚠️ 未配置 Tushare Token，跳过测试")
@@ -153,34 +165,36 @@ def test_tushare_hk():
         # 测试港股基本信息
         print("\n📊 测试 hk_basic 接口:")
         try:
-            df = pro.hk_basic(ts_code='00005.HK')
+            df = pro.hk_basic(ts_code="00005.HK")
             if df is not None and not df.empty:
-                print(f"   ✅ 成功获取数据")
+                print("   ✅ 成功获取数据")
                 print(f"   📋 列名: {list(df.columns)}")
-                print(f"   📈 数据:")
+                print("   📈 数据:")
                 print(df.to_string(index=False))
             else:
-                print(f"   ⚠️ 返回空数据")
+                print("   ⚠️ 返回空数据")
         except Exception as e:
             print(f"   ❌ 调用失败: {e}")
 
         # 测试港股日线行情
         print("\n📊 测试 hk_daily 接口:")
         try:
-            df = pro.hk_daily(ts_code='00005.HK', start_date='20241101', end_date='20241109')
+            df = pro.hk_daily(
+                ts_code="00005.HK", start_date="20241101", end_date="20241109"
+            )
             if df is not None and not df.empty:
                 print(f"   ✅ 成功获取数据，共 {len(df)} 条记录")
                 print(f"   📋 列名: {list(df.columns)}")
-                print(f"   📈 最新数据:")
+                print("   📈 最新数据:")
                 print(df.head(1).to_string(index=False))
             else:
-                print(f"   ⚠️ 返回空数据")
+                print("   ⚠️ 返回空数据")
         except Exception as e:
             print(f"   ❌ 调用失败: {e}")
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 

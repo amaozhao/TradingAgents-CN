@@ -1,15 +1,16 @@
 from __future__ import annotations
-import importlib
 
 import argparse
 import asyncio
+import importlib
 import json
 from collections.abc import Callable
 from typing import Any
 
+from app.db.document import iter_user_favorite_documents
 from app.db.write import (
-    build_analysis_report_upsert,
     build_analysis_batch_upsert,
+    build_analysis_report_upsert,
     build_analysis_result_upsert,
     build_analysis_task_upsert,
     build_database_backup_upsert,
@@ -25,20 +26,19 @@ from app.db.write import (
     build_scheduler_execution_upsert,
     build_scheduler_history_upsert,
     build_scheduler_metadata_upsert,
+    build_social_media_message_upsert,
     build_stock_basic_info_upsert,
     build_stock_daily_quote_upsert,
     build_stock_financial_data_upsert,
     build_stock_news_upsert,
-    build_system_config_document_upsert,
     build_sync_status_upsert,
-    build_social_media_message_upsert,
+    build_system_config_document_upsert,
     build_token_usage_upsert,
     build_user_account_upsert,
     build_user_favorite_upsert,
     build_user_session_upsert,
     build_user_tag_upsert,
 )
-from app.db.document import iter_user_favorite_documents
 
 HOT_COLLECTIONS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "stock_basic_info": build_stock_basic_info_upsert,
@@ -55,11 +55,21 @@ HOT_COLLECTIONS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "scheduler_executions": build_scheduler_execution_upsert,
     "scheduler_history": build_scheduler_history_upsert,
     "scheduler_metadata": build_scheduler_metadata_upsert,
-    "system_configs": lambda document: build_system_config_document_upsert(document, collection="system_configs"),
-    "llm_providers": lambda document: build_system_config_document_upsert(document, collection="llm_providers"),
-    "model_catalog": lambda document: build_system_config_document_upsert(document, collection="model_catalog"),
-    "market_categories": lambda document: build_system_config_document_upsert(document, collection="market_categories"),
-    "datasource_groupings": lambda document: build_system_config_document_upsert(document, collection="datasource_groupings"),
+    "system_configs": lambda document: build_system_config_document_upsert(
+        document, collection="system_configs"
+    ),
+    "llm_providers": lambda document: build_system_config_document_upsert(
+        document, collection="llm_providers"
+    ),
+    "model_catalog": lambda document: build_system_config_document_upsert(
+        document, collection="model_catalog"
+    ),
+    "market_categories": lambda document: build_system_config_document_upsert(
+        document, collection="market_categories"
+    ),
+    "datasource_groupings": lambda document: build_system_config_document_upsert(
+        document, collection="datasource_groupings"
+    ),
     "user_favorites": lambda document: [
         build_user_favorite_upsert(favorite)
         for favorite in iter_user_favorite_documents(document)
@@ -82,11 +92,13 @@ HOT_COLLECTIONS: dict[str, Callable[[dict[str, Any]], Any]] = {
 }
 
 
-async def migrate_hot_collections(mongo_db, session_factory, batch_size: int = 500) -> dict[str, dict[str, int]]:
+async def migrate_hot_collections(
+    postgres_db, session_factory, batch_size: int = 500
+) -> dict[str, dict[str, int]]:
     summary: dict[str, dict[str, int]] = {}
     for collection_name, statement_builder in HOT_COLLECTIONS.items():
         summary[collection_name] = await migrate_collection(
-            mongo_db=mongo_db,
+            postgres_db=postgres_db,
             session_factory=session_factory,
             collection_name=collection_name,
             statement_builder=statement_builder,
@@ -96,7 +108,7 @@ async def migrate_hot_collections(mongo_db, session_factory, batch_size: int = 5
 
 
 async def migrate_collection(
-    mongo_db,
+    postgres_db,
     session_factory,
     collection_name: str,
     statement_builder: Callable[[dict[str, Any]], Any],
@@ -105,7 +117,7 @@ async def migrate_collection(
     migrated = 0
     commits = 0
     pending = 0
-    cursor = mongo_db[collection_name].find({}).batch_size(batch_size)
+    cursor = postgres_db[collection_name].find({}).batch_size(batch_size)
 
     async with session_factory() as session:
         async for document in cursor:
@@ -135,24 +147,40 @@ def _statements_from_builder(statement_builder, document: dict[str, Any]) -> lis
 
 
 async def _run_cli(batch_size: int) -> dict[str, dict[str, int]]:
-    close_mongodb_only = getattr(importlib.import_module('app.core.database'), 'close_mongodb_only')
-    get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
-    init_mongodb_only = getattr(importlib.import_module('app.core.database'), 'init_mongodb_only')
-    close_postgres = getattr(importlib.import_module('app.db.session'), 'close_postgres')
-    get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
-    init_postgres = getattr(importlib.import_module('app.db.session'), 'init_postgres')
+    close_postgres_document_store_only = getattr(
+        importlib.import_module("app.core.database"),
+        "close_postgres_document_store_only",
+    )
+    get_postgres_db = getattr(
+        importlib.import_module("app.core.database"), "get_postgres_db"
+    )
+    init_postgres_document_store_only = getattr(
+        importlib.import_module("app.core.database"),
+        "init_postgres_document_store_only",
+    )
+    close_postgres = getattr(
+        importlib.import_module("app.db.session"), "close_postgres"
+    )
+    get_session_factory = getattr(
+        importlib.import_module("app.db.session"), "get_session_factory"
+    )
+    init_postgres = getattr(importlib.import_module("app.db.session"), "init_postgres")
 
-    await init_mongodb_only()
+    await init_postgres_document_store_only()
     await init_postgres()
     try:
-        return await migrate_hot_collections(get_mongo_db(), get_session_factory(), batch_size=batch_size)
+        return await migrate_hot_collections(
+            get_postgres_db(), get_session_factory(), batch_size=batch_size
+        )
     finally:
         await close_postgres()
-        await close_mongodb_only()
+        await close_postgres_document_store_only()
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Migrate MongoDB hot collections to PostgreSQL.")
+    parser = argparse.ArgumentParser(
+        description="Migrate PostgreSQL hot collections to PostgreSQL."
+    )
     parser.add_argument("--batch-size", type=int, default=500)
     args = parser.parse_args()
 

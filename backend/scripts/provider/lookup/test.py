@@ -2,14 +2,8 @@
 测试供应商查找功能
 """
 
-import sys
-from pathlib import Path
-
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
 from app.services.analysis.simple import get_provider_and_url_by_model_sync
+
 
 def test_provider_lookup():
     """测试供应商和 URL 查找（同步版本）"""
@@ -20,7 +14,7 @@ def test_provider_lookup():
         "qwen-plus",
         "gpt-4o",
         "deepseek-chat",
-        "unknown-model"  # 测试未知模型
+        "unknown-model",  # 测试未知模型
     ]
 
     print("=" * 80)
@@ -32,6 +26,7 @@ def test_provider_lookup():
         print(f"\n模型: {model}")
         print(f"  -> 供应商: {info['provider']}")
         print(f"  -> API URL: {info['backend_url']}")
+
 
 if __name__ == "__main__":
     test_provider_lookup()

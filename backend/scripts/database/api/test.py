@@ -2,12 +2,12 @@
 """
 测试数据库管理 API 接口
 """
-import importlib
-import asyncio
-import httpx
-import json
-from typing import Dict, Any
 
+import asyncio
+import importlib
+import json
+
+import httpx
 
 BASE_URL = "http://127.0.0.1:8000"
 TOKEN = None  # 将在登录后设置
@@ -18,10 +18,7 @@ async def login() -> str:
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{BASE_URL}/api/auth/login",
-            json={
-                "username": "admin",
-                "password": "admin123"
-            }
+            json={"username": "admin", "password": "admin123"},
         )
 
         print(f"登录响应状态码: {response.status_code}")
@@ -43,12 +40,12 @@ async def test_database_status(token: str):
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"{BASE_URL}/api/system/database/status",
-            headers={"Authorization": f"Bearer {token}"}
+            headers={"Authorization": f"Bearer {token}"},
         )
 
         print(f"状态码: {response.status_code}")
         print(f"响应头: {dict(response.headers)}")
-        print(f"响应内容:")
+        print("响应内容:")
         print(json.dumps(response.json(), indent=2, ensure_ascii=False))
         print()
 
@@ -60,12 +57,12 @@ async def test_database_stats(token: str):
     print("=" * 80)
 
     async with httpx.AsyncClient(timeout=60.0) as client:
-        time = importlib.import_module('time')
+        time = importlib.import_module("time")
         start_time = time.time()
 
         response = await client.get(
             f"{BASE_URL}/api/system/database/stats",
-            headers={"Authorization": f"Bearer {token}"}
+            headers={"Authorization": f"Bearer {token}"},
         )
 
         elapsed_time = time.time() - start_time
@@ -73,7 +70,7 @@ async def test_database_stats(token: str):
         print(f"状态码: {response.status_code}")
         print(f"耗时: {elapsed_time:.2f} 秒")
         print(f"响应头: {dict(response.headers)}")
-        print(f"响应内容:")
+        print("响应内容:")
 
         if response.status_code == 200:
             data = response.json()
@@ -90,7 +87,7 @@ async def test_database_stats(token: str):
                 print("❌ 缺少 'success' 字段")
 
             if "data" in data:
-                print(f"✅ 包含 'data' 字段")
+                print("✅ 包含 'data' 字段")
                 stats_data = data["data"]
 
                 if "total_collections" in stats_data:
@@ -110,7 +107,7 @@ async def test_database_stats(token: str):
 
                 if "collections" in stats_data:
                     print(f"  - collections: {len(stats_data['collections'])} 个集合")
-                    if stats_data['collections']:
+                    if stats_data["collections"]:
                         print(f"    第一个集合示例: {stats_data['collections'][0]}")
                 else:
                     print("  ❌ 缺少 'collections' 字段")
@@ -136,12 +133,12 @@ async def test_database_test_connection(token: str):
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{BASE_URL}/api/system/database/test",
-            headers={"Authorization": f"Bearer {token}"}
+            headers={"Authorization": f"Bearer {token}"},
         )
 
         print(f"状态码: {response.status_code}")
         print(f"响应头: {dict(response.headers)}")
-        print(f"响应内容:")
+        print("响应内容:")
         print(json.dumps(response.json(), indent=2, ensure_ascii=False))
         print()
 
@@ -169,7 +166,7 @@ async def main():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 

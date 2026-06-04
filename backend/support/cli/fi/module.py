@@ -7,16 +7,15 @@ Test CLI Fix - KeyError: 'stock_symbol' Issue
 这个测试验证了CLI中selections字典键名不匹配问题的修复
 This test verifies the fix for the selections dictionary key mismatch issue in CLI
 """
+
 import importlib
-
 import sys
-import os
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from support.path import BACKEND_ROOT
+
+project_root = BACKEND_ROOT
+
 
 def test_selections_dictionary_keys():
     """
@@ -26,47 +25,50 @@ def test_selections_dictionary_keys():
     print("🔍 测试selections字典键名...")
 
     try:
-        get_user_selections = getattr(importlib.import_module('cli.main'), 'get_user_selections')
+        get_user_selections = getattr(
+            importlib.import_module("cli.main"), "get_user_selections"
+        )
 
         # 模拟用户输入
-        with patch('typer.prompt') as mock_prompt, \
-             patch('cli.main.select_market') as mock_market, \
-             patch('cli.main.select_analysts') as mock_analysts, \
-             patch('cli.main.select_research_depth') as mock_depth, \
-             patch('cli.main.select_llm_provider') as mock_llm, \
-             patch('cli.main.select_shallow_thinking_agent') as mock_shallow, \
-             patch('cli.main.select_deep_thinking_agent') as mock_deep, \
-             patch('cli.main.console.print'):
-
+        with (
+            patch("typer.prompt") as mock_prompt,
+            patch("cli.main.select_market") as mock_market,
+            patch("cli.main.select_analysts") as mock_analysts,
+            patch("cli.main.select_research_depth") as mock_depth,
+            patch("cli.main.select_llm_provider") as mock_llm,
+            patch("cli.main.select_shallow_thinking_agent") as mock_shallow,
+            patch("cli.main.select_deep_thinking_agent") as mock_deep,
+            patch("cli.main.console.print"),
+        ):
             # 设置模拟返回值
             mock_market.return_value = {
-                'name': 'A股',
-                'name_en': 'China A-Share',
-                'default': '600036',
-                'pattern': r'^\d{6}$',
-                'data_source': 'china_stock'
+                "name": "A股",
+                "name_en": "China A-Share",
+                "default": "600036",
+                "pattern": r"^\d{6}$",
+                "data_source": "china_stock",
             }
-            mock_prompt.side_effect = ['600036', '2024-12-01']  # ticker, date
-            mock_analysts.return_value = [MagicMock(value='market')]
+            mock_prompt.side_effect = ["600036", "2024-12-01"]  # ticker, date
+            mock_analysts.return_value = [MagicMock(value="market")]
             mock_depth.return_value = 3
-            mock_llm.return_value = ('dashscope', 'http://localhost:8000')
-            mock_shallow.return_value = 'qwen-turbo'
-            mock_deep.return_value = 'qwen-max'
+            mock_llm.return_value = ("dashscope", "http://localhost:8000")
+            mock_shallow.return_value = "qwen-turbo"
+            mock_deep.return_value = "qwen-max"
 
             # 调用函数
             selections = get_user_selections()
 
             # 验证必要的键存在
             required_keys = [
-                'ticker',  # 这是正确的键名
-                'market',
-                'analysis_date',
-                'analysts',
-                'research_depth',
-                'llm_provider',
-                'backend_url',
-                'shallow_thinker',
-                'deep_thinker'
+                "ticker",  # 这是正确的键名
+                "market",
+                "analysis_date",
+                "analysts",
+                "research_depth",
+                "llm_provider",
+                "backend_url",
+                "shallow_thinker",
+                "deep_thinker",
             ]
 
             for key in required_keys:
@@ -74,7 +76,7 @@ def test_selections_dictionary_keys():
                 print(f"✅ 键 '{key}' 存在")
 
             # 确保不存在错误的键名
-            assert 'stock_symbol' not in selections, "不应该存在 'stock_symbol' 键"
+            assert "stock_symbol" not in selections, "不应该存在 'stock_symbol' 键"
             print("✅ 确认不存在错误的 'stock_symbol' 键")
 
             print("✅ selections字典键名测试通过")
@@ -83,6 +85,7 @@ def test_selections_dictionary_keys():
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         return False
+
 
 def test_process_signal_call():
     """
@@ -93,8 +96,8 @@ def test_process_signal_call():
 
     try:
         # 读取main.py文件内容
-        main_file = project_root / 'cli' / 'main.py'
-        with open(main_file, 'r', encoding='utf-8') as f:
+        main_file = project_root / "cli" / "main.py"
+        with open(main_file, "r", encoding="utf-8") as f:
             content = f.read()
 
         # 检查是否使用了正确的键名
@@ -118,6 +121,7 @@ def test_process_signal_call():
         print(f"❌ 测试失败: {e}")
         return False
 
+
 def test_code_consistency():
     """
     测试代码一致性 - 确保所有地方都使用相同的键名
@@ -126,8 +130,8 @@ def test_code_consistency():
     print("\n🔍 测试代码一致性...")
 
     try:
-        main_file = project_root / 'cli' / 'main.py'
-        with open(main_file, 'r', encoding='utf-8') as f:
+        main_file = project_root / "cli" / "main.py"
+        with open(main_file, "r", encoding="utf-8") as f:
             content = f.read()
 
         # 统计ticker键的使用次数
@@ -147,7 +151,7 @@ def test_code_consistency():
         potential_issues = [
             "selections['symbol']",
             "selections['stock']",
-            "selections['code']"
+            "selections['code']",
         ]
 
         for issue in potential_issues:
@@ -163,6 +167,7 @@ def test_code_consistency():
         print(f"❌ 测试失败: {e}")
         return False
 
+
 def main():
     """
     运行所有测试
@@ -174,7 +179,7 @@ def main():
     tests = [
         test_selections_dictionary_keys,
         test_process_signal_call,
-        test_code_consistency
+        test_code_consistency,
     ]
 
     passed = 0
@@ -193,6 +198,7 @@ def main():
     else:
         print("❌ 部分测试失败，需要进一步检查")
         return False
+
 
 if __name__ == "__main__":
     success = main()

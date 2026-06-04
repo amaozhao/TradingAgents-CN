@@ -1,16 +1,16 @@
-import importlib
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
 import asyncio
+import importlib
 import json
 import logging
 import time
 
-from app.routers.account import get_current_user
-from app.core.database import get_redis_client
-from app.core.config import settings
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 
-from app.services.queue.service import get_queue_service, QueueService
+from app.core.config import settings
+from app.core.database import get_redis_client
+from app.routers.account import get_current_user
+from app.services.queue.service import QueueService, get_queue_service
 
 router = APIRouter()
 logger = logging.getLogger("webapi.sse")
@@ -25,14 +25,18 @@ async def task_progress_generator(task_id: str, user_id: str):
     try:
         # Load dynamic SSE settings
         try:
-            config_provider = getattr(importlib.import_module('app.services.provider'), 'provider')
+            config_provider = getattr(
+                importlib.import_module("app.services.provider"), "provider"
+            )
             eff = await config_provider.get_effective_system_settings()
             poll_timeout = float(eff.get("sse_poll_timeout_seconds", 1.0))
             heartbeat_every = int(eff.get("sse_heartbeat_interval_seconds", 10))
             max_idle_seconds = int(eff.get("sse_task_max_idle_seconds", 300))
         except Exception:
             poll_timeout = float(getattr(settings, "SSE_POLL_TIMEOUT_SECONDS", 1.0))
-            heartbeat_every = int(getattr(settings, "SSE_HEARTBEAT_INTERVAL_SECONDS", 10))
+            heartbeat_every = int(
+                getattr(settings, "SSE_HEARTBEAT_INTERVAL_SECONDS", 10)
+            )
             max_idle_seconds = int(getattr(settings, "SSE_TASK_MAX_IDLE_SECONDS", 300))
 
         # 🔥 修复：创建 PubSub 连接
@@ -44,13 +48,13 @@ async def task_progress_generator(task_id: str, user_id: str):
             await pubsub.subscribe(channel)
             logger.info(f"✅ [SSE-Task] 订阅频道成功: {channel}")
             # Send initial connection confirmation
-            yield f"event: connected\ndata: {{\"task_id\": \"{task_id}\", \"message\": \"已连接进度流\"}}\n\n"
+            yield f'event: connected\ndata: {{"task_id": "{task_id}", "message": "已连接进度流"}}\n\n'
         except Exception as subscribe_error:
             # 🔥 订阅失败时立即清理 pubsub 连接
             logger.error(f"❌ [SSE-Task] 订阅频道失败: {subscribe_error}")
             try:
                 await pubsub.close()
-                logger.info(f"🧹 [SSE-Task] 订阅失败后已关闭 PubSub 连接")
+                logger.info("🧹 [SSE-Task] 订阅失败后已关闭 PubSub 连接")
             except Exception as close_error:
                 logger.error(f"❌ [SSE-Task] 关闭 PubSub 连接失败: {close_error}")
             # 重新抛出异常，让外层 except 处理
@@ -62,21 +66,26 @@ async def task_progress_generator(task_id: str, user_id: str):
 
         while idle_elapsed < max_idle_seconds:
             try:
-                message = await asyncio.wait_for(pubsub.get_message(ignore_subscribe_messages=True), timeout=poll_timeout)
-                if message and message['type'] == 'message':
+                message = await asyncio.wait_for(
+                    pubsub.get_message(ignore_subscribe_messages=True),
+                    timeout=poll_timeout,
+                )
+                if message and message["type"] == "message":
                     # Reset idle timer on valid message
                     idle_elapsed = 0.0
                     try:
-                        progress_data = json.loads(message['data'])
+                        progress_data = json.loads(message["data"])
                         yield f"event: progress\ndata: {json.dumps(progress_data, ensure_ascii=False)}\n\n"
                     except json.JSONDecodeError:
-                        logger.warning(f"Invalid JSON in progress message: {message['data']}")
+                        logger.warning(
+                            f"Invalid JSON in progress message: {message['data']}"
+                        )
                 else:
                     # No update: accumulate idle time and send heartbeat if due
                     idle_elapsed += poll_timeout
                     now = time.monotonic()
                     if now - last_hb >= heartbeat_every:
-                        yield f"event: heartbeat\ndata: {{\"timestamp\": \"{asyncio.get_event_loop().time()}\"}}\n\n"
+                        yield f'event: heartbeat\ndata: {{"timestamp": "{asyncio.get_event_loop().time()}"}}\n\n'
                         last_hb = now
 
             except asyncio.TimeoutError:
@@ -85,7 +94,7 @@ async def task_progress_generator(task_id: str, user_id: str):
 
     except Exception as e:
         logger.exception(f"SSE error for task {task_id}: {e}")
-        yield f"event: error\ndata: {{\"error\": \"连接异常: {str(e)}\"}}\n\n"
+        yield f'event: error\ndata: {{"error": "连接异常: {str(e)}"}}\n\n'
     finally:
         # 🔥 修复：确保在所有情况下都释放连接
         if pubsub:
@@ -118,16 +127,22 @@ async def batch_progress_generator(batch_id: str, user_id: str):
     try:
         # Load dynamic SSE settings for batch stream
         try:
-            config_provider = getattr(importlib.import_module('app.services.provider'), 'provider')
+            config_provider = getattr(
+                importlib.import_module("app.services.provider"), "provider"
+            )
             eff = await config_provider.get_effective_system_settings()
             batch_poll_interval = float(eff.get("sse_batch_poll_interval_seconds", 2))
             batch_max_idle_seconds = int(eff.get("sse_batch_max_idle_seconds", 600))
         except Exception:
-            batch_poll_interval = float(getattr(settings, "SSE_BATCH_POLL_INTERVAL_SECONDS", 2.0))
-            batch_max_idle_seconds = int(getattr(settings, "SSE_BATCH_MAX_IDLE_SECONDS", 600))
+            batch_poll_interval = float(
+                getattr(settings, "SSE_BATCH_POLL_INTERVAL_SECONDS", 2.0)
+            )
+            batch_max_idle_seconds = int(
+                getattr(settings, "SSE_BATCH_MAX_IDLE_SECONDS", 600)
+            )
 
         # Send initial connection confirmation
-        yield f"event: connected\ndata: {{\"batch_id\": \"{batch_id}\", \"message\": \"已连接批次进度流\"}}\n\n"
+        yield f'event: connected\ndata: {{"batch_id": "{batch_id}", "message": "已连接批次进度流"}}\n\n'
 
         idle_elapsed = 0.0
 
@@ -136,18 +151,18 @@ async def batch_progress_generator(batch_id: str, user_id: str):
                 # Get current batch status
                 batch_data = await svc.get_batch(batch_id)
                 if not batch_data:
-                    yield f"event: error\ndata: {{\"error\": \"批次不存在\"}}\n\n"
+                    yield 'event: error\ndata: {"error": "批次不存在"}\n\n'
                     break
 
                 # Check if batch belongs to user
                 if batch_data.get("user") != user_id:
-                    yield f"event: error\ndata: {{\"error\": \"无权限访问此批次\"}}\n\n"
+                    yield 'event: error\ndata: {"error": "无权限访问此批次"}\n\n'
                     break
 
                 # Calculate batch progress based on task statuses
                 task_ids = batch_data.get("tasks", [])
                 if not task_ids:
-                    yield f"event: progress\ndata: {{\"batch_id\": \"{batch_id}\", \"message\": \"批次无任务\", \"progress\": 0}}\n\n"
+                    yield f'event: progress\ndata: {{"batch_id": "{batch_id}", "message": "批次无任务", "progress": 0}}\n\n'
                     await asyncio.sleep(batch_poll_interval)
                     idle_elapsed += batch_poll_interval
                     continue
@@ -169,7 +184,11 @@ async def batch_progress_generator(batch_id: str, user_id: str):
 
                 total_tasks = len(task_ids)
                 finished_tasks = completed_count + failed_count
-                progress = round((finished_tasks / total_tasks) * 100, 1) if total_tasks > 0 else 0
+                progress = (
+                    round((finished_tasks / total_tasks) * 100, 1)
+                    if total_tasks > 0
+                    else 0
+                )
 
                 # Determine batch status
                 if finished_tasks == total_tasks:
@@ -181,7 +200,9 @@ async def batch_progress_generator(batch_id: str, user_id: str):
                         message = f"批次失败: {failed_count}/{total_tasks} 失败"
                     else:
                         batch_status = "partial"
-                        message = f"批次部分成功: {completed_count} 成功, {failed_count} 失败"
+                        message = (
+                            f"批次部分成功: {completed_count} 成功, {failed_count} 失败"
+                        )
                 elif processing_count > 0 or finished_tasks < total_tasks:
                     batch_status = "processing"
                     message = f"批次处理中: {finished_tasks}/{total_tasks} 已完成, {processing_count} 处理中"
@@ -198,14 +219,14 @@ async def batch_progress_generator(batch_id: str, user_id: str):
                     "completed": completed_count,
                     "failed": failed_count,
                     "processing": processing_count,
-                    "timestamp": asyncio.get_event_loop().time()
+                    "timestamp": asyncio.get_event_loop().time(),
                 }
 
                 yield f"event: progress\ndata: {json.dumps(progress_data, ensure_ascii=False)}\n\n"
 
                 # Break if batch is finished
                 if batch_status in ["completed", "failed", "partial"]:
-                    yield f"event: finished\ndata: {{\"batch_id\": \"{batch_id}\", \"final_status\": \"{batch_status}\"}}\n\n"
+                    yield f'event: finished\ndata: {{"batch_id": "{batch_id}", "final_status": "{batch_status}"}}\n\n'
                     break
 
                 # Wait before next update
@@ -214,16 +235,20 @@ async def batch_progress_generator(batch_id: str, user_id: str):
 
             except Exception as e:
                 logger.exception(f"Batch progress error: {e}")
-                yield f"event: error\ndata: {{\"error\": \"获取批次状态失败: {str(e)}\"}}\n\n"
+                yield f'event: error\ndata: {{"error": "获取批次状态失败: {str(e)}"}}\n\n'
                 break
 
     except Exception as e:
         logger.exception(f"SSE batch error for {batch_id}: {e}")
-        yield f"event: error\ndata: {{\"error\": \"连接异常: {str(e)}\"}}\n\n"
+        yield f'event: error\ndata: {{"error": "连接异常: {str(e)}"}}\n\n'
 
 
 @router.get("/tasks/{task_id}", response_model=None)
-async def stream_task_progress(task_id: str, user: dict = Depends(get_current_user), svc: QueueService = Depends(get_queue_service)):
+async def stream_task_progress(
+    task_id: str,
+    user: dict = Depends(get_current_user),
+    svc: QueueService = Depends(get_queue_service),
+):
     """Stream real-time progress updates for a specific task"""
     # Verify task exists and belongs to user
     task_data = await svc.get_task(task_id)
@@ -236,13 +261,17 @@ async def stream_task_progress(task_id: str, user: dict = Depends(get_current_us
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"  # Disable nginx buffering
-        }
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
     )
 
 
 @router.get("/batches/{batch_id}", response_model=None)
-async def stream_batch_progress(batch_id: str, user: dict = Depends(get_current_user), svc: QueueService = Depends(get_queue_service)):
+async def stream_batch_progress(
+    batch_id: str,
+    user: dict = Depends(get_current_user),
+    svc: QueueService = Depends(get_queue_service),
+):
     """Stream real-time progress updates for a batch"""
     # Verify batch exists and belongs to user
     batch_data = await svc.get_batch(batch_id)
@@ -255,6 +284,6 @@ async def stream_batch_progress(batch_id: str, user: dict = Depends(get_current_
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
+            "X-Accel-Buffering": "no",
+        },
     )

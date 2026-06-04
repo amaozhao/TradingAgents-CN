@@ -2,20 +2,29 @@
 """
 最终测试港股基本面分析修复
 """
-import importlib
 
-import os
+import importlib
 import sys
+
 
 def test_hk_fundamentals_complete():
     """完整测试港股基本面分析"""
     print("🔧 完整测试港股基本面分析...")
 
     try:
-        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        create_fundamentals_analyst = getattr(
+            importlib.import_module("trader.agents.analysts.fundamentals"),
+            "create_fundamentals_analyst",
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -34,11 +43,13 @@ def test_hk_fundamentals_complete():
                 return self
 
             def invoke(self, messages):
-                print(f"🔧 [MockLLM] 收到调用请求")
+                print("🔧 [MockLLM] 收到调用请求")
+
                 class MockResult:
                     def __init__(self):
                         self.tool_calls = []  # 模拟没有工具调用，触发强制调用
                         self.content = "模拟分析结果"
+
                 return MockResult()
 
         llm = MockLLM()
@@ -50,32 +61,36 @@ def test_hk_fundamentals_complete():
         state = {
             "trade_date": "2025-07-14",
             "company_of_interest": "0700.HK",
-            "messages": []
+            "messages": [],
         }
 
         print(f"\n📊 测试港股基本面分析: {state['company_of_interest']}")
 
         # 验证股票类型识别
-        market_info = StockUtils.get_market_info(state['company_of_interest'])
+        market_info = StockUtils.get_market_info(state["company_of_interest"])
         print(f"  市场类型: {market_info['market_name']}")
-        print(f"  货币: {market_info['currency_name']} ({market_info['currency_symbol']})")
+        print(
+            f"  货币: {market_info['currency_name']} ({market_info['currency_symbol']})"
+        )
         print(f"  是否港股: {market_info['is_hk']}")
 
-        if not market_info['is_hk']:
-            print(f"❌ 股票类型识别错误")
+        if not market_info["is_hk"]:
+            print("❌ 股票类型识别错误")
             return False
 
-        print(f"\n🔄 调用基本面分析师...")
+        print("\n🔄 调用基本面分析师...")
 
         # 调用分析师
         result = analyst(state)
 
-        print(f"✅ 基本面分析师调用完成")
+        print("✅ 基本面分析师调用完成")
         print(f"  结果类型: {type(result)}")
-        print(f"  包含的键: {list(result.keys()) if isinstance(result, dict) else 'N/A'}")
+        print(
+            f"  包含的键: {list(result.keys()) if isinstance(result, dict) else 'N/A'}"
+        )
 
-        if 'fundamentals_report' in result:
-            report = result['fundamentals_report']
+        if "fundamentals_report" in result:
+            report = result["fundamentals_report"]
             print(f"  报告长度: {len(report)}")
             print(f"  报告前200字符: {report[:200]}...")
 
@@ -83,7 +98,7 @@ def test_hk_fundamentals_complete():
 
     except Exception as e:
         print(f"❌ 港股基本面分析测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -93,9 +108,15 @@ def test_tool_selection_verification():
     print("\n🔧 验证工具选择逻辑...")
 
     try:
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True
@@ -109,9 +130,9 @@ def test_tool_selection_verification():
 
         for ticker, expected_market, expected_tools in test_cases:
             market_info = StockUtils.get_market_info(ticker)
-            is_china = market_info['is_china']
-            is_hk = market_info['is_hk']
-            is_us = market_info['is_us']
+            is_china = market_info["is_china"]
+            is_hk = market_info["is_hk"]
+            market_info["is_us"]
 
             print(f"\n📊 {ticker} ({expected_market}):")
             print(f"  识别结果: {market_info['market_name']}")
@@ -129,9 +150,9 @@ def test_tool_selection_verification():
             print(f"  期望的工具: {expected_tools}")
 
             if selected_tools == expected_tools:
-                print(f"  ✅ 工具选择正确")
+                print("  ✅ 工具选择正确")
             else:
-                print(f"  ❌ 工具选择错误")
+                print("  ❌ 工具选择错误")
                 return False
 
         print("✅ 工具选择逻辑验证通过")

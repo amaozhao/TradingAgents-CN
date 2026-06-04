@@ -1,12 +1,19 @@
 import importlib
-from typing import Annotated, Optional
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
+from typing import Annotated, Optional
+
 import pandas as pd
 import yfinance as yf
-import os
-from ..stats import StockstatsUtils, _clean_dataframe, yf_retry, load_ohlcv, filter_financials_by_date
-from ..symbols import normalize_symbol, NoMarketDataError
+from dateutil.relativedelta import relativedelta
+
+from ..stats import (
+    StockstatsUtils,
+    filter_financials_by_date,
+    load_ohlcv,
+    yf_retry,
+)
+from ..symbols import NoMarketDataError, normalize_symbol
+
 
 def get_yfin_data_online(
     symbol: Annotated[str, "ticker symbol of the company"],
@@ -57,6 +64,7 @@ def get_yfin_data_online(
     header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 
     return header + csv_string
+
 
 def get_stock_stats_indicators_window(
     symbol: Annotated[str, "ticker symbol of the company"],
@@ -158,7 +166,7 @@ def get_stock_stats_indicators_window(
         date_values = []
 
         while current_dt >= before:
-            date_str = current_dt.strftime('%Y-%m-%d')
+            date_str = current_dt.strftime("%Y-%m-%d")
 
             # Look up the indicator value for this date
             if date_str in indicator_data:
@@ -201,14 +209,14 @@ def get_stock_stats_indicators_window(
 def _get_stock_stats_bulk(
     symbol: Annotated[str, "ticker symbol of the company"],
     indicator: Annotated[str, "technical indicator to calculate"],
-    curr_date: Annotated[str, "current date for reference"]
+    curr_date: Annotated[str, "current date for reference"],
 ) -> dict:
     """
     Optimized bulk calculation of stock stats indicators.
     Fetches data once and calculates indicator for all available dates.
     Returns dict mapping date strings to indicator values.
     """
-    wrap = getattr(importlib.import_module('stats'), 'wrap')
+    wrap = getattr(importlib.import_module("stats"), "wrap")
 
     data = load_ohlcv(symbol, curr_date)
     df = wrap(data)
@@ -262,7 +270,7 @@ def get_stockstats_indicator(
 
 def get_fundamentals(
     ticker: Annotated[str, "ticker symbol of the company"],
-    curr_date: Annotated[Optional[str], "current date (not used for yfinance)"] = None
+    curr_date: Annotated[Optional[str], "current date (not used for yfinance)"] = None,
 ):
     """Get company fundamentals overview from yfinance."""
     canonical = normalize_symbol(ticker)
@@ -317,7 +325,9 @@ def get_fundamentals(
             raise NoMarketDataError(ticker, canonical, "no fundamental fields returned")
 
         header = f"# Company Fundamentals for {canonical}\n"
-        header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        header += (
+            f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        )
 
         return header + "\n".join(lines)
 
@@ -330,7 +340,7 @@ def get_fundamentals(
 def get_balance_sheet(
     ticker: Annotated[str, "ticker symbol of the company"],
     freq: Annotated[str, "frequency of data: 'annual' or 'quarterly'"] = "quarterly",
-    curr_date: Annotated[Optional[str], "current date in YYYY-MM-DD format"] = None
+    curr_date: Annotated[Optional[str], "current date in YYYY-MM-DD format"] = None,
 ):
     """Get balance sheet data from yfinance."""
     canonical = normalize_symbol(ticker)
@@ -354,7 +364,9 @@ def get_balance_sheet(
 
         # Add header information
         header = f"# Balance Sheet data for {canonical} ({freq})\n"
-        header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        header += (
+            f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        )
 
         return header + csv_string
 
@@ -367,7 +379,7 @@ def get_balance_sheet(
 def get_cashflow(
     ticker: Annotated[str, "ticker symbol of the company"],
     freq: Annotated[str, "frequency of data: 'annual' or 'quarterly'"] = "quarterly",
-    curr_date: Annotated[Optional[str], "current date in YYYY-MM-DD format"] = None
+    curr_date: Annotated[Optional[str], "current date in YYYY-MM-DD format"] = None,
 ):
     """Get cash flow data from yfinance."""
     canonical = normalize_symbol(ticker)
@@ -391,7 +403,9 @@ def get_cashflow(
 
         # Add header information
         header = f"# Cash Flow data for {canonical} ({freq})\n"
-        header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        header += (
+            f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        )
 
         return header + csv_string
 
@@ -404,7 +418,7 @@ def get_cashflow(
 def get_income_statement(
     ticker: Annotated[str, "ticker symbol of the company"],
     freq: Annotated[str, "frequency of data: 'annual' or 'quarterly'"] = "quarterly",
-    curr_date: Annotated[Optional[str], "current date in YYYY-MM-DD format"] = None
+    curr_date: Annotated[Optional[str], "current date in YYYY-MM-DD format"] = None,
 ):
     """Get income statement data from yfinance."""
     canonical = normalize_symbol(ticker)
@@ -428,7 +442,9 @@ def get_income_statement(
 
         # Add header information
         header = f"# Income Statement data for {canonical} ({freq})\n"
-        header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        header += (
+            f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        )
 
         return header + csv_string
 
@@ -438,9 +454,7 @@ def get_income_statement(
         return f"Error retrieving income statement for {ticker}: {str(e)}"
 
 
-def get_insider_transactions(
-    ticker: Annotated[str, "ticker symbol of the company"]
-):
+def get_insider_transactions(ticker: Annotated[str, "ticker symbol of the company"]):
     """Get insider transactions data from yfinance."""
     canonical = normalize_symbol(ticker)
     try:
@@ -457,7 +471,9 @@ def get_insider_transactions(
 
         # Add header information
         header = f"# Insider Transactions data for {canonical}\n"
-        header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        header += (
+            f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        )
 
         return header + csv_string
 

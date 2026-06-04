@@ -2,8 +2,10 @@
 测试速率限制器
 验证Tushare速率限制器是否正常工作
 """
+
 import asyncio
 import time
+
 from app.core.limiter import TushareRateLimiter, get_tushare_rate_limiter
 
 
@@ -18,7 +20,7 @@ async def test_basic_rate_limiter():
     limiter = TushareRateLimiter(tier="free", safety_margin=1.0)  # 100次/分钟
 
     print(f"\n配置: {limiter.max_calls}次/{limiter.time_window}秒")
-    print(f"开始测试...")
+    print("开始测试...")
 
     start_time = time.time()
 
@@ -28,14 +30,16 @@ async def test_basic_rate_limiter():
         if (i + 1) % 10 == 0:
             elapsed = time.time() - start_time
             stats = limiter.get_stats()
-            print(f"  已调用 {i+1}次, 耗时 {elapsed:.2f}秒, "
-                  f"等待次数: {stats['total_waits']}, "
-                  f"总等待时间: {stats['total_wait_time']:.2f}秒")
+            print(
+                f"  已调用 {i + 1}次, 耗时 {elapsed:.2f}秒, "
+                f"等待次数: {stats['total_waits']}, "
+                f"总等待时间: {stats['total_wait_time']:.2f}秒"
+            )
 
     total_time = time.time() - start_time
     stats = limiter.get_stats()
 
-    print(f"\n✅ 测试完成:")
+    print("\n✅ 测试完成:")
     print(f"  总调用次数: {stats['total_calls']}")
     print(f"  总耗时: {total_time:.2f}秒")
     print(f"  等待次数: {stats['total_waits']}")
@@ -74,7 +78,7 @@ async def test_different_tiers():
         if total_time > 0:
             print(f"  实际速率: {test_calls / total_time:.1f}次/秒")
         else:
-            print(f"  实际速率: 瞬间完成（无限制）")
+            print("  实际速率: 瞬间完成（无限制）")
 
 
 async def test_concurrent_calls():
@@ -95,20 +99,16 @@ async def test_concurrent_calls():
             await asyncio.sleep(0.01)
         print(f"  Worker {worker_id} 完成 {num_calls} 次调用")
 
-    print(f"\n启动3个并发工作线程，每个调用30次...")
+    print("\n启动3个并发工作线程，每个调用30次...")
     start_time = time.time()
 
     # 启动3个并发工作线程
-    await asyncio.gather(
-        worker(1, 30),
-        worker(2, 30),
-        worker(3, 30)
-    )
+    await asyncio.gather(worker(1, 30), worker(2, 30), worker(3, 30))
 
     total_time = time.time() - start_time
     stats = limiter.get_stats()
 
-    print(f"\n✅ 并发测试完成:")
+    print("\n✅ 并发测试完成:")
     print(f"  总调用次数: {stats['total_calls']}")
     print(f"  总耗时: {total_time:.2f}秒")
     print(f"  等待次数: {stats['total_waits']}")
@@ -126,7 +126,7 @@ async def test_safety_margin():
     test_calls = 100
 
     for margin in safety_margins:
-        print(f"\n📊 测试安全边际: {margin*100:.0f}%")
+        print(f"\n📊 测试安全边际: {margin * 100:.0f}%")
 
         limiter = TushareRateLimiter(tier="standard", safety_margin=margin)
         print(f"  配置: {limiter.max_calls}次/{limiter.time_window}秒")
@@ -144,7 +144,7 @@ async def test_safety_margin():
         if total_time > 0:
             print(f"  实际速率: {test_calls / total_time:.1f}次/秒")
         else:
-            print(f"  实际速率: 瞬间完成（无限制）")
+            print("  实际速率: 瞬间完成（无限制）")
 
 
 async def test_global_limiter():
@@ -156,17 +156,19 @@ async def test_global_limiter():
 
     # 获取两次全局限制器，应该是同一个实例
     limiter1 = get_tushare_rate_limiter(tier="standard", safety_margin=0.8)
-    limiter2 = get_tushare_rate_limiter(tier="premium", safety_margin=0.9)  # 参数会被忽略
+    limiter2 = get_tushare_rate_limiter(
+        tier="premium", safety_margin=0.9
+    )  # 参数会被忽略
 
-    print(f"\n检查单例模式:")
+    print("\n检查单例模式:")
     print(f"  limiter1 == limiter2: {limiter1 is limiter2}")
     print(f"  limiter1配置: {limiter1.max_calls}次/{limiter1.time_window}秒")
     print(f"  limiter2配置: {limiter2.max_calls}次/{limiter2.time_window}秒")
 
     if limiter1 is limiter2:
-        print(f"  ✅ 单例模式正常工作")
+        print("  ✅ 单例模式正常工作")
     else:
-        print(f"  ❌ 单例模式失败")
+        print("  ❌ 单例模式失败")
 
 
 async def main():

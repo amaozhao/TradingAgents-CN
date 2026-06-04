@@ -6,7 +6,6 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-
 REQUIRED_STEPS = [
     "inventory",
     "alembic_offline_sql",
@@ -37,7 +36,9 @@ def check_evidence_bundle(
     checks: list[EvidenceCheck] = []
 
     if require_target_manifest or expected_phase is not None:
-        checks.extend(_check_target_manifest_file(output_dir, expected_phase=expected_phase))
+        checks.extend(
+            _check_target_manifest_file(output_dir, expected_phase=expected_phase)
+        )
 
     if rollback_only:
         checks.extend(_check_rollback_check_file(output_dir))
@@ -51,7 +52,11 @@ def check_evidence_bundle(
     else:
         try:
             summary = _load_json(summary_path)
-            checks.append(EvidenceCheck("summary_exists", True, "summary.json exists and is valid JSON"))
+            checks.append(
+                EvidenceCheck(
+                    "summary_exists", True, "summary.json exists and is valid JSON"
+                )
+            )
         except ValueError as exc:
             checks.append(EvidenceCheck("summary_exists", False, str(exc)))
 
@@ -75,7 +80,9 @@ def check_evidence_bundle(
 
     results = summary.get("results")
     if not isinstance(results, list):
-        checks.append(EvidenceCheck("results_list", False, "summary.results is not a list"))
+        checks.append(
+            EvidenceCheck("results_list", False, "summary.results is not a list")
+        )
         return _result(output_dir, checks)
     checks.append(EvidenceCheck("results_list", True, f"results={len(results)}"))
 
@@ -91,9 +98,13 @@ def check_evidence_bundle(
     for step_name in required_steps:
         result = result_by_name.get(step_name)
         if result is None:
-            checks.append(EvidenceCheck(f"{step_name}_present", False, "missing step result"))
+            checks.append(
+                EvidenceCheck(f"{step_name}_present", False, "missing step result")
+            )
             continue
-        checks.append(EvidenceCheck(f"{step_name}_present", True, "step result present"))
+        checks.append(
+            EvidenceCheck(f"{step_name}_present", True, "step result present")
+        )
         checks.append(
             EvidenceCheck(
                 f"{step_name}_passed",
@@ -103,11 +114,17 @@ def check_evidence_bundle(
         )
         output_file = result.get("output_file")
         if not isinstance(output_file, str) or not output_file:
-            checks.append(EvidenceCheck(f"{step_name}_output_file", False, "missing output_file"))
+            checks.append(
+                EvidenceCheck(f"{step_name}_output_file", False, "missing output_file")
+            )
             continue
         output_path = Path(output_file)
         if not output_path.exists():
-            checks.append(EvidenceCheck(f"{step_name}_output_file", False, f"missing {output_path}"))
+            checks.append(
+                EvidenceCheck(
+                    f"{step_name}_output_file", False, f"missing {output_path}"
+                )
+            )
             continue
         checks.append(EvidenceCheck(f"{step_name}_output_file", True, str(output_path)))
         checks.extend(_semantic_checks(step_name, output_path))
@@ -129,7 +146,9 @@ def check_evidence_bundle(
         if result is None:
             checks.extend(_check_runtime_log_check_file(output_dir))
         else:
-            checks.append(EvidenceCheck("runtime_log_check_present", True, "step result present"))
+            checks.append(
+                EvidenceCheck("runtime_log_check_present", True, "step result present")
+            )
             checks.append(
                 EvidenceCheck(
                     "runtime_log_check_passed",
@@ -139,21 +158,37 @@ def check_evidence_bundle(
             )
             output_file = result.get("output_file")
             if not isinstance(output_file, str) or not output_file:
-                checks.append(EvidenceCheck("runtime_log_check_output_file", False, "missing output_file"))
+                checks.append(
+                    EvidenceCheck(
+                        "runtime_log_check_output_file", False, "missing output_file"
+                    )
+                )
             else:
                 output_path = Path(output_file)
                 if output_path.exists():
-                    checks.append(EvidenceCheck("runtime_log_check_output_file", True, str(output_path)))
+                    checks.append(
+                        EvidenceCheck(
+                            "runtime_log_check_output_file", True, str(output_path)
+                        )
+                    )
                     checks.extend(_semantic_checks("runtime_log_check", output_path))
                 else:
-                    checks.append(EvidenceCheck("runtime_log_check_output_file", False, f"missing {output_path}"))
+                    checks.append(
+                        EvidenceCheck(
+                            "runtime_log_check_output_file",
+                            False,
+                            f"missing {output_path}",
+                        )
+                    )
 
     if require_rollback_check:
         result = result_by_name.get("rollback_check")
         if result is None:
             checks.extend(_check_rollback_check_file(output_dir))
         else:
-            checks.append(EvidenceCheck("rollback_check_present", True, "step result present"))
+            checks.append(
+                EvidenceCheck("rollback_check_present", True, "step result present")
+            )
             checks.append(
                 EvidenceCheck(
                     "rollback_check_passed",
@@ -163,14 +198,28 @@ def check_evidence_bundle(
             )
             output_file = result.get("output_file")
             if not isinstance(output_file, str) or not output_file:
-                checks.append(EvidenceCheck("rollback_check_output_file", False, "missing output_file"))
+                checks.append(
+                    EvidenceCheck(
+                        "rollback_check_output_file", False, "missing output_file"
+                    )
+                )
             else:
                 output_path = Path(output_file)
                 if output_path.exists():
-                    checks.append(EvidenceCheck("rollback_check_output_file", True, str(output_path)))
+                    checks.append(
+                        EvidenceCheck(
+                            "rollback_check_output_file", True, str(output_path)
+                        )
+                    )
                     checks.extend(_semantic_checks("rollback_check", output_path))
                 else:
-                    checks.append(EvidenceCheck("rollback_check_output_file", False, f"missing {output_path}"))
+                    checks.append(
+                        EvidenceCheck(
+                            "rollback_check_output_file",
+                            False,
+                            f"missing {output_path}",
+                        )
+                    )
 
     return _result(output_dir, checks)
 
@@ -183,7 +232,9 @@ def _semantic_checks(step_name: str, output_path: Path) -> list[EvidenceCheck]:
         "query_plan": _check_query_plan,
         "data_path_smoke": lambda path: _check_all_passed_json(path, "data_path_smoke"),
         "api_smoke": lambda path: _check_all_passed_json(path, "api_smoke"),
-        "runtime_log_check": lambda path: _check_all_passed_json(path, "runtime_log_check"),
+        "runtime_log_check": lambda path: _check_all_passed_json(
+            path, "runtime_log_check"
+        ),
         "rollback_check": lambda path: _check_all_passed_json(path, "rollback_check"),
     }
     validator = validators.get(step_name)
@@ -197,8 +248,13 @@ def _check_inventory(path: Path) -> EvidenceCheck:
         payload = _load_json(path)
     except ValueError as exc:
         return EvidenceCheck("inventory_semantic", False, str(exc))
-    summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else payload
-    ok = summary.get("response_model_dict_endpoints") == 0 and summary.get("raw_dict_request_bodies") == 0
+    summary = (
+        payload.get("summary") if isinstance(payload.get("summary"), dict) else payload
+    )
+    ok = (
+        summary.get("response_model_dict_endpoints") == 0
+        and summary.get("raw_dict_request_bodies") == 0
+    )
     return EvidenceCheck(
         "inventory_semantic",
         ok,
@@ -216,7 +272,11 @@ def _check_consistency(path: Path) -> EvidenceCheck:
         payload = _load_json(path)
     except ValueError as exc:
         return EvidenceCheck("consistency_semantic", False, str(exc))
-    return EvidenceCheck("consistency_semantic", payload.get("all_consistent") is True, f"all_consistent={payload.get('all_consistent')}")
+    return EvidenceCheck(
+        "consistency_semantic",
+        payload.get("all_consistent") is True,
+        f"all_consistent={payload.get('all_consistent')}",
+    )
 
 
 def _check_query_plan(path: Path) -> EvidenceCheck:
@@ -236,7 +296,11 @@ def _check_all_passed_json(path: Path, name: str) -> EvidenceCheck:
         payload = _load_json(path)
     except ValueError as exc:
         return EvidenceCheck(f"{name}_semantic", False, str(exc))
-    return EvidenceCheck(f"{name}_semantic", payload.get("all_passed") is True, f"all_passed={payload.get('all_passed')}")
+    return EvidenceCheck(
+        f"{name}_semantic",
+        payload.get("all_passed") is True,
+        f"all_passed={payload.get('all_passed')}",
+    )
 
 
 def _check_api_migration_state(path: Path) -> EvidenceCheck:
@@ -246,7 +310,9 @@ def _check_api_migration_state(path: Path) -> EvidenceCheck:
         return EvidenceCheck("api_smoke_migration_state", False, str(exc))
     checks = payload.get("checks")
     if not isinstance(checks, list):
-        return EvidenceCheck("api_smoke_migration_state", False, "api_smoke checks is not a list")
+        return EvidenceCheck(
+            "api_smoke_migration_state", False, "api_smoke checks is not a list"
+        )
     for check in checks:
         if isinstance(check, dict) and check.get("name") == "migration_state":
             return EvidenceCheck(
@@ -254,7 +320,9 @@ def _check_api_migration_state(path: Path) -> EvidenceCheck:
                 check.get("status") == "passed",
                 f"status={check.get('status')}, detail={check.get('detail')}",
             )
-    return EvidenceCheck("api_smoke_migration_state", False, "missing migration_state check")
+    return EvidenceCheck(
+        "api_smoke_migration_state", False, "missing migration_state check"
+    )
 
 
 def _check_runtime_log_check_file(output_dir: Path) -> list[EvidenceCheck]:
@@ -286,7 +354,9 @@ def _check_rollback_check_file(output_dir: Path) -> list[EvidenceCheck]:
     return checks
 
 
-def _check_target_manifest_file(output_dir: Path, *, expected_phase: str | None) -> list[EvidenceCheck]:
+def _check_target_manifest_file(
+    output_dir: Path, *, expected_phase: str | None
+) -> list[EvidenceCheck]:
     path = output_dir / "00_target_manifest.json"
     if not path.exists():
         return [EvidenceCheck("target_manifest_present", False, f"missing {path}")]
@@ -328,7 +398,8 @@ def _check_target_manifest_file(output_dir: Path, *, expected_phase: str | None)
     checks.append(
         EvidenceCheck(
             "target_manifest_created_at",
-            isinstance(payload.get("created_at"), str) and bool(payload.get("created_at")),
+            isinstance(payload.get("created_at"), str)
+            and bool(payload.get("created_at")),
             f"created_at={payload.get('created_at')!r}",
         )
     )
@@ -354,14 +425,18 @@ def _result(output_dir: Path, checks: list[EvidenceCheck]) -> dict[str, Any]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Validate a saved PostgreSQL cutover evidence bundle.")
+    parser = argparse.ArgumentParser(
+        description="Validate a saved PostgreSQL cutover evidence bundle."
+    )
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("--require-api-smoke", action="store_true")
     parser.add_argument("--require-api-migration-state", action="store_true")
     parser.add_argument("--require-runtime-log-check", action="store_true")
     parser.add_argument("--require-rollback-check", action="store_true")
     parser.add_argument("--require-target-manifest", action="store_true")
-    parser.add_argument("--expected-phase", choices=["pre-read", "post-read", "rollback"])
+    parser.add_argument(
+        "--expected-phase", choices=["pre-read", "post-read", "rollback"]
+    )
     parser.add_argument("--rollback-only", action="store_true")
     args = parser.parse_args()
 

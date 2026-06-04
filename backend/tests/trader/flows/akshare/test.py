@@ -1,5 +1,5 @@
-
 from support.registry import export_module as _export_module
+
 _export_module(globals(), "support.akshare.check.fi.ed.module")
 _export_module(globals(), "support.analyze.akshare.data.module")
 _export_module(globals(), "support.check.key.metrics.module")

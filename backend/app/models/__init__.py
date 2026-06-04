@@ -4,17 +4,17 @@
 
 # 导入股票数据模型
 from .stocks import (
-    StockBasicInfoExtended,
-    MarketQuotesExtended,
-    MarketInfo,
-    TechnicalIndicators,
-    StockBasicInfoResponse,
-    MarketQuotesResponse,
-    StockListResponse,
-    MarketType,
-    ExchangeType,
     CurrencyType,
-    StockStatus
+    ExchangeType,
+    MarketInfo,
+    MarketQuotesExtended,
+    MarketQuotesResponse,
+    MarketType,
+    StockBasicInfoExtended,
+    StockBasicInfoResponse,
+    StockListResponse,
+    StockStatus,
+    TechnicalIndicators,
 )
 
 __all__ = [
@@ -28,5 +28,5 @@ __all__ = [
     "MarketType",
     "ExchangeType",
     "CurrencyType",
-    "StockStatus"
+    "StockStatus",
 ]

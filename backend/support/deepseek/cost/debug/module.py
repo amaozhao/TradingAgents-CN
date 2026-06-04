@@ -2,19 +2,16 @@
 """
 测试DeepSeek成本计算详细调试
 """
-import importlib
 
+import importlib
 import os
 import sys
-from pathlib import Path
-from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
+
 
 def test_deepseek_cost_debug():
     """测试DeepSeek成本计算，观察详细日志"""
@@ -27,7 +24,9 @@ def test_deepseek_cost_debug():
         return False
 
     try:
-        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
+        ChatDeepSeek = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"), "ChatDeepSeek"
+        )
 
         print("🔧 创建DeepSeek实例...")
 
@@ -35,20 +34,20 @@ def test_deepseek_cost_debug():
         deepseek_llm = ChatDeepSeek(
             model="deepseek-chat",
             temperature=0.1,
-            max_tokens=50  # 限制token数量，减少输出
+            max_tokens=50,  # 限制token数量，减少输出
         )
 
         print(f"📊 模型名称: {deepseek_llm.model_name}")
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("开始调用DeepSeek，观察详细的成本计算日志：")
-        print("="*80)
+        print("=" * 80)
 
         # 测试调用
         result = deepseek_llm.invoke("你好")
 
-        print("="*80)
+        print("=" * 80)
         print("调用完成！")
-        print("="*80)
+        print("=" * 80)
 
         print(f"📊 响应内容: {result.content}")
 
@@ -56,9 +55,10 @@ def test_deepseek_cost_debug():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主函数"""
@@ -76,6 +76,7 @@ def main():
         print("\n❌ 测试失败")
 
     return success
+
 
 if __name__ == "__main__":
     success = main()

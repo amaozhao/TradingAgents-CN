@@ -3,13 +3,9 @@
 测试修复后的股票基本信息降级机制
 验证当Tushare失败时是否能自动降级到其他数据源
 """
+
 import importlib
 
-import sys
-import os
-
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def test_stock_info_fallback_mechanism():
     """测试股票信息降级机制"""
@@ -25,14 +21,19 @@ def test_stock_info_fallback_mechanism():
 
         try:
             # 测试统一接口（现在应该有降级机制）
-            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
+            get_china_stock_info_unified = getattr(
+                importlib.import_module("trader.flows.interface"),
+                "get_china_stock_info_unified",
+            )
             result = get_china_stock_info_unified(code)
             print(f"✅ 统一接口结果: {result}")
 
             # 检查是否使用了备用数据源
             if "数据来源: akshare" in result or "数据来源: baostock" in result:
                 print("✅ 成功降级到备用数据源！")
-            elif "数据来源: tushare" in result and f"股票名称: 股票{code}" not in result:
+            elif (
+                "数据来源: tushare" in result and f"股票名称: 股票{code}" not in result
+            ):
                 print("✅ Tushare成功获取数据")
             elif f"股票名称: 股票{code}" in result:
                 print("❌ 仍然返回默认值，降级机制可能未生效")
@@ -41,6 +42,7 @@ def test_stock_info_fallback_mechanism():
 
         except Exception as e:
             print(f"❌ 测试{code}失败: {e}")
+
 
 def test_real_stock_fallback():
     """测试真实股票的降级机制（模拟Tushare失败）"""
@@ -56,7 +58,10 @@ def test_real_stock_fallback():
 
         try:
             # 直接测试DataSourceManager
-            get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
+            get_data_source_manager = getattr(
+                importlib.import_module("trader.flows.sources"),
+                "get_data_source_manager",
+            )
             manager = get_data_source_manager()
 
             # 获取股票信息
@@ -64,7 +69,7 @@ def test_real_stock_fallback():
             print(f"✅ DataSourceManager结果: {result}")
 
             # 检查是否获取到有效信息
-            if result.get('name') and result['name'] != f'股票{code}':
+            if result.get("name") and result["name"] != f"股票{code}":
                 print(f"✅ 成功获取股票名称: {result['name']}")
                 print(f"📊 数据来源: {result.get('source', '未知')}")
             else:
@@ -72,8 +77,9 @@ def test_real_stock_fallback():
 
         except Exception as e:
             print(f"❌ 测试{code}失败: {e}")
-            traceback = importlib.import_module('traceback')
+            traceback = importlib.import_module("traceback")
             traceback.print_exc()
+
 
 def test_individual_data_sources():
     """测试各个数据源的股票信息获取能力"""
@@ -83,7 +89,9 @@ def test_individual_data_sources():
     test_code = "603985"  # 恒润股份
 
     try:
-        get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
+        get_data_source_manager = getattr(
+            importlib.import_module("trader.flows.sources"), "get_data_source_manager"
+        )
         manager = get_data_source_manager()
 
         # 测试AKShare
@@ -98,8 +106,9 @@ def test_individual_data_sources():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+
 
 def test_fundamentals_with_fallback():
     """测试基本面分析是否能获取到正确的股票名称"""
@@ -110,19 +119,25 @@ def test_fundamentals_with_fallback():
 
     try:
         # 模拟基本面分析中的股票信息获取
-        get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
+        get_china_stock_info_unified = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "get_china_stock_info_unified",
+        )
         stock_info = get_china_stock_info_unified(test_code)
         print(f"✅ 统一接口获取股票信息: {stock_info}")
 
         # 检查是否包含股票名称
         if "股票名称:" in stock_info:
-            lines = stock_info.split('\n')
+            lines = stock_info.split("\n")
             for line in lines:
                 if "股票名称:" in line:
-                    company_name = line.split(':')[1].strip()
+                    company_name = line.split(":")[1].strip()
                     print(f"✅ 提取到股票名称: {company_name}")
 
-                    if company_name != "未知公司" and company_name != f"股票{test_code}":
+                    if (
+                        company_name != "未知公司"
+                        and company_name != f"股票{test_code}"
+                    ):
                         print("✅ 基本面分析现在可以获取到正确的股票名称！")
                     else:
                         print("❌ 基本面分析仍然获取不到正确的股票名称")
@@ -132,8 +147,9 @@ def test_fundamentals_with_fallback():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     print("🧪 股票基本信息降级机制修复测试")

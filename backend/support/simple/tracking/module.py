@@ -2,14 +2,9 @@
 """
 简单的股票代码追踪测试
 """
+
 import importlib
 
-import os
-import sys
-
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_data_flow():
     """测试数据流中的股票代码处理"""
@@ -22,23 +17,28 @@ def test_data_flow():
 
     try:
         # 设置日志级别
-        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
+        get_logger = getattr(
+            importlib.import_module("trader.utils.logging.init"), "get_logger"
+        )
         logger = get_logger("default")
         logger.setLevel("INFO")
 
-        print(f"\n🔧 测试数据源管理器...")
+        print("\n🔧 测试数据源管理器...")
 
         # 测试数据源管理器
-        get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.sources'), 'get_china_stock_data_unified')
+        get_china_stock_data_unified = getattr(
+            importlib.import_module("trader.flows.sources"),
+            "get_china_stock_data_unified",
+        )
 
         result = get_china_stock_data_unified(test_ticker, "2025-07-01", "2025-07-15")
 
-        print(f"\n✅ 数据源管理器调用完成")
+        print("\n✅ 数据源管理器调用完成")
         print(f"📊 返回结果长度: {len(result) if result else 0}")
 
         # 检查结果中的股票代码
         if result:
-            print(f"\n🔍 检查结果中的股票代码...")
+            print("\n🔍 检查结果中的股票代码...")
             if "002027" in result:
                 print("✅ 结果中包含正确的股票代码 002027")
             else:
@@ -50,7 +50,7 @@ def test_data_flow():
                 print("✅ 结果中不包含错误的股票代码 002021")
 
             # 显示结果的前500字符
-            print(f"\n📄 结果前500字符:")
+            print("\n📄 结果前500字符:")
             print("-" * 60)
             print(result[:500])
             print("-" * 60)
@@ -59,9 +59,10 @@ def test_data_flow():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_tushare_direct():
     """直接测试Tushare接口"""
@@ -72,22 +73,28 @@ def test_tushare_direct():
 
     try:
         # 设置日志级别
-        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
+        get_logger = getattr(
+            importlib.import_module("trader.utils.logging.init"), "get_logger"
+        )
+        logger = get_logger("default")
         logger.setLevel("INFO")
 
-        print(f"\n🔧 测试Tushare接口...")
+        print("\n🔧 测试Tushare接口...")
 
         # 测试Tushare接口
-        get_china_stock_data_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_tushare')
+        get_china_stock_data_tushare = getattr(
+            importlib.import_module("trader.flows.interface"),
+            "get_china_stock_data_tushare",
+        )
 
         result = get_china_stock_data_tushare(test_ticker, "2025-07-01", "2025-07-15")
 
-        print(f"\n✅ Tushare接口调用完成")
+        print("\n✅ Tushare接口调用完成")
         print(f"📊 返回结果长度: {len(result) if result else 0}")
 
         # 检查结果中的股票代码
         if result:
-            print(f"\n🔍 检查结果中的股票代码...")
+            print("\n🔍 检查结果中的股票代码...")
             if "002027" in result:
                 print("✅ 结果中包含正确的股票代码 002027")
             else:
@@ -99,7 +106,7 @@ def test_tushare_direct():
                 print("✅ 结果中不包含错误的股票代码 002021")
 
             # 显示结果的前500字符
-            print(f"\n📄 结果前500字符:")
+            print("\n📄 结果前500字符:")
             print("-" * 60)
             print(result[:500])
             print("-" * 60)
@@ -108,9 +115,10 @@ def test_tushare_direct():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_tushare_provider():
     """测试Tushare提供器"""
@@ -121,13 +129,18 @@ def test_tushare_provider():
 
     try:
         # 设置日志级别
-        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
+        get_logger = getattr(
+            importlib.import_module("trader.utils.logging.init"), "get_logger"
+        )
+        logger = get_logger("default")
         logger.setLevel("INFO")
 
-        print(f"\n🔧 测试Tushare提供器...")
+        print("\n🔧 测试Tushare提供器...")
 
         # 测试Tushare提供器
-        get_tushare_provider = getattr(importlib.import_module('trader.flows.tushare'), 'get_tushare_provider')
+        get_tushare_provider = getattr(
+            importlib.import_module("trader.flows.tushare"), "get_tushare_provider"
+        )
 
         provider = get_tushare_provider()
 
@@ -139,13 +152,17 @@ def test_tushare_provider():
             print(f"📊 股票信息: {stock_info}")
 
             # 测试股票数据获取
-            stock_data = provider.get_stock_daily(test_ticker, "2025-07-01", "2025-07-15")
-            print(f"📊 股票数据形状: {stock_data.shape if stock_data is not None and hasattr(stock_data, 'shape') else 'None'}")
+            stock_data = provider.get_stock_daily(
+                test_ticker, "2025-07-01", "2025-07-15"
+            )
+            print(
+                f"📊 股票数据形状: {stock_data.shape if stock_data is not None and hasattr(stock_data, 'shape') else 'None'}"
+            )
 
             if stock_data is not None and not stock_data.empty:
                 print(f"📊 股票数据列: {list(stock_data.columns)}")
-                if 'ts_code' in stock_data.columns:
-                    unique_codes = stock_data['ts_code'].unique()
+                if "ts_code" in stock_data.columns:
+                    unique_codes = stock_data["ts_code"].unique()
                     print(f"📊 数据中的ts_code: {unique_codes}")
         else:
             print("❌ Tushare提供器连接失败")
@@ -154,9 +171,10 @@ def test_tushare_provider():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 if __name__ == "__main__":
     print("🚀 开始简单股票代码追踪测试")

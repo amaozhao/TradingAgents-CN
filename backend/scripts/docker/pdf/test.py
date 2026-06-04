@@ -2,22 +2,19 @@
 """
 Docker环境PDF功能测试脚本
 """
+
 import importlib
-
 import sys
-import os
-from pathlib import Path
 
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 def test_docker_environment():
     """测试Docker环境检测"""
     print("🔍 测试Docker环境检测...")
 
     try:
-        is_docker_environment = getattr(importlib.import_module('web.utils.docker'), 'is_docker_environment')
+        is_docker_environment = getattr(
+            importlib.import_module("web.utils.docker"), "is_docker_environment"
+        )
         is_docker = is_docker_environment()
         print(f"Docker环境: {'是' if is_docker else '否'}")
         return is_docker
@@ -25,12 +22,15 @@ def test_docker_environment():
         print(f"❌ 导入Docker适配器失败: {e}")
         return False
 
+
 def test_docker_dependencies():
     """测试Docker依赖"""
     print("\n🔍 测试Docker依赖...")
 
     try:
-        check_docker_pdf_dependencies = getattr(importlib.import_module('web.utils.docker'), 'check_docker_pdf_dependencies')
+        check_docker_pdf_dependencies = getattr(
+            importlib.import_module("web.utils.docker"), "check_docker_pdf_dependencies"
+        )
         deps_ok, message = check_docker_pdf_dependencies()
         print(f"依赖检查: {'✅' if deps_ok else '❌'} {message}")
         return deps_ok
@@ -38,12 +38,15 @@ def test_docker_dependencies():
         print(f"❌ 导入Docker适配器失败: {e}")
         return False
 
+
 def test_docker_pdf_generation():
     """测试Docker PDF生成"""
     print("\n🔍 测试Docker PDF生成...")
 
     try:
-        test_docker_pdf_generation = getattr(importlib.import_module('web.utils.docker'), 'test_docker_pdf_generation')
+        test_docker_pdf_generation = getattr(
+            importlib.import_module("web.utils.docker"), "test_docker_pdf_generation"
+        )
         pdf_ok = test_docker_pdf_generation()
         print(f"PDF生成: {'✅' if pdf_ok else '❌'}")
         return pdf_ok
@@ -51,38 +54,41 @@ def test_docker_pdf_generation():
         print(f"❌ 导入Docker适配器失败: {e}")
         return False
 
+
 def test_report_exporter():
     """测试报告导出器Docker集成"""
     print("\n🔍 测试报告导出器Docker集成...")
 
     try:
-        ReportExporter = getattr(importlib.import_module('web.utils.reports'), 'ReportExporter')
+        ReportExporter = getattr(
+            importlib.import_module("web.utils.reports"), "ReportExporter"
+        )
 
         exporter = ReportExporter()
-        print(f"导出器创建: ✅")
+        print("导出器创建: ✅")
         print(f"  export_available: {exporter.export_available}")
         print(f"  pandoc_available: {exporter.pandoc_available}")
         print(f"  is_docker: {exporter.is_docker}")
 
         # 测试Markdown导出
         test_results = {
-            'stock_symbol': 'DOCKER_TEST',
-            'decision': {
-                'action': 'buy',
-                'confidence': 0.85,
-                'risk_score': 0.3,
-                'target_price': '¥15.50',
-                'reasoning': 'Docker环境测试报告生成。'
+            "stock_symbol": "DOCKER_TEST",
+            "decision": {
+                "action": "buy",
+                "confidence": 0.85,
+                "risk_score": 0.3,
+                "target_price": "¥15.50",
+                "reasoning": "Docker环境测试报告生成。",
             },
-            'state': {
-                'market_report': 'Docker环境技术分析测试。',
-                'fundamentals_report': 'Docker环境基本面分析测试。'
+            "state": {
+                "market_report": "Docker环境技术分析测试。",
+                "fundamentals_report": "Docker环境基本面分析测试。",
             },
-            'llm_provider': 'test',
-            'llm_model': 'test-model',
-            'analysts': ['Docker测试分析师'],
-            'research_depth': '测试分析',
-            'is_demo': True
+            "llm_provider": "test",
+            "llm_model": "test-model",
+            "analysts": ["Docker测试分析师"],
+            "research_depth": "测试分析",
+            "is_demo": True,
         }
 
         # 测试Markdown生成
@@ -106,6 +112,7 @@ def test_report_exporter():
         print(f"❌ 报告导出器测试失败: {e}")
         return False
 
+
 def main():
     """主测试函数"""
     print("🐳 Docker环境PDF功能测试")
@@ -121,7 +128,7 @@ def main():
     results = []
 
     for test_name, test_func in tests:
-        print(f"\n{'='*20} {test_name} {'='*20}")
+        print(f"\n{'=' * 20} {test_name} {'=' * 20}")
         try:
             result = test_func()
             results.append((test_name, result))
@@ -130,9 +137,9 @@ def main():
             results.append((test_name, False))
 
     # 总结
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("📊 Docker测试结果总结")
-    print("="*50)
+    print("=" * 50)
 
     passed = 0
     total = len(results)
@@ -162,6 +169,7 @@ def main():
         print("3. 检查容器运行权限")
 
     return passed == total
+
 
 if __name__ == "__main__":
     success = main()

@@ -3,23 +3,29 @@
 支持多种过滤策略：规则过滤、语义相似度、本地分类模型
 """
 
-import pandas as pd
-import re
-import logging
 import importlib
-from typing import Any, List, Dict, Tuple, Optional
-from datetime import datetime
+import logging
+from typing import Any, Dict
+
 import numpy as np
+import pandas as pd
 
 # 导入基础过滤器
-from .filter import NewsRelevanceFilter, create_news_filter, get_company_name
+from .filter import NewsRelevanceFilter, get_company_name
 
 logger = logging.getLogger(__name__)
+
 
 class EnhancedNewsFilter(NewsRelevanceFilter):
     """增强新闻过滤器，集成本地模型和多种过滤策略"""
 
-    def __init__(self, stock_code: str, company_name: str, use_semantic: bool = True, use_local_model: bool = False):
+    def __init__(
+        self,
+        stock_code: str,
+        company_name: str,
+        use_semantic: bool = True,
+        use_local_model: bool = False,
+    ):
         """
         初始化增强过滤器
 
@@ -54,10 +60,14 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
 
             # 尝试使用sentence-transformers
             try:
-                SentenceTransformer = importlib.import_module("sentence_transformers").SentenceTransformer
+                SentenceTransformer = importlib.import_module(
+                    "sentence_transformers"
+                ).SentenceTransformer
 
                 # 使用轻量级中文模型
-                model_name = "paraphrase-multilingual-MiniLM-L12-v2"  # 支持中文的轻量级模型
+                model_name = (
+                    "paraphrase-multilingual-MiniLM-L12-v2"  # 支持中文的轻量级模型
+                )
                 self.sentence_model = SentenceTransformer(model_name)
 
                 # 预计算公司相关的embedding
@@ -67,7 +77,7 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
                     f"{self.company_name}公司",
                     f"{self.stock_code}",
                     f"{self.company_name}业绩",
-                    f"{self.company_name}财报"
+                    f"{self.company_name}财报",
                 ]
 
                 self.company_embedding = self.sentence_model.encode(company_texts)
@@ -90,13 +100,17 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
             try:
                 transformers = importlib.import_module("transformers")
                 AutoTokenizer = transformers.AutoTokenizer
-                AutoModelForSequenceClassification = transformers.AutoModelForSequenceClassification
+                AutoModelForSequenceClassification = (
+                    transformers.AutoModelForSequenceClassification
+                )
 
                 # 使用轻量级中文文本分类模型
                 model_name = "uer/roberta-base-finetuned-chinanews-chinese"
 
                 self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-                self.classification_model = AutoModelForSequenceClassification.from_pretrained(model_name)
+                self.classification_model = (
+                    AutoModelForSequenceClassification.from_pretrained(model_name)
+                )
 
                 logger.info(f"[增强过滤器] ✅ 分类模型加载成功: {model_name}")
 
@@ -186,7 +200,7 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
                 return_tensors="pt",
                 truncation=True,
                 padding=True,
-                max_length=512
+                max_length=512,
             )
 
             # 模型推理
@@ -211,7 +225,9 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
             logger.error(f"[增强过滤器] 本地模型分类失败: {e}")
             return 0
 
-    def calculate_enhanced_relevance_score(self, title: str, content: str) -> Dict[str, float]:
+    def calculate_enhanced_relevance_score(
+        self, title: str, content: str
+    ) -> Dict[str, float]:
         """
         计算增强相关性评分（综合多种方法）
 
@@ -226,43 +242,47 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
 
         # 1. 基础规则评分
         rule_score = super().calculate_relevance_score(title, content)
-        scores['rule_score'] = rule_score
+        scores["rule_score"] = rule_score
 
         # 2. 语义相似度评分
         if self.use_semantic:
             semantic_score = self.calculate_semantic_similarity(title, content)
-            scores['semantic_score'] = semantic_score
+            scores["semantic_score"] = semantic_score
         else:
-            scores['semantic_score'] = 0
+            scores["semantic_score"] = 0
 
         # 3. 本地模型分类评分
         if self.use_local_model:
             classification_score = self.classify_news_relevance(title, content)
-            scores['classification_score'] = classification_score
+            scores["classification_score"] = classification_score
         else:
-            scores['classification_score'] = 0
+            scores["classification_score"] = 0
 
         # 4. 综合评分（加权平均）
         weights = {
-            'rule': 0.4,      # 规则过滤权重40%
-            'semantic': 0.35,  # 语义相似度权重35%
-            'classification': 0.25  # 分类模型权重25%
+            "rule": 0.4,  # 规则过滤权重40%
+            "semantic": 0.35,  # 语义相似度权重35%
+            "classification": 0.25,  # 分类模型权重25%
         }
 
         final_score = (
-            weights['rule'] * rule_score +
-            weights['semantic'] * scores['semantic_score'] +
-            weights['classification'] * scores['classification_score']
+            weights["rule"] * rule_score
+            + weights["semantic"] * scores["semantic_score"]
+            + weights["classification"] * scores["classification_score"]
         )
 
-        scores['final_score'] = final_score
+        scores["final_score"] = final_score
 
-        logger.debug(f"[增强过滤器] 综合评分 - 规则:{rule_score:.1f}, 语义:{scores['semantic_score']:.1f}, "
-                    f"分类:{scores['classification_score']:.1f}, 最终:{final_score:.1f}")
+        logger.debug(
+            f"[增强过滤器] 综合评分 - 规则:{rule_score:.1f}, 语义:{scores['semantic_score']:.1f}, "
+            f"分类:{scores['classification_score']:.1f}, 最终:{final_score:.1f}"
+        )
 
         return scores
 
-    def filter_news_enhanced(self, news_df: pd.DataFrame, min_score: float = 40) -> pd.DataFrame:
+    def filter_news_enhanced(
+        self, news_df: pd.DataFrame, min_score: float = 40
+    ) -> pd.DataFrame:
         """
         增强新闻过滤
 
@@ -277,40 +297,48 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
             logger.warning("[增强过滤器] 输入新闻DataFrame为空")
             return news_df
 
-        logger.info(f"[增强过滤器] 开始增强过滤，原始数量: {len(news_df)}条，最低评分阈值: {min_score}")
+        logger.info(
+            f"[增强过滤器] 开始增强过滤，原始数量: {len(news_df)}条，最低评分阈值: {min_score}"
+        )
 
         filtered_news = []
 
         for idx, row in news_df.iterrows():
-            title = str(row.get('新闻标题', row.get('标题', '')) or '')
-            content = str(row.get('新闻内容', row.get('内容', '')) or '')
+            title = str(row.get("新闻标题", row.get("标题", "")) or "")
+            content = str(row.get("新闻内容", row.get("内容", "")) or "")
 
             # 计算增强评分
             scores = self.calculate_enhanced_relevance_score(title, content)
 
-            if scores['final_score'] >= min_score:
+            if scores["final_score"] >= min_score:
                 row_dict = row.to_dict()
                 row_dict.update(scores)  # 添加所有评分信息
                 filtered_news.append(row_dict)
 
-                logger.debug(f"[增强过滤器] 保留新闻 (综合评分: {scores['final_score']:.1f}): {title[:50]}...")
+                logger.debug(
+                    f"[增强过滤器] 保留新闻 (综合评分: {scores['final_score']:.1f}): {title[:50]}..."
+                )
             else:
-                logger.debug(f"[增强过滤器] 过滤新闻 (综合评分: {scores['final_score']:.1f}): {title[:50]}...")
+                logger.debug(
+                    f"[增强过滤器] 过滤新闻 (综合评分: {scores['final_score']:.1f}): {title[:50]}..."
+                )
 
         # 创建过滤后的DataFrame
         if filtered_news:
             filtered_df = pd.DataFrame(filtered_news)
             # 按综合评分排序
-            filtered_df = filtered_df.sort_values('final_score', ascending=False)
+            filtered_df = filtered_df.sort_values("final_score", ascending=False)
             logger.info(f"[增强过滤器] 增强过滤完成，保留 {len(filtered_df)}条 新闻")
         else:
             filtered_df = pd.DataFrame()
-            logger.warning(f"[增强过滤器] 所有新闻都被过滤，无符合条件的新闻")
+            logger.warning("[增强过滤器] 所有新闻都被过滤，无符合条件的新闻")
 
         return filtered_df
 
 
-def create_enhanced_news_filter(ticker: str, use_semantic: bool = True, use_local_model: bool = False) -> EnhancedNewsFilter:
+def create_enhanced_news_filter(
+    ticker: str, use_semantic: bool = True, use_local_model: bool = False
+) -> EnhancedNewsFilter:
     """
     创建增强新闻过滤器的便捷函数
 
@@ -330,29 +358,33 @@ def create_enhanced_news_filter(ticker: str, use_semantic: bool = True, use_loca
 if __name__ == "__main__":
     # 测试增强过滤器
     # 模拟新闻数据
-    test_news = pd.DataFrame([
-        {
-            '新闻标题': '招商银行发布2024年第三季度业绩报告',
-            '新闻内容': '招商银行今日发布第三季度财报，净利润同比增长8%，资产质量持续改善...'
-        },
-        {
-            '新闻标题': '上证180ETF指数基金（530280）自带杠铃策略',
-            '新闻内容': '数据显示，上证180指数前十大权重股分别为贵州茅台、招商银行600036...'
-        },
-        {
-            '新闻标题': '银行ETF指数(512730)多只成分股上涨',
-            '新闻内容': '银行板块今日表现强势，招商银行、工商银行等多只成分股上涨...'
-        },
-        {
-            '新闻标题': '招商银行与某科技公司签署战略合作协议',
-            '新闻内容': '招商银行宣布与知名科技公司达成战略合作，将在数字化转型方面深度合作...'
-        }
-    ])
+    test_news = pd.DataFrame(
+        [
+            {
+                "新闻标题": "招商银行发布2024年第三季度业绩报告",
+                "新闻内容": "招商银行今日发布第三季度财报，净利润同比增长8%，资产质量持续改善...",
+            },
+            {
+                "新闻标题": "上证180ETF指数基金（530280）自带杠铃策略",
+                "新闻内容": "数据显示，上证180指数前十大权重股分别为贵州茅台、招商银行600036...",
+            },
+            {
+                "新闻标题": "银行ETF指数(512730)多只成分股上涨",
+                "新闻内容": "银行板块今日表现强势，招商银行、工商银行等多只成分股上涨...",
+            },
+            {
+                "新闻标题": "招商银行与某科技公司签署战略合作协议",
+                "新闻内容": "招商银行宣布与知名科技公司达成战略合作，将在数字化转型方面深度合作...",
+            },
+        ]
+    )
 
     print("=== 测试增强新闻过滤器 ===")
 
     # 创建增强过滤器（仅使用规则过滤，避免模型依赖）
-    enhanced_filter = create_enhanced_news_filter('600036', use_semantic=False, use_local_model=False)
+    enhanced_filter = create_enhanced_news_filter(
+        "600036", use_semantic=False, use_local_model=False
+    )
 
     # 过滤新闻
     filtered_news = enhanced_filter.filter_news_enhanced(test_news, min_score=30)
@@ -364,4 +396,6 @@ if __name__ == "__main__":
         print("\n过滤后的新闻:")
         for _, row in filtered_news.iterrows():
             print(f"- {row['新闻标题']} (综合评分: {row['final_score']:.1f})")
-            print(f"  规则评分: {row['rule_score']:.1f}, 语义评分: {row['semantic_score']:.1f}, 分类评分: {row['classification_score']:.1f}")
+            print(
+                f"  规则评分: {row['rule_score']:.1f}, 语义评分: {row['semantic_score']:.1f}, 分类评分: {row['classification_score']:.1f}"
+            )

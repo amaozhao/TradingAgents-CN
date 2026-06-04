@@ -3,29 +3,28 @@
 BaoStock数据初始化CLI工具
 提供命令行界面进行BaoStock数据初始化和管理
 """
-import asyncio
-import argparse
-import logging
-import sys
-import os
-from datetime import datetime
-from pathlib import Path
 
-# 添加项目根目录到Python路径
-sys.path.insert(0, str(Path(__file__).parent.parent))
+import argparse
+import asyncio
+import logging
+import os
+import sys
+from datetime import datetime
 
 from app.worker.baostock.init import BaoStockInitService
 from app.worker.baostock.sync import BaoStockSyncService
 
 # 配置日志
-os.makedirs(os.path.join('data', 'logs'), exist_ok=True)
+os.makedirs(os.path.join("data", "logs"), exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s | %(name)s | %(levelname)s | %(message)s',
+    format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(os.path.join('data', 'logs', 'baostock_init.log'), encoding='utf-8')
-    ]
+        logging.FileHandler(
+            os.path.join("data", "logs", "baostock_init.log"), encoding="utf-8"
+        ),
+    ],
 )
 logger = logging.getLogger(__name__)
 
@@ -84,11 +83,11 @@ async def check_database_status():
         status = await service.check_database_status()
 
         print(f"  📋 股票基础信息: {status.get('basic_info_count', 0)}条")
-        if status.get('basic_info_latest'):
+        if status.get("basic_info_latest"):
             print(f"     最新更新: {status['basic_info_latest']}")
 
         print(f"  📈 行情数据: {status.get('quotes_count', 0)}条")
-        if status.get('quotes_latest'):
+        if status.get("quotes_latest"):
             print(f"     最新更新: {status['quotes_latest']}")
 
         print(f"  ✅ 数据库状态: {status.get('status', 'unknown')}")
@@ -106,7 +105,9 @@ async def run_full_initialization(historical_days: int = 365, force: bool = Fals
 
     try:
         service = BaoStockInitService()
-        stats = await service.full_initialization(historical_days=historical_days, force=force)
+        stats = await service.full_initialization(
+            historical_days=historical_days, force=force
+        )
 
         if stats.completed_steps == stats.total_steps:
             print("✅ 完整初始化成功完成")
@@ -190,7 +191,7 @@ def print_help_detail():
 
 ⚠️ 注意事项:
   - 确保网络连接正常
-  - 确保MongoDB数据库可访问
+  - 确保PostgreSQL数据库可访问
   - 完整初始化可能需要较长时间
   - 建议在非交易时间进行初始化
 """
@@ -201,19 +202,23 @@ async def main():
     """主函数"""
     parser = argparse.ArgumentParser(
         description="BaoStock数据初始化工具",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     # 操作选项
-    parser.add_argument('--full', action='store_true', help='完整初始化')
-    parser.add_argument('--basic-only', action='store_true', help='仅基础初始化')
-    parser.add_argument('--check-only', action='store_true', help='仅检查数据库状态')
-    parser.add_argument('--test-connection', action='store_true', help='测试BaoStock连接')
-    parser.add_argument('--help-detail', action='store_true', help='显示详细帮助')
+    parser.add_argument("--full", action="store_true", help="完整初始化")
+    parser.add_argument("--basic-only", action="store_true", help="仅基础初始化")
+    parser.add_argument("--check-only", action="store_true", help="仅检查数据库状态")
+    parser.add_argument(
+        "--test-connection", action="store_true", help="测试BaoStock连接"
+    )
+    parser.add_argument("--help-detail", action="store_true", help="显示详细帮助")
 
     # 配置选项
-    parser.add_argument('--historical-days', type=int, default=365, help='历史数据天数（默认365）')
-    parser.add_argument('--force', action='store_true', help='强制重新初始化')
+    parser.add_argument(
+        "--historical-days", type=int, default=365, help="历史数据天数（默认365）"
+    )
+    parser.add_argument("--force", action="store_true", help="强制重新初始化")
 
     args = parser.parse_args()
 
@@ -245,8 +250,7 @@ async def main():
         # 完整初始化
         elif args.full:
             success = await run_full_initialization(
-                historical_days=args.historical_days,
-                force=args.force
+                historical_days=args.historical_days, force=args.force
             )
 
         # 基础初始化

@@ -4,24 +4,25 @@
 千帆API原生测试脚本
 直接使用千帆官方SDK测试连通性，不依赖项目集成代码
 """
-import importlib
 
+import importlib
 import os
-import sys
+
 from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
 
+
 def test_qianfan_with_sdk():
     """使用千帆官方SDK测试"""
     try:
-        qianfan = importlib.import_module('qianfan')
+        qianfan = importlib.import_module("qianfan")
 
         # 优先使用新的API Key
-        api_key = os.getenv('QIANFAN_API_KEY')
-        access_key = os.getenv('QIANFAN_ACCESS_KEY')
-        secret_key = os.getenv('QIANFAN_SECRET_KEY')
+        api_key = os.getenv("QIANFAN_API_KEY")
+        access_key = os.getenv("QIANFAN_ACCESS_KEY")
+        secret_key = os.getenv("QIANFAN_SECRET_KEY")
 
         print("==== 千帆SDK测试 ====")
         print(f"API_KEY: {'已设置' if api_key else '未设置'}")
@@ -38,7 +39,9 @@ def test_qianfan_with_sdk():
             os.environ["QIANFAN_ACCESS_KEY"] = access_key
             os.environ["QIANFAN_SECRET_KEY"] = secret_key
         else:
-            print("❌ 请在.env文件中设置QIANFAN_API_KEY或QIANFAN_ACCESS_KEY+QIANFAN_SECRET_KEY")
+            print(
+                "❌ 请在.env文件中设置QIANFAN_API_KEY或QIANFAN_ACCESS_KEY+QIANFAN_SECRET_KEY"
+            )
             return False
 
         # 创建聊天完成客户端
@@ -47,13 +50,8 @@ def test_qianfan_with_sdk():
         # 发送测试消息
         print("\n发送测试消息...")
         resp = chat_comp.do(
-            messages=[
-                {
-                    "role": "user",
-                    "content": "你好，请简单介绍一下你自己"
-                }
-            ],
-            temperature=0.1
+            messages=[{"role": "user", "content": "你好，请简单介绍一下你自己"}],
+            temperature=0.1,
         )
 
         print("✅ 千帆API调用成功！")
@@ -67,15 +65,16 @@ def test_qianfan_with_sdk():
         print(f"❌ 千帆SDK调用失败: {e}")
         return False
 
+
 def test_qianfan_with_requests():
     """使用requests直接调用千帆API"""
     try:
-        requests = importlib.import_module('requests')
-        json = importlib.import_module('json')
+        requests = importlib.import_module("requests")
+        importlib.import_module("json")
 
-        api_key = os.getenv('QIANFAN_API_KEY')
-        access_key = os.getenv('QIANFAN_ACCESS_KEY')
-        secret_key = os.getenv('QIANFAN_SECRET_KEY')
+        api_key = os.getenv("QIANFAN_API_KEY")
+        access_key = os.getenv("QIANFAN_ACCESS_KEY")
+        secret_key = os.getenv("QIANFAN_SECRET_KEY")
 
         print("\n==== 千帆HTTP API测试 ====")
 
@@ -90,23 +89,20 @@ def test_qianfan_with_requests():
             print("使用传统的AK/SK认证")
             bearer_token = f"bce-v3/{access_key}/{secret_key}"
         else:
-            print("❌ 请在.env文件中设置QIANFAN_API_KEY或QIANFAN_ACCESS_KEY+QIANFAN_SECRET_KEY")
+            print(
+                "❌ 请在.env文件中设置QIANFAN_API_KEY或QIANFAN_ACCESS_KEY+QIANFAN_SECRET_KEY"
+            )
             return False
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {bearer_token}"
+            "Authorization": f"Bearer {bearer_token}",
         }
 
         data = {
             "model": "ernie-3.5-8k",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": "你好，请简单介绍一下你自己"
-                }
-            ],
-            "temperature": 0.1
+            "messages": [{"role": "user", "content": "你好，请简单介绍一下你自己"}],
+            "temperature": 0.1,
         }
 
         try:
@@ -114,13 +110,15 @@ def test_qianfan_with_requests():
                 "https://qianfan.baidubce.com/v2/chat/completions",
                 headers=headers,
                 json=data,
-                timeout=30
+                timeout=30,
             )
 
             if response.status_code == 200:
                 result = response.json()
                 print("✅ 千帆v2 API调用成功！")
-                print(f"响应: {result.get('choices', [{}])[0].get('message', {}).get('content', '无响应内容')}")
+                print(
+                    f"响应: {result.get('choices', [{}])[0].get('message', {}).get('content', '无响应内容')}"
+                )
                 return True
             else:
                 print(f"❌ 千帆v2 API调用失败: {response.status_code}")
@@ -138,11 +136,13 @@ def test_qianfan_with_requests():
             token_params = {
                 "grant_type": "client_credentials",
                 "client_id": access_key,
-                "client_secret": secret_key
+                "client_secret": secret_key,
             }
 
             try:
-                token_response = requests.post(token_url, params=token_params, timeout=30)
+                token_response = requests.post(
+                    token_url, params=token_params, timeout=30
+                )
 
                 if token_response.status_code == 200:
                     token_data = token_response.json()
@@ -158,17 +158,17 @@ def test_qianfan_with_requests():
                             "messages": [
                                 {
                                     "role": "user",
-                                    "content": "你好，请简单介绍一下你自己"
+                                    "content": "你好，请简单介绍一下你自己",
                                 }
                             ],
-                            "temperature": 0.1
+                            "temperature": 0.1,
                         }
 
                         chat_response = requests.post(
                             chat_url,
                             headers={"Content-Type": "application/json"},
                             json=chat_data,
-                            timeout=30
+                            timeout=30,
                         )
 
                         if chat_response.status_code == 200:
@@ -177,7 +177,9 @@ def test_qianfan_with_requests():
                             print(f"响应: {chat_result.get('result', '无响应内容')}")
                             return True
                         else:
-                            print(f"❌ 千帆传统API调用失败: {chat_response.status_code}")
+                            print(
+                                f"❌ 千帆传统API调用失败: {chat_response.status_code}"
+                            )
                             print(f"错误信息: {chat_response.text}")
                     else:
                         print("❌ 未能获取access_token")
@@ -200,20 +202,23 @@ def test_qianfan_with_requests():
         print(f"❌ HTTP请求测试失败: {e}")
         return False
 
+
 def main():
     """主函数"""
     print("千帆API原生连通性测试")
     print("=" * 50)
 
     # 检查环境变量
-    api_key = os.getenv('QIANFAN_API_KEY')
-    access_key = os.getenv('QIANFAN_ACCESS_KEY')
-    secret_key = os.getenv('QIANFAN_SECRET_KEY')
+    api_key = os.getenv("QIANFAN_API_KEY")
+    access_key = os.getenv("QIANFAN_ACCESS_KEY")
+    secret_key = os.getenv("QIANFAN_SECRET_KEY")
 
     if not api_key and (not access_key or not secret_key):
         print("❌ 请确保在.env文件中设置了以下环境变量之一:")
         print("   方式1 (推荐): QIANFAN_API_KEY=your_api_key")
-        print("   方式2 (传统): QIANFAN_ACCESS_KEY=your_access_key + QIANFAN_SECRET_KEY=your_secret_key")
+        print(
+            "   方式2 (传统): QIANFAN_ACCESS_KEY=your_access_key + QIANFAN_SECRET_KEY=your_secret_key"
+        )
         return
 
     # 测试方法1: 使用千帆官方SDK
@@ -230,6 +235,7 @@ def main():
         print("\n🎉 千帆API连通性正常！")
     else:
         print("\n❌ 千帆API连通性测试失败，请检查密钥配置")
+
 
 if __name__ == "__main__":
     main()

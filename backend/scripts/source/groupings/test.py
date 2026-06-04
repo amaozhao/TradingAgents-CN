@@ -3,16 +3,10 @@
 """
 测试脚本：检查数据库中 datasource_groupings 集合的实际数据
 """
+
 import importlib
 
-import sys
-from pathlib import Path
-
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from app.core.database import get_mongo_db_sync
+from app.core.database import get_postgres_db_sync
 
 
 def test_datasource_groupings():
@@ -23,16 +17,18 @@ def test_datasource_groupings():
 
     try:
         # 获取数据库连接
-        db = get_mongo_db_sync()
+        db = get_postgres_db_sync()
         groupings_collection = db.datasource_groupings
 
         # 查询所有美股数据源分组
         print("\n🔍 查询美股数据源分组 (market_category_id='us_stocks'):")
         print("-" * 80)
 
-        us_groupings = list(groupings_collection.find({
-            "market_category_id": "us_stocks"
-        }).sort("priority", -1))  # 按优先级降序排序
+        us_groupings = list(
+            groupings_collection.find({"market_category_id": "us_stocks"}).sort(
+                "priority", -1
+            )
+        )  # 按优先级降序排序
 
         if not us_groupings:
             print("❌ 未找到任何美股数据源分组！")
@@ -53,36 +49,40 @@ def test_datasource_groupings():
             print()
 
         # 统计启用和禁用的数据源
-        enabled_count = sum(1 for g in us_groupings if g.get('enabled'))
+        enabled_count = sum(1 for g in us_groupings if g.get("enabled"))
         disabled_count = len(us_groupings) - enabled_count
 
         print("-" * 80)
-        print(f"📊 统计信息:")
+        print("📊 统计信息:")
         print(f"  总数: {len(us_groupings)}")
         print(f"  启用: {enabled_count}")
         print(f"  禁用: {disabled_count}")
         print()
 
         # 显示启用的数据源优先级顺序
-        enabled_sources = [g for g in us_groupings if g.get('enabled')]
+        enabled_sources = [g for g in us_groupings if g.get("enabled")]
         if enabled_sources:
             print("✅ 启用的数据源（按优先级排序）:")
             for i, g in enumerate(enabled_sources, 1):
-                print(f"  {i}. {g.get('data_source_name')} (优先级: {g.get('priority')})")
+                print(
+                    f"  {i}. {g.get('data_source_name')} (优先级: {g.get('priority')})"
+                )
         else:
             print("❌ 没有启用的数据源！")
         print()
 
         # 显示禁用的数据源
-        disabled_sources = [g for g in us_groupings if not g.get('enabled')]
+        disabled_sources = [g for g in us_groupings if not g.get("enabled")]
         if disabled_sources:
             print("⚠️ 禁用的数据源:")
             for i, g in enumerate(disabled_sources, 1):
-                print(f"  {i}. {g.get('data_source_name')} (优先级: {g.get('priority')})")
+                print(
+                    f"  {i}. {g.get('data_source_name')} (优先级: {g.get('priority')})"
+                )
         print()
 
         # 检查是否有重复的数据源
-        source_names = [g.get('data_source_name') for g in us_groupings]
+        source_names = [g.get("data_source_name") for g in us_groupings]
         duplicates = [name for name in source_names if source_names.count(name) > 1]
         if duplicates:
             print(f"⚠️ 发现重复的数据源: {set(duplicates)}")
@@ -96,7 +96,7 @@ def test_datasource_groupings():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 
@@ -107,7 +107,7 @@ def test_all_groupings():
     print("=" * 80)
 
     try:
-        db = get_mongo_db_sync()
+        db = get_postgres_db_sync()
         groupings_collection = db.datasource_groupings
 
         # 查询所有分组
@@ -118,7 +118,7 @@ def test_all_groupings():
         # 按市场分类分组
         markets = {}
         for grouping in all_groupings:
-            market = grouping.get('market_category_id', 'unknown')
+            market = grouping.get("market_category_id", "unknown")
             if market not in markets:
                 markets[market] = []
             markets[market].append(grouping)
@@ -128,18 +128,26 @@ def test_all_groupings():
             print(f"【{market}】")
             print(f"  数据源数量: {len(groupings)}")
 
-            enabled = [g for g in groupings if g.get('enabled')]
-            disabled = [g for g in groupings if not g.get('enabled')]
+            enabled = [g for g in groupings if g.get("enabled")]
+            disabled = [g for g in groupings if not g.get("enabled")]
 
             if enabled:
-                print(f"  启用的数据源:")
-                for g in sorted(enabled, key=lambda x: x.get('priority', 0), reverse=True):
-                    print(f"    - {g.get('data_source_name')} (优先级: {g.get('priority')})")
+                print("  启用的数据源:")
+                for g in sorted(
+                    enabled, key=lambda x: x.get("priority", 0), reverse=True
+                ):
+                    print(
+                        f"    - {g.get('data_source_name')} (优先级: {g.get('priority')})"
+                    )
 
             if disabled:
-                print(f"  禁用的数据源:")
-                for g in sorted(disabled, key=lambda x: x.get('priority', 0), reverse=True):
-                    print(f"    - {g.get('data_source_name')} (优先级: {g.get('priority')})")
+                print("  禁用的数据源:")
+                for g in sorted(
+                    disabled, key=lambda x: x.get("priority", 0), reverse=True
+                ):
+                    print(
+                        f"    - {g.get('data_source_name')} (优先级: {g.get('priority')})"
+                    )
 
             print()
 
@@ -147,7 +155,7 @@ def test_all_groupings():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 

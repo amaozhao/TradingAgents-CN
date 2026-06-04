@@ -6,19 +6,14 @@
 2. 检查是否包含当天的实时数据
 3. 验证数据来源标识
 """
-import importlib
+
 import asyncio
-import sys
-from pathlib import Path
-
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
+import importlib
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
 from app.core.config import settings
-from app.core.database import init_database, get_mongo_db
+from app.core.database import get_postgres_db, init_database
 
 
 async def test_kline_realtime():
@@ -37,13 +32,13 @@ async def test_kline_realtime():
 
     # 1. 检查 market_quotes 中是否有当天数据
     print("\n📊 步骤1：检查 market_quotes 集合中的当天数据")
-    db = get_mongo_db()
+    db = get_postgres_db()
     market_quotes_coll = db["market_quotes"]
 
     realtime_quote = await market_quotes_coll.find_one({"code": test_code})
 
     if realtime_quote:
-        print(f"✅ 找到当天实时数据:")
+        print("✅ 找到当天实时数据:")
         print(f"   - 代码: {realtime_quote.get('code')}")
         print(f"   - 开盘: {realtime_quote.get('open')}")
         print(f"   - 最高: {realtime_quote.get('high')}")
@@ -63,14 +58,12 @@ async def test_kline_realtime():
     now = datetime.now(tz)
     today_str = now.strftime("%Y%m%d")
 
-    historical_today = await stock_daily_quotes_coll.find_one({
-        "symbol": test_code,
-        "period": "daily",
-        "trade_date": today_str
-    })
+    historical_today = await stock_daily_quotes_coll.find_one(
+        {"symbol": test_code, "period": "daily", "trade_date": today_str}
+    )
 
     if historical_today:
-        print(f"✅ 历史数据中已有当天数据:")
+        print("✅ 历史数据中已有当天数据:")
         print(f"   - 交易日期: {historical_today.get('trade_date')}")
         print(f"   - 开盘: {historical_today.get('open')}")
         print(f"   - 收盘: {historical_today.get('close')}")
@@ -83,24 +76,31 @@ async def test_kline_realtime():
     print(f"   - 是否交易时间: {_is_trading_time(now)}")
 
     # 获取最近的K线数据
-    cursor = stock_daily_quotes_coll.find(
-        {"symbol": test_code, "period": "daily"},
-        {"_id": 0}
-    ).sort("trade_date", -1).limit(5)
+    cursor = (
+        stock_daily_quotes_coll.find(
+            {"symbol": test_code, "period": "daily"}, {"_id": 0}
+        )
+        .sort("trade_date", -1)
+        .limit(5)
+    )
 
     recent_klines = await cursor.to_list(length=5)
 
     if recent_klines:
-        print(f"\n✅ 最近5条K线数据:")
+        print("\n✅ 最近5条K线数据:")
         for kline in recent_klines:
-            print(f"   - {kline.get('trade_date')}: 开盘={kline.get('open')}, 收盘={kline.get('close')}")
+            print(
+                f"   - {kline.get('trade_date')}: 开盘={kline.get('open')}, 收盘={kline.get('close')}"
+            )
     else:
-        print(f"⚠️ 未找到历史K线数据")
+        print("⚠️ 未找到历史K线数据")
 
     # 4. 判断是否需要添加当天实时数据
     print("\n📊 步骤4：判断是否需要添加当天实时数据")
 
-    has_today_data = any(kline.get("trade_date") == today_str for kline in recent_klines)
+    has_today_data = any(
+        kline.get("trade_date") == today_str for kline in recent_klines
+    )
     is_trading_time = _is_trading_time(now)
     should_fetch_realtime = is_trading_time or not has_today_data
 
@@ -109,7 +109,7 @@ async def test_kline_realtime():
     print(f"   - 是否需要获取实时数据: {should_fetch_realtime}")
 
     if should_fetch_realtime and realtime_quote:
-        print(f"\n✅ 将添加/替换当天实时数据:")
+        print("\n✅ 将添加/替换当天实时数据:")
         print(f"   - 时间: {today_str}")
         print(f"   - 开盘: {realtime_quote.get('open')}")
         print(f"   - 收盘: {realtime_quote.get('close')}")
@@ -121,11 +121,10 @@ async def test_kline_realtime():
 
 def _is_trading_time(now: datetime) -> bool:
     """判断是否在交易时间内"""
-    dtime = getattr(importlib.import_module('datetime'), 'time')
+    dtime = getattr(importlib.import_module("datetime"), "time")
     current_time = now.time()
     return (
-        dtime(9, 30) <= current_time <= dtime(15, 0) and
-        now.weekday() < 5  # 周一到周五
+        dtime(9, 30) <= current_time <= dtime(15, 0) and now.weekday() < 5  # 周一到周五
     )
 
 

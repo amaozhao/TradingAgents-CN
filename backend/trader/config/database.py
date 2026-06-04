@@ -1,38 +1,35 @@
 #!/usr/bin/env python3
 """
 数据库配置管理模块
-统一管理MongoDB和Redis的连接配置
+统一管理 PostgreSQL 和 Redis 的连接配置
 """
 
 import os
-from typing import Dict, Any, Optional
+from typing import Any, Dict
 
 
 class DatabaseConfig:
     """数据库配置管理类"""
 
     @staticmethod
-    def get_mongodb_config() -> Dict[str, Any]:
+    def get_postgres_config() -> Dict[str, Any]:
         """
-        获取MongoDB配置
+        获取 PostgreSQL document store 兼容配置
 
         Returns:
-            Dict[str, Any]: MongoDB配置字典
+            Dict[str, Any]: PostgreSQL配置字典
 
         Raises:
             ValueError: 当必要的配置未设置时
         """
-        connection_string = os.getenv('MONGODB_CONNECTION_STRING')
-        if not connection_string:
-            raise ValueError(
-                "MongoDB连接字符串未配置。请设置环境变量 MONGODB_CONNECTION_STRING\n"
-                "例如: MONGODB_CONNECTION_STRING=mongodb://localhost:27017/"
-            )
+        database = os.getenv("POSTGRES_DB")
+        if not database:
+            raise ValueError("PostgreSQL数据库未配置。请设置环境变量 POSTGRES_DB")
 
         return {
-            'connection_string': connection_string,
-            'database': os.getenv('MONGODB_DATABASE', 'trading_agents'),
-            'auth_source': os.getenv('MONGODB_AUTH_SOURCE', 'admin')
+            "database": database,
+            "host": os.getenv("POSTGRES_HOST", "localhost"),
+            "port": int(os.getenv("POSTGRES_PORT", 5432)),
         }
 
     @staticmethod
@@ -47,16 +44,16 @@ class DatabaseConfig:
             ValueError: 当必要的配置未设置时
         """
         # 优先使用连接字符串
-        connection_string = os.getenv('REDIS_CONNECTION_STRING')
+        connection_string = os.getenv("REDIS_CONNECTION_STRING")
         if connection_string:
             return {
-                'connection_string': connection_string,
-                'database': int(os.getenv('REDIS_DATABASE', 0))
+                "connection_string": connection_string,
+                "database": int(os.getenv("REDIS_DATABASE", 0)),
             }
 
         # 使用分离的配置参数
-        host = os.getenv('REDIS_HOST')
-        port = os.getenv('REDIS_PORT')
+        host = os.getenv("REDIS_HOST")
+        port = os.getenv("REDIS_PORT")
 
         if not host or not port:
             raise ValueError(
@@ -66,10 +63,10 @@ class DatabaseConfig:
             )
 
         return {
-            'host': host,
-            'port': int(port),
-            'password': os.getenv('REDIS_PASSWORD'),
-            'database': int(os.getenv('REDIS_DATABASE', 0))
+            "host": host,
+            "port": int(port),
+            "password": os.getenv("REDIS_PASSWORD"),
+            "database": int(os.getenv("REDIS_DATABASE", 0)),
         }
 
     @staticmethod
@@ -80,20 +77,17 @@ class DatabaseConfig:
         Returns:
             Dict[str, bool]: 验证结果
         """
-        result = {
-            'mongodb_valid': False,
-            'redis_valid': False
-        }
+        result = {"postgres_valid": False, "redis_valid": False}
 
         try:
-            DatabaseConfig.get_mongodb_config()
-            result['mongodb_valid'] = True
+            DatabaseConfig.get_postgres_config()
+            result["postgres_valid"] = True
         except ValueError:
             pass
 
         try:
             DatabaseConfig.get_redis_config()
-            result['redis_valid'] = True
+            result["redis_valid"] = True
         except ValueError:
             pass
 
@@ -109,11 +103,11 @@ class DatabaseConfig:
         """
         validation = DatabaseConfig.validate_config()
 
-        if validation['mongodb_valid'] and validation['redis_valid']:
+        if validation["postgres_valid"] and validation["redis_valid"]:
             return "✅ 所有数据库配置正常"
-        elif validation['mongodb_valid']:
-            return "⚠️ MongoDB配置正常，Redis配置缺失"
-        elif validation['redis_valid']:
-            return "⚠️ Redis配置正常，MongoDB配置缺失"
+        elif validation["postgres_valid"]:
+            return "⚠️ PostgreSQL配置正常，Redis配置缺失"
+        elif validation["redis_valid"]:
+            return "⚠️ Redis配置正常，PostgreSQL配置缺失"
         else:
             return "❌ 数据库配置缺失，请检查环境变量"

@@ -2,9 +2,10 @@
 速率限制器
 用于控制API调用频率，避免超过数据源的限流限制
 """
+
 import asyncio
-import time
 import logging
+import time
 from collections import deque
 from typing import Optional
 
@@ -86,7 +87,9 @@ class RateLimiter:
             "total_calls": self.total_calls,
             "total_waits": self.total_waits,
             "total_wait_time": self.total_wait_time,
-            "avg_wait_time": self.total_wait_time / self.total_waits if self.total_waits > 0 else 0
+            "avg_wait_time": self.total_wait_time / self.total_waits
+            if self.total_waits > 0
+            else 0,
         }
 
     def reset_stats(self):
@@ -106,11 +109,11 @@ class TushareRateLimiter(RateLimiter):
 
     # Tushare积分等级对应的限流配置
     TIER_LIMITS = {
-        "free": {"max_calls": 100, "time_window": 60},      # 免费用户: 100次/分钟
-        "basic": {"max_calls": 200, "time_window": 60},     # 基础用户: 200次/分钟
+        "free": {"max_calls": 100, "time_window": 60},  # 免费用户: 100次/分钟
+        "basic": {"max_calls": 200, "time_window": 60},  # 基础用户: 200次/分钟
         "standard": {"max_calls": 400, "time_window": 60},  # 标准用户: 400次/分钟
-        "premium": {"max_calls": 600, "time_window": 60},   # 高级用户: 600次/分钟
-        "vip": {"max_calls": 800, "time_window": 60},       # VIP用户: 800次/分钟
+        "premium": {"max_calls": 600, "time_window": 60},  # 高级用户: 600次/分钟
+        "vip": {"max_calls": 800, "time_window": 60},  # VIP用户: 800次/分钟
     }
 
     def __init__(self, tier: str = "standard", safety_margin: float = 0.8):
@@ -134,14 +137,16 @@ class TushareRateLimiter(RateLimiter):
         super().__init__(
             max_calls=max_calls,
             time_window=time_window,
-            name=f"TushareRateLimiter({tier})"
+            name=f"TushareRateLimiter({tier})",
         )
 
         self.tier = tier
         self.safety_margin = safety_margin
 
-        logger.info(f"✅ Tushare速率限制器已配置: {tier}等级, "
-                   f"{max_calls}次/{time_window}秒 (安全边际: {safety_margin*100:.0f}%)")
+        logger.info(
+            f"✅ Tushare速率限制器已配置: {tier}等级, "
+            f"{max_calls}次/{time_window}秒 (安全边际: {safety_margin * 100:.0f}%)"
+        )
 
 
 class AKShareRateLimiter(RateLimiter):
@@ -160,9 +165,7 @@ class AKShareRateLimiter(RateLimiter):
             time_window: 时间窗口大小（秒）
         """
         super().__init__(
-            max_calls=max_calls,
-            time_window=time_window,
-            name="AKShareRateLimiter"
+            max_calls=max_calls, time_window=time_window, name="AKShareRateLimiter"
         )
 
 
@@ -182,9 +185,7 @@ class BaoStockRateLimiter(RateLimiter):
             time_window: 时间窗口大小（秒）
         """
         super().__init__(
-            max_calls=max_calls,
-            time_window=time_window,
-            name="BaoStockRateLimiter"
+            max_calls=max_calls, time_window=time_window, name="BaoStockRateLimiter"
         )
 
 
@@ -194,7 +195,9 @@ _akshare_limiter: Optional[AKShareRateLimiter] = None
 _baostock_limiter: Optional[BaoStockRateLimiter] = None
 
 
-def get_tushare_rate_limiter(tier: str = "standard", safety_margin: float = 0.8) -> TushareRateLimiter:
+def get_tushare_rate_limiter(
+    tier: str = "standard", safety_margin: float = 0.8
+) -> TushareRateLimiter:
     """获取Tushare速率限制器（单例）"""
     global _tushare_limiter
     if _tushare_limiter is None:

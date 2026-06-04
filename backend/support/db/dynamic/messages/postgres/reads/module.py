@@ -1,8 +1,16 @@
 import pytest
 
 from app.core.config import settings
-from app.services.message import InternalMessageQueryParams, InternalMessageService, InternalMessageStats
-from app.services.social import SocialMediaQueryParams, SocialMediaService, SocialMediaStats
+from app.services.message import (
+    InternalMessageQueryParams,
+    InternalMessageService,
+    InternalMessageStats,
+)
+from app.services.social import (
+    SocialMediaQueryParams,
+    SocialMediaService,
+    SocialMediaStats,
+)
 
 
 @pytest.mark.asyncio
@@ -23,7 +31,9 @@ async def test_internal_messages_query_uses_postgres_when_enabled(monkeypatch):
 
     monkeypatch.setattr(service, "_query_internal_messages_from_postgres", fake_pg)
 
-    result = await service.query_internal_messages(InternalMessageQueryParams(symbol="000001"))
+    result = await service.query_internal_messages(
+        InternalMessageQueryParams(symbol="000001")
+    )
 
     assert result == [
         {
@@ -53,7 +63,9 @@ async def test_social_media_query_uses_postgres_when_enabled(monkeypatch):
 
     monkeypatch.setattr(service, "_query_social_media_messages_from_postgres", fake_pg)
 
-    result = await service.query_social_media_messages(SocialMediaQueryParams(symbol="000001"))
+    result = await service.query_social_media_messages(
+        SocialMediaQueryParams(symbol="000001")
+    )
 
     assert result == [
         {
@@ -84,7 +96,9 @@ async def test_internal_search_and_stats_use_postgres_when_enabled(monkeypatch):
     monkeypatch.setattr(service, "_search_messages_from_postgres", fake_search)
     monkeypatch.setattr(service, "_get_internal_statistics_from_postgres", fake_stats)
 
-    messages = await service.search_messages("alpha", symbol="000001", access_level="internal", limit=10)
+    messages = await service.search_messages(
+        "alpha", symbol="000001", access_level="internal", limit=10
+    )
     stats = await service.get_internal_statistics(symbol="000001")
 
     assert messages == [{"message_id": "msg-1"}]
@@ -109,9 +123,13 @@ async def test_social_search_and_stats_use_postgres_when_enabled(monkeypatch):
         return SocialMediaStats(total_count=2, positive_count=1)
 
     monkeypatch.setattr(service, "_search_messages_from_postgres", fake_search)
-    monkeypatch.setattr(service, "_get_social_media_statistics_from_postgres", fake_stats)
+    monkeypatch.setattr(
+        service, "_get_social_media_statistics_from_postgres", fake_stats
+    )
 
-    messages = await service.search_messages("alpha", symbol="000001", platform="weibo", limit=10)
+    messages = await service.search_messages(
+        "alpha", symbol="000001", platform="weibo", limit=10
+    )
     stats = await service.get_social_media_statistics(symbol="000001")
 
     assert messages == [{"message_id": "social-1"}]

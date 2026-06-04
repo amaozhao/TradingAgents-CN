@@ -3,12 +3,13 @@ QuotesService: 提供A股批量实时快照获取（AKShare东方财富 spot 接
 - 不使用通达信（TDX）作为兜底数据源。
 - 仅用于筛选返回前对 items 进行行情富集。
 """
+
 from __future__ import annotations
-import importlib
 
 import asyncio
-import time
+import importlib
 import logging
+import time
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,9 @@ class QuotesService:
         self._cache: Dict[str, Dict[str, Optional[float]]] = {}
         self._lock = asyncio.Lock()
 
-    async def get_quotes(self, codes: List[str]) -> Dict[str, Dict[str, Optional[float]]]:
+    async def get_quotes(
+        self, codes: List[str]
+    ) -> Dict[str, Dict[str, Optional[float]]]:
         """获取一批股票的近实时快照（最新价、涨跌幅、成交额）。
         - 优先使用缓存；缓存超时或为空则刷新一次全市场快照。
         - 返回仅包含请求的 codes。
@@ -61,19 +64,49 @@ class QuotesService:
         不同版本可能有差异，做多列名兼容。
         """
         try:
-            ak = importlib.import_module('akshare')
+            ak = importlib.import_module("akshare")
             df = ak.stock_zh_a_spot_em()
             if df is None or getattr(df, "empty", True):
                 logger.warning("AKShare spot 返回空数据")
                 return {}
             # 兼容常见列名
-            code_col = next((c for c in ["代码", "代码code", "symbol", "股票代码"] if c in df.columns), None)
-            price_col = next((c for c in ["最新价", "现价", "最新价(元)", "price", "最新"] if c in df.columns), None)
-            pct_col = next((c for c in ["涨跌幅", "涨跌幅(%)", "涨幅", "pct_chg"] if c in df.columns), None)
-            amount_col = next((c for c in ["成交额", "成交额(元)", "amount", "成交额(万元)"] if c in df.columns), None)
+            code_col = next(
+                (
+                    c
+                    for c in ["代码", "代码code", "symbol", "股票代码"]
+                    if c in df.columns
+                ),
+                None,
+            )
+            price_col = next(
+                (
+                    c
+                    for c in ["最新价", "现价", "最新价(元)", "price", "最新"]
+                    if c in df.columns
+                ),
+                None,
+            )
+            pct_col = next(
+                (
+                    c
+                    for c in ["涨跌幅", "涨跌幅(%)", "涨幅", "pct_chg"]
+                    if c in df.columns
+                ),
+                None,
+            )
+            amount_col = next(
+                (
+                    c
+                    for c in ["成交额", "成交额(元)", "amount", "成交额(万元)"]
+                    if c in df.columns
+                ),
+                None,
+            )
 
             if not code_col or not price_col:
-                logger.error(f"AKShare spot 缺少必要列: code={code_col}, price={price_col}")
+                logger.error(
+                    f"AKShare spot 缺少必要列: code={code_col}, price={price_col}"
+                )
                 return {}
 
             result: Dict[str, Dict[str, Optional[float]]] = {}
@@ -85,7 +118,9 @@ class QuotesService:
                 code_str = str(code_raw).strip()
                 # 如果是纯数字，移除前导0后补齐到6位
                 if code_str.isdigit():
-                    code_clean = code_str.lstrip('0') or '0'  # 移除前导0，如果全是0则保留一个0
+                    code_clean = (
+                        code_str.lstrip("0") or "0"
+                    )  # 移除前导0，如果全是0则保留一个0
                     code = code_clean.zfill(6)  # 补齐到6位
                 else:
                     code = code_str.zfill(6)

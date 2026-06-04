@@ -2,12 +2,13 @@
 测试 AKShare 请求频率限制
 验证东方财富接口的最佳请求间隔
 """
-import importlib
 
-import time
-import akshare as ak
-from datetime import datetime
+import importlib
 import sys
+import time
+from datetime import datetime
+
+import akshare as ak
 
 
 def test_single_request():
@@ -22,12 +23,12 @@ def test_single_request():
         elapsed = time.time() - start_time
 
         if df is not None and not df.empty:
-            print(f"✅ 请求成功")
+            print("✅ 请求成功")
             print(f"   数据量: {len(df)} 条")
             print(f"   耗时: {elapsed:.2f} 秒")
             return True, elapsed
         else:
-            print(f"❌ 请求失败: 返回空数据")
+            print("❌ 请求失败: 返回空数据")
             return False, elapsed
     except Exception as e:
         elapsed = time.time() - start_time
@@ -47,7 +48,9 @@ def test_continuous_requests(count=10, interval=0):
     results = []
 
     for i in range(count):
-        print(f"\n[{i+1}/{count}] {datetime.now().strftime('%H:%M:%S')} - 发起请求...")
+        print(
+            f"\n[{i + 1}/{count}] {datetime.now().strftime('%H:%M:%S')} - 发起请求..."
+        )
 
         try:
             start_time = time.time()
@@ -80,7 +83,9 @@ def test_continuous_requests(count=10, interval=0):
                 print(f"   ❌ 失败 - 代理错误, 耗时: {elapsed:.2f}秒")
                 results.append(("fail_proxy", elapsed))
             else:
-                print(f"   ❌ 失败 - {error_type}: {error_msg[:50]}..., 耗时: {elapsed:.2f}秒")
+                print(
+                    f"   ❌ 失败 - {error_type}: {error_msg[:50]}..., 耗时: {elapsed:.2f}秒"
+                )
                 results.append(("fail_other", elapsed))
 
         # 等待间隔
@@ -93,8 +98,8 @@ def test_continuous_requests(count=10, interval=0):
     print("📊 测试结果统计")
     print("=" * 70)
     print(f"总请求次数: {count}")
-    print(f"成功次数: {success_count} ({success_count/count*100:.1f}%)")
-    print(f"失败次数: {fail_count} ({fail_count/count*100:.1f}%)")
+    print(f"成功次数: {success_count} ({success_count / count * 100:.1f}%)")
+    print(f"失败次数: {fail_count} ({fail_count / count * 100:.1f}%)")
 
     if success_count > 0:
         success_times = [r[1] for r in results if r[0] == "success"]
@@ -115,7 +120,7 @@ def test_continuous_requests(count=10, interval=0):
                 "fail_ssl": "SSL错误",
                 "fail_proxy": "代理错误",
                 "fail_empty": "返回空数据",
-                "fail_other": "其他错误"
+                "fail_other": "其他错误",
             }.get(fail_type, fail_type)
             print(f"  • {fail_name}: {count} 次")
 
@@ -132,16 +137,16 @@ def test_different_intervals():
     results = {}
 
     for interval in intervals:
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print(f"测试间隔: {interval} 秒")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
 
         success, fail = test_continuous_requests(count=5, interval=interval)
         results[interval] = (success, fail)
 
         # 等待一段时间再测试下一个间隔
         if interval != intervals[-1]:
-            print(f"\n⏳ 等待 10 秒后测试下一个间隔...")
+            print("\n⏳ 等待 10 秒后测试下一个间隔...")
             time.sleep(10)
 
     # 汇总结果
@@ -168,30 +173,34 @@ def test_different_intervals():
 
     if best_interval is not None:
         print(f"✅ 推荐请求间隔: {best_interval} 秒")
-        print(f"   在此间隔下，所有请求都成功")
+        print("   在此间隔下，所有请求都成功")
 
         if best_interval == 0:
-            print(f"\n   配置建议:")
-            print(f"   QUOTES_INGESTION_INTERVAL=30  # 30秒间隔（默认）")
+            print("\n   配置建议:")
+            print("   QUOTES_INGESTION_INTERVAL=30  # 30秒间隔（默认）")
         else:
             # 计算建议的同步间隔
             # 假设每次同步需要多次请求（分页）
             suggested_interval = max(30, int(best_interval * 10))
-            print(f"\n   配置建议:")
-            print(f"   QUOTES_INGESTION_INTERVAL={suggested_interval}  # {suggested_interval}秒间隔")
+            print("\n   配置建议:")
+            print(
+                f"   QUOTES_INGESTION_INTERVAL={suggested_interval}  # {suggested_interval}秒间隔"
+            )
     else:
         # 找到成功率最高的间隔
         best_interval = max(results.items(), key=lambda x: x[1][0])[0]
         success, fail = results[best_interval]
         success_rate = success / (success + fail) * 100
 
-        print(f"⚠️  没有找到100%成功的间隔")
+        print("⚠️  没有找到100%成功的间隔")
         print(f"   成功率最高的间隔: {best_interval} 秒 (成功率: {success_rate:.1f}%)")
 
         suggested_interval = max(60, int(best_interval * 10))
-        print(f"\n   配置建议:")
-        print(f"   QUOTES_INGESTION_INTERVAL={suggested_interval}  # {suggested_interval}秒间隔")
-        print(f"   或者考虑使用 Tushare 数据源（更稳定）")
+        print("\n   配置建议:")
+        print(
+            f"   QUOTES_INGESTION_INTERVAL={suggested_interval}  # {suggested_interval}秒间隔"
+        )
+        print("   或者考虑使用 Tushare 数据源（更稳定）")
 
 
 def main():
@@ -202,10 +211,10 @@ def main():
     print("=" * 70)
 
     # 检查代理配置
-    os = importlib.import_module('os')
-    http_proxy = os.environ.get('HTTP_PROXY', '')
-    https_proxy = os.environ.get('HTTPS_PROXY', '')
-    no_proxy = os.environ.get('NO_PROXY', '')
+    os = importlib.import_module("os")
+    http_proxy = os.environ.get("HTTP_PROXY", "")
+    https_proxy = os.environ.get("HTTPS_PROXY", "")
+    no_proxy = os.environ.get("NO_PROXY", "")
 
     print("\n📋 当前环境变量代理配置:")
     print(f"   HTTP_PROXY: {http_proxy or '(未设置)'}")
@@ -214,50 +223,57 @@ def main():
 
     # 检查系统代理（Windows）
     try:
-        winreg = importlib.import_module('winreg')
+        winreg = importlib.import_module("winreg")
         internet_settings = winreg.OpenKey(
             winreg.HKEY_CURRENT_USER,
-            r'Software\Microsoft\Windows\CurrentVersion\Internet Settings',
+            r"Software\Microsoft\Windows\CurrentVersion\Internet Settings",
             0,
-            winreg.KEY_READ
+            winreg.KEY_READ,
         )
-        proxy_enable, _ = winreg.QueryValueEx(internet_settings, 'ProxyEnable')
+        proxy_enable, _ = winreg.QueryValueEx(internet_settings, "ProxyEnable")
         if proxy_enable:
-            proxy_server, _ = winreg.QueryValueEx(internet_settings, 'ProxyServer')
-            print(f"\n⚠️  检测到系统代理（System Proxy）:")
+            proxy_server, _ = winreg.QueryValueEx(internet_settings, "ProxyServer")
+            print("\n⚠️  检测到系统代理（System Proxy）:")
             print(f"   代理服务器: {proxy_server}")
-            print(f"   Python requests 库会自动使用系统代理")
+            print("   Python requests 库会自动使用系统代理")
 
             # 提示用户设置 NO_PROXY
             if not no_proxy:
-                print(f"\n💡 建议设置 NO_PROXY 环境变量以绕过国内数据源:")
-                print(f"   NO_PROXY=localhost,127.0.0.1,eastmoney.com,push2.eastmoney.com,82.push2.eastmoney.com,82.push2delay.eastmoney.com,gtimg.cn,sinaimg.cn,api.tushare.pro,baostock.com")
+                print("\n💡 建议设置 NO_PROXY 环境变量以绕过国内数据源:")
+                print(
+                    "   NO_PROXY=localhost,127.0.0.1,eastmoney.com,push2.eastmoney.com,82.push2.eastmoney.com,82.push2delay.eastmoney.com,gtimg.cn,sinaimg.cn,api.tushare.pro,baostock.com"
+                )
 
                 # 询问是否自动设置
                 try:
-                    choice = input("\n是否自动设置 NO_PROXY？(y/n，默认y): ").strip().lower() or "y"
+                    choice = (
+                        input("\n是否自动设置 NO_PROXY？(y/n，默认y): ").strip().lower()
+                        or "y"
+                    )
                     if choice == "y":
-                        os.environ['NO_PROXY'] = "localhost,127.0.0.1,eastmoney.com,push2.eastmoney.com,82.push2.eastmoney.com,82.push2delay.eastmoney.com,gtimg.cn,sinaimg.cn,api.tushare.pro,baostock.com"
-                        print(f"✅ 已设置 NO_PROXY 环境变量")
-                        no_proxy = os.environ['NO_PROXY']
-                except:
+                        os.environ["NO_PROXY"] = (
+                            "localhost,127.0.0.1,eastmoney.com,push2.eastmoney.com,82.push2.eastmoney.com,82.push2delay.eastmoney.com,gtimg.cn,sinaimg.cn,api.tushare.pro,baostock.com"
+                        )
+                        print("✅ 已设置 NO_PROXY 环境变量")
+                        no_proxy = os.environ["NO_PROXY"]
+                except Exception:
                     pass
         winreg.CloseKey(internet_settings)
-    except Exception as e:
+    except Exception:
         pass
 
     if http_proxy or https_proxy:
         if no_proxy:
-            print(f"\n✅ 已配置代理和 NO_PROXY")
-            print(f"   国内数据源应该直连")
+            print("\n✅ 已配置代理和 NO_PROXY")
+            print("   国内数据源应该直连")
         else:
-            print(f"\n⚠️  已配置代理但未配置 NO_PROXY")
-            print(f"   可能会通过代理访问国内数据源，导致 SSL 错误")
+            print("\n⚠️  已配置代理但未配置 NO_PROXY")
+            print("   可能会通过代理访问国内数据源，导致 SSL 错误")
     else:
         if no_proxy:
-            print(f"\n✅ 已配置 NO_PROXY（用于绕过系统代理）")
+            print("\n✅ 已配置 NO_PROXY（用于绕过系统代理）")
         else:
-            print(f"\n✅ 未配置代理，直连所有服务")
+            print("\n✅ 未配置代理，直连所有服务")
 
     # 选择测试模式
     print("\n" + "=" * 70)
@@ -290,7 +306,7 @@ def main():
         sys.exit(0)
     except Exception as e:
         print(f"\n\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         sys.exit(1)
 

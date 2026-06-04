@@ -1,15 +1,9 @@
 """
 调试Web界面显示"True"的问题
 """
+
 import importlib
 
-import sys
-import os
-from pathlib import Path
-
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
 
 def test_form_data_structure():
     """测试表单数据结构"""
@@ -18,20 +12,18 @@ def test_form_data_structure():
     try:
         # 模拟表单数据
         form_data_submitted = {
-            'submitted': True,
-            'stock_symbol': '0700.HK',
-            'market_type': '港股',
-            'analysis_date': '2025-07-14',
-            'analysts': ['market', 'fundamentals'],
-            'research_depth': 3,
-            'include_sentiment': True,
-            'include_risk_assessment': True,
-            'custom_prompt': ''
+            "submitted": True,
+            "stock_symbol": "0700.HK",
+            "market_type": "港股",
+            "analysis_date": "2025-07-14",
+            "analysts": ["market", "fundamentals"],
+            "research_depth": 3,
+            "include_sentiment": True,
+            "include_risk_assessment": True,
+            "custom_prompt": "",
         }
 
-        form_data_not_submitted = {
-            'submitted': False
-        }
+        form_data_not_submitted = {"submitted": False}
 
         print("  提交时的表单数据:")
         for key, value in form_data_submitted.items():
@@ -42,12 +34,12 @@ def test_form_data_structure():
             print(f"    {key}: {value} ({type(value).__name__})")
 
         # 检查条件判断
-        if form_data_submitted.get('submitted', False):
+        if form_data_submitted.get("submitted", False):
             print("\n  ✅ 提交条件判断正确")
         else:
             print("\n  ❌ 提交条件判断错误")
 
-        if form_data_not_submitted.get('submitted', False):
+        if form_data_not_submitted.get("submitted", False):
             print("  ❌ 未提交条件判断错误")
         else:
             print("  ✅ 未提交条件判断正确")
@@ -58,12 +50,15 @@ def test_form_data_structure():
         print(f"❌ 表单数据结构测试失败: {e}")
         return False
 
+
 def test_validation_function():
     """测试验证函数"""
     print("\n🧪 测试验证函数...")
 
     try:
-        validate_analysis_params = getattr(importlib.import_module('web.utils.analysis'), 'validate_analysis_params')
+        validate_analysis_params = getattr(
+            importlib.import_module("web.utils.analysis"), "validate_analysis_params"
+        )
 
         # 测试港股验证
         errors = validate_analysis_params(
@@ -71,7 +66,7 @@ def test_validation_function():
             analysis_date="2025-07-14",
             analysts=["market", "fundamentals"],
             research_depth=3,
-            market_type="港股"
+            market_type="港股",
         )
 
         print(f"  港股验证结果: {errors}")
@@ -86,22 +81,29 @@ def test_validation_function():
 
     except Exception as e:
         print(f"❌ 验证函数测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_analysis_runner_import():
     """测试分析运行器导入"""
     print("\n🧪 测试分析运行器导入...")
 
     try:
-        run_stock_analysis = getattr(importlib.import_module('web.utils.analysis'), 'run_stock_analysis')
-        validate_analysis_params = getattr(importlib.import_module('web.utils.analysis'), 'validate_analysis_params')
-        format_analysis_results = getattr(importlib.import_module('web.utils.analysis'), 'format_analysis_results')
+        run_stock_analysis = getattr(
+            importlib.import_module("web.utils.analysis"), "run_stock_analysis"
+        )
+        validate_analysis_params = getattr(
+            importlib.import_module("web.utils.analysis"), "validate_analysis_params"
+        )
+        getattr(
+            importlib.import_module("web.utils.analysis"), "format_analysis_results"
+        )
         print("  ✅ 分析运行器导入成功")
 
         # 测试函数签名
-        inspect = importlib.import_module('inspect')
+        inspect = importlib.import_module("inspect")
 
         sig = inspect.signature(run_stock_analysis)
         print(f"  run_stock_analysis 参数: {list(sig.parameters.keys())}")
@@ -113,9 +115,10 @@ def test_analysis_runner_import():
 
     except Exception as e:
         print(f"❌ 分析运行器导入失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_streamlit_components():
     """测试Streamlit组件"""
@@ -123,8 +126,8 @@ def test_streamlit_components():
 
     try:
         # 测试组件导入
-        render_analysis_form = getattr(importlib.import_module('web.components.form'), 'render_analysis_form')
-        render_results = getattr(importlib.import_module('web.components.result'), 'render_results')
+        getattr(importlib.import_module("web.components.form"), "render_analysis_form")
+        getattr(importlib.import_module("web.components.result"), "render_results")
 
         print("  ✅ Streamlit组件导入成功")
 
@@ -132,9 +135,10 @@ def test_streamlit_components():
 
     except Exception as e:
         print(f"❌ Streamlit组件测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def check_potential_output_sources():
     """检查可能的输出源"""
@@ -146,7 +150,7 @@ def check_potential_output_sources():
         "布尔值转换为字符串",
         "调试语句残留",
         "异常处理中的输出",
-        "Streamlit组件的意外输出"
+        "Streamlit组件的意外输出",
     ]
 
     for source in potential_sources:
@@ -160,6 +164,7 @@ def check_potential_output_sources():
 
     return True
 
+
 def main():
     """运行所有调试测试"""
     print("🐛 开始调试Web界面'True'显示问题")
@@ -170,7 +175,7 @@ def main():
         test_validation_function,
         test_analysis_runner_import,
         test_streamlit_components,
-        check_potential_output_sources
+        check_potential_output_sources,
     ]
 
     passed = 0
@@ -196,6 +201,7 @@ def main():
     print("2. 清除浏览器缓存")
     print("3. 检查是否有残留的调试输出")
     print("4. 确认所有组件正确导入")
+
 
 if __name__ == "__main__":
     main()

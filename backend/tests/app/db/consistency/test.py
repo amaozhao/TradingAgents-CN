@@ -6,7 +6,7 @@ from app.db.consistency import compare_hot_collections, consistency_summary_to_d
 
 @pytest.mark.asyncio
 async def test_compare_hot_collections_reports_consistent_counts_and_keys(monkeypatch):
-    mongo_db = FakeMongoDB(
+    postgres_db = FakePostgreSQL(
         {
             "stock_basic_info": [{"code": "000001", "source": "tushare"}],
             "market_quotes": [{"code": "000001", "source": "akshare"}],
@@ -29,8 +29,12 @@ async def test_compare_hot_collections_reports_consistent_counts_and_keys(monkey
             "sync_status": [{"job": "example_sdk_sync"}],
             "quotes_ingestion_status": [{"job": "quotes_ingestion", "success": True}],
             "scheduler_executions": [{"_id": "scheduler-1", "job_id": "tushare_daily"}],
-            "scheduler_history": [{"legacy_id": "history-1", "job_id": "tushare_daily"}],
-            "scheduler_metadata": [{"job_id": "tushare_daily", "display_name": "每日同步"}],
+            "scheduler_history": [
+                {"legacy_id": "history-1", "job_id": "tushare_daily"}
+            ],
+            "scheduler_metadata": [
+                {"job_id": "tushare_daily", "display_name": "每日同步"}
+            ],
             "user_favorites": [
                 {"user_id": "user-1", "favorites": [{"stock_code": "000001"}]}
             ],
@@ -95,20 +99,22 @@ async def test_compare_hot_collections_reports_consistent_counts_and_keys(monkey
             }[spec.collection]
         }
 
-    monkeypatch.setattr(consistency_checker, "_postgres_count", fake_postgres_count)
-    monkeypatch.setattr(consistency_checker, "_postgres_business_keys", fake_postgres_keys)
+    monkeypatch.setattr(consistency_checker, "_table_count", fake_postgres_count)
+    monkeypatch.setattr(consistency_checker, "_table_business_keys", fake_postgres_keys)
 
-    results = await compare_hot_collections(mongo_db, lambda: FakeSession(), sample_limit=10)
+    results = await compare_hot_collections(
+        postgres_db, lambda: FakeSession(), sample_limit=10
+    )
     summary = consistency_summary_to_dict(results)
 
     assert summary["all_consistent"] is True
     assert summary["collections"]["stock_basic_info"]["count_delta"] == 0
-    assert summary["collections"]["sync_status"]["mongo_count"] == 2
+    assert summary["collections"]["sync_status"]["postgres_count"] == 2
 
 
 @pytest.mark.asyncio
 async def test_compare_hot_collections_reports_missing_postgres_keys(monkeypatch):
-    mongo_db = FakeMongoDB(
+    postgres_db = FakePostgreSQL(
         {
             "stock_basic_info": [{"code": "000001", "source": "tushare"}],
             "market_quotes": [],
@@ -148,26 +154,30 @@ async def test_compare_hot_collections_reports_missing_postgres_keys(monkeypatch
     async def fake_postgres_keys(_session, _spec, _sample_limit):
         return set()
 
-    monkeypatch.setattr(consistency_checker, "_postgres_count", fake_postgres_count)
-    monkeypatch.setattr(consistency_checker, "_postgres_business_keys", fake_postgres_keys)
+    monkeypatch.setattr(consistency_checker, "_table_count", fake_postgres_count)
+    monkeypatch.setattr(consistency_checker, "_table_business_keys", fake_postgres_keys)
 
-    results = await compare_hot_collections(mongo_db, lambda: FakeSession(), sample_limit=10)
+    results = await compare_hot_collections(
+        postgres_db, lambda: FakeSession(), sample_limit=10
+    )
     summary = consistency_summary_to_dict(results)
 
     assert summary["all_consistent"] is False
     assert summary["collections"]["stock_basic_info"]["count_delta"] == -1
-    assert summary["collections"]["stock_basic_info"]["missing_in_postgres"] == [("000001", "tushare")]
+    assert summary["collections"]["stock_basic_info"]["missing_in_postgres"] == [
+        ("000001", "tushare")
+    ]
 
 
-class FakeMongoDB:
+class FakePostgreSQL:
     def __init__(self, collections):
         self.collections = collections
 
     def __getitem__(self, name):
-        return FakeMongoCollection(self.collections.get(name, []))
+        return FakePostgreSQLCollection(self.collections.get(name, []))
 
 
-class FakeMongoCollection:
+class FakePostgreSQLCollection:
     def __init__(self, documents):
         self.documents = documents
 

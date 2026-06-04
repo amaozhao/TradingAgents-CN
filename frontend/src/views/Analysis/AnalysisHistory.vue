@@ -338,7 +338,7 @@ const loadAnalysisHistory = async () => {
       params.end_date = filterForm.value.dateRange[1]
     }
 
-    // 使用任务列表接口作为历史数据源（已打通MongoDB兜底）
+    // 使用任务列表接口作为历史数据源（已打通PostgreSQL兜底）
     const res = await analysisApi.getTaskList({
       status: statusFilter.value || undefined,
       limit: pageSize.value,

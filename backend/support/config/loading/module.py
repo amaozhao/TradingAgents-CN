@@ -2,19 +2,15 @@
 """
 测试配置加载问题
 """
+
 import importlib
-
-import os
 import sys
-from pathlib import Path
-from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
+
 
 def test_pricing_config_loading():
     """测试定价配置加载"""
@@ -22,7 +18,9 @@ def test_pricing_config_loading():
     print("=" * 50)
 
     try:
-        ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
+        ConfigManager = getattr(
+            importlib.import_module("trader.config.manager"), "ConfigManager"
+        )
 
         # 创建配置管理器
         config_manager = ConfigManager()
@@ -33,11 +31,11 @@ def test_pricing_config_loading():
 
         # 直接读取文件内容
         if config_manager.pricing_file.exists():
-            with open(config_manager.pricing_file, 'r', encoding='utf-8') as f:
+            with open(config_manager.pricing_file, "r", encoding="utf-8") as f:
                 content = f.read()
             print(f"📄 文件内容长度: {len(content)}")
 
-            json = importlib.import_module('json')
+            json = importlib.import_module("json")
             data = json.loads(content)
             print(f"📊 JSON中的配置数量: {len(data)}")
 
@@ -45,7 +43,7 @@ def test_pricing_config_loading():
                 print(f"   {i}. {config['provider']}/{config['model_name']}")
 
         # 使用ConfigManager加载
-        print(f"\n📊 使用ConfigManager加载:")
+        print("\n📊 使用ConfigManager加载:")
         pricing_configs = config_manager.load_pricing()
         print(f"📊 加载的配置数量: {len(pricing_configs)}")
 
@@ -66,9 +64,10 @@ def test_pricing_config_loading():
 
     except Exception as e:
         print(f"❌ 配置加载测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_cost_calculation():
     """测试成本计算"""
@@ -76,7 +75,9 @@ def test_cost_calculation():
     print("=" * 50)
 
     try:
-        ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
+        ConfigManager = getattr(
+            importlib.import_module("trader.config.manager"), "ConfigManager"
+        )
 
         config_manager = ConfigManager()
 
@@ -86,7 +87,7 @@ def test_cost_calculation():
             provider="deepseek",
             model_name="deepseek-chat",
             input_tokens=1000,
-            output_tokens=500
+            output_tokens=500,
         )
         print(f"   DeepSeek成本: ¥{deepseek_cost:.6f}")
 
@@ -96,7 +97,7 @@ def test_cost_calculation():
             provider="dashscope",
             model_name="qwen-plus",
             input_tokens=1000,
-            output_tokens=500
+            output_tokens=500,
         )
         print(f"   qwen-plus成本: ¥{dashscope_cost1:.6f}")
 
@@ -104,7 +105,7 @@ def test_cost_calculation():
             provider="dashscope",
             model_name="qwen-plus-latest",
             input_tokens=1000,
-            output_tokens=500
+            output_tokens=500,
         )
         print(f"   qwen-plus-latest成本: ¥{dashscope_cost2:.6f}")
 
@@ -112,9 +113,10 @@ def test_cost_calculation():
 
     except Exception as e:
         print(f"❌ 成本计算测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def main():
     """主函数"""
@@ -147,6 +149,7 @@ def main():
 
     print("\n🎯 测试完成！")
     return overall_success
+
 
 if __name__ == "__main__":
     success = main()

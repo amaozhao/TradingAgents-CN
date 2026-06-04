@@ -3,59 +3,62 @@
 DeepSeek V3股票分析演示
 展示如何使用DeepSeek V3进行股票投资分析
 """
-import importlib
 
-import sys
-import os
-from pathlib import Path
-from dotenv import load_dotenv
+import importlib
 
 # 导入日志模块
 import logging
+import os
+import sys
+
+from dotenv import load_dotenv
+
+from support.path import BACKEND_ROOT
+
 logger = logging.getLogger(__name__)
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 # 加载环境变量
-load_dotenv(project_root / ".env", override=True)
+load_dotenv(BACKEND_ROOT / ".env", override=True)
+
 
 def check_deepseek_config():
     """检查DeepSeek配置"""
-    logger.debug(f"🔍 检查DeepSeek V3配置...")
+    logger.debug("🔍 检查DeepSeek V3配置...")
 
     api_key = os.getenv("DEEPSEEK_API_KEY")
     base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
     if not api_key:
-        logger.error(f"❌ 错误：未找到DeepSeek API密钥")
-        logger.info(f"\n📝 配置步骤:")
-        logger.info(f"1. 访问 https://platform.deepseek.com/")
-        logger.info(f"2. 注册DeepSeek账号并登录")
-        logger.info(f"3. 进入API Keys页面")
-        logger.info(f"4. 创建新的API Key")
-        logger.info(f"5. 在.env文件中设置:")
-        logger.info(f"   DEEPSEEK_API_KEY=your_api_key")
-        logger.info(f"   DEEPSEEK_ENABLED=true")
+        logger.error("❌ 错误：未找到DeepSeek API密钥")
+        logger.info("\n📝 配置步骤:")
+        logger.info("1. 访问 https://platform.deepseek.com/")
+        logger.info("2. 注册DeepSeek账号并登录")
+        logger.info("3. 进入API Keys页面")
+        logger.info("4. 创建新的API Key")
+        logger.info("5. 在.env文件中设置:")
+        logger.info("   DEEPSEEK_API_KEY=your_api_key")
+        logger.info("   DEEPSEEK_ENABLED=true")
         return False
 
     logger.info(f"✅ API Key: {api_key[:12]}...")
     logger.info(f"✅ Base URL: {base_url}")
     return True
 
+
 def demo_simple_chat():
     """演示简单对话功能"""
-    logger.info(f"\n🤖 演示DeepSeek V3简单对话...")
+    logger.info("\n🤖 演示DeepSeek V3简单对话...")
 
     try:
-        create_deepseek_direct_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_direct_adapter')
+        create_deepseek_direct_adapter = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"),
+            "create_deepseek_direct_adapter",
+        )
 
         # 创建DeepSeek模型
         llm = create_deepseek_direct_adapter(
-            model="deepseek-chat",
-            temperature=0.1,
-            max_tokens=500
+            model="deepseek-chat", temperature=0.1, max_tokens=500
         )
 
         # 测试对话
@@ -67,7 +70,7 @@ def demo_simple_chat():
         请用中文回答，控制在200字以内。
         """
 
-        logger.info(f"💭 正在生成回答...")
+        logger.info("💭 正在生成回答...")
         response = llm.invoke(message)
         logger.info(f"🎯 DeepSeek V3回答:\n{response}")
 
@@ -77,18 +80,20 @@ def demo_simple_chat():
         logger.error(f"❌ 简单对话演示失败: {e}")
         return False
 
+
 def demo_reasoning_analysis():
     """演示推理分析功能"""
-    logger.info(f"\n🧠 演示DeepSeek V3推理分析...")
+    logger.info("\n🧠 演示DeepSeek V3推理分析...")
 
     try:
-        create_deepseek_direct_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_direct_adapter')
+        create_deepseek_direct_adapter = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"),
+            "create_deepseek_direct_adapter",
+        )
 
         # 创建DeepSeek适配器
         adapter = create_deepseek_direct_adapter(
-            model="deepseek-chat",
-            temperature=0.1,
-            max_tokens=1000
+            model="deepseek-chat", temperature=0.1, max_tokens=1000
         )
 
         # 复杂推理任务
@@ -110,7 +115,7 @@ def demo_reasoning_analysis():
         请从投资价值角度分析这两家公司，并给出投资建议。
         """
 
-        logger.info(f"💭 正在进行深度分析...")
+        logger.info("💭 正在进行深度分析...")
         response = adapter.invoke(complex_query)
         logger.info(f"🎯 DeepSeek V3分析:\n{response}")
 
@@ -120,12 +125,16 @@ def demo_reasoning_analysis():
         logger.error(f"❌ 推理分析演示失败: {e}")
         return False
 
+
 def demo_stock_analysis_with_tools():
     """演示带工具的股票分析"""
-    logger.info(f"\n📊 演示DeepSeek V3工具调用股票分析...")
+    logger.info("\n📊 演示DeepSeek V3工具调用股票分析...")
 
     try:
-        create_deepseek_direct_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_direct_adapter')
+        create_deepseek_direct_adapter = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"),
+            "create_deepseek_direct_adapter",
+        )
         # 移除langchain工具导入以避免兼容性问题
 
         # 定义股票分析工具（简化版本，不使用langchain装饰器）
@@ -136,7 +145,7 @@ def demo_stock_analysis_with_tools():
                 "TSLA": "特斯拉 - 电动汽车制造商，由马斯克领导，专注新能源汽车，P/E: 65.2",
                 "MSFT": "微软 - 软件巨头，主营Windows、Office、Azure云服务，P/E: 32.1",
                 "000001": "平安银行 - 中国股份制银行，总部深圳，金融服务业，P/E: 5.8",
-                "600036": "招商银行 - 中国领先银行，零售银行业务突出，P/E: 6.2"
+                "600036": "招商银行 - 中国领先银行，零售银行业务突出，P/E: 6.2",
             }
             return stock_data.get(symbol, f"股票{symbol}的基本信息")
 
@@ -150,20 +159,18 @@ def demo_stock_analysis_with_tools():
 
         # 创建DeepSeek适配器
         adapter = create_deepseek_direct_adapter(
-            model="deepseek-chat",
-            temperature=0.1,
-            max_tokens=1000
+            model="deepseek-chat", temperature=0.1, max_tokens=1000
         )
 
         # 测试股票分析
         test_queries = [
             "请全面分析苹果公司(AAPL)的投资价值，包括基本面、财务状况和市场情绪",
-            "对比分析招商银行(600036)和平安银行(000001)，哪个更值得投资？"
+            "对比分析招商银行(600036)和平安银行(000001)，哪个更值得投资？",
         ]
 
         for query in test_queries:
             logger.info(f"\n❓ 用户问题: {query}")
-            logger.info(f"💭 正在分析...")
+            logger.info("💭 正在分析...")
 
             # 获取相关股票信息
             if "AAPL" in query:
@@ -192,7 +199,7 @@ def demo_stock_analysis_with_tools():
 
             response = adapter.invoke(analysis_prompt)
             logger.info(f"🎯 分析结果:\n{response}")
-            logger.info(f"-")
+            logger.info("-")
 
         return True
 
@@ -200,12 +207,16 @@ def demo_stock_analysis_with_tools():
         logger.error(f"❌ 工具调用演示失败: {e}")
         return False
 
+
 def demo_trading_system():
     """演示完整的交易分析系统（简化版本）"""
-    logger.info(f"\n🎯 演示DeepSeek V3完整交易分析系统...")
+    logger.info("\n🎯 演示DeepSeek V3完整交易分析系统...")
 
     try:
-        create_deepseek_direct_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_direct_adapter')
+        create_deepseek_direct_adapter = getattr(
+            importlib.import_module("trader.llm.adapters.deepseek"),
+            "create_deepseek_direct_adapter",
+        )
 
         # 创建DeepSeek适配器
         adapter = create_deepseek_direct_adapter()
@@ -213,24 +224,24 @@ def demo_trading_system():
         # 模拟交易分析查询
         trading_query = "请分析苹果公司(AAPL)的投资价值，包括技术面、基本面和风险评估"
 
-        logger.info(f"🏗️ 使用DeepSeek进行交易分析...")
+        logger.info("🏗️ 使用DeepSeek进行交易分析...")
         result = adapter.invoke(trading_query)
 
-        logger.info(f"✅ DeepSeek V3交易分析完成！")
+        logger.info("✅ DeepSeek V3交易分析完成！")
         logger.info(f"\n📊 分析结果: {result[:200]}...")
 
-        logger.info(f"\n📝 系统特点:")
-        logger.info(f"- 🧠 使用DeepSeek V3大模型，推理能力强")
-        logger.info(f"- 🛠️ 支持工具调用和智能体协作")
-        logger.info(f"- 📊 可进行多维度股票分析")
-        logger.info(f"- 💰 成本极低，性价比极高")
-        logger.info(f"- 🇨🇳 中文理解能力优秀")
+        logger.info("\n📝 系统特点:")
+        logger.info("- 🧠 使用DeepSeek V3大模型，推理能力强")
+        logger.info("- 🛠️ 支持工具调用和智能体协作")
+        logger.info("- 📊 可进行多维度股票分析")
+        logger.info("- 💰 成本极低，性价比极高")
+        logger.info("- 🇨🇳 中文理解能力优秀")
 
-        logger.info(f"\n💡 使用建议:")
-        logger.info(f"1. 通过Web界面选择DeepSeek模型")
-        logger.info(f"2. 输入股票代码进行分析")
-        logger.info(f"3. 系统将自动调用多个智能体协作分析")
-        logger.info(f"4. 享受高质量、低成本的AI分析服务")
+        logger.info("\n💡 使用建议:")
+        logger.info("1. 通过Web界面选择DeepSeek模型")
+        logger.info("2. 输入股票代码进行分析")
+        logger.info("3. 系统将自动调用多个智能体协作分析")
+        logger.info("4. 享受高质量、低成本的AI分析服务")
 
         return True
 
@@ -238,10 +249,11 @@ def demo_trading_system():
         logger.error(f"❌ 交易系统演示失败: {e}")
         return False
 
+
 def main():
     """主演示函数"""
-    logger.info(f"🎯 DeepSeek V3股票分析演示")
-    logger.info(f"=")
+    logger.info("🎯 DeepSeek V3股票分析演示")
+    logger.info("=")
 
     # 检查配置
     if not check_deepseek_config():
@@ -257,7 +269,7 @@ def main():
 
     success_count = 0
     for demo_name, demo_func in demos:
-        logger.info(f"\n{'='*20} {demo_name} {'='*20}")
+        logger.info(f"\n{'=' * 20} {demo_name} {'=' * 20}")
         try:
             if demo_func():
                 success_count += 1
@@ -268,31 +280,32 @@ def main():
             logger.error(f"❌ {demo_name}演示异常: {e}")
 
     # 总结
-    logger.info(f"\n")
-    logger.info(f"📋 演示总结")
-    logger.info(f"=")
+    logger.info("\n")
+    logger.info("📋 演示总结")
+    logger.info("=")
     logger.info(f"成功演示: {success_count}/{len(demos)}")
 
     if success_count == len(demos):
-        logger.info(f"\n🎉 所有演示成功！")
-        logger.info(f"\n🚀 DeepSeek V3已成功集成到TradingAgents！")
-        logger.info(f"\n📝 特色功能:")
-        logger.info(f"- 🧠 强大的推理和分析能力")
-        logger.info(f"- 🛠️ 完整的工具调用支持")
-        logger.info(f"- 🤖 多智能体协作分析")
-        logger.info(f"- 💰 极高的性价比")
-        logger.info(f"- 🇨🇳 优秀的中文理解能力")
-        logger.info(f"- 📊 专业的金融分析能力")
+        logger.info("\n🎉 所有演示成功！")
+        logger.info("\n🚀 DeepSeek V3已成功集成到TradingAgents！")
+        logger.info("\n📝 特色功能:")
+        logger.info("- 🧠 强大的推理和分析能力")
+        logger.info("- 🛠️ 完整的工具调用支持")
+        logger.info("- 🤖 多智能体协作分析")
+        logger.info("- 💰 极高的性价比")
+        logger.info("- 🇨🇳 优秀的中文理解能力")
+        logger.info("- 📊 专业的金融分析能力")
 
-        logger.info(f"\n🎯 下一步:")
-        logger.info(f"1. 在Web界面中选择DeepSeek模型")
-        logger.info(f"2. 开始您的股票投资分析之旅")
-        logger.info(f"3. 体验高性价比的AI投资助手")
+        logger.info("\n🎯 下一步:")
+        logger.info("1. 在Web界面中选择DeepSeek模型")
+        logger.info("2. 开始您的股票投资分析之旅")
+        logger.info("3. 体验高性价比的AI投资助手")
     else:
         logger.error(f"\n⚠️ {len(demos) - success_count} 个演示失败")
-        logger.info(f"请检查API密钥配置和网络连接")
+        logger.info("请检查API密钥配置和网络连接")
 
     return success_count == len(demos)
+
 
 if __name__ == "__main__":
     success = main()

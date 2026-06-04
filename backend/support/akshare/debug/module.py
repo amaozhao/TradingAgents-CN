@@ -2,19 +2,18 @@
 """
 AKShare财务数据获取调试脚本
 """
-import importlib
 
-import sys
-import os
+import importlib
 import logging
 
-# 设置日志级别为DEBUG以查看详细信息
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s | %(name)-20s | %(levelname)-8s | %(message)s')
-
-# 添加项目路径
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 from trader.flows.akshare import AKShareProvider
+
+# 设置日志级别为DEBUG以查看详细信息
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s | %(name)-20s | %(levelname)-8s | %(message)s",
+)
+
 
 def test_akshare_financial_data():
     """测试AKShare财务数据获取"""
@@ -43,7 +42,7 @@ def test_akshare_financial_data():
         if financial_data:
             print("✅ 成功获取财务数据")
             for key, value in financial_data.items():
-                if hasattr(value, '__len__'):
+                if hasattr(value, "__len__"):
                     print(f"   - {key}: {len(value)}条记录")
                 else:
                     print(f"   - {key}: {type(value)}")
@@ -52,7 +51,7 @@ def test_akshare_financial_data():
 
     except Exception as e:
         print(f"❌ 调用get_financial_data失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
     # 3. 测试条件判断
@@ -60,18 +59,19 @@ def test_akshare_financial_data():
     test_data = {}
     print(f"   空字典 any(test_data.values()): {any(test_data.values())}")
 
-    test_data = {'main_indicators': None}
+    test_data = {"main_indicators": None}
     print(f"   包含None any(test_data.values()): {any(test_data.values())}")
 
-    test_data = {'main_indicators': {}}
+    test_data = {"main_indicators": {}}
     print(f"   包含空字典 any(test_data.values()): {any(test_data.values())}")
 
-    test_data = {'main_indicators': {'pe': 18.5}}
+    test_data = {"main_indicators": {"pe": 18.5}}
     print(f"   包含数据 any(test_data.values()): {any(test_data.values())}")
 
     print("\n" + "=" * 60)
     print("✅ 调试测试完成")
     print("=" * 60)
+
 
 if __name__ == "__main__":
     test_akshare_financial_data()

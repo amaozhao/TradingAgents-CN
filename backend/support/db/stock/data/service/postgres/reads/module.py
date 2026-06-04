@@ -82,7 +82,9 @@ async def test_get_stock_list_uses_postgres_when_enabled(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_get_market_quotes_falls_back_to_mongo_when_postgres_misses(monkeypatch):
+async def test_get_market_quotes_falls_back_to_postgres_when_postgres_misses(
+    monkeypatch,
+):
     service = StockDataService()
     monkeypatch.setattr(settings, "POSTGRES_READ_ENABLED", True)
 
@@ -92,8 +94,8 @@ async def test_get_market_quotes_falls_back_to_mongo_when_postgres_misses(monkey
     monkeypatch.setattr(service, "_get_market_quotes_from_postgres", fake_pg)
     monkeypatch.setattr(
         stock_data_service,
-        "get_mongo_db",
-        lambda: FakeMongoDB(
+        "get_postgres_db",
+        lambda: FakePostgreSQL(
             {
                 "market_quotes": {
                     "code": "000001",
@@ -112,15 +114,15 @@ async def test_get_market_quotes_falls_back_to_mongo_when_postgres_misses(monkey
     assert result.close == 10.2
 
 
-class FakeMongoDB:
+class FakePostgreSQL:
     def __init__(self, documents):
         self.documents = documents
 
     def __getitem__(self, collection):
-        return FakeMongoCollection(self.documents[collection])
+        return FakePostgreSQLCollection(self.documents[collection])
 
 
-class FakeMongoCollection:
+class FakePostgreSQLCollection:
     def __init__(self, document):
         self.document = document
 

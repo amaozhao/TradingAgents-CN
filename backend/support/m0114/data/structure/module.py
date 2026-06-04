@@ -2,16 +2,16 @@
 """
 测试数据结构脚本
 """
+
 import importlib
 
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__), 'web'))
 
 def test_data_structure():
     """测试分析结果数据结构"""
     try:
-        load_analysis_results = getattr(importlib.import_module('web.components.analysis'), 'load_analysis_results')
+        load_analysis_results = getattr(
+            importlib.import_module("web.components.analysis"), "load_analysis_results"
+        )
 
         print("🔍 测试分析结果数据结构...")
 
@@ -22,14 +22,14 @@ def test_data_structure():
 
         if results:
             result = results[0]
-            print(f"\n📋 第一个结果的数据结构:")
+            print("\n📋 第一个结果的数据结构:")
             print(f"   analysis_id: {result.get('analysis_id', 'missing')}")
             print(f"   source: {result.get('source', 'missing')}")
             print(f"   stock_symbol: {result.get('stock_symbol', 'missing')}")
             print(f"   reports字段存在: {'reports' in result}")
 
-            if 'reports' in result:
-                reports = result['reports']
+            if "reports" in result:
+                reports = result["reports"]
                 print(f"   reports内容: {list(reports.keys())}")
 
                 # 显示第一个报告的前100个字符
@@ -46,9 +46,10 @@ def test_data_structure():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return None
+
 
 if __name__ == "__main__":
     test_data_structure()

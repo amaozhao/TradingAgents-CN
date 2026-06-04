@@ -7,13 +7,15 @@
 - app层: 数据同步服务，负责调用此适配器并写入数据库
 - 职责分离: 适配器只负责数据获取，同步服务负责数据存储
 """
+
 import asyncio
-import aiohttp
+import os
+from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Union
-from datetime import datetime, date
+
+import aiohttp
 import pandas as pd
 
-import os
 from ..base import BaseStockDataProvider
 
 
@@ -34,12 +36,19 @@ class ExampleSDKProvider(BaseStockDataProvider):
     - 由app层的同步服务调用
     """
 
-    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, **kwargs: Any):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+        **kwargs: Any,
+    ):
         super().__init__("ExampleSDK")
 
         # 配置参数
         self.api_key = api_key or os.getenv("EXAMPLE_SDK_API_KEY")
-        self.base_url = base_url or os.getenv("EXAMPLE_SDK_BASE_URL", "https://api.example-sdk.com")
+        self.base_url = base_url or os.getenv(
+            "EXAMPLE_SDK_BASE_URL", "https://api.example-sdk.com"
+        )
         self.timeout = int(os.getenv("EXAMPLE_SDK_TIMEOUT", "30"))
         self.enabled = os.getenv("EXAMPLE_SDK_ENABLED", "false").lower() == "true"
 
@@ -50,7 +59,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
         self.headers = {
             "User-Agent": "TradingAgents/1.0",
             "Accept": "application/json",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         if self.api_key:
@@ -86,10 +95,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
         try:
             # 创建HTTP会话
             timeout = aiohttp.ClientTimeout(total=self.timeout)
-            self.session = aiohttp.ClientSession(
-                headers=self.headers,
-                timeout=timeout
-            )
+            self.session = aiohttp.ClientSession(headers=self.headers, timeout=timeout)
 
             # 测试连接
             test_url = f"{self.base_url}/ping"
@@ -115,7 +121,9 @@ class ExampleSDKProvider(BaseStockDataProvider):
         self.connected = False
         self.logger.info("ExampleSDK连接已断开")
 
-    async def get_stock_basic_info(self, symbol: Optional[str] = None) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
+    async def get_stock_basic_info(
+        self, symbol: Optional[str] = None
+    ) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
         """获取股票基础信息"""
         if not self.connected:
             await self.connect()
@@ -129,7 +137,9 @@ class ExampleSDKProvider(BaseStockDataProvider):
                         data = await response.json()
                         return self.standardize_basic_info(data)
                     else:
-                        self.logger.warning(f"获取{symbol}基础信息失败: HTTP {response.status}")
+                        self.logger.warning(
+                            f"获取{symbol}基础信息失败: HTTP {response.status}"
+                        )
                         return None
             else:
                 # 获取所有股票信息
@@ -137,7 +147,10 @@ class ExampleSDKProvider(BaseStockDataProvider):
                 async with self.session.get(url) as response:
                     if response.status == 200:
                         data = await response.json()
-                        return [self.standardize_basic_info(item) for item in data.get("stocks", [])]
+                        return [
+                            self.standardize_basic_info(item)
+                            for item in data.get("stocks", [])
+                        ]
                     else:
                         self.logger.warning(f"获取股票列表失败: HTTP {response.status}")
                         return None
@@ -146,7 +159,9 @@ class ExampleSDKProvider(BaseStockDataProvider):
             self._handle_error(e, f"获取股票基础信息失败 symbol={symbol}")
             return None
 
-    async def get_stock_list(self, market: Optional[str] = None) -> Optional[List[Dict[str, Any]]]:
+    async def get_stock_list(
+        self, market: Optional[str] = None
+    ) -> Optional[List[Dict[str, Any]]]:
         """获取股票列表"""
         if not self.connected:
             await self.connect()
@@ -160,7 +175,10 @@ class ExampleSDKProvider(BaseStockDataProvider):
             async with self.session.get(url, params=params) as response:
                 if response.status == 200:
                     data = await response.json()
-                    return [self.standardize_basic_info(item) for item in data.get("stocks", [])]
+                    return [
+                        self.standardize_basic_info(item)
+                        for item in data.get("stocks", [])
+                    ]
                 else:
                     self.logger.warning(f"获取股票列表失败: HTTP {response.status}")
                     return None
@@ -181,7 +199,9 @@ class ExampleSDKProvider(BaseStockDataProvider):
                     data = await response.json()
                     return self.standardize_quotes(data)
                 else:
-                    self.logger.warning(f"获取{symbol}实时行情失败: HTTP {response.status}")
+                    self.logger.warning(
+                        f"获取{symbol}实时行情失败: HTTP {response.status}"
+                    )
                     return None
 
         except Exception as e:
@@ -193,7 +213,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
         symbol: str,
         start_date: Union[str, date],
         end_date: Optional[Union[str, date]] = None,
-        period: str = "daily"
+        period: str = "daily",
     ) -> Optional[pd.DataFrame]:
         """获取历史数据"""
         if not self.connected:
@@ -201,10 +221,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
 
         try:
             url = f"{self.base_url}/stocks/{symbol}/history"
-            params = {
-                "start_date": str(start_date),
-                "period": period
-            }
+            params = {"start_date": str(start_date), "period": period}
 
             if end_date:
                 params["end_date"] = str(end_date)
@@ -214,14 +231,18 @@ class ExampleSDKProvider(BaseStockDataProvider):
                     data = await response.json()
                     return self._convert_to_dataframe(data.get("history", []))
                 else:
-                    self.logger.warning(f"获取{symbol}历史数据失败: HTTP {response.status}")
+                    self.logger.warning(
+                        f"获取{symbol}历史数据失败: HTTP {response.status}"
+                    )
                     return None
 
         except Exception as e:
             self._handle_error(e, f"获取历史数据失败 symbol={symbol}")
             return None
 
-    async def get_financial_data(self, symbol: str, report_type: str = "annual") -> Optional[Dict[str, Any]]:
+    async def get_financial_data(
+        self, symbol: str, report_type: str = "annual"
+    ) -> Optional[Dict[str, Any]]:
         """获取财务数据"""
         if not self.connected:
             await self.connect()
@@ -235,14 +256,18 @@ class ExampleSDKProvider(BaseStockDataProvider):
                     data = await response.json()
                     return self._standardize_financial_data(data)
                 else:
-                    self.logger.warning(f"获取{symbol}财务数据失败: HTTP {response.status}")
+                    self.logger.warning(
+                        f"获取{symbol}财务数据失败: HTTP {response.status}"
+                    )
                     return None
 
         except Exception as e:
             self._handle_error(e, f"获取财务数据失败 symbol={symbol}")
             return None
 
-    async def get_stock_news(self, symbol: Optional[str] = None, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
+    async def get_stock_news(
+        self, symbol: Optional[str] = None, limit: int = 10
+    ) -> Optional[List[Dict[str, Any]]]:
         """获取股票新闻"""
         if not self.connected:
             await self.connect()
@@ -258,7 +283,9 @@ class ExampleSDKProvider(BaseStockDataProvider):
             async with self.session.get(url, params=params) as response:
                 if response.status == 200:
                     data = await response.json()
-                    return [self._standardize_news(item) for item in data.get("news", [])]
+                    return [
+                        self._standardize_news(item) for item in data.get("news", [])
+                    ]
                 else:
                     self.logger.warning(f"获取新闻失败: HTTP {response.status}")
                     return None
@@ -281,7 +308,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
             "list_date": raw_data.get("listing_date"),
             "pe": raw_data.get("pe_ratio"),
             "pb": raw_data.get("pb_ratio"),
-            "roe": raw_data.get("return_on_equity")
+            "roe": raw_data.get("return_on_equity"),
         }
 
         # 调用父类的标准化方法
@@ -301,7 +328,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
             "volume": raw_data.get("trading_volume"),
             "turnover": raw_data.get("trading_value"),
             "date": raw_data.get("trading_date"),
-            "timestamp": raw_data.get("last_updated")
+            "timestamp": raw_data.get("last_updated"),
         }
 
         # 调用父类的标准化方法
@@ -322,7 +349,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
                 "low": self._convert_to_float(item.get("low")),
                 "close": self._convert_to_float(item.get("close")),
                 "volume": self._convert_to_float(item.get("volume")),
-                "amount": self._convert_to_float(item.get("amount"))
+                "amount": self._convert_to_float(item.get("amount")),
             }
             standardized_data.append(standardized_item)
 
@@ -347,7 +374,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
             "total_equity": self._convert_to_float(raw_data.get("shareholders_equity")),
             "cash_flow": self._convert_to_float(raw_data.get("operating_cash_flow")),
             "data_source": self.name.lower(),
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.utcnow(),
         }
 
     def _standardize_news(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -361,7 +388,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
             "sentiment": raw_data.get("sentiment"),
             "symbols": raw_data.get("related_symbols", []),
             "data_source": self.name.lower(),
-            "created_at": datetime.utcnow()
+            "created_at": datetime.utcnow(),
         }
 
     # ==================== 清理资源 ====================
@@ -377,6 +404,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
 
 
 # ==================== 使用示例 ====================
+
 
 async def example_usage():
     """使用示例"""
@@ -395,7 +423,9 @@ async def example_usage():
             print(f"实时行情: {quotes}")
 
             # 获取历史数据
-            history = await provider.get_historical_data("000001", "2024-01-01", "2024-01-31")
+            history = await provider.get_historical_data(
+                "000001", "2024-01-01", "2024-01-31"
+            )
             print(f"历史数据: {history.head() if history is not None else None}")
 
     finally:

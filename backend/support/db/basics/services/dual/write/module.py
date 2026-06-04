@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.core import database as database_module
-from app.routers import sources
+from app.routers import sources as multi_source_sync
 from app.services.sync import basic as basics_sync_service
 from app.services.sync import source as multi_source_basics_sync_service
 
@@ -39,7 +39,9 @@ async def test_basics_sync_bulk_dual_writes_stock_basic_info(monkeypatch):
         dual_write_calls.append((collection, [doc.copy() for doc in docs]))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(basics_sync_service, "dual_write_hot_documents", fake_dual_write_many)
+    monkeypatch.setattr(
+        basics_sync_service, "dual_write_hot_documents", fake_dual_write_many
+    )
 
     inserted, updated = await service._execute_bulk_write_with_retry(
         fake_db,
@@ -62,7 +64,9 @@ async def test_multi_source_basics_status_dual_writes_postgres(monkeypatch):
         dual_write_calls.append((collection, document.copy()))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(multi_source_basics_sync_service, "dual_write_hot_document", fake_dual_write)
+    monkeypatch.setattr(
+        multi_source_basics_sync_service, "dual_write_hot_document", fake_dual_write
+    )
 
     await service._persist_status(
         fake_db,
@@ -96,7 +100,11 @@ async def test_multi_source_basics_bulk_dual_writes_stock_basic_info(monkeypatch
         dual_write_calls.append((collection, [doc.copy() for doc in docs]))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(multi_source_basics_sync_service, "dual_write_hot_documents", fake_dual_write_many)
+    monkeypatch.setattr(
+        multi_source_basics_sync_service,
+        "dual_write_hot_documents",
+        fake_dual_write_many,
+    )
 
     inserted, updated = await service._execute_bulk_write_with_retry(
         fake_db,
@@ -118,13 +126,15 @@ async def test_clear_multi_source_cache_dual_writes_cleared_status(monkeypatch):
         dual_write_calls.append((collection, document.copy()))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(database_module, "get_mongo_db", lambda: fake_db)
+    monkeypatch.setattr(database_module, "get_postgres_db", lambda: fake_db)
     monkeypatch.setattr(
         multi_source_sync,
         "get_multi_source_sync_service",
         lambda: SimpleNamespace(_running=True),
     )
-    monkeypatch.setattr(multi_source_sync, "DataSourceManager", lambda: SimpleNamespace())
+    monkeypatch.setattr(
+        multi_source_sync, "DataSourceManager", lambda: SimpleNamespace()
+    )
     monkeypatch.setattr(multi_source_sync, "dual_write_hot_document", fake_dual_write)
 
     response = await multi_source_sync.clear_sync_cache()
@@ -161,7 +171,9 @@ class FakeBulkCollection:
 
     async def bulk_write(self, *args, **kwargs):
         self.bulk_writes.append((args[0], kwargs))
-        return SimpleNamespace(upserted_ids={0: "mongo-id"}, upserted_count=1, modified_count=1)
+        return SimpleNamespace(
+            upserted_ids={0: "postgres-id"}, upserted_count=1, modified_count=1
+        )
 
 
 class FakeDeleteManyCollection:

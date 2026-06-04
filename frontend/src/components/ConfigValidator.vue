@@ -49,8 +49,8 @@
             <p v-if="envValidation?.missing_recommended?.length">
               缺少 {{ envValidation.missing_recommended.length }} 个推荐配置
             </p>
-            <p v-if="mongodbValidation?.warnings?.length">
-              {{ mongodbValidation.warnings.length }} 个 MongoDB 配置警告
+            <p v-if="postgresValidation?.warnings?.length">
+              {{ postgresValidation.warnings.length }} 个 PostgreSQL 配置警告
             </p>
           </el-alert>
 
@@ -132,19 +132,19 @@
           </div>
         </div>
 
-        <!-- MongoDB 配置验证 -->
-        <div v-if="mongodbValidation" class="config-section">
+        <!-- PostgreSQL 配置验证 -->
+        <div v-if="postgresValidation" class="config-section">
           <h4>
             <el-icon><Coin /></el-icon>
-            MongoDB 配置验证
+            PostgreSQL 配置验证
           </h4>
 
           <!-- 大模型厂家配置 -->
-          <div v-if="mongodbValidation.llm_providers?.length" class="mongodb-subsection">
+          <div v-if="postgresValidation.llm_providers?.length" class="postgres-subsection">
             <h5>大模型厂家</h5>
             <div class="config-items">
               <div
-                v-for="(item, index) in mongodbValidation.llm_providers"
+                v-for="(item, index) in postgresValidation.llm_providers"
                 :key="index"
                 class="config-item"
                 :class="{
@@ -173,11 +173,11 @@
           </div>
 
           <!-- 数据源配置 -->
-          <div v-if="mongodbValidation.data_source_configs?.length" class="mongodb-subsection">
+          <div v-if="postgresValidation.data_source_configs?.length" class="postgres-subsection">
             <h5>数据源配置</h5>
             <div class="config-items">
               <div
-                v-for="(item, index) in mongodbValidation.data_source_configs"
+                v-for="(item, index) in postgresValidation.data_source_configs"
                 :key="index"
                 class="config-item"
                 :class="{
@@ -207,10 +207,10 @@
             </div>
           </div>
 
-          <!-- MongoDB 配置警告 -->
-          <div v-if="mongodbValidation.warnings?.length" class="mongodb-warnings">
+          <!-- PostgreSQL 配置警告 -->
+          <div v-if="postgresValidation.warnings?.length" class="postgres-warnings">
             <el-alert
-              v-for="(warning, index) in mongodbValidation.warnings"
+              v-for="(warning, index) in postgresValidation.warnings"
               :key="index"
               :title="warning"
               type="warning"
@@ -305,7 +305,7 @@ interface EnvValidationResult {
   warnings?: string[]
 }
 
-interface MongoDBValidationResult {
+interface PostgresValidationResult {
   llm_providers?: Array<{
     name: string
     display_name: string
@@ -326,22 +326,22 @@ interface MongoDBValidationResult {
 interface ValidationResult {
   success: boolean
   env_validation?: EnvValidationResult
-  mongodb_validation?: MongoDBValidationResult
+  postgres_validation?: PostgresValidationResult
 }
 
 // 响应式数据
 const validating = ref(false)
 const validationResult = ref<ValidationResult | null>(null)
 const envValidation = ref<EnvValidationResult | null>(null)
-const mongodbValidation = ref<MongoDBValidationResult | null>(null)
+const postgresValidation = ref<PostgresValidationResult | null>(null)
 const requiredConfigs = ref<ConfigItem[]>([])
 const recommendedConfigs = ref<ConfigItem[]>([])
 
 // 计算属性：是否有推荐配置警告
 const hasRecommendedWarnings = computed(() => {
   const hasMissingRecommended = (envValidation.value?.missing_recommended?.length ?? 0) > 0
-  const hasMongodbWarnings = (mongodbValidation.value?.warnings?.length ?? 0) > 0
-  return hasMissingRecommended || hasMongodbWarnings
+  const hasPostgresWarnings = (postgresValidation.value?.warnings?.length ?? 0) > 0
+  return hasMissingRecommended || hasPostgresWarnings
 })
 
 // 方法
@@ -355,12 +355,12 @@ const handleValidate = async () => {
     if (response.data.success) {
       validationResult.value = response.data.data
 
-      // 提取环境变量验证结果和 MongoDB 验证结果
+      // 提取环境变量验证结果和 PostgreSQL 验证结果
       envValidation.value = response.data.data.env_validation || null
-      mongodbValidation.value = response.data.data.mongodb_validation || null
+      postgresValidation.value = response.data.data.postgres_validation || null
 
       console.log('🔍 环境变量验证:', envValidation.value)
-      console.log('🔍 MongoDB 验证:', mongodbValidation.value)
+      console.log('🔍 PostgreSQL 验证:', postgresValidation.value)
 
       updateConfigItems()
 
@@ -385,9 +385,9 @@ const updateConfigItems = () => {
 
   // 更新必需配置
   const requiredKeys = [
-    { key: 'MONGODB_HOST', name: 'MongoDB 主机', description: 'MongoDB 数据库主机地址' },
-    { key: 'MONGODB_PORT', name: 'MongoDB 端口', description: 'MongoDB 数据库端口' },
-    { key: 'MONGODB_DATABASE', name: 'MongoDB 数据库', description: 'MongoDB 数据库名称' },
+    { key: 'POSTGRES_HOST', name: 'PostgreSQL 主机', description: 'PostgreSQL 数据库主机地址' },
+    { key: 'POSTGRES_PORT', name: 'PostgreSQL 端口', description: 'PostgreSQL 数据库端口' },
+    { key: 'POSTGRES_DB', name: 'PostgreSQL 数据库', description: 'PostgreSQL 数据库名称' },
     { key: 'REDIS_HOST', name: 'Redis 主机', description: 'Redis 缓存主机地址' },
     { key: 'REDIS_PORT', name: 'Redis 端口', description: 'Redis 缓存端口' },
     { key: 'JWT_SECRET', name: 'JWT 密钥', description: 'JWT 认证密钥' }
@@ -540,7 +540,7 @@ onMounted(() => {
       }
     }
 
-    .mongodb-subsection {
+    .postgres-subsection {
       margin-bottom: 20px;
 
       h5 {
@@ -557,7 +557,7 @@ onMounted(() => {
       }
     }
 
-    .mongodb-warnings {
+    .postgres-warnings {
       margin-top: 16px;
 
       .warning-item {
@@ -634,4 +634,3 @@ onMounted(() => {
   }
 }
 </style>
-

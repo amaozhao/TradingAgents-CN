@@ -6,7 +6,6 @@ from sqlalchemy import Select, asc, desc, or_, select
 
 from app.db.model import StockNewsDocument
 
-
 SORT_COLUMNS = {
     "publish_time": StockNewsDocument.publish_time,
     "updated_at": StockNewsDocument.updated_at,
@@ -18,7 +17,9 @@ SORT_COLUMNS = {
 def build_news_select(params) -> Select:
     statement = select(StockNewsDocument).where(*_filters(params))
     sort_column = SORT_COLUMNS.get(params.sort_by, StockNewsDocument.publish_time)
-    statement = statement.order_by(desc(sort_column) if params.sort_order == -1 else asc(sort_column))
+    statement = statement.order_by(
+        desc(sort_column) if params.sort_order == -1 else asc(sort_column)
+    )
     return statement.offset(params.skip).limit(params.limit)
 
 

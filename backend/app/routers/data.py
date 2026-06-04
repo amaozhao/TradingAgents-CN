@@ -2,29 +2,28 @@
 股票数据API路由 - 基于扩展数据模型
 提供标准化的股票数据访问接口
 """
+
 import importlib
-from typing import Any, Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi import status
+from typing import Any, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
+from app.models import (
+    MarketQuotesResponse,
+    StockBasicInfoResponse,
+    StockListResponse,
+)
 from app.models.response import ApiResponse
 from app.routers.account import get_current_user
 from app.services.stocks.service import get_stock_data_service
-from app.models import (
-    StockBasicInfoResponse,
-    MarketQuotesResponse,
-    StockListResponse,
-    StockBasicInfoExtended,
-    MarketQuotesExtended,
-    MarketType
-)
 
 router = APIRouter(prefix="/api/stock-data", tags=["股票数据"])
 
 
 class StockSearchResponse(BaseModel):
     """股票搜索响应；保留历史顶层 total/keyword/source 字段。"""
+
     success: bool
     data: List[Any]
     total: int
@@ -35,8 +34,7 @@ class StockSearchResponse(BaseModel):
 
 @router.get("/basic-info/{symbol}", response_model=StockBasicInfoResponse)
 async def get_stock_basic_info(
-    symbol: str,
-    current_user: dict = Depends(get_current_user)
+    symbol: str, current_user: dict = Depends(get_current_user)
 ):
     """
     获取股票基础信息
@@ -53,27 +51,21 @@ async def get_stock_basic_info(
 
         if not stock_info:
             return StockBasicInfoResponse(
-                success=False,
-                message=f"未找到股票代码 {symbol} 的基础信息"
+                success=False, message=f"未找到股票代码 {symbol} 的基础信息"
             )
 
-        return StockBasicInfoResponse(
-            success=True,
-            data=stock_info,
-            message="获取成功"
-        )
+        return StockBasicInfoResponse(success=True, data=stock_info, message="获取成功")
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取股票基础信息失败: {str(e)}"
+            detail=f"获取股票基础信息失败: {str(e)}",
         )
 
 
 @router.get("/quotes/{symbol}", response_model=MarketQuotesResponse)
 async def get_market_quotes(
-    symbol: str,
-    current_user: dict = Depends(get_current_user)
+    symbol: str, current_user: dict = Depends(get_current_user)
 ):
     """
     获取实时行情数据
@@ -90,20 +82,15 @@ async def get_market_quotes(
 
         if not quotes:
             return MarketQuotesResponse(
-                success=False,
-                message=f"未找到股票代码 {symbol} 的行情数据"
+                success=False, message=f"未找到股票代码 {symbol} 的行情数据"
             )
 
-        return MarketQuotesResponse(
-            success=True,
-            data=quotes,
-            message="获取成功"
-        )
+        return MarketQuotesResponse(success=True, data=quotes, message="获取成功")
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取实时行情失败: {str(e)}"
+            detail=f"获取实时行情失败: {str(e)}",
         )
 
 
@@ -113,7 +100,7 @@ async def get_stock_list(
     industry: Optional[str] = Query(None, description="行业筛选"),
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页大小"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     获取股票列表
@@ -130,10 +117,7 @@ async def get_stock_list(
     try:
         service = get_stock_data_service()
         stock_list = await service.get_stock_list(
-            market=market,
-            industry=industry,
-            page=page,
-            page_size=page_size
+            market=market, industry=industry, page=page, page_size=page_size
         )
 
         # 计算总数 (简化实现，实际应该单独查询)
@@ -145,20 +129,19 @@ async def get_stock_list(
             total=total,
             page=page,
             page_size=page_size,
-            message="获取成功"
+            message="获取成功",
         )
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取股票列表失败: {str(e)}"
+            detail=f"获取股票列表失败: {str(e)}",
         )
 
 
 @router.get("/combined/{symbol}", response_model=ApiResponse)
 async def get_combined_stock_data(
-    symbol: str,
-    current_user: dict = Depends(get_current_user)
+    symbol: str, current_user: dict = Depends(get_current_user)
 ):
     """
     获取股票综合数据 (基础信息 + 实时行情)
@@ -173,14 +156,12 @@ async def get_combined_stock_data(
         service = get_stock_data_service()
 
         # 并行获取基础信息和行情数据
-        asyncio = importlib.import_module('asyncio')
+        asyncio = importlib.import_module("asyncio")
         basic_info_task = service.get_stock_basic_info(symbol)
         quotes_task = service.get_market_quotes(symbol)
 
         basic_info, quotes = await asyncio.gather(
-            basic_info_task,
-            quotes_task,
-            return_exceptions=True
+            basic_info_task, quotes_task, return_exceptions=True
         )
 
         # 处理异常
@@ -188,10 +169,7 @@ async def get_combined_stock_data(
         quotes_data: Any = None if isinstance(quotes, Exception) else quotes
 
         if not basic_info_data and not quotes_data:
-            return {
-                "success": False,
-                "message": f"未找到股票代码 {symbol} 的任何数据"
-            }
+            return {"success": False, "message": f"未找到股票代码 {symbol} 的任何数据"}
 
         return {
             "success": True,
@@ -199,15 +177,15 @@ async def get_combined_stock_data(
                 "basic_info": basic_info_data.dict() if basic_info_data else None,
                 "quotes": quotes_data.dict() if quotes_data else None,
                 "symbol": symbol,
-                "timestamp": quotes_data.updated_at if quotes_data else None
+                "timestamp": quotes_data.updated_at if quotes_data else None,
             },
-            "message": "获取成功"
+            "message": "获取成功",
         }
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取股票综合数据失败: {str(e)}"
+            detail=f"获取股票综合数据失败: {str(e)}",
         )
 
 
@@ -215,7 +193,7 @@ async def get_combined_stock_data(
 async def search_stocks(
     keyword: str = Query(..., min_length=1, description="搜索关键词"),
     limit: int = Query(10, ge=1, le=50, description="返回数量限制"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     搜索股票
@@ -228,10 +206,14 @@ async def search_stocks(
         dict: 搜索结果
     """
     try:
-        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
-        UnifiedConfigManager = getattr(importlib.import_module('app.core.unified'), 'UnifiedConfigManager')
+        get_postgres_db = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db"
+        )
+        UnifiedConfigManager = getattr(
+            importlib.import_module("app.core.unified"), "UnifiedConfigManager"
+        )
 
-        db = get_mongo_db()
+        db = get_postgres_db()
         collection = db.stock_basic_info
 
         # 🔥 获取数据源优先级配置
@@ -240,14 +222,15 @@ async def search_stocks(
 
         # 提取启用的数据源，按优先级排序
         enabled_sources = [
-            ds.type.lower() for ds in data_source_configs
-            if ds.enabled and ds.type.lower() in ['tushare', 'akshare', 'baostock']
+            ds.type.lower()
+            for ds in data_source_configs
+            if ds.enabled and ds.type.lower() in ["tushare", "akshare", "baostock"]
         ]
 
         if not enabled_sources:
-            enabled_sources = ['tushare', 'akshare', 'baostock']
+            enabled_sources = ["tushare", "akshare", "baostock"]
 
-        preferred_source = enabled_sources[0] if enabled_sources else 'tushare'
+        preferred_source = enabled_sources[0] if enabled_sources else "tushare"
 
         # 构建搜索条件
         search_conditions = []
@@ -263,12 +246,7 @@ async def search_stocks(
                 search_conditions.append({"symbol": {"$regex": keyword}})
 
         # 🔥 添加数据源筛选：只查询优先级最高的数据源
-        query = {
-            "$and": [
-                {"$or": search_conditions},
-                {"source": preferred_source}
-            ]
-        }
+        query = {"$and": [{"$or": search_conditions}, {"source": preferred_source}]}
 
         # 执行搜索
         cursor = collection.find(query, {"_id": 0}).limit(limit)
@@ -288,20 +266,18 @@ async def search_stocks(
             "total": len(standardized_results),
             "keyword": keyword,
             "source": preferred_source,  # 🔥 返回数据来源
-            "message": "搜索完成"
+            "message": "搜索完成",
         }
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"搜索股票失败: {str(e)}"
+            detail=f"搜索股票失败: {str(e)}",
         )
 
 
 @router.get("/markets", response_model=ApiResponse)
-async def get_market_summary(
-    current_user: dict = Depends(get_current_user)
-):
+async def get_market_summary(current_user: dict = Depends(get_current_user)):
     """
     获取市场概览
 
@@ -309,22 +285,17 @@ async def get_market_summary(
         dict: 各市场的股票数量统计
     """
     try:
-        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
+        get_postgres_db = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db"
+        )
 
-        db = get_mongo_db()
+        db = get_postgres_db()
         collection = db.stock_basic_info
 
         # 统计各市场股票数量
         pipeline = [
-            {
-                "$group": {
-                    "_id": "$market",
-                    "count": {"$sum": 1}
-                }
-            },
-            {
-                "$sort": {"count": -1}
-            }
+            {"$group": {"_id": "$market", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
         ]
 
         cursor = collection.aggregate(pipeline)
@@ -339,22 +310,20 @@ async def get_market_summary(
                 "total_stocks": total_count,
                 "market_breakdown": market_stats,
                 "supported_markets": ["CN"],  # 当前支持的市场
-                "last_updated": None  # 可以从数据中获取最新更新时间
+                "last_updated": None,  # 可以从数据中获取最新更新时间
             },
-            "message": "获取成功"
+            "message": "获取成功",
         }
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取市场概览失败: {str(e)}"
+            detail=f"获取市场概览失败: {str(e)}",
         )
 
 
 @router.get("/sync-status/quotes", response_model=ApiResponse)
-async def get_quotes_sync_status(
-    current_user: dict = Depends(get_current_user)
-):
+async def get_quotes_sync_status(current_user: dict = Depends(get_current_user)):
     """
     获取实时行情同步状态
 
@@ -375,19 +344,18 @@ async def get_quotes_sync_status(
         }
     """
     try:
-        QuotesIngestionService = getattr(importlib.import_module('app.services.quotes.ingestion'), 'QuotesIngestionService')
+        QuotesIngestionService = getattr(
+            importlib.import_module("app.services.quotes.ingestion"),
+            "QuotesIngestionService",
+        )
 
         service = QuotesIngestionService()
         status_data = await service.get_sync_status()
 
-        return {
-            "success": True,
-            "data": status_data,
-            "message": "获取成功"
-        }
+        return {"success": True, "data": status_data, "message": "获取成功"}
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取同步状态失败: {str(e)}"
+            detail=f"获取同步状态失败: {str(e)}",
         )

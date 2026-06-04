@@ -2,20 +2,20 @@
 AKShare数据初始化API路由
 提供Web接口进行AKShare数据初始化和管理
 """
+
 import importlib
-import asyncio
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.core.database import get_mongo_db
+from app.core.database import get_postgres_db
 from app.models.response import ApiResponse
-from app.worker.akshare.init import get_akshare_init_service
 from app.routers.account import get_current_user
 from app.utils.timezone import now_tz
+from app.worker.akshare.init import get_akshare_init_service
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +27,13 @@ _initialization_status = {
     "current_task": None,
     "start_time": None,
     "progress": None,
-    "result": None
+    "result": None,
 }
 
 
 class InitializationRequest(BaseModel):
     """初始化请求模型"""
+
     historical_days: int = Field(default=365, ge=1, le=3650, description="历史数据天数")
     force: bool = Field(default=False, description="是否强制重新初始化")
     skip_if_exists: bool = Field(default=True, description="如果数据存在是否跳过")
@@ -40,6 +41,7 @@ class InitializationRequest(BaseModel):
 
 class SyncRequest(BaseModel):
     """同步请求模型"""
+
     force_update: bool = Field(default=False, description="是否强制更新")
     symbols: Optional[list] = Field(default=None, description="指定股票代码列表")
 
@@ -53,25 +55,20 @@ async def get_database_status():
         数据库状态信息
     """
     try:
-        db = get_mongo_db()
+        db = get_postgres_db()
 
         # 检查基础信息
         basic_count = await db.stock_basic_info.count_documents({})
-        extended_count = await db.stock_basic_info.count_documents({
-            "full_symbol": {"$exists": True},
-            "market_info": {"$exists": True}
-        })
+        extended_count = await db.stock_basic_info.count_documents(
+            {"full_symbol": {"$exists": True}, "market_info": {"$exists": True}}
+        )
 
         # 获取最新更新时间
-        latest_basic = await db.stock_basic_info.find_one(
-            {}, sort=[("updated_at", -1)]
-        )
+        latest_basic = await db.stock_basic_info.find_one({}, sort=[("updated_at", -1)])
 
         # 检查行情数据
         quotes_count = await db.market_quotes.count_documents({})
-        latest_quotes = await db.market_quotes.find_one(
-            {}, sort=[("updated_at", -1)]
-        )
+        latest_quotes = await db.market_quotes.find_one({}, sort=[("updated_at", -1)])
 
         # 数据质量评估
         data_quality = "excellent"
@@ -88,17 +85,23 @@ async def get_database_status():
                 "basic_info": {
                     "total_count": basic_count,
                     "extended_count": extended_count,
-                    "coverage_rate": round(extended_count / basic_count * 100, 2) if basic_count > 0 else 0,
-                    "latest_update": latest_basic.get("updated_at") if latest_basic else None
+                    "coverage_rate": round(extended_count / basic_count * 100, 2)
+                    if basic_count > 0
+                    else 0,
+                    "latest_update": latest_basic.get("updated_at")
+                    if latest_basic
+                    else None,
                 },
                 "market_quotes": {
                     "total_count": quotes_count,
-                    "latest_update": latest_quotes.get("updated_at") if latest_quotes else None
+                    "latest_update": latest_quotes.get("updated_at")
+                    if latest_quotes
+                    else None,
                 },
                 "data_quality": data_quality,
-                "check_time": now_tz()
+                "check_time": now_tz(),
             },
-            "message": "数据库状态检查完成"
+            "message": "数据库状态检查完成",
         }
 
     except Exception as e:
@@ -115,15 +118,15 @@ async def test_akshare_connection():
         连接测试结果
     """
     try:
-        get_akshare_sync_service = getattr(importlib.import_module('app.worker.akshare.sync'), 'get_akshare_sync_service')
+        get_akshare_sync_service = getattr(
+            importlib.import_module("app.worker.akshare.sync"),
+            "get_akshare_sync_service",
+        )
 
         service = await get_akshare_sync_service()
         connected = await service.provider.test_connection()
 
-        result = {
-            "connected": connected,
-            "test_time": now_tz()
-        }
+        result = {"connected": connected, "test_time": now_tz()}
 
         if connected:
             # 测试获取股票列表
@@ -134,11 +137,7 @@ async def test_akshare_connection():
             except Exception as e:
                 result["stock_list_error"] = str(e)
 
-        return {
-            "success": True,
-            "data": result,
-            "message": "AKShare连接测试完成"
-        }
+        return {"success": True, "data": result, "message": "AKShare连接测试完成"}
 
     except Exception as e:
         logger.error(f"AKShare连接测试失败: {e}")
@@ -149,7 +148,7 @@ async def test_akshare_connection():
 async def start_full_initialization(
     request: InitializationRequest,
     background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     启动完整的数据初始化
@@ -169,19 +168,25 @@ async def start_full_initialization(
 
     try:
         # 设置任务状态
-        _initialization_status.update({
-            "is_running": True,
-            "current_task": "full_initialization",
-            "start_time": now_tz(),
-            "progress": {"current_step": "准备中", "completed_steps": 0, "total_steps": 6},
-            "result": None
-        })
+        _initialization_status.update(
+            {
+                "is_running": True,
+                "current_task": "full_initialization",
+                "start_time": now_tz(),
+                "progress": {
+                    "current_step": "准备中",
+                    "completed_steps": 0,
+                    "total_steps": 6,
+                },
+                "result": None,
+            }
+        )
 
         # 启动后台任务
         background_tasks.add_task(
             _run_full_initialization_background,
             request.historical_days,
-            not request.skip_if_exists
+            not request.skip_if_exists,
         )
 
         return {
@@ -191,10 +196,10 @@ async def start_full_initialization(
                 "start_time": _initialization_status["start_time"],
                 "parameters": {
                     "historical_days": request.historical_days,
-                    "force": not request.skip_if_exists
-                }
+                    "force": not request.skip_if_exists,
+                },
             },
-            "message": "完整初始化任务已启动，请使用 /initialization-status 查看进度"
+            "message": "完整初始化任务已启动，请使用 /initialization-status 查看进度",
         }
 
     except Exception as e:
@@ -207,7 +212,7 @@ async def start_full_initialization(
 async def start_basic_sync(
     request: SyncRequest,
     background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     启动基础信息同步
@@ -227,30 +232,31 @@ async def start_basic_sync(
 
     try:
         # 设置任务状态
-        _initialization_status.update({
-            "is_running": True,
-            "current_task": "basic_sync",
-            "start_time": now_tz(),
-            "progress": {"current_step": "同步基础信息", "completed_steps": 0, "total_steps": 1},
-            "result": None
-        })
+        _initialization_status.update(
+            {
+                "is_running": True,
+                "current_task": "basic_sync",
+                "start_time": now_tz(),
+                "progress": {
+                    "current_step": "同步基础信息",
+                    "completed_steps": 0,
+                    "total_steps": 1,
+                },
+                "result": None,
+            }
+        )
 
         # 启动后台任务
-        background_tasks.add_task(
-            _run_basic_sync_background,
-            request.force_update
-        )
+        background_tasks.add_task(_run_basic_sync_background, request.force_update)
 
         return {
             "success": True,
             "data": {
                 "task_id": "basic_sync",
                 "start_time": _initialization_status["start_time"],
-                "parameters": {
-                    "force_update": request.force_update
-                }
+                "parameters": {"force_update": request.force_update},
             },
-            "message": "基础信息同步任务已启动"
+            "message": "基础信息同步任务已启动",
         }
 
     except Exception as e:
@@ -279,10 +285,11 @@ async def get_initialization_status():
             "result": _initialization_status["result"],
             "duration": (
                 (now_tz() - _initialization_status["start_time"]).total_seconds()
-                if _initialization_status["start_time"] else 0
-            )
+                if _initialization_status["start_time"]
+                else 0
+            ),
         },
-        "message": "任务状态获取成功"
+        "message": "任务状态获取成功",
     }
 
 
@@ -304,21 +311,20 @@ async def stop_initialization(current_user: dict = Depends(get_current_user)):
 
     try:
         # 重置任务状态
-        _initialization_status.update({
-            "is_running": False,
-            "current_task": None,
-            "start_time": None,
-            "progress": None,
-            "result": {"stopped": True, "stop_time": datetime.utcnow()}
-        })
+        _initialization_status.update(
+            {
+                "is_running": False,
+                "current_task": None,
+                "start_time": None,
+                "progress": None,
+                "result": {"stopped": True, "stop_time": datetime.utcnow()},
+            }
+        )
 
         return {
             "success": True,
-            "data": {
-                "stopped": True,
-                "stop_time": datetime.utcnow()
-            },
-            "message": "初始化任务已停止"
+            "data": {"stopped": True, "stop_time": datetime.utcnow()},
+            "message": "初始化任务已停止",
         }
 
     except Exception as e:
@@ -333,22 +339,17 @@ async def _run_full_initialization_background(historical_days: int, force: bool)
     try:
         service = await get_akshare_init_service()
         result = await service.run_full_initialization(
-            historical_days=historical_days,
-            skip_if_exists=not force
+            historical_days=historical_days, skip_if_exists=not force
         )
 
-        _initialization_status.update({
-            "is_running": False,
-            "result": result
-        })
+        _initialization_status.update({"is_running": False, "result": result})
 
         logger.info(f"完整初始化后台任务完成: {result}")
 
     except Exception as e:
-        _initialization_status.update({
-            "is_running": False,
-            "result": {"success": False, "error": str(e)}
-        })
+        _initialization_status.update(
+            {"is_running": False, "result": {"success": False, "error": str(e)}}
+        )
         logger.error(f"完整初始化后台任务失败: {e}")
 
 
@@ -357,21 +358,20 @@ async def _run_basic_sync_background(force_update: bool):
     global _initialization_status
 
     try:
-        get_akshare_sync_service = getattr(importlib.import_module('app.worker.akshare.sync'), 'get_akshare_sync_service')
+        get_akshare_sync_service = getattr(
+            importlib.import_module("app.worker.akshare.sync"),
+            "get_akshare_sync_service",
+        )
 
         service = await get_akshare_sync_service()
         result = await service.sync_stock_basic_info(force_update=force_update)
 
-        _initialization_status.update({
-            "is_running": False,
-            "result": result
-        })
+        _initialization_status.update({"is_running": False, "result": result})
 
         logger.info(f"基础信息同步后台任务完成: {result}")
 
     except Exception as e:
-        _initialization_status.update({
-            "is_running": False,
-            "result": {"success": False, "error": str(e)}
-        })
+        _initialization_status.update(
+            {"is_running": False, "result": {"success": False, "error": str(e)}}
+        )
         logger.error(f"基础信息同步后台任务失败: {e}")

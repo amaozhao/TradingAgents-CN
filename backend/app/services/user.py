@@ -1,18 +1,17 @@
 """
 用户服务 - 基于数据库的用户管理
 """
-import importlib
 
 import hashlib
-import time
+import importlib
 from datetime import datetime
-from typing import Optional, Dict, Any, List
-from pymongo import MongoClient
-from bson import ObjectId
+from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
+from app.core.database import get_postgres_db_sync
 from app.db.dual import dual_write_hot_document
-from app.models.user import User, UserCreate, UserPreferences, UserUpdate, UserResponse
+from app.db.ids import DocumentId
+from app.models.user import User, UserCreate, UserPreferences, UserResponse, UserUpdate
 
 # 尝试导入日志管理器
 try:
@@ -20,26 +19,26 @@ try:
 except ImportError:
     # 如果导入失败，使用标准日志
     import logging
+
     def get_logger(name: str) -> logging.Logger:
         return logging.getLogger(name)
 
-logger = get_logger('user_service')
+
+logger = get_logger("user_service")
 
 
 class UserService:
     """用户服务类"""
 
     def __init__(self):
-        self.client = MongoClient(settings.mongo_uri)
-        self.db = self.client[settings.mongo_db]
+        self.client = None
+        self.db = get_postgres_db_sync()
         self.users_collection = self.db.users
 
     def close(self, log: bool = True):
         """关闭数据库连接"""
-        if hasattr(self, 'client') and self.client:
-            self.client.close()
-            if log:
-                logger.info("✅ UserService MongoDB 连接已关闭")
+        if log:
+            logger.info("✅ UserService PostgreSQL 文档存储连接已释放")
 
     async def _dual_write_user(self, document: Dict[str, Any]) -> None:
         result = await dual_write_hot_document("users", document)
@@ -68,7 +67,9 @@ class UserService:
         """创建用户"""
         try:
             # 检查用户名是否已存在
-            existing_user = self.users_collection.find_one({"username": user_data.username})
+            existing_user = self.users_collection.find_one(
+                {"username": user_data.username}
+            )
             if existing_user:
                 logger.warning(f"用户名已存在: {user_data.username}")
                 return None
@@ -107,14 +108,14 @@ class UserService:
                     "email_notifications": False,
                     "desktop_notifications": True,
                     "analysis_complete_notification": True,
-                    "system_maintenance_notification": True
+                    "system_maintenance_notification": True,
                 },
                 "daily_quota": 1000,
                 "concurrent_limit": 3,
                 "total_analyses": 0,
                 "successful_analyses": 0,
                 "failed_analyses": 0,
-                "favorite_stocks": []
+                "favorite_stocks": [],
             }
 
             result = self.users_collection.insert_one(user_doc)
@@ -135,18 +136,22 @@ class UserService:
 
             # 查找用户
             user_doc = await self._get_user_document_by_username(username)
-            logger.info(f"🔍 [authenticate_user] 数据库查询结果: {'找到用户' if user_doc else '用户不存在'}")
+            logger.info(
+                f"🔍 [authenticate_user] 数据库查询结果: {'找到用户' if user_doc else '用户不存在'}"
+            )
 
             if not user_doc:
                 logger.warning(f"❌ [authenticate_user] 用户不存在: {username}")
                 return None
 
-            logger.info(f"🔍 [authenticate_user] 用户信息: username={user_doc.get('username')}, email={user_doc.get('email')}, is_active={user_doc.get('is_active')}")
+            logger.info(
+                f"🔍 [authenticate_user] 用户信息: username={user_doc.get('username')}, email={user_doc.get('email')}, is_active={user_doc.get('is_active')}"
+            )
 
             # 验证密码
             input_password_hash = self.hash_password(password)
             stored_password_hash = user_doc["hashed_password"]
-            logger.info(f"🔍 [authenticate_user] 密码哈希对比:")
+            logger.info("🔍 [authenticate_user] 密码哈希对比:")
             logger.info(f"   输入密码哈希: {input_password_hash[:20]}...")
             logger.info(f"   存储密码哈希: {stored_password_hash[:20]}...")
             logger.info(f"   哈希匹配: {input_password_hash == stored_password_hash}")
@@ -162,14 +167,14 @@ class UserService:
 
             # 更新最后登录时间
             login_update = {"last_login": datetime.utcnow()}
-            mongo_user_id = (
-                ObjectId(user_doc["_id"])
-                if isinstance(user_doc.get("_id"), str) and ObjectId.is_valid(user_doc["_id"])
+            postgres_user_id = (
+                DocumentId(user_doc["_id"])
+                if isinstance(user_doc.get("_id"), str)
+                and DocumentId.is_valid(user_doc["_id"])
                 else user_doc["_id"]
             )
             self.users_collection.update_one(
-                {"_id": mongo_user_id},
-                {"$set": login_update}
+                {"_id": postgres_user_id}, {"$set": login_update}
             )
             await self._dual_write_user({**user_doc, **login_update})
 
@@ -192,7 +197,7 @@ class UserService:
     async def get_user_by_id(self, user_id: str) -> Optional[User]:
         """根据用户ID获取用户"""
         try:
-            if not ObjectId.is_valid(user_id):
+            if not DocumentId.is_valid(user_id):
                 return None
 
             user_doc = await self._get_user_document_by_id(user_id)
@@ -209,10 +214,9 @@ class UserService:
             # 只更新提供的字段
             if user_data.email:
                 # 检查邮箱是否已被其他用户使用
-                existing_email = self.users_collection.find_one({
-                    "email": user_data.email,
-                    "username": {"$ne": username}
-                })
+                existing_email = self.users_collection.find_one(
+                    {"email": user_data.email, "username": {"$ne": username}}
+                )
                 if existing_email:
                     logger.warning(f"邮箱已被使用: {user_data.email}")
                     return None
@@ -228,12 +232,13 @@ class UserService:
                 update_data["concurrent_limit"] = user_data.concurrent_limit
 
             result = self.users_collection.update_one(
-                {"username": username},
-                {"$set": update_data}
+                {"username": username}, {"$set": update_data}
             )
 
             if result.modified_count > 0:
-                existing_user = self.users_collection.find_one({"username": username}) or {"username": username}
+                existing_user = self.users_collection.find_one(
+                    {"username": username}
+                ) or {"username": username}
                 await self._dual_write_user({**existing_user, **update_data})
                 logger.info(f"✅ 用户信息更新成功: {username}")
                 return await self.get_user_by_username(username)
@@ -245,7 +250,9 @@ class UserService:
             logger.error(f"❌ 更新用户信息失败: {e}")
             return None
 
-    async def change_password(self, username: str, old_password: str, new_password: str) -> bool:
+    async def change_password(
+        self, username: str, old_password: str, new_password: str
+    ) -> bool:
         """修改密码"""
         try:
             # 验证旧密码
@@ -261,15 +268,21 @@ class UserService:
                 {
                     "$set": {
                         "hashed_password": new_hashed_password,
-                        "updated_at": datetime.utcnow()
+                        "updated_at": datetime.utcnow(),
                     }
-                }
+                },
             )
 
             if result.modified_count > 0:
-                existing_user = self.users_collection.find_one({"username": username}) or {"username": username}
+                existing_user = self.users_collection.find_one(
+                    {"username": username}
+                ) or {"username": username}
                 await self._dual_write_user(
-                    {**existing_user, "hashed_password": new_hashed_password, "updated_at": datetime.utcnow()}
+                    {
+                        **existing_user,
+                        "hashed_password": new_hashed_password,
+                        "updated_at": datetime.utcnow(),
+                    }
                 )
                 logger.info(f"✅ 密码修改成功: {username}")
                 return True
@@ -290,15 +303,21 @@ class UserService:
                 {
                     "$set": {
                         "hashed_password": new_hashed_password,
-                        "updated_at": datetime.utcnow()
+                        "updated_at": datetime.utcnow(),
                     }
-                }
+                },
             )
 
             if result.modified_count > 0:
-                existing_user = self.users_collection.find_one({"username": username}) or {"username": username}
+                existing_user = self.users_collection.find_one(
+                    {"username": username}
+                ) or {"username": username}
                 await self._dual_write_user(
-                    {**existing_user, "hashed_password": new_hashed_password, "updated_at": datetime.utcnow()}
+                    {
+                        **existing_user,
+                        "hashed_password": new_hashed_password,
+                        "updated_at": datetime.utcnow(),
+                    }
                 )
                 logger.info(f"✅ 密码重置成功: {username}")
                 return True
@@ -310,7 +329,12 @@ class UserService:
             logger.error(f"❌ 重置密码失败: {e}")
             return False
 
-    async def create_admin_user(self, username: str = "admin", password: str = "admin123", email: str = "admin@trader.cn") -> Optional[User]:
+    async def create_admin_user(
+        self,
+        username: str = "admin",
+        password: str = "admin123",
+        email: str = "admin@trader.cn",
+    ) -> Optional[User]:
         """创建管理员用户"""
         try:
             # 检查是否已存在管理员
@@ -336,14 +360,14 @@ class UserService:
                     "ui_theme": "light",
                     "language": "zh-CN",
                     "notifications_enabled": True,
-                    "email_notifications": False
+                    "email_notifications": False,
                 },
                 "daily_quota": 10000,  # 管理员更高配额
                 "concurrent_limit": 10,
                 "total_analyses": 0,
                 "successful_analyses": 0,
                 "failed_analyses": 0,
-                "favorite_stocks": []
+                "favorite_stocks": [],
             }
 
             result = self.users_collection.insert_one(admin_doc)
@@ -364,7 +388,9 @@ class UserService:
         """获取用户列表"""
         try:
             if settings.POSTGRES_READ_ENABLED:
-                postgres_users = await self._list_users_from_postgres(skip=skip, limit=limit)
+                postgres_users = await self._list_users_from_postgres(
+                    skip=skip, limit=limit
+                )
                 if postgres_users:
                     return postgres_users
 
@@ -373,21 +399,23 @@ class UserService:
 
             for user_doc in cursor:
                 user = User(**user_doc)
-                users.append(UserResponse(
-                    id=str(user.id),
-                    username=user.username,
-                    email=user.email,
-                    is_active=user.is_active,
-                    is_verified=user.is_verified,
-                    created_at=user.created_at,
-                    last_login=user.last_login,
-                    preferences=user.preferences,
-                    daily_quota=user.daily_quota,
-                    concurrent_limit=user.concurrent_limit,
-                    total_analyses=user.total_analyses,
-                    successful_analyses=user.successful_analyses,
-                    failed_analyses=user.failed_analyses
-                ))
+                users.append(
+                    UserResponse(
+                        id=str(user.id),
+                        username=user.username,
+                        email=user.email,
+                        is_active=user.is_active,
+                        is_verified=user.is_verified,
+                        created_at=user.created_at,
+                        last_login=user.last_login,
+                        preferences=user.preferences,
+                        daily_quota=user.daily_quota,
+                        concurrent_limit=user.concurrent_limit,
+                        total_analyses=user.total_analyses,
+                        successful_analyses=user.successful_analyses,
+                        failed_analyses=user.failed_analyses,
+                    )
+                )
 
             return users
 
@@ -395,9 +423,13 @@ class UserService:
             logger.error(f"❌ 获取用户列表失败: {e}")
             return []
 
-    async def _get_user_document_by_username(self, username: str) -> Optional[Dict[str, Any]]:
+    async def _get_user_document_by_username(
+        self, username: str
+    ) -> Optional[Dict[str, Any]]:
         if settings.POSTGRES_READ_ENABLED:
-            postgres_doc = await self._get_user_document_from_postgres(username=username)
+            postgres_doc = await self._get_user_document_from_postgres(
+                username=username
+            )
             if postgres_doc:
                 return postgres_doc
         return self.users_collection.find_one({"username": username})
@@ -407,7 +439,7 @@ class UserService:
             postgres_doc = await self._get_user_document_from_postgres(user_id=user_id)
             if postgres_doc:
                 return postgres_doc
-        return self.users_collection.find_one({"_id": ObjectId(user_id)})
+        return self.users_collection.find_one({"_id": DocumentId(user_id)})
 
     async def _get_user_document_from_postgres(
         self,
@@ -416,9 +448,15 @@ class UserService:
         user_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         try:
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
-            get_user_by_legacy_id = getattr(importlib.import_module('app.db.account'), 'get_user_by_legacy_id')
-            get_user_by_username = getattr(importlib.import_module('app.db.account'), 'get_user_by_username')
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
+            get_user_by_legacy_id = getattr(
+                importlib.import_module("app.db.account"), "get_user_by_legacy_id"
+            )
+            get_user_by_username = getattr(
+                importlib.import_module("app.db.account"), "get_user_by_username"
+            )
 
             async with get_session_factory()() as session:
                 if username is not None:
@@ -432,13 +470,19 @@ class UserService:
                 return None
             return self._validated_postgres_user_document(document)
         except Exception as e:
-            logger.warning(f"PostgreSQL用户查询失败，回退MongoDB: {e}")
+            logger.warning(f"PostgreSQL用户查询失败，回退PostgreSQL: {e}")
             return None
 
-    async def _list_users_from_postgres(self, *, skip: int, limit: int) -> List[UserResponse]:
+    async def _list_users_from_postgres(
+        self, *, skip: int, limit: int
+    ) -> List[UserResponse]:
         try:
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
-            list_users = getattr(importlib.import_module('app.db.account'), 'list_users')
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
+            list_users = getattr(
+                importlib.import_module("app.db.account"), "list_users"
+            )
 
             async with get_session_factory()() as session:
                 documents = await list_users(session, skip=skip, limit=limit)
@@ -450,27 +494,39 @@ class UserService:
                     users.append(response)
             return users
         except Exception as e:
-            logger.warning(f"PostgreSQL用户列表查询失败，回退MongoDB: {e}")
+            logger.warning(f"PostgreSQL用户列表查询失败，回退PostgreSQL: {e}")
             return []
 
-    def _validated_postgres_user_document(self, document: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _validated_postgres_user_document(
+        self, document: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         user_id = str(document.get("_id") or "")
-        if not ObjectId.is_valid(user_id):
-            logger.warning("PostgreSQL用户文档 legacy_id 不是有效 ObjectId，回退MongoDB: %s", user_id)
+        if not DocumentId.is_valid(user_id):
+            logger.warning(
+                "PostgreSQL用户文档 legacy_id 不是有效 DocumentId，回退PostgreSQL: %s",
+                user_id,
+            )
             return None
         if not document.get("hashed_password"):
-            logger.warning("PostgreSQL用户文档缺少 hashed_password，回退MongoDB: %s", document.get("username"))
+            logger.warning(
+                "PostgreSQL用户文档缺少 hashed_password，回退PostgreSQL: %s",
+                document.get("username"),
+            )
             return None
         try:
             User(**document)
         except Exception as e:
-            logger.warning("PostgreSQL用户文档无法构造当前User模型，回退MongoDB: %s", e)
+            logger.warning(
+                "PostgreSQL用户文档无法构造当前User模型，回退PostgreSQL: %s", e
+            )
             return None
         return document
 
-    def _postgres_user_response(self, document: Dict[str, Any]) -> Optional[UserResponse]:
+    def _postgres_user_response(
+        self, document: Dict[str, Any]
+    ) -> Optional[UserResponse]:
         user_id = str(document.get("_id") or "")
-        if not ObjectId.is_valid(user_id):
+        if not DocumentId.is_valid(user_id):
             return None
         try:
             preferences = document.get("preferences") or {}
@@ -482,7 +538,9 @@ class UserService:
                 is_verified=document.get("is_verified", False),
                 created_at=document.get("created_at") or datetime.utcnow(),
                 last_login=document.get("last_login"),
-                preferences=preferences if isinstance(preferences, UserPreferences) else UserPreferences(**preferences),
+                preferences=preferences
+                if isinstance(preferences, UserPreferences)
+                else UserPreferences(**preferences),
                 daily_quota=document.get("daily_quota", 1000),
                 concurrent_limit=document.get("concurrent_limit", 3),
                 total_analyses=document.get("total_analyses", 0),
@@ -498,17 +556,20 @@ class UserService:
         try:
             result = self.users_collection.update_one(
                 {"username": username},
-                {
-                    "$set": {
-                        "is_active": False,
-                        "updated_at": datetime.utcnow()
-                    }
-                }
+                {"$set": {"is_active": False, "updated_at": datetime.utcnow()}},
             )
 
             if result.modified_count > 0:
-                existing_user = self.users_collection.find_one({"username": username}) or {"username": username}
-                await self._dual_write_user({**existing_user, "is_active": False, "updated_at": datetime.utcnow()})
+                existing_user = self.users_collection.find_one(
+                    {"username": username}
+                ) or {"username": username}
+                await self._dual_write_user(
+                    {
+                        **existing_user,
+                        "is_active": False,
+                        "updated_at": datetime.utcnow(),
+                    }
+                )
                 logger.info(f"✅ 用户已禁用: {username}")
                 return True
             else:
@@ -524,17 +585,20 @@ class UserService:
         try:
             result = self.users_collection.update_one(
                 {"username": username},
-                {
-                    "$set": {
-                        "is_active": True,
-                        "updated_at": datetime.utcnow()
-                    }
-                }
+                {"$set": {"is_active": True, "updated_at": datetime.utcnow()}},
             )
 
             if result.modified_count > 0:
-                existing_user = self.users_collection.find_one({"username": username}) or {"username": username}
-                await self._dual_write_user({**existing_user, "is_active": True, "updated_at": datetime.utcnow()})
+                existing_user = self.users_collection.find_one(
+                    {"username": username}
+                ) or {"username": username}
+                await self._dual_write_user(
+                    {
+                        **existing_user,
+                        "is_active": True,
+                        "updated_at": datetime.utcnow(),
+                    }
+                )
                 logger.info(f"✅ 用户已激活: {username}")
                 return True
             else:

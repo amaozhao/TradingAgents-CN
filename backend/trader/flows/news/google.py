@@ -1,25 +1,30 @@
-import json
+import random
+import time
+from datetime import datetime
+
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
-import time
-import random
-import os
 from tenacity import (
     retry,
-    stop_after_attempt,
-    wait_exponential,
     retry_if_exception_type,
     retry_if_result,
+    stop_after_attempt,
+    wait_exponential,
 )
 
 from trader.config.runtime import get_float
+
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
-logger = get_logger('agents')
 
-SLEEP_MIN = get_float("TA_GOOGLE_NEWS_SLEEP_MIN_SECONDS", "ta_google_news_sleep_min_seconds", 2.0)
-SLEEP_MAX = get_float("TA_GOOGLE_NEWS_SLEEP_MAX_SECONDS", "ta_google_news_sleep_max_seconds", 6.0)
+logger = get_logger("agents")
+
+SLEEP_MIN = get_float(
+    "TA_GOOGLE_NEWS_SLEEP_MIN_SECONDS", "ta_google_news_sleep_min_seconds", 2.0
+)
+SLEEP_MAX = get_float(
+    "TA_GOOGLE_NEWS_SLEEP_MAX_SECONDS", "ta_google_news_sleep_max_seconds", 6.0
+)
 
 
 def is_rate_limited(response):
@@ -28,7 +33,11 @@ def is_rate_limited(response):
 
 
 @retry(
-    retry=(retry_if_result(is_rate_limited) | retry_if_exception_type(requests.exceptions.ConnectionError) | retry_if_exception_type(requests.exceptions.Timeout)),
+    retry=(
+        retry_if_result(is_rate_limited)
+        | retry_if_exception_type(requests.exceptions.ConnectionError)
+        | retry_if_exception_type(requests.exceptions.Timeout)
+    ),
     wait=wait_exponential(multiplier=1, min=4, max=60),
     stop=stop_after_attempt(5),
 )
@@ -37,7 +46,9 @@ def make_request(url, headers):
     # Random delay before each request to avoid detection
     time.sleep(random.uniform(SLEEP_MIN, SLEEP_MAX))
     # 添加超时参数，设置连接超时和读取超时
-    response = requests.get(url, headers=headers, timeout=(10, 30))  # 连接超时10秒，读取超时30秒
+    response = requests.get(
+        url, headers=headers, timeout=(10, 30)
+    )  # 连接超时10秒，读取超时30秒
     return response
 
 
@@ -88,7 +99,13 @@ def get_news_data(query, start_date, end_date):
                     snippet_el = el.select_one(".GI74Re")
                     date_el = el.select_one(".LfVVr")
                     source_el = el.select_one(".NUnG9d span")
-                    if not link_el or not title_el or not snippet_el or not date_el or not source_el:
+                    if (
+                        not link_el
+                        or not title_el
+                        or not snippet_el
+                        or not date_el
+                        or not source_el
+                    ):
                         continue
                     link = link_el["href"]
                     title = title_el.get_text()

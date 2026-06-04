@@ -4,20 +4,22 @@
 """
 
 import re
-from typing import Dict, Tuple, Optional
 from enum import Enum
+from typing import Dict, Tuple
 
 # 导入统一日志系统
 from trader.utils.logging.init import get_logger
+
 logger = get_logger("default")
 
 
 class StockMarket(Enum):
     """股票市场枚举"""
-    CHINA_A = "china_a"      # 中国A股
+
+    CHINA_A = "china_a"  # 中国A股
     HONG_KONG = "hong_kong"  # 港股
-    US = "us"                # 美股
-    UNKNOWN = "unknown"      # 未知
+    US = "us"  # 美股
+    UNKNOWN = "unknown"  # 未知
 
 
 class StockUtils:
@@ -40,15 +42,15 @@ class StockUtils:
         ticker = str(ticker).strip().upper()
 
         # 中国A股：6位数字
-        if re.match(r'^\d{6}$', ticker):
+        if re.match(r"^\d{6}$", ticker):
             return StockMarket.CHINA_A
 
         # 港股：4-5位数字.HK 或 纯4-5位数字（支持0700.HK、09988.HK、00700、9988格式）
-        if re.match(r'^\d{4,5}\.HK$', ticker) or re.match(r'^\d{4,5}$', ticker):
+        if re.match(r"^\d{4,5}\.HK$", ticker) or re.match(r"^\d{4,5}$", ticker):
             return StockMarket.HONG_KONG
 
         # 美股：1-5位字母
-        if re.match(r'^[A-Z]{1,5}$', ticker):
+        if re.match(r"^[A-Z]{1,5}$", ticker):
             return StockMarket.US
 
         return StockMarket.UNKNOWN
@@ -153,11 +155,11 @@ class StockUtils:
         ticker = str(ticker).strip().upper()
 
         # 如果是纯4-5位数字，添加.HK后缀
-        if re.match(r'^\d{4,5}$', ticker):
+        if re.match(r"^\d{4,5}$", ticker):
             return f"{ticker}.HK"
 
         # 如果已经是正确格式，直接返回
-        if re.match(r'^\d{4,5}\.HK$', ticker):
+        if re.match(r"^\d{4,5}\.HK$", ticker):
             return ticker
 
         return ticker
@@ -181,7 +183,7 @@ class StockUtils:
             StockMarket.CHINA_A: "中国A股",
             StockMarket.HONG_KONG: "港股",
             StockMarket.US: "美股",
-            StockMarket.UNKNOWN: "未知市场"
+            StockMarket.UNKNOWN: "未知市场",
         }
 
         return {
@@ -193,7 +195,7 @@ class StockUtils:
             "data_source": data_source,
             "is_china": market == StockMarket.CHINA_A,
             "is_hk": market == StockMarket.HONG_KONG,
-            "is_us": market == StockMarket.US
+            "is_us": market == StockMarket.US,
         }
 
 

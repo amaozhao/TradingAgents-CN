@@ -1,21 +1,22 @@
 """
 示例SDK数据同步服务 (app层)
-展示如何创建数据同步服务，将外部SDK数据写入标准化的MongoDB集合
+展示如何创建数据同步服务，将外部SDK数据写入标准化的PostgreSQL集合
 
 架构说明:
 - trading_agents层: 纯数据获取和标准化，不涉及数据库操作
 - app层: 数据同步服务，负责数据库操作和业务逻辑
-- 数据流: 外部SDK → trading_agents适配器 → app同步服务 → MongoDB
+- 数据流: 外部SDK → trading_agents适配器 → app同步服务 → PostgreSQL
 """
+
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
-
 import os
-from app.services.stocks.service import get_stock_data_service
-from app.core.database import get_mongo_db
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document
+from app.services.stocks.service import get_stock_data_service
 from trader.flows.providers.examples.sdk import ExampleSDKProvider
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class ExampleSDKSyncService:
     职责:
     - 调用trading_agents层的SDK适配器获取标准化数据
     - 执行业务逻辑处理和数据验证
-    - 将数据写入MongoDB数据库
+    - 将数据写入PostgreSQL数据库
     - 管理同步状态和错误处理
     - 提供性能监控和统计
 
@@ -53,7 +54,7 @@ class ExampleSDKSyncService:
         self.sync_stats = {
             "basic_info": {"total": 0, "success": 0, "failed": 0},
             "quotes": {"total": 0, "success": 0, "failed": 0},
-            "financial": {"total": 0, "success": 0, "failed": 0}
+            "financial": {"total": 0, "success": 0, "failed": 0},
         }
 
     async def sync_all_data(self):
@@ -109,7 +110,7 @@ class ExampleSDKSyncService:
 
             # 批量处理
             for i in range(0, len(stock_list), self.batch_size):
-                batch = stock_list[i:i + self.batch_size]
+                batch = stock_list[i : i + self.batch_size]
                 await self._process_basic_info_batch(batch)
 
                 # 进度日志
@@ -119,7 +120,9 @@ class ExampleSDKSyncService:
                 # 避免API限制
                 await asyncio.sleep(0.1)
 
-            logger.info(f"✅ 股票基础信息同步完成: {self.sync_stats['basic_info']['success']}/{self.sync_stats['basic_info']['total']}")
+            logger.info(
+                f"✅ 股票基础信息同步完成: {self.sync_stats['basic_info']['success']}/{self.sync_stats['basic_info']['total']}"
+            )
 
         except Exception as e:
             logger.error(f"❌ 股票基础信息同步失败: {e}")
@@ -130,7 +133,7 @@ class ExampleSDKSyncService:
 
         try:
             # 获取需要同步的股票代码列表
-            db = get_mongo_db()
+            db = get_postgres_db()
             cursor = db.stock_basic_info.find({}, {"code": 1})
             stock_codes = [doc["code"] async for doc in cursor]
 
@@ -142,7 +145,7 @@ class ExampleSDKSyncService:
 
             # 批量处理
             for i in range(0, len(stock_codes), self.batch_size):
-                batch = stock_codes[i:i + self.batch_size]
+                batch = stock_codes[i : i + self.batch_size]
                 await self._process_quotes_batch(batch)
 
                 # 进度日志
@@ -152,7 +155,9 @@ class ExampleSDKSyncService:
                 # 避免API限制
                 await asyncio.sleep(0.1)
 
-            logger.info(f"✅ 实时行情同步完成: {self.sync_stats['quotes']['success']}/{self.sync_stats['quotes']['total']}")
+            logger.info(
+                f"✅ 实时行情同步完成: {self.sync_stats['quotes']['success']}/{self.sync_stats['quotes']['total']}"
+            )
 
         except Exception as e:
             logger.error(f"❌ 实时行情同步失败: {e}")
@@ -164,10 +169,10 @@ class ExampleSDKSyncService:
         try:
             # 获取需要更新财务数据的股票
             # 这里可以根据业务需求筛选，比如只同步主要股票或定期更新
-            db = get_mongo_db()
+            db = get_postgres_db()
             cursor = db.stock_basic_info.find(
                 {"total_mv": {"$gte": 100}},  # 只同步市值大于100亿的股票
-                {"code": 1}
+                {"code": 1},
             ).limit(50)  # 限制数量，避免API调用过多
 
             stock_codes = [doc["code"] async for doc in cursor]
@@ -183,7 +188,9 @@ class ExampleSDKSyncService:
                 await self._process_financial_data(code)
                 await asyncio.sleep(1)  # 更长的延迟
 
-            logger.info(f"✅ 财务数据同步完成: {self.sync_stats['financial']['success']}/{self.sync_stats['financial']['total']}")
+            logger.info(
+                f"✅ 财务数据同步完成: {self.sync_stats['financial']['success']}/{self.sync_stats['financial']['total']}"
+            )
 
         except Exception as e:
             logger.error(f"❌ 财务数据同步失败: {e}")
@@ -197,7 +204,9 @@ class ExampleSDKSyncService:
                     continue
 
                 # 更新到数据库
-                success = await self.stock_service.update_stock_basic_info(code, stock_info)
+                success = await self.stock_service.update_stock_basic_info(
+                    code, stock_info
+                )
 
                 if success:
                     self.sync_stats["basic_info"]["success"] += 1
@@ -218,7 +227,9 @@ class ExampleSDKSyncService:
 
                 if quotes:
                     # 更新到数据库
-                    success = await self.stock_service.update_market_quotes(code, quotes)
+                    success = await self.stock_service.update_market_quotes(
+                        code, quotes
+                    )
 
                     if success:
                         self.sync_stats["quotes"]["success"] += 1
@@ -241,22 +252,22 @@ class ExampleSDKSyncService:
             if financial_data:
                 # 这里需要实现财务数据的存储逻辑
                 # 可能需要创建新的集合 stock_financial_data
-                db = get_mongo_db()
+                db = get_postgres_db()
 
                 # 构建更新数据
                 update_data = {
                     "code": code,
                     "data_source": "example_sdk",
-                    "report_period": financial_data.get("report_period", "latest") if isinstance(financial_data, dict) else "latest",
+                    "report_period": financial_data.get("report_period", "latest")
+                    if isinstance(financial_data, dict)
+                    else "latest",
                     "financial_data": financial_data,
-                    "updated_at": datetime.utcnow()
+                    "updated_at": datetime.utcnow(),
                 }
 
                 # 更新或插入财务数据
                 await db.stock_financial_data.update_one(
-                    {"code": code},
-                    {"$set": update_data},
-                    upsert=True
+                    {"code": code}, {"$set": update_data}, upsert=True
                 )
                 await dual_write_hot_document("stock_financial_data", update_data)
 
@@ -269,10 +280,12 @@ class ExampleSDKSyncService:
             self.sync_stats["financial"]["failed"] += 1
             logger.error(f"❌ 处理{code}财务数据失败: {e}")
 
-    async def _record_sync_status(self, status: str, start_time: datetime, error_msg: Optional[str] = None):
+    async def _record_sync_status(
+        self, status: str, start_time: datetime, error_msg: Optional[str] = None
+    ):
         """记录同步状态"""
         try:
-            db = get_mongo_db()
+            db = get_postgres_db()
 
             sync_record = {
                 "job": "example_sdk_sync",
@@ -282,13 +295,11 @@ class ExampleSDKSyncService:
                 "duration": (datetime.now() - start_time).total_seconds(),
                 "stats": self.sync_stats.copy(),
                 "error_message": error_msg,
-                "created_at": datetime.now()
+                "created_at": datetime.now(),
             }
 
             await db.sync_status.update_one(
-                {"job": "example_sdk_sync"},
-                {"$set": sync_record},
-                upsert=True
+                {"job": "example_sdk_sync"}, {"$set": sync_record}, upsert=True
             )
             await dual_write_hot_document("sync_status", sync_record)
 
@@ -304,7 +315,9 @@ class ExampleSDKSyncService:
             failed = stats["failed"]
             success_rate = (success / total * 100) if total > 0 else 0
 
-            logger.info(f"   {data_type}: {success}/{total} ({success_rate:.1f}%) 成功, {failed} 失败")
+            logger.info(
+                f"   {data_type}: {success}/{total} ({success_rate:.1f}%) 成功, {failed} 失败"
+            )
 
     async def sync_incremental(self):
         """增量同步 - 只同步实时行情"""
@@ -331,6 +344,7 @@ class ExampleSDKSyncService:
 
 # ==================== 定时任务函数 ====================
 
+
 async def run_full_sync():
     """运行全量同步 - 供定时任务调用"""
     sync_service = ExampleSDKSyncService()
@@ -344,6 +358,7 @@ async def run_incremental_sync():
 
 
 # ==================== 使用示例 ====================
+
 
 async def main():
     """主函数 - 用于测试"""

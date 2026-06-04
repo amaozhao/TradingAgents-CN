@@ -3,9 +3,10 @@
 测试API分析功能的脚本
 """
 
-import requests
 import time
-import json
+
+import requests
+
 
 def test_api_analysis():
     """测试API分析功能"""
@@ -38,20 +39,18 @@ def test_api_analysis():
                 "include_risk": False,
                 "language": "zh-CN",
                 "quick_analysis_model": "qwen-turbo",
-                "deep_analysis_model": "qwen-max"
-            }
+                "deep_analysis_model": "qwen-max",
+            },
         }
 
         # 添加认证头（如果需要）
         headers = {
             "Content-Type": "application/json",
-            "Authorization": "Bearer admin_token"  # 使用管理员token
+            "Authorization": "Bearer admin_token",  # 使用管理员token
         }
 
         response = requests.post(
-            f"{base_url}/api/analysis/single",
-            json=analysis_request,
-            headers=headers
+            f"{base_url}/api/analysis/single", json=analysis_request, headers=headers
         )
 
         if response.status_code == 200:
@@ -64,14 +63,13 @@ def test_api_analysis():
             return False
 
         # 3. 监控任务状态
-        print(f"\n3. 监控任务状态...")
+        print("\n3. 监控任务状态...")
         max_wait_time = 300  # 最多等待5分钟
         start_time = time.time()
 
         while time.time() - start_time < max_wait_time:
             status_response = requests.get(
-                f"{base_url}/api/analysis/tasks/{task_id}/status",
-                headers=headers
+                f"{base_url}/api/analysis/tasks/{task_id}/status", headers=headers
             )
 
             if status_response.status_code == 200:
@@ -88,20 +86,22 @@ def test_api_analysis():
                     # 获取分析结果
                     result_response = requests.get(
                         f"{base_url}/api/analysis/tasks/{task_id}/result",
-                        headers=headers
+                        headers=headers,
                     )
 
                     if result_response.status_code == 200:
                         result_data = result_response.json()
-                        print(f"\n📊 分析结果:")
+                        print("\n📊 分析结果:")
                         print(f"   股票代码: {result_data.get('stock_code')}")
                         print(f"   分析日期: {result_data.get('analysis_date')}")
 
                         # 检查报告内容
-                        reports = result_data.get('reports', {})
+                        reports = result_data.get("reports", {})
                         for report_type, content in reports.items():
                             if isinstance(content, str) and len(content) > 0:
-                                print(f"   {report_type}: 有内容 (长度: {len(content)})")
+                                print(
+                                    f"   {report_type}: 有内容 (长度: {len(content)})"
+                                )
                             else:
                                 print(f"   {report_type}: 无内容或为空")
 
@@ -127,6 +127,7 @@ def test_api_analysis():
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         return False
+
 
 if __name__ == "__main__":
     success = test_api_analysis()

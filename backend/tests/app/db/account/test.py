@@ -15,7 +15,7 @@ def test_user_by_username_select_uses_split_username_and_deleted_columns():
     assert "user_accounts.username =" in sql
 
 
-def test_user_by_legacy_id_select_preserves_object_id_compatibility_lookup():
+def test_user_by_legacy_id_select_preserves_document_id_compatibility_lookup():
     sql = _compile(build_user_by_legacy_id_select("665ef7c0d9a3a4b2c1d0e9f8"))
 
     assert "FROM user_accounts" in sql

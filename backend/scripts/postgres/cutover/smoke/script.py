@@ -3,15 +3,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Awaitable, Callable
-
-BACKEND_ROOT = Path(__file__).resolve().parents[1]
-if str(BACKEND_ROOT) not in sys.path:
-    sys.path.insert(0, str(BACKEND_ROOT))
 
 from sqlalchemy import func, select
 
@@ -47,6 +42,7 @@ from app.db.model import (
 from app.db.news import query_news
 from app.db.operation import get_operation_log_stats, list_operation_logs
 from app.db.paper import get_paper_account, list_paper_orders, list_paper_positions
+from app.db.preference import list_user_favorites, list_user_tags
 from app.db.session import close_postgres, get_session_factory, init_postgres
 from app.db.stock import (
     get_market_quote,
@@ -54,8 +50,9 @@ from app.db.stock import (
     list_stock_daily_quotes,
     list_stocks,
 )
-from app.db.preference import list_user_favorites, list_user_tags
 from app.models.operations import OperationLogQuery
+
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
 @dataclass
@@ -72,7 +69,9 @@ async def run_smoke() -> dict[str, Any]:
         async with get_session_factory()() as session:
             context = await _discover_context(session)
             checks: list[SmokeResult] = []
-            checkers: list[tuple[str, Callable[[Any, dict[str, Any]], Awaitable[SmokeResult]]]] = [
+            checkers: list[
+                tuple[str, Callable[[Any, dict[str, Any]], Awaitable[SmokeResult]]]
+            ] = [
                 ("stock_basic_info", _check_stock_basic_info),
                 ("stock_list", _check_stock_list),
                 ("market_quote", _check_market_quote),
@@ -104,27 +103,53 @@ async def run_smoke() -> dict[str, Any]:
 
 
 async def _discover_context(session) -> dict[str, Any]:
-    stock = await _first_model(session, StockBasicInfo, StockBasicInfo.code.is_not(None))
-    financial = await _first_model(session, StockFinancialData, StockFinancialData.code.is_not(None))
-    analysis = await _first_model(session, AnalysisTask, AnalysisTask.task_id.is_not(None))
-    favorite = await _first_model(session, UserFavorite, UserFavorite.user_id.is_not(None))
+    stock = await _first_model(
+        session, StockBasicInfo, StockBasicInfo.code.is_not(None)
+    )
+    financial = await _first_model(
+        session, StockFinancialData, StockFinancialData.code.is_not(None)
+    )
+    analysis = await _first_model(
+        session, AnalysisTask, AnalysisTask.task_id.is_not(None)
+    )
+    favorite = await _first_model(
+        session, UserFavorite, UserFavorite.user_id.is_not(None)
+    )
     tag = await _first_model(session, UserTag, UserTag.user_id.is_not(None))
-    paper_account = await _first_model(session, PaperAccount, PaperAccount.user_id.is_not(None))
-    paper_position = await _first_model(session, PaperPosition, PaperPosition.user_id.is_not(None))
-    paper_order = await _first_model(session, PaperOrder, PaperOrder.user_id.is_not(None))
-    operation_log = await _first_model(session, OperationLogDocument, OperationLogDocument.deleted.is_(False))
-    news = await _first_model(session, StockNewsDocument, StockNewsDocument.deleted.is_(False))
-    internal_message = await _first_model(session, InternalMessageDocument, InternalMessageDocument.deleted.is_(False))
-    social_message = await _first_model(session, SocialMediaMessageDocument, SocialMediaMessageDocument.deleted.is_(False))
+    paper_account = await _first_model(
+        session, PaperAccount, PaperAccount.user_id.is_not(None)
+    )
+    paper_position = await _first_model(
+        session, PaperPosition, PaperPosition.user_id.is_not(None)
+    )
+    paper_order = await _first_model(
+        session, PaperOrder, PaperOrder.user_id.is_not(None)
+    )
+    operation_log = await _first_model(
+        session, OperationLogDocument, OperationLogDocument.deleted.is_(False)
+    )
+    news = await _first_model(
+        session, StockNewsDocument, StockNewsDocument.deleted.is_(False)
+    )
+    internal_message = await _first_model(
+        session, InternalMessageDocument, InternalMessageDocument.deleted.is_(False)
+    )
+    social_message = await _first_model(
+        session,
+        SocialMediaMessageDocument,
+        SocialMediaMessageDocument.deleted.is_(False),
+    )
 
     return {
         "stock_code": getattr(stock, "code", None) or getattr(financial, "code", None),
         "stock_source": getattr(stock, "source", None),
-        "financial_code": getattr(financial, "code", None) or getattr(stock, "code", None),
+        "financial_code": getattr(financial, "code", None)
+        or getattr(stock, "code", None),
         "financial_source": getattr(financial, "data_source", None),
         "analysis_task_id": getattr(analysis, "task_id", None),
         "analysis_user_id": getattr(analysis, "user_id", None),
-        "favorite_user_id": getattr(favorite, "user_id", None) or getattr(tag, "user_id", None),
+        "favorite_user_id": getattr(favorite, "user_id", None)
+        or getattr(tag, "user_id", None),
         "paper_user_id": (
             getattr(paper_account, "user_id", None)
             or getattr(paper_position, "user_id", None)
@@ -146,7 +171,9 @@ async def _check_stock_basic_info(session, context: dict[str, Any]) -> SmokeResu
 
 async def _check_stock_list(session, context: dict[str, Any]) -> SmokeResult:
     source = _require(context.get("stock_source"), "stock source")
-    rows = await list_stocks(session, source=source, market=None, industry=None, page=1, page_size=5)
+    rows = await list_stocks(
+        session, source=source, market=None, industry=None, page=1, page_size=5
+    )
     return _expect_non_empty("stock_list", rows)
 
 
@@ -178,16 +205,24 @@ async def _check_analysis(session, context: dict[str, Any]) -> SmokeResult:
     task = await get_analysis_task_by_task_id(session, task_id)
     report = await get_analysis_report_by_task_id(session, task_id)
     if context.get("analysis_user_id"):
-        tasks = await list_user_analysis_tasks(session, context["analysis_user_id"], limit=5)
+        tasks = await list_user_analysis_tasks(
+            session, context["analysis_user_id"], limit=5
+        )
     else:
         tasks = [task] if task else []
     if not task or not tasks:
-        return SmokeResult("analysis_task_report", False, "analysis task read returned empty")
+        return SmokeResult(
+            "analysis_task_report", False, "analysis task read returned empty"
+        )
     return SmokeResult(
         "analysis_task_report",
         True,
         "analysis task read passed",
-        {"task_id": task.get("task_id"), "has_report": bool(report), "user_task_count": len(tasks)},
+        {
+            "task_id": task.get("task_id"),
+            "has_report": bool(report),
+            "user_task_count": len(tasks),
+        },
     )
 
 
@@ -196,7 +231,9 @@ async def _check_user_preferences(session, context: dict[str, Any]) -> SmokeResu
     favorites = await list_user_favorites(session, user_id)
     tags = await list_user_tags(session, user_id)
     if not favorites and not tags:
-        return SmokeResult("user_preferences", False, "favorites and tags both returned empty")
+        return SmokeResult(
+            "user_preferences", False, "favorites and tags both returned empty"
+        )
     return SmokeResult(
         "user_preferences",
         True,
@@ -211,12 +248,20 @@ async def _check_paper(session, context: dict[str, Any]) -> SmokeResult:
     positions = await list_paper_positions(session, user_id)
     orders = await list_paper_orders(session, user_id, limit=5)
     if not account and not positions and not orders:
-        return SmokeResult("paper_trading", False, "paper account/position/order reads all returned empty")
+        return SmokeResult(
+            "paper_trading",
+            False,
+            "paper account/position/order reads all returned empty",
+        )
     return SmokeResult(
         "paper_trading",
         True,
         "paper trading read passed",
-        {"has_account": bool(account), "positions": len(positions), "orders": len(orders)},
+        {
+            "has_account": bool(account),
+            "positions": len(positions),
+            "orders": len(orders),
+        },
     )
 
 
@@ -302,10 +347,16 @@ async def _check_messages(session, context: dict[str, Any]) -> SmokeResult:
     )
     internal = await query_internal_messages(session, internal_params)
     social = await query_social_media_messages(session, social_params)
-    internal_stats = await get_internal_message_stats(session, symbol=context.get("internal_symbol"))
-    social_stats = await get_social_media_stats(session, symbol=context.get("social_symbol"))
+    internal_stats = await get_internal_message_stats(
+        session, symbol=context.get("internal_symbol")
+    )
+    social_stats = await get_social_media_stats(
+        session, symbol=context.get("social_symbol")
+    )
     if not internal and not social:
-        return SmokeResult("messages", False, "internal and social message reads both returned empty")
+        return SmokeResult(
+            "messages", False, "internal and social message reads both returned empty"
+        )
     return SmokeResult(
         "messages",
         True,
@@ -323,7 +374,11 @@ async def _check_security_sessions(session, _context: dict[str, Any]) -> SmokeRe
     session_count = await _count(session, UserSessionDocument)
     attempt_count = await _count(session, LoginAttemptDocument)
     if session_count <= 0 and attempt_count <= 0:
-        return SmokeResult("security_sessions", False, "user_sessions and login_attempts are both empty")
+        return SmokeResult(
+            "security_sessions",
+            False,
+            "user_sessions and login_attempts are both empty",
+        )
     return SmokeResult(
         "security_sessions",
         True,
@@ -336,7 +391,12 @@ async def _check_system_configs(session, _context: dict[str, Any]) -> SmokeResul
     count = await _count(session, SystemConfigDocument)
     if count <= 0:
         return SmokeResult("system_configs", False, "system_config_documents is empty")
-    return SmokeResult("system_configs", True, "system config documents are populated", {"count": count})
+    return SmokeResult(
+        "system_configs",
+        True,
+        "system config documents are populated",
+        {"count": count},
+    )
 
 
 async def _first_model(session, model, *filters):
@@ -352,10 +412,14 @@ async def _count(session, model) -> int:
 def _expect_non_empty(name: str, rows: list[dict[str, Any]]) -> SmokeResult:
     if not rows:
         return SmokeResult(name, False, f"{name} returned empty")
-    return SmokeResult(name, True, f"{name} read passed", {"count": len(rows), "first": rows[0]})
+    return SmokeResult(
+        name, True, f"{name} read passed", {"count": len(rows), "first": rows[0]}
+    )
 
 
-def _expect_document(name: str, document: dict[str, Any] | None, required_keys: list[str]) -> SmokeResult:
+def _expect_document(
+    name: str, document: dict[str, Any] | None, required_keys: list[str]
+) -> SmokeResult:
     if not document:
         return SmokeResult(name, False, f"{name} returned empty")
     missing = [key for key in required_keys if key not in document]
@@ -371,12 +435,23 @@ def _require(value: Any, label: str) -> Any:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Smoke-test PostgreSQL primary-read cutover data paths.")
-    parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output.")
+    parser = argparse.ArgumentParser(
+        description="Smoke-test PostgreSQL primary-read cutover data paths."
+    )
+    parser.add_argument(
+        "--pretty", action="store_true", help="Pretty-print JSON output."
+    )
     args = parser.parse_args()
 
     result = asyncio.run(run_smoke())
-    print(json.dumps(result, ensure_ascii=False, indent=2 if args.pretty else None, sort_keys=True))
+    print(
+        json.dumps(
+            result,
+            ensure_ascii=False,
+            indent=2 if args.pretty else None,
+            sort_keys=True,
+        )
+    )
     if not result["all_passed"]:
         raise SystemExit(1)
 

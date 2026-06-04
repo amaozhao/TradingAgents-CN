@@ -1,6 +1,6 @@
 import importlib
-from importlib import reload
 import logging
+from importlib import reload
 
 
 def test_json_console_formatter_enabled(monkeypatch, tmp_path):
@@ -22,7 +22,7 @@ json = true
     monkeypatch.chdir(tmp_path)
 
     # Import module fresh
-    lc = getattr(importlib.import_module('app.core'), 'loggingconfig')
+    lc = getattr(importlib.import_module("app.core"), "loggingconfig")
     reload(lc)
 
     # Act
@@ -31,7 +31,11 @@ json = true
     # Assert: console handler uses SimpleJsonFormatter
     logger = logging.getLogger("webapi")
     # find console handler
-    console_handlers = [h for h in logger.handlers if isinstance(h, logging.StreamHandler)]
+    console_handlers = [
+        h for h in logger.handlers if isinstance(h, logging.StreamHandler)
+    ]
     assert console_handlers, "no console handler found"
-    formatter_names = {h.formatter.__class__.__name__ for h in console_handlers if h.formatter}
+    formatter_names = {
+        h.formatter.__class__.__name__ for h in console_handlers if h.formatter
+    }
     assert "SimpleJsonFormatter" in formatter_names

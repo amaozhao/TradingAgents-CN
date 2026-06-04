@@ -3,17 +3,20 @@
 Redis快速连接测试脚本
 """
 
-import redis
-import time
 import sys
+import os
+import time
+
+import redis
+
 
 def quick_redis_test(host=None, port=None, password=None):
     """快速Redis连接和性能测试"""
 
     # 从环境变量获取配置
-    host = host or os.getenv('REDIS_HOST', 'localhost')
-    port = port or int(os.getenv('REDIS_PORT', 6379))
-    password = password or os.getenv('REDIS_PASSWORD')
+    host = host or os.getenv("REDIS_HOST", "localhost")
+    port = port or int(os.getenv("REDIS_PORT", 6379))
+    password = password or os.getenv("REDIS_PASSWORD")
 
     print(f"🔍 测试Redis连接: {host}:{port}")
 
@@ -25,7 +28,7 @@ def quick_redis_test(host=None, port=None, password=None):
             port=port,
             password=password,
             decode_responses=True,
-            socket_connect_timeout=5
+            socket_connect_timeout=5,
         )
 
         # 测试连接
@@ -44,7 +47,7 @@ def quick_redis_test(host=None, port=None, password=None):
 
         # GET操作测试
         start_time = time.time()
-        value = r.get("test_key")
+        r.get("test_key")
         get_time = (time.time() - start_time) * 1000
         print(f"  GET操作: {get_time:.2f} ms")
 
@@ -87,7 +90,7 @@ def quick_redis_test(host=None, port=None, password=None):
             r.delete(f"throughput_test_{i}")
 
         # 连接信息
-        print(f"\n📋 Redis服务器信息:")
+        print("\n📋 Redis服务器信息:")
         info = r.info()
         print(f"  Redis版本: {info.get('redis_version', 'N/A')}")
         print(f"  运行模式: {info.get('redis_mode', 'N/A')}")
@@ -106,12 +109,13 @@ def quick_redis_test(host=None, port=None, password=None):
         print(f"❌ 测试过程中出错: {e}")
         return False
 
+
 def main():
     """主函数"""
     if len(sys.argv) > 1:
         host = sys.argv[1]
     else:
-        host = 'localhost'
+        host = "localhost"
 
     if len(sys.argv) > 2:
         port = int(sys.argv[2])
@@ -130,6 +134,7 @@ def main():
     else:
         print("\n❌ Redis连接测试失败!")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

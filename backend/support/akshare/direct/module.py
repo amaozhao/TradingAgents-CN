@@ -5,7 +5,7 @@
 """
 
 import akshare as ak
-import pandas as pd
+
 
 def test_akshare_financial_apis():
     """测试AKShare财务数据API"""
@@ -13,7 +13,7 @@ def test_akshare_financial_apis():
     print("🧪 直接测试AKShare财务数据API")
     print("=" * 60)
 
-    symbol = '000001'
+    symbol = "000001"
     print(f"🔍 测试股票: {symbol}")
 
     # 测试资产负债表
@@ -66,19 +66,20 @@ def test_akshare_financial_apis():
     except Exception as e:
         print(f"❌ 主要财务指标获取失败: {e}")
 
+
 def test_akshare_stock_info():
     """测试AKShare股票基本信息"""
     print("\n" + "=" * 60)
     print("📋 测试AKShare股票基本信息")
     print("=" * 60)
 
-    symbol = '000001'
+    symbol = "000001"
     print(f"🔍 测试股票: {symbol}")
 
     try:
         stock_info = ak.stock_individual_info_em(symbol=symbol)
         if not stock_info.empty:
-            print(f"✅ 股票信息获取成功")
+            print("✅ 股票信息获取成功")
             print("📋 基本信息:")
             for _, row in stock_info.head(10).iterrows():  # 显示前10项
                 print(f"   {row['item']}: {row['value']}")
@@ -86,6 +87,7 @@ def test_akshare_stock_info():
             print("❌ 股票信息为空")
     except Exception as e:
         print(f"❌ 股票信息获取失败: {e}")
+
 
 def main():
     """主测试函数"""
@@ -98,6 +100,7 @@ def main():
     print("\n" + "=" * 60)
     print("✅ 测试完成")
     print("=" * 60)
+
 
 if __name__ == "__main__":
     main()

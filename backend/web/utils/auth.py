@@ -4,17 +4,18 @@
 支持前端缓存登录状态，10分钟无操作自动失效
 """
 
-import streamlit as st
 import hashlib
-import os
 import json
+import time
 from pathlib import Path
 from typing import Dict, Optional, Tuple
-import time
+
+import streamlit as st
 
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
-logger = get_logger('auth')
+
+logger = get_logger("auth")
 
 # 导入用户活动记录器
 try:
@@ -22,6 +23,7 @@ try:
 except ImportError:
     activity = None
     logger.warning("⚠️ 用户活动记录器导入失败")
+
 
 class AuthManager:
     """用户认证管理器"""
@@ -42,20 +44,20 @@ class AuthManager:
                     "password_hash": self._hash_password("admin123"),
                     "role": "admin",
                     "permissions": ["analysis", "config", "admin"],
-                    "created_at": time.time()
+                    "created_at": time.time(),
                 },
                 "user": {
                     "password_hash": self._hash_password("user123"),
                     "role": "user",
                     "permissions": ["analysis"],
-                    "created_at": time.time()
-                }
+                    "created_at": time.time(),
+                },
             }
 
-            with open(self.users_file, 'w', encoding='utf-8') as f:
+            with open(self.users_file, "w", encoding="utf-8") as f:
                 json.dump(default_users, f, indent=2, ensure_ascii=False)
 
-            logger.info(f"✅ 用户认证系统初始化完成")
+            logger.info("✅ 用户认证系统初始化完成")
             logger.info(f"📁 用户配置文件: {self.users_file}")
 
     def _inject_auth_cache_js(self):
@@ -155,7 +157,7 @@ class AuthManager:
     def _load_users(self) -> Dict:
         """加载用户配置"""
         try:
-            with open(self.users_file, 'r', encoding='utf-8') as f:
+            with open(self.users_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             logger.error(f"❌ 加载用户配置失败: {e}")
@@ -192,7 +194,7 @@ class AuthManager:
             return True, {
                 "username": username,
                 "role": user_info["role"],
-                "permissions": user_info["permissions"]
+                "permissions": user_info["permissions"],
             }
         else:
             logger.warning(f"⚠️ 密码错误: {username}")
@@ -214,34 +216,38 @@ class AuthManager:
         if not self.is_authenticated():
             return False
 
-        user_info = st.session_state.get('user_info', {})
-        permissions = user_info.get('permissions', [])
+        user_info = st.session_state.get("user_info", {})
+        permissions = user_info.get("permissions", [])
 
         return permission in permissions
 
     def is_authenticated(self) -> bool:
         """检查用户是否已认证"""
         # 首先检查session_state中的认证状态
-        authenticated = st.session_state.get('authenticated', False)
-        login_time = st.session_state.get('login_time', 0)
+        authenticated = st.session_state.get("authenticated", False)
+        login_time = st.session_state.get("login_time", 0)
         current_time = time.time()
 
-        logger.debug(f"🔍 [认证检查] authenticated: {authenticated}, login_time: {login_time}, current_time: {current_time}")
+        logger.debug(
+            f"🔍 [认证检查] authenticated: {authenticated}, login_time: {login_time}, current_time: {current_time}"
+        )
 
         if authenticated:
             # 检查会话超时
             time_elapsed = current_time - login_time
-            logger.debug(f"🔍 [认证检查] 会话时长: {time_elapsed:.1f}秒, 超时限制: {self.session_timeout}秒")
+            logger.debug(
+                f"🔍 [认证检查] 会话时长: {time_elapsed:.1f}秒, 超时限制: {self.session_timeout}秒"
+            )
 
             if time_elapsed > self.session_timeout:
                 logger.info(f"⏰ 会话超时，自动登出 (已过时间: {time_elapsed:.1f}秒)")
                 self.logout()
                 return False
 
-            logger.debug(f"✅ [认证检查] 用户已认证且未超时")
+            logger.debug("✅ [认证检查] 用户已认证且未超时")
             return True
 
-        logger.debug(f"❌ [认证检查] 用户未认证")
+        logger.debug("❌ [认证检查] 用户未认证")
         return False
 
     def login(self, username: str, password: str) -> bool:
@@ -268,7 +274,7 @@ class AuthManager:
                 "userInfo": user_info,  # 使用userInfo而不是user_info
                 "loginTime": time.time(),
                 "lastActivity": current_time_ms,  # 添加lastActivity字段
-                "authenticated": True
+                "authenticated": True,
             }
 
             save_to_cache_js = f"""
@@ -294,7 +300,7 @@ class AuthManager:
 
     def logout(self):
         """用户登出"""
-        username = st.session_state.get('user_info', {}).get('username', 'unknown')
+        username = st.session_state.get("user_info", {}).get("username", "unknown")
         st.session_state.authenticated = False
         st.session_state.user_info = None
         st.session_state.login_time = None
@@ -333,9 +339,9 @@ class AuthManager:
         """
         try:
             # 验证用户信息的有效性
-            username = user_info.get('username')
+            username = user_info.get("username")
             if not username:
-                logger.warning(f"⚠️ 恢复失败: 用户信息中没有用户名")
+                logger.warning("⚠️ 恢复失败: 用户信息中没有用户名")
                 return False
 
             # 检查用户是否仍然存在
@@ -352,7 +358,9 @@ class AuthManager:
             st.session_state.login_time = restore_time
 
             logger.info(f"✅ 从前端缓存恢复用户 {username} 的登录状态")
-            logger.debug(f"🔍 [恢复状态] login_time: {restore_time}, current_time: {time.time()}")
+            logger.debug(
+                f"🔍 [恢复状态] login_time: {restore_time}, current_time: {time.time()}"
+            )
             return True
 
         except Exception as e:
@@ -362,7 +370,7 @@ class AuthManager:
     def get_current_user(self) -> Optional[Dict]:
         """获取当前用户信息"""
         if self.is_authenticated():
-            return st.session_state.get('user_info')
+            return st.session_state.get("user_info")
         return None
 
     def require_permission(self, permission: str) -> bool:
@@ -379,6 +387,7 @@ class AuthManager:
             st.error(f"❌ 您没有 '{permission}' 权限，请联系管理员")
             return False
         return True
+
 
 # 全局认证管理器实例
 auth = AuthManager()

@@ -8,13 +8,14 @@ TradingAgents 运行时配置适配器（弱依赖）
 """
 
 from __future__ import annotations
-import importlib
 
-import os
 import asyncio
-from typing import Any, Optional, Callable
-
+import importlib
 import logging
+import os
+from typing import Any, Callable, Optional
+from zoneinfo import ZoneInfo as _ZoneInfo
+
 _logger = logging.getLogger("trader.config")
 
 
@@ -41,7 +42,9 @@ def _get_system_settings_sync() -> dict:
         return {}
 
     try:
-        config_provider = getattr(importlib.import_module('app.services.provider'), 'provider')
+        config_provider = getattr(
+            importlib.import_module("app.services.provider"), "provider"
+        )
 
         if _get_event_loop_running():
             _logger.debug("导入后检测到事件循环，跳过动态配置获取")
@@ -51,11 +54,14 @@ def _get_system_settings_sync() -> dict:
         return settings or {}
     except RuntimeError as e:
         error_msg = str(e).lower()
-        if any(keyword in error_msg for keyword in [
-            "cannot be called from a running event loop",
-            "got future attached to a different loop",
-            "task was destroyed but it is pending",
-        ]):
+        if any(
+            keyword in error_msg
+            for keyword in [
+                "cannot be called from a running event loop",
+                "got future attached to a different loop",
+                "task was destroyed but it is pending",
+            ]
+        ):
             _logger.debug(f"检测到事件循环冲突，跳过动态配置获取: {e}")
             return {}
         _logger.debug(f"获取动态配置失败（RuntimeError）: {e}")
@@ -74,7 +80,12 @@ def _coerce(value: Any, caster: Callable[[Any], Any], default: Any) -> Any:
         return default
 
 
-def get_number(env_var: str, system_key: Optional[str], default: float | int, caster: Callable[[Any], Any]) -> float | int:
+def get_number(
+    env_var: str,
+    system_key: Optional[str],
+    default: float | int,
+    caster: Callable[[Any], Any],
+) -> float | int:
     """按优先级获取数值配置：DB(system_settings) > ENV > default
     - env_var: 环境变量名，例如 "TA_US_MIN_API_INTERVAL_SECONDS"
     - system_key: 动态系统设置键名，例如 "ta_us_min_api_interval_seconds"（可为 None）
@@ -106,6 +117,7 @@ def get_int(env_var: str, system_key: Optional[str], default: int) -> int:
 
 # --- Boolean access helper ---------------------------------------------------
 
+
 def get_bool(env_var: str, system_key: Optional[str], default: bool) -> bool:
     """按优先级获取布尔配置：DB(system_settings) > ENV > default"""
     # 1) DB 动态设置
@@ -128,7 +140,7 @@ def get_bool(env_var: str, system_key: Optional[str], default: bool) -> bool:
 
 
 def use_app_cache_enabled(default: bool = False) -> bool:
-    """是否启用从 app 缓存（Mongo 集合）优先读取。ENV: TA_USE_APP_CACHE; DB: ta_use_app_cache
+    """是否启用从 app 缓存（PostgreSQL 文档集合）优先读取。ENV: TA_USE_APP_CACHE; DB: ta_use_app_cache
     会记录一次评估日志，包含来源与原始ENV值，便于排查生效路径。
     """
     # 推断来源（DB/ENV/DEFAULT）
@@ -147,15 +159,12 @@ def use_app_cache_enabled(default: bool = False) -> bool:
     val = get_bool("TA_USE_APP_CACHE", "ta_use_app_cache", default)
 
     try:
-        _logger.info(f"[runtime_settings] TA_USE_APP_CACHE evaluated -> {val} (source={src}, env={env_val})")
+        _logger.info(
+            f"[runtime_settings] TA_USE_APP_CACHE evaluated -> {val} (source={src}, env={env_val})"
+        )
     except Exception:
         pass
     return val
-
-
-# --- Timezone access helpers -------------------------------------------------
-from typing import Optional as _Optional
-from zoneinfo import ZoneInfo as _ZoneInfo
 
 
 def get_timezone_name(default: str = "Asia/Shanghai") -> str:

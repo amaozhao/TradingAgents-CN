@@ -1,9 +1,9 @@
-
 from support.registry import export_module as _export_module
+
 _export_module(globals(), "support.m0114.backup.source.module")
 _export_module(globals(), "support.m0114.tushare.direct.module")
 _export_module(globals(), "support.akshare.isolated.module")
-_export_module(globals(), "support.testsxdbxtestnewsservicedualwrite")
+_export_module(globals(), "support.db.news.data.service.dual.write.module")
 _export_module(globals(), "support.db.scheduler.service.dual.write.module")
 _export_module(globals(), "support.db.user.preferences.dual.write.module")
 _export_module(globals(), "support.akshare.code.format.module")

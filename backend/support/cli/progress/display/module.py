@@ -3,15 +3,11 @@
 测试CLI进度显示效果
 模拟分析流程，验证用户体验
 """
-import importlib
 
-import os
+import importlib
 import sys
 import time
 
-# 添加项目根目录到Python路径
-project_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, project_root)
 
 def test_cli_ui_manager():
     """测试CLI用户界面管理器"""
@@ -19,7 +15,9 @@ def test_cli_ui_manager():
     print("=" * 60)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
 
         # 创建UI管理器
         ui = CLIUserInterface()
@@ -55,9 +53,10 @@ def test_cli_ui_manager():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_analysis_flow_simulation():
     """模拟分析流程，测试进度显示"""
@@ -65,7 +64,9 @@ def test_analysis_flow_simulation():
     print("=" * 60)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
 
         ui = CLIUserInterface()
 
@@ -109,7 +110,7 @@ def test_analysis_flow_simulation():
             ("📈 市场分析师", "市场分析"),
             ("📊 基本面分析师", "基本面分析"),
             ("🔍 技术分析师", "技术分析"),
-            ("💭 情感分析师", "情感分析")
+            ("💭 情感分析师", "情感分析"),
         ]
 
         for analyst_name, analysis_type in analysts:
@@ -135,9 +136,10 @@ def test_analysis_flow_simulation():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
+
 
 def test_progress_vs_logging():
     """对比进度显示和日志记录"""
@@ -145,8 +147,10 @@ def test_progress_vs_logging():
     print("=" * 60)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
-        logger = getattr(importlib.import_module('cli.main'), 'logger')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
+        logger = getattr(importlib.import_module("cli.main"), "logger")
 
         ui = CLIUserInterface()
 
@@ -173,13 +177,16 @@ def test_progress_vs_logging():
         print(f"❌ 测试失败: {e}")
         return False
 
+
 def test_user_experience():
     """测试用户体验"""
     print("\n👥 测试用户体验")
     print("=" * 60)
 
     try:
-        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        CLIUserInterface = getattr(
+            importlib.import_module("cli.main"), "CLIUserInterface"
+        )
 
         ui = CLIUserInterface()
 
@@ -219,6 +226,7 @@ def test_user_experience():
         print(f"❌ 测试失败: {e}")
         return False
 
+
 def main():
     """主测试函数"""
     print("🚀 开始测试CLI进度显示效果")
@@ -250,12 +258,12 @@ def main():
         "CLI用户界面管理器",
         "分析流程进度显示",
         "进度显示与日志分离",
-        "用户体验测试"
+        "用户体验测试",
     ]
 
     for i, (name, result) in enumerate(zip(test_names, results)):
         status = "✅ 通过" if result else "❌ 失败"
-        print(f"{i+1}. {name}: {status}")
+        print(f"{i + 1}. {name}: {status}")
 
     print(f"\n📊 总体结果: {passed}/{total} 测试通过")
 
@@ -277,6 +285,7 @@ def main():
         print("⚠️ 部分测试失败，需要进一步优化")
 
     return passed == total
+
 
 if __name__ == "__main__":
     success = main()

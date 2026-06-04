@@ -1,7 +1,3 @@
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from app.services.basics.util import fetch_latest_roe_map
 
 print("🔍 测试获取 ROE 数据...")
@@ -18,7 +14,7 @@ try:
             break
 
     # 检查特定股票
-    test_codes = ['601398.SH', '300033.SZ', '000001.SZ']
+    test_codes = ["601398.SH", "300033.SZ", "000001.SZ"]
     print("\n🔍 检查特定股票的 ROE:")
     for ts_code in test_codes:
         if ts_code in roe_map:
@@ -29,4 +25,5 @@ try:
 except Exception as e:
     print(f"❌ 获取 ROE 数据失败: {e}")
     import traceback
+
     traceback.print_exc()

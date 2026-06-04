@@ -3,11 +3,11 @@
 测试股票数据API
 验证新的股票数据模型和API接口是否正常工作
 """
+
 import asyncio
-import aiohttp
-import json
 import logging
-from typing import Dict, Any
+
+import aiohttp
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,6 +18,7 @@ BASE_URL = "http://localhost:8000"
 # 测试用的JWT Token (需要先登录获取)
 # 这里使用一个示例token，实际使用时需要替换
 TEST_TOKEN = "your_jwt_token_here"
+
 
 class StockDataAPITester:
     """股票数据API测试器"""
@@ -45,10 +46,16 @@ class StockDataAPITester:
                             if data.get("success"):
                                 stock_info = data.get("data", {})
                                 logger.info(f"✅ {code} - {stock_info.get('name')}")
-                                logger.info(f"   完整代码: {stock_info.get('full_symbol')}")
-                                logger.info(f"   市场: {stock_info.get('market_info', {}).get('exchange_name')}")
+                                logger.info(
+                                    f"   完整代码: {stock_info.get('full_symbol')}"
+                                )
+                                logger.info(
+                                    f"   市场: {stock_info.get('market_info', {}).get('exchange_name')}"
+                                )
                                 logger.info(f"   行业: {stock_info.get('industry')}")
-                                logger.info(f"   总市值: {stock_info.get('total_mv')}亿元")
+                                logger.info(
+                                    f"   总市值: {stock_info.get('total_mv')}亿元"
+                                )
                             else:
                                 logger.warning(f"❌ {code} - {data.get('message')}")
                         else:
@@ -75,7 +82,9 @@ class StockDataAPITester:
                             if data.get("success"):
                                 quotes = data.get("data", {})
                                 logger.info(f"✅ {code} 行情数据:")
-                                logger.info(f"   当前价格: {quotes.get('current_price')}")
+                                logger.info(
+                                    f"   当前价格: {quotes.get('current_price')}"
+                                )
                                 logger.info(f"   涨跌幅: {quotes.get('pct_chg')}%")
                                 logger.info(f"   成交额: {quotes.get('amount')}")
                                 logger.info(f"   交易日期: {quotes.get('trade_date')}")
@@ -99,15 +108,21 @@ class StockDataAPITester:
                 url = f"{self.base_url}/api/stock-data/list"
                 params = {"industry": "银行", "page": 1, "page_size": 3}
 
-                async with session.get(url, headers=self.headers, params=params) as response:
+                async with session.get(
+                    url, headers=self.headers, params=params
+                ) as response:
                     if response.status == 200:
                         data = await response.json()
                         if data.get("success"):
                             stocks = data.get("data", [])
-                            logger.info(f"✅ 银行行业股票 (前3只):")
+                            logger.info("✅ 银行行业股票 (前3只):")
                             for stock in stocks:
-                                logger.info(f"   {stock.get('code')} - {stock.get('name')}")
-                                logger.info(f"     完整代码: {stock.get('full_symbol')}")
+                                logger.info(
+                                    f"   {stock.get('code')} - {stock.get('name')}"
+                                )
+                                logger.info(
+                                    f"     完整代码: {stock.get('full_symbol')}"
+                                )
                                 logger.info(f"     总市值: {stock.get('total_mv')}亿元")
                         else:
                             logger.warning(f"❌ 股票列表 - {data.get('message')}")
@@ -140,9 +155,13 @@ class StockDataAPITester:
                             if basic_info:
                                 logger.info(f"   名称: {basic_info.get('name')}")
                                 logger.info(f"   行业: {basic_info.get('industry')}")
-                                logger.info(f"   总市值: {basic_info.get('total_mv')}亿元")
+                                logger.info(
+                                    f"   总市值: {basic_info.get('total_mv')}亿元"
+                                )
                             if quotes:
-                                logger.info(f"   当前价格: {quotes.get('current_price')}")
+                                logger.info(
+                                    f"   当前价格: {quotes.get('current_price')}"
+                                )
                                 logger.info(f"   涨跌幅: {quotes.get('pct_chg')}%")
                         else:
                             logger.warning(f"❌ 综合数据 - {data.get('message')}")
@@ -164,14 +183,18 @@ class StockDataAPITester:
                 url = f"{self.base_url}/api/stock-data/search"
                 params = {"keyword": "000001", "limit": 5}
 
-                async with session.get(url, headers=self.headers, params=params) as response:
+                async with session.get(
+                    url, headers=self.headers, params=params
+                ) as response:
                     if response.status == 200:
                         data = await response.json()
                         if data.get("success"):
                             results = data.get("data", [])
-                            logger.info(f"✅ 搜索 '000001' 结果:")
+                            logger.info("✅ 搜索 '000001' 结果:")
                             for result in results:
-                                logger.info(f"   {result.get('code')} - {result.get('name')}")
+                                logger.info(
+                                    f"   {result.get('code')} - {result.get('name')}"
+                                )
                         else:
                             logger.warning(f"❌ 搜索 - {data.get('message')}")
                     else:
@@ -179,14 +202,18 @@ class StockDataAPITester:
 
                 # 测试按名称搜索
                 params = {"keyword": "银行", "limit": 3}
-                async with session.get(url, headers=self.headers, params=params) as response:
+                async with session.get(
+                    url, headers=self.headers, params=params
+                ) as response:
                     if response.status == 200:
                         data = await response.json()
                         if data.get("success"):
                             results = data.get("data", [])
-                            logger.info(f"✅ 搜索 '银行' 结果:")
+                            logger.info("✅ 搜索 '银行' 结果:")
                             for result in results:
-                                logger.info(f"   {result.get('code')} - {result.get('name')}")
+                                logger.info(
+                                    f"   {result.get('code')} - {result.get('name')}"
+                                )
                         else:
                             logger.warning(f"❌ 搜索 - {data.get('message')}")
                     else:
@@ -210,14 +237,20 @@ class StockDataAPITester:
                         data = await response.json()
                         if data.get("success"):
                             market_data = data.get("data", {})
-                            logger.info(f"✅ 市场概览:")
-                            logger.info(f"   总股票数: {market_data.get('total_stocks')}")
-                            logger.info(f"   支持市场: {market_data.get('supported_markets')}")
+                            logger.info("✅ 市场概览:")
+                            logger.info(
+                                f"   总股票数: {market_data.get('total_stocks')}"
+                            )
+                            logger.info(
+                                f"   支持市场: {market_data.get('supported_markets')}"
+                            )
 
                             breakdown = market_data.get("market_breakdown", [])
                             logger.info("   市场分布:")
                             for item in breakdown[:5]:  # 显示前5个
-                                logger.info(f"     {item.get('_id')}: {item.get('count')} 只")
+                                logger.info(
+                                    f"     {item.get('_id')}: {item.get('count')} 只"
+                                )
                         else:
                             logger.warning(f"❌ 市场概览 - {data.get('message')}")
                     else:

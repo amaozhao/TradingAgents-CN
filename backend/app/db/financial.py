@@ -23,7 +23,9 @@ def build_financial_data_query(
     if data_source:
         statement = statement.where(StockFinancialData.data_source == data_source)
     if report_type:
-        statement = statement.where(StockFinancialData.payload["report_type"].astext == report_type)
+        statement = statement.where(
+            StockFinancialData.payload["report_type"].astext == report_type
+        )
     statement = statement.order_by(desc(StockFinancialData.report_period))
     if limit:
         statement = statement.limit(limit)

@@ -3,21 +3,25 @@
 
 从 trader/dataflows/utils.py 迁移而来
 """
+
 import importlib
-import os
-import json
-import pandas as pd
-from datetime import date, timedelta, datetime
+from datetime import date, datetime, timedelta
 from typing import Annotated, Optional
+
+import pandas as pd
 
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
-logger = get_logger('agents')
+
+logger = get_logger("agents")
 
 
 SavePathType = Annotated[str, "File path to save data. If None, data is not saved."]
 
-def save_output(data: pd.DataFrame, tag: str, save_path: Optional[SavePathType] = None) -> None:
+
+def save_output(
+    data: pd.DataFrame, tag: str, save_path: Optional[SavePathType] = None
+) -> None:
     """
     保存 DataFrame 到 CSV 文件
 
@@ -57,6 +61,7 @@ def decorate_all_methods(decorator):
         >>>     def method1(self):
         >>>         pass
     """
+
     def class_decorator(cls):
         for attr_name, attr_value in cls.__dict__.items():
             if isinstance(attr_value, staticmethod):
@@ -114,8 +119,8 @@ def get_trading_date_range(target_date=None, lookback_days=10):
         >>> get_trading_date_range("2025-10-12", 10)  # 周日
         ("2025-10-02", "2025-10-12")
     """
-    datetime = getattr(importlib.import_module('datetime'), 'datetime')
-    timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
+    datetime = getattr(importlib.import_module("datetime"), "datetime")
+    timedelta = getattr(importlib.import_module("datetime"), "timedelta")
 
     # 处理输入日期
     if target_date is None:

@@ -3,21 +3,33 @@
 测试工具拦截机制
 验证港股基本面分析是否正确使用港股工具
 """
-import importlib
 
+import importlib
 import os
 import sys
+
 
 def test_hk_fundamentals_with_interception():
     """测试港股基本面分析的工具拦截机制"""
     print("🔧 测试港股基本面分析工具拦截...")
 
     try:
-        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
-        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        create_fundamentals_analyst = getattr(
+            importlib.import_module("trader.agents.analysts.fundamentals"),
+            "create_fundamentals_analyst",
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
+        ChatDashScopeOpenAI = getattr(
+            importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI"
+        )
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
 
         # 检查API密钥
         api_key = os.getenv("DASHSCOPE_API_KEY")
@@ -33,11 +45,7 @@ def test_hk_fundamentals_with_interception():
         toolkit = Toolkit(config)
 
         # 创建LLM
-        llm = ChatDashScopeOpenAI(
-            model="qwen-turbo",
-            temperature=0.1,
-            max_tokens=1000
-        )
+        llm = ChatDashScopeOpenAI(model="qwen-turbo", temperature=0.1, max_tokens=1000)
 
         # 创建基本面分析师
         analyst = create_fundamentals_analyst(llm, toolkit)
@@ -46,60 +54,62 @@ def test_hk_fundamentals_with_interception():
         state = {
             "trade_date": "2025-07-14",
             "company_of_interest": "0700.HK",
-            "messages": []
+            "messages": [],
         }
 
         print(f"\n📊 测试港股基本面分析: {state['company_of_interest']}")
 
         # 验证股票类型识别
-        market_info = StockUtils.get_market_info(state['company_of_interest'])
+        market_info = StockUtils.get_market_info(state["company_of_interest"])
         print(f"  市场类型: {market_info['market_name']}")
-        print(f"  货币: {market_info['currency_name']} ({market_info['currency_symbol']})")
+        print(
+            f"  货币: {market_info['currency_name']} ({market_info['currency_symbol']})"
+        )
         print(f"  是否港股: {market_info['is_hk']}")
 
-        if not market_info['is_hk']:
-            print(f"❌ 股票类型识别错误")
+        if not market_info["is_hk"]:
+            print("❌ 股票类型识别错误")
             return False
 
-        print(f"\n🔄 调用基本面分析师（带工具拦截机制）...")
+        print("\n🔄 调用基本面分析师（带工具拦截机制）...")
 
         # 调用分析师
         result = analyst(state)
 
-        print(f"✅ 基本面分析师调用完成")
+        print("✅ 基本面分析师调用完成")
         print(f"  结果类型: {type(result)}")
 
-        if isinstance(result, dict) and 'fundamentals_report' in result:
-            report = result['fundamentals_report']
+        if isinstance(result, dict) and "fundamentals_report" in result:
+            report = result["fundamentals_report"]
             print(f"  报告长度: {len(report)}")
             print(f"  报告前200字符: {report[:200]}...")
 
             # 检查报告质量
             if len(report) > 500:
-                print(f"  ✅ 报告长度合格（>500字符）")
+                print("  ✅ 报告长度合格（>500字符）")
             else:
                 print(f"  ⚠️ 报告长度偏短（{len(report)}字符）")
 
             # 检查是否包含港币相关内容
-            if 'HK$' in report or '港币' in report or '港元' in report:
-                print(f"  ✅ 报告包含港币计价")
+            if "HK$" in report or "港币" in report or "港元" in report:
+                print("  ✅ 报告包含港币计价")
             else:
-                print(f"  ⚠️ 报告未包含港币计价")
+                print("  ⚠️ 报告未包含港币计价")
 
             # 检查是否包含投资建议
-            if any(word in report for word in ['买入', '持有', '卖出', '建议']):
-                print(f"  ✅ 报告包含投资建议")
+            if any(word in report for word in ["买入", "持有", "卖出", "建议"]):
+                print("  ✅ 报告包含投资建议")
             else:
-                print(f"  ⚠️ 报告未包含投资建议")
+                print("  ⚠️ 报告未包含投资建议")
         else:
-            print(f"  ❌ 未找到基本面报告")
+            print("  ❌ 未找到基本面报告")
             return False
 
         return True
 
     except Exception as e:
         print(f"❌ 港股基本面分析测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False
 
@@ -109,9 +119,15 @@ def test_tool_selection_logic():
     print("\n🔧 测试工具选择逻辑...")
 
     try:
-        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
-        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
-        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        StockUtils = getattr(
+            importlib.import_module("trader.utils.stocks"), "StockUtils"
+        )
+        Toolkit = getattr(
+            importlib.import_module("trader.agents.utils.utils"), "Toolkit"
+        )
+        DEFAULT_CONFIG = getattr(
+            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+        )
 
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True
@@ -127,9 +143,9 @@ def test_tool_selection_logic():
 
         for ticker, expected_market, expected_tool in test_cases:
             market_info = StockUtils.get_market_info(ticker)
-            is_china = market_info['is_china']
-            is_hk = market_info['is_hk']
-            is_us = market_info['is_us']
+            is_china = market_info["is_china"]
+            is_hk = market_info["is_hk"]
+            market_info["is_us"]
 
             print(f"\n📊 {ticker} ({expected_market}):")
             print(f"  识别结果: {market_info['market_name']}")
@@ -151,9 +167,9 @@ def test_tool_selection_logic():
             print(f"  期望工具: {expected_tool}")
 
             if primary_tool == expected_tool:
-                print(f"  ✅ 工具选择正确")
+                print("  ✅ 工具选择正确")
             else:
-                print(f"  ❌ 工具选择错误")
+                print("  ❌ 工具选择错误")
                 return False
 
         print("✅ 工具选择逻辑验证通过")

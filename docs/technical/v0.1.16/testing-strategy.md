@@ -10,7 +10,7 @@
 
 ## 测试分层
 - 单元测试：pytest + httpx
-- 集成测试：pytest-asyncio + Testcontainers(Redis/Mongo)
+- 集成测试：pytest-asyncio + Testcontainers(Redis/PostgreSQL)
 - 端到端：Playwright/Cypress
 - 压力测试：k6/Locust
 
@@ -20,7 +20,7 @@
 - 任务取消与重试
 - SSE进度在中断后自动恢复
 - 权限隔离：不同用户互不影响
-- 异常注入：Redis/Mongo间歇故障
+- 异常注入：Redis/PostgreSQL间歇故障
 
 ## 覆盖率与质量门禁
 - 语句覆盖率>=80%

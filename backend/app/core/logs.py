@@ -1,26 +1,25 @@
 import importlib
+import importlib.util
 import logging
 import logging.config
-import sys
-from pathlib import Path
 import os
 import platform
-
-from app.core.context import LoggingContextFilter, trace_id_var
+import sys
+import tomllib as toml_loader
+from pathlib import Path
 
 # 🔥 在 Windows 上使用 concurrent-log-handler 避免文件占用问题
 _IS_WINDOWS = platform.system() == "Windows"
 if _IS_WINDOWS:
-    try:
-        from concurrent_log_handler import ConcurrentRotatingFileHandler
+    if importlib.util.find_spec("concurrent_log_handler") is not None:
         _USE_CONCURRENT_HANDLER = True
-    except ImportError:
+    else:
         _USE_CONCURRENT_HANDLER = False
-        logging.warning("concurrent-log-handler 未安装，在 Windows 上可能遇到日志轮转问题")
+        logging.warning(
+            "concurrent-log-handler 未安装，在 Windows 上可能遇到日志轮转问题"
+        )
 else:
     _USE_CONCURRENT_HANDLER = False
-
-import tomllib as toml_loader
 
 
 def resolve_logging_cfg_path() -> Path:
@@ -28,15 +27,23 @@ def resolve_logging_cfg_path() -> Path:
     优先 docker 配置，其次默认配置。
     """
     profile = os.environ.get("LOGGING_PROFILE", "").lower()
-    is_docker_env = os.environ.get("DOCKER", "").lower() in {"1", "true", "yes"} or Path("/.dockerenv").exists()
-    cfg_candidate = "config/logging_docker.toml" if profile == "docker" or is_docker_env else "config/logging.toml"
+    is_docker_env = (
+        os.environ.get("DOCKER", "").lower() in {"1", "true", "yes"}
+        or Path("/.dockerenv").exists()
+    )
+    cfg_candidate = (
+        "config/logging_docker.toml"
+        if profile == "docker" or is_docker_env
+        else "config/logging.toml"
+    )
     return Path(cfg_candidate)
 
 
 class SimpleJsonFormatter(logging.Formatter):
     """Minimal JSON formatter without external deps."""
+
     def format(self, record: logging.LogRecord) -> str:
-        json = importlib.import_module('json')
+        json = importlib.import_module("json")
         obj = {
             "time": self.formatTime(record, "%Y-%m-%d %H:%M:%S"),
             "name": record.name,
@@ -58,6 +65,7 @@ def _parse_size(size_str: str) -> int:
             return 10 * 1024 * 1024
     return 10 * 1024 * 1024
 
+
 def setup_logging(log_level: str = "INFO"):
     """
     设置应用日志配置：
@@ -75,7 +83,7 @@ def setup_logging(log_level: str = "INFO"):
             with cfg_path.open("rb") as f:
                 toml_data = toml_loader.load(f)
 
-            print(f"🔍 [setup_logging] 成功加载TOML配置")
+            print("🔍 [setup_logging] 成功加载TOML配置")
 
             # 读取基础字段
             logging_root = toml_data.get("logging", {})
@@ -96,7 +104,7 @@ def setup_logging(log_level: str = "INFO"):
             handlers_cfg = logging_root.get("handlers", {})
             file_handler_cfg = handlers_cfg.get("file", {})
             file_dir = file_handler_cfg.get("directory", "./logs")
-            file_level = file_handler_cfg.get("level", "DEBUG")
+            file_handler_cfg.get("level", "DEBUG")
             max_bytes = file_handler_cfg.get("max_size", "10MB")
             # 支持 "10MB" 形式
             if isinstance(max_bytes, str) and max_bytes.upper().endswith("MB"):
@@ -106,7 +114,7 @@ def setup_logging(log_level: str = "INFO"):
                     max_bytes = 10 * 1024 * 1024
             elif not isinstance(max_bytes, int):
                 max_bytes = 10 * 1024 * 1024
-            backup_count = int(file_handler_cfg.get("backup_count", 5))
+            int(file_handler_cfg.get("backup_count", 5))
 
             Path(file_dir).mkdir(parents=True, exist_ok=True)
 
@@ -121,13 +129,15 @@ def setup_logging(log_level: str = "INFO"):
             print(f"🔍 [setup_logging] worker_handler_cfg: {worker_handler_cfg}")
 
             # 主日志文件（trader.log）
-            main_log = main_handler_cfg.get("filename", str(Path(file_dir) / "trader.log"))
+            main_log = main_handler_cfg.get(
+                "filename", str(Path(file_dir) / "trader.log")
+            )
             main_enabled = main_handler_cfg.get("enabled", True)
             main_level = main_handler_cfg.get("level", "INFO")
             main_max_bytes = _parse_size(main_handler_cfg.get("max_size", "100MB"))
             main_backup_count = int(main_handler_cfg.get("backup_count", 5))
 
-            print(f"🔍 [setup_logging] 主日志文件配置:")
+            print("🔍 [setup_logging] 主日志文件配置:")
             print(f"  - 文件路径: {main_log}")
             print(f"  - 是否启用: {main_enabled}")
             print(f"  - 日志级别: {main_level}")
@@ -135,33 +145,46 @@ def setup_logging(log_level: str = "INFO"):
             print(f"  - 备份数量: {main_backup_count}")
 
             # WebAPI日志文件
-            webapi_log = webapi_handler_cfg.get("filename", str(Path(file_dir) / "webapi.log"))
+            webapi_log = webapi_handler_cfg.get(
+                "filename", str(Path(file_dir) / "webapi.log")
+            )
             webapi_enabled = webapi_handler_cfg.get("enabled", True)
             webapi_level = webapi_handler_cfg.get("level", "DEBUG")
             webapi_max_bytes = _parse_size(webapi_handler_cfg.get("max_size", "100MB"))
             webapi_backup_count = int(webapi_handler_cfg.get("backup_count", 5))
 
-            print(f"🔍 [setup_logging] WebAPI日志文件: {webapi_log}, 启用: {webapi_enabled}")
+            print(
+                f"🔍 [setup_logging] WebAPI日志文件: {webapi_log}, 启用: {webapi_enabled}"
+            )
 
             # Worker日志文件
-            worker_log = worker_handler_cfg.get("filename", str(Path(file_dir) / "worker.log"))
+            worker_log = worker_handler_cfg.get(
+                "filename", str(Path(file_dir) / "worker.log")
+            )
             worker_enabled = worker_handler_cfg.get("enabled", True)
             worker_level = worker_handler_cfg.get("level", "DEBUG")
             worker_max_bytes = _parse_size(worker_handler_cfg.get("max_size", "100MB"))
             worker_backup_count = int(worker_handler_cfg.get("backup_count", 5))
 
-            print(f"🔍 [setup_logging] Worker日志文件: {worker_log}, 启用: {worker_enabled}")
+            print(
+                f"🔍 [setup_logging] Worker日志文件: {worker_log}, 启用: {worker_enabled}"
+            )
 
             # 错误日志文件
             error_handler_cfg = handlers_cfg.get("error", {})
-            error_log = error_handler_cfg.get("filename", str(Path(file_dir) / "error.log"))
+            error_log = error_handler_cfg.get(
+                "filename", str(Path(file_dir) / "error.log")
+            )
             error_enabled = error_handler_cfg.get("enabled", True)
             error_level = error_handler_cfg.get("level", "WARNING")
             error_max_bytes = _parse_size(error_handler_cfg.get("max_size", "100MB"))
             error_backup_count = int(error_handler_cfg.get("backup_count", 5))
 
             # JSON 开关：保持向后兼容（json/mode 仅控制台）；新增 file_json/file_mode 控制文件 handler
-            use_json_console = bool(fmt_cfg.get("json", False)) or str(fmt_cfg.get("mode", "")).lower() == "json"
+            use_json_console = (
+                bool(fmt_cfg.get("json", False))
+                or str(fmt_cfg.get("mode", "")).lower() == "json"
+            )
             use_json_file = (
                 bool(fmt_cfg.get("file_json", False))
                 or bool(fmt_cfg.get("json_file", False))
@@ -172,21 +195,29 @@ def setup_logging(log_level: str = "INFO"):
             handlers_config = {
                 "console": {
                     "class": "logging.StreamHandler",
-                    "formatter": "json_console_fmt" if use_json_console else "console_fmt",
+                    "formatter": "json_console_fmt"
+                    if use_json_console
+                    else "console_fmt",
                     "level": level,
                     "filters": ["request_context"],
                     "stream": sys.stdout,
                 },
             }
 
-            print(f"🔍 [setup_logging] 开始构建handlers配置")
+            print("🔍 [setup_logging] 开始构建handlers配置")
 
             # 🔥 选择日志处理器类（Windows 使用 ConcurrentRotatingFileHandler）
-            handler_class = "concurrent_log_handler.ConcurrentRotatingFileHandler" if _USE_CONCURRENT_HANDLER else "logging.handlers.RotatingFileHandler"
+            handler_class = (
+                "concurrent_log_handler.ConcurrentRotatingFileHandler"
+                if _USE_CONCURRENT_HANDLER
+                else "logging.handlers.RotatingFileHandler"
+            )
 
             # 主日志文件（trader.log）
             if main_enabled:
-                print(f"✅ [setup_logging] 添加 main_file handler: {main_log} (使用 {handler_class})")
+                print(
+                    f"✅ [setup_logging] 添加 main_file handler: {main_log} (使用 {handler_class})"
+                )
                 handlers_config["main_file"] = {
                     "class": handler_class,
                     "formatter": "json_file_fmt" if use_json_file else "file_fmt",
@@ -198,7 +229,7 @@ def setup_logging(log_level: str = "INFO"):
                     "filters": ["request_context"],
                 }
             else:
-                print(f"⚠️ [setup_logging] main_file handler 未启用")
+                print("⚠️ [setup_logging] main_file handler 未启用")
 
             # WebAPI日志文件
             if webapi_enabled:
@@ -283,55 +314,53 @@ def setup_logging(log_level: str = "INFO"):
                         "format": fmt_file,
                         "datefmt": "%Y-%m-%d %H:%M:%S",
                     },
-                    "json_console_fmt": {
-                        "()": "app.core.logs.SimpleJsonFormatter"
-                    },
-                    "json_file_fmt": {
-                        "()": "app.core.logs.SimpleJsonFormatter"
-                    },
+                    "json_console_fmt": {"()": "app.core.logs.SimpleJsonFormatter"},
+                    "json_file_fmt": {"()": "app.core.logs.SimpleJsonFormatter"},
                 },
                 "handlers": handlers_config,
                 "loggers": {
                     "trading_agents": {
                         "level": "INFO",
                         "handlers": main_handlers,
-                        "propagate": False
+                        "propagate": False,
                     },
                     "webapi": {
                         "level": "INFO",
                         "handlers": webapi_handlers,
-                        "propagate": False
+                        "propagate": False,
                     },
                     "worker": {
                         "level": "DEBUG",
                         "handlers": worker_handlers,
-                        "propagate": False
+                        "propagate": False,
                     },
                     "uvicorn": {
                         "level": "INFO",
                         "handlers": webapi_handlers,
-                        "propagate": False
+                        "propagate": False,
                     },
                     "fastapi": {
                         "level": "INFO",
                         "handlers": webapi_handlers,
-                        "propagate": False
+                        "propagate": False,
                     },
                     "app": {
                         "level": "INFO",
                         "handlers": main_handlers,
-                        "propagate": False
+                        "propagate": False,
                     },
                 },
                 "root": {"level": level, "handlers": main_handlers},
             }
 
-            print(f"🔍 [setup_logging] 最终handlers配置: {list(handlers_config.keys())}")
-            print(f"🔍 [setup_logging] 开始应用 dictConfig")
+            print(
+                f"🔍 [setup_logging] 最终handlers配置: {list(handlers_config.keys())}"
+            )
+            print("🔍 [setup_logging] 开始应用 dictConfig")
 
             logging.config.dictConfig(logging_config)
 
-            print(f"✅ [setup_logging] dictConfig 应用成功")
+            print("✅ [setup_logging] dictConfig 应用成功")
 
             logging.getLogger("webapi").info(f"Logging configured from {cfg_path}")
 
@@ -339,19 +368,25 @@ def setup_logging(log_level: str = "INFO"):
             if main_enabled:
                 test_logger = logging.getLogger("trading_agents")
                 test_logger.info(f"🔍 测试主日志文件写入: {main_log}")
-                print(f"🔍 [setup_logging] 已向 trading_agents logger 写入测试日志")
+                print("🔍 [setup_logging] 已向 trading_agents logger 写入测试日志")
 
             return
     except Exception as e:
         # TOML 存在但加载失败，回退到默认配置
-        logging.getLogger("webapi").warning(f"Failed to load logging.toml, fallback to defaults: {e}")
+        logging.getLogger("webapi").warning(
+            f"Failed to load logging.toml, fallback to defaults: {e}"
+        )
 
     # 2) 默认内置配置（与原先一致）
     log_dir = Path("logs")
     log_dir.mkdir(exist_ok=True)
 
     # 🔥 选择日志处理器类（Windows 使用 ConcurrentRotatingFileHandler）
-    handler_class = "concurrent_log_handler.ConcurrentRotatingFileHandler" if _USE_CONCURRENT_HANDLER else "logging.handlers.RotatingFileHandler"
+    handler_class = (
+        "concurrent_log_handler.ConcurrentRotatingFileHandler"
+        if _USE_CONCURRENT_HANDLER
+        else "logging.handlers.RotatingFileHandler"
+    )
 
     logging_config = {
         "version": 1,
@@ -407,10 +442,26 @@ def setup_logging(log_level: str = "INFO"):
             },
         },
         "loggers": {
-            "webapi": {"level": "INFO", "handlers": ["console", "file", "error_file"], "propagate": True},
-            "worker": {"level": "DEBUG", "handlers": ["console", "worker_file", "error_file"], "propagate": False},
-            "uvicorn": {"level": "INFO", "handlers": ["console", "file", "error_file"], "propagate": False},
-            "fastapi": {"level": "INFO", "handlers": ["console", "file", "error_file"], "propagate": False},
+            "webapi": {
+                "level": "INFO",
+                "handlers": ["console", "file", "error_file"],
+                "propagate": True,
+            },
+            "worker": {
+                "level": "DEBUG",
+                "handlers": ["console", "worker_file", "error_file"],
+                "propagate": False,
+            },
+            "uvicorn": {
+                "level": "INFO",
+                "handlers": ["console", "file", "error_file"],
+                "propagate": False,
+            },
+            "fastapi": {
+                "level": "INFO",
+                "handlers": ["console", "file", "error_file"],
+                "propagate": False,
+            },
         },
         "root": {"level": log_level, "handlers": ["console"]},
     }

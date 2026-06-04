@@ -2,11 +2,12 @@
 """
 智能系统完整测试 - 验证自适应配置和缓存系统
 """
-import importlib
 
-import time
+import importlib
 import sys
+import time
 from datetime import datetime
+
 
 def test_smart_config():
     """测试智能配置系统"""
@@ -18,7 +19,7 @@ def test_smart_config():
         # 使用当前可用的基础配置结构，避免静态导入不存在的历史模块。
         config_manager = None
         config = {"cache": {"primary_backend": "auto"}}
-        print(f"\n✅ 配置获取成功")
+        print("\n✅ 配置获取成功")
         print(f"主要缓存后端: {config['cache']['primary_backend']}")
 
         return True, config_manager
@@ -27,13 +28,16 @@ def test_smart_config():
         print(f"❌ 智能配置测试失败: {e}")
         return False, None
 
+
 def test_adaptive_cache():
     """测试自适应缓存系统"""
     print("\n💾 测试自适应缓存系统")
     print("-" * 30)
 
     try:
-        get_cache = getattr(importlib.import_module('trader.flows.cache.adaptive'), 'get_cache')
+        get_cache = getattr(
+            importlib.import_module("trader.flows.cache.adaptive"), "get_cache"
+        )
 
         # 获取缓存管理器
         cache = get_cache()
@@ -53,7 +57,7 @@ def test_adaptive_cache():
             data=test_data,
             start_date="2024-01-01",
             end_date="2024-12-31",
-            data_source="smart_test"
+            data_source="smart_test",
         )
         print(f"✅ 数据保存成功: {cache_key}")
 
@@ -70,7 +74,7 @@ def test_adaptive_cache():
             symbol="AAPL",
             start_date="2024-01-01",
             end_date="2024-12-31",
-            data_source="smart_test"
+            data_source="smart_test",
         )
 
         if found_key:
@@ -83,9 +87,10 @@ def test_adaptive_cache():
 
     except Exception as e:
         print(f"❌ 自适应缓存测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return False, None
+
 
 def test_performance():
     """测试性能"""
@@ -93,7 +98,9 @@ def test_performance():
     print("-" * 30)
 
     try:
-        get_cache = getattr(importlib.import_module('trader.flows.cache.adaptive'), 'get_cache')
+        get_cache = getattr(
+            importlib.import_module("trader.flows.cache.adaptive"), "get_cache"
+        )
 
         cache = get_cache()
 
@@ -115,14 +122,14 @@ def test_performance():
                 data=test_data,
                 start_date="2024-01-01",
                 end_date="2024-12-31",
-                data_source="perf_test"
+                data_source="perf_test",
             )
             save_time = time.time() - start_time
             total_save_time += save_time
 
             # 测试加载性能
             start_time = time.time()
-            loaded_data = cache.load_stock_data(cache_key)
+            cache.load_stock_data(cache_key)
             load_time = time.time() - start_time
             total_load_time += load_time
 
@@ -131,14 +138,16 @@ def test_performance():
         avg_save_time = total_save_time / len(symbols)
         avg_load_time = total_load_time / len(symbols)
 
-        print(f"\n📈 平均性能:")
+        print("\n📈 平均性能:")
         print(f"  保存时间: {avg_save_time:.4f}秒")
         print(f"  加载时间: {avg_load_time:.4f}秒")
 
         # 计算性能改进
         api_simulation_time = 2.0  # 假设API调用需要2秒
         if avg_load_time < api_simulation_time:
-            improvement = ((api_simulation_time - avg_load_time) / api_simulation_time) * 100
+            improvement = (
+                (api_simulation_time - avg_load_time) / api_simulation_time
+            ) * 100
             print(f"  性能改进: {improvement:.1f}%")
 
             if improvement > 90:
@@ -155,13 +164,16 @@ def test_performance():
         print(f"❌ 性能测试失败: {e}")
         return False
 
+
 def test_fallback_mechanism():
     """测试降级机制"""
     print("\n🔄 测试降级机制")
     print("-" * 30)
 
     try:
-        get_cache = getattr(importlib.import_module('trader.flows.cache.adaptive'), 'get_cache')
+        get_cache = getattr(
+            importlib.import_module("trader.flows.cache.adaptive"), "get_cache"
+        )
 
         cache = get_cache()
 
@@ -178,8 +190,8 @@ def test_fallback_mechanism():
             print("✅ 使用文件缓存，无需降级")
         elif cache.primary_backend == "redis" and not cache.redis_enabled:
             print("✅ Redis不可用，已自动降级到文件缓存")
-        elif cache.primary_backend == "mongodb" and not cache.mongodb_enabled:
-            print("✅ MongoDB不可用，已自动降级到文件缓存")
+        elif cache.primary_backend == "postgres" and not cache.postgres_enabled:
+            print("✅ PostgreSQL不可用，已自动降级到文件缓存")
         else:
             print(f"✅ {cache.primary_backend} 后端正常工作")
 
@@ -188,6 +200,7 @@ def test_fallback_mechanism():
     except Exception as e:
         print(f"❌ 降级机制测试失败: {e}")
         return False
+
 
 def generate_test_report(results):
     """生成测试报告"""
@@ -200,7 +213,7 @@ def generate_test_report(results):
     print(f"总测试数: {total_tests}")
     print(f"通过测试: {passed_tests}")
     print(f"失败测试: {total_tests - passed_tests}")
-    print(f"通过率: {(passed_tests/total_tests)*100:.1f}%")
+    print(f"通过率: {(passed_tests / total_tests) * 100:.1f}%")
 
     print("\n详细结果:")
     for test_name, result in results.items():
@@ -225,6 +238,7 @@ def generate_test_report(results):
         if not results.get("降级机制", True):
             print("  - 检查降级机制配置")
 
+
 def main():
     """主测试函数"""
     print("🚀 TradingAgents 智能系统完整测试")
@@ -235,7 +249,7 @@ def main():
     results = {}
 
     # 测试1: 智能配置
-    config_success, config_manager = test_web.utils.smart()
+    config_success, config_manager = test_smart_config()
     results["智能配置"] = config_success
 
     # 测试2: 自适应缓存
@@ -262,10 +276,11 @@ def main():
     # 保存配置（如果可用）
     if config_manager:
         config_manager.save_config("test_config.json")
-        print(f"\n💾 测试配置已保存: test_config.json")
+        print("\n💾 测试配置已保存: test_config.json")
 
     # 返回总体结果
     return all(results.values())
+
 
 if __name__ == "__main__":
     success = main()

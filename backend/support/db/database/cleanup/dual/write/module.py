@@ -1,20 +1,20 @@
 from types import SimpleNamespace
 
 import pytest
-from bson import ObjectId
 
+from app.db.ids import DocumentId
 from app.services.database import cleanup
 
 
 @pytest.mark.asyncio
 async def test_cleanup_analysis_results_dual_writes_analysis_tombstones(monkeypatch):
     analysis_task = {
-        "_id": ObjectId(),
+        "_id": DocumentId(),
         "task_id": "task-1",
         "status": "completed",
     }
     analysis_result = {
-        "_id": ObjectId(),
+        "_id": DocumentId(),
         "task_id": "task-1",
         "status": "completed",
     }
@@ -28,7 +28,7 @@ async def test_cleanup_analysis_results_dual_writes_analysis_tombstones(monkeypa
         dual_write_calls.append((collection, documents))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(cleanup, "get_mongo_db", lambda: db)
+    monkeypatch.setattr(cleanup, "get_postgres_db", lambda: db)
     monkeypatch.setattr(cleanup, "dual_write_hot_documents", fake_dual_write)
 
     result = await cleanup.cleanup_analysis_results(days=90)
@@ -44,8 +44,8 @@ async def test_cleanup_analysis_results_dual_writes_analysis_tombstones(monkeypa
 
 @pytest.mark.asyncio
 async def test_cleanup_old_data_dual_writes_session_security_tombstones(monkeypatch):
-    user_session = {"_id": ObjectId(), "session_id": "sess-1", "user_id": "user-1"}
-    login_attempt = {"_id": ObjectId(), "username": "admin", "success": False}
+    user_session = {"_id": DocumentId(), "session_id": "sess-1", "user_id": "user-1"}
+    login_attempt = {"_id": DocumentId(), "username": "admin", "success": False}
     db = SimpleNamespace(
         analysis_tasks=FakeCollection([]),
         user_sessions=FakeCollection([user_session]),
@@ -57,7 +57,7 @@ async def test_cleanup_old_data_dual_writes_session_security_tombstones(monkeypa
         dual_write_calls.append((collection, documents))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(cleanup, "get_mongo_db", lambda: db)
+    monkeypatch.setattr(cleanup, "get_postgres_db", lambda: db)
     monkeypatch.setattr(cleanup, "dual_write_hot_documents", fake_dual_write)
 
     result = await cleanup.cleanup_old_data(days=90)
@@ -72,10 +72,12 @@ async def test_cleanup_old_data_dual_writes_session_security_tombstones(monkeypa
 
 
 @pytest.mark.asyncio
-async def test_cleanup_operation_logs_dual_writes_security_and_operation_tombstones(monkeypatch):
-    user_session = {"_id": ObjectId(), "session_id": "sess-1", "user_id": "user-1"}
-    login_attempt = {"_id": ObjectId(), "username": "admin", "success": False}
-    operation_log = {"_id": ObjectId(), "user_id": "user-1", "action_type": "login"}
+async def test_cleanup_operation_logs_dual_writes_security_and_operation_tombstones(
+    monkeypatch,
+):
+    user_session = {"_id": DocumentId(), "session_id": "sess-1", "user_id": "user-1"}
+    login_attempt = {"_id": DocumentId(), "username": "admin", "success": False}
+    operation_log = {"_id": DocumentId(), "user_id": "user-1", "action_type": "login"}
     db = SimpleNamespace(
         user_sessions=FakeCollection([user_session]),
         login_attempts=FakeCollection([login_attempt]),
@@ -87,7 +89,7 @@ async def test_cleanup_operation_logs_dual_writes_security_and_operation_tombsto
         dual_write_calls.append((collection, documents))
         return SimpleNamespace(status="written", reason="")
 
-    monkeypatch.setattr(cleanup, "get_mongo_db", lambda: db)
+    monkeypatch.setattr(cleanup, "get_postgres_db", lambda: db)
     monkeypatch.setattr(cleanup, "dual_write_hot_documents", fake_dual_write)
 
     result = await cleanup.cleanup_operation_logs(days=90)

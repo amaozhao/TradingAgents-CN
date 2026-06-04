@@ -42,7 +42,8 @@ def _favorite_to_dict(row: UserFavorite) -> dict[str, Any]:
         "stock_code": row.stock_code,
         "stock_name": row.stock_name,
         "market": row.market,
-        "added_at": payload.get("added_at") or (row.created_at.isoformat() if row.created_at else None),
+        "added_at": payload.get("added_at")
+        or (row.created_at.isoformat() if row.created_at else None),
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
     }
     data.pop("_id", None)
@@ -56,6 +57,8 @@ def _tag_to_dict(row: UserTag) -> dict[str, Any]:
         "name": row.name,
         "color": row.color or "#409EFF",
         "sort_order": row.sort_order or 0,
-        "created_at": payload.get("created_at") or (row.created_at.isoformat() if row.created_at else None),
-        "updated_at": payload.get("updated_at") or (row.updated_at.isoformat() if row.updated_at else None),
+        "created_at": payload.get("created_at")
+        or (row.created_at.isoformat() if row.created_at else None),
+        "updated_at": payload.get("updated_at")
+        or (row.updated_at.isoformat() if row.updated_at else None),
     }

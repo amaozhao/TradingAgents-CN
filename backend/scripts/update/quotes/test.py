@@ -2,13 +2,8 @@
 """测试更新行情功能"""
 
 import asyncio
-import sys
-from pathlib import Path
 
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from app.core.database import init_database, get_mongo_db
+from app.core.database import get_postgres_db, init_database
 from app.services.stocks.service import get_stock_data_service
 
 
@@ -31,7 +26,7 @@ async def main():
     }
 
     # 测试更新
-    print(f"\n📊 测试更新股票 603175 的行情...")
+    print("\n📊 测试更新股票 603175 的行情...")
     print(f"   数据: {quote_data}")
 
     success = await service.update_market_quotes("603175", quote_data)
@@ -40,16 +35,16 @@ async def main():
         print("✅ 更新成功")
 
         # 验证数据
-        db = get_mongo_db()
+        db = get_postgres_db()
         record = await db.market_quotes.find_one({"symbol": "603175"})
 
         if record:
-            print(f"\n📋 验证数据:")
+            print("\n📋 验证数据:")
             print(f"   symbol: {record.get('symbol')}")
             print(f"   code: {record.get('code')}")
             print(f"   price: {record.get('price')}")
 
-            if record.get('code') == "603175":
+            if record.get("code") == "603175":
                 print("\n✅ code 字段正确设置！")
             else:
                 print(f"\n❌ code 字段错误: {record.get('code')}")
@@ -59,8 +54,8 @@ async def main():
         print("❌ 更新失败")
 
     # 检查是否还有 code=null 的记录
-    db = get_mongo_db()
-    null_count = await db.market_quotes.count_documents({'code': None})
+    db = get_postgres_db()
+    null_count = await db.market_quotes.count_documents({"code": None})
     print(f"\n📊 code=null 的记录数: {null_count}")
 
     if null_count == 0:

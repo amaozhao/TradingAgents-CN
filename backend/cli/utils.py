@@ -123,18 +123,17 @@ def filter_analysts_for_asset_type(
 ) -> List[AnalystType]:
     if asset_type != AssetType.CRYPTO:
         return analysts
-    return [
-        analyst
-        for analyst in analysts
-        if analyst != AnalystType.FUNDAMENTALS
-    ]
+    return [analyst for analyst in analysts if analyst != AnalystType.FUNDAMENTALS]
 
 
 def get_ticker() -> str:
     """Prompt the user to enter a ticker symbol."""
     ticker = questionary.text(
         "请输入要分析的股票代码 | Enter the ticker symbol to analyze:",
-        validate=lambda x: len(x.strip()) > 0 or "请输入有效的股票代码 | Please enter a valid ticker symbol.",
+        validate=lambda x: (
+            len(x.strip()) > 0
+            or "请输入有效的股票代码 | Please enter a valid ticker symbol."
+        ),
         style=questionary.Style(
             [
                 ("text", "fg:green"),
@@ -144,7 +143,9 @@ def get_ticker() -> str:
     ).ask()
 
     if not ticker:
-        logger.info("\n[red]未提供股票代码，退出程序... | No ticker symbol provided. Exiting...[/red]")
+        logger.info(
+            "\n[red]未提供股票代码，退出程序... | No ticker symbol provided. Exiting...[/red]"
+        )
         exit(1)
 
     return normalize_ticker_symbol(ticker)
@@ -164,8 +165,10 @@ def get_analysis_date() -> str:
 
     date = questionary.text(
         "请输入分析日期 (YYYY-MM-DD) | Enter the analysis date (YYYY-MM-DD):",
-        validate=lambda x: validate_date(x.strip())
-        or "请输入有效的日期格式 YYYY-MM-DD | Please enter a valid date in YYYY-MM-DD format.",
+        validate=lambda x: (
+            validate_date(x.strip())
+            or "请输入有效的日期格式 YYYY-MM-DD | Please enter a valid date in YYYY-MM-DD format."
+        ),
         style=questionary.Style(
             [
                 ("text", "fg:green"),
@@ -175,7 +178,9 @@ def get_analysis_date() -> str:
     ).ask()
 
     if not date:
-        logger.info("\n[red]未提供日期，退出程序... | No date provided. Exiting...[/red]")
+        logger.info(
+            "\n[red]未提供日期，退出程序... | No date provided. Exiting...[/red]"
+        )
         exit(1)
 
     return date.strip()
@@ -191,7 +196,9 @@ def select_analysts(ticker: Optional[str] = None) -> List[AnalystType]:
             for display, value in ANALYST_ORDER
             if value != AnalystType.SOCIAL
         ]
-        console.print(f"[yellow]💡 检测到A股代码 {ticker}，社交媒体分析师不可用（国内数据源限制）[/yellow]")
+        console.print(
+            f"[yellow]💡 检测到A股代码 {ticker}，社交媒体分析师不可用（国内数据源限制）[/yellow]"
+        )
 
     choices = questionary.checkbox(
         "选择您的分析师团队 | Select Your [Analysts Team]:",
@@ -200,7 +207,10 @@ def select_analysts(ticker: Optional[str] = None) -> List[AnalystType]:
             for display, value in available_analysts
         ],
         instruction="\n- 按空格键选择/取消选择分析师 | Press Space to select/unselect analysts\n- 按 'a' 键全选/取消全选 | Press 'a' to select/unselect all\n- 按回车键完成选择 | Press Enter when done",
-        validate=lambda x: len(x) > 0 or "您必须至少选择一个分析师 | You must select at least one analyst.",
+        validate=lambda x: (
+            len(x) > 0
+            or "您必须至少选择一个分析师 | You must select at least one analyst."
+        ),
         style=questionary.Style(
             [
                 ("checkbox-selected", "fg:green"),
@@ -212,7 +222,9 @@ def select_analysts(ticker: Optional[str] = None) -> List[AnalystType]:
     ).ask()
 
     if not choices:
-        logger.info("\n[red]未选择分析师，退出程序... | No analysts selected. Exiting...[/red]")
+        logger.info(
+            "\n[red]未选择分析师，退出程序... | No analysts selected. Exiting...[/red]"
+        )
         exit(1)
 
     return choices
@@ -221,16 +233,24 @@ def select_analysts(ticker: Optional[str] = None) -> List[AnalystType]:
 def select_research_depth() -> int:
     """Select research depth using an interactive selection."""
     depth_options = [
-        ("浅层 - 快速研究，少量辩论和策略讨论 | Shallow - Quick research, few debate rounds", 1),
-        ("中等 - 中等程度，适度的辩论和策略讨论 | Medium - Moderate debate and strategy discussion", 3),
-        ("深度 - 全面研究，深入的辩论和策略讨论 | Deep - Comprehensive research, in-depth debate", 5),
+        (
+            "浅层 - 快速研究，少量辩论和策略讨论 | Shallow - Quick research, few debate rounds",
+            1,
+        ),
+        (
+            "中等 - 中等程度，适度的辩论和策略讨论 | Medium - Moderate debate and strategy discussion",
+            3,
+        ),
+        (
+            "深度 - 全面研究，深入的辩论和策略讨论 | Deep - Comprehensive research, in-depth debate",
+            5,
+        ),
     ]
 
     choice = questionary.select(
         "选择您的研究深度 | Select Your [Research Depth]:",
         choices=[
-            questionary.Choice(display, value=value)
-            for display, value in depth_options
+            questionary.Choice(display, value=value) for display, value in depth_options
         ],
         instruction="\n- 使用方向键导航 | Use arrow keys to navigate\n- 按回车键选择 | Press Enter to select",
         style=questionary.Style(
@@ -243,7 +263,9 @@ def select_research_depth() -> int:
     ).ask()
 
     if choice is None:
-        logger.info("\n[red]未选择研究深度，退出程序... | No research depth selected. Exiting...[/red]")
+        logger.info(
+            "\n[red]未选择研究深度，退出程序... | No research depth selected. Exiting...[/red]"
+        )
         exit(1)
 
     return choice
@@ -252,10 +274,14 @@ def select_research_depth() -> int:
 def _prompt_custom_model_id() -> str:
     model_id = questionary.text(
         "请输入模型名称 | Enter model ID:",
-        validate=lambda x: len(x.strip()) > 0 or "请输入模型名称 | Please enter a model ID.",
+        validate=lambda x: (
+            len(x.strip()) > 0 or "请输入模型名称 | Please enter a model ID."
+        ),
     ).ask()
     if not model_id:
-        logger.info("\n[red]未输入模型名称，退出程序... | No model ID entered. Exiting...[/red]")
+        logger.info(
+            "\n[red]未输入模型名称，退出程序... | No model ID entered. Exiting...[/red]"
+        )
         exit(1)
     return model_id.strip()
 
@@ -265,8 +291,7 @@ def _select_model(provider: str, mode: str) -> str:
     choice = questionary.select(
         f"选择您的{'快速' if mode == 'quick' else '深度'}思考LLM引擎 | Select Your [{mode.title()}-Thinking LLM Engine]:",
         choices=[
-            questionary.Choice(display, value=value)
-            for display, value in options
+            questionary.Choice(display, value=value) for display, value in options
         ],
         instruction="\n- 使用方向键导航 | Use arrow keys to navigate\n- 按回车键选择 | Press Enter to select",
         style=questionary.Style(
@@ -279,7 +304,9 @@ def _select_model(provider: str, mode: str) -> str:
     ).ask()
 
     if choice is None:
-        logger.info(f"\n[red]未选择{mode}模型，退出程序... | No {mode} model selected. Exiting...[/red]")
+        logger.info(
+            f"\n[red]未选择{mode}模型，退出程序... | No {mode} model selected. Exiting...[/red]"
+        )
         exit(1)
 
     if choice == "custom":
@@ -364,11 +391,7 @@ def confirm_ollama_endpoint(url: str) -> None:
             "Ollama usually expects http://<host>:11434/v1."
         )
         return
-    if (
-        ":11434" not in url
-        and "://localhost" not in url
-        and "://127.0.0.1" not in url
-    ):
+    if ":11434" not in url and "://localhost" not in url and "://127.0.0.1" not in url:
         console.print("Note: remote Ollama endpoints usually include port 11434.")
 
 
@@ -394,7 +417,9 @@ def ask_output_language() -> str:
     if choice == "custom":
         custom = questionary.text(
             "请输入语言名称 | Enter language name:",
-            validate=lambda x: len(x.strip()) > 0 or "请输入语言名称 | Please enter a language name.",
+            validate=lambda x: (
+                len(x.strip()) > 0 or "请输入语言名称 | Please enter a language name."
+            ),
         ).ask()
         return custom.strip() if custom else "Chinese"
     return choice or "Chinese"
@@ -423,7 +448,9 @@ def select_llm_provider() -> tuple[str, str]:
     ).ask()
 
     if choice is None:
-        logger.info("\n[red]未选择LLM提供商，退出程序... | No LLM provider selected. Exiting...[/red]")
+        logger.info(
+            "\n[red]未选择LLM提供商，退出程序... | No LLM provider selected. Exiting...[/red]"
+        )
         exit(1)
 
     provider_key, url = choice
@@ -436,7 +463,9 @@ def select_llm_provider() -> tuple[str, str]:
         ).ask()
 
         if not custom_url:
-            logger.info("\n[red]未输入自定义URL，退出程序... | No custom URL entered. Exiting...[/red]")
+            logger.info(
+                "\n[red]未输入自定义URL，退出程序... | No custom URL entered. Exiting...[/red]"
+            )
             exit(1)
 
         url = custom_url.strip()

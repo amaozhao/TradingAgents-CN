@@ -2,7 +2,9 @@
 测试所有数据源的历史数据天数修复
 验证 Tushare、AKShare、BaoStock 的 historical_days 参数是否正确工作
 """
+
 from datetime import datetime, timedelta
+
 
 def test_date_calculation():
     """测试日期计算逻辑"""
@@ -24,9 +26,9 @@ def test_date_calculation():
     end_date = datetime.now()
 
     for days, description in test_cases:
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"📊 测试: {description} (historical_days={days})")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
 
         # 模拟三个数据源的计算逻辑
         for source in ["Tushare", "AKShare", "BaoStock"]:
@@ -35,17 +37,22 @@ def test_date_calculation():
             # 统一的计算逻辑
             if days >= 3650:
                 start_date = "1990-01-01"
-                print(f"    ✅ 使用全历史模式")
-                print(f"    📅 日期范围: {start_date} 到 {end_date.strftime('%Y-%m-%d')}")
+                print("    ✅ 使用全历史模式")
+                print(
+                    f"    📅 日期范围: {start_date} 到 {end_date.strftime('%Y-%m-%d')}"
+                )
                 actual_days = (end_date - datetime(1990, 1, 1)).days
             else:
-                start_date = (end_date - timedelta(days=days)).strftime('%Y-%m-%d')
-                print(f"    ✅ 使用指定天数模式")
-                print(f"    📅 日期范围: {start_date} 到 {end_date.strftime('%Y-%m-%d')}")
+                start_date = (end_date - timedelta(days=days)).strftime("%Y-%m-%d")
+                print("    ✅ 使用指定天数模式")
+                print(
+                    f"    📅 日期范围: {start_date} 到 {end_date.strftime('%Y-%m-%d')}"
+                )
                 actual_days = days
 
             print(f"    📈 实际天数: {actual_days}天")
             print(f"    📊 预计交易日: ~{int(actual_days * 0.68)}天（按68%交易日比例）")
+
 
 def print_summary():
     """打印总结信息"""
@@ -85,7 +92,9 @@ def print_summary():
     print("  if historical_days >= 3650:")
     print("      start_date = '1990-01-01'  # 全历史同步")
     print("  else:")
-    print("      start_date = (now - timedelta(days=historical_days)).strftime('%Y-%m-%d')")
+    print(
+        "      start_date = (now - timedelta(days=historical_days)).strftime('%Y-%m-%d')"
+    )
 
     print("\n" + "=" * 80)
     print("💡 使用方法")
@@ -155,7 +164,7 @@ def print_summary():
     print("   - BaoStock: 无明确限制")
 
     print("\n3. 数据存储:")
-    print("   - 全历史数据约占用: 2-5GB MongoDB存储空间")
+    print("   - 全历史数据约占用: 2-5GB PostgreSQL存储空间")
     print("   - 建议确保有足够的磁盘空间")
 
     print("\n4. 增量更新:")
@@ -185,9 +194,12 @@ def print_summary():
     print("  2. 只更新需要的数据类型")
     print("  3. 耗时约5-10分钟")
     print()
-    print("  python cli/tushare_init.py --full --sync-items historical --historical-days 5")
+    print(
+        "  python cli/tushare_init.py --full --sync-items historical --historical-days 5"
+    )
 
     print("\n" + "=" * 80)
+
 
 def main():
     """主函数"""
@@ -203,6 +215,7 @@ def main():
 
     print("\n✅ 测试完成！")
     print()
+
 
 if __name__ == "__main__":
     main()

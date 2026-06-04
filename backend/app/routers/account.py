@@ -2,21 +2,21 @@
 基于数据库的认证路由 - 改进版
 替代原有的基于配置文件的认证机制
 """
+
 import importlib
-
 import time
-from typing import Any, Dict, Optional
 from datetime import datetime
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
-from app.services.auth import AuthService
-from app.services.user import user_service
 from app.core.config import settings
-from app.models.user import UserCreate, UserUpdate
-from app.services.operation import log_operation
 from app.models.operations import ActionType
+from app.models.user import UserCreate
+from app.services.auth import AuthService
+from app.services.operation import log_operation
+from app.services.user import user_service
 
 # 尝试导入日志管理器
 try:
@@ -24,10 +24,13 @@ try:
 except ImportError:
     # 如果导入失败，使用标准日志
     import logging
+
     def get_logger(name: str) -> logging.Logger:
         return logging.getLogger(name)
 
-logger = get_logger('auth_db')
+
+logger = get_logger("auth_db")
+
 
 # 统一响应格式
 class ApiResponse(BaseModel):
@@ -35,11 +38,14 @@ class ApiResponse(BaseModel):
     data: dict = {}
     message: str = ""
 
+
 router = APIRouter()
+
 
 class LoginRequest(BaseModel):
     username: str
     password: str
+
 
 class LoginResponse(BaseModel):
     access_token: str
@@ -47,21 +53,26 @@ class LoginResponse(BaseModel):
     expires_in: int
     user: dict
 
+
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
 
 class RefreshTokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
 
+
 class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str
 
+
 class ResetPasswordRequest(BaseModel):
     username: str
     new_password: str
+
 
 class CreateUserRequest(BaseModel):
     username: str
@@ -79,10 +90,13 @@ class UpdateMeRequest(BaseModel):
     preferences: Optional[Dict[str, Any]] = None
     language: Optional[str] = None
 
+
 async def get_current_user(authorization: Optional[str] = Header(default=None)) -> dict:
     """获取当前用户信息"""
-    logger.debug(f"🔐 认证检查开始")
-    logger.debug(f"📋 Authorization header: {authorization[:50] if authorization else 'None'}...")
+    logger.debug("🔐 认证检查开始")
+    logger.debug(
+        f"📋 Authorization header: {authorization[:50] if authorization else 'None'}..."
+    )
 
     if not authorization:
         logger.warning("❌ 没有Authorization header")
@@ -115,7 +129,7 @@ async def get_current_user(authorization: Optional[str] = Header(default=None)) 
                 "name": "admin",
                 "is_admin": True,
                 "roles": ["admin"],
-                "preferences": {}
+                "preferences": {},
             }
         logger.warning(f"❌ 用户不存在: {token_data.sub}")
         raise HTTPException(status_code=401, detail="User not found")
@@ -134,8 +148,9 @@ async def get_current_user(authorization: Optional[str] = Header(default=None)) 
         "name": user.username,
         "is_admin": user.is_admin,
         "roles": ["admin"] if user.is_admin else ["user"],
-        "preferences": user.preferences.model_dump() if user.preferences else {}
+        "preferences": user.preferences.model_dump() if user.preferences else {},
     }
+
 
 @router.post("/login", response_model=ApiResponse)
 async def login(payload: LoginRequest, request: Request):
@@ -151,7 +166,7 @@ async def login(payload: LoginRequest, request: Request):
     try:
         # 验证输入
         if not payload.username or not payload.password:
-            logger.warning(f"❌ 登录失败 - 用户名或密码为空")
+            logger.warning("❌ 登录失败 - 用户名或密码为空")
             await log_operation(
                 user_id="unknown",
                 username=payload.username or "unknown",
@@ -162,7 +177,7 @@ async def login(payload: LoginRequest, request: Request):
                 error_message="用户名和密码不能为空",
                 duration_ms=int((time.time() - start_time) * 1000),
                 ip_address=ip_address,
-                user_agent=user_agent
+                user_agent=user_agent,
             )
             raise HTTPException(status_code=400, detail="用户名和密码不能为空")
 
@@ -185,13 +200,15 @@ async def login(payload: LoginRequest, request: Request):
                 error_message="用户名或密码错误",
                 duration_ms=int((time.time() - start_time) * 1000),
                 ip_address=ip_address,
-                user_agent=user_agent
+                user_agent=user_agent,
             )
             raise HTTPException(status_code=401, detail="用户名或密码错误")
 
         # 生成 token
         token = AuthService.create_access_token(sub=user.username)
-        refresh_token = AuthService.create_access_token(sub=user.username, expires_delta=60*60*24*7)  # 7天有效期
+        refresh_token = AuthService.create_access_token(
+            sub=user.username, expires_delta=60 * 60 * 24 * 7
+        )  # 7天有效期
 
         # 记录登录成功日志
         await log_operation(
@@ -203,7 +220,7 @@ async def login(payload: LoginRequest, request: Request):
             success=True,
             duration_ms=int((time.time() - start_time) * 1000),
             ip_address=ip_address,
-            user_agent=user_agent
+            user_agent=user_agent,
         )
 
         return {
@@ -217,10 +234,10 @@ async def login(payload: LoginRequest, request: Request):
                     "username": user.username,
                     "email": user.email,
                     "name": user.username,
-                    "is_admin": user.is_admin
-                }
+                    "is_admin": user.is_admin,
+                },
             },
-            "message": "登录成功"
+            "message": "登录成功",
         }
     except HTTPException:
         raise
@@ -236,16 +253,19 @@ async def login(payload: LoginRequest, request: Request):
             error_message=f"系统错误: {str(e)}",
             duration_ms=int((time.time() - start_time) * 1000),
             ip_address=ip_address,
-            user_agent=user_agent
+            user_agent=user_agent,
         )
         raise HTTPException(status_code=500, detail="登录过程中发生系统错误")
+
 
 @router.post("/refresh", response_model=ApiResponse)
 async def refresh_token(payload: RefreshTokenRequest):
     """刷新访问令牌"""
     try:
-        logger.debug(f"🔄 收到refresh token请求")
-        logger.debug(f"📝 Refresh token长度: {len(payload.refresh_token) if payload.refresh_token else 0}")
+        logger.debug("🔄 收到refresh token请求")
+        logger.debug(
+            f"📝 Refresh token长度: {len(payload.refresh_token) if payload.refresh_token else 0}"
+        )
 
         if not payload.refresh_token:
             logger.warning("❌ Refresh token为空")
@@ -269,24 +289,27 @@ async def refresh_token(payload: RefreshTokenRequest):
 
         # 生成新的tokens
         new_token = AuthService.create_access_token(sub=token_data.sub)
-        new_refresh_token = AuthService.create_access_token(sub=token_data.sub, expires_delta=60*60*24*7)
+        new_refresh_token = AuthService.create_access_token(
+            sub=token_data.sub, expires_delta=60 * 60 * 24 * 7
+        )
 
-        logger.debug(f"🎉 新token生成成功")
+        logger.debug("🎉 新token生成成功")
 
         return {
             "success": True,
             "data": {
                 "access_token": new_token,
                 "refresh_token": new_refresh_token,
-                "expires_in": 60 * 60
+                "expires_in": 60 * 60,
             },
-            "message": "Token刷新成功"
+            "message": "Token刷新成功",
         }
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"❌ Refresh token处理异常: {str(e)}")
         raise HTTPException(status_code=401, detail=f"Token refresh failed: {str(e)}")
+
 
 @router.post("/logout", response_model=ApiResponse)
 async def logout(request: Request, user: dict = Depends(get_current_user)):
@@ -308,40 +331,29 @@ async def logout(request: Request, user: dict = Depends(get_current_user)):
             success=True,
             duration_ms=int((time.time() - start_time) * 1000),
             ip_address=ip_address,
-            user_agent=user_agent
+            user_agent=user_agent,
         )
 
-        return {
-            "success": True,
-            "data": {},
-            "message": "登出成功"
-        }
+        return {"success": True, "data": {}, "message": "登出成功"}
     except Exception as e:
         logger.error(f"记录登出日志失败: {e}")
-        return {
-            "success": True,
-            "data": {},
-            "message": "登出成功"
-        }
+        return {"success": True, "data": {}, "message": "登出成功"}
+
 
 @router.get("/me", response_model=ApiResponse)
 async def me(user: dict = Depends(get_current_user)):
     """获取当前用户信息"""
-    return {
-        "success": True,
-        "data": user,
-        "message": "获取用户信息成功"
-    }
+    return {"success": True, "data": user, "message": "获取用户信息成功"}
+
 
 @router.put("/me", response_model=ApiResponse)
-async def update_me(
-    payload: UpdateMeRequest,
-    user: dict = Depends(get_current_user)
-):
+async def update_me(payload: UpdateMeRequest, user: dict = Depends(get_current_user)):
     """更新当前用户信息"""
     try:
-        UserUpdate = getattr(importlib.import_module('app.models.user'), 'UserUpdate')
-        UserPreferences = getattr(importlib.import_module('app.models.user'), 'UserPreferences')
+        UserUpdate = getattr(importlib.import_module("app.models.user"), "UserUpdate")
+        UserPreferences = getattr(
+            importlib.import_module("app.models.user"), "UserPreferences"
+        )
 
         payload_data = payload.model_dump(exclude_unset=True)
 
@@ -385,7 +397,7 @@ async def update_me(
         return {
             "success": True,
             "data": updated_user.model_dump(by_alias=True),
-            "message": "用户信息更新成功"
+            "message": "用户信息更新成功",
         }
     except HTTPException:
         raise
@@ -393,40 +405,36 @@ async def update_me(
         logger.error(f"更新用户信息失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"更新用户信息失败: {str(e)}")
 
+
 @router.post("/change-password", response_model=ApiResponse)
 async def change_password(
     payload: ChangePasswordRequest,
     request: Request,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(get_current_user),
 ):
     """修改密码"""
     try:
         # 使用数据库服务修改密码
         success = await user_service.change_password(
-            user["username"],
-            payload.old_password,
-            payload.new_password
+            user["username"], payload.old_password, payload.new_password
         )
 
         if not success:
             raise HTTPException(status_code=400, detail="旧密码错误")
 
-        return {
-            "success": True,
-            "data": {},
-            "message": "密码修改成功"
-        }
+        return {"success": True, "data": {}, "message": "密码修改成功"}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"修改密码失败: {e}")
         raise HTTPException(status_code=500, detail=f"修改密码失败: {str(e)}")
 
+
 @router.post("/reset-password", response_model=ApiResponse)
 async def reset_password(
     payload: ResetPasswordRequest,
     request: Request,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(get_current_user),
 ):
     """重置密码（管理员操作）"""
     try:
@@ -435,7 +443,9 @@ async def reset_password(
             raise HTTPException(status_code=403, detail="权限不足")
 
         # 重置密码
-        success = await user_service.reset_password(payload.username, payload.new_password)
+        success = await user_service.reset_password(
+            payload.username, payload.new_password
+        )
 
         if not success:
             raise HTTPException(status_code=404, detail="用户不存在")
@@ -443,7 +453,7 @@ async def reset_password(
         return {
             "success": True,
             "data": {},
-            "message": f"用户 {payload.username} 的密码已重置"
+            "message": f"用户 {payload.username} 的密码已重置",
         }
     except HTTPException:
         raise
@@ -451,11 +461,10 @@ async def reset_password(
         logger.error(f"重置密码失败: {e}")
         raise HTTPException(status_code=500, detail=f"重置密码失败: {str(e)}")
 
+
 @router.post("/create-user", response_model=ApiResponse)
 async def create_user(
-    payload: CreateUserRequest,
-    request: Request,
-    user: dict = Depends(get_current_user)
+    payload: CreateUserRequest, request: Request, user: dict = Depends(get_current_user)
 ):
     """创建用户（管理员操作）"""
     try:
@@ -465,9 +474,7 @@ async def create_user(
 
         # 创建用户
         user_create = UserCreate(
-            username=payload.username,
-            email=payload.email,
-            password=payload.password
+            username=payload.username, email=payload.email, password=payload.password
         )
 
         new_user = await user_service.create_user(user_create)
@@ -479,8 +486,7 @@ async def create_user(
         if payload.is_admin:
             db = user_service.db
             db.users.update_one(
-                {"username": payload.username},
-                {"$set": {"is_admin": True}}
+                {"username": payload.username}, {"$set": {"is_admin": True}}
             )
             await user_service._dual_write_user(
                 {
@@ -500,9 +506,9 @@ async def create_user(
                 "id": str(new_user.id),
                 "username": new_user.username,
                 "email": new_user.email,
-                "is_admin": payload.is_admin
+                "is_admin": payload.is_admin,
             },
-            "message": f"用户 {payload.username} 创建成功"
+            "message": f"用户 {payload.username} 创建成功",
         }
     except HTTPException:
         raise
@@ -510,11 +516,10 @@ async def create_user(
         logger.error(f"创建用户失败: {e}")
         raise HTTPException(status_code=500, detail=f"创建用户失败: {str(e)}")
 
+
 @router.get("/users", response_model=ApiResponse)
 async def list_users(
-    skip: int = 0,
-    limit: int = 100,
-    user: dict = Depends(get_current_user)
+    skip: int = 0, limit: int = 100, user: dict = Depends(get_current_user)
 ):
     """获取用户列表（管理员操作）"""
     try:
@@ -528,9 +533,9 @@ async def list_users(
             "success": True,
             "data": {
                 "users": [user.model_dump() for user in users],
-                "total": len(users)
+                "total": len(users),
             },
-            "message": "获取用户列表成功"
+            "message": "获取用户列表成功",
         }
     except HTTPException:
         raise

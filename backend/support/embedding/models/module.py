@@ -2,27 +2,30 @@
 """
 测试不同嵌入模型的使用场景
 """
-import importlib
 
+import importlib
 import os
-import sys
-from pathlib import Path
+
 from dotenv import load_dotenv
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
+from support.path import BACKEND_ROOT
 
 # 加载环境变量
-load_dotenv(project_root / ".env", override=True)
+load_dotenv(BACKEND_ROOT / ".env", override=True)
+
 
 def test_embedding_selection():
     """测试不同配置下的嵌入模型选择"""
     print("🧪 测试嵌入模型选择逻辑")
     print("=" * 60)
 
-    FinancialSituationMemory = getattr(importlib.import_module('trader.agents.utils.memory'), 'FinancialSituationMemory')
-    DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+    FinancialSituationMemory = getattr(
+        importlib.import_module("trader.agents.utils.memory"),
+        "FinancialSituationMemory",
+    )
+    DEFAULT_CONFIG = getattr(
+        importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+    )
 
     # 测试场景1: 阿里百炼
     print("📊 场景1: 阿里百炼配置")
@@ -68,7 +71,7 @@ def test_embedding_selection():
         print(f"⚠️ 嵌入模型: {memory3.embedding}")
         print(f"   LLM提供商: {memory3.llm_provider}")
         print(f"   客户端: {type(memory3.client)}")
-        print(f"   问题: Google AI没有专门的嵌入配置，默认使用OpenAI")
+        print("   问题: Google AI没有专门的嵌入配置，默认使用OpenAI")
     except Exception as e:
         print(f"❌ Google AI配置失败: {e}")
 
@@ -88,16 +91,22 @@ def test_embedding_selection():
     except Exception as e:
         print(f"❌ OpenAI配置失败: {e}")
 
+
 def test_embedding_functionality():
     """测试嵌入功能是否正常工作"""
     print("\n🧪 测试嵌入功能")
     print("=" * 60)
 
-    FinancialSituationMemory = getattr(importlib.import_module('trader.agents.utils.memory'), 'FinancialSituationMemory')
-    DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+    FinancialSituationMemory = getattr(
+        importlib.import_module("trader.agents.utils.memory"),
+        "FinancialSituationMemory",
+    )
+    DEFAULT_CONFIG = getattr(
+        importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+    )
 
     # 测试阿里百炼嵌入
-    dashscope_key = os.getenv('DASHSCOPE_API_KEY')
+    dashscope_key = os.getenv("DASHSCOPE_API_KEY")
     if dashscope_key:
         print("📊 测试阿里百炼嵌入功能")
         config = DEFAULT_CONFIG.copy()
@@ -106,7 +115,7 @@ def test_embedding_functionality():
         try:
             memory = FinancialSituationMemory("test_embedding", config)
             embedding = memory.get_embedding("苹果公司股票分析")
-            print(f"✅ 阿里百炼嵌入成功")
+            print("✅ 阿里百炼嵌入成功")
             print(f"   嵌入维度: {len(embedding)}")
             print(f"   嵌入预览: {embedding[:5]}...")
         except Exception as e:
@@ -117,7 +126,7 @@ def test_embedding_functionality():
     print()
 
     # 测试Google AI嵌入（会失败）
-    google_key = os.getenv('GOOGLE_API_KEY')
+    google_key = os.getenv("GOOGLE_API_KEY")
     if google_key:
         print("📊 测试Google AI嵌入功能（预期失败）")
         config = DEFAULT_CONFIG.copy()
@@ -126,13 +135,14 @@ def test_embedding_functionality():
         try:
             memory = FinancialSituationMemory("test_google_embedding", config)
             embedding = memory.get_embedding("Apple stock analysis")
-            print(f"✅ Google AI嵌入成功（意外）")
+            print("✅ Google AI嵌入成功（意外）")
             print(f"   嵌入维度: {len(embedding)}")
         except Exception as e:
             print(f"❌ Google AI嵌入失败（预期）: {e}")
             print("   原因: Google AI没有专门的嵌入配置，尝试使用OpenAI API")
     else:
         print("⚠️ Google API密钥未配置，跳过测试")
+
 
 def show_solutions():
     """显示解决方案"""
@@ -162,6 +172,7 @@ def show_solutions():
     print("   方案3: 实用，混合使用不同服务")
     print("   方案4: 隐私最佳，但需要本地资源")
 
+
 def main():
     """主测试函数"""
     print("🧪 嵌入模型使用场景分析")
@@ -171,12 +182,13 @@ def main():
     test_embedding_functionality()
     show_solutions()
 
-    print(f"\n📊 总结:")
+    print("\n📊 总结:")
     print("=" * 50)
     print("1. nomic-embed-text 是本地Ollama使用的嵌入模型")
     print("2. Google AI没有专门的嵌入配置，默认尝试使用OpenAI")
     print("3. 这就是为什么测试Google AI时内存功能不可用")
     print("4. 需要为Google AI添加合适的嵌入解决方案")
+
 
 if __name__ == "__main__":
     main()

@@ -3,7 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from app.db.migrate import HOT_COLLECTIONS
-from scripts import postgres_local_cutover_verify as local_verify
+from scripts.postgres.local.cutover.verify import script as local_verify
 from scripts.postgres.local.cutover.verify.script import (
     LocalServices,
     StepResult,
@@ -20,7 +20,9 @@ def test_local_seed_documents_cover_every_hot_collection():
     assert set(local_seed_documents()) == set(HOT_COLLECTIONS)
 
 
-def test_build_verification_steps_runs_schema_migrator_and_gate_without_api_by_default(tmp_path):
+def test_build_verification_steps_runs_schema_migrator_and_gate_without_api_by_default(
+    tmp_path,
+):
     steps = build_verification_steps(
         output_dir=tmp_path,
         batch_size=5,
@@ -30,7 +32,7 @@ def test_build_verification_steps_runs_schema_migrator_and_gate_without_api_by_d
 
     assert [step.name for step in steps] == [
         "alembic_upgrade",
-        "mongo_to_postgres_migrator",
+        "document_store_to_tables_migrator",
         "cutover_gate",
         "evidence_bundle_check",
     ]
@@ -43,7 +45,9 @@ def test_build_verification_steps_runs_schema_migrator_and_gate_without_api_by_d
     assert gate_command[gate_command.index("--target-env") + 1] == "local-seeded"
     assert gate_command[gate_command.index("--target-phase") + 1] == "pre-read"
     assert "--require-target-manifest" in evidence_command
-    assert evidence_command[evidence_command.index("--expected-phase") + 1] == "pre-read"
+    assert (
+        evidence_command[evidence_command.index("--expected-phase") + 1] == "pre-read"
+    )
 
 
 def test_build_verification_steps_passes_runtime_log_to_cutover_gate(tmp_path):
@@ -81,7 +85,9 @@ def test_build_verification_steps_includes_api_smoke_when_requested(tmp_path):
     assert "--skip-api-smoke" not in gate_command
     assert gate_command[gate_command.index("--sample-limit") + 1] == "25"
     assert gate_command[gate_command.index("--target-phase") + 1] == "post-read"
-    assert evidence_command[evidence_command.index("--expected-phase") + 1] == "post-read"
+    assert (
+        evidence_command[evidence_command.index("--expected-phase") + 1] == "post-read"
+    )
     assert "--require-api-smoke" in evidence_command
     assert "--require-api-migration-state" in evidence_command
 
@@ -102,7 +108,7 @@ def test_local_cutover_env_snapshot_redacts_password_and_token():
 def test_local_services_use_lightweight_postgres_image_by_default():
     services = LocalServices()
 
-    assert services.mongo_image == "mongo:4.4"
+    assert services.postgres_image == "postgres:16-alpine"
     assert services.postgres_image == "postgres:16-alpine"
 
 
@@ -146,7 +152,9 @@ def test_write_runtime_log_check_raises_when_gate_fails(tmp_path):
         raise AssertionError("expected runtime log check failure")
 
 
-def test_local_verifier_summary_points_to_gate_runtime_log_artifact(tmp_path, monkeypatch):
+def test_local_verifier_summary_points_to_gate_runtime_log_artifact(
+    tmp_path, monkeypatch
+):
     log_path = tmp_path / "backend.log"
     log_path.write_text(
         "\n".join(
@@ -162,7 +170,7 @@ def test_local_verifier_summary_points_to_gate_runtime_log_artifact(tmp_path, mo
     def fake_start_local_containers(services, *, reuse_containers):
         return None
 
-    async def fake_seed_local_mongo(services):
+    async def fake_seed_local_postgres(services):
         return {"market_quotes": 1}
 
     def fake_run_verification_steps(steps, *, env, output_dir):
@@ -170,7 +178,9 @@ def test_local_verifier_summary_points_to_gate_runtime_log_artifact(tmp_path, mo
         captured["evidence_command"] = steps[3].command
         gate_dir = output_dir / "gate"
         gate_dir.mkdir(parents=True, exist_ok=True)
-        (gate_dir / "runtime_log_check.json").write_text('{"all_passed": true}', encoding="utf-8")
+        (gate_dir / "runtime_log_check.json").write_text(
+            '{"all_passed": true}', encoding="utf-8"
+        )
         return [
             StepResult(
                 name=step.name,
@@ -183,17 +193,19 @@ def test_local_verifier_summary_points_to_gate_runtime_log_artifact(tmp_path, mo
             for step in steps
         ]
 
-    monkeypatch.setattr(local_verify, "start_local_containers", fake_start_local_containers)
-    monkeypatch.setattr(local_verify, "seed_local_mongo", fake_seed_local_mongo)
-    monkeypatch.setattr(local_verify, "run_verification_steps", fake_run_verification_steps)
+    monkeypatch.setattr(
+        local_verify, "start_local_containers", fake_start_local_containers
+    )
+    monkeypatch.setattr(local_verify, "seed_local_postgres", fake_seed_local_postgres)
+    monkeypatch.setattr(
+        local_verify, "run_verification_steps", fake_run_verification_steps
+    )
     monkeypatch.setattr(local_verify, "stop_local_containers", lambda: None)
 
     summary = asyncio.run(
         run_local_cutover_verification(
             SimpleNamespace(
                 output_dir=tmp_path,
-                mongo_port=27019,
-                mongo_image="mongo:4.4",
                 postgres_port=55432,
                 postgres_image="postgres:16-alpine",
                 api_base_url=None,
@@ -211,13 +223,30 @@ def test_local_verifier_summary_points_to_gate_runtime_log_artifact(tmp_path, mo
     )
 
     assert summary["all_passed"] is True
-    assert summary["runtime_log_check"] == str(tmp_path / "gate" / "runtime_log_check.json")
-    assert summary["target_manifest"] == str(tmp_path / "gate" / "00_target_manifest.json")
-    assert captured["gate_command"][captured["gate_command"].index("--runtime-log") + 1] == str(log_path)
-    assert captured["gate_command"][captured["gate_command"].index("--target-env") + 1] == "local-seeded"
-    assert captured["gate_command"][captured["gate_command"].index("--target-phase") + 1] == "pre-read"
+    assert summary["runtime_log_check"] == str(
+        tmp_path / "gate" / "runtime_log_check.json"
+    )
+    assert summary["target_manifest"] == str(
+        tmp_path / "gate" / "00_target_manifest.json"
+    )
+    assert captured["gate_command"][
+        captured["gate_command"].index("--runtime-log") + 1
+    ] == str(log_path)
+    assert (
+        captured["gate_command"][captured["gate_command"].index("--target-env") + 1]
+        == "local-seeded"
+    )
+    assert (
+        captured["gate_command"][captured["gate_command"].index("--target-phase") + 1]
+        == "pre-read"
+    )
     assert "--require-target-manifest" in captured["evidence_command"]
-    assert captured["evidence_command"][captured["evidence_command"].index("--expected-phase") + 1] == "pre-read"
+    assert (
+        captured["evidence_command"][
+            captured["evidence_command"].index("--expected-phase") + 1
+        ]
+        == "pre-read"
+    )
 
 
 def test_local_verifier_cleans_up_when_container_start_fails(tmp_path, monkeypatch):
@@ -226,16 +255,20 @@ def test_local_verifier_cleans_up_when_container_start_fails(tmp_path, monkeypat
     def fake_start_local_containers(services, *, reuse_containers):
         raise RuntimeError("port conflict")
 
-    monkeypatch.setattr(local_verify, "start_local_containers", fake_start_local_containers)
-    monkeypatch.setattr(local_verify, "stop_local_containers", lambda: cleaned.__setitem__("called", True))
+    monkeypatch.setattr(
+        local_verify, "start_local_containers", fake_start_local_containers
+    )
+    monkeypatch.setattr(
+        local_verify,
+        "stop_local_containers",
+        lambda: cleaned.__setitem__("called", True),
+    )
 
     try:
         asyncio.run(
             run_local_cutover_verification(
                 SimpleNamespace(
                     output_dir=tmp_path,
-                    mongo_port=27019,
-                    mongo_image="mongo:4.4",
                     postgres_port=55432,
                     postgres_image="postgres:16-alpine",
                     api_base_url=None,

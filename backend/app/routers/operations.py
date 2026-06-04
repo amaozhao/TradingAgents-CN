@@ -1,24 +1,24 @@
 """
 操作日志API路由
 """
-import importlib
 
+import importlib
 import logging
-from typing import Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 
-from app.routers.account import get_current_user
-from app.services.operation import get_operation_log_service
 from app.models.operations import (
-    OperationLogQuery,
-    OperationLogListResponse,
-    OperationLogStatsResponse,
     ClearLogsRequest,
     ClearLogsResponse,
-    OperationLogCreate
+    OperationLogCreate,
+    OperationLogListResponse,
+    OperationLogQuery,
+    OperationLogStatsResponse,
 )
 from app.models.response import ApiResponse
+from app.routers.account import get_current_user
+from app.services.operation import get_operation_log_service
 
 router = APIRouter(prefix="/logs", tags=["操作日志"])
 logger = logging.getLogger("webapi")
@@ -33,7 +33,7 @@ async def get_operations(
     action_type: str = Query(None, description="操作类型"),
     success: bool = Query(None, description="是否成功"),
     keyword: str = Query(None, description="关键词搜索"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """获取操作日志列表"""
     try:
@@ -60,23 +60,23 @@ async def get_operations(
                 "total": total,
                 "page": page,
                 "page_size": page_size,
-                "total_pages": (total + page_size - 1) // page_size
+                "total_pages": (total + page_size - 1) // page_size,
             },
-            message="获取操作日志列表成功"
+            message="获取操作日志列表成功",
         )
 
     except Exception as e:
         logger.error(f"获取操作日志列表失败: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取操作日志列表失败: {str(e)}"
+            detail=f"获取操作日志列表失败: {str(e)}",
         )
 
 
 @router.get("/stats", response_model=OperationLogStatsResponse)
 async def get_operation_log_stats(
     days: int = Query(30, ge=1, le=365, description="统计天数"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """获取操作日志统计"""
     try:
@@ -86,23 +86,20 @@ async def get_operation_log_stats(
         stats = await service.get_stats(days)
 
         return OperationLogStatsResponse(
-            success=True,
-            data=stats,
-            message="获取操作日志统计成功"
+            success=True, data=stats, message="获取操作日志统计成功"
         )
 
     except Exception as e:
         logger.error(f"获取操作日志统计失败: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取操作日志统计失败: {str(e)}"
+            detail=f"获取操作日志统计失败: {str(e)}",
         )
 
 
 @router.get("/{log_id}", response_model=ApiResponse)
 async def get_operation_log_detail(
-    log_id: str,
-    current_user: dict = Depends(get_current_user)
+    log_id: str, current_user: dict = Depends(get_current_user)
 ):
     """获取操作日志详情"""
     try:
@@ -113,15 +110,10 @@ async def get_operation_log_detail(
 
         if not log:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="操作日志不存在"
+                status_code=status.HTTP_404_NOT_FOUND, detail="操作日志不存在"
             )
 
-        return {
-            "success": True,
-            "data": log.dict(),
-            "message": "获取操作日志详情成功"
-        }
+        return {"success": True, "data": log.dict(), "message": "获取操作日志详情成功"}
 
     except HTTPException:
         raise
@@ -129,14 +121,13 @@ async def get_operation_log_detail(
         logger.error(f"获取操作日志详情失败: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取操作日志详情失败: {str(e)}"
+            detail=f"获取操作日志详情失败: {str(e)}",
         )
 
 
 @router.post("/clear", response_model=ClearLogsResponse)
 async def clear_operations(
-    request: ClearLogsRequest,
-    current_user: dict = Depends(get_current_user)
+    request: ClearLogsRequest, current_user: dict = Depends(get_current_user)
 ):
     """清空操作日志"""
     try:
@@ -144,8 +135,7 @@ async def clear_operations(
 
         service = get_operation_log_service()
         result = await service.clear_logs(
-            days=request.days,
-            action_type=request.action_type
+            days=request.days, action_type=request.action_type
         )
 
         message = f"清空操作日志成功，删除了 {result['deleted_count']} 条记录"
@@ -154,17 +144,13 @@ async def clear_operations(
         if request.action_type:
             message += f"（类型: {request.action_type}）"
 
-        return ClearLogsResponse(
-            success=True,
-            data=result,
-            message=message
-        )
+        return ClearLogsResponse(success=True, data=result, message=message)
 
     except Exception as e:
         logger.error(f"清空操作日志失败: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"清空操作日志失败: {str(e)}"
+            detail=f"清空操作日志失败: {str(e)}",
         )
 
 
@@ -172,7 +158,7 @@ async def clear_operations(
 async def create_operation_log(
     log_data: OperationLogCreate,
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """手动创建操作日志"""
     try:
@@ -189,20 +175,20 @@ async def create_operation_log(
             username=current_user["username"],
             log_data=log_data,
             ip_address=ip_address,
-            user_agent=user_agent
+            user_agent=user_agent,
         )
 
         return {
             "success": True,
             "data": {"log_id": log_id},
-            "message": "创建操作日志成功"
+            "message": "创建操作日志成功",
         }
 
     except Exception as e:
         logger.error(f"创建操作日志失败: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"创建操作日志失败: {str(e)}"
+            detail=f"创建操作日志失败: {str(e)}",
         )
 
 
@@ -211,7 +197,7 @@ async def export_logs_csv(
     start_date: str = Query(None, description="开始日期"),
     end_date: str = Query(None, description="结束日期"),
     action_type: str = Query(None, description="操作类型"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """导出操作日志为CSV"""
     try:
@@ -232,45 +218,56 @@ async def export_logs_csv(
         logs, _ = await service.get_logs(query)
 
         # 生成CSV内容
-        csv = importlib.import_module('csv')
-        io = importlib.import_module('io')
+        csv = importlib.import_module("csv")
+        io = importlib.import_module("io")
 
         output = io.StringIO()
         writer = csv.writer(output)
 
         # 写入表头
-        writer.writerow([
-            "时间", "用户", "操作类型", "操作内容", "状态", "耗时(ms)", "IP地址", "错误信息"
-        ])
+        writer.writerow(
+            [
+                "时间",
+                "用户",
+                "操作类型",
+                "操作内容",
+                "状态",
+                "耗时(ms)",
+                "IP地址",
+                "错误信息",
+            ]
+        )
 
         # 写入数据
         for log in logs:
-            writer.writerow([
-                log.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                log.username,
-                log.action_type,
-                log.action,
-                "成功" if log.success else "失败",
-                log.duration_ms or "",
-                log.ip_address or "",
-                log.error_message or ""
-            ])
+            writer.writerow(
+                [
+                    log.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                    log.username,
+                    log.action_type,
+                    log.action,
+                    "成功" if log.success else "失败",
+                    log.duration_ms or "",
+                    log.ip_address or "",
+                    log.error_message or "",
+                ]
+            )
 
         output.seek(0)
 
         # 返回CSV文件
-        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        datetime = getattr(importlib.import_module("datetime"), "datetime")
         filename = f"operations_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
 
         return StreamingResponse(
-            io.BytesIO(output.getvalue().encode('utf-8-sig')),
+            io.BytesIO(output.getvalue().encode("utf-8-sig")),
             media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     except Exception as e:
         logger.error(f"导出操作日志CSV失败: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"导出操作日志CSV失败: {str(e)}"
+            detail=f"导出操作日志CSV失败: {str(e)}",
         )

@@ -3,12 +3,13 @@
 多周期历史数据同步服务
 支持日线、周线、月线数据的统一同步
 """
-import importlib
+
 import asyncio
+import importlib
 import logging
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from app.services.market.historical import get_historical_data_service
 
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MultiPeriodSyncStats:
     """多周期同步统计"""
+
     total_symbols: int = 0
     daily_records: int = 0
     weekly_records: int = 0
@@ -41,9 +43,16 @@ class MultiPeriodSyncService:
         try:
             self.historical_service = await get_historical_data_service()
 
-            AKShareSyncService = getattr(importlib.import_module('app.worker.akshare.sync'), 'AKShareSyncService')
-            BaoStockSyncService = getattr(importlib.import_module('app.worker.baostock.sync'), 'BaoStockSyncService')
-            TushareSyncService = getattr(importlib.import_module('app.worker.tushare.sync'), 'TushareSyncService')
+            AKShareSyncService = getattr(
+                importlib.import_module("app.worker.akshare.sync"), "AKShareSyncService"
+            )
+            BaoStockSyncService = getattr(
+                importlib.import_module("app.worker.baostock.sync"),
+                "BaoStockSyncService",
+            )
+            TushareSyncService = getattr(
+                importlib.import_module("app.worker.tushare.sync"), "TushareSyncService"
+            )
 
             # 初始化各数据源服务
             self.tushare_service = TushareSyncService()
@@ -68,7 +77,7 @@ class MultiPeriodSyncService:
         data_sources: Optional[List[str]] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        all_history: bool = False
+        all_history: bool = False,
     ) -> MultiPeriodSyncStats:
         """
         同步多周期历史数据
@@ -100,9 +109,11 @@ class MultiPeriodSyncService:
         stats = MultiPeriodSyncStats()
         stats.total_symbols = len(symbols)
 
-        logger.info(f"🔄 开始多周期数据同步: {len(symbols)}只股票, "
-                   f"周期{periods}, 数据源{data_sources}, "
-                   f"时间范围: {start_date or '默认'} 到 {end_date or '今天'}")
+        logger.info(
+            f"🔄 开始多周期数据同步: {len(symbols)}只股票, "
+            f"周期{periods}, 数据源{data_sources}, "
+            f"时间范围: {start_date or '默认'} 到 {end_date or '今天'}"
+        )
 
         try:
             # 按数据源和周期组合同步
@@ -124,12 +135,16 @@ class MultiPeriodSyncService:
                     stats.error_count += period_stats.get("errors", 0)
 
                     # 进度日志
-                    logger.info(f"📊 {data_source}-{period}同步完成: "
-                               f"{period_stats.get('records', 0)}条记录")
+                    logger.info(
+                        f"📊 {data_source}-{period}同步完成: "
+                        f"{period_stats.get('records', 0)}条记录"
+                    )
 
-            logger.info(f"✅ 多周期数据同步完成: "
-                       f"日线{stats.daily_records}, 周线{stats.weekly_records}, "
-                       f"月线{stats.monthly_records}条记录")
+            logger.info(
+                f"✅ 多周期数据同步完成: "
+                f"日线{stats.daily_records}, 周线{stats.weekly_records}, "
+                f"月线{stats.monthly_records}条记录"
+            )
 
             return stats
 
@@ -166,7 +181,7 @@ class MultiPeriodSyncService:
             # 批量处理
             batch_size = 50
             for i in range(0, len(symbols), batch_size):
-                batch = symbols[i:i + batch_size]
+                batch = symbols[i : i + batch_size]
                 batch_stats = await self._sync_batch_period_data(
                     service, data_source, period, batch, start_date, end_date
                 )
@@ -226,7 +241,7 @@ class MultiPeriodSyncService:
                         data=hist_data,
                         data_source=data_source,
                         market="CN",
-                        period=period
+                        period=period,
                     )
 
                     stats["records"] += saved_count
@@ -244,8 +259,10 @@ class MultiPeriodSyncService:
         """获取所有股票代码"""
         try:
             # 从数据库获取股票列表
-            get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
-            db = get_mongo_db()
+            get_postgres_db = getattr(
+                importlib.import_module("app.core.database"), "get_postgres_db"
+            )
+            db = get_postgres_db()
             collection = db.stock_basic_info
 
             cursor = collection.find({}, {"symbol": 1})
@@ -261,11 +278,11 @@ class MultiPeriodSyncService:
     async def _get_full_history_date_range(self) -> tuple[str, str]:
         """获取全历史数据的日期范围"""
         try:
-            datetime = getattr(importlib.import_module('datetime'), 'datetime')
-            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
+            datetime = getattr(importlib.import_module("datetime"), "datetime")
+            timedelta = getattr(importlib.import_module("datetime"), "timedelta")
 
             # 结束日期：今天
-            end_date = datetime.now().strftime('%Y-%m-%d')
+            end_date = datetime.now().strftime("%Y-%m-%d")
 
             # 开始日期：根据数据源确定
             # Tushare: 1990年开始
@@ -280,8 +297,8 @@ class MultiPeriodSyncService:
         except Exception as e:
             logger.error(f"❌ 获取全历史日期范围失败: {e}")
             # 默认返回最近5年的数据
-            end_date = datetime.now().strftime('%Y-%m-%d')
-            start_date = (datetime.now() - timedelta(days=365*5)).strftime('%Y-%m-%d')
+            end_date = datetime.now().strftime("%Y-%m-%d")
+            start_date = (datetime.now() - timedelta(days=365 * 5)).strftime("%Y-%m-%d")
             return start_date, end_date
 
     async def get_sync_statistics(self) -> Dict[str, Any]:
@@ -291,19 +308,20 @@ class MultiPeriodSyncService:
                 await self.initialize()
 
             # 按周期统计
-            get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
-            db = get_mongo_db()
+            get_postgres_db = getattr(
+                importlib.import_module("app.core.database"), "get_postgres_db"
+            )
+            db = get_postgres_db()
             collection = db.stock_daily_quotes
 
             pipeline = [
-                {"$group": {
-                    "_id": {
-                        "period": "$period",
-                        "data_source": "$data_source"
-                    },
-                    "count": {"$sum": 1},
-                    "latest_date": {"$max": "$trade_date"}
-                }}
+                {
+                    "$group": {
+                        "_id": {"period": "$period", "data_source": "$data_source"},
+                        "count": {"$sum": 1},
+                        "latest_date": {"$max": "$trade_date"},
+                    }
+                }
             ]
 
             results = await collection.aggregate(pipeline).to_list(length=None)
@@ -319,12 +337,12 @@ class MultiPeriodSyncService:
 
                 stats[period][source] = {
                     "count": result["count"],
-                    "latest_date": result["latest_date"]
+                    "latest_date": result["latest_date"],
                 }
 
             return {
                 "period_statistics": stats,
-                "last_updated": datetime.utcnow().isoformat()
+                "last_updated": datetime.utcnow().isoformat(),
             }
 
         except Exception as e:

@@ -14,11 +14,10 @@
 - 通过 (code, source) 联合查询
 - 数据源优先级从数据库配置读取
 """
-import importlib
 
+import importlib
 import logging
 from typing import Any, Dict, List, Optional
-from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
 
@@ -28,7 +27,7 @@ logger = logging.getLogger("webapi")
 class UnifiedStockService:
     """统一股票数据服务（跨市场，支持多数据源）"""
 
-    def __init__(self, db: AsyncIOMotorDatabase):
+    def __init__(self, db: Any):
         self.db = db
 
         # 集合映射
@@ -38,29 +37,26 @@ class UnifiedStockService:
                 "quotes": "market_quotes",
                 "daily": "stock_daily_quotes",
                 "financial": "stock_financial_data",
-                "news": "stock_news"
+                "news": "stock_news",
             },
             "HK": {
                 "basic_info": "stock_basic_info_hk",
                 "quotes": "market_quotes_hk",
                 "daily": "stock_daily_quotes_hk",
                 "financial": "stock_financial_data_hk",
-                "news": "stock_news_hk"
+                "news": "stock_news_hk",
             },
             "US": {
                 "basic_info": "stock_basic_info_us",
                 "quotes": "market_quotes_us",
                 "daily": "stock_daily_quotes_us",
                 "financial": "stock_financial_data_us",
-                "news": "stock_news_us"
-            }
+                "news": "stock_news_us",
+            },
         }
 
     async def get_stock_info(
-        self,
-        market: str,
-        code: str,
-        source: Optional[str] = None
+        self, market: str, code: str, source: Optional[str] = None
     ) -> Optional[Dict]:
         """
         获取股票基础信息（支持多数据源）
@@ -103,7 +99,7 @@ class UnifiedStockService:
             if not doc:
                 doc = await collection.find_one({"code": code}, {"_id": 0})
                 if doc:
-                    logger.debug(f"✅ 使用默认数据源（兼容模式）")
+                    logger.debug("✅ 使用默认数据源（兼容模式）")
 
         return doc
 
@@ -117,20 +113,19 @@ class UnifiedStockService:
         Returns:
             数据源优先级列表
         """
-        market_category_map = {
-            "CN": "a_shares",
-            "HK": "hk_stocks",
-            "US": "us_stocks"
-        }
+        market_category_map = {"CN": "a_shares", "HK": "hk_stocks", "US": "us_stocks"}
 
         market_category_id = market_category_map.get(market)
 
         try:
             # 从 datasource_groupings 集合查询
-            groupings = await self.db.datasource_groupings.find({
-                "market_category_id": market_category_id,
-                "enabled": True
-            }).sort("priority", -1).to_list(length=None)
+            groupings = (
+                await self.db.datasource_groupings.find(
+                    {"market_category_id": market_category_id, "enabled": True}
+                )
+                .sort("priority", -1)
+                .to_list(length=None)
+            )
 
             if groupings:
                 priority_list = [g["data_source_name"] for g in groupings]
@@ -143,7 +138,7 @@ class UnifiedStockService:
         default_priority = {
             "CN": ["tushare", "akshare", "baostock"],
             "HK": ["yfinance_hk", "akshare_hk"],
-            "US": ["yfinance_us"]
+            "US": ["yfinance_us"],
         }
         priority_list = default_priority.get(market, [])
         logger.debug(f"📊 {market} 数据源优先级（默认）: {priority_list}")
@@ -169,33 +164,44 @@ class UnifiedStockService:
         collection = self.db[collection_name]
         return await collection.find_one({"code": code}, {"_id": 0})
 
-    async def _get_stock_info_from_postgres(self, code: str, source: Optional[str]) -> Optional[Dict]:
+    async def _get_stock_info_from_postgres(
+        self, code: str, source: Optional[str]
+    ) -> Optional[Dict]:
         try:
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
-            get_stock_basic_info = getattr(importlib.import_module('app.db.stock'), 'get_stock_basic_info')
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
+            get_stock_basic_info = getattr(
+                importlib.import_module("app.db.stock"), "get_stock_basic_info"
+            )
 
             async with get_session_factory()() as session:
                 return await get_stock_basic_info(session, code, source)
         except Exception as e:
-            logger.warning(f"PostgreSQL多市场股票信息查询失败，回退MongoDB code={code}: {e}")
+            logger.warning(
+                f"PostgreSQL多市场股票信息查询失败，回退PostgreSQL code={code}: {e}"
+            )
             return None
 
     async def _get_stock_quote_from_postgres(self, code: str) -> Optional[Dict]:
         try:
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
-            get_market_quote = getattr(importlib.import_module('app.db.stock'), 'get_market_quote')
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
+            get_market_quote = getattr(
+                importlib.import_module("app.db.stock"), "get_market_quote"
+            )
 
             async with get_session_factory()() as session:
                 return await get_market_quote(session, code)
         except Exception as e:
-            logger.warning(f"PostgreSQL多市场行情查询失败，回退MongoDB code={code}: {e}")
+            logger.warning(
+                f"PostgreSQL多市场行情查询失败，回退PostgreSQL code={code}: {e}"
+            )
             return None
 
     async def search_stocks(
-        self,
-        market: str,
-        query: str,
-        limit: int = 20
+        self, market: str, query: str, limit: int = 20
     ) -> List[Dict]:
         """
         搜索股票（去重，只返回每个股票的最优数据源）
@@ -221,7 +227,7 @@ class UnifiedStockService:
             "$or": [
                 {"code": {"$regex": query, "$options": "i"}},
                 {"name": {"$regex": query, "$options": "i"}},
-                {"name_en": {"$regex": query, "$options": "i"}}
+                {"name_en": {"$regex": query, "$options": "i"}},
             ]
         }
 
@@ -247,26 +253,40 @@ class UnifiedStockService:
                 current_source = unique_results[code].get("source")
                 try:
                     if source in source_priority and current_source in source_priority:
-                        if source_priority.index(source) < source_priority.index(current_source):
+                        if source_priority.index(source) < source_priority.index(
+                            current_source
+                        ):
                             unique_results[code] = doc
                 except ValueError:
                     # 如果source不在优先级列表中，保持当前记录
                     pass
 
         # 返回前 limit 条
-        result_list = [_strip_mongo_id(doc) for doc in list(unique_results.values())[:limit]]
-        logger.info(f"🔍 搜索 {market} 市场: '{query}' -> {len(result_list)} 条结果（已去重）")
+        result_list = [
+            _strip_postgres_id(doc) for doc in list(unique_results.values())[:limit]
+        ]
+        logger.info(
+            f"🔍 搜索 {market} 市场: '{query}' -> {len(result_list)} 条结果（已去重）"
+        )
         return result_list
 
-    async def _search_stocks_from_postgres(self, query: str, *, limit: int) -> List[Dict]:
+    async def _search_stocks_from_postgres(
+        self, query: str, *, limit: int
+    ) -> List[Dict]:
         try:
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
-            search_stocks = getattr(importlib.import_module('app.db.stock'), 'search_stocks')
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
+            search_stocks = getattr(
+                importlib.import_module("app.db.stock"), "search_stocks"
+            )
 
             async with get_session_factory()() as session:
                 return await search_stocks(session, query, limit=limit)
         except Exception as e:
-            logger.warning(f"PostgreSQL多市场股票搜索失败，回退MongoDB query={query}: {e}")
+            logger.warning(
+                f"PostgreSQL多市场股票搜索失败，回退PostgreSQL query={query}: {e}"
+            )
             return []
 
     async def get_daily_quotes(
@@ -275,7 +295,7 @@ class UnifiedStockService:
         code: str,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Dict]:
         """
         获取历史K线数据
@@ -325,8 +345,12 @@ class UnifiedStockService:
         limit: int,
     ) -> List[Dict]:
         try:
-            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
-            list_stock_daily_quotes = getattr(importlib.import_module('app.db.stock'), 'list_stock_daily_quotes')
+            get_session_factory = getattr(
+                importlib.import_module("app.db.session"), "get_session_factory"
+            )
+            list_stock_daily_quotes = getattr(
+                importlib.import_module("app.db.stock"), "list_stock_daily_quotes"
+            )
 
             async with get_session_factory()() as session:
                 return await list_stock_daily_quotes(
@@ -339,7 +363,9 @@ class UnifiedStockService:
                     limit=limit,
                 )
         except Exception as e:
-            logger.warning(f"PostgreSQL历史K线查询失败，回退MongoDB market={market}, code={code}: {e}")
+            logger.warning(
+                f"PostgreSQL历史K线查询失败，回退PostgreSQL market={market}, code={code}: {e}"
+            )
             return []
 
     async def get_supported_markets(self) -> List[Dict]:
@@ -355,24 +381,24 @@ class UnifiedStockService:
                 "name": "A股",
                 "name_en": "China A-Share",
                 "currency": "CNY",
-                "timezone": "Asia/Shanghai"
+                "timezone": "Asia/Shanghai",
             },
             {
                 "code": "HK",
                 "name": "港股",
                 "name_en": "Hong Kong Stock",
                 "currency": "HKD",
-                "timezone": "Asia/Hong_Kong"
+                "timezone": "Asia/Hong_Kong",
             },
             {
                 "code": "US",
                 "name": "美股",
                 "name_en": "US Stock",
                 "currency": "USD",
-                "timezone": "America/New_York"
-            }
+                "timezone": "America/New_York",
+            },
         ]
 
 
-def _strip_mongo_id(document: Dict) -> Dict:
+def _strip_postgres_id(document: Dict) -> Dict:
     return {key: value for key, value in document.items() if key != "_id"}

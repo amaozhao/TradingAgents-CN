@@ -2,20 +2,17 @@
 """
 配置管理功能测试
 """
-import importlib
 
-import os
+import importlib
 import sys
 import tempfile
-import shutil
-from pathlib import Path
-from datetime import datetime
 
-# 添加项目根目录到Python路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from trader.config.manager import ConfigManager, ModelConfig, PricingConfig, TokenTracker
+from trader.config.manager import (
+    ConfigManager,
+    ModelConfig,
+    PricingConfig,
+    TokenTracker,
+)
 
 
 def test_config_manager():
@@ -38,7 +35,7 @@ def test_config_manager():
             model_name="test_model",
             api_key="test_key_123",
             max_tokens=2000,
-            temperature=0.5
+            temperature=0.5,
         )
 
         models.append(new_model)
@@ -48,7 +45,9 @@ def test_config_manager():
         reloaded_models = config_manager.load_models()
         assert len(reloaded_models) == len(models), "模型数量应该匹配"
 
-        test_model = next((m for m in reloaded_models if m.provider == "test_provider"), None)
+        test_model = next(
+            (m for m in reloaded_models if m.provider == "test_provider"), None
+        )
         assert test_model is not None, "应该找到测试模型"
         assert test_model.api_key == "test_key_123", "API密钥应该匹配"
 
@@ -65,7 +64,7 @@ def test_config_manager():
             model_name="test_model",
             input_price_per_1k=0.001,
             output_price_per_1k=0.002,
-            currency="CNY"
+            currency="CNY",
         )
 
         pricing_configs.append(new_pricing)
@@ -74,7 +73,9 @@ def test_config_manager():
         # 测试成本计算
         cost = config_manager.calculate_cost("test_provider", "test_model", 1000, 500)
         expected_cost = (1000 / 1000) * 0.001 + (500 / 1000) * 0.002
-        assert abs(cost - expected_cost) < 0.000001, f"成本计算错误: {cost} != {expected_cost}"
+        assert abs(cost - expected_cost) < 0.000001, (
+            f"成本计算错误: {cost} != {expected_cost}"
+        )
 
         print("✅ 定价配置测试通过")
 
@@ -86,7 +87,7 @@ def test_config_manager():
             input_tokens=1000,
             output_tokens=500,
             session_id="test_session",
-            analysis_type="test_analysis"
+            analysis_type="test_analysis",
         )
 
         assert record.cost == expected_cost, "使用记录成本应该匹配"
@@ -129,7 +130,7 @@ def test_token_tracker():
             input_tokens=2000,
             output_tokens=1000,
             session_id="test_session_123",
-            analysis_type="stock_analysis"
+            analysis_type="stock_analysis",
         )
 
         assert record is not None, "应该返回使用记录"
@@ -145,7 +146,7 @@ def test_token_tracker():
             provider="dashscope",
             model_name="qwen-turbo",
             estimated_input_tokens=1000,
-            estimated_output_tokens=500
+            estimated_output_tokens=500,
         )
 
         assert estimated_cost > 0, "估算成本应该大于0"
@@ -177,16 +178,31 @@ def test_pricing_accuracy():
         ]
 
         for provider, model, input_tokens, output_tokens in test_cases:
-            cost = config_manager.calculate_cost(provider, model, input_tokens, output_tokens)
-            print(f"📊 {provider} {model}: {input_tokens}+{output_tokens} tokens = ¥{cost:.6f}")
+            cost = config_manager.calculate_cost(
+                provider, model, input_tokens, output_tokens
+            )
+            print(
+                f"📊 {provider} {model}: {input_tokens}+{output_tokens} tokens = ¥{cost:.6f}"
+            )
 
             # 验证成本计算逻辑
             pricing_configs = config_manager.load_pricing()
-            pricing = next((p for p in pricing_configs if p.provider == provider and p.model_name == model), None)
+            pricing = next(
+                (
+                    p
+                    for p in pricing_configs
+                    if p.provider == provider and p.model_name == model
+                ),
+                None,
+            )
 
             if pricing:
-                expected_cost = (input_tokens / 1000) * pricing.input_price_per_1k + (output_tokens / 1000) * pricing.output_price_per_1k
-                assert abs(cost - expected_cost) < 0.000001, f"成本计算错误: {cost} != {expected_cost}"
+                expected_cost = (input_tokens / 1000) * pricing.input_price_per_1k + (
+                    output_tokens / 1000
+                ) * pricing.output_price_per_1k
+                assert abs(cost - expected_cost) < 0.000001, (
+                    f"成本计算错误: {cost} != {expected_cost}"
+                )
             else:
                 assert cost == 0.0, f"未知模型应该返回0成本，但得到 {cost}"
 
@@ -210,22 +226,33 @@ def test_usage_statistics():
         ]
 
         total_expected_cost = 0
-        for provider, model, input_tokens, output_tokens, session_id, analysis_type in test_records:
+        for (
+            provider,
+            model,
+            input_tokens,
+            output_tokens,
+            session_id,
+            analysis_type,
+        ) in test_records:
             record = config_manager.add_usage_record(
                 provider=provider,
                 model_name=model,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 session_id=session_id,
-                analysis_type=analysis_type
+                analysis_type=analysis_type,
             )
             total_expected_cost += record.cost
 
         # 测试统计数据
         stats = config_manager.get_usage_statistics(30)
 
-        assert stats["total_requests"] == len(test_records), f"请求数应该是 {len(test_records)}"
-        print(f"📊 统计总成本: {stats['total_cost']:.6f}, 预期总成本: {total_expected_cost:.6f}")
+        assert stats["total_requests"] == len(test_records), (
+            f"请求数应该是 {len(test_records)}"
+        )
+        print(
+            f"📊 统计总成本: {stats['total_cost']:.6f}, 预期总成本: {total_expected_cost:.6f}"
+        )
         assert abs(stats["total_cost"] - total_expected_cost) < 0.001, "总成本应该匹配"
 
         # 测试按供应商统计
@@ -262,7 +289,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         print(f"错误详情: {traceback.format_exc()}")
         return False
 

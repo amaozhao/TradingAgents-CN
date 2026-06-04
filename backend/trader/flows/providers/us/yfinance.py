@@ -1,31 +1,35 @@
 import importlib
-# gets data/stats
-
-import yfinance as yf
-from typing import Annotated, Callable, Any, Optional
-from pandas import DataFrame
-import pandas as pd
-from functools import wraps
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
-import os
+from functools import wraps
+from typing import Annotated, Any, Callable, Optional
 
-from trader.utils.flows import save_output, SavePathType, decorate_all_methods
+import pandas as pd
+
+# gets data/stats
+import yfinance as yf
+from dateutil.relativedelta import relativedelta
+from pandas import DataFrame
+
+from trader.utils.flows import SavePathType, decorate_all_methods
 
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
-logger = get_logger('agents')
+
+logger = get_logger("agents")
 
 # 导入缓存管理器（延迟导入，避免循环依赖）
 _cache_module = None
 CACHE_AVAILABLE = True
+
 
 def get_cache():
     """延迟导入缓存管理器"""
     global _cache_module, CACHE_AVAILABLE
     if _cache_module is None:
         try:
-            _get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
+            _get_cache = getattr(
+                importlib.import_module("trader.flows.cache"), "get_cache"
+            )
             _cache_module = _get_cache
             CACHE_AVAILABLE = True
         except ImportError as e:
@@ -48,7 +52,6 @@ def init_ticker(func: Callable) -> Callable:
 
 @decorate_all_methods(init_ticker)
 class YFinanceUtils:
-
     @staticmethod
     def get_stock_data(
         symbol: Annotated[str, "ticker symbol"],
@@ -153,6 +156,7 @@ class YFinanceUtils:
 
 # ==================== 技术指标相关函数 ====================
 
+
 def get_stock_data_with_indicators(
     symbol: Annotated[str, "ticker symbol of the company"],
     start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
@@ -194,7 +198,9 @@ def get_stock_data_with_indicators(
         # 添加头部信息
         header = f"# Stock data for {symbol.upper()} from {start_date} to {end_date}\n"
         header += f"# Total records: {len(data)}\n"
-        header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        header += (
+            f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        )
 
         return header + csv_string
 
@@ -230,7 +236,7 @@ def get_technical_indicator(
     - mfi: 资金流量指标
     """
     try:
-        wrap = getattr(importlib.import_module('stats'), 'wrap')
+        wrap = getattr(importlib.import_module("stats"), "wrap")
 
         # 指标说明
         indicator_descriptions = {
@@ -307,11 +313,15 @@ def get_technical_indicator(
 
         # 计算日期范围
         curr_date_dt = datetime.strptime(curr_date, "%Y-%m-%d")
-        start_date_dt = curr_date_dt - relativedelta(days=look_back_days + 365)  # 多获取一年数据用于计算
+        start_date_dt = curr_date_dt - relativedelta(
+            days=look_back_days + 365
+        )  # 多获取一年数据用于计算
         start_date = start_date_dt.strftime("%Y-%m-%d")
 
         # 获取股票数据
-        logger.info(f"📊 [yfinance] 获取 {symbol} 技术指标 {indicator}，日期范围: {start_date} 至 {curr_date}")
+        logger.info(
+            f"📊 [yfinance] 获取 {symbol} 技术指标 {indicator}，日期范围: {start_date} 至 {curr_date}"
+        )
         ticker = yf.Ticker(symbol.upper())
         data = ticker.history(start=start_date, end=curr_date)
 
@@ -320,7 +330,7 @@ def get_technical_indicator(
 
         # 重置索引，将日期作为列
         data = data.reset_index()
-        data['Date'] = pd.to_datetime(data['Date']).dt.strftime('%Y-%m-%d')
+        data["Date"] = pd.to_datetime(data["Date"]).dt.strftime("%Y-%m-%d")
 
         # 使用 stats 计算指标
         df = wrap(data)
@@ -332,10 +342,10 @@ def get_technical_indicator(
         end_date = curr_date_dt - relativedelta(days=look_back_days)
 
         while check_date >= end_date:
-            date_str = check_date.strftime('%Y-%m-%d')
+            date_str = check_date.strftime("%Y-%m-%d")
 
             # 查找该日期的指标值
-            matching_rows = df[df['Date'] == date_str]
+            matching_rows = df[df["Date"] == date_str]
 
             if not matching_rows.empty:
                 value = matching_rows.iloc[0][indicator]
@@ -344,7 +354,9 @@ def get_technical_indicator(
                 else:
                     result_lines.append(f"{date_str}: {value:.4f}")
             else:
-                result_lines.append(f"{date_str}: N/A: Not a trading day (weekend or holiday)")
+                result_lines.append(
+                    f"{date_str}: N/A: Not a trading day (weekend or holiday)"
+                )
 
             check_date = check_date - relativedelta(days=1)
 

@@ -2,21 +2,18 @@
 测试财务数据获取流程
 验证是否还会重复获取数据
 """
-import importlib
-import sys
-from pathlib import Path
 
-# 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+import importlib
 
 # 设置日志级别为 INFO，以便看到详细的数据流
 import logging
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s | %(name)-20s | %(levelname)-8s | %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s | %(name)-20s | %(levelname)-8s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
+
 
 def test_financial_data_flow():
     """测试财务数据获取流程"""
@@ -29,10 +26,12 @@ def test_financial_data_flow():
     try:
         # 导入数据提供者
         print("\n📦 步骤1: 导入 OptimizedChinaDataProvider...")
-        OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
+        OptimizedChinaDataProvider = getattr(
+            importlib.import_module("trader.flows.china"), "OptimizedChinaDataProvider"
+        )
 
         provider = OptimizedChinaDataProvider()
-        print(f"✅ Provider 初始化成功")
+        print("✅ Provider 初始化成功")
 
         # 生成基本面报告
         print(f"\n📊 步骤2: 生成 {test_symbol} 的基本面报告...")
@@ -40,13 +39,13 @@ def test_financial_data_flow():
 
         # 先获取基本信息
         stock_info = provider._get_stock_basic_info_only(test_symbol)
-        print(f"\n📋 股票基本信息:")
+        print("\n📋 股票基本信息:")
         print(f"   {stock_info[:200]}...")
 
         # 生成基本面报告
         report = provider._generate_fundamentals_report(test_symbol, stock_info)
 
-        print(f"\n✅ 基本面报告生成成功")
+        print("\n✅ 基本面报告生成成功")
         print(f"   报告长度: {len(report)} 字符")
 
         # 显示报告的前 1000 个字符
@@ -68,7 +67,7 @@ def test_financial_data_flow():
             "毛利率": "毛利率" in report,
             "净利率": "净利率" in report,
             "资产负债率": "资产负债率" in report,
-            "估算值": "估算值" in report or "估算" in report
+            "估算值": "估算值" in report or "估算" in report,
         }
 
         for key, found in keywords.items():
@@ -78,7 +77,9 @@ def test_financial_data_flow():
         # 统计
         found_count = sum(keywords.values())
         total_count = len(keywords)
-        print(f"\n📊 关键指标覆盖率: {found_count}/{total_count} ({found_count/total_count*100:.1f}%)")
+        print(
+            f"\n📊 关键指标覆盖率: {found_count}/{total_count} ({found_count / total_count * 100:.1f}%)"
+        )
 
         if keywords["估算值"]:
             print("\n⚠️ 警告: 报告中包含估算值，说明未能从数据库获取真实财务数据")
@@ -91,7 +92,7 @@ def test_financial_data_flow():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module('traceback')
+        traceback = importlib.import_module("traceback")
         traceback.print_exc()
 
 

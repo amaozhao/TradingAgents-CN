@@ -6,21 +6,21 @@
 2. 使用 langchain_google_genai.ChatGoogleGenerativeAI
 3. 使用我们的 ChatGoogleOpenAI 适配器
 """
-import sys
-import os
+
 import importlib
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import os
+import sys
+
+from dotenv import load_dotenv
 
 print("=" * 80)
 print("🧪 Google AI SDK 基础功能测试")
 print("=" * 80)
 print()
 
-# 加载环境变量
-from dotenv import load_dotenv
 load_dotenv()
 
-google_api_key = os.getenv('GOOGLE_API_KEY')
+google_api_key = os.getenv("GOOGLE_API_KEY")
 if not google_api_key:
     print("❌ 错误：未找到 GOOGLE_API_KEY 环境变量")
     print("   请在 .env 文件中设置 GOOGLE_API_KEY")
@@ -42,7 +42,7 @@ try:
     genai.configure(api_key=google_api_key)
 
     # 创建模型
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    model = genai.GenerativeModel("gemini-2.5-flash")
     print(f"✅ 模型创建成功: {model.model_name}")
 
     # 发送测试消息
@@ -56,6 +56,7 @@ try:
 except Exception as e:
     print(f"❌ 测试失败: {e}")
     import traceback
+
     traceback.print_exc()
     print()
 
@@ -73,7 +74,7 @@ try:
         model="gemini-2.5-flash",
         google_api_key=google_api_key,
         temperature=0.7,
-        max_tokens=100
+        max_tokens=100,
     )
     print(f"✅ LLM 创建成功: {llm.model}")
 
@@ -88,6 +89,7 @@ try:
 except Exception as e:
     print(f"❌ 测试失败: {e}")
     import traceback
+
     traceback.print_exc()
     print()
 
@@ -106,7 +108,7 @@ try:
         google_api_key=google_api_key,
         temperature=0.7,
         max_tokens=100,
-        transport="rest"  # 使用 REST 模式
+        transport="rest",  # 使用 REST 模式
     )
     print(f"✅ LLM 创建成功: {llm.model}")
     print("   传输模式: REST")
@@ -122,6 +124,7 @@ try:
 except Exception as e:
     print(f"❌ 测试失败: {e}")
     import traceback
+
     traceback.print_exc()
     print()
 
@@ -141,7 +144,7 @@ try:
         temperature=0.7,
         max_tokens=100,
         transport="rest",
-        client_options={"api_endpoint": "https://generativelanguage.googleapis.com"}
+        client_options={"api_endpoint": "https://generativelanguage.googleapis.com"},
     )
     print(f"✅ LLM 创建成功: {llm.model}")
     print("   传输模式: REST")
@@ -158,6 +161,7 @@ try:
 except Exception as e:
     print(f"❌ 测试失败: {e}")
     import traceback
+
     traceback.print_exc()
     print()
 
@@ -176,7 +180,7 @@ try:
         google_api_key=google_api_key,
         temperature=0.7,
         max_tokens=100,
-        transport="rest"
+        transport="rest",
     )
     print(f"✅ LLM 创建成功: {llm.model}")
 
@@ -191,6 +195,7 @@ try:
 except Exception as e:
     print(f"❌ 测试失败: {e}")
     import traceback
+
     traceback.print_exc()
     print()
 
@@ -210,7 +215,7 @@ try:
         base_url="https://generativelanguage.googleapis.com/v1beta",
         temperature=0.7,
         max_tokens=100,
-        transport="rest"
+        transport="rest",
     )
     print(f"✅ LLM 创建成功: {llm.model}")
 
@@ -225,6 +230,7 @@ try:
 except Exception as e:
     print(f"❌ 测试失败: {e}")
     import traceback
+
     traceback.print_exc()
     print()
 

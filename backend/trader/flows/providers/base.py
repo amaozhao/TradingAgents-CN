@@ -1,10 +1,12 @@
 """
 统一股票数据提供器基类
 """
-from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, List, Union
-from datetime import datetime, date
+
 import logging
+from abc import ABC, abstractmethod
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional, Union
+
 import pandas as pd
 
 
@@ -49,7 +51,9 @@ class BaseStockDataProvider(ABC):
     # ==================== 核心数据接口 ====================
 
     @abstractmethod
-    async def get_stock_basic_info(self, symbol: Optional[str] = None) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
+    async def get_stock_basic_info(
+        self, symbol: Optional[str] = None
+    ) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
         """
         获取股票基础信息
 
@@ -79,7 +83,7 @@ class BaseStockDataProvider(ABC):
         self,
         symbol: str,
         start_date: Union[str, date],
-        end_date: Optional[Union[str, date]] = None
+        end_date: Optional[Union[str, date]] = None,
     ) -> Optional[pd.DataFrame]:
         """
         获取历史数据
@@ -96,7 +100,9 @@ class BaseStockDataProvider(ABC):
 
     # ==================== 扩展接口 ====================
 
-    async def get_stock_list(self, market: Optional[str] = None) -> Optional[List[Dict[str, Any]]]:
+    async def get_stock_list(
+        self, market: Optional[str] = None
+    ) -> Optional[List[Dict[str, Any]]]:
         """
         获取股票列表
 
@@ -109,7 +115,9 @@ class BaseStockDataProvider(ABC):
         result = await self.get_stock_basic_info()
         return result if isinstance(result, list) else None
 
-    async def get_financial_data(self, symbol: str, report_type: str = "annual") -> Optional[Dict[str, Any]]:
+    async def get_financial_data(
+        self, symbol: str, report_type: str = "annual"
+    ) -> Optional[Dict[str, Any]]:
         """
         获取财务数据
 
@@ -141,19 +149,16 @@ class BaseStockDataProvider(ABC):
             "name": raw_data.get("name", ""),
             "symbol": raw_data.get("symbol", raw_data.get("code", "")),
             "full_symbol": raw_data.get("full_symbol", raw_data.get("ts_code", "")),
-
             # 市场信息
             "market_info": self._determine_market_info(raw_data),
-
             # 业务信息
             "industry": raw_data.get("industry"),
             "area": raw_data.get("area"),
             "list_date": self._format_date_output(raw_data.get("list_date")),
-
             # 元数据
             "data_source": self.provider_name.lower(),
             "data_version": 1,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.utcnow(),
         }
 
     def standardize_quotes(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -174,31 +179,30 @@ class BaseStockDataProvider(ABC):
             "symbol": symbol,
             "full_symbol": raw_data.get("full_symbol", raw_data.get("ts_code", symbol)),
             "market": self._determine_market(raw_data),
-
             # 价格数据
             "close": self._convert_to_float(raw_data.get("close")),
-            "current_price": self._convert_to_float(raw_data.get("current_price", raw_data.get("close"))),
+            "current_price": self._convert_to_float(
+                raw_data.get("current_price", raw_data.get("close"))
+            ),
             "open": self._convert_to_float(raw_data.get("open")),
             "high": self._convert_to_float(raw_data.get("high")),
             "low": self._convert_to_float(raw_data.get("low")),
             "pre_close": self._convert_to_float(raw_data.get("pre_close")),
-
             # 变动数据
             "change": self._convert_to_float(raw_data.get("change")),
             "pct_chg": self._convert_to_float(raw_data.get("pct_chg")),
-
             # 成交数据
-            "volume": self._convert_to_float(raw_data.get("volume", raw_data.get("vol"))),
+            "volume": self._convert_to_float(
+                raw_data.get("volume", raw_data.get("vol"))
+            ),
             "amount": self._convert_to_float(raw_data.get("amount")),
-
             # 时间数据
             "trade_date": self._format_date_output(raw_data.get("trade_date")),
             "timestamp": datetime.utcnow(),
-
             # 元数据
             "data_source": self.provider_name.lower(),
             "data_version": 1,
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.utcnow(),
         }
 
     # ==================== 辅助方法 ====================
@@ -211,7 +215,7 @@ class BaseStockDataProvider(ABC):
             "exchange": "UNKNOWN",
             "exchange_name": "未知交易所",
             "currency": "CNY",
-            "timezone": "Asia/Shanghai"
+            "timezone": "Asia/Shanghai",
         }
 
     def _determine_market(self, raw_data: Dict[str, Any]) -> str:
@@ -241,7 +245,7 @@ class BaseStockDataProvider(ABC):
 
         # 处理其他格式
         if isinstance(date_value, (date, datetime)):
-            return date_value.strftime('%Y-%m-%d')
+            return date_value.strftime("%Y-%m-%d")
 
         return date_str
 

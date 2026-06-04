@@ -4,11 +4,11 @@
 """
 
 import logging
-from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
 from collections import defaultdict
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
-from app.core.database import get_mongo_db
+from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
 from app.models.config import UsageRecord, UsageStatistics
 
@@ -25,7 +25,7 @@ class UsageStatisticsService:
     async def add_usage_record(self, record: UsageRecord) -> bool:
         """添加使用记录"""
         try:
-            db = get_mongo_db()
+            db = get_postgres_db()
             collection = db[self.collection_name]
 
             record_dict = record.model_dump(exclude={"id"})
@@ -45,11 +45,11 @@ class UsageStatisticsService:
         model_name: Optional[str] = None,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[UsageRecord]:
         """获取使用记录"""
         try:
-            db = get_mongo_db()
+            db = get_postgres_db()
             collection = db[self.collection_name]
 
             # 构建查询条件
@@ -83,11 +83,11 @@ class UsageStatisticsService:
         self,
         days: int = 7,
         provider: Optional[str] = None,
-        model_name: Optional[str] = None
+        model_name: Optional[str] = None,
     ) -> UsageStatistics:
         """获取使用统计"""
         try:
-            db = get_mongo_db()
+            db = get_postgres_db()
             collection = db[self.collection_name]
 
             # 计算时间范围
@@ -98,7 +98,7 @@ class UsageStatisticsService:
             query: Dict[str, Any] = {
                 "timestamp": {
                     "$gte": start_date.isoformat(),
-                    "$lte": end_date.isoformat()
+                    "$lte": end_date.isoformat(),
                 }
             }
             if provider:
@@ -119,27 +119,33 @@ class UsageStatisticsService:
             # 按货币统计成本
             cost_by_currency = defaultdict(float)
 
-            by_provider = defaultdict(lambda: {
-                "requests": 0,
-                "input_tokens": 0,
-                "output_tokens": 0,
-                "cost": 0.0,
-                "cost_by_currency": defaultdict(float)
-            })
-            by_model = defaultdict(lambda: {
-                "requests": 0,
-                "input_tokens": 0,
-                "output_tokens": 0,
-                "cost": 0.0,
-                "cost_by_currency": defaultdict(float)
-            })
-            by_date = defaultdict(lambda: {
-                "requests": 0,
-                "input_tokens": 0,
-                "output_tokens": 0,
-                "cost": 0.0,
-                "cost_by_currency": defaultdict(float)
-            })
+            by_provider = defaultdict(
+                lambda: {
+                    "requests": 0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "cost": 0.0,
+                    "cost_by_currency": defaultdict(float),
+                }
+            )
+            by_model = defaultdict(
+                lambda: {
+                    "requests": 0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "cost": 0.0,
+                    "cost_by_currency": defaultdict(float),
+                }
+            )
+            by_date = defaultdict(
+                lambda: {
+                    "requests": 0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "cost": 0.0,
+                    "cost_by_currency": defaultdict(float),
+                }
+            )
 
             for record in records:
                 cost = record.get("cost", 0.0)
@@ -154,8 +160,12 @@ class UsageStatisticsService:
                 # 按供应商统计
                 provider_key = record.get("provider", "unknown")
                 by_provider[provider_key]["requests"] += 1
-                by_provider[provider_key]["input_tokens"] += record.get("input_tokens", 0)
-                by_provider[provider_key]["output_tokens"] += record.get("output_tokens", 0)
+                by_provider[provider_key]["input_tokens"] += record.get(
+                    "input_tokens", 0
+                )
+                by_provider[provider_key]["output_tokens"] += record.get(
+                    "output_tokens", 0
+                )
                 by_provider[provider_key]["cost"] += cost
                 by_provider[provider_key]["cost_by_currency"][currency] += cost
 
@@ -179,9 +189,18 @@ class UsageStatisticsService:
 
             # 转换 defaultdict 为普通 dict（包括嵌套的 cost_by_currency）
             stats.cost_by_currency = dict(cost_by_currency)
-            stats.by_provider = {k: {**v, "cost_by_currency": dict(v["cost_by_currency"])} for k, v in by_provider.items()}
-            stats.by_model = {k: {**v, "cost_by_currency": dict(v["cost_by_currency"])} for k, v in by_model.items()}
-            stats.by_date = {k: {**v, "cost_by_currency": dict(v["cost_by_currency"])} for k, v in by_date.items()}
+            stats.by_provider = {
+                k: {**v, "cost_by_currency": dict(v["cost_by_currency"])}
+                for k, v in by_provider.items()
+            }
+            stats.by_model = {
+                k: {**v, "cost_by_currency": dict(v["cost_by_currency"])}
+                for k, v in by_model.items()
+            }
+            stats.by_date = {
+                k: {**v, "cost_by_currency": dict(v["cost_by_currency"])}
+                for k, v in by_date.items()
+            }
 
             logger.info(f"✅ 获取使用统计成功: {stats.total_requests} 条记录")
             return stats
@@ -192,43 +211,34 @@ class UsageStatisticsService:
     async def get_cost_by_provider(self, days: int = 7) -> Dict[str, float]:
         """获取按供应商的成本统计"""
         stats = await self.get_usage_statistics(days=days)
-        return {
-            provider: data["cost"]
-            for provider, data in stats.by_provider.items()
-        }
+        return {provider: data["cost"] for provider, data in stats.by_provider.items()}
 
     async def get_cost_by_model(self, days: int = 7) -> Dict[str, float]:
         """获取按模型的成本统计"""
         stats = await self.get_usage_statistics(days=days)
-        return {
-            model: data["cost"]
-            for model, data in stats.by_model.items()
-        }
+        return {model: data["cost"] for model, data in stats.by_model.items()}
 
     async def get_daily_cost(self, days: int = 7) -> Dict[str, float]:
         """获取每日成本统计"""
         stats = await self.get_usage_statistics(days=days)
-        return {
-            date: data["cost"]
-            for date, data in stats.by_date.items()
-        }
+        return {date: data["cost"] for date, data in stats.by_date.items()}
 
     async def delete_old_records(self, days: int = 90) -> int:
         """删除旧记录"""
         try:
-            db = get_mongo_db()
+            db = get_postgres_db()
             collection = db[self.collection_name]
 
             # 计算截止日期
             cutoff_date = datetime.now() - timedelta(days=days)
-            records_to_delete = await collection.find({
-                "timestamp": {"$lt": cutoff_date.isoformat()}
-            }).to_list(length=None)
+            records_to_delete = await collection.find(
+                {"timestamp": {"$lt": cutoff_date.isoformat()}}
+            ).to_list(length=None)
 
             # 删除旧记录
-            result = await collection.delete_many({
-                "timestamp": {"$lt": cutoff_date.isoformat()}
-            })
+            result = await collection.delete_many(
+                {"timestamp": {"$lt": cutoff_date.isoformat()}}
+            )
 
             deleted_count = result.deleted_count
             if deleted_count:
@@ -244,15 +254,22 @@ class UsageStatisticsService:
         if result.status == "failed":
             logger.warning("⚠️ 使用统计 PostgreSQL 双写失败: %s", result.reason)
 
-    async def _dual_write_usage_tombstones(self, documents: List[Dict[str, Any]]) -> None:
+    async def _dual_write_usage_tombstones(
+        self, documents: List[Dict[str, Any]]
+    ) -> None:
         if not documents:
             return
         result = await dual_write_hot_documents(
             self.collection_name,
-            [{**document, "deleted": True, "updated_at": datetime.now()} for document in documents],
+            [
+                {**document, "deleted": True, "updated_at": datetime.now()}
+                for document in documents
+            ],
         )
         if result.status == "failed":
-            logger.warning("⚠️ 使用统计 PostgreSQL tombstone 双写失败: %s", result.reason)
+            logger.warning(
+                "⚠️ 使用统计 PostgreSQL tombstone 双写失败: %s", result.reason
+            )
 
 
 # 创建全局实例

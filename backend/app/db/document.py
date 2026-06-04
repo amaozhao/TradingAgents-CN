@@ -7,9 +7,9 @@ from enum import Enum
 from typing import Any, Mapping, cast
 
 try:
-    from bson import ObjectId
-except Exception:  # pragma: no cover - bson is provided by pymongo in this project
-    ObjectId = None
+    from app.db.ids import DocumentId
+except Exception:  # pragma: no cover - PostgreSQL document store uses app.db.ids
+    DocumentId = None
 
 
 def legacy_id_from_document(document: Mapping[str, Any]) -> str:
@@ -21,7 +21,7 @@ def legacy_id_from_document(document: Mapping[str, Any]) -> str:
 
 
 def normalize_payload(value: Any) -> Any:
-    if _is_object_id(value):
+    if _is_document_id(value):
         return str(value)
     if isinstance(value, datetime):
         return value.isoformat()
@@ -101,7 +101,9 @@ def map_stock_daily_quote(document: Mapping[str, Any]) -> dict[str, Any]:
         "volume": _as_decimal(document.get("volume") or document.get("vol")),
         "amount": _as_decimal(document.get("amount") or document.get("turnover")),
         "change": _as_decimal(document.get("change")),
-        "pct_chg": _as_decimal(document.get("pct_chg") or document.get("change_percent")),
+        "pct_chg": _as_decimal(
+            document.get("pct_chg") or document.get("change_percent")
+        ),
         "deleted": bool(_as_bool(document.get("deleted"))),
     }
 
@@ -111,7 +113,9 @@ def map_stock_financial_data(document: Mapping[str, Any]) -> dict[str, Any]:
     code = _as_str(document.get("code"))
     report_period = _as_str(document.get("report_period") or "")
     return {
-        **_base_values(document, f"stock_financial_data:{data_source}:{code}:{report_period}"),
+        **_base_values(
+            document, f"stock_financial_data:{data_source}:{code}:{report_period}"
+        ),
         "code": code,
         "data_source": data_source,
         "report_period": report_period,
@@ -123,7 +127,11 @@ def map_stock_financial_data(document: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def map_stock_news(document: Mapping[str, Any]) -> dict[str, Any]:
-    publish_time = _as_datetime(document.get("publish_time") or document.get("published_at") or document.get("created_at"))
+    publish_time = _as_datetime(
+        document.get("publish_time")
+        or document.get("published_at")
+        or document.get("created_at")
+    )
     title = _as_optional_str(document.get("title"))
     url = _as_optional_str(document.get("url"))
     fallback = _stable_legacy_id(
@@ -138,7 +146,9 @@ def map_stock_news(document: Mapping[str, Any]) -> dict[str, Any]:
         "market": _as_optional_str(document.get("market")),
         "title": title,
         "url": url,
-        "data_source": _as_optional_str(document.get("data_source") or document.get("source")),
+        "data_source": _as_optional_str(
+            document.get("data_source") or document.get("source")
+        ),
         "category": _as_optional_str(document.get("category")),
         "sentiment": _as_optional_str(document.get("sentiment")),
         "importance": _as_optional_str(document.get("importance")),
@@ -153,22 +163,38 @@ def map_analysis_task(document: Mapping[str, Any]) -> dict[str, Any]:
         **_base_values(document, f"analysis_tasks:{task_id}"),
         "task_id": task_id,
         "user_id": _as_optional_str(document.get("user_id") or document.get("user")),
-        "stock_symbol": _as_optional_str(document.get("stock_symbol") or document.get("symbol") or document.get("stock_code")),
+        "stock_symbol": _as_optional_str(
+            document.get("stock_symbol")
+            or document.get("symbol")
+            or document.get("stock_code")
+        ),
         "status": _as_optional_str(document.get("status")),
         "progress": _as_int(document.get("progress")),
     }
 
 
 def map_analysis_report(document: Mapping[str, Any]) -> dict[str, Any]:
-    analysis_id = _as_str(document.get("analysis_id") or document.get("task_id") or document.get("id"))
+    analysis_id = _as_str(
+        document.get("analysis_id") or document.get("task_id") or document.get("id")
+    )
     return {
         **_base_values(document, f"analysis_reports:{analysis_id}"),
         "analysis_id": analysis_id,
         "task_id": _as_optional_str(document.get("task_id")),
         "user_id": _as_optional_str(document.get("user_id") or document.get("user")),
-        "stock_symbol": _as_optional_str(document.get("stock_symbol") or document.get("symbol") or document.get("stock_code")),
-        "analysis_date": _as_date(document.get("analysis_date") or document.get("created_at")),
-        "summary": _as_optional_str(document.get("summary") or document.get("final_decision") or document.get("recommendation")),
+        "stock_symbol": _as_optional_str(
+            document.get("stock_symbol")
+            or document.get("symbol")
+            or document.get("stock_code")
+        ),
+        "analysis_date": _as_date(
+            document.get("analysis_date") or document.get("created_at")
+        ),
+        "summary": _as_optional_str(
+            document.get("summary")
+            or document.get("final_decision")
+            or document.get("recommendation")
+        ),
     }
 
 
@@ -185,9 +211,17 @@ def map_analysis_batch(document: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def map_analysis_result(document: Mapping[str, Any]) -> dict[str, Any]:
-    task_id = _as_optional_str(document.get("task_id") or document.get("analysis_id") or document.get("id"))
-    stock_symbol = _as_optional_str(document.get("stock_symbol") or document.get("symbol") or document.get("stock_code"))
-    fallback = f"analysis:{task_id or stock_symbol or _as_str(document.get('created_at'))}"
+    task_id = _as_optional_str(
+        document.get("task_id") or document.get("analysis_id") or document.get("id")
+    )
+    stock_symbol = _as_optional_str(
+        document.get("stock_symbol")
+        or document.get("symbol")
+        or document.get("stock_code")
+    )
+    fallback = (
+        f"analysis:{task_id or stock_symbol or _as_str(document.get('created_at'))}"
+    )
     return {
         **_base_values(document, fallback),
         "task_id": task_id,
@@ -205,7 +239,9 @@ def map_sync_status(document: Mapping[str, Any]) -> dict[str, Any]:
     if status is None and success is not None:
         status = "success" if success else "failed"
     started_at = _as_datetime(document.get("started_at"))
-    finished_at = _as_datetime(document.get("finished_at") or document.get("last_sync_time"))
+    finished_at = _as_datetime(
+        document.get("finished_at") or document.get("last_sync_time")
+    )
     return {
         **_base_values(document, f"sync_status:{job}"),
         "job": job,
@@ -218,14 +254,20 @@ def map_sync_status(document: Mapping[str, Any]) -> dict[str, Any]:
 
 def map_scheduler_execution(document: Mapping[str, Any]) -> dict[str, Any]:
     job_id = _as_str(document.get("job_id") or document.get("job") or "")
-    timestamp = _as_datetime(document.get("timestamp") or document.get("created_at") or document.get("started_at"))
+    timestamp = _as_datetime(
+        document.get("timestamp")
+        or document.get("created_at")
+        or document.get("started_at")
+    )
     timestamp_key = timestamp.isoformat() if timestamp else ""
     return {
         **_base_values(document, f"scheduler_executions:{job_id}:{timestamp_key}"),
         "job_id": job_id,
         "status": _as_optional_str(document.get("status")),
         "progress": _as_int(document.get("progress")),
-        "progress_message": _as_optional_str(document.get("progress_message") or document.get("message")),
+        "progress_message": _as_optional_str(
+            document.get("progress_message") or document.get("message")
+        ),
         "timestamp": timestamp,
         "cancel_requested": _as_bool(document.get("cancel_requested")),
     }
@@ -236,7 +278,10 @@ def map_scheduler_history(document: Mapping[str, Any]) -> dict[str, Any]:
     timestamp = _as_datetime(document.get("timestamp") or document.get("created_at"))
     timestamp_key = timestamp.isoformat() if timestamp else ""
     return {
-        **_base_values(document, f"scheduler_history:{job_id}:{document.get('action') or ''}:{timestamp_key}"),
+        **_base_values(
+            document,
+            f"scheduler_history:{job_id}:{document.get('action') or ''}:{timestamp_key}",
+        ),
         "job_id": job_id,
         "action": _as_optional_str(document.get("action")),
         "status": _as_optional_str(document.get("status")),
@@ -265,7 +310,9 @@ def map_system_config_document(
         document.get("config_key")
         or document.get("key")
         or document.get("id")
-        or _join_key(document.get("data_source_name"), document.get("market_category_id"))
+        or _join_key(
+            document.get("data_source_name"), document.get("market_category_id")
+        )
         or document.get("name")
         or document.get("provider")
         or document.get("_id")
@@ -317,7 +364,9 @@ def map_user_favorite(document: Mapping[str, Any]) -> dict[str, Any]:
 
 def map_user_tag(document: Mapping[str, Any]) -> dict[str, Any]:
     user_id = _as_str(document.get("user_id"))
-    tag_id = _as_optional_str(document.get("tag_id") or document.get("id") or document.get("_id"))
+    tag_id = _as_optional_str(
+        document.get("tag_id") or document.get("id") or document.get("_id")
+    )
     name = _as_str(document.get("name"))
     return {
         **_base_values(document, f"user_tags:{user_id}:{tag_id or name}"),
@@ -380,14 +429,18 @@ def map_user_account(document: Mapping[str, Any]) -> dict[str, Any]:
         **_base_values(document, f"user_accounts:{_as_str(document.get('username'))}"),
         "username": _as_str(document.get("username")),
         "email": _as_str(document.get("email")),
-        "is_active": _as_bool(document.get("is_active")) if document.get("is_active") is not None else True,
+        "is_active": _as_bool(document.get("is_active"))
+        if document.get("is_active") is not None
+        else True,
         "is_admin": bool(_as_bool(document.get("is_admin"))),
         "deleted": bool(_as_bool(document.get("deleted"))),
     }
 
 
 def map_user_session(document: Mapping[str, Any]) -> dict[str, Any]:
-    session_id = _as_str(document.get("session_id") or document.get("token_id") or document.get("jti"))
+    session_id = _as_str(
+        document.get("session_id") or document.get("token_id") or document.get("jti")
+    )
     if not session_id:
         session_id = _stable_legacy_id(
             "user_sessions",
@@ -401,9 +454,13 @@ def map_user_session(document: Mapping[str, Any]) -> dict[str, Any]:
         "session_id": session_id,
         "user_id": _as_optional_str(document.get("user_id")),
         "username": _as_optional_str(document.get("username")),
-        "ip_address": _as_optional_str(document.get("ip_address") or document.get("ip")),
+        "ip_address": _as_optional_str(
+            document.get("ip_address") or document.get("ip")
+        ),
         "user_agent": _as_optional_str(document.get("user_agent")),
-        "expires_at": _as_datetime(document.get("expires_at") or document.get("expires")),
+        "expires_at": _as_datetime(
+            document.get("expires_at") or document.get("expires")
+        ),
         "last_activity_at": _as_datetime(
             document.get("last_activity_at")
             or document.get("last_activity")
@@ -426,9 +483,13 @@ def map_login_attempt(document: Mapping[str, Any]) -> dict[str, Any]:
         **_base_values(document, fallback),
         "user_id": _as_optional_str(document.get("user_id")),
         "username": _as_optional_str(document.get("username")),
-        "ip_address": _as_optional_str(document.get("ip_address") or document.get("ip")),
+        "ip_address": _as_optional_str(
+            document.get("ip_address") or document.get("ip")
+        ),
         "success": _as_bool(document.get("success")),
-        "reason": _as_optional_str(document.get("reason") or document.get("failure_reason")),
+        "reason": _as_optional_str(
+            document.get("reason") or document.get("failure_reason")
+        ),
         "timestamp": timestamp,
         "deleted": bool(_as_bool(document.get("deleted"))),
     }
@@ -441,7 +502,9 @@ def map_operation_log(document: Mapping[str, Any]) -> dict[str, Any]:
         "username": _as_optional_str(document.get("username")),
         "action_type": _as_optional_str(document.get("action_type")),
         "success": _as_bool(document.get("success")),
-        "timestamp": _as_datetime(document.get("timestamp") or document.get("created_at")),
+        "timestamp": _as_datetime(
+            document.get("timestamp") or document.get("created_at")
+        ),
         "deleted": bool(_as_bool(document.get("deleted"))),
     }
 
@@ -496,8 +559,16 @@ def map_token_usage(document: Mapping[str, Any]) -> dict[str, Any]:
 
 def map_internal_message(document: Mapping[str, Any]) -> dict[str, Any]:
     message_id = _as_str(document.get("message_id"))
-    source = cast(Mapping[str, Any], document.get("source")) if isinstance(document.get("source"), Mapping) else {}
-    related_data = cast(Mapping[str, Any], document.get("related_data")) if isinstance(document.get("related_data"), Mapping) else {}
+    source = (
+        cast(Mapping[str, Any], document.get("source"))
+        if isinstance(document.get("source"), Mapping)
+        else {}
+    )
+    related_data = (
+        cast(Mapping[str, Any], document.get("related_data"))
+        if isinstance(document.get("related_data"), Mapping)
+        else {}
+    )
     return {
         **_base_values(document, f"internal_messages:{message_id}"),
         "message_id": message_id,
@@ -510,7 +581,9 @@ def map_internal_message(document: Mapping[str, Any]) -> dict[str, Any]:
         "access_level": _as_optional_str(document.get("access_level")),
         "rating": _as_optional_str(related_data.get("rating")),
         "confidence_level": _as_decimal(document.get("confidence_level")),
-        "created_time": _as_datetime(document.get("created_time") or document.get("created_at")),
+        "created_time": _as_datetime(
+            document.get("created_time") or document.get("created_at")
+        ),
         "deleted": bool(_as_bool(document.get("deleted"))),
     }
 
@@ -518,8 +591,16 @@ def map_internal_message(document: Mapping[str, Any]) -> dict[str, Any]:
 def map_social_media_message(document: Mapping[str, Any]) -> dict[str, Any]:
     message_id = _as_str(document.get("message_id"))
     platform = _as_str(document.get("platform"))
-    author = cast(Mapping[str, Any], document.get("author")) if isinstance(document.get("author"), Mapping) else {}
-    engagement = cast(Mapping[str, Any], document.get("engagement")) if isinstance(document.get("engagement"), Mapping) else {}
+    author = (
+        cast(Mapping[str, Any], document.get("author"))
+        if isinstance(document.get("author"), Mapping)
+        else {}
+    )
+    engagement = (
+        cast(Mapping[str, Any], document.get("engagement"))
+        if isinstance(document.get("engagement"), Mapping)
+        else {}
+    )
     return {
         **_base_values(document, f"social_media_messages:{platform}:{message_id}"),
         "message_id": message_id,
@@ -528,7 +609,9 @@ def map_social_media_message(document: Mapping[str, Any]) -> dict[str, Any]:
         "message_type": _as_optional_str(document.get("message_type")),
         "sentiment": _as_optional_str(document.get("sentiment")),
         "importance": _as_optional_str(document.get("importance")),
-        "publish_time": _as_datetime(document.get("publish_time") or document.get("created_at")),
+        "publish_time": _as_datetime(
+            document.get("publish_time") or document.get("created_at")
+        ),
         "influence_score": _as_decimal(author.get("influence_score")),
         "engagement_rate": _as_decimal(engagement.get("engagement_rate")),
         "verified": _as_bool(author.get("verified")),
@@ -536,7 +619,9 @@ def map_social_media_message(document: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _base_values(document: Mapping[str, Any], fallback_legacy_id: str | None = None) -> dict[str, Any]:
+def _base_values(
+    document: Mapping[str, Any], fallback_legacy_id: str | None = None
+) -> dict[str, Any]:
     try:
         legacy_id = legacy_id_from_document(document)
     except ValueError:
@@ -625,8 +710,8 @@ def _as_datetime(value: Any) -> datetime | None:
         return None
 
 
-def _is_object_id(value: Any) -> bool:
-    return ObjectId is not None and isinstance(value, ObjectId)
+def _is_document_id(value: Any) -> bool:
+    return DocumentId is not None and isinstance(value, DocumentId)
 
 
 def _join_key(*values: Any) -> str:
