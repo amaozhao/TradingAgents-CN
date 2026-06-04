@@ -129,6 +129,7 @@ docs/v1.0.0-preview/
 .trae/
 .augment/
 .omx/
+.worktrees/
 
 # 自动清理脚本添加的规则
 # Python包元数据
