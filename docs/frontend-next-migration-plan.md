@@ -176,16 +176,16 @@ frontend-next/
 - Create: `frontend-next/components/feedback/empty-state.tsx`
 - Create: `frontend-next/components/feedback/confirm-dialog.tsx`
 
-- [ ] Implement token storage using `auth-token`, `refresh-token`, and `user-info`.
-- [ ] Implement Zustand auth store with login state, redirect path, user info, and clear-auth behavior.
-- [ ] Implement app store for theme, sidebar, language, network status, and API connection state.
-- [ ] Implement notification store with drawer state, unread count, WebSocket status, and reconnect state.
-- [ ] Implement axios client preserving `ApiResponse<T>`, timeout, `Authorization` header, `Accept-Language`, request ID, business error handling, and 401 cleanup.
-- [ ] Integrate TanStack Query provider and clear QueryClient cache on logout.
-- [ ] Integrate next-themes and sonner in `app/providers.tsx`.
-- [ ] Add unit tests for token storage, auth store, and API 401 handling.
-- [ ] Verify `pnpm test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
-- [ ] Commit foundation with a Lore commit.
+- [x] Implement token storage using `auth-token`, `refresh-token`, and `user-info`.
+- [x] Implement Zustand auth store with login state, redirect path, user info, and clear-auth behavior.
+- [x] Implement app store for theme, sidebar, language, network status, and API connection state.
+- [x] Implement notification store with drawer state, unread count, WebSocket status, and reconnect state.
+- [x] Implement axios client preserving `ApiResponse<T>`, timeout, `Authorization` header, `Accept-Language`, request ID, business error handling, and 401 cleanup.
+- [x] Integrate TanStack Query provider and clear QueryClient cache on logout.
+- [x] Integrate next-themes and sonner in `app/providers.tsx`.
+- [x] Add unit tests for token storage, auth store, and API 401 handling.
+- [x] Verify `pnpm test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
+- [x] Commit foundation with a Lore commit.
 
 ## Task 3: Build Route Shell
 
