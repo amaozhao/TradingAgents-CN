@@ -10,6 +10,7 @@ import {
 import type { User } from "@/types/auth"
 
 export interface AuthState {
+  hasHydrated: boolean
   isAuthenticated: boolean
   token: string | null
   refreshToken: string | null
@@ -34,6 +35,7 @@ export interface AuthState {
 }
 
 const initialState = {
+  hasHydrated: false,
   isAuthenticated: false,
   token: null,
   refreshToken: null,
@@ -52,12 +54,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     if (!stored) {
       set({
-        ...initialState
+        ...initialState,
+        hasHydrated: true
       })
       return
     }
 
     set({
+      hasHydrated: true,
       isAuthenticated: true,
       token: stored.token,
       refreshToken: stored.refreshToken,
@@ -67,6 +71,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setAuthInfo: (token, refreshToken, user) => {
     set({
+      hasHydrated: true,
       token,
       refreshToken: refreshToken ?? get().refreshToken,
       user: user ?? get().user,
@@ -83,7 +88,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   clearAuthInfo: () => {
     clearStoredAuth()
     set({
-      ...initialState
+      ...initialState,
+      hasHydrated: true
     })
   },
 

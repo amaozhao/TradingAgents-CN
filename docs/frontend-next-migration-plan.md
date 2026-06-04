@@ -203,15 +203,15 @@ frontend-next/
 - Create: `frontend-next/components/layout/protected-route.tsx`
 - Create: `frontend-next/app/(protected)/layout.tsx` if route groups are used
 
-- [ ] Encode all current Vue routes, menu metadata, titles, icons, hidden flags, and auth requirements in `route-config.ts`.
-- [ ] Map old Element Plus icon names to lucide-react icons.
-- [ ] Implement AppShell with sidebar, header, breadcrumb, user menu, footer, responsive collapse, and content wrapper.
-- [ ] Implement client route guard for protected pages and `/login` redirect behavior.
-- [ ] Implement `/queue`, `/analysis/history`, and `/paper/:name.md` redirects.
-- [ ] Add Playwright test for unauthenticated protected route redirect.
-- [ ] Add Playwright test for logged-in `/login` redirect to `/dashboard`.
-- [ ] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
-- [ ] Commit route shell with a Lore commit.
+- [x] Encode all current Vue routes, menu metadata, titles, icons, hidden flags, and auth requirements in `route-config.ts`.
+- [x] Map old Element Plus icon names to lucide-react icons.
+- [x] Implement AppShell with sidebar, header, breadcrumb, user menu, footer, responsive collapse, and content wrapper.
+- [x] Implement client route guard for protected pages and `/login` redirect behavior.
+- [x] Implement `/queue`, `/analysis/history`, and `/paper/:name.md` redirects.
+- [x] Add Playwright test for unauthenticated protected route redirect.
+- [x] Add Playwright test for logged-in `/login` redirect to `/dashboard`.
+- [x] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
+- [x] Commit route shell with a Lore commit.
 
 ## Task 4: Build Shared Business Components
 

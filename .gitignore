@@ -181,6 +181,8 @@ node_modules/
 *.tsbuildinfo
 frontend/.vite
 frontend-next/.next/
+frontend-next/playwright-report/
+frontend-next/test-results/
 
 # Installers and archives
 *.deb
