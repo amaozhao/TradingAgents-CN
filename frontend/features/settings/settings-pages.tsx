@@ -1,22 +1,29 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useMemo, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { EChartsOption } from "echarts"
 import {
+  Bell,
+  Brush,
   Database,
   Download,
   FileText,
+  Gauge,
   HardDrive,
   ListChecks,
   Loader2,
+  LogOut,
   RefreshCw,
   Settings,
+  Shield,
   Timer,
   Trash2
 } from "lucide-react"
+import { useTheme } from "next-themes"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -67,7 +74,8 @@ import {
 } from "@/libs/api/scheduler"
 import { deleteOldRecords, getUsageRecords, getUsageStatistics, type UsageRecord } from "@/libs/api/usage"
 import { formatDateTime } from "@/libs/utils/datetime"
-
+import { useAppStore, type AppLanguage, type AppTheme } from "@/stores/app-store"
+import { useAuthStore } from "@/stores/auth-store"
 const settingsLinks = [
   { href: "/settings/config", title: "配置管理", icon: Settings, description: "大模型、数据源、数据库和系统设置" },
   { href: "/settings/database", title: "数据库管理", icon: Database, description: "数据库状态、导入导出和清理" },
@@ -78,6 +86,26 @@ const settingsLinks = [
   { href: "/settings/usage", title: "使用统计", icon: HardDrive, description: "Token、成本和模型使用记录" },
   { href: "/settings/scheduler", title: "定时任务", icon: Timer, description: "调度任务、执行历史和健康状态" }
 ]
+
+type PersonalSettingsTab = "general" | "appearance" | "analysis" | "notifications" | "security"
+
+const personalSettingsTabs: Array<{ value: PersonalSettingsTab; title: string }> = [
+  { value: "general", title: "通用设置" },
+  { value: "appearance", title: "外观设置" },
+  { value: "analysis", title: "分析偏好" },
+  { value: "notifications", title: "通知设置" },
+  { value: "security", title: "安全设置" }
+]
+
+const personalTabValues = new Set<PersonalSettingsTab>(personalSettingsTabs.map((item) => item.value))
+
+function getPersonalSettingsTab(value: string | null): PersonalSettingsTab {
+  return value && personalTabValues.has(value as PersonalSettingsTab) ? (value as PersonalSettingsTab) : "general"
+}
+
+function getPersonalSettingsHref(tab: PersonalSettingsTab) {
+  return tab === "general" ? "/settings" : `/settings?tab=${tab}`
+}
 
 const providerSchema = z.object({
   id: z.string().min(1, "请输入厂家 ID"),
@@ -166,20 +194,243 @@ function GenericTable<T>({
 }
 
 export function SettingsIndexPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { setTheme: setDocumentTheme } = useTheme()
+  const theme = useAppStore((state) => state.theme)
+  const language = useAppStore((state) => state.language)
+  const sidebarWidth = useAppStore((state) => state.sidebarWidth)
+  const preferences = useAppStore((state) => state.preferences)
+  const setTheme = useAppStore((state) => state.setTheme)
+  const setLanguage = useAppStore((state) => state.setLanguage)
+  const setSidebarWidth = useAppStore((state) => state.setSidebarWidth)
+  const updatePreferences = useAppStore((state) => state.updatePreferences)
+  const resetPreferences = useAppStore((state) => state.resetPreferences)
+  const userDisplayName = useAuthStore((state) => state.userDisplayName())
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const clearAuthInfo = useAuthStore((state) => state.clearAuthInfo)
+
+  const activeTab = getPersonalSettingsTab(searchParams.get("tab"))
+
+  const handleTabChange = (value: string) => {
+    router.replace(getPersonalSettingsHref(getPersonalSettingsTab(value)))
+  }
+
+  const handleThemeChange = (value: AppTheme) => {
+    setTheme(value)
+    setDocumentTheme(value === "auto" ? "system" : value)
+  }
+
   return (
-    <div>
-      <PageHeader title="设置" description="管理系统配置、数据源、日志、缓存、同步和调度任务。" />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {settingsLinks.map((item) => {
-          const Icon = item.icon
-          return (
-            <Link key={item.href} href={item.href} className="rounded-md border bg-background p-5 transition-colors hover:bg-muted">
-              <Icon className="mb-4 size-5 text-primary" />
-              <div className="font-medium">{item.title}</div>
-              <p className="mt-2 text-sm text-muted-foreground">{item.description}</p>
-            </Link>
-          )
-        })}
+    <div className="space-y-6">
+      <PageHeader title="设置" description="管理个人偏好和系统配置。" />
+
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
+        <TabsList className="flex h-auto flex-wrap justify-start">
+          {personalSettingsTabs.map((item) => (
+            <TabsTrigger key={item.value} value={item.value}>{item.title}</TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value="general">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Settings className="size-4" />
+                通用设置
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-5 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="default-market">默认市场</Label>
+                <Select value={preferences.defaultMarket} onValueChange={(value) => updatePreferences({ defaultMarket: value as "A股" | "美股" | "港股" })}>
+                  <SelectTrigger id="default-market"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A股">A股</SelectItem>
+                    <SelectItem value="美股">美股</SelectItem>
+                    <SelectItem value="港股">港股</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="language">界面语言</Label>
+                <Select value={language} onValueChange={(value) => setLanguage(value as AppLanguage)}>
+                  <SelectTrigger id="language"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="zh-CN">简体中文</SelectItem>
+                    <SelectItem value="en-US">English</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="refresh-interval">刷新间隔（秒）</Label>
+                <Input
+                  id="refresh-interval"
+                  min={5}
+                  max={300}
+                  type="number"
+                  value={preferences.refreshInterval}
+                  onChange={(event) => updatePreferences({ refreshInterval: Number(event.target.value) || 30 })}
+                />
+              </div>
+              <div className="flex items-end gap-3">
+                <Button
+                  type="button"
+                  variant={preferences.autoRefresh ? "default" : "outline"}
+                  onClick={() => updatePreferences({ autoRefresh: !preferences.autoRefresh })}
+                >
+                  {preferences.autoRefresh ? "自动刷新已启用" : "自动刷新已停用"}
+                </Button>
+                <Button type="button" variant="outline" onClick={resetPreferences}>重置偏好</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="appearance">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Brush className="size-4" />
+                外观设置
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-5 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="theme-mode">主题模式</Label>
+                <Select value={theme} onValueChange={(value) => handleThemeChange(value as AppTheme)}>
+                  <SelectTrigger id="theme-mode"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">跟随系统</SelectItem>
+                    <SelectItem value="light">浅色</SelectItem>
+                    <SelectItem value="dark">深色</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sidebar-width">侧边栏宽度</Label>
+                <Input
+                  id="sidebar-width"
+                  min={200}
+                  max={400}
+                  type="number"
+                  value={sidebarWidth}
+                  onChange={(event) => setSidebarWidth(Number(event.target.value) || 240)}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Button
+                  type="button"
+                  variant={preferences.showWelcome ? "default" : "outline"}
+                  onClick={() => updatePreferences({ showWelcome: !preferences.showWelcome })}
+                >
+                  {preferences.showWelcome ? "欢迎页已启用" : "欢迎页已停用"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analysis">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Gauge className="size-4" />
+                分析偏好
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-5 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="default-depth">默认分析深度</Label>
+                <Select value={preferences.defaultDepth} onValueChange={(value) => updatePreferences({ defaultDepth: value as "1" | "2" | "3" | "4" | "5" })}>
+                  <SelectTrigger id="default-depth"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1级</SelectItem>
+                    <SelectItem value="2">2级</SelectItem>
+                    <SelectItem value="3">3级</SelectItem>
+                    <SelectItem value="4">4级</SelectItem>
+                    <SelectItem value="5">5级</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="analysis-market">分析市场</Label>
+                <Select value={preferences.defaultMarket} onValueChange={(value) => updatePreferences({ defaultMarket: value as "A股" | "美股" | "港股" })}>
+                  <SelectTrigger id="analysis-market"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A股">A股</SelectItem>
+                    <SelectItem value="美股">美股</SelectItem>
+                    <SelectItem value="港股">港股</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Bell className="size-4" />
+                通知设置
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Button
+                type="button"
+                variant={preferences.autoRefresh ? "default" : "outline"}
+                onClick={() => updatePreferences({ autoRefresh: !preferences.autoRefresh })}
+              >
+                {preferences.autoRefresh ? "状态刷新通知开启" : "状态刷新通知关闭"}
+              </Button>
+              <Button
+                type="button"
+                variant={preferences.showWelcome ? "default" : "outline"}
+                onClick={() => updatePreferences({ showWelcome: !preferences.showWelcome })}
+              >
+                {preferences.showWelcome ? "启动提示开启" : "启动提示关闭"}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="security">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Shield className="size-4" />
+                安全设置
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
+              <div>
+                <div className="font-medium">{isAuthenticated ? userDisplayName : "未登录"}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{isAuthenticated ? "当前浏览器会话有效" : "当前没有登录会话"}</div>
+              </div>
+              <Button type="button" variant="outline" onClick={clearAuthInfo} disabled={!isAuthenticated}>
+                <LogOut className="mr-2 size-4" />
+                清除会话
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <div className="space-y-3">
+        <h2 className="text-base font-semibold">系统配置</h2>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {settingsLinks.map((item) => {
+            const Icon = item.icon
+            return (
+              <Link key={item.href} href={item.href} className="rounded-md border bg-background p-4 transition-colors hover:bg-muted">
+                <Icon className="mb-3 size-5 text-primary" />
+                <div className="font-medium">{item.title}</div>
+                <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+              </Link>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

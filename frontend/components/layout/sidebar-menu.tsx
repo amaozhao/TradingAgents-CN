@@ -2,6 +2,8 @@
 
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
+import type { MouseEvent } from "react"
+import { useState } from "react"
 
 import type { AppRoute } from "@/libs/routes/route-config"
 import { menuRoutes } from "@/libs/routes/route-config"
@@ -9,15 +11,36 @@ import { cn } from "@/libs/utils"
 
 interface SidebarMenuProps {
   collapsed: boolean
-  onNavigate?: () => void
+  onNavigate?: (event: MouseEvent<HTMLAnchorElement>) => void
 }
 
 export function SidebarMenu({ collapsed, onNavigate }: SidebarMenuProps) {
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set())
+
+  const handleGroupToggle = (path: string) => {
+    setExpandedGroups((previous) => {
+      const next = new Set(previous)
+      if (next.has(path)) {
+        next.delete(path)
+      } else {
+        next.add(path)
+      }
+      return next
+    })
+  }
+
   return (
     <nav className="flex-1 overflow-y-auto p-2">
       <div className="space-y-1">
         {menuRoutes.map((route) => (
-          <SidebarMenuItem key={route.path} route={route} collapsed={collapsed} onNavigate={onNavigate} />
+          <SidebarMenuItem
+            key={route.path}
+            route={route}
+            collapsed={collapsed}
+            expandedGroups={expandedGroups}
+            onGroupToggle={handleGroupToggle}
+            onNavigate={onNavigate}
+          />
         ))}
       </div>
     </nav>
@@ -27,11 +50,15 @@ export function SidebarMenu({ collapsed, onNavigate }: SidebarMenuProps) {
 function SidebarMenuItem({
   route,
   collapsed,
+  expandedGroups,
+  onGroupToggle,
   onNavigate
 }: {
   route: AppRoute
   collapsed: boolean
-  onNavigate?: () => void
+  expandedGroups: Set<string>
+  onGroupToggle: (path: string) => void
+  onNavigate?: (event: MouseEvent<HTMLAnchorElement>) => void
 }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -39,6 +66,7 @@ function SidebarMenuItem({
   const currentPath = queryString ? `${pathname}?${queryString}` : pathname
   const Icon = route.icon
   const active = isRouteActive(route, pathname, currentPath)
+  const expanded = active || expandedGroups.has(route.path)
 
   if (route.children?.length) {
     const groupHref = route.href || route.children[0]?.path || route.path
@@ -48,7 +76,10 @@ function SidebarMenuItem({
         <Link
           href={groupHref}
           aria-label={route.title}
-          onClick={onNavigate}
+          onClick={(event) => {
+            onGroupToggle(route.path)
+            onNavigate?.(event)
+          }}
           className={cn(
             "flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
             active ? "text-sidebar-accent-foreground" : "text-sidebar-foreground"
@@ -57,10 +88,17 @@ function SidebarMenuItem({
           {Icon ? <Icon className="size-4 shrink-0" /> : null}
           {!collapsed ? <span>{route.title}</span> : null}
         </Link>
-        {!collapsed && active ? (
+        {!collapsed && expanded ? (
           <div className="ml-6 space-y-1 border-l pl-2">
             {route.children.map((child) => (
-              <SidebarMenuItem key={child.path} route={child} collapsed={false} onNavigate={onNavigate} />
+              <SidebarMenuItem
+                key={child.path}
+                route={child}
+                collapsed={false}
+                expandedGroups={expandedGroups}
+                onGroupToggle={onGroupToggle}
+                onNavigate={onNavigate}
+              />
             ))}
           </div>
         ) : null}

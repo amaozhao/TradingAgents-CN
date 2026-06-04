@@ -17,7 +17,17 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "TradingAgents-CN",
-  description: "TradingAgents-CN frontend"
+  description: "TradingAgents-CN frontend",
+  icons: {
+    icon: [
+      {
+        url: "/favicon.ico?v=20260604",
+        sizes: "32x32",
+        type: "image/x-icon"
+      }
+    ],
+    shortcut: "/favicon.ico?v=20260604"
+  }
 }
 
 export default function RootLayout({

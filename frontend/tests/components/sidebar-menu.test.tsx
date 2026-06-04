@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { SidebarMenu } from "@/components/layout/sidebar-menu"
@@ -61,6 +62,21 @@ describe("SidebarMenu", () => {
     expect(within(nav).getByText("系统配置")).toBeInTheDocument()
     expect(within(nav).queryByRole("link", { name: "通用设置" })).not.toBeInTheDocument()
     expect(within(nav).queryByRole("link", { name: "外观设置" })).not.toBeInTheDocument()
+  })
+
+  it("expands personal settings after clicking the group title", async () => {
+    const user = userEvent.setup()
+    pathname = "/settings"
+
+    render(<SidebarMenu collapsed={false} onNavigate={(event) => event?.preventDefault()} />)
+
+    const nav = screen.getByRole("navigation")
+    expect(within(nav).queryByRole("link", { name: "通用设置" })).not.toBeInTheDocument()
+
+    await user.click(within(nav).getByRole("link", { name: "个人设置" }))
+
+    expect(within(nav).getByRole("link", { name: "通用设置" })).toBeInTheDocument()
+    expect(within(nav).getByRole("link", { name: "安全设置" })).toBeInTheDocument()
   })
 
   it("expands personal settings when a personal tab is active", () => {
