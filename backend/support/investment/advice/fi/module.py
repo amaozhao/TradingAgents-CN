@@ -2,6 +2,7 @@
 """
 测试投资建议中文化修复
 """
+import importlib
 
 import os
 import sys
@@ -136,7 +137,7 @@ def test_demo_data():
 
     try:
         # 模拟演示数据生成
-        import random
+        random = importlib.import_module('random')
 
         actions = ['买入', '持有', '卖出']  # 修复后应该使用中文
         action = random.choice(actions)

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """测试修复后的财务数据获取"""
 
-from trader.flows.optimized_china_data import OptimizedChinaDataProvider
+from trader.flows.china import OptimizedChinaDataProvider
 
 # 创建数据流实例
 df = OptimizedChinaDataProvider()

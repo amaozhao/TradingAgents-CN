@@ -2,6 +2,7 @@
 """
 测试AKShare新闻数据同步功能
 """
+import importlib
 import asyncio
 import sys
 from pathlib import Path
@@ -91,7 +92,7 @@ async def test_akshare_news_sync():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         sys.exit(1)
     finally:

@@ -3,6 +3,7 @@
 TradingAgents-CN Streamlit Web界面
 基于Streamlit的股票分析Web应用程序
 """
+import importlib
 
 import streamlit as st
 import os
@@ -342,8 +343,9 @@ def initialize_session_state():
     # 尝试从最新完成的分析中恢复结果
     if not st.session_state.analysis:
         try:
-            from utils.progress import get_latest_analysis_id, get_progress_by_id
-            from utils.analysis import format_analysis
+            get_latest_analysis_id = getattr(importlib.import_module('utils.progress'), 'get_latest_analysis_id')
+            get_progress_by_id = getattr(importlib.import_module('utils.progress'), 'get_progress_by_id')
+            format_analysis = getattr(importlib.import_module('utils.analysis'), 'format_analysis')
 
             latest_id = get_latest_analysis_id()
             if latest_id:
@@ -377,7 +379,7 @@ def initialize_session_state():
         persistent_analysis_id = get_persistent_analysis_id()
         if persistent_analysis_id:
             # 使用线程检测来检查分析状态
-            from utils.threads import check_analysis_status
+            check_analysis_status = getattr(importlib.import_module('utils.threads'), 'check_analysis_status')
             actual_status = check_analysis_status(persistent_analysis_id)
 
             # 只在状态变化时记录日志，避免重复
@@ -404,7 +406,7 @@ def initialize_session_state():
 
     # 恢复表单配置
     try:
-        from utils.smart import smart
+        smart = getattr(importlib.import_module('utils.smart'), 'smart')
         session_data = smart.load_analysis_state()
 
         if session_data and 'form_config' in session_data:
@@ -417,7 +419,7 @@ def initialize_session_state():
 
 def check_frontend_auth_cache():
     """检查前端缓存并尝试恢复登录状态"""
-    from utils.auth import auth
+    auth = getattr(importlib.import_module('utils.auth'), 'auth')
 
     logger.info("🔍 开始检查前端缓存恢复")
     logger.info(f"📊 当前认证状态: {st.session_state.get('authenticated', False)}")
@@ -442,7 +444,7 @@ def check_frontend_auth_cache():
 
     # 检查URL参数中是否有恢复信息
     try:
-        import base64
+        base64 = importlib.import_module('base64')
         restore_data = st.query_params.get('restore_auth')
 
         if restore_data:
@@ -932,7 +934,7 @@ def main():
         if not require_permission("config"):
             return
         try:
-            from modules.config import render_config
+            render_config = getattr(importlib.import_module('modules.config'), 'render_config')
             render_config()
         except ImportError as e:
             st.error(f"配置管理模块加载失败: {e}")
@@ -943,7 +945,7 @@ def main():
         if not require_permission("admin"):
             return
         try:
-            from modules.cache import main as cache_main
+            cache_main = getattr(importlib.import_module('modules.cache'), 'main')
             cache_main()
         except ImportError as e:
             st.error(f"缓存管理页面加载失败: {e}")
@@ -953,7 +955,7 @@ def main():
         if not require_permission("config"):
             return
         try:
-            from modules.tokens import render_tokens
+            render_tokens = getattr(importlib.import_module('modules.tokens'), 'render_tokens')
             render_tokens()
         except ImportError as e:
             st.error(f"Token统计页面加载失败: {e}")
@@ -964,7 +966,7 @@ def main():
         if not require_permission("admin"):
             return
         try:
-            from components.operation import render_operations
+            render_operations = getattr(importlib.import_module('components.operation'), 'render_operations')
             render_operations()
         except ImportError as e:
             st.error(f"操作日志模块加载失败: {e}")
@@ -975,7 +977,7 @@ def main():
         if not require_permission("analysis"):
             return
         try:
-            from components.analysis import render_analysis
+            render_analysis = getattr(importlib.import_module('components.analysis'), 'render_analysis')
             render_analysis()
         except ImportError as e:
             st.error(f"分析结果模块加载失败: {e}")
@@ -988,7 +990,7 @@ def main():
         st.header("🔧 系统状态")
 
         # 展示股票基础信息同步状态
-        import requests
+        requests = importlib.import_module('requests')
         backend_url = os.getenv('WEBAPI_BASE_URL', 'http://localhost:8000')
         try:
             resp = requests.get(f"{backend_url}/api/sync/stock_basics/status", timeout=5)
@@ -1112,7 +1114,7 @@ def main():
             del st.session_state[key]
 
         # 清理死亡线程
-        from utils.threads import cleanup_dead_analysis_threads
+        cleanup_dead_analysis_threads = getattr(importlib.import_module('utils.threads'), 'cleanup_dead_analysis_threads')
         cleanup_dead_analysis_threads()
 
         st.sidebar.success("✅ 分析状态已清理")
@@ -1189,7 +1191,7 @@ def main():
                     logger.info("📖 [界面] 开始分析，自动隐藏使用指南")
 
                 # 生成分析ID
-                import uuid
+                uuid = importlib.import_module('uuid')
                 analysis_id = f"analysis_{uuid.uuid4().hex[:8]}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
                 # 保存分析ID和表单配置到session state和cookie
@@ -1249,7 +1251,7 @@ def main():
                     st.session_state[key] = True
 
                 # 在后台线程中运行分析（立即启动，不等待倒计时）
-                import threading
+                threading = importlib.import_module('threading')
 
                 def run_analysis_in_background():
                     try:
@@ -1269,7 +1271,7 @@ def main():
 
                         # 自动保存分析结果到历史记录
                         try:
-                            from components.analysis import save_analysis_result
+                            save_analysis_result = getattr(importlib.import_module('components.analysis'), 'save_analysis_result')
 
                             save_success = save_analysis_result(
                                 analysis_id=analysis_id,
@@ -1296,7 +1298,7 @@ def main():
 
                         # 保存失败的分析记录
                         try:
-                            from components.analysis import save_analysis_result
+                            save_analysis_result = getattr(importlib.import_module('components.analysis'), 'save_analysis_result')
 
                             save_analysis_result(
                                 analysis_id=analysis_id,
@@ -1315,7 +1317,7 @@ def main():
 
                     finally:
                         # 分析结束后注销线程
-                        from utils.threads import unregister_analysis_thread
+                        unregister_analysis_thread = getattr(importlib.import_module('utils.threads'), 'unregister_analysis_thread')
                         unregister_analysis_thread(analysis_id)
                         logger.info(f"🧵 [线程清理] 分析线程已注销: {analysis_id}")
 
@@ -1325,7 +1327,7 @@ def main():
                 analysis_thread.start()
 
                 # 注册线程到跟踪器
-                from utils.threads import register_analysis_thread
+                register_analysis_thread = getattr(importlib.import_module('utils.threads'), 'register_analysis_thread')
                 register_analysis_thread(analysis_id, analysis_thread)
 
                 logger.info(f"🧵 [后台分析] 分析线程已启动: {analysis_id}")
@@ -1348,7 +1350,7 @@ def main():
             st.header("📊 股票分析")
 
             # 使用线程检测来获取真实状态
-            from utils.threads import check_analysis_status
+            check_analysis_status = getattr(importlib.import_module('utils.threads'), 'check_analysis_status')
             actual_status = check_analysis_status(current_analysis_id)
             is_running = (actual_status == 'running')
 
@@ -1358,7 +1360,7 @@ def main():
                 logger.info(f"🔄 [状态同步] 更新分析状态: {is_running} (基于线程检测: {actual_status})")
 
             # 获取进度数据用于显示
-            from utils.progress import get_progress_by_id
+            get_progress_by_id = getattr(importlib.import_module('utils.progress'), 'get_progress_by_id')
             progress_data = get_progress_by_id(current_analysis_id)
 
             # 显示分析信息
@@ -1388,7 +1390,7 @@ def main():
             if is_completed and not st.session_state.get('analysis') and progress_data:
                 if 'raw_results' in progress_data:
                     try:
-                        from utils.analysis import format_analysis
+                        format_analysis = getattr(importlib.import_module('utils.analysis'), 'format_analysis')
                         raw_results = progress_data['raw_results']
                         formatted_results = format_analysis(raw_results)
                         if formatted_results:
@@ -1398,7 +1400,7 @@ def main():
 
                             # 自动保存分析结果到历史记录
                             try:
-                                from components.analysis import save_analysis_result
+                                save_analysis_result = getattr(importlib.import_module('components.analysis'), 'save_analysis_result')
 
                                 # 从进度数据中获取分析参数
                                 stock_symbol = progress_data.get('stock_symbol', st.session_state.get('last_stock_symbol', 'unknown'))

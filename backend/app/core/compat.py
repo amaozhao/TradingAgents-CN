@@ -6,6 +6,7 @@
 
 ⚠️ 此模块仅用于向后兼容，新代码应直接使用 ConfigService
 """
+import importlib
 
 import os
 import asyncio
@@ -64,7 +65,7 @@ class ConfigManagerCompat:
         """
         try:
             # 尝试从新配置系统加载
-            from app.services.config import config_service
+            config_service = getattr(importlib.import_module('app.services.config'), 'config_service')
 
             # 在同步上下文中运行异步代码
             loop = asyncio.get_event_loop()
@@ -92,7 +93,7 @@ class ConfigManagerCompat:
             bool: 是否保存成功
         """
         try:
-            from app.services.config import config_service
+            config_service = getattr(importlib.import_module('app.services.config'), 'config_service')
 
             loop = asyncio.get_event_loop()
             if loop.is_running():
@@ -116,7 +117,7 @@ class ConfigManagerCompat:
             List[Dict[str, Any]]: 模型配置列表
         """
         try:
-            from app.services.config import config_service
+            config_service = getattr(importlib.import_module('app.services.config'), 'config_service')
 
             loop = asyncio.get_event_loop()
             if loop.is_running():
@@ -129,7 +130,7 @@ class ConfigManagerCompat:
                             "provider": llm.provider,
                             "model_name": llm.model_name,
                             "api_key": llm.api_key or "",
-                            "base_url": llm.base_url,
+                            "base_url": llm.api_base or llm.custom_endpoint,
                             "max_tokens": llm.max_tokens,
                             "temperature": llm.temperature,
                             "enabled": llm.enabled,

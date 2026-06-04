@@ -5,10 +5,11 @@
 """
 
 import pytest
-pytest.importorskip("enhanced_stock_list_fetcher")
+enhanced_stock_list_fetcher = pytest.importorskip("enhanced_stock_list_fetcher")
 pytestmark = pytest.mark.integration
 
-from enhanced_stock_list_fetcher import load_tdx_servers_config, get_mainmarket_ip
+load_tdx_servers_config = enhanced_stock_list_fetcher.load_tdx_servers_config
+get_mainmarket_ip = enhanced_stock_list_fetcher.get_mainmarket_ip
 import json
 
 def test_server_config():

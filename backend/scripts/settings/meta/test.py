@@ -2,6 +2,7 @@
 """
 测试系统设置元数据 API
 """
+import importlib
 
 import requests
 import json
@@ -69,7 +70,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 错误: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

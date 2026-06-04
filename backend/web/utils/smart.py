@@ -2,6 +2,7 @@
 智能会话管理器 - 自动选择最佳存储方案
 优先级：Redis > 文件存储
 """
+import importlib
 
 import streamlit as st
 import os
@@ -19,7 +20,7 @@ class SmartSessionManager:
     def _init_redis_manager(self) -> bool:
         """尝试初始化Redis管理器"""
         try:
-            from .redis import redis
+            redis = getattr(importlib.import_module('web.utils.redis'), 'redis')
 
             # 测试Redis连接
             if redis.use_redis:
@@ -34,7 +35,7 @@ class SmartSessionManager:
     def _init_file_manager(self):
         """初始化文件管理器"""
         try:
-            from .files import files
+            files = getattr(importlib.import_module('web.utils.files'), 'files')
             self.file_manager = files
         except Exception as e:
             st.error(f"❌ 文件会话管理器初始化失败: {e}")
@@ -154,7 +155,7 @@ def get_persistent_analysis_id() -> Optional[str]:
 
         # 3. 最后从分析数据恢复最新分析
         try:
-            from .progress import get_latest_analysis_id
+            get_latest_analysis_id = getattr(importlib.import_module('web.utils.progress'), 'get_latest_analysis_id')
             latest_id = get_latest_analysis_id()
             if latest_id:
                 st.session_state.current_analysis_id = latest_id

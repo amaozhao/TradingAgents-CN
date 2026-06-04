@@ -2,6 +2,7 @@
 股票数据API路由 - 基于扩展数据模型
 提供标准化的股票数据访问接口
 """
+import importlib
 from typing import Any, Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import status
@@ -172,7 +173,7 @@ async def get_combined_stock_data(
         service = get_stock_data_service()
 
         # 并行获取基础信息和行情数据
-        import asyncio
+        asyncio = importlib.import_module('asyncio')
         basic_info_task = service.get_stock_basic_info(symbol)
         quotes_task = service.get_market_quotes(symbol)
 
@@ -183,12 +184,10 @@ async def get_combined_stock_data(
         )
 
         # 处理异常
-        if isinstance(basic_info, Exception):
-            basic_info = None
-        if isinstance(quotes, Exception):
-            quotes = None
+        basic_info_data: Any = None if isinstance(basic_info, Exception) else basic_info
+        quotes_data: Any = None if isinstance(quotes, Exception) else quotes
 
-        if not basic_info and not quotes:
+        if not basic_info_data and not quotes_data:
             return {
                 "success": False,
                 "message": f"未找到股票代码 {symbol} 的任何数据"
@@ -197,10 +196,10 @@ async def get_combined_stock_data(
         return {
             "success": True,
             "data": {
-                "basic_info": basic_info.dict() if basic_info else None,
-                "quotes": quotes.dict() if quotes else None,
+                "basic_info": basic_info_data.dict() if basic_info_data else None,
+                "quotes": quotes_data.dict() if quotes_data else None,
                 "symbol": symbol,
-                "timestamp": quotes.updated_at if quotes else None
+                "timestamp": quotes_data.updated_at if quotes_data else None
             },
             "message": "获取成功"
         }
@@ -229,8 +228,8 @@ async def search_stocks(
         dict: 搜索结果
     """
     try:
-        from app.core.database import get_mongo_db
-        from app.core.unified import UnifiedConfigManager
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
+        UnifiedConfigManager = getattr(importlib.import_module('app.core.unified'), 'UnifiedConfigManager')
 
         db = get_mongo_db()
         collection = db.stock_basic_info
@@ -310,7 +309,7 @@ async def get_market_summary(
         dict: 各市场的股票数量统计
     """
     try:
-        from app.core.database import get_mongo_db
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
 
         db = get_mongo_db()
         collection = db.stock_basic_info
@@ -376,7 +375,7 @@ async def get_quotes_sync_status(
         }
     """
     try:
-        from app.services.quotes.ingestion import QuotesIngestionService
+        QuotesIngestionService = getattr(importlib.import_module('app.services.quotes.ingestion'), 'QuotesIngestionService')
 
         service = QuotesIngestionService()
         status_data = await service.get_sync_status()

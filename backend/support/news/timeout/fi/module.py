@@ -4,6 +4,7 @@
 
 这个测试程序验证新闻获取超时修复的有效性，特别是在一个新闻源失败时能否正确轮询到下一个新闻源。
 """
+import importlib
 
 import sys
 import os
@@ -17,7 +18,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # 导入需要测试的模块
-from trader.flows.realtime import get_realtime_stock_news
+from trader.flows.real.time import get_realtime_stock_news
 from trader.flows.google import get_news_data, make_request
 from trader.flows.akshare import get_stock_news_em
 
@@ -35,8 +36,8 @@ class TestNewsTimeoutFix(unittest.TestCase):
         # 模拟请求超时
         with patch('requests.get') as mock_get:
             # 设置mock抛出超时异常
-            import requests
-            from tenacity import RetryError
+            requests = importlib.import_module('requests')
+            RetryError = getattr(importlib.import_module('tenacity'), 'RetryError')
             mock_get.side_effect = requests.exceptions.Timeout("Connection timed out")
 
             # 测试make_request函数
@@ -49,7 +50,7 @@ class TestNewsTimeoutFix(unittest.TestCase):
     def test_news_source_fallback(self):
         """测试新闻源轮询机制"""
         # 模拟实时新闻聚合器失败
-        with patch('trader.flows.realtime.RealtimeNewsAggregator.get_realtime_stock_news') as mock_aggregator:
+        with patch('trader.flows.real.time.RealtimeNewsAggregator.get_realtime_stock_news') as mock_aggregator:
             mock_aggregator.side_effect = Exception("模拟实时新闻聚合器失败")
 
             # 模拟Google新闻获取失败
@@ -83,7 +84,7 @@ class TestNewsTimeoutFix(unittest.TestCase):
     def test_all_news_sources_fail(self):
         """测试所有新闻源都失败的情况"""
         # 模拟所有新闻源都失败
-        with patch('trader.flows.realtime.RealtimeNewsAggregator.get_realtime_stock_news') as mock_aggregator:
+        with patch('trader.flows.real.time.RealtimeNewsAggregator.get_realtime_stock_news') as mock_aggregator:
             mock_aggregator.side_effect = Exception("模拟实时新闻聚合器失败")
 
             with patch('trader.flows.interface.get_google_news') as mock_google_news:

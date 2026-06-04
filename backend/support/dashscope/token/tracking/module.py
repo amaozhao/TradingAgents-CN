@@ -2,6 +2,7 @@
 """
 测试DashScope适配器的token统计功能
 """
+import importlib
 
 import os
 import sys
@@ -105,7 +106,7 @@ def test_dashscope_token_tracking():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

@@ -1,3 +1,4 @@
+import importlib
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import time
 import json
@@ -26,7 +27,7 @@ def _get_company_name_for_social_media(ticker: str, market_info: dict) -> str:
     try:
         if market_info['is_china']:
             # 中国A股：使用统一接口获取股票信息
-            from trader.flows.interface import get_china_stock_info_unified
+            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
             stock_info = get_china_stock_info_unified(ticker)
 
             logger.debug(f"📊 [社交媒体分析师] 获取股票信息返回: {stock_info[:200] if stock_info else 'None'}...")
@@ -40,7 +41,7 @@ def _get_company_name_for_social_media(ticker: str, market_info: dict) -> str:
                 # 降级方案：尝试直接从数据源管理器获取
                 logger.warning(f"⚠️ [社交媒体分析师] 无法从统一接口解析股票名称: {ticker}，尝试降级方案")
                 try:
-                    from trader.flows.sources import get_china_stock_info_unified as get_info_dict
+                    get_info_dict = getattr(importlib.import_module('trader.flows.sources'), 'get_china_stock_info_unified')
                     info_dict = get_info_dict(ticker)
                     if info_dict and info_dict.get('name'):
                         company_name = info_dict['name']
@@ -55,7 +56,7 @@ def _get_company_name_for_social_media(ticker: str, market_info: dict) -> str:
         elif market_info['is_hk']:
             # 港股：使用改进的港股工具
             try:
-                from trader.flows.providers.hk.improved import get_hk_company_name_improved
+                get_hk_company_name_improved = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_company_name_improved')
                 company_name = get_hk_company_name_improved(ticker)
                 logger.debug(f"📊 [社交媒体分析师] 使用改进港股工具获取名称: {ticker} -> {company_name}")
                 return company_name
@@ -102,7 +103,7 @@ def create_social_media_analyst(llm, toolkit):
         ticker = state["company_of_interest"]
 
         # 获取股票市场信息
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
         market_info = StockUtils.get_market_info(ticker)
 
         # 获取公司名称

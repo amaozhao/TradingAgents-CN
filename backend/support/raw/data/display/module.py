@@ -4,6 +4,7 @@
 原始数据显示测试脚本
 直接调用底层数据接口，显示原始的财务数据
 """
+import importlib
 
 import sys
 import os
@@ -33,7 +34,7 @@ def test_raw_data_display():
 
     try:
         # 直接调用底层数据接口
-        from trader.flows.interface import get_china_stock_data_unified
+        get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
 
         print("🔄 正在获取原始股票数据...")
         print("-" * 60)
@@ -111,7 +112,7 @@ def test_raw_data_display():
         print("=" * 80)
 
         try:
-            from trader.flows.interface import get_china_stock_fundamentals_tushare
+            get_china_stock_fundamentals_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_fundamentals_tushare')
 
             print("🔄 正在获取财务基本面数据...")
 
@@ -142,13 +143,13 @@ def test_raw_data_display():
 
         except Exception as e:
             print(f"❌ 财务基本面数据获取失败: {str(e)}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             print("🔍 详细错误信息:")
             traceback.print_exc()
 
     except Exception as e:
         print(f"❌ 测试失败: {str(e)}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print("🔍 详细错误信息:")
         traceback.print_exc()
 

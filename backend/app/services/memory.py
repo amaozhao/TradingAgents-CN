@@ -2,6 +2,7 @@
 内存状态管理器
 类似于 analysis-engine 的实现，提供快速的状态读写
 """
+import importlib
 
 import asyncio
 import threading
@@ -65,7 +66,7 @@ class TaskState:
                 data['estimated_total_time'] = data['elapsed_time']
             else:
                 # 任务进行中，实时计算已用时间
-                from datetime import datetime
+                datetime = getattr(importlib.import_module('datetime'), 'datetime')
                 elapsed_time = (datetime.now() - self.start_time).total_seconds()
                 data['elapsed_time'] = elapsed_time
 
@@ -145,7 +146,7 @@ class MemoryStateManager:
         # 获取分析参数
         research_depth = parameters.get('research_depth', '标准')
         selected_analysts = parameters.get('selected_analysts', [])
-        from trader.llm.clients.providers import normalize_provider_key
+        normalize_provider_key = getattr(importlib.import_module('trader.llm.clients.providers'), 'normalize_provider_key')
 
         llm_provider = normalize_provider_key(parameters.get('llm_provider', 'dashscope'))
 

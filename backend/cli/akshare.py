@@ -10,6 +10,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 import os
+from typing import Optional
 
 # 添加项目根目录到Python路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -89,7 +90,7 @@ async def run_full_initialization(
     historical_days: int,
     force: bool = False,
     multi_period: bool = False,
-    sync_items: list = None
+    sync_items: Optional[list] = None
 ):
     """运行完整初始化"""
     print("=" * 50)
@@ -331,7 +332,7 @@ async def main():
                 args.historical_days,
                 args.force,
                 args.multi_period,
-                sync_items
+                sync_items or []
             )
 
         print("\n" + "=" * 50)

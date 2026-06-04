@@ -3,6 +3,7 @@
 最终统一工具架构测试
 验证所有修复是否完成，LLM只能调用统一工具
 """
+import importlib
 
 import os
 import sys
@@ -16,9 +17,9 @@ def test_complete_unified_architecture():
     print("🔧 测试完整的统一工具架构...")
 
     try:
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
-        from trader.graph.trading import TradingAgentsGraph
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -73,7 +74,7 @@ def test_complete_unified_architecture():
 
     except Exception as e:
         print(f"❌ 完整统一工具架构测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -83,9 +84,9 @@ def test_llm_tool_calling_simulation():
     print("\n🔧 模拟LLM工具调用测试...")
 
     try:
-        from trader.agents.analysts.fundamentals import create_fundamentals_analyst
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -162,7 +163,7 @@ def test_llm_tool_calling_simulation():
 
     except Exception as e:
         print(f"❌ LLM工具调用模拟测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -172,8 +173,8 @@ def test_unified_tools_functionality():
     print("\n🔧 测试统一工具功能...")
 
     try:
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True

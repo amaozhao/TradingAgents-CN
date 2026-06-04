@@ -3,6 +3,7 @@
 多周期数据同步API
 提供日线、周线、月线数据的同步管理接口
 """
+import importlib
 import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -52,7 +53,7 @@ async def start_multi_period_sync(
             data_sources=request.data_sources,
             start_date=request.start_date,
             end_date=request.end_date,
-            all_history=request.all_history
+            all_history=request.all_history or False
         )
 
         return MultiPeriodSyncResponse(
@@ -209,13 +210,14 @@ async def start_incremental_sync(
 ):
     """启动增量数据同步（最近N天）"""
     try:
-        from datetime import datetime, timedelta
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         service = await get_multi_period_sync_service()
 
         # 计算增量同步的日期范围
         end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=days_back or 30)).strftime('%Y-%m-%d')
 
         background_tasks.add_task(
             service.sync_multi_period_data,
@@ -272,7 +274,7 @@ async def compare_period_data(
     对比同一股票不同周期的数据
     """
     try:
-        from app.services.market.historical import get_historical_data_service
+        get_historical_data_service = getattr(importlib.import_module('app.services.market.historical'), 'get_historical_data_service')
         service = await get_historical_data_service()
 
         periods = ["daily", "weekly", "monthly"]

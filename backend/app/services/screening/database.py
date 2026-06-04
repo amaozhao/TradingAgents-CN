@@ -2,6 +2,7 @@
 基于MongoDB的股票筛选服务
 利用本地数据库中的股票基础信息进行高效筛选
 """
+import importlib
 
 import logging
 from typing import Any, Dict, List, Optional, Tuple
@@ -9,6 +10,8 @@ from datetime import datetime
 
 from app.core.database import get_mongo_db
 from app.core.config import settings
+from app.db.screening import screen_stocks as pg_screen_stocks
+from app.db.session import get_session_factory
 # from app.models.screening import ScreeningCondition  # 避免循环导入
 
 logger = logging.getLogger(__name__)
@@ -134,7 +137,7 @@ class DatabaseScreeningService:
 
             # 🔥 获取数据源优先级配置
             if not source:
-                from app.core.unified import UnifiedConfigManager
+                UnifiedConfigManager = getattr(importlib.import_module('app.core.unified'), 'UnifiedConfigManager')
                 config = UnifiedConfigManager()
                 data_source_configs = await config.get_data_source_configs_async()
 
@@ -211,14 +214,8 @@ class DatabaseScreeningService:
         order_by: Optional[List[Dict[str, str]]],
         source: Optional[str],
     ) -> Tuple[List[Dict[str, Any]], int]:
-        from app.db.screening import screen_stocks as pg_screen_stocks
-        from app.db.session import get_session_factory
-
         effective_source = source or "tushare"
-        normalized_conditions = [
-            condition.model_dump() if hasattr(condition, "model_dump") else condition
-            for condition in conditions
-        ]
+        normalized_conditions = conditions
 
         session_factory = get_session_factory()
         async with session_factory() as session:
@@ -233,12 +230,14 @@ class DatabaseScreeningService:
 
     async def _build_query(self, conditions: List[Dict[str, Any]]) -> Dict[str, Any]:
         """构建MongoDB查询条件"""
-        query = {}
+        query: Dict[str, Any] = {}
 
         for condition in conditions:
-            field = condition.get("field") if isinstance(condition, dict) else condition.field
-            operator = condition.get("operator") if isinstance(condition, dict) else condition.operator
-            value = condition.get("value") if isinstance(condition, dict) else condition.value
+            field = condition.get("field")
+            if not isinstance(field, str):
+                continue
+            operator = condition.get("operator")
+            value = condition.get("value")
 
             logger.info(f"🔍 [_build_query] 处理条件: field={field}, operator={operator}, value={value}")
 
@@ -280,6 +279,8 @@ class DatabaseScreeningService:
         sort_conditions = []
         for order in order_by:
             field = order.get("field")
+            if not field:
+                continue
             direction = order.get("direction", "desc")
 
             # 映射字段名
@@ -306,7 +307,7 @@ class DatabaseScreeningService:
             financial_collection = db['stock_financial_data']
 
             # 🔥 获取数据源优先级配置
-            from app.core.unified import UnifiedConfigManager
+            UnifiedConfigManager = getattr(importlib.import_module('app.core.unified'), 'UnifiedConfigManager')
             config = UnifiedConfigManager()
             data_source_configs = await config.get_data_source_configs_async()
 

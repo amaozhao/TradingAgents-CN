@@ -2,6 +2,7 @@
 """
 测试命令行版本
 """
+import importlib
 
 import os
 import sys
@@ -22,22 +23,23 @@ def test_cli_imports():
 
     try:
         # 测试导入CLI主模块
-        from cli.main import app, console
+        app = getattr(importlib.import_module('cli.main'), 'app')
+        console = getattr(importlib.import_module('cli.main'), 'console')
         print("✅ CLI主模块导入成功")
 
         # 测试导入分析师类型
-        from cli.models import AnalystType
+        AnalystType = getattr(importlib.import_module('cli.models'), 'AnalystType')
         print("✅ 分析师类型导入成功")
 
         # 测试导入工具函数
-        from cli.utils import get_user_selections
+        get_user_selections = getattr(importlib.import_module('cli.utils'), 'get_user_selections')
         print("✅ CLI工具函数导入成功")
 
         return True
 
     except Exception as e:
         print(f"❌ CLI模块导入失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -47,8 +49,8 @@ def test_cli_config():
     print("=" * 60)
 
     try:
-        from trader.default import DEFAULT_CONFIG
-        from trader.config.manager import config_manager
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        config_manager = getattr(importlib.import_module('trader.config.manager'), 'config_manager')
 
         print("🔧 测试默认配置...")
         print(f"   LLM提供商: {DEFAULT_CONFIG.get('llm_provider', 'N/A')}")
@@ -75,7 +77,7 @@ def test_cli_config():
 
     except Exception as e:
         print(f"❌ CLI配置测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -90,8 +92,8 @@ def test_cli_graph_creation():
         return True
 
     try:
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         print("🔧 创建测试配置...")
         config = DEFAULT_CONFIG.copy()
@@ -118,7 +120,7 @@ def test_cli_graph_creation():
 
     except Exception as e:
         print(f"❌ CLI图创建失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -128,7 +130,8 @@ def test_cli_cost_tracking():
     print("=" * 60)
 
     try:
-        from trader.config.manager import config_manager, token_tracker
+        config_manager = getattr(importlib.import_module('trader.config.manager'), 'config_manager')
+        token_tracker = getattr(importlib.import_module('trader.config.manager'), 'token_tracker')
 
         print("🔧 测试成本计算...")
         cost = config_manager.calculate_cost(
@@ -165,7 +168,7 @@ def test_cli_cost_tracking():
 
     except Exception as e:
         print(f"❌ CLI成本跟踪测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -175,7 +178,7 @@ def test_cli_help():
     print("=" * 60)
 
     try:
-        from cli.main import app
+        app = getattr(importlib.import_module('cli.main'), 'app')
 
         print("🔧 测试CLI应用创建...")
         print(f"   应用名称: {app.info.name}")
@@ -186,7 +189,7 @@ def test_cli_help():
 
     except Exception as e:
         print(f"❌ CLI帮助功能测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

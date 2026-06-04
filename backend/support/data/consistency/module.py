@@ -2,6 +2,7 @@
 """
 测试数据一致性检查功能
 """
+import importlib
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,8 +24,8 @@ def test_data_consistency_checker():
     print("=" * 60)
 
     try:
-        from app.services.sources import DataSourceManager
-        from app.services.consistency import DataConsistencyChecker
+        DataSourceManager = getattr(importlib.import_module('app.services.sources'), 'DataSourceManager')
+        DataConsistencyChecker = getattr(importlib.import_module('app.services.consistency'), 'DataConsistencyChecker')
 
         # 1. 测试数据源管理器初始化
         print("\n1. 初始化数据源管理器...")
@@ -109,7 +110,7 @@ def test_data_consistency_checker():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def test_mock_data_consistency():
@@ -119,7 +120,7 @@ def test_mock_data_consistency():
     print("=" * 60)
 
     try:
-        from app.services.consistency import DataConsistencyChecker
+        DataConsistencyChecker = getattr(importlib.import_module('app.services.consistency'), 'DataConsistencyChecker')
 
         checker = DataConsistencyChecker()
 
@@ -179,7 +180,7 @@ def test_mock_data_consistency():
 
     except Exception as e:
         print(f"❌ 模拟数据测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

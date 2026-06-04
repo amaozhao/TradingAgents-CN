@@ -2,6 +2,7 @@
 """
 验证DeepSeek成本计算修复
 """
+import importlib
 
 import os
 import sys
@@ -26,8 +27,8 @@ def test_deepseek_cost_calculation():
         return False
 
     try:
-        from trader.llm.adapters.deepseek import ChatDeepSeek
-        from trader.config.manager import config_manager
+        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
+        config_manager = getattr(importlib.import_module('trader.config.manager'), 'config_manager')
 
         # 获取初始统计
         initial_stats = config_manager.get_usage_statistics(1)
@@ -63,7 +64,7 @@ def test_deepseek_cost_calculation():
             print(f"   响应长度: {len(response.content)}")
 
         # 等待统计更新
-        import time
+        time = importlib.import_module('time')
         time.sleep(1)
 
         # 检查最终统计
@@ -97,7 +98,7 @@ def test_deepseek_cost_calculation():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -106,7 +107,7 @@ def test_cost_precision():
     print("\n🔍 测试成本精度显示")
     print("-" * 30)
 
-    from trader.config.manager import ConfigManager
+    ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
 
     config_manager = ConfigManager()
 

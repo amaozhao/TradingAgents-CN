@@ -6,6 +6,7 @@
 验证股票信息是否被正确纳入 DataSourceManager 统一管理，
 支持多数据源和自动降级
 """
+import importlib
 
 import os
 import sys
@@ -27,7 +28,7 @@ def test_data_source_priority():
     """测试数据源优先级"""
     print_section("测试数据源优先级")
 
-    from trader.flows.data_source_manager import get_data_source_manager
+    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
     manager = get_data_source_manager()
 
@@ -47,7 +48,7 @@ def test_mongodb_stock_info():
     """测试从 MongoDB 获取股票信息"""
     print_section("测试从 MongoDB 获取股票信息")
 
-    from trader.flows.data_source_manager import get_data_source_manager
+    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
     print("📊 创建数据源管理器...")
     manager = get_data_source_manager()
@@ -98,7 +99,8 @@ def test_tushare_stock_info():
     """测试从 Tushare 获取股票信息"""
     print_section("测试从 Tushare 获取股票信息")
 
-    from trader.flows.data_source_manager import get_data_source_manager, ChinaDataSource
+    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
+    ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
 
     print("📊 创建数据源管理器...")
     manager = get_data_source_manager()
@@ -139,7 +141,7 @@ def test_fallback_mechanism():
     """测试股票信息降级机制"""
     print_section("测试股票信息降级机制")
 
-    from trader.flows.data_source_manager import get_data_source_manager
+    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
     manager = get_data_source_manager()
 
@@ -205,7 +207,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return 1
 

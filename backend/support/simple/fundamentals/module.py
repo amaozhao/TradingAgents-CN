@@ -2,6 +2,7 @@
 """
 简单基本面分析测试
 """
+import importlib
 
 import os
 import sys
@@ -21,7 +22,7 @@ def test_simple_fundamentals():
 
     try:
         # 设置日志级别
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("default")
         logger.setLevel("INFO")
 
@@ -34,7 +35,7 @@ def test_simple_fundamentals():
             return True
 
         # 创建LLM实例
-        from trader.llm.adapters import ChatDashScopeOpenAI
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
         llm = ChatDashScopeOpenAI(
             model="qwen-turbo",
             temperature=0.1,
@@ -45,8 +46,8 @@ def test_simple_fundamentals():
         print(f"\n🔧 步骤2: 创建工具包...")
 
         # 创建工具包
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True
@@ -101,7 +102,7 @@ def test_simple_fundamentals():
         print(f"🔍 [股票代码追踪] 发送给LLM的提示词中的股票代码: {test_ticker}")
 
         # 调用LLM
-        from langchain_core.messages import HumanMessage
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
         response = llm.invoke([HumanMessage(content=prompt)])
 
         print(f"✅ LLM调用完成")
@@ -123,7 +124,7 @@ def test_simple_fundamentals():
                 print(f"   002021 出现次数: {count_002021}")
 
                 # 找出错误代码的位置
-                import re
+                re = importlib.import_module('re')
                 positions = [m.start() for m in re.finditer("002021", response.content)]
                 print(f"   002021 出现位置: {positions}")
 
@@ -146,7 +147,7 @@ def test_simple_fundamentals():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

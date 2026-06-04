@@ -4,11 +4,12 @@
 结合原有缓存系统和新的自适应数据库支持
 提供向后兼容的接口
 """
+import importlib
 
 import os
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, cast
 import pandas as pd
 
 # 导入统一日志系统
@@ -30,19 +31,20 @@ except ImportError as e:
 class IntegratedCacheManager:
     """集成缓存管理器 - 智能选择缓存策略"""
 
-    def __init__(self, cache_dir: str = None):
+    def __init__(self, cache_dir: Optional[str] = None):
         self.logger = setup_dataflow_logging()
 
         # 初始化原有缓存系统（作为备用）
-        self.legacy_cache = StockDataCache(cache_dir)
+        self.legacy_cache: Any = cast(Any, StockDataCache)(cache_dir)
 
         # 尝试初始化自适应缓存系统
-        self.adaptive_cache = None
+        self.adaptive_cache: Any = None
+        self.db_manager: Any = None
         self.use_adaptive = False
 
         if ADAPTIVE_CACHE_AVAILABLE:
             try:
-                self.adaptive_cache = AdaptiveCacheSystem(cache_dir)
+                self.adaptive_cache = cast(Any, AdaptiveCacheSystem)(cache_dir)
                 self.db_manager = get_database_manager()
                 self.use_adaptive = True
                 self.logger.info("✅ 自适应缓存系统已启用")
@@ -70,8 +72,8 @@ class IntegratedCacheManager:
         else:
             self.logger.info("📁 使用传统文件缓存系统")
 
-    def save_stock_data(self, symbol: str, data: Any, start_date: str = None,
-                       end_date: str = None, data_source: str = "default") -> str:
+    def save_stock_data(self, symbol: str, data: Any, start_date: Optional[str] = None,
+                       end_date: Optional[str] = None, data_source: str = "default") -> str:
         """
         保存股票数据到缓存
 
@@ -122,8 +124,8 @@ class IntegratedCacheManager:
             # 使用传统缓存系统
             return self.legacy_cache.load_stock_data(cache_key)
 
-    def find_cached_stock_data(self, symbol: str, start_date: str = None,
-                              end_date: str = None, data_source: str = "default") -> Optional[str]:
+    def find_cached_stock_data(self, symbol: str, start_date: Optional[str] = None,
+                              end_date: Optional[str] = None, data_source: str = "default") -> Optional[str]:
         """
         查找缓存的股票数据
 
@@ -171,7 +173,7 @@ class IntegratedCacheManager:
         if self.use_adaptive:
             return self.adaptive_cache.load_data(cache_key)
         else:
-            return self.legacy_cache.load_news_data(cache_key)
+            return getattr(self.legacy_cache, "load_news_data")(cache_key)
 
     def save_fundamentals_data(self, symbol: str, data: Any, data_source: str = "default") -> str:
         """保存基本面数据"""
@@ -192,8 +194,8 @@ class IntegratedCacheManager:
         else:
             return self.legacy_cache.load_fundamentals_data(cache_key)
 
-    def find_cached_fundamentals_data(self, symbol: str, data_source: str = None,
-                                     max_age_hours: int = None) -> Optional[str]:
+    def find_cached_fundamentals_data(self, symbol: str, data_source: Optional[str] = None,
+                                     max_age_hours: Optional[int] = None) -> Optional[str]:
         """
         查找匹配的基本面缓存数据
 
@@ -211,8 +213,8 @@ class IntegratedCacheManager:
         else:
             return self.legacy_cache.find_cached_fundamentals_data(symbol, data_source, max_age_hours)
 
-    def is_fundamentals_cache_valid(self, symbol: str, data_source: str = None,
-                                   max_age_hours: int = None) -> bool:
+    def is_fundamentals_cache_valid(self, symbol: str, data_source: Optional[str] = None,
+                                   max_age_hours: Optional[int] = None) -> bool:
         """
         检查基本面缓存是否有效
 
@@ -268,7 +270,9 @@ class IntegratedCacheManager:
             self.adaptive_cache.clear_expired_cache()
 
         # 总是清理传统缓存
-        self.legacy_cache.clear_expired_cache()
+        clear_expired = getattr(self.legacy_cache, "clear_expired_cache", None)
+        if clear_expired:
+            clear_expired()
 
     def clear_old_cache(self, max_age_days: int = 7):
         """
@@ -287,6 +291,8 @@ class IntegratedCacheManager:
             try:
                 redis_client = self.db_manager.get_redis_client()
                 if max_age_days == 0:
+                    if redis_client is None:
+                        raise RuntimeError("Redis client unavailable")
                     # 清空所有缓存
                     redis_client.flushdb()
                     self.logger.info(f"🧹 Redis 缓存已全部清空")
@@ -299,11 +305,14 @@ class IntegratedCacheManager:
         # 2. 清理 MongoDB 缓存
         if self.use_adaptive and self.db_manager.is_mongodb_available():
             try:
-                from datetime import datetime, timedelta
-                from zoneinfo import ZoneInfo
-                from trader.config.runtime import get_timezone_name
+                datetime = getattr(importlib.import_module('datetime'), 'datetime')
+                timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
+                ZoneInfo = getattr(importlib.import_module('zoneinfo'), 'ZoneInfo')
+                get_timezone_name = getattr(importlib.import_module('trader.config.runtime'), 'get_timezone_name')
 
                 mongodb_db = self.db_manager.get_mongodb_db()
+                if mongodb_db is None:
+                    raise RuntimeError("MongoDB database unavailable")
 
                 if max_age_days == 0:
                     # 清空所有缓存集合
@@ -394,6 +403,6 @@ def get_stock_cache():
     """向后兼容：获取股票缓存"""
     return get_cache()
 
-def create_cache_manager(cache_dir: str = None):
+def create_cache_manager(cache_dir: Optional[str] = None):
     """向后兼容：创建缓存管理器"""
     return IntegratedCacheManager(cache_dir)

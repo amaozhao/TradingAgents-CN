@@ -3,6 +3,7 @@
 集成验证测试脚本
 测试Web和CLI界面中的股票数据预获取功能是否正常工作
 """
+import importlib
 
 import sys
 import os
@@ -19,7 +20,7 @@ def test_web_integration():
 
     try:
         # 导入Web分析运行器
-        from web.utils.analysis import run_stock_analysis
+        run_stock_analysis = getattr(importlib.import_module('web.utils.analysis'), 'run_stock_analysis')
 
         # 模拟Web界面的进度更新函数
         progress_messages = []
@@ -72,7 +73,7 @@ def test_cli_integration():
 
     try:
         # 导入CLI相关模块
-        from cli.main import get_ticker
+        get_ticker = getattr(importlib.import_module('cli.main'), 'get_ticker')
 
         # 模拟A股市场配置
         a_stock_market = {
@@ -87,7 +88,7 @@ def test_cli_integration():
 
         # 测试股票代码格式验证
         print("\n🧪 测试股票代码格式验证")
-        import re
+        re = importlib.import_module('re')
 
         test_codes = [
             ("000001", True, "平安银行"),
@@ -110,7 +111,7 @@ def test_cli_integration():
 
         # 测试数据预获取功能
         print("\n🧪 测试CLI数据预获取功能")
-        from trader.utils.stock_validator import prepare_stock_data
+        prepare_stock_data = getattr(importlib.import_module('trader.utils.validation'), 'prepare_stock_data')
 
         result = prepare_stock_data("000001", "A股", 7)  # 测试7天数据
 
@@ -132,7 +133,7 @@ def test_error_handling():
     print("=" * 60)
 
     try:
-        from trader.utils.stock_validator import prepare_stock_data
+        prepare_stock_data = getattr(importlib.import_module('trader.utils.validation'), 'prepare_stock_data')
 
         # 测试不存在的股票代码
         error_tests = [
@@ -171,7 +172,7 @@ def test_performance():
     print("=" * 60)
 
     try:
-        from trader.utils.stock_validator import prepare_stock_data
+        prepare_stock_data = getattr(importlib.import_module('trader.utils.validation'), 'prepare_stock_data')
 
         # 测试多个股票的性能
         performance_tests = [

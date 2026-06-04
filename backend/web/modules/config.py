@@ -2,6 +2,7 @@
 """
 配置管理页面
 """
+import importlib
 
 import streamlit as st
 import pandas as pd
@@ -20,7 +21,7 @@ sys.path.insert(0, str(project_root))
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.ui import apply_hide_deploy_button_css
 
-from trader.config.config_manager import (
+from trader.config.manager import (
     config_manager, ModelConfig, PricingConfig
 )
 
@@ -488,7 +489,7 @@ def render_system_settings():
         if st.button("重置配置", help="重置所有配置到默认值", key="reset_all_config"):
             if st.session_state.get("confirm_reset", False):
                 # 删除配置文件，重新初始化
-                import shutil
+                shutil = importlib.import_module('shutil')
                 if config_manager.config_dir.exists():
                     shutil.rmtree(config_manager.config_dir)
                 config_manager._init_default_configs()

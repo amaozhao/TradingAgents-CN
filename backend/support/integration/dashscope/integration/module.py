@@ -3,6 +3,7 @@
 阿里百炼大模型集成测试脚本
 用于验证 TradingAgents 中的阿里百炼集成是否正常工作
 """
+import importlib
 
 import os
 import sys
@@ -21,10 +22,10 @@ def test_import():
     """测试导入是否正常"""
     print("🔍 测试1: 检查模块导入...")
     try:
-        from trader.llm.adapters import ChatDashScope
+        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
         print("✅ ChatDashScope 导入成功")
 
-        from trader.graph.trading import TradingAgentsGraph
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
         print("✅ TradingAgentsGraph 导入成功")
 
         return True
@@ -60,8 +61,8 @@ def test_dashscope_connection():
     print("\n🔍 测试3: 检查阿里百炼连接...")
 
     try:
-        import dashscope
-        from dashscope import Generation
+        dashscope = importlib.import_module('dashscope')
+        Generation = getattr(importlib.import_module('dashscope'), 'Generation')
 
         # 设置API密钥
         dashscope.api_key = os.getenv('DASHSCOPE_API_KEY')
@@ -90,8 +91,8 @@ def test_langchain_adapter():
     print("\n🔍 测试4: 检查LangChain适配器...")
 
     try:
-        from trader.llm.adapters import ChatDashScope
-        from langchain_core.messages import HumanMessage
+        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         # 创建适配器实例
         llm = ChatDashScope(model="qwen-turbo")
@@ -112,8 +113,8 @@ def test_trading_graph_config():
     print("\n🔍 测试5: 检查TradingGraph配置...")
 
     try:
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建阿里百炼配置
         config = DEFAULT_CONFIG.copy()

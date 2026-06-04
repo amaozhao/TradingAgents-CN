@@ -1,13 +1,16 @@
+import importlib
 import chromadb
 from chromadb.config import Settings
 from openai import OpenAI
 import dashscope
 from dashscope import TextEmbedding
 import os
+import platform
 import threading
 import hashlib
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
+from trader.agents.utils.chroma import get_optimal_chromadb_client, is_windows_11
 from trader.agents.utils.log import TradingMemoryLog
 
 # 导入统一日志系统
@@ -20,8 +23,8 @@ class ChromaDBManager:
 
     _instance = None
     _lock = threading.Lock()
-    _collections: Dict[str, any] = {}
-    _client = None
+    _collections: Dict[str, Any] = {}
+    _client: Any = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -34,10 +37,6 @@ class ChromaDBManager:
     def __init__(self):
         if not self._initialized:
             try:
-                # 使用统一的配置模块
-                from .chroma import get_optimal_chromadb_client, is_windows_11
-                import platform
-
                 self._client = get_optimal_chromadb_client()
 
                 # 记录初始化信息
@@ -102,6 +101,9 @@ class FinancialSituationMemory:
     def __init__(self, name, config):
         self.config = config
         self.llm_provider = config.get("llm_provider", "openai").lower()
+        self.client: Any = None
+        self.fallback_client: Any = None
+        self.situation_collection: Any = None
 
         # 配置向量缓存的长度限制（向量缓存默认启用长度检查）
         self.max_embedding_length = int(os.getenv('MAX_EMBEDDING_CONTENT_LENGTH', '50000'))  # 默认50K字符
@@ -120,9 +122,6 @@ class FinancialSituationMemory:
             if dashscope_key:
                 try:
                     # 尝试导入和初始化DashScope
-                    import dashscope
-                    from dashscope import TextEmbedding
-
                     dashscope.api_key = dashscope_key
                     logger.info(f"✅ DashScope API密钥已配置，启用记忆功能")
 
@@ -152,9 +151,6 @@ class FinancialSituationMemory:
             if dashscope_key:
                 try:
                     # 使用阿里百炼嵌入服务作为千帆的embedding解决方案
-                    import dashscope
-                    from dashscope import TextEmbedding
-
                     dashscope.api_key = dashscope_key
                     self.embedding = "text-embedding-v3"
                     self.client = None
@@ -182,9 +178,6 @@ class FinancialSituationMemory:
                 if dashscope_key:
                     try:
                         # 测试阿里百炼是否可用
-                        import dashscope
-                        from dashscope import TextEmbedding
-
                         dashscope.api_key = dashscope_key
                         # 验证TextEmbedding可用性（不需要实际调用）
                         self.embedding = "text-embedding-v3"
@@ -236,9 +229,6 @@ class FinancialSituationMemory:
             if dashscope_key:
                 try:
                     # 尝试初始化DashScope
-                    import dashscope
-                    from dashscope import TextEmbedding
-
                     self.embedding = "text-embedding-v3"
                     self.client = None
                     dashscope.api_key = dashscope_key
@@ -273,9 +263,6 @@ class FinancialSituationMemory:
             if dashscope_key:
                 try:
                     # 尝试使用阿里百炼嵌入
-                    import dashscope
-                    from dashscope import TextEmbedding
-
                     self.embedding = "text-embedding-v3"
                     self.client = None
                     dashscope.api_key = dashscope_key
@@ -406,10 +393,6 @@ class FinancialSituationMemory:
             (self.llm_provider == "openrouter" and self.client is None)):
             # 使用阿里百炼的嵌入模型
             try:
-                # 导入DashScope模块
-                import dashscope
-                from dashscope import TextEmbedding
-
                 # 检查DashScope API密钥是否可用
                 if not hasattr(dashscope, 'api_key') or not dashscope.api_key:
                     logger.warning(f"⚠️ DashScope API密钥未设置，记忆功能降级")
@@ -612,8 +595,8 @@ class FinancialSituationMemory:
             memories = []
             if results and 'documents' in results and results['documents']:
                 documents = results['documents'][0]
-                metadatas = results.get('metadatas', [[]])[0]
-                distances = results.get('distances', [[]])[0]
+                metadatas = (results.get('metadatas') or [[]])[0]
+                distances = (results.get('distances') or [[]])[0]
 
                 for i, doc in enumerate(documents):
                     metadata = metadatas[i] if i < len(metadatas) else {}
@@ -659,7 +642,7 @@ class FinancialSituationMemory:
 
 if __name__ == "__main__":
     # Example usage
-    matcher = FinancialSituationMemory()
+    matcher = FinancialSituationMemory("example", {"llm_provider": "openai", "backend_url": ""})
 
     # Example data
     example_data = [

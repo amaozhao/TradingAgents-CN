@@ -2,6 +2,7 @@
 """
 测试筛选字段映射
 """
+import importlib
 
 import asyncio
 import sys
@@ -20,9 +21,10 @@ async def test_screening_fields():
 
     try:
         # 导入服务
-        from app.core.database import init_db
-        from app.services.screening.database import get_database_screening_service
-        from app.models.screening import ScreeningCondition, OperatorType
+        init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
+        get_database_screening_service = getattr(importlib.import_module('app.services.screening.database'), 'get_database_screening_service')
+        ScreeningCondition = getattr(importlib.import_module('app.models.screening'), 'ScreeningCondition')
+        OperatorType = getattr(importlib.import_module('app.models.screening'), 'OperatorType')
 
         # 初始化数据库
         await init_db()
@@ -81,7 +83,7 @@ async def test_screening_fields():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

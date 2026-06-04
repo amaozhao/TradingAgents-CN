@@ -3,14 +3,15 @@
 测试旧工具移除
 验证LLM只能调用统一工具
 """
+import importlib
 
 def test_available_tools():
     """测试可用工具列表"""
     print("🔧 测试可用工具列表...")
 
     try:
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建工具包
         config = DEFAULT_CONFIG.copy()
@@ -67,7 +68,7 @@ def test_available_tools():
 
     except Exception as e:
         print(f"❌ 工具移除测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -77,9 +78,9 @@ def test_fundamentals_analyst_tool_selection():
     print("\n🔧 测试基本面分析师工具选择...")
 
     try:
-        from trader.agents.analysts.fundamentals import create_fundamentals_analyst
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -89,7 +90,7 @@ def test_fundamentals_analyst_tool_selection():
         toolkit = Toolkit(config)
 
         # 模拟基本面分析师的工具选择逻辑
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         test_cases = [
             ("0700.HK", "港股"),
@@ -125,7 +126,7 @@ def test_fundamentals_analyst_tool_selection():
 
     except Exception as e:
         print(f"❌ 基本面分析师工具选择测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -135,10 +136,10 @@ def test_market_analyst_tool_selection():
     print("\n🔧 测试市场分析师工具选择...")
 
     try:
-        from trader.agents.analysts.market import create_market_analyst
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
-        from trader.utils.stocks import StockUtils
+        create_market_analyst = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -181,7 +182,7 @@ def test_market_analyst_tool_selection():
 
     except Exception as e:
         print(f"❌ 市场分析师工具选择测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

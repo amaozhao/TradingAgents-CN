@@ -3,6 +3,7 @@
 统一历史数据管理服务
 为三数据源提供统一的历史数据存储和查询接口
 """
+import importlib
 
 import asyncio
 import logging
@@ -22,8 +23,8 @@ class HistoricalDataService:
 
     def __init__(self):
         """初始化服务"""
-        self.db = None
-        self.collection = None
+        self.db: Any = None
+        self.collection: Any = None
 
     async def initialize(self):
         """初始化数据库连接"""
@@ -86,13 +87,14 @@ class HistoricalDataService:
         """
         if self.collection is None:
             await self.initialize()
+        collection = self.collection
 
         try:
             if data is None or data.empty:
                 logger.warning(f"⚠️ {symbol} 历史数据为空，跳过保存")
                 return 0
 
-            from datetime import datetime
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
 
             total_start = datetime.now()
 
@@ -143,7 +145,7 @@ class HistoricalDataService:
                         "period": doc["period"],
                     }
 
-                    from pymongo import ReplaceOne
+                    ReplaceOne = getattr(importlib.import_module('pymongo'), 'ReplaceOne')
 
                     operations.append(ReplaceOne(filter=filter_doc, replacement=doc, upsert=True))
                     postgres_documents.append(doc)
@@ -386,11 +388,11 @@ class HistoricalDataService:
     async def get_historical_data(
         self,
         symbol: str,
-        start_date: str = None,
-        end_date: str = None,
-        data_source: str = None,
-        period: str = None,
-        limit: int = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        data_source: Optional[str] = None,
+        period: Optional[str] = None,
+        limit: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         查询历史数据
@@ -408,13 +410,14 @@ class HistoricalDataService:
         """
         if self.collection is None:
             await self.initialize()
+        collection: Any = self.collection
 
         try:
             # 构建查询条件
-            query = {"symbol": symbol}
+            query: Dict[str, Any] = {"symbol": symbol}
 
             if start_date or end_date:
-                date_filter = {}
+                date_filter: Dict[str, Any] = {}
                 if start_date:
                     date_filter["$gte"] = start_date
                 if end_date:
@@ -428,7 +431,7 @@ class HistoricalDataService:
                 query["period"] = period
 
             # 执行查询
-            cursor = self.collection.find(query).sort("trade_date", -1)
+            cursor = collection.find(query).sort("trade_date", -1)
 
             if limit:
                 cursor = cursor.limit(limit)
@@ -446,9 +449,10 @@ class HistoricalDataService:
         """获取最新数据日期"""
         if self.collection is None:
             await self.initialize()
+        collection: Any = self.collection
 
         try:
-            result = await self.collection.find_one(
+            result = await collection.find_one(
                 {"symbol": symbol, "data_source": data_source}, sort=[("trade_date", -1)]
             )
 
@@ -464,23 +468,24 @@ class HistoricalDataService:
         """获取数据统计信息"""
         if self.collection is None:
             await self.initialize()
+        collection: Any = self.collection
 
         try:
             # 总记录数
-            total_count = await self.collection.count_documents({})
+            total_count = await collection.count_documents({})
 
             # 按数据源统计
-            source_stats = await self.collection.aggregate([
+            source_stats = await collection.aggregate([
                 {"$group": {"_id": "$data_source", "count": {"$sum": 1}, "latest_date": {"$max": "$trade_date"}}}
             ]).to_list(length=None)
 
             # 按市场统计
-            market_stats = await self.collection.aggregate([
+            market_stats = await collection.aggregate([
                 {"$group": {"_id": "$market", "count": {"$sum": 1}}}
             ]).to_list(length=None)
 
             # 股票数量统计
-            symbol_count = len(await self.collection.distinct("symbol"))
+            symbol_count = len(await collection.distinct("symbol"))
 
             return {
                 "total_records": total_count,

@@ -2,6 +2,7 @@
 """
 基本面分析股票代码追踪测试
 """
+import importlib
 
 import os
 import sys
@@ -21,7 +22,7 @@ def test_fundamentals_analyst():
 
     try:
         # 设置日志级别
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("default")
         logger.setLevel("INFO")
 
@@ -35,8 +36,8 @@ def test_fundamentals_analyst():
         print(f"\n🔧 开始调用基本面分析师...")
 
         # 导入基本面分析师
-        from trader.agents.analysts.fundamentals import fundamentals_analyst
-        from trader.agents.utils.utils import AgentUtils
+        fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'fundamentals_analyst')
+        AgentUtils = getattr(importlib.import_module('trader.agents.utils.utils'), 'AgentUtils')
 
         # 创建工具包
         toolkit = AgentUtils()
@@ -80,7 +81,7 @@ def test_fundamentals_analyst():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -93,11 +94,11 @@ def test_unified_tool_direct():
 
     try:
         # 设置日志级别
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger.setLevel("INFO")
 
         # 导入工具包
-        from trader.agents.utils.utils import AgentUtils
+        AgentUtils = getattr(importlib.import_module('trader.agents.utils.utils'), 'AgentUtils')
 
         # 创建工具包实例
         toolkit = AgentUtils()
@@ -138,7 +139,7 @@ def test_unified_tool_direct():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

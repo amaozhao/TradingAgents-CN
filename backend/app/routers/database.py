@@ -1,6 +1,7 @@
 """
 数据库管理API路由
 """
+import importlib
 
 import logging
 import json
@@ -201,7 +202,7 @@ async def import_data(
         }
     except Exception as e:
         logger.error(f"❌ 导入数据失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

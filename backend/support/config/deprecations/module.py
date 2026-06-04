@@ -14,7 +14,7 @@ def test_legacy_env_aliases_map_to_new(monkeypatch):
     monkeypatch.setenv("API_DEBUG", "false")
 
     # Reload module under warning capture to assert deprecation warnings
-    import app.core.config as cfg
+    cfg = importlib.import_module('app.core.config')
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always", DeprecationWarning)
         importlib.reload(cfg)

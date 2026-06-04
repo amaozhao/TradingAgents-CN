@@ -5,13 +5,17 @@ Cookie管理器 - 解决Streamlit session state页面刷新丢失的问题
 import streamlit as st
 import json
 import time
+import importlib
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 
 try:
-    from streamlit_cookies_manager import EncryptedCookieManager
+    EncryptedCookieManager = importlib.import_module(
+        "streamlit_cookies_manager"
+    ).EncryptedCookieManager
     COOKIES_AVAILABLE = True
 except ImportError:
+    EncryptedCookieManager = None
     COOKIES_AVAILABLE = False
     st.warning("⚠️ streamlit-cookies-manager 未安装，Cookie功能不可用")
 
@@ -155,7 +159,7 @@ def get_persistent_analysis_id() -> Optional[str]:
                 return analysis_id
 
         # 3. 最后从Redis/文件恢复
-        from .progress import get_latest_analysis_id
+        get_latest_analysis_id = getattr(importlib.import_module('web.utils.progress'), 'get_latest_analysis_id')
         latest_id = get_latest_analysis_id()
         if latest_id:
             st.session_state.current_analysis_id = latest_id

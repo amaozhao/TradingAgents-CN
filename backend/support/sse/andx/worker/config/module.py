@@ -6,6 +6,7 @@ Minimal tests for:
 
 These tests avoid touching real DB/Redis by mocking.
 """
+import importlib
 
 import asyncio
 from fastapi import FastAPI, Depends
@@ -81,7 +82,7 @@ def test_sse_batch_connected_event(monkeypatch):
     monkeypatch.setattr(sse_router_mod, "get_redis_client", lambda: FakeRedis())
     # Also patch queue_service.get_redis_client because batch generator constructs
     # a QueueService via get_queue_service() inside the generator
-    import app.services.queue.service as qsvc_mod
+    qsvc_mod = importlib.import_module('app.services.queue.service')
     monkeypatch.setattr(qsvc_mod, "get_redis_client", lambda: FakeRedis())
 
     app = make_test_app(FakeQueueService())
@@ -99,7 +100,7 @@ def test_sse_batch_connected_event(monkeypatch):
 
 def test_worker_intervals_env_and_dynamic_override(monkeypatch):
     # Import in-scope to ensure monkeypatch targets the module objects
-    import app.worker.analysis as analysis_worker
+    analysis_worker = importlib.import_module('app.worker.analysis')
 
     # Replace settings object with a lightweight dummy carrying needed fields
     class _DummySettings:

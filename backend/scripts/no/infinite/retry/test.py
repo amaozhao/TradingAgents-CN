@@ -3,6 +3,7 @@
 测试修复后的降级机制是否避免了无限重试
 验证不存在的股票代码不会导致无限循环
 """
+import importlib
 
 import sys
 import os
@@ -39,7 +40,7 @@ def test_no_infinite_retry_stock_data():
         start_time = time.time()
 
         try:
-            from trader.flows.interface import get_china_stock_data_unified
+            get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
             result = get_china_stock_data_unified(code, "2025-07-01", "2025-07-17")
 
             end_time = time.time()
@@ -79,7 +80,7 @@ def test_no_infinite_retry_stock_info():
         start_time = time.time()
 
         try:
-            from trader.flows.interface import get_china_stock_info_unified
+            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
             result = get_china_stock_info_unified(code)
 
             end_time = time.time()
@@ -107,7 +108,7 @@ def test_fallback_mechanism_logic():
     print("=" * 50)
 
     try:
-        from trader.flows.data_source_manager import get_data_source_manager
+        get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
         manager = get_data_source_manager()
 
         # 检查降级方法是否存在
@@ -154,14 +155,14 @@ def test_real_stock_performance():
 
         try:
             # 测试历史数据
-            from trader.flows.interface import get_china_stock_data_unified
+            get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
             data_result = get_china_stock_data_unified(code, "2025-07-15", "2025-07-17")
 
             data_time = time.time()
             data_elapsed = data_time - start_time
 
             # 测试基本信息
-            from trader.flows.interface import get_china_stock_info_unified
+            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
             info_result = get_china_stock_info_unified(code)
 
             end_time = time.time()

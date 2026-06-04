@@ -4,6 +4,7 @@
 测试财务指标修复效果
 验证是否使用真实财务数据而不是分类估算
 """
+import importlib
 
 import sys
 import os
@@ -70,7 +71,7 @@ def test_tushare_connection():
     print("=" * 80)
 
     try:
-        from trader.flows.tushare import get_tushare_provider
+        get_tushare_provider = getattr(importlib.import_module('trader.flows.tushare'), 'get_tushare_provider')
 
         provider = get_tushare_provider()
         if provider.connected:

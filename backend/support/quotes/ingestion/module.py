@@ -1,6 +1,7 @@
 """
 测试行情入库服务的股票代码标准化和历史数据导入功能
 """
+import importlib
 import asyncio
 import sys
 from pathlib import Path
@@ -184,7 +185,7 @@ async def test_historical_data_import():
 
     except Exception as e:
         print(f"   ❌ 导入失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         await close_db()
         return False
@@ -200,7 +201,7 @@ async def test_akshare_realtime_quotes():
     print("="*60)
 
     try:
-        from app.services.sources.akshare import AKShareAdapter
+        AKShareAdapter = getattr(importlib.import_module('app.services.sources.akshare'), 'AKShareAdapter')
 
         adapter = AKShareAdapter()
 
@@ -240,7 +241,7 @@ async def test_akshare_realtime_quotes():
 
     except Exception as e:
         print(f"   ❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

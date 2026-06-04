@@ -2,6 +2,7 @@
 """
 简单的股票代码追踪测试
 """
+import importlib
 
 import os
 import sys
@@ -21,14 +22,14 @@ def test_data_flow():
 
     try:
         # 设置日志级别
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("default")
         logger.setLevel("INFO")
 
         print(f"\n🔧 测试数据源管理器...")
 
         # 测试数据源管理器
-        from trader.flows.sources import get_china_stock_data_unified
+        get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.sources'), 'get_china_stock_data_unified')
 
         result = get_china_stock_data_unified(test_ticker, "2025-07-01", "2025-07-15")
 
@@ -58,7 +59,7 @@ def test_data_flow():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -71,13 +72,13 @@ def test_tushare_direct():
 
     try:
         # 设置日志级别
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger.setLevel("INFO")
 
         print(f"\n🔧 测试Tushare接口...")
 
         # 测试Tushare接口
-        from trader.flows.interface import get_china_stock_data_tushare
+        get_china_stock_data_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_tushare')
 
         result = get_china_stock_data_tushare(test_ticker, "2025-07-01", "2025-07-15")
 
@@ -107,7 +108,7 @@ def test_tushare_direct():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -120,13 +121,13 @@ def test_tushare_provider():
 
     try:
         # 设置日志级别
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger.setLevel("INFO")
 
         print(f"\n🔧 测试Tushare提供器...")
 
         # 测试Tushare提供器
-        from trader.flows.tushare import get_tushare_provider
+        get_tushare_provider = getattr(importlib.import_module('trader.flows.tushare'), 'get_tushare_provider')
 
         provider = get_tushare_provider()
 
@@ -153,7 +154,7 @@ def test_tushare_provider():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

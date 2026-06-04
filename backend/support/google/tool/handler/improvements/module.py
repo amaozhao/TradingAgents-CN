@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from trader.agents.utils.google import GoogleToolCallHandler
 from trader.agents.utils.utils import Toolkit
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.schema import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 logging.basicConfig(
     level=logging.INFO,

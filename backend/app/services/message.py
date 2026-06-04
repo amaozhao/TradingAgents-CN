@@ -2,7 +2,8 @@
 内部消息数据服务
 提供统一的内部消息存储、查询和管理功能
 """
-from typing import Optional, List, Dict, Any, Union
+import importlib
+from typing import Any, Dict, List, Optional, Union, cast
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 import logging
@@ -80,8 +81,8 @@ class InternalMessageService:
     """内部消息数据服务"""
 
     def __init__(self):
-        self.db = None
-        self.collection = None
+        self.db: Any = None
+        self.collection: Any = None
         self.logger = logging.getLogger(self.__class__.__name__)
 
     async def initialize(self):
@@ -94,7 +95,7 @@ class InternalMessageService:
             self.logger.error(f"❌ 内部消息数据服务初始化失败: {e}")
             raise
 
-    async def _get_collection(self):
+    async def _get_collection(self) -> Any:
         """获取集合实例"""
         if self.collection is None:
             await self.initialize()
@@ -103,7 +104,7 @@ class InternalMessageService:
     async def save_internal_messages(
         self,
         messages: List[Dict[str, Any]]
-    ) -> Dict[str, int]:
+    ) -> Dict[str, Any]:
         """
         批量保存内部消息
 
@@ -185,7 +186,7 @@ class InternalMessageService:
             collection = await self._get_collection()
 
             # 构建查询条件
-            query = {}
+            query: Dict[str, Any] = {}
 
             if params.symbol:
                 query["symbol"] = params.symbol
@@ -246,7 +247,7 @@ class InternalMessageService:
             messages = await cursor.to_list(length=params.limit)
 
             # 🔧 转换 ObjectId 为字符串，避免 JSON 序列化错误
-            messages = convert_objectid_to_str(messages)
+            messages = cast(List[Dict[str, Any]], convert_objectid_to_str(messages))
 
             self.logger.debug(f"📊 查询到 {len(messages)} 条内部消息")
             return messages
@@ -260,8 +261,8 @@ class InternalMessageService:
         params: InternalMessageQueryParams,
     ) -> List[Dict[str, Any]]:
         try:
-            from app.db.message import query_internal_messages
-            from app.db.session import get_session_factory
+            query_internal_messages = getattr(importlib.import_module('app.db.message'), 'query_internal_messages')
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
             async with get_session_factory()() as session:
                 return await query_internal_messages(session, params)
@@ -271,9 +272,9 @@ class InternalMessageService:
 
     async def get_latest_messages(
         self,
-        symbol: str = None,
-        message_type: str = None,
-        access_level: str = None,
+        symbol: Optional[str] = None,
+        message_type: Optional[str] = None,
+        access_level: Optional[str] = None,
         limit: int = 20
     ) -> List[Dict[str, Any]]:
         """获取最新内部消息"""
@@ -290,8 +291,8 @@ class InternalMessageService:
     async def search_messages(
         self,
         query: str,
-        symbol: str = None,
-        access_level: str = None,
+        symbol: Optional[str] = None,
+        access_level: Optional[str] = None,
         limit: int = 50
     ) -> List[Dict[str, Any]]:
         """全文搜索内部消息"""
@@ -309,7 +310,7 @@ class InternalMessageService:
             collection = await self._get_collection()
 
             # 构建搜索条件
-            search_query = {
+            search_query: Dict[str, Any] = {
                 "$text": {"$search": query}
             }
 
@@ -338,13 +339,13 @@ class InternalMessageService:
         self,
         query: str,
         *,
-        symbol: str = None,
-        access_level: str = None,
+        symbol: Optional[str] = None,
+        access_level: Optional[str] = None,
         limit: int = 50,
     ) -> List[Dict[str, Any]]:
         try:
-            from app.db.message import search_internal_messages
-            from app.db.session import get_session_factory
+            search_internal_messages = getattr(importlib.import_module('app.db.message'), 'search_internal_messages')
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
             async with get_session_factory()() as session:
                 return await search_internal_messages(
@@ -360,8 +361,8 @@ class InternalMessageService:
 
     async def get_research_reports(
         self,
-        symbol: str = None,
-        department: str = None,
+        symbol: Optional[str] = None,
+        department: Optional[str] = None,
         limit: int = 20
     ) -> List[Dict[str, Any]]:
         """获取研究报告"""
@@ -377,8 +378,8 @@ class InternalMessageService:
 
     async def get_analyst_notes(
         self,
-        symbol: str = None,
-        author: str = None,
+        symbol: Optional[str] = None,
+        author: Optional[str] = None,
         limit: int = 20
     ) -> List[Dict[str, Any]]:
         """获取分析师笔记"""
@@ -394,9 +395,9 @@ class InternalMessageService:
 
     async def get_internal_statistics(
         self,
-        symbol: str = None,
-        start_time: datetime = None,
-        end_time: datetime = None
+        symbol: Optional[str] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None
     ) -> InternalMessageStats:
         """获取内部消息统计信息"""
         try:
@@ -412,7 +413,7 @@ class InternalMessageService:
             collection = await self._get_collection()
 
             # 构建匹配条件
-            match_stage = {}
+            match_stage: Dict[str, Any] = {}
             if symbol:
                 match_stage["symbol"] = symbol
             if start_time or end_time:
@@ -476,13 +477,13 @@ class InternalMessageService:
     async def _get_internal_statistics_from_postgres(
         self,
         *,
-        symbol: str = None,
-        start_time: datetime = None,
-        end_time: datetime = None,
+        symbol: Optional[str] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
     ) -> Optional[InternalMessageStats]:
         try:
-            from app.db.message import get_internal_message_stats
-            from app.db.session import get_session_factory
+            get_internal_message_stats = getattr(importlib.import_module('app.db.message'), 'get_internal_message_stats')
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
             async with get_session_factory()() as session:
                 stats = await get_internal_message_stats(

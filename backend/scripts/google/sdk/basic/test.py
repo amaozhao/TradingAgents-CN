@@ -8,6 +8,7 @@
 """
 import sys
 import os
+import importlib
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 print("=" * 80)
@@ -35,7 +36,7 @@ print("📊 测试 1: 直接使用 google-generativeai SDK")
 print("-" * 80)
 
 try:
-    import google.generativeai as genai
+    genai = importlib.import_module("google.generativeai")
 
     # 配置 API Key
     genai.configure(api_key=google_api_key)

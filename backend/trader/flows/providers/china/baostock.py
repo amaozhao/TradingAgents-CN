@@ -3,10 +3,11 @@
 BaoStock统一数据提供器
 实现BaseStockDataProvider接口，提供标准化的BaoStock数据访问
 """
+import importlib
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional, Union, cast
 import pandas as pd
 
 from ..base import BaseStockDataProvider
@@ -20,14 +21,14 @@ class BaoStockProvider(BaseStockDataProvider):
     def __init__(self):
         """初始化BaoStock提供器"""
         super().__init__("baostock")
-        self.bs = None
+        self.bs: Any = None
         self.connected = False
         self._init_baostock()
 
     def _init_baostock(self):
         """初始化BaoStock连接"""
         try:
-            import baostock as bs
+            bs = importlib.import_module('baostock')
             self.bs = bs
             logger.info("🔧 BaoStock模块加载成功")
             self.connected = True
@@ -91,14 +92,13 @@ class BaoStockProvider(BaseStockDataProvider):
                     return None
 
                 # 转换为DataFrame
-                import pandas as pd
                 df = pd.DataFrame(data_list, columns=rs.fields)
 
                 # 只保留股票类型（type=1）
                 df = df[df['type'] == '1']
 
                 logger.info(f"✅ BaoStock股票列表获取成功: {len(df)}只股票")
-                return df
+                return cast(pd.DataFrame, df)
 
             finally:
                 self.bs.logout()

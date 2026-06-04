@@ -2,6 +2,7 @@
 配置桥接模块
 将统一配置系统的配置桥接到环境变量，供 TradingAgents 核心库使用
 """
+import importlib
 
 import os
 import json
@@ -26,8 +27,8 @@ def bridge_config_to_env():
     这样 TradingAgents 核心库就能通过环境变量读取到用户配置的数据
     """
     try:
-        from app.core.unified import unified_config
-        from app.services.config import config_service
+        unified_config = getattr(importlib.import_module('app.core.unified'), 'unified_config')
+        config_service = getattr(importlib.import_module('app.services.config'), 'config_service')
 
         logger.info("🔧 开始桥接配置到环境变量...")
         bridged_count = 0
@@ -47,7 +48,7 @@ def bridge_config_to_env():
             bridged_count += 1
 
         # 桥接 MongoDB 数据库名称
-        from app.core.config import settings
+        settings = getattr(importlib.import_module('app.core.config'), 'settings')
 
         mongodb_db_name = os.getenv("MONGODB_DATABASE_NAME", "").strip() or settings.mongo_db
         os.environ["MONGODB_DATABASE_NAME"] = mongodb_db_name
@@ -62,9 +63,9 @@ def bridge_config_to_env():
         # 只有当环境变量不存在或为占位符时，才使用数据库中的配置
         try:
             # 使用同步 MongoDB 客户端读取厂家配置
-            from pymongo import MongoClient
-            from app.core.config import settings
-            from app.models.config import LLMProvider
+            MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+            settings = getattr(importlib.import_module('app.core.config'), 'settings')
+            LLMProvider = getattr(importlib.import_module('app.models.config'), 'LLMProvider')
 
             # 创建同步 MongoDB 客户端
             client = MongoClient(settings.mongo_uri)
@@ -150,9 +151,9 @@ def bridge_config_to_env():
         # 🔥 修改：从数据库的 system_configs 集合读取数据源配置，而不是从 JSON 文件
         try:
             # 使用同步 MongoDB 客户端读取系统配置
-            from pymongo import MongoClient
-            from app.core.config import settings
-            from app.models.config import SystemConfig
+            MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+            settings = getattr(importlib.import_module('app.core.config'), 'settings')
+            SystemConfig = getattr(importlib.import_module('app.models.config'), 'SystemConfig')
 
             # 创建同步 MongoDB 客户端
             client = MongoClient(settings.mongo_uri)
@@ -232,8 +233,8 @@ def bridge_config_to_env():
         # 6. 重新初始化 trading_agents 库的 MongoDB 存储
         # 因为全局 config_manager 实例是在模块导入时创建的，那时环境变量还没有被桥接
         try:
-            from trader.config.manager import config_manager
-            from trader.config.mongodb import MongoDBStorage
+            config_manager = getattr(importlib.import_module('trader.config.manager'), 'config_manager')
+            MongoDBStorage = getattr(importlib.import_module('trader.config.mongodb'), 'MongoDBStorage')
             logger.info("🔄 重新初始化 trading_agents MongoDB 存储...")
 
             # 调试：检查环境变量
@@ -263,20 +264,20 @@ def bridge_config_to_env():
                         config_manager.mongodb_storage = None
                 except Exception as e:
                     logger.error(f"❌ 创建 MongoDBStorage 实例失败: {e}")
-                    import traceback
+                    traceback = importlib.import_module('traceback')
                     logger.error(traceback.format_exc())
                     config_manager.mongodb_storage = None
             else:
                 logger.info("ℹ️ USE_MONGODB_STORAGE 未启用，将使用 JSON 文件存储")
         except Exception as e:
             logger.error(f"❌ 重新初始化 trading_agents MongoDB 存储失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             logger.error(traceback.format_exc())
 
         # 7. 同步定价配置到 trading_agents 的 config/pricing.json
         # 注意：这里需要从数据库读取配置，因为文件中的配置没有定价信息
         # 使用异步方式同步定价配置
-        import asyncio
+        asyncio = importlib.import_module('asyncio')
         try:
             loop = asyncio.get_running_loop()
             # 在异步上下文中，创建后台任务
@@ -365,8 +366,8 @@ def _bridge_system_settings() -> int:
     """
     try:
         # 使用同步的 MongoDB 客户端
-        from pymongo import MongoClient
-        from app.core.config import settings
+        MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+        settings = getattr(importlib.import_module('app.core.config'), 'settings')
 
         # 创建同步客户端
         client = MongoClient(
@@ -387,7 +388,7 @@ def _bridge_system_settings() -> int:
             system_settings = config_doc['system_settings']
         except Exception as e:
             logger.debug(f"  ⚠️  无法从数据库获取系统设置: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             logger.debug(traceback.format_exc())
             return 0
         finally:
@@ -473,7 +474,7 @@ def _bridge_system_settings() -> int:
             else:
                 print(f"  ⚠️  [config_bridge] 不包含 deep_analysis_model")
 
-            from app.core.unified import unified_config
+            unified_config = getattr(importlib.import_module('app.core.unified'), 'unified_config')
             result = unified_config.save_system_settings(system_settings)
 
             if result:
@@ -485,7 +486,7 @@ def _bridge_system_settings() -> int:
         except Exception as e:
             logger.warning(f"  ⚠️  同步系统设置到文件系统失败: {e}")
             print(f"❌ [config_bridge] 同步系统设置到文件系统失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             print(traceback.format_exc())
 
         return bridged_count
@@ -637,7 +638,7 @@ def sync_pricing_config_now():
 
     注意：这个函数会在后台异步执行同步操作
     """
-    import asyncio
+    asyncio = importlib.import_module('asyncio')
 
     try:
         # 如果在异步上下文中，创建后台任务
@@ -655,7 +656,7 @@ def sync_pricing_config_now():
             return True
     except Exception as e:
         logger.error(f"❌ 立即同步定价配置失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(traceback.format_exc())
         return False
 
@@ -666,7 +667,7 @@ def _handle_sync_task_result(task):
         task.result()
     except Exception as e:
         logger.error(f"❌ 定价配置同步任务执行失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(traceback.format_exc())
 
 
@@ -675,8 +676,8 @@ async def _sync_pricing_config_from_db():
     从数据库同步定价配置（异步版本）
     """
     try:
-        from app.core.database import get_mongo_db
-        from app.models.config import LLMConfig
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
+        LLMConfig = getattr(importlib.import_module('app.models.config'), 'LLMConfig')
 
         db = get_mongo_db()
 
@@ -725,7 +726,7 @@ async def _sync_pricing_config_from_db():
 
     except Exception as e:
         logger.error(f"❌ 从数据库同步定价配置失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(traceback.format_exc())
 
 

@@ -2,6 +2,7 @@
 操作日志管理组件
 提供用户操作日志的查看和管理功能
 """
+import importlib
 
 import streamlit as st
 import pandas as pd
@@ -100,7 +101,7 @@ def load_operations(start_date=None, end_date=None, username=None, action_type=N
                     except (ValueError, TypeError):
                         # 如果转换失败，尝试解析ISO格式的日期时间
                         try:
-                            from datetime import datetime
+                            datetime = getattr(importlib.import_module('datetime'), 'datetime')
                             dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
                             timestamp = dt.timestamp()
                         except:
@@ -134,7 +135,7 @@ def load_operations(start_date=None, end_date=None, username=None, action_type=N
                 return float(timestamp)
             except (ValueError, TypeError):
                 try:
-                    from datetime import datetime
+                    datetime = getattr(importlib.import_module('datetime'), 'datetime')
                     dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
                     return dt.timestamp()
                 except:
@@ -152,10 +153,10 @@ def render_operations():
 
     # 检查权限
     try:
-        import sys
-        import os
+        sys = importlib.import_module('sys')
+        os = importlib.import_module('os')
         sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-        from utils.auth import auth
+        auth = getattr(importlib.import_module('utils.auth'), 'auth')
 
         if not auth or not auth.check_permission("admin"):
             st.error("❌ 您没有权限访问操作日志")
@@ -377,7 +378,7 @@ def render_logs_list(logs: List[Dict[str, Any]]):
                         timestamp = float(timestamp)
                     except (ValueError, TypeError):
                         try:
-                            from datetime import datetime
+                            datetime = getattr(importlib.import_module('datetime'), 'datetime')
                             dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
                             timestamp = dt.timestamp()
                         except:
@@ -435,7 +436,7 @@ def render_logs_export(logs: List[Dict[str, Any]]):
                                 timestamp = float(timestamp)
                             except (ValueError, TypeError):
                                 try:
-                                    from datetime import datetime
+                                    datetime = getattr(importlib.import_module('datetime'), 'datetime')
                                     dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
                                     timestamp = dt.timestamp()
                                 except:
@@ -490,7 +491,7 @@ def render_logs_export(logs: List[Dict[str, Any]]):
                                 timestamp = float(timestamp)
                             except (ValueError, TypeError):
                                 try:
-                                    from datetime import datetime
+                                    datetime = getattr(importlib.import_module('datetime'), 'datetime')
                                     dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
                                     timestamp = dt.timestamp()
                                 except:
@@ -513,7 +514,7 @@ def render_logs_export(logs: List[Dict[str, Any]]):
                 df = pd.DataFrame(df_data)
 
                 # 使用BytesIO创建Excel文件
-                from io import BytesIO
+                BytesIO = getattr(importlib.import_module('io'), 'BytesIO')
                 output = BytesIO()
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
                     df.to_excel(writer, index=False, sheet_name='操作日志')

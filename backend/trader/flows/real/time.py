@@ -4,7 +4,7 @@
 为了保持向后兼容性，从 news.realtime_news 模块导出函数
 """
 
-from trader.flows.news.realtime import (
+from trader.flows.news.real.time import (
     get_realtime_stock_news,
     RealtimeNewsAggregator,
     NewsItem

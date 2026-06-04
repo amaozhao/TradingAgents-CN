@@ -1,6 +1,7 @@
 """
 完整测试：验证所有 base_url 修复
 """
+import importlib
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -11,7 +12,7 @@ def test_create_llm_by_provider():
     print("🧪 测试 1: create_llm_by_provider 函数")
     print("=" * 80)
 
-    from trader.graph.trading import create_llm_by_provider
+    create_llm_by_provider = getattr(importlib.import_module('trader.graph.trading'), 'create_llm_by_provider')
 
     custom_url = "https://dashscope.aliyuncs.com/api/v2"
 
@@ -46,8 +47,8 @@ def test_trading_graph_init():
     print("🧪 测试 2: TradingAgentsGraph 初始化")
     print("=" * 80)
 
-    from trader.graph.trading import TradingAgentsGraph
-    from trader.default import DEFAULT_CONFIG
+    TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+    DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
     custom_url = "https://dashscope.aliyuncs.com/api/v2"
 
@@ -96,10 +97,10 @@ def test_fundamentals_analyst():
     print("🧪 测试 3: 基本面分析师")
     print("=" * 80)
 
-    from trader.llm.adapters import ChatDashScopeOpenAI
-    from trader.agents.analysts.fundamentals_analyst import create_fundamentals_analyst
-    from trader.agents.utils.agent_utils import Toolkit
-    from trader.default import DEFAULT_CONFIG
+    ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+    create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
+    Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+    DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
     custom_url = "https://dashscope.aliyuncs.com/api/v2"
 
@@ -175,7 +176,7 @@ def main():
         results.append(("create_llm_by_provider", result))
     except Exception as e:
         print(f"\n❌ 测试 1 失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         results.append(("create_llm_by_provider", False))
 
@@ -192,7 +193,7 @@ def main():
         results.append(("基本面分析师", result))
     except Exception as e:
         print(f"\n❌ 测试 3 失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         results.append(("基本面分析师", False))
 

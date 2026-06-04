@@ -3,31 +3,46 @@
 改进的港股数据获取工具
 解决API速率限制和数据获取问题
 """
+import importlib
 
 import time
 import json
 import os
 import pandas as pd
+from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 
 from trader.config.runtime import get_int
+from trader.tools.analysis.indicators import add_all_indicators
 # 导入统一日志系统
 from trader.utils.logging.init import get_logger
 logger = get_logger("default")
 
-# 新增：使用统一的数据目录配置
 try:
-    from utils.config import get_cache_dir
+    import akshare as ak
+except Exception:
+    ak = None
+
+# 新增：使用统一的数据目录配置
+_cache_dir_func: Any
+try:
+    from utils.config import get_cache_dir as _imported_get_cache_dir
+    _cache_dir_func = _imported_get_cache_dir
 except Exception:
     # 回退：在项目根目录下的 data/cache/hk
-    def get_cache_dir(subdir: Optional[str] = None, create: bool = True):
+    def _fallback_get_cache_dir(subdir: Optional[str] = None, create: bool = True) -> str:
         base = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'cache')
         if subdir:
             base = os.path.join(base, subdir)
         if create:
             os.makedirs(base, exist_ok=True)
         return base
+    _cache_dir_func = _fallback_get_cache_dir
+
+
+def get_cache_dir(subdir: Optional[str] = None, create: bool = True) -> str | Path:
+    return _cache_dir_func(subdir, create)
 
 
 class ImprovedHKStockProvider:
@@ -36,9 +51,9 @@ class ImprovedHKStockProvider:
     def __init__(self):
         # 将缓存文件写入到统一的数据缓存目录下，避免污染项目根目录
         hk_cache_dir = get_cache_dir('hk')
-        if hasattr(hk_cache_dir, 'joinpath'):  # Path
+        if isinstance(hk_cache_dir, Path):
             self.cache_file = str(hk_cache_dir.joinpath('hk_stock_cache.json'))
-        else:  # str
+        else:
             self.cache_file = os.path.join(hk_cache_dir, 'hk_stock_cache.json')
 
         self.cache_ttl = get_int("TA_HK_CACHE_TTL_SECONDS", "ta_hk_cache_ttl_seconds", 3600 * 24)
@@ -218,7 +233,7 @@ class ImprovedHKStockProvider:
                     # 直接使用 akshare 库获取，避免循环调用
                     logger.debug(f"📊 [港股API] 优先使用AKShare获取: {symbol}")
 
-                    import akshare as ak
+                    ak = importlib.import_module('akshare')
                     # 标准化代码格式（akshare 需要 5 位数字格式）
                     normalized_symbol = self._normalize_hk_symbol(symbol)
 
@@ -250,7 +265,7 @@ class ImprovedHKStockProvider:
                     logger.debug(f"📊 [港股AKShare] AKShare获取失败: {e}")
 
                 # 备用：尝试从统一接口获取（包含Yahoo Finance）
-                from trader.flows.interface import get_hk_stock_info_unified
+                get_hk_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_info_unified')
                 hk_info = get_hk_stock_info_unified(symbol)
 
                 if hk_info and isinstance(hk_info, dict) and 'name' in hk_info:
@@ -304,7 +319,7 @@ class ImprovedHKStockProvider:
             Dict: 财务指标数据
         """
         try:
-            import akshare as ak
+            ak = importlib.import_module('akshare')
 
             # 标准化代码
             normalized_symbol = self._normalize_hk_symbol(symbol)
@@ -485,7 +500,7 @@ def get_hk_financial_indicators(symbol: str) -> Dict[str, Any]:
 
 
 # 兼容性函数：为了兼容旧的 akshare_utils 导入
-def get_hk_stock_data_akshare(symbol: str, start_date: str = None, end_date: str = None):
+def get_hk_stock_data_akshare(symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None):
     """
     兼容性函数：使用 AKShare 新浪财经接口获取港股历史数据
 
@@ -498,8 +513,8 @@ def get_hk_stock_data_akshare(symbol: str, start_date: str = None, end_date: str
         港股数据（格式化字符串）
     """
     try:
-        import akshare as ak
-        from datetime import datetime, timedelta
+        if ak is None:
+            return f"❌ AKShare 未安装，无法获取港股{symbol}的历史数据"
 
         # 标准化代码
         provider = get_improved_hk_provider()
@@ -537,8 +552,6 @@ def get_hk_stock_data_akshare(symbol: str, start_date: str = None, end_date: str
         df['change'] = df['close'] - df['pre_close']
         df['pct_change'] = (df['change'] / df['pre_close'] * 100).round(2)
 
-        # 🔥 使用统一的技术指标计算函数
-        from trader.tools.analysis.indicators import add_all_indicators
         df = add_all_indicators(df, close_col='close', high_col='high', low_col='low')
 
         # 🔥 获取财务指标并计算 PE、PB
@@ -564,6 +577,9 @@ def get_hk_stock_data_akshare(symbol: str, start_date: str = None, end_date: str
                 pb_ratio = current_price / bps
 
             # 构建财务指标部分（处理 None 值）
+            operate_income = financial_indicators.get('operate_income')
+            holder_profit = financial_indicators.get('holder_profit')
+
             def format_value(value, format_str=".2f", suffix="", default="N/A"):
                 """格式化数值，处理 None 情况"""
                 if value is None:
@@ -592,9 +608,9 @@ def get_hk_stock_data_akshare(symbol: str, start_date: str = None, end_date: str
 - 毛利率: {format_value(financial_indicators.get('gross_profit_ratio'), suffix='%')}
 
 **营收情况**:
-- 营业收入: {format_value(financial_indicators.get('operate_income') / 1e8 if financial_indicators.get('operate_income') else None, suffix=' 亿港元')}
+- 营业收入: {format_value(operate_income / 1e8 if operate_income else None, suffix=' 亿港元')}
 - 营收同比增长: {format_value(financial_indicators.get('operate_income_yoy'), suffix='%')}
-- 归母净利润: {format_value(financial_indicators.get('holder_profit') / 1e8 if financial_indicators.get('holder_profit') else None, suffix=' 亿港元')}
+- 归母净利润: {format_value(holder_profit / 1e8 if holder_profit else None, suffix=' 亿港元')}
 - 净利润同比增长: {format_value(financial_indicators.get('holder_profit_yoy'), suffix='%')}
 
 **偿债能力**:
@@ -678,8 +694,8 @@ def get_hk_stock_info_akshare(symbol: str) -> Dict[str, Any]:
         Dict: 港股信息
     """
     try:
-        import akshare as ak
-        from datetime import datetime
+        ak = importlib.import_module('akshare')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
 
         # 标准化代码
         provider = get_improved_hk_provider()

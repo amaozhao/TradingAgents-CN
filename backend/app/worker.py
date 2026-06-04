@@ -3,6 +3,7 @@ TradingAgents-CN WebAPI Worker
 
 Consumes tasks from Redis queue and processes them using actual stock analysis.
 """
+import importlib
 
 import asyncio
 import json
@@ -12,7 +13,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 # Add project root to path for importing analysis runner
 project_root = Path(__file__).parent.parent
@@ -35,7 +36,7 @@ logger = logging.getLogger("worker")
 async def publish_progress(task_id: str, message: str, step: Optional[int] = None, total_steps: Optional[int] = None):
     """Publish progress updates to Redis pubsub for SSE streaming"""
     r = get_redis_client()
-    progress_data = {
+    progress_data: dict[str, Any] = {
         "task_id": task_id,
         "message": message,
         "timestamp": datetime.now().isoformat(),
@@ -82,7 +83,7 @@ async def process_task(task_id: str) -> None:
         # Extract analysis parameters with defaults
         analysts = params.get("analysts", ["Bull Analyst", "Bear Analyst", "Research Manager"])
         research_depth = params.get("research_depth", 2)
-        from trader.llm.clients.providers import normalize_provider_key
+        normalize_provider_key = getattr(importlib.import_module('trader.llm.clients.providers'), 'normalize_provider_key')
 
         llm_provider = normalize_provider_key(params.get("llm_provider", "dashscope"))
         llm_model = params.get("llm_model", "qwen-plus")
@@ -97,7 +98,7 @@ async def process_task(task_id: str) -> None:
 
         # Import and call the actual analysis function
         try:
-            from web.utils.analysis import run_stock_analysis
+            run_stock_analysis = getattr(importlib.import_module('web.utils.analysis'), 'run_stock_analysis')
 
             loop = asyncio.get_running_loop()
 
@@ -190,11 +191,11 @@ async def worker_loop(stop_event: asyncio.Event):
     while not stop_event.is_set():
         try:
             # BLPOP returns (list, task_id) when an item is available
-            item: Optional[list] = await r.blpop(READY_LIST, timeout=5)
+            item = await r.blpop(READY_LIST, timeout=5)
             if not item:
                 continue
             _, task_id = item
-            await process_task(task_id)
+            await process_task(task_id.decode() if isinstance(task_id, bytes) else str(task_id))
         except asyncio.CancelledError:
             break
         except Exception as e:
@@ -208,7 +209,7 @@ async def main():
     await init_db()
     # Apply dynamic log level from system settings
     try:
-        from app.services.provider import provider as config_provider
+        config_provider = getattr(importlib.import_module('app.services.provider'), 'provider')
         eff = await config_provider.get_effective_system_settings()
         desired_level = str(eff.get("log_level", "INFO")).upper()
         setup_logging(desired_level)

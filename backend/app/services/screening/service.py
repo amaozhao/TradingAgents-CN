@@ -1,4 +1,5 @@
 from __future__ import annotations
+import importlib
 
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
@@ -100,7 +101,7 @@ class ScreeningService:
                 if need_base:
                     # 统一多数据源DF接口（按优先级降级）。延迟导入，避免 OpenAPI/schema
                     # 生成等导入路径触发数据源配置库读取。
-                    from trader.flows.sources import get_data_source_manager
+                    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
                     manager = get_data_source_manager()
                     df = manager.get_stock_dataframe(code, start_s, end_s)
@@ -138,10 +139,12 @@ class ScreeningService:
                 # 评估条件（若条件完全是基本面且不涉及行情/技术，这里可跳过K线）
                 passes = True
                 if need_base:
+                    if dfc is None:
+                        continue
                     passes = self._evaluate_conditions(dfc, conditions)
                 elif need_fund and not need_base and not need_tech:
                     # 仅基本面条件：使用基本面快照判断
-                    from trader.flows.providers.china.fundamentals import get_cn_fund_snapshot
+                    get_cn_fund_snapshot = getattr(importlib.import_module('trader.flows.providers.china.fundamentals'), 'get_cn_fund_snapshot')
 
                     snap = get_cn_fund_snapshot(code)
                     if not snap:
@@ -150,7 +153,7 @@ class ScreeningService:
                         passes = self._evaluate_fund_conditions(snap, conditions)
 
                 if passes:
-                    item = {"code": code}
+                    item: Dict[str, Any] = {"code": code}
                     if last is not None:
                         item.update({
                             "close": self._safe_float(last.get("close")),
@@ -173,7 +176,7 @@ class ScreeningService:
         # 排序
         if params.order_by:
             for order in reversed(params.order_by):  # 后者优先级低
-                f = order.get("field")
+                f = order.get("field") or ""
                 d = order.get("direction", "desc").lower()
                 if f in ALLOWED_FIELDS:
                     results.sort(key=lambda x: (x.get(f) is None, x.get(f)), reverse=(d == "desc"))
@@ -209,9 +212,9 @@ class ScreeningService:
     def _get_universe(self) -> List[str]:
         """获取A股代码集合：从 MongoDB stock_basic_info 集合获取所有A股股票代码"""
         try:
-            from app.core.database import get_mongo_db
+            get_mongo_db_sync = getattr(importlib.import_module('app.core.database'), 'get_mongo_db_sync')
 
-            db = get_mongo_db()
+            db = get_mongo_db_sync()
             collection = db.stock_basic_info
 
             # 查询所有A股股票代码（兼容不同的数据结构）

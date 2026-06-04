@@ -2,6 +2,7 @@
 测试 AKShare 请求频率限制
 验证东方财富接口的最佳请求间隔
 """
+import importlib
 
 import time
 import akshare as ak
@@ -201,7 +202,7 @@ def main():
     print("=" * 70)
 
     # 检查代理配置
-    import os
+    os = importlib.import_module('os')
     http_proxy = os.environ.get('HTTP_PROXY', '')
     https_proxy = os.environ.get('HTTPS_PROXY', '')
     no_proxy = os.environ.get('NO_PROXY', '')
@@ -213,7 +214,7 @@ def main():
 
     # 检查系统代理（Windows）
     try:
-        import winreg
+        winreg = importlib.import_module('winreg')
         internet_settings = winreg.OpenKey(
             winreg.HKEY_CURRENT_USER,
             r'Software\Microsoft\Windows\CurrentVersion\Internet Settings',
@@ -289,7 +290,7 @@ def main():
         sys.exit(0)
     except Exception as e:
         print(f"\n\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         sys.exit(1)
 

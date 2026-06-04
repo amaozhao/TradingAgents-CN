@@ -11,7 +11,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from trader.flows.providers.china.tushare import TushareProvider
-from app.worker.tushare_sync_service import TushareSyncService
+from app.worker.tushare.sync import TushareSyncService
 import logging
 
 logging.basicConfig(

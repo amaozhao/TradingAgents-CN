@@ -269,7 +269,7 @@ class ExampleSDKSyncService:
             self.sync_stats["financial"]["failed"] += 1
             logger.error(f"❌ 处理{code}财务数据失败: {e}")
 
-    async def _record_sync_status(self, status: str, start_time: datetime, error_msg: str = None):
+    async def _record_sync_status(self, status: str, start_time: datetime, error_msg: Optional[str] = None):
         """记录同步状态"""
         try:
             db = get_mongo_db()

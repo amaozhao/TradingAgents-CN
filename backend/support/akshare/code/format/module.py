@@ -1,6 +1,7 @@
 """
 测试 AKShare 两个实时行情接口返回的股票代码格式
 """
+import importlib
 import sys
 from pathlib import Path
 
@@ -16,8 +17,8 @@ def test_akshare_interfaces():
     print("="*60)
 
     try:
-        import akshare as ak
-        import pandas as pd
+        ak = importlib.import_module('akshare')
+        pd = importlib.import_module('pandas')
     except ImportError:
         print("❌ AKShare 未安装，跳过测试")
         return
@@ -74,7 +75,7 @@ def test_akshare_interfaces():
 
     except Exception as e:
         print(f"❌ 新浪接口测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     # 测试 2: 东方财富接口
@@ -129,7 +130,7 @@ def test_akshare_interfaces():
 
     except Exception as e:
         print(f"❌ 东方财富接口测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     # 对比总结

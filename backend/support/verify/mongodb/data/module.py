@@ -4,6 +4,7 @@
 MongoDB数据验证脚本
 验证A股股票基础信息是否正确同步到MongoDB
 """
+import importlib
 
 import os
 from typing import Dict, Any, List
@@ -183,7 +184,7 @@ def main():
 
     except Exception as e:
         print(f"❌ 验证过程中发生错误: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     finally:

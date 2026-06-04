@@ -5,6 +5,7 @@
 
 验证DataSourceManager是否正确支持日线、周线、月线数据获取
 """
+import importlib
 
 import os
 import sys
@@ -27,7 +28,7 @@ def test_data_source_priority():
     """测试数据源优先级"""
     print_section("测试多周期数据支持")
 
-    from trader.flows.data_source_manager import get_data_source_manager
+    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
     manager = get_data_source_manager()
 
@@ -48,7 +49,7 @@ def test_daily_data():
     """测试日线数据获取"""
     print_section("测试日线数据获取")
 
-    from trader.flows.data_source_manager import get_data_source_manager
+    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
     manager = get_data_source_manager()
 
@@ -84,7 +85,7 @@ def test_weekly_data():
     """测试周线数据获取"""
     print_section("测试周线数据获取")
 
-    from trader.flows.data_source_manager import get_data_source_manager
+    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
     manager = get_data_source_manager()
 
@@ -120,7 +121,7 @@ def test_monthly_data():
     """测试月线数据获取"""
     print_section("测试月线数据获取")
 
-    from trader.flows.data_source_manager import get_data_source_manager
+    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
     manager = get_data_source_manager()
 
@@ -156,7 +157,7 @@ def test_fallback_mechanism():
     """测试多周期数据降级机制"""
     print_section("测试多周期数据降级机制")
 
-    from trader.flows.data_source_manager import get_data_source_manager
+    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
     manager = get_data_source_manager()
 
@@ -229,7 +230,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return 1
 

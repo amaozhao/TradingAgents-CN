@@ -2,6 +2,7 @@
 统一配置管理系统
 整合 config/、trader/config/ 和 webapi 的配置管理
 """
+import importlib
 
 import json
 import os
@@ -56,7 +57,7 @@ class UnifiedConfigManager:
 
         return current_mtime <= cached_mtime
 
-    def _load_json_file(self, file_path: Path, cache_key: str = None) -> Dict[str, Any]:
+    def _load_json_file(self, file_path: Path, cache_key: Optional[str] = None) -> Any:
         """加载JSON文件，支持缓存"""
         if cache_key and self._is_cache_valid(cache_key, file_path):
             return self._cache[cache_key]
@@ -76,7 +77,7 @@ class UnifiedConfigManager:
             print(f"配置文件格式错误 {file_path}: {e}")
             return {}
 
-    def _save_json_file(self, file_path: Path, data: Dict[str, Any], cache_key: str = None):
+    def _save_json_file(self, file_path: Path, data: Any, cache_key: Optional[str] = None):
         """保存JSON文件"""
         # 确保目录存在
         file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -92,7 +93,8 @@ class UnifiedConfigManager:
 
     def get_legacy_models(self) -> List[Dict[str, Any]]:
         """获取传统格式的模型配置"""
-        return self._load_json_file(self.paths.models_json, "models")
+        data = self._load_json_file(self.paths.models_json, "models")
+        return data if isinstance(data, list) else []
 
     def get_llm_configs(self) -> List[LLMConfig]:
         """获取标准化的LLM配置"""
@@ -219,7 +221,7 @@ class UnifiedConfigManager:
             return True
         except Exception as e:
             print(f"❌ [unified_config] 保存系统设置失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             print(traceback.format_exc())
             return False
 
@@ -260,7 +262,7 @@ class UnifiedConfigManager:
         """获取数据源配置 - 优先从数据库读取，回退到硬编码（同步版本）"""
         try:
             # 🔥 优先从数据库读取配置（使用同步连接）
-            from app.core.database import get_mongo_db_sync
+            get_mongo_db_sync = getattr(importlib.import_module('app.core.database'), 'get_mongo_db_sync')
             db = get_mongo_db_sync()
             config_collection = db.system_configs
 
@@ -328,7 +330,7 @@ class UnifiedConfigManager:
         """获取数据源配置 - 优先从数据库读取，回退到硬编码（异步版本）"""
         try:
             # 🔥 优先从数据库读取配置（使用异步连接）
-            from app.core.database import get_mongo_db
+            get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
             db = get_mongo_db()
             config_collection = db.system_configs
 
@@ -409,7 +411,7 @@ class UnifiedConfigManager:
         """获取数据库配置"""
         configs = []
 
-        from app.core.config import settings
+        settings = getattr(importlib.import_module('app.core.config'), 'settings')
 
         # MongoDB配置
         mongodb_config = DatabaseConfig(

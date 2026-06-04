@@ -17,7 +17,7 @@
 
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, cast
 
 # 导入美股数据提供器
 import sys
@@ -75,6 +75,7 @@ class USDataService:
             # 使用默认数据源
             if source is None:
                 source = self.default_source
+            source = str(source)
 
             # 标准化股票代码（美股代码通常大写）
             normalized_code = stock_code.upper()
@@ -93,7 +94,7 @@ class USDataService:
                 return None
 
             logger.info(f"🔄 从 {source} 获取美股信息: {stock_code}")
-            stock_info = provider.get_stock_info(stock_code)
+            stock_info = cast(Any, provider).get_stock_info(stock_code)
 
             if not stock_info or not stock_info.get('name'):
                 logger.warning(f"⚠️ 获取失败或数据无效: {stock_code} ({source})")

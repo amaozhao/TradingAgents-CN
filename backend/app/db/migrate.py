@@ -1,4 +1,5 @@
 from __future__ import annotations
+import importlib
 
 import argparse
 import asyncio
@@ -134,8 +135,12 @@ def _statements_from_builder(statement_builder, document: dict[str, Any]) -> lis
 
 
 async def _run_cli(batch_size: int) -> dict[str, dict[str, int]]:
-    from app.core.database import close_mongodb_only, get_mongo_db, init_mongodb_only
-    from app.db.session import close_postgres, get_session_factory, init_postgres
+    close_mongodb_only = getattr(importlib.import_module('app.core.database'), 'close_mongodb_only')
+    get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
+    init_mongodb_only = getattr(importlib.import_module('app.core.database'), 'init_mongodb_only')
+    close_postgres = getattr(importlib.import_module('app.db.session'), 'close_postgres')
+    get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+    init_postgres = getattr(importlib.import_module('app.db.session'), 'init_postgres')
 
     await init_mongodb_only()
     await init_postgres()

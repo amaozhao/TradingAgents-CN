@@ -2,6 +2,7 @@
 """
 Docker环境PDF功能测试脚本
 """
+import importlib
 
 import sys
 import os
@@ -16,7 +17,7 @@ def test_docker_environment():
     print("🔍 测试Docker环境检测...")
 
     try:
-        from web.utils.docker import is_docker_environment
+        is_docker_environment = getattr(importlib.import_module('web.utils.docker'), 'is_docker_environment')
         is_docker = is_docker_environment()
         print(f"Docker环境: {'是' if is_docker else '否'}")
         return is_docker
@@ -29,7 +30,7 @@ def test_docker_dependencies():
     print("\n🔍 测试Docker依赖...")
 
     try:
-        from web.utils.docker import check_docker_pdf_dependencies
+        check_docker_pdf_dependencies = getattr(importlib.import_module('web.utils.docker'), 'check_docker_pdf_dependencies')
         deps_ok, message = check_docker_pdf_dependencies()
         print(f"依赖检查: {'✅' if deps_ok else '❌'} {message}")
         return deps_ok
@@ -42,7 +43,7 @@ def test_docker_pdf_generation():
     print("\n🔍 测试Docker PDF生成...")
 
     try:
-        from web.utils.docker import test_docker_pdf_generation
+        test_docker_pdf_generation = getattr(importlib.import_module('web.utils.docker'), 'test_docker_pdf_generation')
         pdf_ok = test_docker_pdf_generation()
         print(f"PDF生成: {'✅' if pdf_ok else '❌'}")
         return pdf_ok
@@ -55,7 +56,7 @@ def test_report_exporter():
     print("\n🔍 测试报告导出器Docker集成...")
 
     try:
-        from web.utils.reports import ReportExporter
+        ReportExporter = getattr(importlib.import_module('web.utils.reports'), 'ReportExporter')
 
         exporter = ReportExporter()
         print(f"导出器创建: ✅")

@@ -3,6 +3,7 @@
 股票数据缓存管理器
 支持本地缓存股票数据，减少API调用，提高响应速度
 """
+import importlib
 
 import os
 import json
@@ -21,7 +22,7 @@ logger = get_logger('agents')
 class StockDataCache:
     """股票数据缓存管理器 - 支持美股和A股数据缓存优化"""
 
-    def __init__(self, cache_dir: str = None):
+    def __init__(self, cache_dir: Optional[Union[str, Path]] = None):
         """
         初始化缓存管理器
 
@@ -99,7 +100,7 @@ class StockDataCache:
 
     def _determine_market_type(self, symbol: str) -> str:
         """根据股票代码确定市场类型"""
-        import re
+        re = importlib.import_module('re')
 
         # 判断是否为中国A股（6位数字）
         if re.match(r'^\d{6}$', str(symbol)):
@@ -184,7 +185,13 @@ class StockDataCache:
         cache_key = hashlib.md5(params_str.encode()).hexdigest()[:12]
         return f"{symbol}_{data_type}_{cache_key}"
 
-    def _get_cache_path(self, data_type: str, cache_key: str, file_format: str = "json", symbol: str = None) -> Path:
+    def _get_cache_path(
+        self,
+        data_type: str,
+        cache_key: str,
+        file_format: str = "json",
+        symbol: Optional[str] = None,
+    ) -> Path:
         """获取缓存文件路径 - 支持市场分类"""
         if symbol:
             market_type = self._determine_market_type(symbol)
@@ -230,7 +237,13 @@ class StockDataCache:
             logger.error(f"⚠️ 加载元数据失败: {e}")
             return None
 
-    def is_cache_valid(self, cache_key: str, max_age_hours: int = None, symbol: str = None, data_type: str = None) -> bool:
+    def is_cache_valid(
+        self,
+        cache_key: str,
+        max_age_hours: Optional[int] = None,
+        symbol: Optional[str] = None,
+        data_type: Optional[str] = None,
+    ) -> bool:
         """检查缓存是否有效 - 支持智能TTL配置"""
         metadata = self._load_metadata(cache_key)
         if not metadata:
@@ -244,11 +257,13 @@ class StockDataCache:
                 max_age_hours = self.cache_config.get(cache_type, {}).get('ttl_hours', 24)
             else:
                 # 从元数据中获取信息
-                symbol = metadata.get('symbol', '')
+                symbol = str(metadata.get('symbol') or '')
                 data_type = metadata.get('data_type', 'stock_data')
                 market_type = self._determine_market_type(symbol)
                 cache_type = f"{market_type}_{data_type}"
                 max_age_hours = self.cache_config.get(cache_type, {}).get('ttl_hours', 24)
+        if max_age_hours is None:
+            max_age_hours = 24
 
         cached_at = datetime.fromisoformat(metadata['cached_at'])
         age = datetime.now() - cached_at
@@ -264,7 +279,7 @@ class StockDataCache:
         return is_valid
 
     def save_stock_data(self, symbol: str, data: Union[pd.DataFrame, str],
-                       start_date: str = None, end_date: str = None,
+                       start_date: Optional[str] = None, end_date: Optional[str] = None,
                        data_source: str = "unknown") -> str:
         """
         保存股票数据到缓存 - 支持美股和A股分类存储
@@ -351,9 +366,9 @@ class StockDataCache:
             logger.error(f"⚠️ 加载缓存数据失败: {e}")
             return None
 
-    def find_cached_stock_data(self, symbol: str, start_date: str = None,
-                              end_date: str = None, data_source: str = None,
-                              max_age_hours: int = None) -> Optional[str]:
+    def find_cached_stock_data(self, symbol: str, start_date: Optional[str] = None,
+                              end_date: Optional[str] = None, data_source: Optional[str] = None,
+                              max_age_hours: Optional[int] = None) -> Optional[str]:
         """
         查找匹配的缓存数据 - 支持智能市场分类查找
 
@@ -411,7 +426,7 @@ class StockDataCache:
         return None
 
     def save_news_data(self, symbol: str, news_data: str,
-                      start_date: str = None, end_date: str = None,
+                      start_date: Optional[str] = None, end_date: Optional[str] = None,
                       data_source: str = "unknown") -> str:
         """保存新闻数据到缓存"""
         # 检查内容长度是否需要跳过缓存
@@ -508,8 +523,12 @@ class StockDataCache:
             logger.error(f"⚠️ 加载基本面缓存数据失败: {e}")
             return None
 
-    def find_cached_fundamentals_data(self, symbol: str, data_source: str = None,
-                                    max_age_hours: int = None) -> Optional[str]:
+    def find_cached_fundamentals_data(
+        self,
+        symbol: str,
+        data_source: Optional[str] = None,
+        max_age_hours: Optional[int] = None,
+    ) -> Optional[str]:
         """
         查找匹配的基本面缓存数据
 
@@ -579,7 +598,7 @@ class StockDataCache:
 
     def get_cache_stats(self) -> Dict[str, Any]:
         """获取缓存统计信息"""
-        stats = {
+        stats: Dict[str, Any] = {
             'total_files': 0,
             'stock_data_count': 0,
             'news_count': 0,

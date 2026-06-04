@@ -2,6 +2,7 @@
 测试财务数据获取流程
 验证是否还会重复获取数据
 """
+import importlib
 import sys
 from pathlib import Path
 
@@ -28,7 +29,7 @@ def test_financial_data_flow():
     try:
         # 导入数据提供者
         print("\n📦 步骤1: 导入 OptimizedChinaDataProvider...")
-        from trader.flows.optimized_china_data import OptimizedChinaDataProvider
+        OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
 
         provider = OptimizedChinaDataProvider()
         print(f"✅ Provider 初始化成功")
@@ -90,7 +91,7 @@ def test_financial_data_flow():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

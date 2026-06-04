@@ -4,7 +4,7 @@
 """
 import asyncio
 import time
-from app.core.rate_limiter import TushareRateLimiter, get_tushare_rate_limiter
+from app.core.limiter import TushareRateLimiter, get_tushare_rate_limiter
 
 
 async def test_basic_rate_limiter():

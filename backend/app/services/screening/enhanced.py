@@ -163,9 +163,10 @@ class EnhancedScreeningService:
     ) -> Tuple[List[Dict[str, Any]], int]:
         """使用数据库优化筛选"""
         logger.info("🚀 使用数据库优化筛选")
+        condition_dicts = [condition.model_dump() for condition in conditions]
 
         return await self.db_service.screen_stocks(
-            conditions=conditions,
+            conditions=condition_dicts,
             limit=limit,
             offset=offset,
             order_by=order_by

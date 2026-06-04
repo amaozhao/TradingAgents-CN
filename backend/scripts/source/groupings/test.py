@@ -3,6 +3,7 @@
 """
 测试脚本：检查数据库中 datasource_groupings 集合的实际数据
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -95,7 +96,7 @@ def test_datasource_groupings():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
@@ -146,7 +147,7 @@ def test_all_groupings():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

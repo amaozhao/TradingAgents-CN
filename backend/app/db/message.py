@@ -215,7 +215,7 @@ async def get_social_media_stats(session, *, symbol=None, start_time=None, end_t
 
 
 def _internal_filters(params) -> list[Any]:
-    filters = [InternalMessageDocument.deleted.is_(False)]
+    filters: list[Any] = [InternalMessageDocument.deleted.is_(False)]
     if params.symbol:
         filters.append(InternalMessageDocument.symbol == params.symbol)
     elif params.symbols:
@@ -250,7 +250,7 @@ def _internal_filters(params) -> list[Any]:
 
 
 def _social_filters(params) -> list[Any]:
-    filters = [SocialMediaMessageDocument.deleted.is_(False)]
+    filters: list[Any] = [SocialMediaMessageDocument.deleted.is_(False)]
     if params.symbol:
         filters.append(SocialMediaMessageDocument.symbol == params.symbol)
     elif params.symbols:

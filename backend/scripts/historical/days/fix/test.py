@@ -2,9 +2,10 @@
 测试历史数据天数修复
 验证 historical_days 参数是否正确工作
 """
+import importlib
 import asyncio
 from datetime import datetime, timedelta
-from app.worker.tushare_init_service import TushareInitService
+from app.worker.tushare.init import TushareInitService
 
 async def test_historical_days_calculation():
     """测试历史数据天数计算逻辑"""
@@ -73,7 +74,7 @@ async def check_existing_data():
     print("=" * 60)
 
     try:
-        from trader.config.databases import get_mongodb_client
+        get_mongodb_client = getattr(importlib.import_module('trader.config.databases'), 'get_mongodb_client')
 
         client = get_mongodb_client()
         db = client.get_database('trading_agents')

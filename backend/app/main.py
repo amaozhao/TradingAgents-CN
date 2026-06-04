@@ -12,6 +12,7 @@ or use of this software, via any medium, is strictly prohibited.
 For commercial licensing, please contact: hsliup@163.com
 商业许可咨询，请联系：hsliup@163.com
 """
+import importlib
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -65,85 +66,85 @@ class RootResponse(BaseModel):
 
 
 async def run_tushare_basic_info_sync(*args, **kwargs):
-    from app.worker.tushare.sync import run_tushare_basic_info_sync as _run
+    _run = getattr(importlib.import_module('app.worker.tushare.sync'), 'run_tushare_basic_info_sync')
 
     return await _run(*args, **kwargs)
 
 
 async def run_tushare_quotes_sync(*args, **kwargs):
-    from app.worker.tushare.sync import run_tushare_quotes_sync as _run
+    _run = getattr(importlib.import_module('app.worker.tushare.sync'), 'run_tushare_quotes_sync')
 
     return await _run(*args, **kwargs)
 
 
 async def run_tushare_historical_sync(*args, **kwargs):
-    from app.worker.tushare.sync import run_tushare_historical_sync as _run
+    _run = getattr(importlib.import_module('app.worker.tushare.sync'), 'run_tushare_historical_sync')
 
     return await _run(*args, **kwargs)
 
 
 async def run_tushare_financial_sync(*args, **kwargs):
-    from app.worker.tushare.sync import run_tushare_financial_sync as _run
+    _run = getattr(importlib.import_module('app.worker.tushare.sync'), 'run_tushare_financial_sync')
 
     return await _run(*args, **kwargs)
 
 
 async def run_tushare_status_check(*args, **kwargs):
-    from app.worker.tushare.sync import run_tushare_status_check as _run
+    _run = getattr(importlib.import_module('app.worker.tushare.sync'), 'run_tushare_status_check')
 
     return await _run(*args, **kwargs)
 
 
 async def run_akshare_basic_info_sync(*args, **kwargs):
-    from app.worker.akshare.sync import run_akshare_basic_info_sync as _run
+    _run = getattr(importlib.import_module('app.worker.akshare.sync'), 'run_akshare_basic_info_sync')
 
     return await _run(*args, **kwargs)
 
 
 async def run_akshare_quotes_sync(*args, **kwargs):
-    from app.worker.akshare.sync import run_akshare_quotes_sync as _run
+    _run = getattr(importlib.import_module('app.worker.akshare.sync'), 'run_akshare_quotes_sync')
 
     return await _run(*args, **kwargs)
 
 
 async def run_akshare_historical_sync(*args, **kwargs):
-    from app.worker.akshare.sync import run_akshare_historical_sync as _run
+    _run = getattr(importlib.import_module('app.worker.akshare.sync'), 'run_akshare_historical_sync')
 
     return await _run(*args, **kwargs)
 
 
 async def run_akshare_financial_sync(*args, **kwargs):
-    from app.worker.akshare.sync import run_akshare_financial_sync as _run
+    _run = getattr(importlib.import_module('app.worker.akshare.sync'), 'run_akshare_financial_sync')
 
     return await _run(*args, **kwargs)
 
 
 async def run_akshare_status_check(*args, **kwargs):
-    from app.worker.akshare.sync import run_akshare_status_check as _run
+    _run = getattr(importlib.import_module('app.worker.akshare.sync'), 'run_akshare_status_check')
 
     return await _run(*args, **kwargs)
 
 
 async def run_baostock_basic_info_sync(*args, **kwargs):
-    from app.worker.baostock.sync import run_baostock_basic_info_sync as _run
+    _run = getattr(importlib.import_module('app.worker.baostock.sync'), 'run_baostock_basic_info_sync')
 
     return await _run(*args, **kwargs)
 
 
 async def run_baostock_daily_quotes_sync(*args, **kwargs):
-    from app.worker.baostock.sync import run_baostock_daily_quotes_sync as _run
+    _run = getattr(importlib.import_module('app.worker.baostock.sync'), 'run_baostock_daily_quotes_sync')
 
     return await _run(*args, **kwargs)
 
 
 async def run_baostock_historical_sync(*args, **kwargs):
-    from app.worker.baostock.sync import run_baostock_historical_sync as _run
+    _run = getattr(importlib.import_module('app.worker.baostock.sync'), 'run_baostock_historical_sync')
 
     return await _run(*args, **kwargs)
 
 
 async def run_baostock_status_check(*args, **kwargs):
-    from app.worker.baostock.sync import run_baostock_status_check as _run
+    _run = getattr(importlib.import_module('app.worker.baostock.sync'), 'run_baostock_status_check')
 
     return await _run(*args, **kwargs)
 
@@ -168,8 +169,8 @@ async def _print_config_summary(logger):
         logger.info("=" * 70)
 
         # .env 文件路径信息
-        import os
-        from pathlib import Path
+        os = importlib.import_module('os')
+        Path = getattr(importlib.import_module('pathlib'), 'Path')
 
         current_dir = Path.cwd()
         logger.info(f"📁 Current working directory: {current_dir}")
@@ -234,7 +235,7 @@ async def _print_config_summary(logger):
         logger.info(f"Redis: {settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}")
 
         # 代理配置
-        import os
+        os = importlib.import_module('os')
         if settings.HTTP_PROXY or settings.HTTPS_PROXY:
             logger.info("Proxy Configuration:")
             if settings.HTTP_PROXY:
@@ -254,7 +255,7 @@ async def _print_config_summary(logger):
 
         # 检查大模型配置
         try:
-            from app.services.config import config_service
+            config_service = getattr(importlib.import_module('app.services.config'), 'config_service')
             config = await config_service.get_system_config()
             if config and config.llm_configs:
                 enabled_llms = [llm for llm in config.llm_configs if llm.enabled]
@@ -300,7 +301,7 @@ async def lifespan(app: FastAPI):
 
     # 验证启动配置
     try:
-        from app.core.startup import validate_startup_config
+        validate_startup_config = getattr(importlib.import_module('app.core.startup'), 'validate_startup_config')
         validate_startup_config()
     except Exception as e:
         logger.error(f"配置验证失败: {e}")
@@ -310,7 +311,7 @@ async def lifespan(app: FastAPI):
 
     #  配置桥接：将统一配置写入环境变量，供 TradingAgents 核心库使用
     try:
-        from app.core.bridge import bridge_config_to_env
+        bridge_config_to_env = getattr(importlib.import_module('app.core.bridge'), 'bridge_config_to_env')
         bridge_config_to_env()
     except Exception as e:
         logger.warning(f"⚠️  配置桥接失败: {e}")
@@ -318,14 +319,14 @@ async def lifespan(app: FastAPI):
 
     # Apply dynamic settings (log_level, enable_monitoring) from ConfigProvider
     try:
-        from app.services.provider import provider as config_provider  # local import to avoid early DB init issues
+        config_provider = getattr(importlib.import_module('app.services.provider'), 'provider')
         eff = await config_provider.get_effective_system_settings()
         desired_level = str(eff.get("log_level", "INFO")).upper()
         setup_logging(log_level=desired_level)
         for name in ("webapi", "worker", "uvicorn", "fastapi"):
             logging.getLogger(name).setLevel(desired_level)
         try:
-            from app.middleware.operations import set_operation_log_enabled
+            set_operation_log_enabled = getattr(importlib.import_module('app.middleware.operations'), 'set_operation_log_enabled')
             set_operation_log_enabled(bool(eff.get("enable_monitoring", True)))
         except Exception:
             pass
@@ -348,10 +349,6 @@ async def lifespan(app: FastAPI):
 
     # 启动每日定时任务：可配置
     scheduler: AsyncIOScheduler | None = None
-    try:
-        from croniter import croniter
-    except Exception:
-        croniter = None  # 可选依赖
     try:
         scheduler = AsyncIOScheduler(timezone=settings.TIMEZONE)
 
@@ -614,7 +611,7 @@ async def lifespan(app: FastAPI):
         # 新闻数据同步任务配置（使用AKShare同步所有股票新闻）
         logger.info("🔄 配置新闻数据同步任务...")
 
-        from app.worker.akshare.sync import get_akshare_sync_service
+        get_akshare_sync_service = getattr(importlib.import_module('app.worker.akshare.sync'), 'get_akshare_sync_service')
 
         async def run_news_sync():
             """运行新闻同步任务 - 使用AKShare同步自选股新闻"""
@@ -676,7 +673,7 @@ async def lifespan(app: FastAPI):
 
         # 关闭 UserService MongoDB 连接
         try:
-            from app.services.user import user_service
+            user_service = getattr(importlib.import_module('app.services.user'), 'user_service')
             user_service.close()
         except Exception as e:
             logger.warning(f"UserService cleanup error: {e}")

@@ -3,6 +3,7 @@
 测试统一工具架构
 验证所有分析师都使用统一工具方案
 """
+import importlib
 
 import os
 import sys
@@ -12,8 +13,8 @@ def test_unified_tools_availability():
     print("🔧 测试统一工具可用性...")
 
     try:
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建工具包
         config = DEFAULT_CONFIG.copy()
@@ -50,9 +51,9 @@ def test_market_analyst_unified():
     print("\n🔧 测试市场分析师统一工具...")
 
     try:
-        from trader.agents.analysts.market import create_market_analyst
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        create_market_analyst = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -103,7 +104,7 @@ def test_market_analyst_unified():
 
     except Exception as e:
         print(f"❌ 市场分析师统一工具测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -113,9 +114,9 @@ def test_fundamentals_analyst_unified():
     print("\n🔧 测试基本面分析师统一工具...")
 
     try:
-        from trader.agents.analysts.fundamentals import create_fundamentals_analyst
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -166,7 +167,7 @@ def test_fundamentals_analyst_unified():
 
     except Exception as e:
         print(f"❌ 基本面分析师统一工具测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -176,8 +177,8 @@ def test_stock_type_routing():
     print("\n🔧 测试股票类型路由...")
 
     try:
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True

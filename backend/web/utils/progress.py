@@ -3,6 +3,7 @@
 异步进度跟踪器
 支持Redis和文件两种存储方式，前端定时轮询获取进度
 """
+import importlib
 
 import json
 import time
@@ -118,8 +119,8 @@ class AsyncProgressTracker:
 
         # 注册到日志系统进行自动进度更新
         try:
-            from .logs import register_analysis_tracker
-            import threading
+            register_analysis_tracker = getattr(importlib.import_module('web.utils.logs'), 'register_analysis_tracker')
+            threading = importlib.import_module('threading')
 
             # 使用超时机制避免死锁
             def register_with_timeout():
@@ -154,7 +155,7 @@ class AsyncProgressTracker:
                 logger.info(f"📊 [异步进度] Redis已禁用，使用文件存储")
                 return False
 
-            import redis
+            redis = importlib.import_module('redis')
 
             # 从环境变量获取Redis配置
             redis_host = os.getenv('REDIS_HOST', 'localhost')
@@ -575,7 +576,7 @@ class AsyncProgressTracker:
 
         # 从日志系统注销
         try:
-            from .logs import unregister_analysis_tracker
+            unregister_analysis_tracker = getattr(importlib.import_module('web.utils.logs'), 'unregister_analysis_tracker')
             unregister_analysis_tracker(self.analysis_id)
         except ImportError:
             pass
@@ -590,7 +591,7 @@ class AsyncProgressTracker:
 
         # 从日志系统注销
         try:
-            from .logs import unregister_analysis_tracker
+            unregister_analysis_tracker = getattr(importlib.import_module('web.utils.logs'), 'unregister_analysis_tracker')
             unregister_analysis_tracker(self.analysis_id)
         except ImportError:
             pass
@@ -604,7 +605,7 @@ def get_progress_by_id(analysis_id: str) -> Optional[Dict[str, Any]]:
         # 如果Redis启用，先尝试Redis
         if redis_enabled:
             try:
-                import redis
+                redis = importlib.import_module('redis')
 
                 # 从环境变量获取Redis配置
                 redis_host = os.getenv('REDIS_HOST', 'localhost')
@@ -668,7 +669,7 @@ def get_latest_analysis_id() -> Optional[str]:
         # 如果Redis启用，先尝试从Redis获取
         if redis_enabled:
             try:
-                import redis
+                redis = importlib.import_module('redis')
 
                 # 从环境变量获取Redis配置
                 redis_host = os.getenv('REDIS_HOST', 'localhost')

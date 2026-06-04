@@ -24,10 +24,10 @@ import argparse
 import os
 import sys
 
-from trader.agents.managers.portfolio_manager import create_portfolio_manager
-from trader.agents.managers.research_manager import create_research_manager
+from trader.agents.managers.portfolio import create_portfolio_manager
+from trader.agents.managers.research import create_research_manager
 from trader.agents.trader.trader import create_trader
-from trader.graph.signal_processing import SignalProcessor
+from trader.graph.signals import SignalProcessor
 from trader.llm.clients import create_llm_client
 
 

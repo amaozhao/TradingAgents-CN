@@ -6,6 +6,7 @@
 2. 验证字符串到枚举的转换
 3. 测试模型验证逻辑
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -22,8 +23,9 @@ def test_model_config():
     print("测试：模型配置读取和特性转换")
     print("=" * 80)
 
-    from app.services.model_capability_service import ModelCapabilityService
-    from app.constants.capabilities import ModelFeature, ModelRole
+    ModelCapabilityService = getattr(importlib.import_module('app.services.capability'), 'ModelCapabilityService')
+    ModelFeature = getattr(importlib.import_module('app.constants.capabilities'), 'ModelFeature')
+    ModelRole = getattr(importlib.import_module('app.constants.capabilities'), 'ModelRole')
 
     service = ModelCapabilityService()
 
@@ -73,7 +75,7 @@ def test_model_validation():
     print("\n测试：模型对验证")
     print("=" * 80)
 
-    from app.services.model_capability_service import ModelCapabilityService
+    ModelCapabilityService = getattr(importlib.import_module('app.services.capability'), 'ModelCapabilityService')
 
     service = ModelCapabilityService()
 
@@ -110,7 +112,7 @@ def test_database_config():
     print("\n测试：数据库配置")
     print("=" * 80)
 
-    from app.core.unified_config import unified_config
+    unified_config = getattr(importlib.import_module('app.core.unified'), 'unified_config')
 
     llm_configs = unified_config.get_llm_configs()
 

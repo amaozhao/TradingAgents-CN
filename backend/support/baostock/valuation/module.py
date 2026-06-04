@@ -2,6 +2,7 @@
 """
 测试BaoStock估值指标功能
 """
+import importlib
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -22,7 +23,7 @@ def test_baostock_valuation_direct():
     print("=" * 60)
 
     try:
-        import baostock as bs
+        bs = importlib.import_module('baostock')
 
         # 登录BaoStock
         lg = bs.login()
@@ -92,7 +93,7 @@ def test_baostock_provider_valuation():
     print("=" * 60)
 
     try:
-        from trader.flows.baostock_utils import get_baostock_provider
+        get_baostock_provider = getattr(importlib.import_module('trader.flows.providers.china.baostock'), 'get_baostock_provider')
 
         provider = get_baostock_provider()
 
@@ -135,7 +136,7 @@ def test_baostock_provider_valuation():
 
     except Exception as e:
         print(f"❌ Provider测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def test_baostock_adapter_daily_basic():
@@ -145,7 +146,7 @@ def test_baostock_adapter_daily_basic():
     print("=" * 60)
 
     try:
-        from app.services.sources import BaoStockAdapter
+        BaoStockAdapter = getattr(importlib.import_module('app.services.sources'), 'BaoStockAdapter')
 
         adapter = BaoStockAdapter()
 
@@ -187,7 +188,7 @@ def test_baostock_adapter_daily_basic():
 
     except Exception as e:
         print(f"❌ 适配器测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def test_data_source_manager_with_baostock():
@@ -197,7 +198,7 @@ def test_data_source_manager_with_baostock():
     print("=" * 60)
 
     try:
-        from app.services.sources import DataSourceManager
+        DataSourceManager = getattr(importlib.import_module('app.services.sources'), 'DataSourceManager')
 
         manager = DataSourceManager()
         available_adapters = manager.get_available_adapters()
@@ -243,7 +244,7 @@ def test_data_source_manager_with_baostock():
 
     except Exception as e:
         print(f"❌ 数据源管理器测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

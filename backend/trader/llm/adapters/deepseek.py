@@ -4,7 +4,7 @@ DeepSeek LLM适配器，支持Token使用统计
 
 import os
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 from langchain_core.messages import BaseMessage, AIMessage, HumanMessage, SystemMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_openai import ChatOpenAI
@@ -17,6 +17,21 @@ from trader.utils.logging.init import setup_llm_logging
 from trader.utils.logging.manager import get_logger, get_logger_manager
 logger = get_logger('agents')
 logger = setup_llm_logging()
+
+
+try:
+    from app.utils.keys import is_valid_api_key
+except ImportError:
+    def is_valid_api_key(api_key: Optional[str]) -> bool:
+        if not api_key or len(api_key) <= 10:
+            return False
+        if api_key.startswith('your_') or api_key.startswith('your-'):
+            return False
+        if api_key.endswith('_here') or api_key.endswith('-here'):
+            return False
+        if '...' in api_key:
+            return False
+        return True
 
 # 导入token跟踪器
 try:
@@ -58,21 +73,6 @@ class ChatDeepSeek(ChatOpenAI):
 
         # 获取API密钥
         if api_key is None:
-            # 导入 API Key 验证工具
-            try:
-                from app.utils.keys import is_valid_api_key
-            except ImportError:
-                def is_valid_api_key(key):
-                    if not key or len(key) <= 10:
-                        return False
-                    if key.startswith('your_') or key.startswith('your-'):
-                        return False
-                    if key.endswith('_here') or key.endswith('-here'):
-                        return False
-                    if '...' in key:
-                        return False
-                    return True
-
             # 从环境变量读取 API Key
             env_api_key = os.getenv("DEEPSEEK_API_KEY")
 
@@ -93,14 +93,11 @@ class ChatDeepSeek(ChatOpenAI):
                 )
 
         # 初始化父类
-        super().__init__(
-            model=model,
-            openai_api_key=api_key,
-            openai_api_base=base_url,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            **kwargs
-        )
+        kwargs.setdefault("openai_api_key", api_key)
+        kwargs.setdefault("openai_api_base", base_url)
+        kwargs.setdefault("max_tokens", max_tokens)
+        kwargs.setdefault("temperature", temperature)
+        super().__init__(model=model, **kwargs)
 
         self.model_name = model
 
@@ -248,7 +245,7 @@ class ChatDeepSeek(ChatOpenAI):
 
         # 处理输入
         if isinstance(input, str):
-            messages = [HumanMessage(content=input)]
+            messages: List[BaseMessage] = [HumanMessage(content=input)]
         else:
             messages = input
 
@@ -257,7 +254,10 @@ class ChatDeepSeek(ChatOpenAI):
 
         # 返回第一个生成结果的消息
         if result.generations:
-            return result.generations[0].message
+            message = result.generations[0].message
+            if isinstance(message, AIMessage):
+                return message
+            return AIMessage(content=str(message.content))
         else:
             return AIMessage(content="")
 

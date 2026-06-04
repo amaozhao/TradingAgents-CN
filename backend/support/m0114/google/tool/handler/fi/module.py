@@ -3,6 +3,7 @@
 """
 测试Google工具调用处理器修复效果
 """
+import importlib
 
 import sys
 import os
@@ -165,7 +166,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

@@ -4,6 +4,7 @@
 股票查询示例（增强版）
 演示如何使用新的股票数据服务，支持完整的降级机制
 """
+import importlib
 
 import sys
 import os
@@ -26,7 +27,7 @@ except ImportError as e:
     logger.warning(f"⚠️ 新API不可用，使用传统方式: {e}")
     API_AVAILABLE = False
     # 回退到传统方式
-    from trader.flows.database_manager import get_database_manager
+    from trader.config.database import get_database_manager
 
 from datetime import datetime, timedelta
 import pandas as pd
@@ -244,7 +245,7 @@ def main():
         logger.warning(f"\n⚠️ 用户中断程序")
     except Exception as e:
         logger.error(f"\n❌ 程序执行出错: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
 
         traceback.print_exc()
 

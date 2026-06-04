@@ -1,6 +1,7 @@
 """
 测试当所有数据源都获取不到数据时，是否会抛出异常
 """
+import importlib
 import sys
 from pathlib import Path
 
@@ -28,7 +29,7 @@ def test_no_data_error():
     try:
         # 导入数据提供者
         print("\n📦 步骤1: 导入 OptimizedChinaDataProvider...")
-        from trader.flows.optimized_china_data import OptimizedChinaDataProvider
+        OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
 
         provider = OptimizedChinaDataProvider()
         print(f"✅ Provider 初始化成功")
@@ -71,7 +72,7 @@ def test_no_data_error():
         print(f"\n📊 尝试获取 {test_symbol} 的财务指标...")
         print(f"   预期行为: 应该成功返回财务指标")
 
-        from trader.flows.optimized_china_data import OptimizedChinaDataProvider
+        OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
         provider = OptimizedChinaDataProvider()
 
         print("\n" + "=" * 70)
@@ -92,7 +93,7 @@ def test_no_data_error():
         print(f"   异常类型: {type(e).__name__}")
         print(f"   异常信息: {e}")
         print("=" * 70)
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     # 总结

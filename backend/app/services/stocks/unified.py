@@ -14,9 +14,10 @@
 - 通过 (code, source) 联合查询
 - 数据源优先级从数据库配置读取
 """
+import importlib
 
 import logging
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
@@ -170,8 +171,8 @@ class UnifiedStockService:
 
     async def _get_stock_info_from_postgres(self, code: str, source: Optional[str]) -> Optional[Dict]:
         try:
-            from app.db.session import get_session_factory
-            from app.db.stock import get_stock_basic_info
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            get_stock_basic_info = getattr(importlib.import_module('app.db.stock'), 'get_stock_basic_info')
 
             async with get_session_factory()() as session:
                 return await get_stock_basic_info(session, code, source)
@@ -181,8 +182,8 @@ class UnifiedStockService:
 
     async def _get_stock_quote_from_postgres(self, code: str) -> Optional[Dict]:
         try:
-            from app.db.session import get_session_factory
-            from app.db.stock import get_market_quote
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            get_market_quote = getattr(importlib.import_module('app.db.stock'), 'get_market_quote')
 
             async with get_session_factory()() as session:
                 return await get_market_quote(session, code)
@@ -259,8 +260,8 @@ class UnifiedStockService:
 
     async def _search_stocks_from_postgres(self, query: str, *, limit: int) -> List[Dict]:
         try:
-            from app.db.session import get_session_factory
-            from app.db.stock import search_stocks
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            search_stocks = getattr(importlib.import_module('app.db.stock'), 'search_stocks')
 
             async with get_session_factory()() as session:
                 return await search_stocks(session, query, limit=limit)
@@ -303,7 +304,7 @@ class UnifiedStockService:
         collection_name = self.collection_map[market]["daily"]
         collection = self.db[collection_name]
 
-        query = {"code": code}
+        query: Dict[str, Any] = {"code": code}
         if start_date or end_date:
             query["trade_date"] = {}
             if start_date:
@@ -324,8 +325,8 @@ class UnifiedStockService:
         limit: int,
     ) -> List[Dict]:
         try:
-            from app.db.session import get_session_factory
-            from app.db.stock import list_stock_daily_quotes
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            list_stock_daily_quotes = getattr(importlib.import_module('app.db.stock'), 'list_stock_daily_quotes')
 
             async with get_session_factory()() as session:
                 return await list_stock_daily_quotes(

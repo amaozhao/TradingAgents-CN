@@ -55,16 +55,10 @@ class StructuredFormatter(logging.Formatter):
         }
 
         # 添加额外字段
-        if hasattr(record, 'session_id'):
-            log_entry['session_id'] = record.session_id
-        if hasattr(record, 'analysis_type'):
-            log_entry['analysis_type'] = record.analysis_type
-        if hasattr(record, 'stock_symbol'):
-            log_entry['stock_symbol'] = record.stock_symbol
-        if hasattr(record, 'cost'):
-            log_entry['cost'] = record.cost
-        if hasattr(record, 'tokens'):
-            log_entry['tokens'] = record.tokens
+        for field in ("session_id", "analysis_type", "stock_symbol", "cost", "tokens"):
+            value = getattr(record, field, None)
+            if value is not None:
+                log_entry[field] = value
 
         return json.dumps(log_entry, ensure_ascii=False)
 

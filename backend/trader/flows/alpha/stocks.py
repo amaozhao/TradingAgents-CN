@@ -1,5 +1,5 @@
 from datetime import datetime
-from .alpha.common import _make_api_request, _filter_csv_by_date_range
+from .common import _make_api_request, _filter_csv_by_date_range
 
 def get_stock(
     symbol: str,
@@ -35,4 +35,4 @@ def get_stock(
 
     response = _make_api_request("TIME_SERIES_DAILY_ADJUSTED", params)
 
-    return _filter_csv_by_date_range(response, start_date, end_date)
+    return _filter_csv_by_date_range(response if isinstance(response, str) else str(response), start_date, end_date)

@@ -3,6 +3,7 @@
 """
 简化测试：直接测试优化后的基本面分析数据获取逻辑
 """
+import importlib
 
 import sys
 import os
@@ -25,14 +26,15 @@ def test_optimized_fundamentals_logic():
 
     try:
         # 1. 获取最新股价信息（只需要最近1-2天的数据）
-        from datetime import datetime, timedelta
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
         curr_date = datetime.now().strftime('%Y-%m-%d')
         recent_end_date = curr_date
         recent_start_date = (datetime.strptime(curr_date, '%Y-%m-%d') - timedelta(days=2)).strftime('%Y-%m-%d')
 
         print(f"📅 获取价格数据时间范围: {recent_start_date} 到 {recent_end_date}")
 
-        from trader.flows.interface import get_china_stock_data_unified
+        get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
         current_price_data = get_china_stock_data_unified(ticker, recent_start_date, recent_end_date)
 
         if current_price_data:
@@ -46,7 +48,7 @@ def test_optimized_fundamentals_logic():
         # 2. 获取基本面财务数据
         print(f"\n💰 获取基本面财务数据...")
 
-        from trader.flows.china import OptimizedChinaDataProvider
+        OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
         analyzer = OptimizedChinaDataProvider()
         fundamentals_data = analyzer._generate_fundamentals_report(ticker, current_price_data)
 
@@ -92,7 +94,7 @@ def test_optimized_fundamentals_logic():
 
     except Exception as e:
         print(f"❌ 测试过程中出错: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

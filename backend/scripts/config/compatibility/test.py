@@ -14,8 +14,8 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from webapi.core.unified_config import unified_config
-from webapi.models.config import LLMConfig, ModelProvider
+from app.core.unified import unified_config
+from app.models.config import LLMConfig, ModelProvider
 
 
 async def test_read_legacy_configs():

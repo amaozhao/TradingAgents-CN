@@ -3,6 +3,7 @@
 股票基本信息获取测试脚本
 专门测试股票名称、行业等基本信息的获取功能
 """
+import importlib
 
 import sys
 import os
@@ -25,39 +26,39 @@ def test_stock_info_retrieval():
         try:
             # 1. 测试Tushare股票信息获取
             print(f"🔍 步骤1: 测试Tushare股票信息获取...")
-            from trader.flows.interface import get_china_stock_info_tushare
+            get_china_stock_info_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_tushare')
             tushare_info = get_china_stock_info_tushare(code)
             print(f"✅ Tushare信息: {tushare_info}")
 
             # 2. 测试统一股票信息获取
             print(f"🔍 步骤2: 测试统一股票信息获取...")
-            from trader.flows.interface import get_china_stock_info_unified
+            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
             unified_info = get_china_stock_info_unified(code)
             print(f"✅ 统一信息: {unified_info}")
 
             # 3. 测试DataSourceManager直接调用
             print(f"🔍 步骤3: 测试DataSourceManager...")
-            from trader.flows.data_source_manager import get_china_stock_info_unified as manager_info
+            manager_info = getattr(importlib.import_module('trader.flows.sources'), 'get_china_stock_info_unified')
             manager_result = manager_info(code)
             print(f"✅ Manager结果: {manager_result}")
 
             # 4. 测试TushareAdapter直接调用
             print(f"🔍 步骤4: 测试TushareAdapter...")
-            from trader.flows.adapter import get_tushare_adapter
+            get_tushare_adapter = getattr(importlib.import_module('trader.flows.adapter'), 'get_tushare_adapter')
             adapter = get_tushare_adapter()
             adapter_result = adapter.get_stock_info(code)
             print(f"✅ Adapter结果: {adapter_result}")
 
             # 5. 测试TushareProvider直接调用
             print(f"🔍 步骤5: 测试TushareProvider...")
-            from trader.flows.tushare_utils import TushareProvider
+            TushareProvider = getattr(importlib.import_module('trader.flows.tushare'), 'TushareProvider')
             provider = TushareProvider()
             provider_result = provider.get_stock_info(code)
             print(f"✅ Provider结果: {provider_result}")
 
         except Exception as e:
             print(f"❌ 测试{code}失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
 
 def test_tushare_stock_basic_api():
@@ -66,7 +67,7 @@ def test_tushare_stock_basic_api():
     print("=" * 50)
 
     try:
-        from trader.flows.tushare_utils import get_tushare_provider
+        get_tushare_provider = getattr(importlib.import_module('trader.flows.tushare'), 'get_tushare_provider')
 
         provider = get_tushare_provider()
 
@@ -104,7 +105,7 @@ def test_tushare_stock_basic_api():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def test_stock_basic_all():
@@ -113,7 +114,7 @@ def test_stock_basic_all():
     print("=" * 50)
 
     try:
-        from trader.flows.tushare_utils import get_tushare_provider
+        get_tushare_provider = getattr(importlib.import_module('trader.flows.tushare'), 'get_tushare_provider')
 
         provider = get_tushare_provider()
 
@@ -154,7 +155,7 @@ def test_stock_basic_all():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

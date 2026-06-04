@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 from trader.config.databases import get_mongodb_client
 from app.core.database import init_database
-from app.worker.tushare_init_service import get_tushare_init_service
+from app.worker.tushare.init import get_tushare_init_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -4,6 +4,7 @@
 自动检测MongoDB和Redis可用性，提供降级方案
 使用项目现有的.env配置
 """
+import importlib
 
 import logging
 import os
@@ -37,13 +38,13 @@ class DatabaseManager:
         """从.env文件加载配置"""
         # 尝试加载python-dotenv
         try:
-            from dotenv import load_dotenv
+            load_dotenv = getattr(importlib.import_module('dotenv'), 'load_dotenv')
             load_dotenv()
         except ImportError:
             self.logger.info("python-dotenv未安装，直接读取环境变量")
 
         # 使用强健的布尔值解析（兼容Python 3.13+）
-        from .env import parse_bool_env
+        parse_bool_env = getattr(importlib.import_module('trader.config.env'), 'parse_bool_env')
         self.mongodb_enabled = parse_bool_env("MONGODB_ENABLED", False)
         self.redis_enabled = parse_bool_env("REDIS_ENABLED", False)
 
@@ -89,8 +90,8 @@ class DatabaseManager:
             return False, "MongoDB未启用 (MONGODB_ENABLED=false)"
 
         try:
-            import pymongo
-            from pymongo import MongoClient
+            pymongo = importlib.import_module('pymongo')
+            MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
 
             # 构建连接参数
             connect_kwargs = {
@@ -129,7 +130,7 @@ class DatabaseManager:
             return False, "Redis未启用 (REDIS_ENABLED=false)"
 
         try:
-            import redis
+            redis = importlib.import_module('redis')
 
             # 构建连接参数
             connect_kwargs = {
@@ -198,7 +199,7 @@ class DatabaseManager:
         # 初始化MongoDB连接
         if self.mongodb_available:
             try:
-                import pymongo
+                pymongo = importlib.import_module('pymongo')
 
                 # 构建连接参数
                 connect_kwargs = {
@@ -226,7 +227,7 @@ class DatabaseManager:
         # 初始化Redis连接
         if self.redis_available:
             try:
-                import redis
+                redis = importlib.import_module('redis')
 
                 # 构建连接参数
                 connect_kwargs = {

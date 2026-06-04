@@ -2,6 +2,7 @@
 Backup, import, and export routines extracted from DatabaseService.
 """
 from __future__ import annotations
+import importlib
 
 import json
 import os
@@ -278,7 +279,7 @@ def _convert_date_fields(doc: dict) -> dict:
     - started_at, finished_at
     - analysis_date (保持字符串格式，因为是日期而非时间戳)
     """
-    from dateutil import parser
+    parser = getattr(importlib.import_module('dateutil'), 'parser')
 
     date_fields = [
         "created_at", "updated_at", "completed_at",
@@ -486,7 +487,7 @@ def _sanitize_document(doc: Any) -> Any:
 
 
 async def export_data(collections: Optional[List[str]] = None, *, export_dir: str, format: str = "json", sanitize: bool = False) -> str:
-    import pandas as pd
+    pd = importlib.import_module('pandas')
 
     # 🔥 使用异步数据库连接
     db = get_mongo_db()

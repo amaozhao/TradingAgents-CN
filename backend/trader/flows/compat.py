@@ -5,7 +5,7 @@
 使用方法：
     # 旧代码仍然可以这样导入
     from trader.flows.google import get_news_data
-    from trader.flows.cache_manager import StockDataCache
+    from trader.flows.cache import StockDataCache
 
     # 新代码推荐使用新路径
     from trader.flows.news import get_news_data

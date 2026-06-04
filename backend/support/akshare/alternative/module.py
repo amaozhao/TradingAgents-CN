@@ -2,6 +2,7 @@
 """
 测试AKShare的替代财务数据接口
 """
+import importlib
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -22,7 +23,7 @@ def test_akshare_individual_info():
     print("=" * 60)
 
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
 
         # 测试几个股票
         test_symbols = ['000001', '600000', '000002']
@@ -55,7 +56,7 @@ def test_akshare_financial_apis():
     print("=" * 60)
 
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
 
         # 测试不同的财务API
         apis_to_test = [
@@ -103,7 +104,7 @@ def test_akshare_market_data():
     print("=" * 60)
 
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
 
         # 测试市场相关的API
         apis_to_test = [

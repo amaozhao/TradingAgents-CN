@@ -2,6 +2,7 @@
 数据库连接管理模块
 增强版本，支持连接池、健康检查和错误恢复
 """
+import importlib
 
 import logging
 import asyncio
@@ -430,13 +431,13 @@ async def init_postgres_if_enabled() -> None:
     if not postgres_runtime_enabled():
         return
 
-    from app.db.session import init_postgres
+    init_postgres = getattr(importlib.import_module('app.db.session'), 'init_postgres')
 
     await init_postgres()
 
 
 async def close_postgres_if_enabled() -> None:
-    from app.db.session import close_postgres
+    close_postgres = getattr(importlib.import_module('app.db.session'), 'close_postgres')
 
     await close_postgres()
 

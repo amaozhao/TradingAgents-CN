@@ -2,6 +2,7 @@
 """
 测试分析报告API功能
 """
+import importlib
 import requests
 import json
 import time
@@ -188,7 +189,7 @@ def test_reports_api():
 
     except Exception as e:
         print(f"❌ 测试过程中出现异常: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

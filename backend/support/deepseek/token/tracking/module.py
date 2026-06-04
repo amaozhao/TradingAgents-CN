@@ -2,6 +2,7 @@
 """
 DeepSeek Token统计功能测试
 """
+import importlib
 
 import os
 import sys
@@ -27,8 +28,9 @@ def test_deepseek_adapter():
         return True  # 跳过而不是失败
 
     try:
-        from trader.llm.adapters.deepseek import ChatDeepSeek
-        from trader.config.manager import config_manager, token_tracker
+        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
+        config_manager = getattr(importlib.import_module('trader.config.manager'), 'config_manager')
+        token_tracker = getattr(importlib.import_module('trader.config.manager'), 'token_tracker')
 
         # 获取初始统计
         initial_stats = config_manager.get_usage_statistics(1)
@@ -54,7 +56,7 @@ def test_deepseek_adapter():
         print(f"   ✅ 响应接收成功，长度: {len(response.content)}")
 
         # 等待统计更新
-        import time
+        time = importlib.import_module('time')
         time.sleep(1)
 
         # 检查统计更新
@@ -90,8 +92,8 @@ def test_trading_graph_integration():
         return True
 
     try:
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 配置DeepSeek
         config = DEFAULT_CONFIG.copy()

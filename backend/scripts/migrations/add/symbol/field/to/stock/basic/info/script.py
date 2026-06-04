@@ -10,6 +10,7 @@
 使用方法：
     python scripts/migrations/add/symbol/field/to/stock/basic/info/script.py
 """
+import importlib
 
 import asyncio
 import logging
@@ -33,7 +34,7 @@ logger = logging.getLogger(__name__)
 async def get_mongo_db() -> Optional[AsyncIOMotorDatabase]:
     """获取 MongoDB 数据库连接"""
     try:
-        from app.core.config import get_settings
+        get_settings = getattr(importlib.import_module('app.core.config'), 'get_settings')
         settings = get_settings()
         client = AsyncIOMotorClient(settings.mongo_uri)
         db = client[settings.mongo_db]

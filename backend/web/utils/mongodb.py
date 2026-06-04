@@ -3,6 +3,7 @@
 MongoDB报告管理器
 用于保存和读取分析报告到MongoDB数据库
 """
+import importlib
 
 import os
 import logging
@@ -37,7 +38,7 @@ class MongoDBReportManager:
         """连接到MongoDB"""
         try:
             # 加载环境变量
-            from dotenv import load_dotenv
+            load_dotenv = getattr(importlib.import_module('dotenv'), 'load_dotenv')
             load_dotenv()
 
             # 从环境变量获取MongoDB配置
@@ -119,7 +120,7 @@ class MongoDBReportManager:
             analysis_id = f"{stock_symbol}_{timestamp.strftime('%Y%m%d_%H%M%S')}"
 
             # 🔥 根据股票代码推断市场类型
-            from trader.utils.stock_utils import StockUtils
+            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
             market_info = StockUtils.get_market_info(stock_symbol)
             market_type_map = {
                 "china_a": "A股",
@@ -135,7 +136,7 @@ class MongoDBReportManager:
             try:
                 if market_info.get("market") == "china_a":
                     # A股：使用统一接口获取股票信息
-                    from trader.flows.interface import get_china_stock_info_unified
+                    get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
                     stock_info = get_china_stock_info_unified(stock_symbol)
                     if "股票名称:" in stock_info:
                         stock_name = stock_info.split("股票名称:")[1].split("\n")[0].strip()
@@ -143,7 +144,7 @@ class MongoDBReportManager:
                 elif market_info.get("market") == "hong_kong":
                     # 港股：使用改进的港股工具
                     try:
-                        from trader.flows.providers.hk.improved_hk import get_hk_company_name_improved
+                        get_hk_company_name_improved = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_company_name_improved')
                         stock_name = get_hk_company_name_improved(stock_symbol)
                         logger.info(f"📊 获取港股名称: {stock_symbol} -> {stock_name}")
                     except Exception:
@@ -240,7 +241,7 @@ class MongoDBReportManager:
                     timestamp = float(timestamp_value)
                 else:
                     # 其他情况，使用当前时间
-                    from datetime import datetime
+                    datetime = getattr(importlib.import_module('datetime'), 'datetime')
                     timestamp = datetime.now().timestamp()
 
                 # 转换为Web应用期望的格式

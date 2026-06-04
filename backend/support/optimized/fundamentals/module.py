@@ -4,6 +4,7 @@
 测试优化后的基本面分析数据获取策略
 验证新策略是否能正确获取必要的财务数据和当前股价，而不获取大量历史日线数据
 """
+import importlib
 
 import sys
 import os
@@ -21,7 +22,8 @@ def test_optimized_fundamentals():
     test_symbol = "000001"
 
     # 测试不同日期范围（对应不同数据深度）
-    from datetime import datetime, timedelta
+    datetime = getattr(importlib.import_module('datetime'), 'datetime')
+    timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
     today = datetime.now()
     test_cases = [

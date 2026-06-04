@@ -74,15 +74,15 @@ class FieldInfo(BaseModel):
     field_type: FieldType = Field(..., description="字段类型")
     data_type: str = Field(..., description="数据类型: number/string/date")
     description: str = Field("", description="字段描述")
-    unit: Optional[str] = Field(None, description="单位")
+    unit: Optional[str] = Field(default=None, description="单位")
 
     # 数值字段的统计信息
-    min_value: Optional[float] = Field(None, description="最小值")
-    max_value: Optional[float] = Field(None, description="最大值")
-    avg_value: Optional[float] = Field(None, description="平均值")
+    min_value: Optional[float] = Field(default=None, description="最小值")
+    max_value: Optional[float] = Field(default=None, description="最大值")
+    avg_value: Optional[float] = Field(default=None, description="平均值")
 
     # 枚举字段的可选值
-    available_values: Optional[List[str]] = Field(None, description="可选值列表")
+    available_values: Optional[List[str]] = Field(default=None, description="可选值列表")
 
     # 支持的操作符
     supported_operators: List[OperatorType] = Field(default_factory=list, description="支持的操作符")

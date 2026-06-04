@@ -5,6 +5,7 @@
 提供简单易用的股票数据获取接口，内置完整的降级机制
 """
 
+import importlib
 from typing import Dict, List, Optional, Any
 from .service import get_stock_data_service
 
@@ -28,7 +29,8 @@ def get_stock_info(stock_code: str) -> Optional[Dict[str, Any]]:
         >>> print(info['name'])  # 输出: 平安银行
     """
     service = get_stock_data_service()
-    return service.get_stock_basic_info(stock_code)
+    result = service.get_stock_basic_info(stock_code)
+    return result if isinstance(result, dict) else None
 
 def get_all_stocks() -> List[Dict[str, Any]]:
     """
@@ -88,9 +90,9 @@ def search_stocks_by_name(name: str) -> List[Dict[str, Any]]:
     """
     # 这个功能需要MongoDB支持，暂时通过原有方式实现
     try:
-        from ..examples.stock.query.examples.example import EnhancedStockQueryService
-
-        service = EnhancedStockQueryService()
+        module = importlib.import_module("examples.stock.query.examples.example")
+        service_cls = getattr(module, "EnhancedStockQueryService")
+        service = service_cls()
         return service.query_stocks_by_name(name)
     except Exception as e:
         return [{'error': f'名称搜索功能不可用: {str(e)}'}]

@@ -2,6 +2,7 @@
 """
 基本面报告生成测试
 """
+import importlib
 
 import os
 import sys
@@ -21,14 +22,14 @@ def test_fundamentals_generation():
 
     try:
         # 设置日志级别
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("default")
         logger.setLevel("INFO")
 
         print(f"\n🔧 步骤1: 获取股票数据...")
 
         # 获取股票数据
-        from trader.flows.interface import get_china_stock_data_tushare
+        get_china_stock_data_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_tushare')
         stock_data = get_china_stock_data_tushare(test_ticker, "2025-07-01", "2025-07-15")
 
         print(f"✅ 股票数据获取完成，长度: {len(stock_data) if stock_data else 0}")
@@ -37,7 +38,7 @@ def test_fundamentals_generation():
         print(f"\n🔧 步骤2: 生成基本面报告...")
 
         # 生成基本面报告
-        from trader.flows.china import OptimizedChinaDataProvider
+        OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
         analyzer = OptimizedChinaDataProvider()
 
         fundamentals_report = analyzer._generate_fundamentals_report(test_ticker, stock_data)
@@ -63,7 +64,7 @@ def test_fundamentals_generation():
                 print(f"   002021 出现次数: {count_002021}")
 
                 # 找出错误代码的位置
-                import re
+                re = importlib.import_module('re')
                 positions = [m.start() for m in re.finditer("002021", fundamentals_report)]
                 print(f"   002021 出现位置: {positions}")
 
@@ -86,7 +87,7 @@ def test_fundamentals_generation():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -98,7 +99,7 @@ def test_industry_info():
     test_ticker = "002027"
 
     try:
-        from trader.flows.china import OptimizedChinaDataProvider
+        OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
         analyzer = OptimizedChinaDataProvider()
 
         print(f"🔧 测试 _get_industry_info...")
@@ -113,7 +114,7 @@ def test_industry_info():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

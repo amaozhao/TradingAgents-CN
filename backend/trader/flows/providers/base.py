@@ -49,7 +49,7 @@ class BaseStockDataProvider(ABC):
     # ==================== 核心数据接口 ====================
 
     @abstractmethod
-    async def get_stock_basic_info(self, symbol: str = None) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
+    async def get_stock_basic_info(self, symbol: Optional[str] = None) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
         """
         获取股票基础信息
 
@@ -79,7 +79,7 @@ class BaseStockDataProvider(ABC):
         self,
         symbol: str,
         start_date: Union[str, date],
-        end_date: Union[str, date] = None
+        end_date: Optional[Union[str, date]] = None
     ) -> Optional[pd.DataFrame]:
         """
         获取历史数据
@@ -96,7 +96,7 @@ class BaseStockDataProvider(ABC):
 
     # ==================== 扩展接口 ====================
 
-    async def get_stock_list(self, market: str = None) -> Optional[List[Dict[str, Any]]]:
+    async def get_stock_list(self, market: Optional[str] = None) -> Optional[List[Dict[str, Any]]]:
         """
         获取股票列表
 
@@ -106,7 +106,8 @@ class BaseStockDataProvider(ABC):
         Returns:
             股票列表
         """
-        return await self.get_stock_basic_info()
+        result = await self.get_stock_basic_info()
+        return result if isinstance(result, list) else None
 
     async def get_financial_data(self, symbol: str, report_type: str = "annual") -> Optional[Dict[str, Any]]:
         """

@@ -2,6 +2,7 @@
 AKShare数据初始化API路由
 提供Web接口进行AKShare数据初始化和管理
 """
+import importlib
 import asyncio
 import logging
 from datetime import datetime
@@ -114,7 +115,7 @@ async def test_akshare_connection():
         连接测试结果
     """
     try:
-        from app.worker.akshare.sync import get_akshare_sync_service
+        get_akshare_sync_service = getattr(importlib.import_module('app.worker.akshare.sync'), 'get_akshare_sync_service')
 
         service = await get_akshare_sync_service()
         connected = await service.provider.test_connection()
@@ -356,7 +357,7 @@ async def _run_basic_sync_background(force_update: bool):
     global _initialization_status
 
     try:
-        from app.worker.akshare.sync import get_akshare_sync_service
+        get_akshare_sync_service = getattr(importlib.import_module('app.worker.akshare.sync'), 'get_akshare_sync_service')
 
         service = await get_akshare_sync_service()
         result = await service.sync_stock_basic_info(force_update=force_update)

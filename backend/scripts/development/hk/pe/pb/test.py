@@ -6,6 +6,7 @@
 2. 查看是否包含 PE、PB、市盈率、市净率等估值指标
 3. 测试其他可能的 AKShare 港股接口
 """
+import importlib
 
 import sys
 import os
@@ -20,7 +21,7 @@ def test_akshare_hk_spot():
     print("=" * 80)
 
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
 
         # 获取港股实时行情
         df = ak.stock_hk_spot()
@@ -46,7 +47,7 @@ def test_akshare_hk_spot():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
@@ -57,7 +58,7 @@ def test_akshare_hk_valuation():
     print("=" * 80)
 
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
 
         # 列出所有包含 'hk' 和 'valuation' 或 'pe' 或 'pb' 的接口
         all_functions = dir(ak)
@@ -80,7 +81,7 @@ def test_akshare_hk_valuation():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
@@ -99,7 +100,7 @@ def test_akshare_hk_individual_stock():
     ]
 
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
 
         for func_name, kwargs in test_functions:
             print(f"\n📊 测试接口: {func_name}")
@@ -125,7 +126,7 @@ def test_akshare_hk_individual_stock():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
@@ -136,8 +137,8 @@ def test_tushare_hk():
     print("=" * 80)
 
     try:
-        import tushare as ts
-        from trader.config import get_config
+        ts = importlib.import_module('tushare')
+        get_config = getattr(importlib.import_module('trader.config'), 'get_config')
 
         config = get_config()
         tushare_token = config.get('tushare_token')
@@ -179,7 +180,7 @@ def test_tushare_hk():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

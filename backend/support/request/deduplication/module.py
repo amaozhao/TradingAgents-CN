@@ -2,6 +2,7 @@
 测试请求去重机制
 验证并发请求不会导致重复的API调用
 """
+import importlib
 import asyncio
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
@@ -34,7 +35,7 @@ async def test_concurrent_hk_quote_requests():
         nonlocal call_count
         call_count += 1
         # 模拟API延迟
-        import time
+        time = importlib.import_module('time')
         time.sleep(0.1)
         return {
             'code': code,
@@ -89,7 +90,7 @@ async def test_concurrent_us_quote_requests():
     def mock_get_us_quote_from_yfinance(code):
         nonlocal call_count
         call_count += 1
-        import time
+        time = importlib.import_module('time')
         time.sleep(0.1)
         return {
             'code': code,
@@ -145,7 +146,7 @@ async def test_different_stocks_no_blocking():
             call_count[code] = 0
         call_count[code] += 1
 
-        import time
+        time = importlib.import_module('time')
         time.sleep(0.1)
 
         return {

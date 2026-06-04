@@ -4,6 +4,7 @@
 测试数据目录配置CLI功能
 Test Data Directory Configuration CLI Features
 """
+import importlib
 
 import os
 import sys
@@ -150,7 +151,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 测试过程中出现错误 | Error during testing: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return 1
 

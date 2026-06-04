@@ -3,9 +3,10 @@
 股票数据预获取和验证模块
 用于在分析流程开始前验证股票是否存在，并预先获取和缓存必要的数据
 """
+import importlib
 
 import re
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, Any
 from datetime import datetime, timedelta
 
 # 导入日志模块
@@ -59,7 +60,7 @@ class StockDataPreparer:
         self.default_period_days = default_period_days  # 默认历史数据时长（天）
 
     def prepare_stock_data(self, stock_code: str, market_type: str = "auto",
-                          period_days: int = None, analysis_date: str = None) -> StockDataPreparationResult:
+                          period_days: Optional[int] = None, analysis_date: Optional[str] = None) -> StockDataPreparationResult:
         """
         预获取和验证股票数据
 
@@ -328,7 +329,7 @@ class StockDataPreparer:
         end_date = datetime.strptime(analysis_date, '%Y-%m-%d')
 
         # 获取配置的回溯天数（与get_china_stock_data_unified保持一致）
-        from app.core.config import settings
+        settings = getattr(importlib.import_module('app.core.config'), 'settings')
         lookback_days = getattr(settings, 'MARKET_ANALYST_LOOKBACK_DAYS', 365)
 
         # 使用扩展后的日期范围进行数据检查和同步
@@ -369,7 +370,7 @@ class StockDataPreparer:
 
             # 3. 获取基本信息
             logger.debug(f"📊 [A股数据] 获取{stock_code}基本信息...")
-            from trader.flows.interface import get_china_stock_info_unified
+            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
 
             stock_info = get_china_stock_info_unified(stock_code)
 
@@ -408,7 +409,7 @@ class StockDataPreparer:
 
             # 4. 获取历史数据（使用扩展后的日期范围）
             logger.debug(f"📊 [A股数据] 获取{stock_code}历史数据 ({extended_start_date_str} 到 {end_date_str})...")
-            from trader.flows.interface import get_china_stock_data_unified
+            get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
 
             historical_data = get_china_stock_data_unified(stock_code, extended_start_date_str, end_date_str)
 
@@ -468,7 +469,7 @@ class StockDataPreparer:
 
         except Exception as e:
             logger.error(f"❌ [A股数据] 数据准备失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             logger.debug(f"详细错误: {traceback.format_exc()}")
             return StockDataPreparationResult(
                 is_valid=False,
@@ -488,7 +489,7 @@ class StockDataPreparer:
 
         # 计算日期范围
         end_date = datetime.strptime(analysis_date, '%Y-%m-%d')
-        from app.core.config import settings
+        settings = getattr(importlib.import_module('app.core.config'), 'settings')
         lookback_days = getattr(settings, 'MARKET_ANALYST_LOOKBACK_DAYS', 365)
         extended_start_date = end_date - timedelta(days=lookback_days)
         extended_start_date_str = extended_start_date.strftime('%Y-%m-%d')
@@ -524,7 +525,7 @@ class StockDataPreparer:
 
             # 3. 获取基本信息（同步操作）
             logger.debug(f"📊 [A股数据-异步] 获取{stock_code}基本信息...")
-            from trader.flows.interface import get_china_stock_info_unified
+            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
             stock_info = get_china_stock_info_unified(stock_code)
 
             if stock_info and "❌" not in stock_info and "未能获取" not in stock_info:
@@ -542,7 +543,7 @@ class StockDataPreparer:
 
             # 4. 获取历史数据（同步操作）
             logger.debug(f"📊 [A股数据-异步] 获取{stock_code}历史数据...")
-            from trader.flows.interface import get_china_stock_data_unified
+            get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
             historical_data = get_china_stock_data_unified(stock_code, extended_start_date_str, end_date_str)
 
             if historical_data and "❌" not in historical_data and "获取失败" not in historical_data:
@@ -592,7 +593,7 @@ class StockDataPreparer:
 
         except Exception as e:
             logger.error(f"❌ [A股数据-异步] 数据准备失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             logger.debug(f"详细错误: {traceback.format_exc()}")
             return StockDataPreparationResult(
                 is_valid=False,
@@ -619,7 +620,7 @@ class StockDataPreparer:
             }
         """
         try:
-            from trader.flows.cache.mongodb import get_mongodb_cache_adapter
+            get_mongodb_cache_adapter = getattr(importlib.import_module('trader.flows.cache.mongodb'), 'get_mongodb_cache_adapter')
 
             adapter = get_mongodb_cache_adapter()
             if not adapter.use_app_cache or adapter.db is None:
@@ -654,8 +655,6 @@ class StockDataPreparer:
             else:
                 latest_date = None
 
-            # 检查是否包含最近的交易日
-            from datetime import datetime, timedelta
             today = datetime.now()
 
             # 获取最近的交易日（考虑周末）
@@ -670,7 +669,7 @@ class StockDataPreparer:
 
             # 判断数据是否最新（允许1天的延迟）
             is_latest = False
-            if latest_date:
+            if latest_date is not None:
                 latest_date_str = str(latest_date)[:10]  # 取前10个字符 YYYY-MM-DD
                 latest_dt = datetime.strptime(latest_date_str, '%Y-%m-%d')
                 days_diff = (recent_trade_date - latest_dt).days
@@ -684,7 +683,7 @@ class StockDataPreparer:
                 "has_data": True,
                 "is_latest": is_latest,
                 "record_count": record_count,
-                "latest_date": str(latest_date) if latest_date else None,
+                "latest_date": str(latest_date) if latest_date is not None else None,
                 "message": message
             }
 
@@ -707,7 +706,7 @@ class StockDataPreparer:
         - 如果在 asyncio.to_thread() 创建的线程中运行，创建新的事件循环
         - 避免 "attached to a different loop" 错误
         """
-        import asyncio
+        asyncio = importlib.import_module('asyncio')
 
         try:
             # 🔥 检测是否有正在运行的事件循环
@@ -787,10 +786,10 @@ class StockDataPreparer:
 
                     # 根据数据源获取对应的同步服务
                     if data_source == "tushare":
-                        from app.worker.tushare.sync import get_tushare_sync_service
+                        get_tushare_sync_service = getattr(importlib.import_module('app.worker.tushare.sync'), 'get_tushare_sync_service')
                         service = await get_tushare_sync_service()
                     elif data_source == "akshare":
-                        from app.worker.akshare.sync import get_akshare_sync_service
+                        get_akshare_sync_service = getattr(importlib.import_module('app.worker.akshare.sync'), 'get_akshare_sync_service')
                         service = await get_akshare_sync_service()
                     else:
                         logger.warning(f"⚠️ [数据同步] 不支持的数据源: {data_source}")
@@ -823,7 +822,6 @@ class StockDataPreparer:
                     try:
                         fin_result = await service.sync_financial_data(
                             symbols=[stock_code],
-                            limit=20  # 获取最近20期财报（约5年）
                         )
 
                         if fin_result.get("success_count", 0) > 0:
@@ -840,7 +838,7 @@ class StockDataPreparer:
                         # 对于单个股票，AKShare更适合获取实时行情
                         if data_source == "tushare":
                             # Tushare的实时行情接口有限制，改用AKShare
-                            from app.worker.akshare.sync import get_akshare_sync_service
+                            get_akshare_sync_service = getattr(importlib.import_module('app.worker.akshare.sync'), 'get_akshare_sync_service')
                             realtime_service = await get_akshare_sync_service()
                         else:
                             realtime_service = service
@@ -884,7 +882,7 @@ class StockDataPreparer:
                 except Exception as e:
                     last_error = f"{data_source}: {str(e)}"
                     logger.warning(f"⚠️ [数据同步] {data_source}同步异常: {e}")
-                    import traceback
+                    traceback = importlib.import_module('traceback')
                     logger.debug(f"详细错误: {traceback.format_exc()}")
                     # 继续尝试下一个数据源
                     continue
@@ -904,7 +902,7 @@ class StockDataPreparer:
 
         except Exception as e:
             logger.error(f"❌ [数据同步] 同步数据失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             logger.debug(f"详细错误: {traceback.format_exc()}")
             return {
                 "success": False,
@@ -924,7 +922,7 @@ class StockDataPreparer:
             list: 数据源列表，按优先级排序 ['tushare', 'akshare', 'baostock']
         """
         try:
-            from trader.flows.cache.mongodb import get_mongodb_cache_adapter
+            get_mongodb_cache_adapter = getattr(importlib.import_module('trader.flows.cache.mongodb'), 'get_mongodb_cache_adapter')
 
             adapter = get_mongodb_cache_adapter()
             if adapter.use_app_cache and adapter.db is not None:
@@ -971,7 +969,7 @@ class StockDataPreparer:
         try:
             # 1. 获取基本信息
             logger.debug(f"📊 [港股数据] 获取{formatted_code}基本信息...")
-            from trader.flows.interface import get_hk_stock_info_unified
+            get_hk_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_info_unified')
 
             stock_info = get_hk_stock_info_unified(formatted_code)
 
@@ -1023,7 +1021,7 @@ class StockDataPreparer:
 
             # 2. 获取历史数据
             logger.debug(f"📊 [港股数据] 获取{formatted_code}历史数据 ({start_date_str} 到 {end_date_str})...")
-            from trader.flows.interface import get_hk_stock_data_unified
+            get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
 
             historical_data = get_hk_stock_data_unified(formatted_code, start_date_str, end_date_str)
 
@@ -1141,7 +1139,7 @@ class StockDataPreparer:
 
             # 导入美股数据提供器（支持新旧路径）
             try:
-                from trader.flows.providers.us import OptimizedUSDataProvider
+                OptimizedUSDataProvider = getattr(importlib.import_module('trader.flows.providers.us'), 'OptimizedUSDataProvider')
                 provider = OptimizedUSDataProvider()
                 historical_data = provider.get_stock_data(
                     formatted_code,
@@ -1149,7 +1147,7 @@ class StockDataPreparer:
                     end_date_str
                 )
             except ImportError:
-                from trader.flows.providers.us.optimized import get_us_stock_data_cached
+                get_us_stock_data_cached = getattr(importlib.import_module('trader.flows.providers.us.optimized'), 'get_us_stock_data_cached')
                 historical_data = get_us_stock_data_cached(
                     formatted_code,
                     start_date_str,
@@ -1221,7 +1219,7 @@ class StockDataPreparer:
 
 
 # 全局数据准备器实例
-_stock_preparer = None
+_stock_preparer: Optional[StockDataPreparer] = None
 
 def get_stock_preparer(default_period_days: int = 30) -> StockDataPreparer:
     """获取股票数据准备器实例（单例模式）"""
@@ -1232,7 +1230,7 @@ def get_stock_preparer(default_period_days: int = 30) -> StockDataPreparer:
 
 
 def prepare_stock_data(stock_code: str, market_type: str = "auto",
-                      period_days: int = None, analysis_date: str = None) -> StockDataPreparationResult:
+                      period_days: Optional[int] = None, analysis_date: Optional[str] = None) -> StockDataPreparationResult:
     """
     便捷函数：预获取和验证股票数据
 
@@ -1250,7 +1248,7 @@ def prepare_stock_data(stock_code: str, market_type: str = "auto",
 
 
 def is_stock_data_ready(stock_code: str, market_type: str = "auto",
-                       period_days: int = None, analysis_date: str = None) -> bool:
+                       period_days: Optional[int] = None, analysis_date: Optional[str] = None) -> bool:
     """
     便捷函数：检查股票数据是否准备就绪
 
@@ -1268,7 +1266,7 @@ def is_stock_data_ready(stock_code: str, market_type: str = "auto",
 
 
 def get_stock_preparation_message(stock_code: str, market_type: str = "auto",
-                                 period_days: int = None, analysis_date: str = None) -> str:
+                                 period_days: Optional[int] = None, analysis_date: Optional[str] = None) -> str:
     """
     便捷函数：获取股票数据准备消息
 
@@ -1290,7 +1288,7 @@ def get_stock_preparation_message(stock_code: str, market_type: str = "auto",
 
 
 async def prepare_stock_data_async(stock_code: str, market_type: str = "auto",
-                                   period_days: int = None, analysis_date: str = None) -> StockDataPreparationResult:
+                                   period_days: Optional[int] = None, analysis_date: Optional[str] = None) -> StockDataPreparationResult:
     """
     异步版本：预获取和验证股票数据
 
@@ -1311,9 +1309,7 @@ async def prepare_stock_data_async(stock_code: str, market_type: str = "auto",
     if period_days is None:
         period_days = preparer.default_period_days
 
-    if analysis_date is None:
-        from datetime import datetime
-        analysis_date = datetime.now().strftime('%Y-%m-%d')
+    analysis_date_value = analysis_date or datetime.now().strftime('%Y-%m-%d')
 
     logger.info(f"📊 [数据准备-异步] 开始准备股票数据: {stock_code} (市场: {market_type}, 时长: {period_days}天)")
 
@@ -1328,7 +1324,7 @@ async def prepare_stock_data_async(stock_code: str, market_type: str = "auto",
         logger.debug(f"📊 [数据准备-异步] 自动检测市场类型: {market_type}")
 
     # 3. 预获取数据并验证（使用异步版本）
-    return await preparer._prepare_data_by_market_async(stock_code, market_type, period_days, analysis_date)
+    return await preparer._prepare_data_by_market_async(stock_code, market_type, period_days, analysis_date_value)
 
 
 # 保持向后兼容的别名

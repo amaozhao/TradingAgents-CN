@@ -108,6 +108,8 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
             progress=False,
             auto_adjust=True,
         ))
+        if downloaded is None:
+            raise NoMarketDataError(symbol, canonical, "Yahoo Finance returned no rows")
         downloaded = _ensure_date_column(downloaded.reset_index())
         # Only cache real data — never persist an empty frame.
         if downloaded.empty or "Close" not in downloaded.columns:
@@ -122,7 +124,7 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
     # Filter to curr_date to prevent look-ahead bias in backtesting
     data = data[data["Date"] <= curr_date_dt]
 
-    return data
+    return pd.DataFrame(data)
 
 
 def filter_financials_by_date(data: pd.DataFrame, curr_date: str) -> pd.DataFrame:

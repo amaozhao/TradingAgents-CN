@@ -3,6 +3,7 @@
 测试所有API密钥功能
 包括Google API和Reddit API
 """
+import importlib
 
 import os
 import sys
@@ -89,7 +90,7 @@ def test_reddit_api():
 
         # 测试Reddit API连接
         try:
-            import praw
+            praw = importlib.import_module('praw')
 
             reddit = praw.Reddit(
                 client_id=client_id,
@@ -124,21 +125,21 @@ def test_trading_agents_with_new_apis():
         print("=" * 50)
 
         # 检查TradingAgents是否支持这些API
-        from trader.flows import interface
+        interface = getattr(importlib.import_module('trader.flows'), 'interface')
 
         # 检查可用的数据流工具
         print("📊 检查可用的数据获取工具:")
 
         # 检查Google相关工具
         try:
-            from trader.flows.google import get_google_news
+            get_google_news = getattr(importlib.import_module('trader.flows.google'), 'get_google_news')
             print("✅ Google News工具可用")
         except ImportError:
             print("❌ Google News工具不可用")
 
         # 检查Reddit相关工具
         try:
-            from trader.flows.reddit_utils import get_reddit_sentiment
+            get_reddit_sentiment = getattr(importlib.import_module('trader.flows.interface'), 'get_reddit_sentiment')
             print("✅ Reddit情绪分析工具可用")
         except ImportError:
             print("❌ Reddit情绪分析工具不可用")
@@ -156,8 +157,8 @@ def test_social_media_analyst():
         print("=" * 50)
 
         # 检查社交媒体分析师
-        from trader.agents.analysts.social import create_social_media_analyst
-        from trader.llm.adapters import ChatDashScope
+        create_social_media_analyst = getattr(importlib.import_module('trader.agents.analysts.social'), 'create_social_media_analyst')
+        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
 
         # 创建模型实例
         llm = ChatDashScope(model="qwen-plus")

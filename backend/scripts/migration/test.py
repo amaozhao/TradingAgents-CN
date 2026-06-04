@@ -3,6 +3,7 @@
 配置迁移测试脚本
 测试配置迁移工具的功能
 """
+import importlib
 
 import os
 import sys
@@ -14,7 +15,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from scripts.migrate.config.to.web.api.script import ConfigMigrator
-from trader.config.config_manager import ConfigManager
+from trader.config.manager import ConfigManager
 
 
 async def test_migration():
@@ -96,7 +97,7 @@ def test_config_files():
         if file_path.exists():
             print(f"   ✅ {file_name} 存在")
             try:
-                import json
+                json = importlib.import_module('json')
                 with open(file_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 print(f"      包含 {len(data) if isinstance(data, list) else '1'} 项数据")

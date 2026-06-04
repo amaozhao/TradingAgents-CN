@@ -2,8 +2,9 @@
 股票数据同步API路由
 支持单个股票或批量股票的历史数据和财务数据同步
 """
+import importlib
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 
@@ -26,30 +27,30 @@ def _utc_now() -> datetime:
 
 
 async def get_tushare_sync_service():
-    from app.worker.tushare.sync import get_tushare_sync_service as _get_tushare_sync_service
+    _get_tushare_sync_service = getattr(importlib.import_module('app.worker.tushare.sync'), 'get_tushare_sync_service')
 
     return await _get_tushare_sync_service()
 
 
 async def get_akshare_sync_service():
-    from app.worker.akshare.sync import get_akshare_sync_service as _get_akshare_sync_service
+    _get_akshare_sync_service = getattr(importlib.import_module('app.worker.akshare.sync'), 'get_akshare_sync_service')
 
     return await _get_akshare_sync_service()
 
 
 async def get_financial_sync_service():
-    from app.worker.financial import get_financial_sync_service as _get_financial_sync_service
+    _get_financial_sync_service = getattr(importlib.import_module('app.worker.financial'), 'get_financial_sync_service')
 
     return await _get_financial_sync_service()
 
 
-async def _dual_write_market_quote(document: dict) -> None:
+async def _dual_write_market_quote(document: Dict[str, Any]) -> None:
     result = await dual_write_hot_document("market_quotes", document)
     if result.status == "failed":
         logger.warning("⚠️ stock-sync market_quotes PostgreSQL 双写失败: %s", result.reason)
 
 
-async def _dual_write_stock_basic_info(document: dict) -> None:
+async def _dual_write_stock_basic_info(document: Dict[str, Any]) -> None:
     result = await dual_write_hot_document("stock_basic_info", document)
     if result.status == "failed":
         logger.warning("⚠️ stock-sync stock_basic_info PostgreSQL 双写失败: %s", result.reason)
@@ -379,12 +380,10 @@ async def sync_single_stock(
                 # 🔥 同步单个股票的基础数据
                 # 参考 basics_sync_service 的实现逻辑
                 if request.data_source == "tushare":
-                    from app.services.basics import (
-                        fetch_stock_basic_df,
-                        find_latest_trade_date,
-                        fetch_daily_basic_mv_map,
-                        fetch_latest_roe_map,
-                    )
+                    fetch_stock_basic_df = getattr(importlib.import_module('app.services.basics'), 'fetch_stock_basic_df')
+                    find_latest_trade_date = getattr(importlib.import_module('app.services.basics'), 'find_latest_trade_date')
+                    fetch_daily_basic_mv_map = getattr(importlib.import_module('app.services.basics'), 'fetch_daily_basic_mv_map')
+                    fetch_latest_roe_map = getattr(importlib.import_module('app.services.basics'), 'fetch_latest_roe_map')
 
                     db = get_mongo_db()
                     symbol6 = str(request.symbol).zfill(6)
@@ -712,7 +711,7 @@ async def sync_batch_stocks(
                 # 🔥 批量同步基础数据
                 # 注意：基础数据同步服务目前只支持 Tushare 数据源
                 if request.data_source == "tushare":
-                    from trader.flows.providers.china.tushare import TushareProvider
+                    TushareProvider = getattr(importlib.import_module('trader.flows.providers.china.tushare'), 'TushareProvider')
 
                     tushare_provider = TushareProvider()
                     if tushare_provider.is_available():
@@ -723,7 +722,7 @@ async def sync_batch_stocks(
                             try:
                                 basic_info = await tushare_provider.get_stock_basic_info(symbol)
 
-                                if basic_info:
+                                if isinstance(basic_info, dict):
                                     # 保存到 MongoDB
                                     db = get_mongo_db()
                                     symbol6 = str(symbol).zfill(6)
@@ -808,7 +807,7 @@ async def get_sync_status(
     返回最后同步时间、数据条数等信息
     """
     try:
-        from app.core.database import get_mongo_db
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
 
         db = get_mongo_db()
 

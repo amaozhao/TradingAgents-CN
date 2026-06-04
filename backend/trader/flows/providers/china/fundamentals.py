@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 import pandas as pd
 
+from .tushare import get_tushare_provider
 from trader.utils.logging.manager import get_logger
 
 logger = get_logger('agents')
@@ -23,12 +24,11 @@ def _safe_float(x) -> Optional[float]:
 
 def _get_tushare_snapshot(symbol: str) -> Dict[str, Optional[float]]:
     try:
-        from .tushare import get_tushare_provider
         provider = get_tushare_provider()
         if not getattr(provider, 'connected', False):
             return {}
         # 先取 ts_code
-        info = provider.get_stock_info(symbol)
+        info = cast(Any, provider).get_stock_info(symbol)
         ts_code = info.get('ts_code') if isinstance(info, dict) else None
         if not ts_code:
             return {}

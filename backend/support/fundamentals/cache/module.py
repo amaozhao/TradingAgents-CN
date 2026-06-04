@@ -3,6 +3,7 @@
 测试基本面数据缓存功能
 验证OpenAI和Finnhub基本面数据的缓存机制
 """
+import importlib
 
 import os
 import sys
@@ -18,7 +19,7 @@ def test_cache_manager_fundamentals():
     print("🧪 测试基本面数据缓存管理器...")
 
     try:
-        from trader.flows.cache_manager import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
 
         cache = get_cache()
         print(f"✅ 缓存管理器初始化成功")
@@ -79,7 +80,7 @@ def test_cache_manager_fundamentals():
 
     except Exception as e:
         print(f"❌ 缓存管理器测试失败: {str(e)}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -88,7 +89,8 @@ def test_fundamentals_with_cache():
     print(f"\n🧪 测试基本面数据获取函数的缓存功能...")
 
     try:
-        from trader.flows.interface import get_fundamentals_openai, get_fundamentals_finnhub
+        get_fundamentals_openai = getattr(importlib.import_module('trader.flows.interface'), 'get_fundamentals_openai')
+        get_fundamentals_finnhub = getattr(importlib.import_module('trader.flows.interface'), 'get_fundamentals_finnhub')
 
         test_symbol = "MSFT"
         curr_date = datetime.now().strftime('%Y-%m-%d')
@@ -123,7 +125,7 @@ def test_fundamentals_with_cache():
 
     except Exception as e:
         print(f"❌ 基本面数据缓存测试失败: {str(e)}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -132,7 +134,7 @@ def test_cache_ttl():
     print(f"\n🧪 测试缓存TTL功能...")
 
     try:
-        from trader.flows.cache_manager import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
 
         cache = get_cache()
 
@@ -164,7 +166,7 @@ def test_cache_ttl():
 
     except Exception as e:
         print(f"❌ 缓存TTL测试失败: {str(e)}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

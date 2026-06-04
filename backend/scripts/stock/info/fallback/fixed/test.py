@@ -3,6 +3,7 @@
 测试修复后的股票基本信息降级机制
 验证当Tushare失败时是否能自动降级到其他数据源
 """
+import importlib
 
 import sys
 import os
@@ -24,7 +25,7 @@ def test_stock_info_fallback_mechanism():
 
         try:
             # 测试统一接口（现在应该有降级机制）
-            from trader.flows.interface import get_china_stock_info_unified
+            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
             result = get_china_stock_info_unified(code)
             print(f"✅ 统一接口结果: {result}")
 
@@ -55,7 +56,7 @@ def test_real_stock_fallback():
 
         try:
             # 直接测试DataSourceManager
-            from trader.flows.data_source_manager import get_data_source_manager
+            get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
             manager = get_data_source_manager()
 
             # 获取股票信息
@@ -71,7 +72,7 @@ def test_real_stock_fallback():
 
         except Exception as e:
             print(f"❌ 测试{code}失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
 
 def test_individual_data_sources():
@@ -82,7 +83,7 @@ def test_individual_data_sources():
     test_code = "603985"  # 恒润股份
 
     try:
-        from trader.flows.data_source_manager import get_data_source_manager
+        get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
         manager = get_data_source_manager()
 
         # 测试AKShare
@@ -97,7 +98,7 @@ def test_individual_data_sources():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def test_fundamentals_with_fallback():
@@ -109,7 +110,7 @@ def test_fundamentals_with_fallback():
 
     try:
         # 模拟基本面分析中的股票信息获取
-        from trader.flows.interface import get_china_stock_info_unified
+        get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
         stock_info = get_china_stock_info_unified(test_code)
         print(f"✅ 统一接口获取股票信息: {stock_info}")
 
@@ -131,7 +132,7 @@ def test_fundamentals_with_fallback():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

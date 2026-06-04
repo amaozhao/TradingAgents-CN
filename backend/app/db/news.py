@@ -28,7 +28,7 @@ async def query_news(session, params) -> list[dict[str, Any]]:
 
 
 def _filters(params) -> list[Any]:
-    filters = [StockNewsDocument.deleted.is_(False)]
+    filters: list[Any] = [StockNewsDocument.deleted.is_(False)]
     if params.symbol:
         filters.append(StockNewsDocument.symbol == params.symbol)
     if params.symbols:

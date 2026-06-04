@@ -3,13 +3,14 @@
 实时新闻数据获取工具
 解决新闻滞后性问题
 """
+import importlib
 
 import requests
 import json
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from typing import List, Dict, Optional
+from typing import Any, Dict, List, Optional, cast
 import time
 import os
 from dataclasses import dataclass
@@ -312,7 +313,7 @@ class RealtimeNewsAggregator:
             # 1. 尝试使用AKShare获取东方财富个股新闻
             try:
                 logger.info(f"[中文财经新闻] 尝试通过 AKShare Provider 获取新闻")
-                from trader.flows.providers.china.akshare import AKShareProvider
+                AKShareProvider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'AKShareProvider')
 
                 provider = AKShareProvider()
 
@@ -330,7 +331,7 @@ class RealtimeNewsAggregator:
                     em_start_time = datetime.now(ZoneInfo(get_timezone_name()))
                     news_df = provider.get_stock_news_sync(symbol=clean_ticker)
 
-                    if not news_df.empty:
+                    if news_df is not None and not news_df.empty:
                         logger.info(f"[中文财经新闻] 东方财富返回 {len(news_df)} 条新闻数据，开始处理")
                         processed_count = 0
                         skipped_count = 0
@@ -340,7 +341,7 @@ class RealtimeNewsAggregator:
                         for _, row in news_df.iterrows():
                             try:
                                 # 解析时间
-                                time_str = row.get('时间', '')
+                                time_str = str(row.get('时间', '') or '')
                                 if time_str:
                                     # 尝试解析时间格式，可能是'2023-01-01 12:34:56'格式
                                     try:
@@ -362,8 +363,8 @@ class RealtimeNewsAggregator:
                                     continue
 
                                 # 评估紧急程度
-                                title = row.get('标题', '')
-                                content = row.get('内容', '')
+                                title = str(row.get('标题', '') or '')
+                                content = str(row.get('内容', '') or '')
                                 urgency = self._assess_news_urgency(title, content)
 
                                 news_items.append(NewsItem(
@@ -371,7 +372,7 @@ class RealtimeNewsAggregator:
                                     content=content,
                                     source='东方财富',
                                     publish_time=publish_time,
-                                    url=row.get('链接', ''),
+                                    url=str(row.get('链接', '') or ''),
                                     urgency=urgency,
                                     relevance_score=self._calculate_relevance(title, ticker)
                                 ))
@@ -439,7 +440,7 @@ class RealtimeNewsAggregator:
         try:
             # 实际实现需要使用feedparser库
             # 这里是简化实现，实际项目中应该替换为真实的RSS解析逻辑
-            import feedparser
+            feedparser = importlib.import_module('feedparser')
 
             logger.info(f"[RSS解析] 尝试获取RSS源内容")
             feed = feedparser.parse(rss_url)
@@ -455,9 +456,10 @@ class RealtimeNewsAggregator:
 
             for entry in feed.entries:
                 try:
+                    entry_any = cast(Any, entry)
                     # 解析时间
-                    if hasattr(entry, 'published_parsed') and entry.published_parsed:
-                        publish_time = datetime.fromtimestamp(time.mktime(entry.published_parsed), tz=ZoneInfo(get_timezone_name()))
+                    if hasattr(entry_any, 'published_parsed') and entry_any.published_parsed:
+                        publish_time = datetime.fromtimestamp(time.mktime(entry_any.published_parsed), tz=ZoneInfo(get_timezone_name()))
                     else:
                         logger.warning(f"[RSS解析] 条目缺少发布时间，使用当前时间")
                         publish_time = datetime.now(ZoneInfo(get_timezone_name()))
@@ -467,8 +469,8 @@ class RealtimeNewsAggregator:
                         skipped_count += 1
                         continue
 
-                    title = entry.title if hasattr(entry, 'title') else ''
-                    content = entry.description if hasattr(entry, 'description') else ''
+                    title = str(entry_any.title if hasattr(entry_any, 'title') else '')
+                    content = str(entry_any.description if hasattr(entry_any, 'description') else '')
 
                     # 检查相关性
                     if ticker.lower() not in title.lower() and ticker.lower() not in content.lower():
@@ -483,7 +485,7 @@ class RealtimeNewsAggregator:
                         content=content,
                         source='财联社',
                         publish_time=publish_time,
-                        url=entry.link if hasattr(entry, 'link') else '',
+                        url=str(entry_any.link if hasattr(entry_any, 'link') else ''),
                         urgency=urgency,
                         relevance_score=self._calculate_relevance(title, ticker)
                     ))
@@ -715,7 +717,7 @@ def get_realtime_stock_news(ticker: str, curr_date: str, hours_back: int = 6) ->
         logger.info(f"[新闻分析] ticker不包含点号，尝试使用StockUtils判断")
         # 尝试使用StockUtils判断股票类型
         try:
-            from trader.utils.stocks import StockUtils
+            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
             logger.info(f"[新闻分析] 成功导入StockUtils，开始判断股票类型")
             market_info = StockUtils.get_market_info(ticker)
             logger.info(f"[新闻分析] StockUtils返回市场信息: {market_info}")
@@ -781,7 +783,7 @@ def get_realtime_stock_news(ticker: str, curr_date: str, hours_back: int = 6) ->
     except Exception as e:
         logger.error(f"[新闻分析] 实时新闻聚合器获取失败: {e}，将尝试备用新闻源")
         logger.error(f"[新闻分析] 异常详情: {type(e).__name__}: {str(e)}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(f"[新闻分析] 异常堆栈: {traceback.format_exc()}")
         # 发生异常时，继续尝试备用方案
 
@@ -789,7 +791,7 @@ def get_realtime_stock_news(ticker: str, curr_date: str, hours_back: int = 6) ->
     if not is_china_stock and '.HK' in ticker:
         logger.info(f"[新闻分析] 检测到港股代码 {ticker}，尝试使用东方财富新闻源")
         try:
-            from trader.flows.providers.china.akshare import AKShareProvider
+            AKShareProvider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'AKShareProvider')
 
             provider = AKShareProvider()
 
@@ -802,7 +804,7 @@ def get_realtime_stock_news(ticker: str, curr_date: str, hours_back: int = 6) ->
             end_time = datetime.now(ZoneInfo(get_timezone_name()))
             time_taken = (end_time - start_time).total_seconds()
 
-            if not news_df.empty:
+            if news_df is not None and not news_df.empty:
                 # 构建简单的新闻报告
                 news_count = len(news_df)
                 logger.info(f"[新闻分析] 成功获取 {news_count} 条东方财富港股新闻，耗时 {time_taken:.2f} 秒")
@@ -813,7 +815,7 @@ def get_realtime_stock_news(ticker: str, curr_date: str, hours_back: int = 6) ->
                 report += f"🕒 获取耗时: {time_taken:.2f}秒\n\n"
 
                 # 记录一些新闻标题示例
-                sample_titles = [row.get('新闻标题', '无标题') for _, row in news_df.head(3).iterrows()]
+                sample_titles = [str(row.get('新闻标题', '无标题') or '无标题') for _, row in news_df.head(3).iterrows()]
                 logger.info(f"[新闻分析] 新闻标题示例: {', '.join(sample_titles)}")
 
                 for _, row in news_df.iterrows():
@@ -831,7 +833,7 @@ def get_realtime_stock_news(ticker: str, curr_date: str, hours_back: int = 6) ->
 
     # 备用方案2: 尝试使用Google新闻
     try:
-        from trader.flows.interface import get_google_news
+        get_google_news = getattr(importlib.import_module('trader.flows.interface'), 'get_google_news')
 
         # 根据股票类型构建搜索查询
         if stock_type == "A股":
@@ -877,7 +879,7 @@ def get_realtime_stock_news(ticker: str, curr_date: str, hours_back: int = 6) ->
     # 备用方案3: A股最后尝试东方财富新闻，使用兼容函数以便测试和脚本 patch。
     if is_china_stock:
         try:
-            from trader.flows.akshare import get_stock_news_em
+            get_stock_news_em = getattr(importlib.import_module('trader.flows.akshare'), 'get_stock_news_em')
 
             clean_ticker = ticker.replace('.SH', '').replace('.SZ', '').replace('.SS', '')\
                            .replace('.XSHE', '').replace('.XSHG', '')

@@ -1,6 +1,7 @@
 """Tests for the canonical provider->env-var mapping and the CLI key-prompt helper."""
 
 from __future__ import annotations
+import importlib
 
 import os
 from pathlib import Path
@@ -70,8 +71,7 @@ def test_case_insensitive_lookup():
 @pytest.fixture
 def cli_utils(monkeypatch):
     """Import cli.utils with a fresh environment so module-level state is consistent."""
-    import importlib
-    import cli.utils as cli_utils_module
+    cli_utils_module = importlib.import_module('cli.utils')
     return importlib.reload(cli_utils_module)
 
 

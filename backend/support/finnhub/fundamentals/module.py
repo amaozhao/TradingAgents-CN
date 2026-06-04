@@ -2,6 +2,7 @@
 """
 测试Finnhub基本面数据获取功能、OpenAI fallback机制和缓存功能
 """
+import importlib
 
 import os
 import sys
@@ -28,8 +29,8 @@ def test_finnhub_fundamentals_with_cache():
     print("\n📊 测试Finnhub基本面数据获取和缓存功能...")
 
     try:
-        from trader.flows.interface import get_fundamentals_finnhub
-        from trader.flows.cache_manager import get_cache
+        get_fundamentals_finnhub = getattr(importlib.import_module('trader.flows.interface'), 'get_fundamentals_finnhub')
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
 
         # 清理可能存在的缓存
         cache = get_cache()
@@ -68,7 +69,7 @@ def test_finnhub_fundamentals_with_cache():
 
     except Exception as e:
         print(f"❌ Finnhub基本面数据测试失败: {str(e)}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -77,7 +78,7 @@ def test_openai_fallback_with_cache():
     print("\n🔄 测试OpenAI fallback机制和缓存功能...")
 
     try:
-        from trader.flows.interface import get_fundamentals_openai
+        get_fundamentals_openai = getattr(importlib.import_module('trader.flows.interface'), 'get_fundamentals_openai')
 
         # 临时移除OpenAI配置来测试fallback
         original_backend_url = os.environ.get('BACKEND_URL')
@@ -134,7 +135,7 @@ def test_openai_fallback_with_cache():
 
     except Exception as e:
         print(f"❌ OpenAI fallback测试失败: {str(e)}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -143,7 +144,7 @@ def test_cache_management():
     print("\n💾 测试缓存管理功能...")
 
     try:
-        from trader.flows.cache_manager import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
 
         cache = get_cache()
 
@@ -161,7 +162,7 @@ def test_cache_management():
 
     except Exception as e:
         print(f"❌ 缓存管理测试失败: {str(e)}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

@@ -2,6 +2,7 @@
 """
 测试股票筛选视图
 """
+import importlib
 
 import sys
 import os
@@ -14,7 +15,7 @@ sys.path.insert(0, str(project_root))
 import asyncio
 import logging
 from app.core.database import init_database, get_mongo_db, close_database
-from app.services.database_screening_service import get_database_screening_service
+from app.services.screening.database import get_database_screening_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -98,7 +99,7 @@ async def test_screening():
 
     except Exception as e:
         logger.error(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return 1
 

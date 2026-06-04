@@ -2,6 +2,7 @@
 """
 测试分析级别3死循环问题的调试脚本
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -79,7 +80,7 @@ def test_level3_deadlock():
     )
 
     # 模拟不同的状态场景
-    from langchain_core.messages.tool import ToolCall
+    ToolCall = getattr(importlib.import_module('langchain_core.messages.tool'), 'ToolCall')
 
     # 创建正确格式的tool_call
     tool_call = ToolCall(

@@ -2,6 +2,7 @@
 """
 测试队列系统的脚本
 """
+import importlib
 
 import asyncio
 import sys
@@ -12,9 +13,9 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from webapi.core.database import init_database, close_database
-from webapi.core.redis_client import init_redis, close_redis
-from webapi.services.queue_service import get_queue_service
+from app.core.database import init_database, close_database
+from app.core.redis import init_redis, close_redis
+from app.services.queue.service import get_queue_service
 
 
 async def test_queue_operations():
@@ -92,7 +93,7 @@ async def test_queue_operations():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     finally:
@@ -142,7 +143,7 @@ async def test_concurrent_limits():
 
     except Exception as e:
         print(f"❌ 并发测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     finally:

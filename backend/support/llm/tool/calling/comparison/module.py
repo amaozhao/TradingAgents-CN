@@ -2,6 +2,7 @@
 """
 测试不同LLM模型在工具调用和技术分析方面的行为差异
 """
+import importlib
 
 import os
 import sys
@@ -23,10 +24,10 @@ def test_deepseek_tool_calling():
 
     try:
         # 直接导入DeepSeek适配器，避免导入dashscope
-        import sys
+        sys = importlib.import_module('sys')
         sys.path.insert(0, str(project_root / "trader" / "llm_adapters"))
-        from deepseekadapter import ChatDeepSeek
-        from langchain_core.tools import BaseTool
+        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
+        BaseTool = getattr(importlib.import_module('langchain_core.tools'), 'BaseTool')
 
         # 创建DeepSeek实例
         deepseek_llm = ChatDeepSeek(
@@ -98,7 +99,7 @@ def test_deepseek_tool_calling():
 
     except Exception as e:
         print(f"❌ DeepSeek测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None
 
@@ -108,8 +109,8 @@ def test_dashscope_tool_calling():
     print("=" * 60)
 
     try:
-        from trader.llm.adapters.dashscope.native import ChatDashScope
-        from langchain_core.tools import BaseTool
+        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters.dashscope.native'), 'ChatDashScope')
+        BaseTool = getattr(importlib.import_module('langchain_core.tools'), 'BaseTool')
 
         # 创建百炼实例
         dashscope_llm = ChatDashScope(
@@ -181,7 +182,7 @@ def test_dashscope_tool_calling():
 
     except Exception as e:
         print(f"❌ 百炼测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None
 

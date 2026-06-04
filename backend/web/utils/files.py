@@ -2,6 +2,7 @@
 基于文件的会话管理器 - 不依赖Redis的可靠方案
 适用于没有Redis或Redis连接失败的情况
 """
+import importlib
 
 import streamlit as st
 import json
@@ -234,7 +235,7 @@ def get_persistent_analysis_id() -> Optional[str]:
 
         # 3. 最后从Redis/文件恢复最新分析
         try:
-            from .progress import get_latest_analysis_id
+            get_latest_analysis_id = getattr(importlib.import_module('web.utils.progress'), 'get_latest_analysis_id')
             latest_id = get_latest_analysis_id()
             if latest_id:
                 st.session_state.current_analysis_id = latest_id

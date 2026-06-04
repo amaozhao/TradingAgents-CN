@@ -2,6 +2,7 @@
 会话持久化管理器 - 不依赖Cookie的解决方案
 使用Redis/文件存储 + 浏览器指纹来实现跨页面刷新的状态持久化
 """
+import importlib
 
 import streamlit as st
 import hashlib
@@ -170,7 +171,7 @@ def get_persistent_analysis_id() -> Optional[str]:
                 return analysis_id
 
         # 3. 最后从Redis/文件恢复最新分析
-        from .progress import get_latest_analysis_id
+        get_latest_analysis_id = getattr(importlib.import_module('web.utils.progress'), 'get_latest_analysis_id')
         latest_id = get_latest_analysis_id()
         if latest_id:
             st.session_state.current_analysis_id = latest_id

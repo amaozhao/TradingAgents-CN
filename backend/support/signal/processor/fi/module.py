@@ -2,6 +2,7 @@
 """
 测试SignalProcessor修复后的功能
 """
+import importlib
 
 import sys
 import os
@@ -18,8 +19,8 @@ def test_signal_processor_currency_fix():
     """测试SignalProcessor的货币修复"""
 
     try:
-        from trader.graph.signals import SignalProcessor
-        from langchain_openai import ChatOpenAI
+        SignalProcessor = getattr(importlib.import_module('trader.graph.signals'), 'SignalProcessor')
+        ChatOpenAI = getattr(importlib.import_module('langchain_openai'), 'ChatOpenAI')
 
         print("🔍 测试SignalProcessor货币修复...")
 
@@ -98,7 +99,7 @@ def test_signal_processor_currency_fix():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 
@@ -106,8 +107,8 @@ def test_web_currency_display():
     """测试Web界面货币显示修复"""
 
     try:
-        from web.components.result import render_decision_summary
-        import streamlit as st
+        render_decision_summary = getattr(importlib.import_module('web.components.result'), 'render_decision_summary')
+        st = importlib.import_module('streamlit')
 
         print("🌐 测试Web界面货币显示...")
 

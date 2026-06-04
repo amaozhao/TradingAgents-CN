@@ -1,6 +1,7 @@
 """
 操作日志服务
 """
+import importlib
 
 import logging
 from datetime import datetime, timedelta
@@ -155,8 +156,8 @@ class OperationLogService:
 
     async def _get_logs_from_postgres(self, query: OperationLogQuery) -> Optional[Tuple[List[OperationLogResponse], int]]:
         try:
-            from app.db.operation import list_operations
-            from app.db.session import get_session_factory
+            list_operations = getattr(importlib.import_module('app.db.operation'), 'list_operations')
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
             async with get_session_factory()() as session:
                 documents, total = await list_operations(session, query)
@@ -238,8 +239,8 @@ class OperationLogService:
 
     async def _get_stats_from_postgres(self, days: int) -> Optional[OperationLogStats]:
         try:
-            from app.db.operation import get_operation_log_stats
-            from app.db.session import get_session_factory
+            get_operation_log_stats = getattr(importlib.import_module('app.db.operation'), 'get_operation_log_stats')
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
             async with get_session_factory()() as session:
                 return await get_operation_log_stats(session, days)

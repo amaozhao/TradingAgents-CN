@@ -3,6 +3,7 @@
 测试A股数据准备功能
 验证数据库检查和自动同步功能
 """
+import importlib
 
 import sys
 import os
@@ -10,7 +11,7 @@ import os
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from trader.utils.stock_validator import prepare_stock_data
+from trader.utils.validation import prepare_stock_data
 import logging
 
 logger = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ def test_data_preparation():
 
         except Exception as e:
             print(f"\n❌ 测试失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
 
     print(f"\n{'=' * 80}")
@@ -71,8 +72,9 @@ def test_data_preparation():
 
 def test_database_check():
     """测试数据库检查功能"""
-    from trader.utils.stock_validator import StockDataPreparer
-    from datetime import datetime, timedelta
+    StockDataPreparer = getattr(importlib.import_module('trader.utils.validation'), 'StockDataPreparer')
+    datetime = getattr(importlib.import_module('datetime'), 'datetime')
+    timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
     print("\n" + "=" * 80)
     print("🧪 测试数据库检查功能")
@@ -107,9 +109,11 @@ def test_database_check():
 
 async def test_data_sync_async():
     """测试数据同步功能（异步版本）"""
-    from trader.utils.stock_validator import StockDataPreparer
-    from datetime import datetime, timedelta
-    from app.core.database import init_database, close_database
+    StockDataPreparer = getattr(importlib.import_module('trader.utils.validation'), 'StockDataPreparer')
+    datetime = getattr(importlib.import_module('datetime'), 'datetime')
+    timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
+    init_database = getattr(importlib.import_module('app.core.database'), 'init_database')
+    close_database = getattr(importlib.import_module('app.core.database'), 'close_database')
 
     print("\n" + "=" * 80)
     print("🧪 测试数据同步功能（异步）")
@@ -145,7 +149,7 @@ async def test_data_sync_async():
 
         except Exception as e:
             print(f"   ❌ 同步失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
 
     finally:
@@ -157,7 +161,7 @@ async def test_data_sync_async():
 
 def test_data_sync():
     """测试数据同步功能（同步包装器）"""
-    import asyncio
+    asyncio = importlib.import_module('asyncio')
 
     # 运行异步测试
     asyncio.run(test_data_sync_async())

@@ -2,6 +2,7 @@
 """
 清理测试数据
 """
+import importlib
 
 import sys
 import os
@@ -19,7 +20,7 @@ def cleanup_test_files():
     test_dir = project_root / "data" / "analysis_results" / "TEST123"
 
     if test_dir.exists():
-        import shutil
+        shutil = importlib.import_module('shutil')
         shutil.rmtree(test_dir)
         print(f"✅ 已删除测试目录: {test_dir}")
     else:
@@ -30,7 +31,7 @@ def cleanup_mongodb_test_data():
     print("🗄️ 清理MongoDB测试数据...")
 
     try:
-        from web.utils.mongodb import mongodb_report_manager
+        mongodb_report_manager = getattr(importlib.import_module('web.utils.mongodb'), 'mongodb_report_manager')
 
         if not mongodb_report_manager.connected:
             print("❌ MongoDB未连接")

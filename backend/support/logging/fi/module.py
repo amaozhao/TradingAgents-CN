@@ -2,6 +2,7 @@
 """
 测试日志修复效果的脚本
 """
+import importlib
 
 import os
 import sys
@@ -22,7 +23,8 @@ def test_logging_fix():
 
     try:
         # 初始化TradingAgents日志系统
-        from trader.utils.logging.init import init_logging, get_logger
+        init_logging = getattr(importlib.import_module('trader.utils.logging.init'), 'init_logging')
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         init_logging()
 
         # 获取日志器
@@ -30,8 +32,8 @@ def test_logging_fix():
         logger.info("🧪 测试日志系统初始化成功")
 
         # 导入TradingAgents
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -77,7 +79,7 @@ def test_logging_fix():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

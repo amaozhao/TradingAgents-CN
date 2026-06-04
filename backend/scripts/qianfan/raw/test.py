@@ -4,6 +4,7 @@
 千帆API原生测试脚本
 直接使用千帆官方SDK测试连通性，不依赖项目集成代码
 """
+import importlib
 
 import os
 import sys
@@ -15,7 +16,7 @@ load_dotenv()
 def test_qianfan_with_sdk():
     """使用千帆官方SDK测试"""
     try:
-        import qianfan
+        qianfan = importlib.import_module('qianfan')
 
         # 优先使用新的API Key
         api_key = os.getenv('QIANFAN_API_KEY')
@@ -69,8 +70,8 @@ def test_qianfan_with_sdk():
 def test_qianfan_with_requests():
     """使用requests直接调用千帆API"""
     try:
-        import requests
-        import json
+        requests = importlib.import_module('requests')
+        json = importlib.import_module('json')
 
         api_key = os.getenv('QIANFAN_API_KEY')
         access_key = os.getenv('QIANFAN_ACCESS_KEY')

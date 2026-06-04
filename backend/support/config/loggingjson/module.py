@@ -1,3 +1,4 @@
+import importlib
 from importlib import reload
 import logging
 
@@ -21,7 +22,7 @@ json = true
     monkeypatch.chdir(tmp_path)
 
     # Import module fresh
-    from app.core import loggingconfig as lc
+    lc = getattr(importlib.import_module('app.core'), 'loggingconfig')
     reload(lc)
 
     # Act

@@ -1,19 +1,23 @@
 """
 分析报告管理API路由
 """
+import importlib
 import os
 import json
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 
+from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
+from trader.utils.stocks import StockUtils
 
 from .account import get_current_user
 from ..models.response import ApiResponse
-from ..core.database import get_mongo_db
+from ..core.database import get_mongo_db, get_mongo_db_sync
+from ..core.unified import UnifiedConfigManager
 from ..db.dual import dual_write_hot_document
 from ..utils.timezone import to_config_tz
 import logging
@@ -36,9 +40,6 @@ def get_stock_name(stock_code: str) -> str:
 
     try:
         # 从 MongoDB 获取股票名称
-        from ..core.database import get_mongo_db_sync
-        from ..core.unified import UnifiedConfigManager
-
         db = get_mongo_db_sync()
         code6 = str(stock_code).zfill(6)
 
@@ -89,12 +90,11 @@ def get_stock_name(stock_code: str) -> str:
 
 # 统一构建报告查询：支持 _id(ObjectId) / analysis_id / task_id 三种
 def _build_report_query(report_id: str) -> Dict[str, Any]:
-    ors = [
+    ors: List[Dict[str, Any]] = [
         {"analysis_id": report_id},
         {"task_id": report_id},
     ]
     try:
-        from bson import ObjectId
         ors.append({"_id": ObjectId(report_id)})
     except Exception:
         pass
@@ -175,7 +175,7 @@ async def get_reports_list(
         reports = []
         async for doc in cursor:
             # 转换为前端需要的格式
-            stock_code = doc.get("stock_symbol", "")
+            stock_code = str(doc.get("stock_symbol") or "")
             # 🔥 优先使用MongoDB中保存的股票名称，如果没有则查询
             stock_name = doc.get("stock_name")
             if not stock_name:
@@ -184,7 +184,6 @@ async def get_reports_list(
             # 🔥 获取市场类型，如果没有则根据股票代码推断
             market_type = doc.get("market_type")
             if not market_type:
-                from trader.utils.stocks import StockUtils
                 market_info = StockUtils.get_market_info(stock_code)
                 market_type_map = {
                     "china_a": "A股",
@@ -473,11 +472,11 @@ async def download_report(
             media_type = "application/json"
 
             # 返回文件流
-            def generate():
+            def generate_json_report():
                 yield content.encode('utf-8')
 
             return StreamingResponse(
-                generate(),
+                generate_json_report(),
                 media_type=media_type,
                 headers={"Content-Disposition": f"attachment; filename={filename}"}
             )
@@ -512,18 +511,18 @@ async def download_report(
             media_type = "text/markdown"
 
             # 返回文件流
-            def generate():
+            def generate_markdown_report():
                 yield content.encode('utf-8')
 
             return StreamingResponse(
-                generate(),
+                generate_markdown_report(),
                 media_type=media_type,
                 headers={"Content-Disposition": f"attachment; filename={filename}"}
             )
 
         elif format == "docx":
             # Word 文档格式下载
-            from app.utils.reports import reports
+            reports = getattr(importlib.import_module('app.utils.reports'), 'reports')
 
             if not reports.pandoc_available:
                 raise HTTPException(
@@ -551,7 +550,7 @@ async def download_report(
 
         elif format == "pdf":
             # PDF 格式下载
-            from app.utils.reports import reports
+            reports = getattr(importlib.import_module('app.utils.reports'), 'reports')
 
             if not reports.pandoc_available:
                 raise HTTPException(

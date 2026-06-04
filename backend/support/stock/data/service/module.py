@@ -4,6 +4,7 @@
 股票数据服务测试程序
 测试MongoDB -> Tushare数据接口的完整降级机制
 """
+import importlib
 
 import sys
 import os
@@ -408,7 +409,7 @@ def run_manual_test():
 
     except Exception as e:
         print(f"\n❌ 手动测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == '__main__':

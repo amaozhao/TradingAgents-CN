@@ -6,6 +6,7 @@ import streamlit as st
 import json
 import time
 import hashlib
+import importlib
 import os
 from typing import Optional, Dict, Any
 
@@ -26,7 +27,7 @@ class RedisSessionManager:
             if redis_enabled != 'true':
                 return False
 
-            import redis
+            redis = importlib.import_module('redis')
 
             # 从环境变量获取Redis配置
             redis_host = os.getenv('REDIS_HOST', 'localhost')
@@ -66,7 +67,7 @@ class RedisSessionManager:
 
             # 如果无法获取session_id，使用IP+UserAgent的hash
             # 注意：这是一个fallback方案，可能不够精确
-            import streamlit.web.server.websocket_headers as wsh
+            wsh = importlib.import_module("streamlit.web.server.websocket_headers")
             headers = wsh.get_websocket_headers()
 
             user_agent = headers.get('User-Agent', 'unknown')
@@ -170,7 +171,7 @@ class RedisSessionManager:
     def _save_to_file(self, session_key: str, session_data: Dict[str, Any]):
         """保存到文件（fallback方案）"""
         try:
-            import os
+            os = importlib.import_module('os')
             os.makedirs("./data", exist_ok=True)
 
             filename = f"./data/{session_key.replace(':', '_')}.json"
@@ -272,7 +273,7 @@ def get_persistent_analysis_id() -> Optional[str]:
                 return analysis_id
 
         # 3. 最后从Redis/文件恢复最新分析
-        from .progress import get_latest_analysis_id
+        get_latest_analysis_id = getattr(importlib.import_module('web.utils.progress'), 'get_latest_analysis_id')
         latest_id = get_latest_analysis_id()
         if latest_id:
             st.session_state.current_analysis_id = latest_id

@@ -3,10 +3,11 @@
 财务数据服务
 统一管理三数据源的财务数据存储和查询
 """
+import importlib
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from pymongo import ReplaceOne
 
@@ -22,7 +23,7 @@ class FinancialDataService:
 
     def __init__(self):
         self.collection_name = "stock_financial_data"
-        self.db = None
+        self.db: Any = None
 
     async def initialize(self):
         """初始化服务"""
@@ -82,7 +83,7 @@ class FinancialDataService:
         financial_data: Dict[str, Any],
         data_source: str,
         market: str = "CN",
-        report_period: str = None,
+        report_period: Optional[str] = None,
         report_type: str = "quarterly",
     ) -> int:
         """
@@ -101,11 +102,12 @@ class FinancialDataService:
         """
         if self.db is None:
             await self.initialize()
+        db: Any = self.db
 
         try:
             logger.info(f"💾 开始保存 {symbol} 财务数据 (数据源: {data_source})")
 
-            collection = self.db[self.collection_name]
+            collection = db[self.collection_name]
 
             # 标准化财务数据
             standardized_data = self._standardize_financial_data(
@@ -117,7 +119,7 @@ class FinancialDataService:
                 return 0
 
             # 批量操作
-            operations = []
+            operations: List[Any] = []
             saved_count = 0
 
             # 如果是多期数据，分别处理每期
@@ -161,10 +163,10 @@ class FinancialDataService:
     async def get_financial_data(
         self,
         symbol: str,
-        report_period: str = None,
-        data_source: str = None,
-        report_type: str = None,
-        limit: int = None,
+        report_period: Optional[str] = None,
+        data_source: Optional[str] = None,
+        report_type: Optional[str] = None,
+        limit: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         查询财务数据
@@ -193,12 +195,13 @@ class FinancialDataService:
 
         if self.db is None:
             await self.initialize()
+        db: Any = self.db
 
         try:
-            collection = self.db[self.collection_name]
+            collection = db[self.collection_name]
 
             # 构建查询条件
-            query = {"symbol": symbol}
+            query: Dict[str, Any] = {"symbol": symbol}
 
             if report_period:
                 query["report_period"] = report_period
@@ -234,8 +237,8 @@ class FinancialDataService:
         limit: int | None,
     ) -> List[Dict[str, Any]]:
         try:
-            from app.db.financial import get_financial_data
-            from app.db.session import get_session_factory
+            get_financial_data = getattr(importlib.import_module('app.db.financial'), 'get_financial_data')
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
             async with get_session_factory()() as session:
                 return await get_financial_data(
@@ -250,7 +253,9 @@ class FinancialDataService:
             logger.warning(f"PostgreSQL财务数据查询失败，回退MongoDB symbol={symbol}: {e}")
             return []
 
-    async def get_latest_financial_data(self, symbol: str, data_source: str = None) -> Optional[Dict[str, Any]]:
+    async def get_latest_financial_data(
+        self, symbol: str, data_source: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         """获取最新财务数据"""
         results = await self.get_financial_data(symbol=symbol, data_source=data_source, limit=1)
 
@@ -260,9 +265,10 @@ class FinancialDataService:
         """获取财务数据统计信息"""
         if self.db is None:
             await self.initialize()
+        db: Any = self.db
 
         try:
-            collection = self.db[self.collection_name]
+            collection = db[self.collection_name]
 
             # 按数据源统计
             pipeline = [
@@ -318,9 +324,9 @@ class FinancialDataService:
         financial_data: Dict[str, Any],
         data_source: str,
         market: str,
-        report_period: str = None,
+        report_period: Optional[str] = None,
         report_type: str = "quarterly",
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
         """标准化财务数据"""
         try:
             now = datetime.now(timezone.utc)
@@ -345,7 +351,7 @@ class FinancialDataService:
         symbol: str,
         financial_data: Dict[str, Any],
         market: str,
-        report_period: str,
+        report_period: Optional[str],
         report_type: str,
         now: datetime,
     ) -> Dict[str, Any]:
@@ -382,7 +388,7 @@ class FinancialDataService:
         symbol: str,
         financial_data: Dict[str, Any],
         market: str,
-        report_period: str,
+        report_period: Optional[str],
         report_type: str,
         now: datetime,
     ) -> Dict[str, Any]:
@@ -410,7 +416,7 @@ class FinancialDataService:
         symbol: str,
         financial_data: Dict[str, Any],
         market: str,
-        report_period: str,
+        report_period: Optional[str],
         report_type: str,
         now: datetime,
     ) -> Dict[str, Any]:

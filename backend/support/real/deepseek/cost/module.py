@@ -2,6 +2,7 @@
 """
 实际测试DeepSeek成本计算修复效果
 """
+import importlib
 
 import os
 import sys
@@ -26,10 +27,10 @@ def test_real_deepseek_analysis():
         return False
 
     try:
-        from trader.agents.analysts.market import create_market_analyst_react
-        from trader.llm.adapters.deepseek import ChatDeepSeek
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        create_market_analyst_react = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst_react')
+        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         print("🔧 初始化DeepSeek分析师...")
 
@@ -78,7 +79,7 @@ def test_real_deepseek_analysis():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -93,7 +94,7 @@ def test_simple_deepseek_call():
         return False
 
     try:
-        from trader.llm.adapters.deepseek import ChatDeepSeek
+        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
 
         print("🔧 创建DeepSeek实例...")
 
@@ -120,7 +121,7 @@ def test_simple_deepseek_call():
 
     except Exception as e:
         print(f"❌ 简单调用测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -135,7 +136,7 @@ def test_multiple_calls():
         return False
 
     try:
-        from trader.llm.adapters.deepseek import ChatDeepSeek
+        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
 
         print("🔧 创建DeepSeek实例...")
 
@@ -168,7 +169,7 @@ def test_multiple_calls():
 
     except Exception as e:
         print(f"❌ 多次调用测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

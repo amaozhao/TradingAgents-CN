@@ -151,8 +151,8 @@ class NewsRelevanceFilter:
         filtered_news = []
 
         for idx, row in news_df.iterrows():
-            title = row.get('新闻标题', row.get('标题', ''))
-            content = row.get('新闻内容', row.get('内容', ''))
+            title = str(row.get('新闻标题', row.get('标题', '')) or '')
+            content = str(row.get('新闻内容', row.get('内容', '')) or '')
 
             # 计算相关性评分
             score = self.calculate_relevance_score(title, content)

@@ -3,6 +3,7 @@
 独立的AKShare功能测试
 绕过yfinance依赖问题，直接测试AKShare集成
 """
+import importlib
 
 import sys
 import os
@@ -17,7 +18,7 @@ def test_akshare_direct():
     print("=" * 40)
 
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
         print(f"✅ AKShare导入成功，版本: {ak.__version__}")
 
         # 测试获取股票列表
@@ -91,7 +92,7 @@ def test_akshare_utils_direct():
 
     except Exception as e:
         print(f"❌ akshare_utils测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -139,7 +140,7 @@ def analyze_yfinance_issue():
 
     try:
         # 检查yfinance是否可以独立导入
-        import yfinance as yf
+        yf = importlib.import_module('yfinance')
         print("✅ yfinance可以独立导入")
         return True
     except Exception as e:
@@ -147,14 +148,14 @@ def analyze_yfinance_issue():
 
         # 检查curl_cffi
         try:
-            import curl_cffi
+            curl_cffi = importlib.import_module('curl_cffi')
             print("✅ curl_cffi可以导入")
         except Exception as e2:
             print(f"❌ curl_cffi导入失败: {e2}")
 
         # 检查cffi
         try:
-            import cffi
+            cffi = importlib.import_module('cffi')
             print("✅ cffi可以导入")
         except Exception as e3:
             print(f"❌ cffi导入失败: {e3}")

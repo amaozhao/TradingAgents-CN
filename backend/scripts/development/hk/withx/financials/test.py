@@ -6,6 +6,7 @@
 2. 测试历史数据中的 PE、PB 计算
 3. 验证数据完整性
 """
+import importlib
 
 import sys
 import os
@@ -23,7 +24,7 @@ def test_financial_indicators():
     test_symbols = ["00005", "00700", "01810"]  # 汇丰控股、腾讯、小米
 
     try:
-        from trader.flows.providers.hk.improved_hk import get_hk_financial_indicators
+        get_hk_financial_indicators = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_financial_indicators')
 
         for symbol in test_symbols:
             print(f"\n📊 测试股票: {symbol}")
@@ -48,12 +49,12 @@ def test_financial_indicators():
 
             except Exception as e:
                 print(f"   ❌ 获取失败: {e}")
-                import traceback
+                traceback = importlib.import_module('traceback')
                 traceback.print_exc()
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
@@ -66,8 +67,9 @@ def test_historical_data_with_pe_pb():
     test_symbol = "00005"  # 汇丰控股
 
     try:
-        from trader.flows.providers.hk.improved_hk import get_hk_stock_data_akshare
-        from datetime import datetime, timedelta
+        get_hk_stock_data_akshare = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_stock_data_akshare')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         # 获取最近30天数据
         end_date = datetime.now().strftime('%Y-%m-%d')
@@ -103,7 +105,7 @@ def test_historical_data_with_pe_pb():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
@@ -116,12 +118,11 @@ def test_pe_pb_calculation():
     test_symbol = "00700"  # 腾讯控股
 
     try:
-        from trader.flows.providers.hk.improved_hk import (
-            get_hk_financial_indicators,
-            get_hk_stock_data_akshare
-        )
-        from datetime import datetime, timedelta
-        import re
+        get_hk_financial_indicators = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_financial_indicators')
+        get_hk_stock_data_akshare = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_stock_data_akshare')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
+        re = importlib.import_module('re')
 
         print(f"\n📊 测试股票: {test_symbol} (腾讯控股)")
 
@@ -200,7 +201,7 @@ def test_pe_pb_calculation():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

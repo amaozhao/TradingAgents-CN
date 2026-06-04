@@ -2,6 +2,7 @@
 """
 测试时区修复
 """
+import importlib
 
 import asyncio
 import sys
@@ -53,7 +54,7 @@ async def test_timezone_fix():
         # 直接从数据库查询这条记录
         print("\n🔍 从数据库查询记录...")
         db = get_mongo_db()
-        from bson import ObjectId
+        ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
 
         doc = await db.operation_logs.find_one({"_id": ObjectId(log_id)})
         if doc:
@@ -81,8 +82,8 @@ async def test_timezone_fix():
 
         # 测试API返回的时间格式
         print("\n🌐 测试API返回格式...")
-        from app.services.operation import get_operation_log_service
-        from app.models.operations import OperationLogQuery
+        get_operation_log_service = getattr(importlib.import_module('app.services.operation'), 'get_operation_log_service')
+        OperationLogQuery = getattr(importlib.import_module('app.models.operations'), 'OperationLogQuery')
 
         service = get_operation_log_service()
         query = OperationLogQuery(page=1, page_size=1)
@@ -105,7 +106,7 @@ async def test_timezone_fix():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

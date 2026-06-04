@@ -261,7 +261,7 @@ def log_llm_call(provider: str, model: str):
 
 
 # 便捷函数
-def log_tool_usage(tool_name: str, symbol: str = None, **extra_data):
+def log_tool_usage(tool_name: str, symbol: Optional[str] = None, **extra_data):
     """
     记录工具使用情况的便捷函数
 
@@ -303,7 +303,7 @@ def log_analysis_step(step_name: str, symbol: str, **extra_data):
     tool_logger.info(f"📈 [分析步骤] {step_name} - {symbol}", extra=extra)
 
 
-def log_analysis_module(module_name: str, session_id: str = None):
+def log_analysis_module(module_name: str, session_id: Optional[str] = None):
     """
     分析模块日志装饰器
     自动记录模块的开始和结束

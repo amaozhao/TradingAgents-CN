@@ -2,6 +2,7 @@
 日志导出服务
 提供日志文件的查询、过滤和导出功能
 """
+import importlib
 
 import logging
 import os
@@ -396,8 +397,8 @@ def _get_log_directory() -> str:
     2. 从settings配置读取
     3. 使用默认值 ./logs
     """
-    import os
-    from pathlib import Path
+    os = importlib.import_module('os')
+    Path = getattr(importlib.import_module('pathlib'), 'Path')
 
     try:
         logger.info(f"🔍 [_get_log_directory] 开始获取日志目录")
@@ -413,11 +414,11 @@ def _get_log_directory() -> str:
 
         # 尝试从日志配置文件读取
         try:
-            import tomllib as toml_loader
+            toml_loader = importlib.import_module('tomllib')
             logger.info(f"🔍 [_get_log_directory] 使用 tomllib 加载TOML")
         except ImportError:
             try:
-                import tomli as toml_loader
+                toml_loader = importlib.import_module('tomli')
                 logger.info(f"🔍 [_get_log_directory] 使用 tomli 加载TOML")
             except ImportError:
                 toml_loader = None
@@ -454,7 +455,7 @@ def _get_log_directory() -> str:
 
         # 回退到settings配置
         try:
-            from app.core.config import settings
+            settings = getattr(importlib.import_module('app.core.config'), 'settings')
             log_dir = settings.log_dir
             logger.info(f"🔍 [_get_log_directory] settings.log_dir: {log_dir}")
             if log_dir:

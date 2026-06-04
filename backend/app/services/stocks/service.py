@@ -2,6 +2,7 @@
 股票数据服务层 - 统一数据访问接口
 基于现有MongoDB集合，提供标准化的数据访问服务
 """
+import importlib
 import logging
 from datetime import datetime, date
 from typing import Optional, Dict, Any, List
@@ -55,7 +56,7 @@ class StockDataService:
             symbol6 = str(symbol).zfill(6)
 
             # 🔥 构建查询条件
-            query = {"$or": [{"symbol": symbol6}, {"code": symbol6}]}
+            query: dict[str, Any] = {"$or": [{"symbol": symbol6}, {"code": symbol6}]}
 
             if source:
                 # 指定数据源
@@ -168,7 +169,7 @@ class StockDataService:
 
             # 🔥 获取数据源优先级配置
             if not source:
-                from app.core.unified import UnifiedConfigManager
+                UnifiedConfigManager = getattr(importlib.import_module('app.core.unified'), 'UnifiedConfigManager')
                 config = UnifiedConfigManager()
                 data_source_configs = await config.get_data_source_configs_async()
 
@@ -217,8 +218,8 @@ class StockDataService:
         source: Optional[str],
     ) -> Optional[Dict[str, Any]]:
         try:
-            from app.db.session import get_session_factory
-            from app.db.stock import get_stock_basic_info
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            get_stock_basic_info = getattr(importlib.import_module('app.db.stock'), 'get_stock_basic_info')
 
             async with get_session_factory()() as session:
                 return await get_stock_basic_info(session, symbol, source)
@@ -228,8 +229,8 @@ class StockDataService:
 
     async def _get_market_quotes_from_postgres(self, symbol: str) -> Optional[Dict[str, Any]]:
         try:
-            from app.db.session import get_session_factory
-            from app.db.stock import get_market_quote
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            get_market_quote = getattr(importlib.import_module('app.db.stock'), 'get_market_quote')
 
             async with get_session_factory()() as session:
                 return await get_market_quote(session, symbol)
@@ -247,8 +248,8 @@ class StockDataService:
         source: Optional[str],
     ) -> List[Dict[str, Any]]:
         try:
-            from app.db.session import get_session_factory
-            from app.db.stock import list_stocks
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            list_stocks = getattr(importlib.import_module('app.db.stock'), 'list_stocks')
 
             effective_source = source or await self._get_preferred_source()
             async with get_session_factory()() as session:
@@ -265,7 +266,7 @@ class StockDataService:
             return []
 
     async def _get_preferred_source(self) -> str:
-        from app.core.unified import UnifiedConfigManager
+        UnifiedConfigManager = getattr(importlib.import_module('app.core.unified'), 'UnifiedConfigManager')
 
         config = UnifiedConfigManager()
         data_source_configs = await config.get_data_source_configs_async()

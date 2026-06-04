@@ -2,10 +2,11 @@
 AKShare统一数据提供器
 基于AKShare SDK的统一数据同步方案，提供标准化的数据接口
 """
+import importlib
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional, Union, cast
 import pandas as pd
 
 from ..base import BaseStockDataProvider
@@ -27,7 +28,7 @@ class AKShareProvider(BaseStockDataProvider):
 
     def __init__(self):
         super().__init__("AKShare")
-        self.ak = None
+        self.ak: Any = None
         self.connected = False
         self._stock_list_cache = None  # 缓存股票列表，避免重复获取
         self._cache_time = None  # 缓存时间
@@ -36,13 +37,13 @@ class AKShareProvider(BaseStockDataProvider):
     def _initialize_akshare(self):
         """初始化AKShare连接"""
         try:
-            import akshare as ak
-            import requests
-            import time
+            ak = importlib.import_module('akshare')
+            requests = cast(Any, importlib.import_module('requests'))
+            time = importlib.import_module('time')
 
             # 尝试导入 curl_cffi，如果可用则使用它来绕过反爬虫
             try:
-                from curl_cffi import requests as curl_requests
+                curl_requests = getattr(importlib.import_module('curl_cffi'), 'requests')
                 use_curl_cffi = True
                 logger.info("🔧 检测到 curl_cffi，将使用它来模拟真实浏览器 TLS 指纹")
             except ImportError:
@@ -54,7 +55,7 @@ class AKShareProvider(BaseStockDataProvider):
             # AKShare的stock_news_em()函数没有设置必要的headers，导致API返回空响应
             if not hasattr(requests, '_akshare_headers_patched'):
                 original_get = requests.get
-                last_request_time = {'time': 0}  # 使用字典以便在闭包中修改
+                last_request_time: Dict[str, float] = {'time': 0.0}  # 使用字典以便在闭包中修改
 
                 def patched_get(url, **kwargs):
                     """
@@ -144,7 +145,7 @@ class AKShareProvider(BaseStockDataProvider):
 
                 # 应用patch
                 requests.get = patched_get
-                requests._akshare_headers_patched = True
+                setattr(requests, "_akshare_headers_patched", True)
 
                 if use_curl_cffi:
                     logger.info("🔧 已修复AKShare的headers问题，使用 curl_cffi 模拟真实浏览器（Chrome 120）")
@@ -178,10 +179,10 @@ class AKShareProvider(BaseStockDataProvider):
             新闻 DataFrame 或 None
         """
         try:
-            from curl_cffi import requests as curl_requests
-            import json
-            import time
-            import os
+            curl_requests = getattr(importlib.import_module('curl_cffi'), 'requests')
+            json = importlib.import_module('json')
+            time = importlib.import_module('time')
+            os = importlib.import_module('os')
 
             # 标准化股票代码
             symbol_6 = symbol.zfill(6)
@@ -267,7 +268,7 @@ class AKShareProvider(BaseStockDataProvider):
     def _configure_timeout(self):
         """配置AKShare的超时设置"""
         try:
-            import socket
+            socket = importlib.import_module('socket')
             socket.setdefaulttimeout(60)  # 60秒超时
             logger.info("🔧 AKShare超时配置完成: 60秒")
         except Exception as e:
@@ -395,7 +396,8 @@ class AKShareProvider(BaseStockDataProvider):
 
     async def _get_stock_list_cached(self):
         """获取缓存的股票列表（避免重复获取）"""
-        from datetime import datetime, timedelta
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         # 如果缓存存在且未过期（1小时），直接返回
         if self._stock_list_cache is not None and self._cache_time is not None:
@@ -577,7 +579,7 @@ class AKShareProvider(BaseStockDataProvider):
 
                 # 优先使用新浪财经接口（更稳定，不容易被封）
                 def fetch_spot_data_sina():
-                    import time
+                    time = importlib.import_module('time')
                     time.sleep(0.3)  # 添加延迟避免频率限制
                     return self.ak.stock_zh_a_spot()
 
@@ -589,7 +591,7 @@ class AKShareProvider(BaseStockDataProvider):
                     logger.warning(f"⚠️ 新浪财经接口失败: {e}，尝试东方财富接口...")
                     # 回退到东方财富接口
                     def fetch_spot_data_em():
-                        import time
+                        time = importlib.import_module('time')
                         time.sleep(0.5)
                         return self.ak.stock_zh_a_spot_em()
                     spot_df = await asyncio.to_thread(fetch_spot_data_em)
@@ -667,8 +669,8 @@ class AKShareProvider(BaseStockDataProvider):
                             "pe": quotes_data.get("pe"),  # 动态市盈率
                             "pe_ttm": quotes_data.get("pe"),  # TTM市盈率（与动态市盈率相同）
                             "pb": quotes_data.get("pb"),  # 市净率
-                            "total_mv": quotes_data.get("total_mv") / 1e8 if quotes_data.get("total_mv") else None,  # 总市值（转换为亿元）
-                            "circ_mv": quotes_data.get("circ_mv") / 1e8 if quotes_data.get("circ_mv") else None,  # 流通市值（转换为亿元）
+                            "total_mv": float(quotes_data["total_mv"]) / 1e8 if quotes_data.get("total_mv") is not None else None,  # 总市值（转换为亿元）
+                            "circ_mv": float(quotes_data["circ_mv"]) / 1e8 if quotes_data.get("circ_mv") is not None else None,  # 流通市值（转换为亿元）
                             # 扩展字段
                             "full_symbol": self._get_full_symbol(matched_code),
                             "market_info": self._get_market_info(matched_code),
@@ -698,6 +700,7 @@ class AKShareProvider(BaseStockDataProvider):
                 else:
                     logger.error(f"❌ 批量获取实时行情失败，已达最大重试次数: {e}")
                     return {}
+        return {}
 
     async def get_stock_quotes(self, code: str) -> Optional[Dict[str, Any]]:
         """
@@ -935,8 +938,8 @@ class AKShareProvider(BaseStockDataProvider):
             "pe": quote_data.get("pe"),
             "pe_ttm": quote_data.get("pe"),
             "pb": quote_data.get("pb"),
-            "total_mv": quote_data.get("total_mv") / 1e8 if quote_data.get("total_mv") else None,
-            "circ_mv": quote_data.get("circ_mv") / 1e8 if quote_data.get("circ_mv") else None,
+            "total_mv": float(quote_data["total_mv"]) / 1e8 if quote_data.get("total_mv") is not None else None,
+            "circ_mv": float(quote_data["circ_mv"]) / 1e8 if quote_data.get("circ_mv") is not None else None,
             "trade_date": trade_date,
             "updated_at": now_cn.isoformat(),
             "full_symbol": self._get_full_symbol(code),
@@ -976,9 +979,9 @@ class AKShareProvider(BaseStockDataProvider):
 
     async def get_historical_data(
         self,
-        code: str = None,
-        start_date: str = None,
-        end_date: str = None,
+        code: Optional[str] = None,
+        start_date: Any = None,
+        end_date: Any = None,
         period: str = "daily",
         **kwargs
     ) -> Optional[pd.DataFrame]:
@@ -994,7 +997,7 @@ class AKShareProvider(BaseStockDataProvider):
         Returns:
             历史行情数据DataFrame
         """
-        code = code or kwargs.get("symbol")
+        code = str(code or kwargs.get("symbol") or "")
         if not code:
             logger.error("❌ 获取历史数据失败: 缺少股票代码")
             return None
@@ -1081,7 +1084,7 @@ class AKShareProvider(BaseStockDataProvider):
             numeric_columns = ['open', 'close', 'high', 'low', 'volume', 'amount']
             for col in numeric_columns:
                 if col in df.columns:
-                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                    df[col] = cast(Any, pd.to_numeric(df[col], errors='coerce')).fillna(0)
 
             return df
 
@@ -1199,7 +1202,7 @@ class AKShareProvider(BaseStockDataProvider):
                 "error": str(e)
             }
 
-    def get_stock_news_sync(self, symbol: str = None, limit: int = 10) -> Optional[pd.DataFrame]:
+    def get_stock_news_sync(self, symbol: Optional[str] = None, limit: int = 10) -> Optional[pd.DataFrame]:
         """
         获取股票新闻（同步版本，返回原始 DataFrame）
 
@@ -1214,9 +1217,9 @@ class AKShareProvider(BaseStockDataProvider):
             return None
 
         try:
-            import akshare as ak
-            import json
-            import time
+            ak = importlib.import_module('akshare')
+            json = importlib.import_module('json')
+            time = importlib.import_module('time')
 
             if symbol:
                 # 获取个股新闻
@@ -1272,7 +1275,7 @@ class AKShareProvider(BaseStockDataProvider):
             self.logger.error(f"❌ AKShare新闻获取失败: {e}")
             return None
 
-    async def get_stock_news(self, symbol: str = None, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
+    async def get_stock_news(self, symbol: Optional[str] = None, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
         """
         获取股票新闻（异步版本，返回结构化列表）
 
@@ -1287,9 +1290,9 @@ class AKShareProvider(BaseStockDataProvider):
             return None
 
         try:
-            import akshare as ak
-            import json
-            import os
+            ak = importlib.import_module('akshare')
+            json = importlib.import_module('json')
+            os = importlib.import_module('os')
 
             if symbol:
                 # 获取个股新闻
@@ -1309,7 +1312,7 @@ class AKShareProvider(BaseStockDataProvider):
                 # 如果在 Docker 环境中，尝试使用 curl_cffi 直接调用 API
                 if is_docker:
                     try:
-                        from curl_cffi import requests as curl_requests
+                        curl_requests = getattr(importlib.import_module('curl_cffi'), 'requests')
                         self.logger.debug(f"🐳 检测到 Docker 环境，使用 curl_cffi 直接调用 API")
                         news_df = await asyncio.to_thread(
                             self._get_stock_news_direct,
@@ -1385,7 +1388,7 @@ class AKShareProvider(BaseStockDataProvider):
                             "url": str(row.get('新闻链接', '') or row.get('链接', '')),
                             "source": str(row.get('文章来源', '') or row.get('来源', '') or '东方财富'),
                             "author": str(row.get('作者', '') or ''),
-                            "publish_time": self._parse_news_time(row.get('发布时间', '') or row.get('时间', '')),
+                            "publish_time": self._parse_news_time(str(row.get('发布时间', '') or row.get('时间', '') or '')),
                             "category": self._classify_news(content, title),
                             "sentiment": self._analyze_news_sentiment(content, title),
                             "sentiment_score": self._calculate_sentiment_score(content, title),
@@ -1409,10 +1412,7 @@ class AKShareProvider(BaseStockDataProvider):
 
                 try:
                     # 获取财经新闻
-                    news_df = await asyncio.to_thread(
-                        ak.news_cctv,
-                        limit=limit
-                    )
+                    news_df = await asyncio.to_thread(ak.news_cctv)
 
                     if news_df is not None and not news_df.empty:
                         news_list = []
@@ -1429,7 +1429,7 @@ class AKShareProvider(BaseStockDataProvider):
                                 "url": str(row.get('url', '') or row.get('链接', '')),
                                 "source": str(row.get('source', '') or row.get('来源', '') or 'CCTV财经'),
                                 "author": str(row.get('author', '') or ''),
-                                "publish_time": self._parse_news_time(row.get('time', '') or row.get('时间', '')),
+                                "publish_time": self._parse_news_time(str(row.get('time', '') or row.get('时间', '') or '')),
                                 "category": self._classify_news(content, title),
                                 "sentiment": self._analyze_news_sentiment(content, title),
                                 "sentiment_score": self._calculate_sentiment_score(content, title),

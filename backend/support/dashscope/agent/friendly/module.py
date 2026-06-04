@@ -3,6 +3,7 @@
 阿里百炼工具调用测试 - Agent友好版本
 专门为agent执行优化，避免闪退问题
 """
+import importlib
 
 import os
 import sys
@@ -41,9 +42,9 @@ def main():
         flush_print("\n🔧 测试1: 基本导入")
         flush_print("-" * 40)
 
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from langchain_core.tools import tool
-        from langchain_core.messages import HumanMessage
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         flush_print("✅ 所有模块导入成功")
 

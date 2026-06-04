@@ -5,6 +5,7 @@ instead of `Date`, which would otherwise silently drop every indicator.
 """
 
 from __future__ import annotations
+import importlib
 
 import pandas as pd
 import pytest
@@ -62,7 +63,7 @@ class TestCleanDataframeAcrossVersions:
     def test_indicators_compute_after_index_rename(self):
         """stockstats must compute indicators on a frame whose date column
         arrived as `index`, instead of erroring per indicator."""
-        from stockstats import wrap
+        wrap = getattr(importlib.import_module('stockstats'), 'wrap')
         cleaned = su._clean_dataframe(_ohlcv("index"))
         df = wrap(cleaned)
         df["close_5_sma"]  # triggers calculation

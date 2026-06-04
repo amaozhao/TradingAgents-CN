@@ -8,6 +8,7 @@ PDF 导出需要额外工具:
     - wkhtmltopdf (推荐): https://wkhtmltopdf.org/downloads.html
     - 或 LaTeX: https://www.latex-project.org/get/
 """
+import importlib
 
 import logging
 import os
@@ -166,7 +167,7 @@ class ReportExporter:
 
     def _clean_markdown_for_pandoc(self, md_content: str) -> str:
         """清理 Markdown 内容，避免 pandoc 解析问题"""
-        import re
+        re = importlib.import_module('re')
 
         # 移除可能导致 YAML 解析问题的内容
         # 如果开头有 "---"，在前面添加空行
@@ -324,7 +325,7 @@ pre, code {
 
             # 🔥 后处理：修复 Word 文档中的文本方向
             try:
-                from docx import Document
+                Document = getattr(importlib.import_module('docx'), 'Document')
                 doc = Document(output_file)
 
                 # 修复所有段落的文本方向
@@ -377,7 +378,7 @@ pre, code {
 
     def _markdown_to_html(self, md_content: str) -> str:
         """将 Markdown 转换为 HTML"""
-        import markdown
+        markdown = importlib.import_module('markdown')
 
         # 配置 Markdown 扩展
         extensions = [
@@ -611,7 +612,7 @@ pre, code {
 
     def _generate_pdf_with_pdfkit(self, html_content: str) -> bytes:
         """使用 pdfkit 生成 PDF"""
-        import pdfkit
+        pdfkit = importlib.import_module('pdfkit')
 
         logger.info("🔧 使用 pdfkit + wkhtmltopdf 生成 PDF...")
 
@@ -628,6 +629,8 @@ pre, code {
 
         # 生成 PDF
         pdf_bytes = pdfkit.from_string(html_content, False, options=options)
+        if not isinstance(pdf_bytes, bytes):
+            raise RuntimeError("pdfkit did not return PDF bytes")
 
         logger.info(f"✅ pdfkit PDF 生成成功，大小: {len(pdf_bytes)} 字节")
         return pdf_bytes

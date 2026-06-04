@@ -7,6 +7,7 @@ Test CLI Fix - KeyError: 'stock_symbol' Issue
 这个测试验证了CLI中selections字典键名不匹配问题的修复
 This test verifies the fix for the selections dictionary key mismatch issue in CLI
 """
+import importlib
 
 import sys
 import os
@@ -25,7 +26,7 @@ def test_selections_dictionary_keys():
     print("🔍 测试selections字典键名...")
 
     try:
-        from cli.main import get_user_selections
+        get_user_selections = getattr(importlib.import_module('cli.main'), 'get_user_selections')
 
         # 模拟用户输入
         with patch('typer.prompt') as mock_prompt, \

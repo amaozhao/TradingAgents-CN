@@ -3,6 +3,7 @@
 测试CLI进度显示效果
 模拟分析流程，验证用户体验
 """
+import importlib
 
 import os
 import sys
@@ -18,7 +19,7 @@ def test_cli_ui_manager():
     print("=" * 60)
 
     try:
-        from cli.main import CLIUserInterface
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
 
         # 创建UI管理器
         ui = CLIUserInterface()
@@ -54,7 +55,7 @@ def test_cli_ui_manager():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -64,7 +65,7 @@ def test_analysis_flow_simulation():
     print("=" * 60)
 
     try:
-        from cli.main import CLIUserInterface
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
 
         ui = CLIUserInterface()
 
@@ -134,7 +135,7 @@ def test_analysis_flow_simulation():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -144,7 +145,8 @@ def test_progress_vs_logging():
     print("=" * 60)
 
     try:
-        from cli.main import CLIUserInterface, logger
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
+        logger = getattr(importlib.import_module('cli.main'), 'logger')
 
         ui = CLIUserInterface()
 
@@ -177,7 +179,7 @@ def test_user_experience():
     print("=" * 60)
 
     try:
-        from cli.main import CLIUserInterface
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
 
         ui = CLIUserInterface()
 

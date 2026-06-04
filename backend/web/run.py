@@ -2,6 +2,7 @@
 """
 TradingAgents-CN Web应用启动脚本
 """
+import importlib
 
 import os
 import sys
@@ -26,9 +27,9 @@ def check_dependencies():
     for package in required_packages:
         try:
             if package == 'streamlit':
-                import streamlit
+                streamlit = importlib.import_module('streamlit')
             elif package == 'plotly':
-                import plotly
+                plotly = importlib.import_module('plotly')
         except ImportError:
             missing_packages.append(package)
 
@@ -78,7 +79,7 @@ def clean_cache_files(force_clean=False):
 
     # 检查环境变量是否禁用清理（使用强健的布尔值解析）
     try:
-        from trader.config.env_utils import parse_bool_env
+        parse_bool_env = getattr(importlib.import_module('trader.config.env'), 'parse_bool_env')
         skip_clean = parse_bool_env('SKIP_CACHE_CLEAN', False)
     except ImportError:
         # 回退到原始方法
@@ -135,7 +136,7 @@ def clean_cache_files(force_clean=False):
             logger.info(f"🧹 清理项目缓存文件...")
             for cache_dir in project_cache_dirs:
                 try:
-                    import shutil
+                    shutil = importlib.import_module('shutil')
                     shutil.rmtree(cache_dir)
                     logger.info(f"  ✅ 已清理: {cache_dir.relative_to(project_root)}")
                 except Exception as e:
@@ -148,7 +149,7 @@ def clean_cache_files(force_clean=False):
         logger.info(f"🧹 强制清理所有缓存文件...")
         for cache_dir in cache_dirs:
             try:
-                import shutil
+                shutil = importlib.import_module('shutil')
                 shutil.rmtree(cache_dir)
                 logger.info(f"  ✅ 已清理: {cache_dir.relative_to(project_root)}")
             except Exception as e:
@@ -158,7 +159,7 @@ def clean_cache_files(force_clean=False):
 def check_api_keys():
     """检查API密钥配置"""
 
-    from dotenv import load_dotenv
+    load_dotenv = getattr(importlib.import_module('dotenv'), 'load_dotenv')
 
     # 加载环境变量
     project_root = Path(__file__).resolve().parent.parent.parent

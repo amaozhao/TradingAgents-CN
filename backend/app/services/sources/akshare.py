@@ -1,7 +1,8 @@
 """
 AKShare data source adapter
 """
-from typing import Optional, Dict
+import importlib
+from typing import Any, Optional, Dict, cast
 import logging
 from datetime import datetime, timedelta
 import pandas as pd
@@ -27,7 +28,7 @@ class AKShareAdapter(DataSourceAdapter):
     def is_available(self) -> bool:
         """检查AKShare是否可用"""
         try:
-            import akshare as ak  # noqa: F401
+            ak = importlib.import_module('akshare')
             return True
         except ImportError:
             return False
@@ -37,7 +38,7 @@ class AKShareAdapter(DataSourceAdapter):
         if not self.is_available():
             return None
         try:
-            import akshare as ak
+            ak = importlib.import_module('akshare')
             logger.info("AKShare: Fetching stock list with real names from stock_info_a_code_name()...")
 
             # 使用 AKShare 的 stock_info_a_code_name 接口获取股票代码和名称
@@ -117,7 +118,7 @@ class AKShareAdapter(DataSourceAdapter):
         if not self.is_available():
             return None
         try:
-            import akshare as ak  # noqa: F401
+            ak = importlib.import_module('akshare')
             logger.info(f"AKShare: Attempting to get basic financial data for {trade_date}")
 
             stock_df = self.get_stock_list()
@@ -130,7 +131,7 @@ class AKShareAdapter(DataSourceAdapter):
 
             basic_data = []
             processed_count = 0
-            import time
+            time = importlib.import_module('time')
             start_time = time.time()
             timeout_seconds = 30
 
@@ -206,7 +207,7 @@ class AKShareAdapter(DataSourceAdapter):
             return None
 
         try:
-            import akshare as ak  # type: ignore
+            ak = importlib.import_module('akshare')
 
             # 根据 source 参数选择接口
             if source == "sina":
@@ -297,7 +298,7 @@ class AKShareAdapter(DataSourceAdapter):
         if not self.is_available():
             return None
         try:
-            import akshare as ak
+            ak = importlib.import_module('akshare')
             code6 = str(code).zfill(6)
             items = []
             if period in ("day", "week", "month"):
@@ -347,7 +348,7 @@ class AKShareAdapter(DataSourceAdapter):
         if not self.is_available():
             return None
         try:
-            import akshare as ak
+            ak = importlib.import_module('akshare')
             code6 = str(code).zfill(6)
             items = []
             # news
@@ -368,7 +369,7 @@ class AKShareAdapter(DataSourceAdapter):
             # announcements
             try:
                 if include_announcements:
-                    dfa = ak.stock_announcement_em(symbol=code6)
+                    dfa = cast(Any, ak).stock_announcement_em(symbol=code6)
                     if dfa is not None and not dfa.empty:
                         for _, row in dfa.head(max(0, limit - len(items))).iterrows():
                             items.append({

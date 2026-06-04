@@ -3,6 +3,7 @@
 股票数据预获取功能测试脚本
 验证新的股票数据准备机制是否正常工作
 """
+import importlib
 
 import sys
 import os
@@ -18,7 +19,8 @@ def test_stock_data_preparation():
     print("=" * 80)
 
     try:
-        from trader.utils.stock_validator import prepare_stock_data, get_stock_preparation_message
+        prepare_stock_data = getattr(importlib.import_module('trader.utils.validation'), 'prepare_stock_data')
+        get_stock_preparation_message = getattr(importlib.import_module('trader.utils.validation'), 'get_stock_preparation_message')
 
         # 测试用例
         test_cases = [
@@ -105,7 +107,7 @@ def test_stock_data_preparation():
 
     except Exception as e:
         print(f"❌ 测试过程中发生异常: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -115,7 +117,7 @@ def test_format_validation():
     print("=" * 60)
 
     try:
-        from trader.utils.stock_validator import prepare_stock_data
+        prepare_stock_data = getattr(importlib.import_module('trader.utils.validation'), 'prepare_stock_data')
 
         format_tests = [
             # 格式正确的测试
@@ -159,7 +161,7 @@ def test_performance():
     print("=" * 60)
 
     try:
-        from trader.utils.stock_validator import prepare_stock_data
+        prepare_stock_data = getattr(importlib.import_module('trader.utils.validation'), 'prepare_stock_data')
 
         # 测试真实股票的性能
         performance_tests = [

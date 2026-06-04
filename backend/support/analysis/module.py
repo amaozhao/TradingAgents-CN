@@ -3,6 +3,7 @@
 简化的分析测试脚本
 用于验证TradingAgents核心功能是否正常工作
 """
+import importlib
 
 import os
 import sys
@@ -19,8 +20,8 @@ load_dotenv(project_root / ".env", override=True)
 def test_basic_imports():
     """测试基本导入"""
     try:
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
         print("✅ 基本导入成功")
         return True
     except Exception as e:
@@ -40,8 +41,8 @@ def test_environment_variables():
 def test_graph_initialization():
     """测试图初始化"""
     try:
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -67,7 +68,7 @@ def test_graph_initialization():
         return True, graph
     except Exception as e:
         print(f"❌ 图初始化失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False, None
 
@@ -86,7 +87,7 @@ def test_simple_analysis():
         return True
     except Exception as e:
         print(f"❌ 分析失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 

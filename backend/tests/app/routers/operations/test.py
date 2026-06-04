@@ -2,6 +2,7 @@
 """
 测试操作日志功能
 """
+import importlib
 
 import asyncio
 import sys
@@ -11,8 +12,8 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.core.database import init_db, get_mongo_db
+from app.models.operations import ActionType, OperationLogQuery
 from app.services.operation import log_operation, get_operation_log_service
-from app.models.operations import ActionType
 
 async def test_operation_logs():
     """测试操作日志功能"""
@@ -81,9 +82,16 @@ async def test_operation_logs():
 
         # 测试3: 查询操作日志
         print("\n📋 测试3: 查询操作日志")
-        from app.models.operations import OperationLogQuery
-
-        query = OperationLogQuery(page=1, page_size=10)
+        query = OperationLogQuery(
+            page=1,
+            page_size=10,
+            start_date=None,
+            end_date=None,
+            action_type=None,
+            success=None,
+            keyword=None,
+            user_id=None,
+        )
         logs, total = await service.get_logs(query)
         print(f"✅ 查询成功，总数: {total}, 返回: {len(logs)} 条")
 
@@ -117,7 +125,7 @@ async def test_operation_logs():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

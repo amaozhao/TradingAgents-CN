@@ -2,10 +2,11 @@
 Tushare数据同步服务
 负责将Tushare数据同步到MongoDB标准化集合
 """
+import importlib
 import asyncio
 import inspect
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, cast
 import logging
 
 from trader.flows.providers.china.tushare import TushareProvider
@@ -43,9 +44,9 @@ class TushareSyncService:
     def __init__(self):
         self.provider = TushareProvider()
         self.stock_service = get_stock_data_service()
-        self.historical_service = None  # 延迟初始化
-        self.news_service = None  # 延迟初始化
-        self.db = get_mongo_db()
+        self.historical_service: Any = None  # 延迟初始化
+        self.news_service: Any = None  # 延迟初始化
+        self.db: Any = get_mongo_db()
         self.settings = settings
 
         # 同步配置
@@ -57,6 +58,14 @@ class TushareSyncService:
         tushare_tier = getattr(settings, "TUSHARE_TIER", "standard")  # free/basic/standard/premium/vip
         safety_margin = float(getattr(settings, "TUSHARE_RATE_LIMIT_SAFETY_MARGIN", "0.8"))
         self.rate_limiter = get_tushare_rate_limiter(tier=tushare_tier, safety_margin=safety_margin)
+
+    @staticmethod
+    def _as_dict(value: Any) -> Dict[str, Any]:
+        if hasattr(value, "model_dump"):
+            return cast(Dict[str, Any], value.model_dump())
+        if hasattr(value, "dict"):
+            return cast(Dict[str, Any], value.dict())
+        return cast(Dict[str, Any], value)
 
     async def initialize(self):
         """初始化同步服务"""
@@ -82,7 +91,7 @@ class TushareSyncService:
 
     # ==================== 基础信息同步 ====================
 
-    async def sync_stock_basic_info(self, force_update: bool = False, job_id: str = None) -> Dict[str, Any]:
+    async def sync_stock_basic_info(self, force_update: bool = False, job_id: Optional[str] = None) -> Dict[str, Any]:
         """
         同步股票基础信息
 
@@ -179,12 +188,7 @@ class TushareSyncService:
         for stock_info in batch:
             try:
                 # 🔥 先转换为字典格式（如果是Pydantic模型）
-                if hasattr(stock_info, 'model_dump'):
-                    stock_data = stock_info.model_dump()
-                elif hasattr(stock_info, 'dict'):
-                    stock_data = stock_info.dict()
-                else:
-                    stock_data = stock_info
+                stock_data = self._as_dict(stock_info)
 
                 code = stock_data["code"]
 
@@ -193,7 +197,7 @@ class TushareSyncService:
                     existing = await self.stock_service.get_stock_basic_info(code)
                     if existing:
                         # 🔥 existing 也可能是 Pydantic 模型，需要安全获取属性
-                        existing_dict = existing.model_dump() if hasattr(existing, 'model_dump') else (existing.dict() if hasattr(existing, 'dict') else existing)
+                        existing_dict = self._as_dict(existing)
                         if self._is_data_fresh(existing_dict.get("updated_at"), hours=24):
                             batch_stats["skipped_count"] += 1
                             continue
@@ -214,14 +218,11 @@ class TushareSyncService:
                 batch_stats["error_count"] += 1
                 # 🔥 安全获取 code（处理 Pydantic 模型和字典）
                 try:
-                    if hasattr(stock_info, 'code'):
-                        code = stock_info.code
-                    elif hasattr(stock_info, 'model_dump'):
-                        code = stock_info.model_dump().get("code", "unknown")
-                    elif hasattr(stock_info, 'dict'):
-                        code = stock_info.dict().get("code", "unknown")
+                    stock_item: Any = stock_info
+                    if hasattr(stock_item, 'code'):
+                        code = stock_item.code
                     else:
-                        code = stock_info.get("code", "unknown")
+                        code = self._as_dict(stock_item).get("code", "unknown")
                 except:
                     code = "unknown"
 
@@ -235,7 +236,7 @@ class TushareSyncService:
 
     # ==================== 实时行情同步 ====================
 
-    async def sync_realtime_quotes(self, symbols: List[str] = None, force: bool = False) -> Dict[str, Any]:
+    async def sync_realtime_quotes(self, symbols: Optional[List[str]] = None, force: bool = False) -> Dict[str, Any]:
         """
         同步实时行情数据
 
@@ -282,7 +283,7 @@ class TushareSyncService:
                 logger.info(f"🎯 使用 AKShare 同步 {len(symbols)} 只股票的实时行情: {symbols}")
 
                 # 调用 AKShare 服务
-                from app.worker.akshare.sync import get_akshare_sync_service
+                get_akshare_sync_service = getattr(importlib.import_module('app.worker.akshare.sync'), 'get_akshare_sync_service')
                 akshare_service = await get_akshare_sync_service()
 
                 if not akshare_service:
@@ -534,8 +535,8 @@ class TushareSyncService:
 
         注意：此方法不检查节假日，仅检查时间段
         """
-        from datetime import datetime
-        import pytz
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        pytz = importlib.import_module('pytz')
 
         # 使用上海时区
         tz = pytz.timezone('Asia/Shanghai')
@@ -568,12 +569,7 @@ class TushareSyncService:
             quotes = await self.provider.get_stock_quotes(symbol)
             if quotes:
                 # 转换为字典格式（如果是Pydantic模型）
-                if hasattr(quotes, 'model_dump'):
-                    quotes_data = quotes.model_dump()
-                elif hasattr(quotes, 'dict'):
-                    quotes_data = quotes.dict()
-                else:
-                    quotes_data = quotes
+                quotes_data = self._as_dict(quotes)
 
                 return await self.stock_service.update_market_quotes(symbol, quotes_data)
             return False
@@ -590,13 +586,13 @@ class TushareSyncService:
 
     async def sync_historical_data(
         self,
-        symbols: List[str] = None,
-        start_date: str = None,
-        end_date: str = None,
+        symbols: Optional[List[str]] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
         incremental: bool = True,
         all_history: bool = False,
         period: str = "daily",
-        job_id: str = None
+        job_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         同步历史数据
@@ -756,7 +752,7 @@ class TushareSyncService:
                                    f"总等待时间: {limiter_stats['total_wait_time']:.1f}秒")
 
                 except Exception as e:
-                    import traceback
+                    traceback = importlib.import_module('traceback')
                     error_details = traceback.format_exc()
                     stats["error_count"] += 1
                     stats["errors"].append({
@@ -788,7 +784,7 @@ class TushareSyncService:
             return stats
 
         except Exception as e:
-            import traceback
+            traceback = importlib.import_module('traceback')
             error_details = traceback.format_exc()
             logger.error(
                 f"❌ 历史数据同步失败（外层异常）\n"
@@ -825,7 +821,7 @@ class TushareSyncService:
             logger.error(f"❌ 保存{period}数据失败 {symbol}: {e}")
             return 0
 
-    async def _get_last_sync_date(self, symbol: str = None) -> str:
+    async def _get_last_sync_date(self, symbol: Optional[str] = None) -> str:
         """
         获取最后同步日期
 
@@ -883,7 +879,7 @@ class TushareSyncService:
 
     # ==================== 财务数据同步 ====================
 
-    async def sync_financial_data(self, symbols: List[str] = None, limit: int = 20, job_id: str = None) -> Dict[str, Any]:
+    async def sync_financial_data(self, symbols: Optional[List[str]] = None, limit: int = 20, job_id: Optional[str] = None) -> Dict[str, Any]:
         """
         同步财务数据
 
@@ -951,7 +947,8 @@ class TushareSyncService:
 
                         # 更新任务进度
                         if job_id:
-                            from app.services.scheduler import update_job_progress, TaskCancelledException
+                            update_job_progress = getattr(importlib.import_module('app.services.scheduler'), 'update_job_progress')
+                            TaskCancelledException = getattr(importlib.import_module('app.services.scheduler'), 'TaskCancelledException')
                             try:
                                 await update_job_progress(
                                     job_id=job_id,
@@ -998,7 +995,7 @@ class TushareSyncService:
         """保存财务数据"""
         try:
             # 使用统一的财务数据服务
-            from app.services.market.financial import get_financial_data_service
+            get_financial_data_service = getattr(importlib.import_module('app.services.market.financial'), 'get_financial_data_service')
 
             financial_service = await get_financial_data_service()
 
@@ -1008,7 +1005,7 @@ class TushareSyncService:
                 financial_data=financial_data,
                 data_source="tushare",
                 market="CN",
-                report_period=financial_data.get("report_period"),
+                report_period=str(financial_data.get("report_period") or ""),
                 report_type=financial_data.get("report_type", "quarterly")
             )
 
@@ -1020,9 +1017,17 @@ class TushareSyncService:
 
     # ==================== 辅助方法 ====================
 
-    def _is_data_fresh(self, updated_at: datetime, hours: int = 24) -> bool:
+    def _is_data_fresh(self, updated_at: Any, hours: int = 24) -> bool:
         """检查数据是否新鲜"""
         if not updated_at:
+            return False
+
+        if isinstance(updated_at, str):
+            try:
+                updated_at = datetime.fromisoformat(updated_at.replace("Z", "+00:00")).replace(tzinfo=None)
+            except ValueError:
+                return False
+        if not isinstance(updated_at, datetime):
             return False
 
         threshold = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
@@ -1068,11 +1073,11 @@ class TushareSyncService:
 
     async def sync_news_data(
         self,
-        symbols: List[str] = None,
+        symbols: Optional[List[str]] = None,
         hours_back: int = 24,
         max_news_per_stock: int = 20,
         force_update: bool = False,
-        job_id: str = None
+        job_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         同步新闻数据
@@ -1101,8 +1106,12 @@ class TushareSyncService:
         try:
             # 1. 获取股票列表
             if symbols is None:
-                stock_list = await self.stock_service.get_all_stocks()
-                symbols = [stock["code"] for stock in stock_list]
+                stock_list = await self.stock_service.get_stock_list(page=1, page_size=100000)
+                symbols = [
+                    stock["code"]
+                    for stock in (self._as_dict(item) for item in stock_list)
+                    if stock.get("code")
+                ]
 
             if not symbols:
                 logger.warning("⚠️ 没有找到需要同步新闻的股票")
@@ -1258,9 +1267,9 @@ class TushareSyncService:
             message: 进度消息
         """
         try:
-            from app.services.scheduler import TaskCancelledException
-            from pymongo import MongoClient
-            from app.core.config import settings
+            TaskCancelledException = getattr(importlib.import_module('app.services.scheduler'), 'TaskCancelledException')
+            MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+            settings = getattr(importlib.import_module('app.core.config'), 'settings')
 
             logger.info(f"📊 [进度更新] 开始更新任务 {job_id} 进度: {progress}% - {message}")
 
@@ -1371,7 +1380,7 @@ async def run_tushare_historical_sync(incremental: bool = True):
         return result
     except Exception as e:
         logger.error(f"❌ [APScheduler] Tushare历史数据同步失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(f"详细错误: {traceback.format_exc()}")
         raise
 

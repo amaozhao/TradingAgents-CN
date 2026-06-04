@@ -19,7 +19,7 @@ from trader.config.databases import get_database_manager
 class AdaptiveCacheSystem:
     """自适应缓存系统"""
 
-    def __init__(self, cache_dir: str = None):
+    def __init__(self, cache_dir: Optional[str] = None):
         self.logger = logging.getLogger(__name__)
 
         # 获取数据库管理器
@@ -142,6 +142,8 @@ class AdaptiveCacheSystem:
             if not serialized_data:
                 return None
 
+            if isinstance(serialized_data, str):
+                serialized_data = serialized_data.encode()
             cache_data = pickle.loads(serialized_data)
 
             # 转换时间戳
@@ -317,7 +319,7 @@ class AdaptiveCacheSystem:
     def get_cache_stats(self) -> Dict[str, Any]:
         """获取缓存统计信息"""
         # 标准统计格式
-        stats = {
+        stats: Dict[str, Any] = {
             'total_files': 0,
             'stock_data_count': 0,
             'news_count': 0,
@@ -328,7 +330,7 @@ class AdaptiveCacheSystem:
         }
 
         # 后端信息
-        backend_info = {
+        backend_info: Dict[str, Any] = {
             'primary_backend': self.primary_backend,
             'fallback_enabled': self.fallback_enabled,
             'database_available': self.db_manager.is_database_available(),

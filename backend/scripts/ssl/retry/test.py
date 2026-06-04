@@ -2,6 +2,7 @@
 """
 测试 SSL 重试机制
 """
+import importlib
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,7 +25,7 @@ async def main():
 
     # 导入 AKShare 提供器
     logger.info("\n【步骤1】导入 AKShare 提供器")
-    from trader.flows.providers.china.akshare import get_akshare_provider
+    get_akshare_provider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'get_akshare_provider')
 
     provider = get_akshare_provider()
     logger.info(f"  ✅ 提供器初始化完成")

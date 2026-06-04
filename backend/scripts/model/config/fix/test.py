@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """测试模型配置修复"""
 
-from app.core.unified_config import unified_config
+from app.core.unified import unified_config
 
 print("=" * 80)
 print("🧪 测试模型配置读取")

@@ -2,6 +2,7 @@
 操作日志记录中间件
 自动记录用户的API操作日志
 """
+import importlib
 
 import time
 import json
@@ -148,7 +149,7 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
                 token = auth_header.split(" ", 1)[1]
 
                 # 使用AuthService验证token
-                from app.services.auth import AuthService
+                AuthService = getattr(importlib.import_module('app.services.auth'), 'AuthService')
                 token_data = AuthService.verify_token(token)
 
                 if token_data:

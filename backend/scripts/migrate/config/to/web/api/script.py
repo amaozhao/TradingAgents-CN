@@ -17,15 +17,15 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 # 导入webapi相关模块
-from webapi.core.database import DatabaseManager
-from webapi.models.config import (
+from app.core.database import DatabaseManager
+from app.models.config import (
     SystemConfig, LLMConfig, DataSourceConfig, DatabaseConfig,
     ModelProvider, DataSourceType, DatabaseType
 )
-from webapi.services.config_service import ConfigService
+from app.services.config import ConfigService
 
 # 导入传统配置管理器
-from trader.config.config_manager import ConfigManager, ModelConfig, PricingConfig, UsageRecord
+from trader.config.manager import ConfigManager, ModelConfig, PricingConfig, UsageRecord
 
 
 class ConfigMigrator:

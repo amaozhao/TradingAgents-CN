@@ -8,7 +8,7 @@ import time
 import uuid
 import asyncio
 import logging
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional, cast
 from datetime import datetime, timedelta
 
 from redis.asyncio import Redis
@@ -46,7 +46,7 @@ class QueueService:
     """增强版队列服务类"""
 
     def __init__(self, redis: Redis):
-        self.r = redis
+        self.r: Any = redis
         self.user_concurrent_limit = DEFAULT_USER_CONCURRENT_LIMIT
         self.global_concurrent_limit = GLOBAL_CONCURRENT_LIMIT
         self.visibility_timeout = VISIBILITY_TIMEOUT_SECONDS
@@ -104,6 +104,10 @@ class QueueService:
             task_id = await self.r.rpop(READY_LIST)
             if not task_id:
                 return None
+            if isinstance(task_id, bytes):
+                task_id = task_id.decode()
+            elif not isinstance(task_id, str):
+                task_id = str(task_id)
 
             # 获取任务详情
             task_data = await self.get_task(task_id)
@@ -111,7 +115,11 @@ class QueueService:
                 logger.warning(f"任务数据不存在: {task_id}")
                 return None
 
-            user_id = task_data.get("user")
+            user_id = str(task_data.get("user") or "")
+            if not user_id:
+                logger.warning(f"任务用户为空，任务重新入队: {task_id}")
+                await self.r.lpush(READY_LIST, task_id)
+                return None
 
             # 再次检查并发限制（防止竞态条件）
             if not await self._check_user_concurrent_limit(user_id):
@@ -147,7 +155,7 @@ class QueueService:
             if not task_data:
                 return False
 
-            user_id = task_data.get("user")
+            user_id = str(task_data.get("user") or "")
             worker_id = task_data.get("worker_id")
 
             # 从处理中集合移除
@@ -193,7 +201,7 @@ class QueueService:
 
     async def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
         key = TASK_PREFIX + task_id
-        data = await self.r.hgetall(key)
+        data = cast(Dict[str, Any], await self.r.hgetall(key))
         if not data:
             return None
         # parse fields
@@ -210,7 +218,7 @@ class QueueService:
 
     async def get_batch(self, batch_id: str) -> Optional[Dict[str, Any]]:
         key = BATCH_PREFIX + batch_id
-        data = await self.r.hgetall(key)
+        data = cast(Dict[str, Any], await self.r.hgetall(key))
         if not data:
             return None
         # enrich with tasks count if set exists
@@ -305,7 +313,9 @@ class QueueService:
             if not task_data:
                 return
 
-            user_id = task_data.get("user")
+            user_id = str(task_data.get("user") or "")
+            if not user_id:
+                return
 
             # 从处理中集合移除
             await self._unmark_task_processing(task_id, user_id)
@@ -336,7 +346,7 @@ class QueueService:
                 return False
 
             status = task_data.get("status")
-            user_id = task_data.get("user")
+            user_id = str(task_data.get("user") or "")
 
             if status == "processing":
                 # 如果正在处理中，从处理集合移除

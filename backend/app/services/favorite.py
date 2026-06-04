@@ -1,8 +1,9 @@
 """
 自选股服务
 """
+import importlib
 
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 from bson import ObjectId
 
@@ -28,7 +29,7 @@ class FavoritesService:
     async def _dual_write_favorite(self, document: Dict[str, Any]) -> None:
         result = await dual_write_hot_document("user_favorites", document)
         if result.status == "failed":
-            import logging
+            logging = importlib.import_module('logging')
             logging.getLogger("webapi").warning("⚠️ 自选股 PostgreSQL 双写失败: %s", result.reason)
 
     def _is_valid_object_id(self, user_id: str) -> bool:
@@ -87,11 +88,11 @@ class FavoritesService:
         items = [self._format_favorite(fav) for fav in favorites]
 
         # 批量获取股票基础信息（板块等）
-        codes = [it.get("stock_code") for it in items if it.get("stock_code")]
+        codes = [str(it["stock_code"]) for it in items if it.get("stock_code")]
         if codes:
             try:
                 # 🔥 获取数据源优先级配置
-                from app.core.unified import UnifiedConfigManager
+                UnifiedConfigManager = getattr(importlib.import_module('app.core.unified'), 'UnifiedConfigManager')
                 config = UnifiedConfigManager()
                 data_source_configs = await config.get_data_source_configs_async()
 
@@ -116,7 +117,7 @@ class FavoritesService:
                 basic_map = {str(d.get("code")).zfill(6): d for d in (basic_docs or [])}
 
                 for it in items:
-                    code = it.get("stock_code")
+                    code = str(it.get("stock_code") or "")
                     basic = basic_map.get(code)
                     if basic:
                         # market 字段表示板块（主板、创业板、科创板等）
@@ -140,7 +141,7 @@ class FavoritesService:
                 docs = await cursor.to_list(length=None)
                 quotes_map = {str(d.get("code")).zfill(6): d for d in (docs or [])}
                 for it in items:
-                    code = it.get("stock_code")
+                    code = str(it.get("stock_code") or "")
                     q = quotes_map.get(code)
                     if q:
                         it["current_price"] = q.get("close")
@@ -151,7 +152,7 @@ class FavoritesService:
                     try:
                         quotes_online = await get_quotes_service().get_quotes(missing)
                         for it in items:
-                            code = it.get("stock_code")
+                            code = str(it.get("stock_code") or "")
                             if it.get("current_price") is None:
                                 q2 = quotes_online.get(code, {}) if quotes_online else {}
                                 it["current_price"] = q2.get("close")
@@ -166,8 +167,8 @@ class FavoritesService:
 
     async def _get_user_favorites_from_postgres(self, user_id: str) -> List[Dict[str, Any]]:
         try:
-            from app.db.session import get_session_factory
-            from app.db.preference import list_user_favorites
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            list_user_favorites = getattr(importlib.import_module('app.db.preference'), 'list_user_favorites')
 
             async with get_session_factory()() as session:
                 return await list_user_favorites(session, user_id)
@@ -180,13 +181,13 @@ class FavoritesService:
         stock_code: str,
         stock_name: str,
         market: str = "A股",
-        tags: List[str] = None,
+        tags: Optional[List[str]] = None,
         notes: str = "",
         alert_price_high: Optional[float] = None,
         alert_price_low: Optional[float] = None
     ) -> bool:
         """添加股票到自选股（兼容字符串ID与ObjectId）"""
-        import logging
+        logging = importlib.import_module('logging')
         logger = logging.getLogger("webapi")
 
         try:
@@ -362,7 +363,7 @@ class FavoritesService:
 
     async def is_favorite(self, user_id: str, stock_code: str) -> bool:
         """检查股票是否在自选股中（兼容字符串ID与ObjectId）"""
-        import logging
+        logging = importlib.import_module('logging')
         logger = logging.getLogger("webapi")
 
         try:

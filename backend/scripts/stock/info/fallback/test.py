@@ -3,6 +3,7 @@
 测试股票基本信息获取的降级机制
 验证当Tushare失败时是否有备用方案
 """
+import importlib
 
 import sys
 import os
@@ -25,13 +26,13 @@ def test_tushare_stock_info_failure():
         try:
             # 1. 测试Tushare直接获取
             print(f"🔍 步骤1: 测试Tushare直接获取...")
-            from trader.flows.interface import get_china_stock_info_tushare
+            get_china_stock_info_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_tushare')
             tushare_result = get_china_stock_info_tushare(code)
             print(f"✅ Tushare结果: {tushare_result}")
 
             # 2. 测试统一接口
             print(f"🔍 步骤2: 测试统一接口...")
-            from trader.flows.interface import get_china_stock_info_unified
+            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
             unified_result = get_china_stock_info_unified(code)
             print(f"✅ 统一接口结果: {unified_result}")
 
@@ -59,7 +60,7 @@ def test_akshare_stock_info():
 
         try:
             # 直接测试AKShare
-            import akshare as ak
+            ak = importlib.import_module('akshare')
 
             # 尝试获取股票基本信息
             try:
@@ -91,7 +92,7 @@ def test_baostock_stock_info():
     test_codes = ["sh.603985", "sz.000001", "sz.300033"]
 
     try:
-        import baostock as bs
+        bs = importlib.import_module('baostock')
 
         # 登录BaoStock
         lg = bs.login()
@@ -137,7 +138,7 @@ def analyze_current_fallback_mechanism():
     print("=" * 50)
 
     try:
-        from trader.flows.data_source_manager import DataSourceManager
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
 
         # 检查DataSourceManager的方法
         manager = DataSourceManager()
@@ -159,7 +160,7 @@ def analyze_current_fallback_mechanism():
             print("❌ 没有_try_fallback_stock_info方法")
 
         # 检查get_stock_info方法的实现
-        import inspect
+        inspect = importlib.import_module('inspect')
         source = inspect.getsource(manager.get_stock_info)
         print(f"\n📝 get_stock_info方法源码:")
         print(source)

@@ -1,11 +1,12 @@
 """
 测试脚本：模拟实际分析流程，查看使用的 backend_url
 """
+import importlib
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.services.simple_analysis_service import create_analysis_config, get_provider_and_url_by_model_sync
+from app.services.analysis.simple import create_analysis_config, get_provider_and_url_by_model_sync
 
 def main():
     print("=" * 80)
@@ -33,7 +34,7 @@ def main():
         print(f"   backend_url: {provider_info['backend_url']}")
     except Exception as e:
         print(f"\n❌ 查询失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     # 2. 测试 create_analysis_config
@@ -75,7 +76,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 配置创建失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     print("\n" + "=" * 80)

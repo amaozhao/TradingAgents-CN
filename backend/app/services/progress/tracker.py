@@ -3,6 +3,7 @@
 - 暂时从旧模块导入 RedisProgressTracker 类
 - 在本模块内提供 get_progress_by_id 的实现（与旧实现一致，修正 cls 引用）
 """
+import importlib
 from typing import Any, Dict, Optional, List
 import json
 import os
@@ -50,7 +51,7 @@ class RedisProgressTracker:
         self.task_id = task_id
         self.analysts = analysts
         self.research_depth = research_depth
-        from trader.llm.clients.providers import normalize_provider_key
+        normalize_provider_key = getattr(importlib.import_module('trader.llm.clients.providers'), 'normalize_provider_key')
 
         self.llm_provider = normalize_provider_key(llm_provider)
 
@@ -99,7 +100,7 @@ class RedisProgressTracker:
                 logger.info(f"📊 [Redis进度] Redis未启用，使用文件存储")
                 return False
 
-            import redis
+            redis = importlib.import_module('redis')
 
             # 从环境变量获取Redis配置
             redis_host = os.getenv('REDIS_HOST', 'localhost')
@@ -486,7 +487,7 @@ def get_progress_by_id(task_id: str) -> Optional[Dict[str, Any]]:
         # 如果Redis启用，先尝试Redis
         if redis_enabled:
             try:
-                import redis
+                redis = importlib.import_module('redis')
 
                 # 从环境变量获取Redis配置
                 redis_host = os.getenv('REDIS_HOST', 'localhost')

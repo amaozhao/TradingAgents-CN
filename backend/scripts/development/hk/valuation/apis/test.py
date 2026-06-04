@@ -6,6 +6,7 @@
 2. stock_hk_indicator_eniu - 亿牛港股指标
 3. stock_financial_hk_analysis_indicator_em - 东方财富港股财务分析指标
 """
+import importlib
 
 import sys
 import os
@@ -23,7 +24,7 @@ def test_stock_hk_valuation_baidu():
     test_symbols = ["00005", "00700", "09988"]  # 汇丰控股、腾讯、阿里巴巴
 
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
 
         for symbol in test_symbols:
             print(f"\n📊 测试股票: {symbol}")
@@ -41,12 +42,12 @@ def test_stock_hk_valuation_baidu():
 
             except Exception as e:
                 print(f"   ❌ 调用失败: {e}")
-                import traceback
+                traceback = importlib.import_module('traceback')
                 traceback.print_exc()
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
@@ -59,7 +60,7 @@ def test_stock_hk_indicator_eniu():
     test_symbols = ["00005", "00700", "09988"]
 
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
 
         for symbol in test_symbols:
             print(f"\n📊 测试股票: {symbol}")
@@ -80,7 +81,7 @@ def test_stock_hk_indicator_eniu():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
@@ -93,7 +94,7 @@ def test_stock_financial_hk_analysis_indicator_em():
     test_symbols = ["01810", "00700", "09988"]  # 小米、腾讯、阿里巴巴
 
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
 
         for symbol in test_symbols:
             print(f"\n📊 测试股票: {symbol}")
@@ -118,12 +119,12 @@ def test_stock_financial_hk_analysis_indicator_em():
 
             except Exception as e:
                 print(f"   ❌ 调用失败: {e}")
-                import traceback
+                traceback = importlib.import_module('traceback')
                 traceback.print_exc()
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
@@ -134,7 +135,7 @@ def test_stock_hk_spot_em():
     print("=" * 80)
 
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
 
         df = ak.stock_hk_spot_em()
 
@@ -163,7 +164,7 @@ def test_stock_hk_spot_em():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

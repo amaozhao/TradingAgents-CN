@@ -2,6 +2,7 @@
 """
 测试进度显示功能
 """
+import importlib
 
 import time
 import sys
@@ -47,7 +48,7 @@ def test_progress_callback():
 def test_progress_tracker():
     """测试进度跟踪器"""
     try:
-        from web.utils.tracker import AnalysisProgressTracker
+        AnalysisProgressTracker = getattr(importlib.import_module('web.utils.tracker'), 'AnalysisProgressTracker')
 
         print("🧪 测试进度跟踪器")
         print("=" * 50)

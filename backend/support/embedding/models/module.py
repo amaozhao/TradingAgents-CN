@@ -2,6 +2,7 @@
 """
 测试不同嵌入模型的使用场景
 """
+import importlib
 
 import os
 import sys
@@ -20,8 +21,8 @@ def test_embedding_selection():
     print("🧪 测试嵌入模型选择逻辑")
     print("=" * 60)
 
-    from trader.agents.utils.memory import FinancialSituationMemory
-    from trader.default import DEFAULT_CONFIG
+    FinancialSituationMemory = getattr(importlib.import_module('trader.agents.utils.memory'), 'FinancialSituationMemory')
+    DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
     # 测试场景1: 阿里百炼
     print("📊 场景1: 阿里百炼配置")
@@ -92,8 +93,8 @@ def test_embedding_functionality():
     print("\n🧪 测试嵌入功能")
     print("=" * 60)
 
-    from trader.agents.utils.memory import FinancialSituationMemory
-    from trader.default import DEFAULT_CONFIG
+    FinancialSituationMemory = getattr(importlib.import_module('trader.agents.utils.memory'), 'FinancialSituationMemory')
+    DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
     # 测试阿里百炼嵌入
     dashscope_key = os.getenv('DASHSCOPE_API_KEY')

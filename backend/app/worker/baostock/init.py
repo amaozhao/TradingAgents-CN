@@ -3,6 +3,7 @@
 BaoStock数据初始化服务
 提供BaoStock数据的完整初始化功能
 """
+import importlib
 import asyncio
 import logging
 from datetime import datetime, timedelta
@@ -56,8 +57,8 @@ class BaoStockInitService:
         """
         try:
             self.settings = get_settings()
-            self.db = None  # 🔥 延迟初始化
-            from app.worker.baostock.sync import BaoStockSyncService
+            self.db: Any = None  # 🔥 延迟初始化
+            BaoStockSyncService = getattr(importlib.import_module('app.worker.baostock.sync'), 'BaoStockSyncService')
 
             self.sync_service = BaoStockSyncService()
             logger.info("✅ BaoStock初始化服务初始化成功")
@@ -69,7 +70,7 @@ class BaoStockInitService:
         """异步初始化服务"""
         try:
             # 🔥 初始化数据库连接
-            from app.core.database import get_mongo_db
+            get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
             self.db = get_mongo_db()
 
             # 🔥 初始化同步服务
@@ -210,7 +211,7 @@ class BaoStockInitService:
             stats.current_step = "同步最新行情"
             logger.info(f"5️⃣ {stats.current_step}...")
 
-            quotes_stats = await self.sync_service.sync_realtime_quotes()
+            quotes_stats = await self.sync_service.sync_daily_quotes()
             stats.quotes_count = quotes_stats.quotes_count
             stats.errors.extend(quotes_stats.errors)
             stats.completed_steps += 1
@@ -330,7 +331,7 @@ class BaoStockInitService:
             stats.current_step = "同步最新行情"
             logger.info(f"2️⃣ {stats.current_step}...")
 
-            quotes_stats = await self.sync_service.sync_realtime_quotes()
+            quotes_stats = await self.sync_service.sync_daily_quotes()
             stats.quotes_count = quotes_stats.quotes_count
             stats.errors.extend(quotes_stats.errors)
             stats.completed_steps += 1

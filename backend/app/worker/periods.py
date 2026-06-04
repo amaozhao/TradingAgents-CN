@@ -3,11 +3,12 @@
 多周期历史数据同步服务
 支持日线、周线、月线数据的统一同步
 """
+import importlib
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field
 
 from app.services.market.historical import get_historical_data_service
 
@@ -23,30 +24,26 @@ class MultiPeriodSyncStats:
     monthly_records: int = 0
     success_count: int = 0
     error_count: int = 0
-    errors: List[str] = None
-
-    def __post_init__(self):
-        if self.errors is None:
-            self.errors = []
+    errors: List[str] = field(default_factory=list)
 
 
 class MultiPeriodSyncService:
     """多周期历史数据同步服务"""
 
     def __init__(self):
-        self.historical_service = None
-        self.tushare_service = None
-        self.akshare_service = None
-        self.baostock_service = None
+        self.historical_service: Any = None
+        self.tushare_service: Any = None
+        self.akshare_service: Any = None
+        self.baostock_service: Any = None
 
     async def initialize(self):
         """初始化服务"""
         try:
             self.historical_service = await get_historical_data_service()
 
-            from app.worker.akshare.sync import AKShareSyncService
-            from app.worker.baostock.sync import BaoStockSyncService
-            from app.worker.tushare.sync import TushareSyncService
+            AKShareSyncService = getattr(importlib.import_module('app.worker.akshare.sync'), 'AKShareSyncService')
+            BaoStockSyncService = getattr(importlib.import_module('app.worker.baostock.sync'), 'BaoStockSyncService')
+            TushareSyncService = getattr(importlib.import_module('app.worker.tushare.sync'), 'TushareSyncService')
 
             # 初始化各数据源服务
             self.tushare_service = TushareSyncService()
@@ -66,11 +63,11 @@ class MultiPeriodSyncService:
 
     async def sync_multi_period_data(
         self,
-        symbols: List[str] = None,
-        periods: List[str] = None,
-        data_sources: List[str] = None,
-        start_date: str = None,
-        end_date: str = None,
+        symbols: Optional[List[str]] = None,
+        periods: Optional[List[str]] = None,
+        data_sources: Optional[List[str]] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
         all_history: bool = False
     ) -> MultiPeriodSyncStats:
         """
@@ -146,8 +143,8 @@ class MultiPeriodSyncService:
         data_source: str,
         period: str,
         symbols: List[str],
-        start_date: str = None,
-        end_date: str = None
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
     ) -> Dict[str, Any]:
         """同步特定周期的数据"""
         stats = {"records": 0, "success": 0, "errors": 0}
@@ -198,8 +195,8 @@ class MultiPeriodSyncService:
         data_source: str,
         period: str,
         symbols: List[str],
-        start_date: str = None,
-        end_date: str = None
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
     ) -> Dict[str, Any]:
         """同步批次周期数据"""
         stats = {"records": 0, "success": 0, "errors": 0}
@@ -247,7 +244,7 @@ class MultiPeriodSyncService:
         """获取所有股票代码"""
         try:
             # 从数据库获取股票列表
-            from app.core.database import get_mongo_db
+            get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
             db = get_mongo_db()
             collection = db.stock_basic_info
 
@@ -264,7 +261,8 @@ class MultiPeriodSyncService:
     async def _get_full_history_date_range(self) -> tuple[str, str]:
         """获取全历史数据的日期范围"""
         try:
-            from datetime import datetime, timedelta
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
             # 结束日期：今天
             end_date = datetime.now().strftime('%Y-%m-%d')
@@ -293,7 +291,7 @@ class MultiPeriodSyncService:
                 await self.initialize()
 
             # 按周期统计
-            from app.core.database import get_mongo_db
+            get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
             db = get_mongo_db()
             collection = db.stock_daily_quotes
 
@@ -348,7 +346,7 @@ async def get_multi_period_sync_service() -> MultiPeriodSyncService:
 
 
 # APScheduler任务函数
-async def run_multi_period_sync(periods: List[str] = None):
+async def run_multi_period_sync(periods: Optional[List[str]] = None):
     """APScheduler任务：多周期数据同步"""
     try:
         service = await get_multi_period_sync_service()

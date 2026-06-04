@@ -3,6 +3,7 @@
 测试新的工具选择逻辑
 验证美股数据获取不再依赖OpenAI配置
 """
+import importlib
 
 import os
 import sys
@@ -133,8 +134,8 @@ def test_trading_graph_integration():
     print("=" * 70)
 
     try:
-        from trader.default import DEFAULT_CONFIG
-        from trader.graph.trading import TradingAgentsGraph
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
 
         # 测试不同配置
         test_configs = [
@@ -233,11 +234,12 @@ def test_us_stock_data_independence():
                 os.environ["REALTIME_DATA_ENABLED"] = data_config["REALTIME_DATA_ENABLED"]
 
                 # 重新加载配置
-                from importlib import reload
-                import trader.default
+                reload = getattr(importlib.import_module('importlib'), 'reload')
+                importlib.import_module('trader.default')
+                trader = importlib.import_module('trader')
                 reload(trader.default)
 
-                from trader.default import DEFAULT_CONFIG
+                DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
                 realtime_enabled = DEFAULT_CONFIG.get("realtime_data", False)
                 expected_mode = "实时数据" if realtime_enabled else "离线数据"

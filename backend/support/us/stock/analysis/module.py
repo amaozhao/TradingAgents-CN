@@ -2,6 +2,7 @@
 """
 测试美股分析功能
 """
+import importlib
 
 import sys
 import os
@@ -12,10 +13,10 @@ def test_us_stock_market_analysis():
     print("🔍 测试美股市场分析...")
 
     try:
-        from trader.agents.analysts.market import create_market_analyst_react
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
-        from langchain_community.llms import Tongyi
+        create_market_analyst_react = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst_react')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        Tongyi = getattr(importlib.import_module('langchain_community.llms'), 'Tongyi')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -63,7 +64,7 @@ def test_us_stock_market_analysis():
 
     except Exception as e:
         print(f"❌ 美股市场分析失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None
 
@@ -73,10 +74,10 @@ def test_us_stock_fundamentals_analysis():
     print("🔍 测试美股基本面分析...")
 
     try:
-        from trader.agents.analysts.fundamentals import create_fundamentals_analyst_react
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
-        from langchain_community.llms import Tongyi
+        create_fundamentals_analyst_react = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst_react')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        Tongyi = getattr(importlib.import_module('langchain_community.llms'), 'Tongyi')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -124,7 +125,7 @@ def test_us_stock_fundamentals_analysis():
 
     except Exception as e:
         print(f"❌ 美股基本面分析失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None
 

@@ -3,6 +3,7 @@
 MongoDB + Redis 数据库缓存管理器
 提供高性能的股票数据缓存和持久化存储
 """
+import importlib
 
 import os
 import json
@@ -67,9 +68,9 @@ class DatabaseCacheManager:
         self.redis_db = redis_db
 
         # 初始化连接
-        self.mongodb_client = None
-        self.mongodb_db = None
-        self.redis_client = None
+        self.mongodb_client: Any = None
+        self.mongodb_db: Any = None
+        self.redis_client: Any = None
 
         self._init_mongodb()
         self._init_redis()
@@ -85,7 +86,7 @@ class DatabaseCacheManager:
 
         try:
             # 从环境变量读取超时配置，使用合理的默认值
-            import os
+            os = importlib.import_module('os')
             connect_timeout = int(os.getenv("MONGO_CONNECT_TIMEOUT_MS", "30000"))
             socket_timeout = int(os.getenv("MONGO_SOCKET_TIMEOUT_MS", "60000"))
             server_selection_timeout = int(os.getenv("MONGO_SERVER_SELECTION_TIMEOUT_MS", "5000"))
@@ -182,8 +183,8 @@ class DatabaseCacheManager:
         return f"{data_type}:{symbol}:{cache_key}"
 
     def save_stock_data(self, symbol: str, data: Union[pd.DataFrame, str],
-                       start_date: str = None, end_date: str = None,
-                       data_source: str = "unknown", market_type: str = None) -> str:
+                       start_date: Optional[str] = None, end_date: Optional[str] = None,
+                       data_source: str = "unknown", market_type: Optional[str] = None) -> str:
         """
         保存股票数据到MongoDB和Redis
 
@@ -206,7 +207,7 @@ class DatabaseCacheManager:
         # 自动推断市场类型
         if market_type is None:
             # 根据股票代码格式推断市场类型
-            import re
+            re = importlib.import_module('re')
 
             if re.match(r'^\d{6}$', symbol):  # 6位数字为A股
                 market_type = "china"
@@ -320,8 +321,8 @@ class DatabaseCacheManager:
 
         return None
 
-    def find_cached_stock_data(self, symbol: str, start_date: str = None,
-                              end_date: str = None, data_source: str = None,
+    def find_cached_stock_data(self, symbol: str, start_date: Optional[str] = None,
+                              end_date: Optional[str] = None, data_source: Optional[str] = None,
                               max_age_hours: int = 6) -> Optional[str]:
         """查找匹配的缓存数据"""
 
@@ -368,7 +369,7 @@ class DatabaseCacheManager:
         return None
 
     def save_news_data(self, symbol: str, news_data: str,
-                      start_date: str = None, end_date: str = None,
+                      start_date: Optional[str] = None, end_date: Optional[str] = None,
                       data_source: str = "unknown") -> str:
         """保存新闻数据到MongoDB和Redis"""
         cache_key = self._generate_cache_key("news", symbol,
@@ -419,7 +420,7 @@ class DatabaseCacheManager:
         return cache_key
 
     def save_fundamentals_data(self, symbol: str, fundamentals_data: str,
-                              analysis_date: str = None,
+                              analysis_date: Optional[str] = None,
                               data_source: str = "unknown") -> str:
         """保存基本面数据到MongoDB和Redis"""
         if not analysis_date:
@@ -473,7 +474,7 @@ class DatabaseCacheManager:
     def get_cache_stats(self) -> Dict[str, Any]:
         """获取缓存统计信息"""
         # 标准统计格式（与 file_cache 保持一致）
-        stats = {
+        stats: Dict[str, Any] = {
             'total_files': 0,
             'stock_data_count': 0,
             'news_count': 0,

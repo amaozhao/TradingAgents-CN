@@ -2,6 +2,7 @@
 """
 测试新闻情绪分析和关键词提取功能
 """
+import importlib
 import asyncio
 import sys
 from pathlib import Path
@@ -10,7 +11,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from trader.flows.providers.akshare_provider import get_akshare_provider
+from trader.flows.providers.china.akshare import get_akshare_provider
 from app.core.database import close_database
 
 
@@ -72,7 +73,7 @@ async def test_sentiment_analysis():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         sys.exit(1)
     finally:

@@ -9,6 +9,7 @@ Alpha Vantage API 公共模块
 
 参考原版 TradingAgents 实现
 """
+import importlib
 
 import os
 import time
@@ -44,7 +45,7 @@ def _get_api_key_from_database() -> Optional[str]:
     """
     try:
         logger.debug("🔍 [DB查询] 开始从数据库读取 Alpha Vantage API Key...")
-        from app.core.database import get_mongo_db_sync
+        get_mongo_db_sync = getattr(importlib.import_module('app.core.database'), 'get_mongo_db_sync')
         db = get_mongo_db_sync()
         config_collection = db.system_configs
 
@@ -118,9 +119,9 @@ def get_api_key() -> str:
     # 3. 从配置文件获取
     logger.debug("🔍 [步骤3] 读取配置文件中的 API Key...")
     try:
-        from trader.config.manager import ConfigManager
+        ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
         config_manager = ConfigManager()
-        api_key = config_manager.get("ALPHA_VANTAGE_API_KEY")
+        api_key = config_manager.load_settings().get("ALPHA_VANTAGE_API_KEY")
         if api_key:
             logger.debug(f"✅ [步骤3] 配置文件中找到 API Key (长度: {len(api_key)})")
             return api_key

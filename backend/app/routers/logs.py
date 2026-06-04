@@ -2,6 +2,7 @@
 日志管理API路由
 提供日志查询、过滤和导出功能
 """
+import importlib
 
 import logging
 from typing import List, Optional
@@ -157,7 +158,7 @@ async def export_logs(
         )
 
         # 返回文件下载
-        import os
+        os = importlib.import_module('os')
         filename = os.path.basename(export_path)
         media_type = "application/zip" if request.format == "zip" else "text/plain"
 

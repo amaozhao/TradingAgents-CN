@@ -7,6 +7,7 @@ is therefore sufficient to extract the rating downstream — no second LLM
 call is needed — and SignalProcessor is now a thin adapter that delegates
 to it.
 """
+import importlib
 
 import pytest
 
@@ -79,7 +80,7 @@ class TestSignalProcessor:
     def test_makes_no_llm_calls(self):
         """SignalProcessor must not invoke the LLM it was constructed with —
         the rating is parseable from the rendered PM markdown directly."""
-        from unittest.mock import MagicMock
+        MagicMock = getattr(importlib.import_module('unittest.mock'), 'MagicMock')
 
         llm = MagicMock()
         sp = SignalProcessor(llm)

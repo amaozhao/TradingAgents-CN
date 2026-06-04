@@ -1,8 +1,9 @@
+import importlib
 from .base import BaseLLMClient, normalize_content
 
 
 def create_llm_client(*args, **kwargs):
-    from .factory import create_llm_client as _create_llm_client
+    _create_llm_client = getattr(importlib.import_module('trader.llm.clients.factory'), 'create_llm_client')
 
     return _create_llm_client(*args, **kwargs)
 

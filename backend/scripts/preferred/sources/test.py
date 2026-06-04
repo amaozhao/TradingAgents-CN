@@ -1,6 +1,7 @@
 """
 测试 preferred_sources 参数是否生效
 """
+import importlib
 import asyncio
 from app.core.database import init_db
 from app.services.sources.manager import DataSourceManager
@@ -138,7 +139,7 @@ async def test_api_integration():
     print("测试6: API集成测试")
     print("=" * 80)
 
-    from app.services.multi_source_basics_sync_service import get_multi_source_sync_service
+    get_multi_source_sync_service = getattr(importlib.import_module('app.services.sync.source'), 'get_multi_source_sync_service')
 
     service = get_multi_source_sync_service()
 
@@ -176,7 +177,7 @@ async def test_api_integration():
 
     except Exception as e:
         print(f"❌ 同步失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     print()

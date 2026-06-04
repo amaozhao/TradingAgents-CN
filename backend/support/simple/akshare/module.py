@@ -3,6 +3,7 @@
 简单的AKShare测试
 验证修复后的导入是否正常
 """
+import importlib
 
 import sys
 import os
@@ -18,7 +19,7 @@ def test_basic_imports():
 
     try:
         # 测试AKShare直接导入
-        import akshare as ak
+        ak = importlib.import_module('akshare')
         print(f"✅ AKShare导入成功: {ak.__version__}")
     except Exception as e:
         print(f"❌ AKShare导入失败: {e}")
@@ -26,7 +27,7 @@ def test_basic_imports():
 
     try:
         # 测试dataflows模块导入
-        from trader.flows import akshareutils
+        akshareutils = getattr(importlib.import_module('trader.flows'), 'akshareutils')
         print("✅ akshare_utils模块导入成功")
     except Exception as e:
         print(f"❌ akshare_utils模块导入失败: {e}")
@@ -34,7 +35,7 @@ def test_basic_imports():
 
     try:
         # 测试数据源管理器导入
-        from trader.flows.sources import DataSourceManager
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
         print("✅ DataSourceManager导入成功")
     except Exception as e:
         print(f"❌ DataSourceManager导入失败: {e}")
@@ -48,7 +49,7 @@ def test_akshare_provider():
     print("=" * 40)
 
     try:
-        from trader.flows.akshare import get_akshare_provider
+        get_akshare_provider = getattr(importlib.import_module('trader.flows.akshare'), 'get_akshare_provider')
         provider = get_akshare_provider()
         print(f"✅ AKShare提供器创建成功，连接状态: {provider.connected}")
 
@@ -64,7 +65,7 @@ def test_akshare_provider():
         return True
     except Exception as e:
         print(f"❌ AKShare提供器测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -74,7 +75,8 @@ def test_data_source_manager():
     print("=" * 40)
 
     try:
-        from trader.flows.sources import DataSourceManager, ChinaDataSource
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
+        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
 
         # 检查AKShare枚举
         akshare_enum = ChinaDataSource.AKSHARE
@@ -96,7 +98,7 @@ def test_data_source_manager():
         return True
     except Exception as e:
         print(f"❌ 数据源管理器测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

@@ -1,6 +1,7 @@
 """
 测试实时PE/PB计算功能
 """
+import importlib
 import pytest
 from trader.flows.metrics import (
     calculate_realtime_pe_pb,
@@ -113,7 +114,7 @@ def test_get_pe_pb_with_fallback_success(monkeypatch):
             "updated_at": "2025-10-14T10:30:00"
         }
 
-    import trader.flows.metrics as metrics_module
+    metrics_module = importlib.import_module('trader.flows.metrics')
     monkeypatch.setattr(metrics_module, "calculate_realtime_pe_pb", mock_calculate)
 
     # 执行测试
@@ -151,7 +152,7 @@ def test_get_pe_pb_with_fallback_to_static(monkeypatch):
         def __getitem__(self, name):
             return MockDB()
 
-    import trader.flows.metrics as metrics_module
+    metrics_module = importlib.import_module('trader.flows.metrics')
     monkeypatch.setattr(metrics_module, "calculate_realtime_pe_pb", mock_calculate)
 
     # 执行测试

@@ -2,6 +2,7 @@
 """
 测试Docker环境下的日志功能
 """
+import importlib
 
 import os
 import sys
@@ -22,7 +23,8 @@ def test_logging():
         os.environ['TRADING_AGENTS_LOG_DIR'] = '/app/logs'
 
         # 导入日志模块
-        from trader.utils.logging.init import init_logging, get_logger
+        init_logging = getattr(importlib.import_module('trader.utils.logging.init'), 'init_logging')
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
 
         # 初始化日志
         print("📋 初始化日志系统...")
@@ -54,7 +56,7 @@ def test_logging():
 
     except Exception as e:
         print(f"❌ 日志测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

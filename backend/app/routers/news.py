@@ -2,6 +2,7 @@
 新闻数据API路由
 提供新闻数据查询、同步和管理接口
 """
+import importlib
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query, status
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
@@ -87,7 +88,7 @@ async def query_stock_news(
         if not news_list:
             logger.info(f"📰 数据库无新闻数据，实时获取: {symbol}")
             try:
-                from app.worker.akshare.sync import get_akshare_sync_service
+                get_akshare_sync_service = getattr(importlib.import_module('app.worker.akshare.sync'), 'get_akshare_sync_service')
                 sync_service = await get_akshare_sync_service()
 
                 # 实时获取新闻

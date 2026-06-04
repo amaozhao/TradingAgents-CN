@@ -1,6 +1,7 @@
 """Tests for the deterministic market-data verification snapshot (#830/#881)."""
 
 from __future__ import annotations
+import importlib
 
 import pandas as pd
 import pytest
@@ -66,9 +67,7 @@ class TestVerifiedSnapshot:
 @pytest.mark.unit
 class TestTool:
     def test_tool_delegates_to_builder(self, monkeypatch):
-        from trader.agents.utils.validation import (
-            get_verified_market_snapshot,
-        )
+        get_verified_market_snapshot = getattr(importlib.import_module('trader.agents.utils.validation'), 'get_verified_market_snapshot')
         monkeypatch.setattr(validator, "load_ohlcv", lambda s, d: _sample_ohlcv())
         out = get_verified_market_snapshot.invoke(
             {"symbol": "COF", "curr_date": "2026-05-20"}

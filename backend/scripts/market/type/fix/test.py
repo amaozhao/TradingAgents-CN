@@ -3,6 +3,7 @@
 测试市场类型修复
 验证报告保存和查询时是否正确包含 market_type 字段
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -11,7 +12,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from trader.utils.stock_utils import StockUtils
+from trader.utils.stocks import StockUtils
 
 
 def test_market_type_detection():
@@ -54,7 +55,7 @@ def test_mongodb_document_structure():
     print("测试 MongoDB 文档结构")
     print("=" * 60)
 
-    from datetime import datetime
+    datetime = getattr(importlib.import_module('datetime'), 'datetime')
 
     stock_symbol = "000001"
     market_info = StockUtils.get_market_info(stock_symbol)

@@ -5,6 +5,7 @@
 使用方法：
     python scripts/quick/pe/pb/script.py 600036
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -30,9 +31,9 @@ def test_pe_pb_from_basic_info(code: str):
     logger.info(f"🧪 快速测试：从 stock_basic_info 获取 PE/PB")
     logger.info("=" * 80)
 
-    from pymongo import MongoClient
-    from app.core.config import settings
-    from trader.flows.optimized_china_data import OptimizedChinaDataProvider
+    MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+    settings = getattr(importlib.import_module('app.core.config'), 'settings')
+    OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
 
     # 连接数据库
     client = MongoClient(settings.mongo_uri)
@@ -79,7 +80,7 @@ def test_pe_pb_from_basic_info(code: str):
 
     except Exception as e:
         logger.error(f"❌ 解析失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(traceback.format_exc())
         client.close()
         return False

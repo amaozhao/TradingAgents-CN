@@ -1,11 +1,12 @@
-from typing import Annotated
+import importlib
+from typing import Annotated, Optional
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import pandas as pd
 import yfinance as yf
 import os
-from .stats import StockstatsUtils, _clean_dataframe, yf_retry, load_ohlcv, filter_financials_by_date
-from .symbols import normalize_symbol, NoMarketDataError
+from ..stats import StockstatsUtils, _clean_dataframe, yf_retry, load_ohlcv, filter_financials_by_date
+from ..symbols import normalize_symbol, NoMarketDataError
 
 def get_yfin_data_online(
     symbol: Annotated[str, "ticker symbol of the company"],
@@ -22,6 +23,10 @@ def get_yfin_data_online(
 
     # Fetch historical data for the specified date range
     data = yf_retry(lambda: ticker.history(start=start_date, end=end_date))
+    if data is None:
+        raise NoMarketDataError(
+            symbol, canonical, f"no rows between {start_date} and {end_date}"
+        )
 
     # Empty result means the symbol is unknown/delisted. Raise a typed error
     # instead of returning prose: the routing layer turns it into a single
@@ -32,7 +37,7 @@ def get_yfin_data_online(
         )
 
     # Remove timezone info from index for cleaner output
-    if data.index.tz is not None:
+    if isinstance(data.index, pd.DatetimeIndex) and data.index.tz is not None:
         data.index = data.index.tz_localize(None)
 
     # Round numerical values to 2 decimal places for cleaner display
@@ -203,7 +208,7 @@ def _get_stock_stats_bulk(
     Fetches data once and calculates indicator for all available dates.
     Returns dict mapping date strings to indicator values.
     """
-    from stats import wrap
+    wrap = getattr(importlib.import_module('stats'), 'wrap')
 
     data = load_ohlcv(symbol, curr_date)
     df = wrap(data)
@@ -219,7 +224,7 @@ def _get_stock_stats_bulk(
         indicator_value = row[indicator]
 
         # Handle NaN/None values
-        if pd.isna(indicator_value):
+        if bool(pd.isna(indicator_value)):
             result_dict[date_str] = "N/A"
         else:
             result_dict[date_str] = str(indicator_value)
@@ -257,7 +262,7 @@ def get_stockstats_indicator(
 
 def get_fundamentals(
     ticker: Annotated[str, "ticker symbol of the company"],
-    curr_date: Annotated[str, "current date (not used for yfinance)"] = None
+    curr_date: Annotated[Optional[str], "current date (not used for yfinance)"] = None
 ):
     """Get company fundamentals overview from yfinance."""
     canonical = normalize_symbol(ticker)
@@ -325,7 +330,7 @@ def get_fundamentals(
 def get_balance_sheet(
     ticker: Annotated[str, "ticker symbol of the company"],
     freq: Annotated[str, "frequency of data: 'annual' or 'quarterly'"] = "quarterly",
-    curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None
+    curr_date: Annotated[Optional[str], "current date in YYYY-MM-DD format"] = None
 ):
     """Get balance sheet data from yfinance."""
     canonical = normalize_symbol(ticker)
@@ -336,8 +341,10 @@ def get_balance_sheet(
             data = yf_retry(lambda: ticker_obj.quarterly_balance_sheet)
         else:
             data = yf_retry(lambda: ticker_obj.balance_sheet)
+        if data is None:
+            raise NoMarketDataError(ticker, canonical, "no balance sheet data")
 
-        data = filter_financials_by_date(data, curr_date)
+        data = filter_financials_by_date(data, curr_date or "")
 
         if data.empty:
             raise NoMarketDataError(ticker, canonical, "no balance sheet data")
@@ -360,7 +367,7 @@ def get_balance_sheet(
 def get_cashflow(
     ticker: Annotated[str, "ticker symbol of the company"],
     freq: Annotated[str, "frequency of data: 'annual' or 'quarterly'"] = "quarterly",
-    curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None
+    curr_date: Annotated[Optional[str], "current date in YYYY-MM-DD format"] = None
 ):
     """Get cash flow data from yfinance."""
     canonical = normalize_symbol(ticker)
@@ -371,8 +378,10 @@ def get_cashflow(
             data = yf_retry(lambda: ticker_obj.quarterly_cashflow)
         else:
             data = yf_retry(lambda: ticker_obj.cashflow)
+        if data is None:
+            raise NoMarketDataError(ticker, canonical, "no cash flow data")
 
-        data = filter_financials_by_date(data, curr_date)
+        data = filter_financials_by_date(data, curr_date or "")
 
         if data.empty:
             raise NoMarketDataError(ticker, canonical, "no cash flow data")
@@ -395,7 +404,7 @@ def get_cashflow(
 def get_income_statement(
     ticker: Annotated[str, "ticker symbol of the company"],
     freq: Annotated[str, "frequency of data: 'annual' or 'quarterly'"] = "quarterly",
-    curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None
+    curr_date: Annotated[Optional[str], "current date in YYYY-MM-DD format"] = None
 ):
     """Get income statement data from yfinance."""
     canonical = normalize_symbol(ticker)
@@ -406,8 +415,10 @@ def get_income_statement(
             data = yf_retry(lambda: ticker_obj.quarterly_income_stmt)
         else:
             data = yf_retry(lambda: ticker_obj.income_stmt)
+        if data is None:
+            raise NoMarketDataError(ticker, canonical, "no income statement data")
 
-        data = filter_financials_by_date(data, curr_date)
+        data = filter_financials_by_date(data, curr_date or "")
 
         if data.empty:
             raise NoMarketDataError(ticker, canonical, "no income statement data")

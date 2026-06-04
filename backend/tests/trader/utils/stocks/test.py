@@ -6,7 +6,7 @@ _export_module(globals(), "support.fundamentals.react.hk.fi.module")
 _export_module(globals(), "support.hk.fundamentals.fi.module")
 _export_module(globals(), "support.hk.improved.module")
 _export_module(globals(), "support.hk.simple.module")
-_export_module(globals(), "support.hkstock.functionality.module")
+_export_module(globals(), "support.hk.stock.functionality.module")
 _export_module(globals(), "support.stock.market.identification.module")
 _export_module(globals(), "support.web.hk.module")
 del _export_module

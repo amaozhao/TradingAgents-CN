@@ -2,6 +2,7 @@
 """
 调试BaoStock返回的字段结构
 """
+import importlib
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,7 +24,7 @@ def debug_baostock_fields():
     print("=" * 60)
 
     try:
-        import baostock as bs
+        bs = importlib.import_module('baostock')
 
         # 登录BaoStock
         lg = bs.login()
@@ -88,7 +89,7 @@ def debug_baostock_fields():
 
     except Exception as e:
         print(f"❌ 调试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@
 测试统一基本面分析工具
 验证新的统一工具方案是否有效
 """
+import importlib
 
 import os
 import sys
@@ -12,8 +13,8 @@ def test_unified_tool_directly():
     print("🔧 直接测试统一基本面分析工具...")
 
     try:
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建工具包
         config = DEFAULT_CONFIG.copy()
@@ -64,7 +65,7 @@ def test_unified_tool_directly():
 
     except Exception as e:
         print(f"❌ 统一工具直接测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -74,10 +75,10 @@ def test_fundamentals_analyst_with_unified_tool():
     print("\n🔧 测试基本面分析师使用统一工具...")
 
     try:
-        from trader.agents.analysts.fundamentals import create_fundamentals_analyst
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
-        from trader.llm.adapters import ChatDashScopeOpenAI
+        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
 
         # 检查API密钥
         api_key = os.getenv("DASHSCOPE_API_KEY")
@@ -142,7 +143,7 @@ def test_fundamentals_analyst_with_unified_tool():
 
     except Exception as e:
         print(f"❌ 基本面分析师统一工具测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -152,7 +153,7 @@ def test_stock_type_detection():
     print("\n🔧 测试股票类型检测...")
 
     try:
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         test_cases = [
             ("0700.HK", "港股", "港币", "HK$"),

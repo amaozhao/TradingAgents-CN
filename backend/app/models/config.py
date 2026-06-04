@@ -42,25 +42,25 @@ class ModelProvider(str, Enum):
 
 class LLMProvider(BaseModel):
     """大模型厂家配置"""
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
+    id: Optional[PyObjectId] = Field(default_factory=ObjectId, alias="_id")
     name: str = Field(..., description="厂家唯一标识")
     display_name: str = Field(..., description="显示名称")
-    description: Optional[str] = Field(None, description="厂家描述")
-    website: Optional[str] = Field(None, description="官网地址")
-    api_doc_url: Optional[str] = Field(None, description="API文档地址")
-    logo_url: Optional[str] = Field(None, description="Logo地址")
+    description: Optional[str] = Field(default=None, description="厂家描述")
+    website: Optional[str] = Field(default=None, description="官网地址")
+    api_doc_url: Optional[str] = Field(default=None, description="API文档地址")
+    logo_url: Optional[str] = Field(default=None, description="Logo地址")
     is_active: bool = Field(True, description="是否启用")
     supported_features: List[str] = Field(default_factory=list, description="支持的功能")
-    default_base_url: Optional[str] = Field(None, description="默认API地址")
-    api_key: Optional[str] = Field(None, description="API密钥")
-    api_secret: Optional[str] = Field(None, description="API密钥（某些厂家需要）")
+    default_base_url: Optional[str] = Field(default=None, description="默认API地址")
+    api_key: Optional[str] = Field(default=None, description="API密钥")
+    api_secret: Optional[str] = Field(default=None, description="API密钥（某些厂家需要）")
     aliases: List[str] = Field(default_factory=list, description="兼容别名")
     extra_config: Dict[str, Any] = Field(default_factory=dict, description="额外配置参数")
 
     # 🆕 聚合渠道支持
     is_aggregator: bool = Field(default=False, description="是否为聚合渠道（如302.AI、OpenRouter）")
-    aggregator_type: Optional[str] = Field(None, description="聚合渠道类型（openai_compatible/custom）")
-    model_name_format: Optional[str] = Field(None, description="模型名称格式（如：{provider}/{model}）")
+    aggregator_type: Optional[str] = Field(default=None, description="聚合渠道类型（openai_compatible/custom）")
+    model_name_format: Optional[str] = Field(default=None, description="模型名称格式（如：{provider}/{model}）")
 
     created_at: Optional[datetime] = Field(default_factory=now_tz)
     updated_at: Optional[datetime] = Field(default_factory=now_tz)
@@ -72,24 +72,24 @@ class ModelInfo(BaseModel):
     """模型信息"""
     name: str = Field(..., description="模型标识名称")
     display_name: str = Field(..., description="模型显示名称")
-    description: Optional[str] = Field(None, description="模型描述")
-    context_length: Optional[int] = Field(None, description="上下文长度")
-    max_tokens: Optional[int] = Field(None, description="最大输出token数")
-    input_price_per_1k: Optional[float] = Field(None, description="输入价格(每1K tokens)")
-    output_price_per_1k: Optional[float] = Field(None, description="输出价格(每1K tokens)")
+    description: Optional[str] = Field(default=None, description="模型描述")
+    context_length: Optional[int] = Field(default=None, description="上下文长度")
+    max_tokens: Optional[int] = Field(default=None, description="最大输出token数")
+    input_price_per_1k: Optional[float] = Field(default=None, description="输入价格(每1K tokens)")
+    output_price_per_1k: Optional[float] = Field(default=None, description="输出价格(每1K tokens)")
     currency: str = Field(default="CNY", description="货币单位")
     is_deprecated: bool = Field(default=False, description="是否已废弃")
-    release_date: Optional[str] = Field(None, description="发布日期")
+    release_date: Optional[str] = Field(default=None, description="发布日期")
     capabilities: List[str] = Field(default_factory=list, description="能力标签(如: vision, function_calling)")
 
     # 🆕 聚合渠道模型映射支持
-    original_provider: Optional[str] = Field(None, description="原厂商标识（用于聚合渠道）")
-    original_model: Optional[str] = Field(None, description="原厂商模型名（用于能力映射）")
+    original_provider: Optional[str] = Field(default=None, description="原厂商标识（用于聚合渠道）")
+    original_model: Optional[str] = Field(default=None, description="原厂商模型名（用于能力映射）")
 
 
 class ModelCatalog(BaseModel):
     """模型目录"""
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
+    id: Optional[PyObjectId] = Field(default_factory=ObjectId, alias="_id")
     provider: str = Field(..., description="厂家标识")
     provider_name: str = Field(..., description="厂家显示名称")
     models: List[ModelInfo] = Field(default_factory=list, description="模型列表")
@@ -103,22 +103,22 @@ class LLMProviderRequest(BaseModel):
     """大模型厂家请求"""
     name: str = Field(..., description="厂家唯一标识")
     display_name: str = Field(..., description="显示名称")
-    description: Optional[str] = Field(None, description="厂家描述")
-    website: Optional[str] = Field(None, description="官网地址")
-    api_doc_url: Optional[str] = Field(None, description="API文档地址")
-    logo_url: Optional[str] = Field(None, description="Logo地址")
+    description: Optional[str] = Field(default=None, description="厂家描述")
+    website: Optional[str] = Field(default=None, description="官网地址")
+    api_doc_url: Optional[str] = Field(default=None, description="API文档地址")
+    logo_url: Optional[str] = Field(default=None, description="Logo地址")
     is_active: bool = Field(True, description="是否启用")
     supported_features: List[str] = Field(default_factory=list, description="支持的功能")
-    default_base_url: Optional[str] = Field(None, description="默认API地址")
-    api_key: Optional[str] = Field(None, description="API密钥")
-    api_secret: Optional[str] = Field(None, description="API密钥（某些厂家需要）")
+    default_base_url: Optional[str] = Field(default=None, description="默认API地址")
+    api_key: Optional[str] = Field(default=None, description="API密钥")
+    api_secret: Optional[str] = Field(default=None, description="API密钥（某些厂家需要）")
     aliases: List[str] = Field(default_factory=list, description="兼容别名")
     extra_config: Dict[str, Any] = Field(default_factory=dict, description="额外配置参数")
 
     # 🆕 聚合渠道支持
     is_aggregator: bool = Field(default=False, description="是否为聚合渠道")
-    aggregator_type: Optional[str] = Field(None, description="聚合渠道类型")
-    model_name_format: Optional[str] = Field(None, description="模型名称格式")
+    aggregator_type: Optional[str] = Field(default=None, description="聚合渠道类型")
+    model_name_format: Optional[str] = Field(default=None, description="模型名称格式")
 
 
 class LLMProviderResponse(BaseModel):
@@ -191,26 +191,26 @@ class LLMConfig(BaseModel):
     """大模型配置"""
     provider: str = Field(default="openai", description="供应商标识（支持动态添加）")
     model_name: str = Field(..., description="模型名称/代码")
-    model_display_name: Optional[str] = Field(None, description="模型显示名称")
-    api_key: Optional[str] = Field(None, description="API密钥(可选，优先从厂家配置获取)")
-    api_base: Optional[str] = Field(None, description="API基础URL")
+    model_display_name: Optional[str] = Field(default=None, description="模型显示名称")
+    api_key: Optional[str] = Field(default=None, description="API密钥(可选，优先从厂家配置获取)")
+    api_base: Optional[str] = Field(default=None, description="API基础URL")
     max_tokens: int = Field(default=4000, description="最大token数")
     temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="温度参数")
     timeout: int = Field(default=180, description="请求超时时间(秒)")
     retry_times: int = Field(default=3, description="重试次数")
     enabled: bool = Field(default=True, description="是否启用")
-    description: Optional[str] = Field(None, description="配置描述")
+    description: Optional[str] = Field(default=None, description="配置描述")
 
     # 新增字段 - 来自sidebar.py的配置项
-    model_category: Optional[str] = Field(None, description="模型类别(用于OpenRouter等)")
-    custom_endpoint: Optional[str] = Field(None, description="自定义端点URL")
+    model_category: Optional[str] = Field(default=None, description="模型类别(用于OpenRouter等)")
+    custom_endpoint: Optional[str] = Field(default=None, description="自定义端点URL")
     enable_memory: bool = Field(default=False, description="启用记忆功能")
     enable_debug: bool = Field(default=False, description="启用调试模式")
     priority: int = Field(default=0, description="优先级")
 
     # 定价配置
-    input_price_per_1k: Optional[float] = Field(None, description="输入token价格(每1000个token)")
-    output_price_per_1k: Optional[float] = Field(None, description="输出token价格(每1000个token)")
+    input_price_per_1k: Optional[float] = Field(default=None, description="输入token价格(每1000个token)")
+    output_price_per_1k: Optional[float] = Field(default=None, description="输出token价格(每1000个token)")
     currency: str = Field(default="CNY", description="货币单位(CNY/USD/EUR)")
 
     # 🆕 模型能力分级系统
@@ -244,19 +244,19 @@ class DataSourceConfig(BaseModel):
     """数据源配置"""
     name: str = Field(..., description="数据源名称")
     type: DataSourceType = Field(..., description="数据源类型")
-    api_key: Optional[str] = Field(None, description="API密钥")
-    api_secret: Optional[str] = Field(None, description="API密钥")
-    endpoint: Optional[str] = Field(None, description="API端点")
+    api_key: Optional[str] = Field(default=None, description="API密钥")
+    api_secret: Optional[str] = Field(default=None, description="API密钥")
+    endpoint: Optional[str] = Field(default=None, description="API端点")
     timeout: int = Field(default=30, description="请求超时时间(秒)")
     rate_limit: int = Field(default=100, description="每分钟请求限制")
     enabled: bool = Field(default=True, description="是否启用")
     priority: int = Field(default=0, description="优先级，数字越大优先级越高")
     config_params: Dict[str, Any] = Field(default_factory=dict, description="额外配置参数")
-    description: Optional[str] = Field(None, description="配置描述")
+    description: Optional[str] = Field(default=None, description="配置描述")
     # 新增字段：支持市场分类
     market_categories: Optional[List[str]] = Field(default_factory=list, description="所属市场分类列表")
-    display_name: Optional[str] = Field(None, description="显示名称")
-    provider: Optional[str] = Field(None, description="数据提供商")
+    display_name: Optional[str] = Field(default=None, description="显示名称")
+    provider: Optional[str] = Field(default=None, description="数据提供商")
     created_at: Optional[datetime] = Field(default_factory=now_tz, description="创建时间")
     updated_at: Optional[datetime] = Field(default_factory=now_tz, description="更新时间")
 
@@ -267,14 +267,14 @@ class DatabaseConfig(BaseModel):
     type: DatabaseType = Field(..., description="数据库类型")
     host: str = Field(..., description="主机地址")
     port: int = Field(..., description="端口号")
-    username: Optional[str] = Field(None, description="用户名")
-    password: Optional[str] = Field(None, description="密码")
-    database: Optional[str] = Field(None, description="数据库名")
+    username: Optional[str] = Field(default=None, description="用户名")
+    password: Optional[str] = Field(default=None, description="密码")
+    database: Optional[str] = Field(default=None, description="数据库名")
     connection_params: Dict[str, Any] = Field(default_factory=dict, description="连接参数")
     pool_size: int = Field(default=10, description="连接池大小")
     max_overflow: int = Field(default=20, description="最大溢出连接数")
     enabled: bool = Field(default=True, description="是否启用")
-    description: Optional[str] = Field(None, description="配置描述")
+    description: Optional[str] = Field(default=None, description="配置描述")
 
 
 class MarketCategory(BaseModel):
@@ -282,7 +282,7 @@ class MarketCategory(BaseModel):
     id: str = Field(..., description="分类ID")
     name: str = Field(..., description="分类名称")
     display_name: str = Field(..., description="显示名称")
-    description: Optional[str] = Field(None, description="分类描述")
+    description: Optional[str] = Field(default=None, description="分类描述")
     enabled: bool = Field(default=True, description="是否启用")
     sort_order: int = Field(default=1, description="排序顺序")
     created_at: Optional[datetime] = Field(default_factory=now_tz, description="创建时间")
@@ -301,7 +301,7 @@ class DataSourceGrouping(BaseModel):
 
 class UsageRecord(BaseModel):
     """使用记录"""
-    id: Optional[str] = Field(None, description="记录ID")
+    id: Optional[str] = Field(default=None, description="记录ID")
     timestamp: str = Field(..., description="时间戳")
     provider: str = Field(..., description="供应商")
     model_name: str = Field(..., description="模型名称")
@@ -311,7 +311,7 @@ class UsageRecord(BaseModel):
     currency: str = Field(default="CNY", description="货币单位")
     session_id: str = Field(..., description="会话ID")
     analysis_type: str = Field(default="stock_analysis", description="分析类型")
-    stock_code: Optional[str] = Field(None, description="股票代码")
+    stock_code: Optional[str] = Field(default=None, description="股票代码")
 
 
 class UsageStatistics(BaseModel):
@@ -328,17 +328,17 @@ class UsageStatistics(BaseModel):
 
 class SystemConfig(BaseModel):
     """系统配置模型"""
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
+    id: Optional[PyObjectId] = Field(default_factory=ObjectId, alias="_id")
     config_name: str = Field(..., description="配置名称")
     config_type: str = Field(..., description="配置类型")
 
     # 大模型配置
     llm_configs: List[LLMConfig] = Field(default_factory=list, description="大模型配置列表")
-    default_llm: Optional[str] = Field(None, description="默认大模型")
+    default_llm: Optional[str] = Field(default=None, description="默认大模型")
 
     # 数据源配置
     data_source_configs: List[DataSourceConfig] = Field(default_factory=list, description="数据源配置列表")
-    default_data_source: Optional[str] = Field(None, description="默认数据源")
+    default_data_source: Optional[str] = Field(default=None, description="默认数据源")
 
     # 数据库配置
     database_configs: List[DatabaseConfig] = Field(default_factory=list, description="数据库配置列表")
@@ -349,8 +349,8 @@ class SystemConfig(BaseModel):
     # 元数据
     created_at: datetime = Field(default_factory=now_tz)
     updated_at: datetime = Field(default_factory=now_tz)
-    created_by: Optional[PyObjectId] = Field(None, description="创建者")
-    updated_by: Optional[PyObjectId] = Field(None, description="更新者")
+    created_by: Optional[PyObjectId] = Field(default=None, description="创建者")
+    updated_by: Optional[PyObjectId] = Field(default=None, description="更新者")
     version: int = Field(default=1, description="配置版本")
     is_active: bool = Field(default=True, description="是否激活")
 

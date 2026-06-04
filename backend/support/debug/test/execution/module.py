@@ -3,6 +3,7 @@
 测试执行诊断脚本
 逐步检查测试脚本闪退的原因
 """
+import importlib
 
 import sys
 import os
@@ -117,7 +118,7 @@ def step5_simple_llm_test():
             return True
 
         print("🔄 导入LLM适配器...")
-        from trader.llm.adapters import ChatDashScopeOpenAI
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
         print("✅ LLM适配器导入成功")
 
         print("🔄 创建LLM实例...")
@@ -147,8 +148,8 @@ def step6_tool_binding_test():
             print("⚠️ DASHSCOPE_API_KEY未设置，跳过工具绑定测试")
             return True
 
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from langchain_core.tools import tool
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
 
         print("🔄 定义测试工具...")
         @tool
@@ -180,9 +181,9 @@ def step7_actual_call_test():
             print("⚠️ DASHSCOPE_API_KEY未设置，跳过实际调用测试")
             return True
 
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from langchain_core.tools import tool
-        from langchain_core.messages import HumanMessage
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         @tool
         def test_tool(text: str) -> str:

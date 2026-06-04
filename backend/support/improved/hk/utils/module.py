@@ -2,6 +2,7 @@
 """
 测试改进的港股工具
 """
+import importlib
 
 import os
 import sys
@@ -16,7 +17,7 @@ def test_improved_hk_provider():
     print("=" * 80)
 
     try:
-        from trader.flows.providers.hk.improved import get_improved_hk_provider
+        get_improved_hk_provider = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_improved_hk_provider')
 
         provider = get_improved_hk_provider()
         print("✅ 改进港股提供器初始化成功")
@@ -52,7 +53,7 @@ def test_improved_hk_provider():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -62,9 +63,9 @@ def test_analyst_integration():
     print("=" * 80)
 
     try:
-        from trader.agents.analysts.market import _get_company_name
-        from trader.agents.analysts.fundamentals import _get_company_name_for_fundamentals
-        from trader.utils.stocks import StockUtils
+        _get_company_name = getattr(importlib.import_module('trader.agents.analysts.market'), '_get_company_name')
+        _get_company_name_for_fundamentals = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), '_get_company_name_for_fundamentals')
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         test_hk_symbols = ["0700.HK", "0941.HK", "1299.HK"]
 
@@ -93,7 +94,7 @@ def test_analyst_integration():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -103,8 +104,8 @@ def test_cache_functionality():
     print("=" * 80)
 
     try:
-        from trader.flows.providers.hk.improved import get_improved_hk_provider
-        import time
+        get_improved_hk_provider = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_improved_hk_provider')
+        time = importlib.import_module('time')
 
         provider = get_improved_hk_provider()
 
@@ -147,7 +148,7 @@ def test_cache_functionality():
             print("✅ 缓存文件已创建")
 
             # 读取缓存内容
-            import json
+            json = importlib.import_module('json')
             with open(cache_file, 'r', encoding='utf-8') as f:
                 cache_data = json.load(f)
 
@@ -161,7 +162,7 @@ def test_cache_functionality():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

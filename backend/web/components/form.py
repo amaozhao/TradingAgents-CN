@@ -1,6 +1,7 @@
 """
 分析表单组件
 """
+import importlib
 
 import streamlit as st
 import datetime
@@ -259,7 +260,7 @@ def render_form():
         if current_config != initial_config:
             st.session_state.form_config = current_config
             try:
-                from utils.smart import smart
+                smart = getattr(importlib.import_module('utils.smart'), 'smart')
                 current_analysis_id = st.session_state.get('current_analysis_id', 'form_config_only')
                 smart.save_analysis_state(
                     analysis_id=current_analysis_id,
@@ -315,7 +316,7 @@ def render_form():
 
         # 保存到持久化存储
         try:
-            from utils.smart import smart
+            smart = getattr(importlib.import_module('utils.smart'), 'smart')
             # 获取当前分析ID（如果有的话）
             current_analysis_id = st.session_state.get('current_analysis_id', 'form_config_only')
             smart.save_analysis_state(

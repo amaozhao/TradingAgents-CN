@@ -2,6 +2,7 @@
 """
 测试数据库管理 API 接口
 """
+import importlib
 import asyncio
 import httpx
 import json
@@ -59,7 +60,7 @@ async def test_database_stats(token: str):
     print("=" * 80)
 
     async with httpx.AsyncClient(timeout=60.0) as client:
-        import time
+        time = importlib.import_module('time')
         start_time = time.time()
 
         response = await client.get(
@@ -168,7 +169,7 @@ async def main():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

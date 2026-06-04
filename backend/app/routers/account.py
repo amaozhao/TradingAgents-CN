@@ -2,6 +2,7 @@
 基于数据库的认证路由 - 改进版
 替代原有的基于配置文件的认证机制
 """
+import importlib
 
 import time
 from typing import Any, Dict, Optional
@@ -339,7 +340,8 @@ async def update_me(
 ):
     """更新当前用户信息"""
     try:
-        from app.models.user import UserUpdate, UserPreferences
+        UserUpdate = getattr(importlib.import_module('app.models.user'), 'UserUpdate')
+        UserPreferences = getattr(importlib.import_module('app.models.user'), 'UserPreferences')
 
         payload_data = payload.model_dump(exclude_unset=True)
 

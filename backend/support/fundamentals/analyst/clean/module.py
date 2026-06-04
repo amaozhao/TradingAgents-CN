@@ -2,6 +2,7 @@
 基本面分析师 - 统一工具架构版本
 使用统一工具自动识别股票类型并调用相应数据源
 """
+import importlib
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import AIMessage
@@ -15,7 +16,8 @@ def create_fundamentals_analyst(llm, toolkit):
         ticker = state["company_of_interest"]
 
         # 🔧 基本面分析数据范围：固定获取10天数据（处理周末/节假日/数据延迟）
-        from datetime import datetime, timedelta
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
         try:
             end_date_dt = datetime.strptime(current_date, "%Y-%m-%d")
             start_date_dt = end_date_dt - timedelta(days=10)
@@ -30,7 +32,7 @@ def create_fundamentals_analyst(llm, toolkit):
         print(f"📊 [DEBUG] 现有基本面报告: {state.get('fundamentals_report', 'None')[:100]}...")
 
         # 获取股票市场信息
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
         print(f"📊 [基本面分析师] 正在分析股票: {ticker}")
 
         market_info = StockUtils.get_market_info(ticker)
@@ -112,7 +114,7 @@ def create_fundamentals_analyst(llm, toolkit):
         # 检测阿里百炼模型并创建新实例
         if hasattr(llm, '__class__') and 'DashScope' in llm.__class__.__name__:
             print(f"📊 [DEBUG] 检测到阿里百炼模型，创建新实例以避免工具缓存")
-            from trader.llm.adapters import ChatDashScopeOpenAI
+            ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
 
             # 获取原始 LLM 的 base_url 和 api_key
             original_base_url = getattr(llm, 'openai_api_base', None)

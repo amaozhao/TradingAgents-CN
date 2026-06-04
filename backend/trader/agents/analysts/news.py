@@ -1,3 +1,4 @@
+import importlib
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import time
 import json
@@ -44,7 +45,7 @@ def create_news_analyst(llm, toolkit):
             try:
                 if market_info['is_china']:
                     # 中国A股：使用统一接口获取股票信息
-                    from trader.flows.interface import get_china_stock_info_unified
+                    get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
                     stock_info = get_china_stock_info_unified(ticker)
 
                     # 解析股票名称
@@ -59,7 +60,7 @@ def create_news_analyst(llm, toolkit):
                 elif market_info['is_hk']:
                     # 港股：使用改进的港股工具
                     try:
-                        from trader.flows.providers.hk.improved import get_hk_company_name_improved
+                        get_hk_company_name_improved = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_company_name_improved')
                         company_name = get_hk_company_name_improved(ticker)
                         logger.debug(f"📊 [DEBUG] 使用改进港股工具获取名称: {ticker} -> {company_name}")
                         return company_name
@@ -270,7 +271,7 @@ def create_news_analyst(llm, toolkit):
                         logger.info(f"[新闻分析师] 📄 报告预览 (前300字符): {report[:300]}")
 
                         # 跳转到最终处理
-                        from langchain_core.messages import AIMessage
+                        AIMessage = getattr(importlib.import_module('langchain_core.messages'), 'AIMessage')
                         clean_message = AIMessage(content=report)
 
                         end_time = datetime.now()
@@ -292,7 +293,7 @@ def create_news_analyst(llm, toolkit):
 
             except Exception as e:
                 logger.error(f"[新闻分析师] ❌ 预处理失败: {e}，回退到标准模式")
-                import traceback
+                traceback = importlib.import_module('traceback')
                 logger.error(f"[新闻分析师] 📋 异常堆栈: {traceback.format_exc()}")
 
         # 使用统一的Google工具调用处理器
@@ -386,7 +387,7 @@ def create_news_analyst(llm, toolkit):
 
                 except Exception as e:
                     logger.error(f"[新闻分析师] ❌ 强制补救过程失败: {e}")
-                    import traceback
+                    traceback = importlib.import_module('traceback')
                     logger.error(f"[新闻分析师] 📋 异常堆栈: {traceback.format_exc()}")
                     report = result.content if hasattr(result, 'content') else ""
             else:
@@ -398,7 +399,7 @@ def create_news_analyst(llm, toolkit):
 
         # 🔧 修复死循环问题：返回清洁的AIMessage，不包含tool_calls
         # 这确保工作流图能正确判断分析已完成，避免重复调用
-        from langchain_core.messages import AIMessage
+        AIMessage = getattr(importlib.import_module('langchain_core.messages'), 'AIMessage')
         clean_message = AIMessage(content=report)
 
         logger.info(f"[新闻分析师] ✅ 返回清洁消息，报告长度: {len(report)} 字符")

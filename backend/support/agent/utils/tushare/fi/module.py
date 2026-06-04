@@ -3,6 +3,7 @@
 Agent Utils Tushare修复验证测试
 验证agent_utils中的函数已成功从TDX迁移到Tushare统一接口
 """
+import importlib
 
 import os
 import sys
@@ -19,7 +20,7 @@ def test_get_china_stock_data_fix():
     print("=" * 60)
 
     try:
-        from trader.agents.utils.utils import Toolkit
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
 
         print("✅ Toolkit导入成功")
 
@@ -52,7 +53,7 @@ def test_get_china_stock_data_fix():
 
     except Exception as e:
         print(f"❌ get_china_stock_data测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -63,7 +64,7 @@ def test_get_china_market_overview_fix():
     print("=" * 60)
 
     try:
-        from trader.agents.utils.utils import Toolkit
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
 
         print("✅ Toolkit导入成功")
 
@@ -95,7 +96,7 @@ def test_get_china_market_overview_fix():
 
     except Exception as e:
         print(f"❌ get_china_market_overview测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -106,7 +107,7 @@ def test_stock_name_mapping_fix():
     print("=" * 60)
 
     try:
-        from trader.agents.utils.utils import Toolkit
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
 
         print("✅ Toolkit导入成功")
 
@@ -136,7 +137,7 @@ def test_stock_name_mapping_fix():
 
     except Exception as e:
         print(f"❌ 股票名称映射测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -147,7 +148,7 @@ def check_debug_output():
     print("=" * 60)
 
     try:
-        from trader.agents.utils.utils import Toolkit
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
 
         print("🔄 运行股票数据获取并检查调试输出...")
         end_date = datetime.now().strftime('%Y-%m-%d')

@@ -3,6 +3,7 @@
 测试港股数据源优先级设置
 验证AKShare优先，Yahoo Finance作为备用
 """
+import importlib
 
 import os
 import sys
@@ -18,14 +19,14 @@ def test_hk_data_source_priority():
 
     try:
         # 设置日志级别
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("default")
         logger.setLevel("INFO")
 
         print("📊 测试港股信息获取优先级...")
 
         # 测试统一港股信息接口
-        from trader.flows.interface import get_hk_stock_info_unified
+        get_hk_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_info_unified')
 
         test_symbols = [
             "0700.HK",  # 腾讯控股
@@ -61,7 +62,7 @@ def test_hk_data_source_priority():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -71,7 +72,7 @@ def test_hk_data_priority():
     print("=" * 80)
 
     try:
-        from trader.flows.interface import get_hk_stock_data_unified
+        get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
 
         test_symbol = "0700.HK"
         start_date = "2025-07-01"
@@ -104,7 +105,7 @@ def test_hk_data_priority():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -114,7 +115,7 @@ def test_improved_hk_provider_priority():
     print("=" * 80)
 
     try:
-        from trader.flows.providers.hk.improved import get_improved_hk_provider
+        get_improved_hk_provider = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_improved_hk_provider')
 
         provider = get_improved_hk_provider()
 
@@ -155,7 +156,7 @@ def test_improved_hk_provider_priority():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -167,7 +168,7 @@ def test_data_source_availability():
     try:
         # 检查AKShare可用性
         try:
-            from trader.flows.akshare import get_hk_stock_info_akshare
+            get_hk_stock_info_akshare = getattr(importlib.import_module('trader.flows.akshare'), 'get_hk_stock_info_akshare')
             print("✅ AKShare港股工具可用")
             akshare_available = True
         except ImportError as e:
@@ -176,7 +177,7 @@ def test_data_source_availability():
 
         # 检查Yahoo Finance可用性
         try:
-            from trader.flows.hk_stock_utils import get_hk_stock_info
+            get_hk_stock_info = getattr(importlib.import_module('trader.flows.providers.hk.stock'), 'get_hk_stock_info')
             print("✅ Yahoo Finance港股工具可用")
             yf_available = True
         except ImportError as e:
@@ -185,7 +186,9 @@ def test_data_source_availability():
 
         # 检查统一接口
         try:
-            from trader.flows.interface import get_hk_stock_info_unified, AKSHARE_HK_AVAILABLE, HK_STOCK_AVAILABLE
+            get_hk_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_info_unified')
+            AKSHARE_HK_AVAILABLE = getattr(importlib.import_module('trader.flows.interface'), 'AKSHARE_HK_AVAILABLE')
+            HK_STOCK_AVAILABLE = getattr(importlib.import_module('trader.flows.interface'), 'HK_STOCK_AVAILABLE')
             print("✅ 统一港股接口可用")
             print(f"   AKShare可用标志: {AKSHARE_HK_AVAILABLE}")
             print(f"   Yahoo Finance可用标志: {HK_STOCK_AVAILABLE}")
@@ -201,7 +204,7 @@ def test_data_source_availability():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

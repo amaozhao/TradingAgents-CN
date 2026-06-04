@@ -2,6 +2,7 @@
 测试 ConditionalLogic 是否正确接收配置参数
 验证辩论轮次配置是否正确传递到 TradingAgentsGraph
 """
+import importlib
 import pytest
 from trader.graph.conditions import ConditionalLogic
 from trader.graph.trading import TradingAgentsGraph
@@ -95,7 +96,7 @@ class TestDebateRoundsProgression:
     ])
     def test_debate_rounds_by_level(self, level, debate_rounds, risk_rounds):
         """测试不同级别的辩论轮次"""
-        from app.services.analysis.simple import create_analysis_config
+        create_analysis_config = getattr(importlib.import_module('app.services.analysis.simple'), 'create_analysis_config')
 
         config_dict = create_analysis_config(
             research_depth=level,

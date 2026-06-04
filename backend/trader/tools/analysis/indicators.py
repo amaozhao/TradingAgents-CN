@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, cast
 
 import numpy as np
 import pandas as pd
@@ -22,7 +22,11 @@ def _require_cols(df: pd.DataFrame, cols: Iterable[str]):
         raise ValueError(f"DataFrame缺少必要列: {missing}, 现有列: {list(df.columns)[:10]}...")
 
 
-def ma(close: pd.Series, n: int, min_periods: int = None) -> pd.Series:
+def _series(df: pd.DataFrame, column: str) -> pd.Series:
+    return cast(pd.Series, df[column])
+
+
+def ma(close: pd.Series, n: int, min_periods: Optional[int] = None) -> pd.Series:
     """
     计算移动平均线（Moving Average）
 
@@ -36,7 +40,7 @@ def ma(close: pd.Series, n: int, min_periods: int = None) -> pd.Series:
     """
     if min_periods is None:
         min_periods = 1  # 默认为1，与现有代码保持一致
-    return close.rolling(window=int(n), min_periods=min_periods).mean()
+    return cast(pd.Series, close.rolling(window=int(n), min_periods=min_periods).mean())
 
 
 def ema(close: pd.Series, n: int) -> pd.Series:
@@ -50,7 +54,7 @@ def ema(close: pd.Series, n: int) -> pd.Series:
     Returns:
         指数移动平均线序列
     """
-    return close.ewm(span=int(n), adjust=False).mean()
+    return cast(pd.Series, close.ewm(span=int(n), adjust=False).mean())
 
 
 def macd(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> pd.DataFrame:
@@ -116,12 +120,12 @@ def rsi(close: pd.Series, n: int = 14, method: str = 'ema') -> pd.Series:
     else:
         raise ValueError(f"不支持的RSI计算方法: {method}，支持的方法: 'ema', 'sma', 'china'")
 
-    rs = avg_gain / (avg_loss.replace(0, np.nan))
+    rs = avg_gain / (cast(Any, avg_loss).replace(0, np.nan))
     rsi_val = 100 - (100 / (1 + rs))
-    return rsi_val
+    return cast(pd.Series, rsi_val)
 
 
-def boll(close: pd.Series, n: int = 20, k: float = 2.0, min_periods: int = None) -> pd.DataFrame:
+def boll(close: pd.Series, n: int = 20, k: float = 2.0, min_periods: Optional[int] = None) -> pd.DataFrame:
     """
     计算布林带指标（Bollinger Bands）
 
@@ -153,7 +157,7 @@ def atr(high: pd.Series, low: pd.Series, close: pd.Series, n: int = 14) -> pd.Se
         (high - prev_close).abs(),
         (low - prev_close).abs(),
     ], axis=1).max(axis=1)
-    return tr.rolling(window=int(n), min_periods=int(n)).mean()
+    return cast(pd.Series, tr.rolling(window=int(n), min_periods=int(n)).mean())
 
 
 def kdj(high: pd.Series, low: pd.Series, close: pd.Series, n: int = 9, m1: int = 3, m2: int = 3) -> pd.DataFrame:
@@ -193,13 +197,13 @@ def compute_indicator(df: pd.DataFrame, spec: IndicatorSpec) -> pd.DataFrame:
     if name == "ma":
         _require_cols(df, ["close"])
         n = int(params.get("n", params.get("period", 20)))
-        out[f"ma{n}"] = ma(df["close"], n)
+        out[f"ma{n}"] = ma(_series(df, "close"), n)
         return out
 
     if name == "ema":
         _require_cols(df, ["close"])
         n = int(params.get("n", params.get("period", 20)))
-        out[f"ema{n}"] = ema(df["close"], n)
+        out[f"ema{n}"] = ema(_series(df, "close"), n)
         return out
 
     if name == "macd":
@@ -207,7 +211,7 @@ def compute_indicator(df: pd.DataFrame, spec: IndicatorSpec) -> pd.DataFrame:
         fast = int(params.get("fast", 12))
         slow = int(params.get("slow", 26))
         signal = int(params.get("signal", 9))
-        macd_df = macd(df["close"], fast=fast, slow=slow, signal=signal)
+        macd_df = macd(_series(df, "close"), fast=fast, slow=slow, signal=signal)
         for c in macd_df.columns:
             out[c] = macd_df[c]
         return out
@@ -215,14 +219,14 @@ def compute_indicator(df: pd.DataFrame, spec: IndicatorSpec) -> pd.DataFrame:
     if name == "rsi":
         _require_cols(df, ["close"])
         n = int(params.get("n", params.get("period", 14)))
-        out[f"rsi{n}"] = rsi(df["close"], n)
+        out[f"rsi{n}"] = rsi(_series(df, "close"), n)
         return out
 
     if name == "boll":
         _require_cols(df, ["close"])
         n = int(params.get("n", 20))
         k = float(params.get("k", 2.0))
-        boll_df = boll(df["close"], n=n, k=k)
+        boll_df = boll(_series(df, "close"), n=n, k=k)
         for c in boll_df.columns:
             out[c] = boll_df[c]
         return out
@@ -230,7 +234,7 @@ def compute_indicator(df: pd.DataFrame, spec: IndicatorSpec) -> pd.DataFrame:
     if name == "atr":
         _require_cols(df, ["high", "low", "close"])
         n = int(params.get("n", 14))
-        out[f"atr{n}"] = atr(df["high"], df["low"], df["close"], n=n)
+        out[f"atr{n}"] = atr(_series(df, "high"), _series(df, "low"), _series(df, "close"), n=n)
         return out
 
     if name == "kdj":
@@ -238,7 +242,7 @@ def compute_indicator(df: pd.DataFrame, spec: IndicatorSpec) -> pd.DataFrame:
         n = int(params.get("n", 9))
         m1 = int(params.get("m1", 3))
         m2 = int(params.get("m2", 3))
-        kdj_df = kdj(df["high"], df["low"], df["close"], n=n, m1=m1, m2=m2)
+        kdj_df = kdj(_series(df, "high"), _series(df, "low"), _series(df, "close"), n=n, m1=m1, m2=m2)
         for c in kdj_df.columns:
             out[c] = kdj_df[c]
         return out
@@ -318,33 +322,34 @@ def add_all_indicators(df: pd.DataFrame, close_col: str = 'close',
         raise ValueError(f"DataFrame缺少收盘价列: {close_col}")
 
     # 计算移动平均线（MA5, MA10, MA20, MA60）
-    df['ma5'] = ma(df[close_col], 5, min_periods=1)
-    df['ma10'] = ma(df[close_col], 10, min_periods=1)
-    df['ma20'] = ma(df[close_col], 20, min_periods=1)
-    df['ma60'] = ma(df[close_col], 60, min_periods=1)
+    close = _series(df, close_col)
+    df['ma5'] = ma(close, 5, min_periods=1)
+    df['ma10'] = ma(close, 10, min_periods=1)
+    df['ma20'] = ma(close, 20, min_periods=1)
+    df['ma60'] = ma(close, 60, min_periods=1)
 
     # 计算RSI指标
     if rsi_style == 'china':
         # 中国风格：RSI6, RSI12, RSI24（使用中国式SMA）
-        df['rsi6'] = rsi(df[close_col], 6, method='china')
-        df['rsi12'] = rsi(df[close_col], 12, method='china')
-        df['rsi24'] = rsi(df[close_col], 24, method='china')
+        df['rsi6'] = rsi(close, 6, method='china')
+        df['rsi12'] = rsi(close, 12, method='china')
+        df['rsi24'] = rsi(close, 24, method='china')
         # 保留RSI14作为国际标准参考（使用简单移动平均）
-        df['rsi14'] = rsi(df[close_col], 14, method='sma')
+        df['rsi14'] = rsi(close, 14, method='sma')
         # 为了兼容性，也添加 'rsi' 列（指向 rsi12）
         df['rsi'] = df['rsi12']
     else:
         # 国际标准：RSI14（使用EMA）
-        df['rsi'] = rsi(df[close_col], 14, method='ema')
+        df['rsi'] = rsi(close, 14, method='ema')
 
     # 计算MACD
-    macd_df = macd(df[close_col], fast=12, slow=26, signal=9)
+    macd_df = macd(close, fast=12, slow=26, signal=9)
     df['macd_dif'] = macd_df['dif']
     df['macd_dea'] = macd_df['dea']
     df['macd'] = macd_df['macd_hist'] * 2  # 注意：这里乘以2是为了与通达信/同花顺保持一致
 
     # 计算布林带（20日，2倍标准差）
-    boll_df = boll(df[close_col], n=20, k=2.0, min_periods=1)
+    boll_df = boll(close, n=20, k=2.0, min_periods=1)
     df['boll_mid'] = boll_df['boll_mid']
     df['boll_upper'] = boll_df['boll_upper']
     df['boll_lower'] = boll_df['boll_lower']

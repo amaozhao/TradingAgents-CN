@@ -2,6 +2,7 @@
 社媒消息数据服务
 提供统一的社媒消息存储、查询和分析功能
 """
+import importlib
 from typing import Optional, List, Dict, Any, Union
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
@@ -59,8 +60,8 @@ class SocialMediaService:
     """社媒消息数据服务"""
 
     def __init__(self):
-        self.db = None
-        self.collection = None
+        self.db: Any = None
+        self.collection: Any = None
         self.logger = logging.getLogger(self.__class__.__name__)
 
     async def initialize(self):
@@ -73,7 +74,7 @@ class SocialMediaService:
             self.logger.error(f"❌ 社媒消息数据服务初始化失败: {e}")
             raise
 
-    async def _get_collection(self):
+    async def _get_collection(self) -> Any:
         """获取集合实例"""
         if self.collection is None:
             await self.initialize()
@@ -82,7 +83,7 @@ class SocialMediaService:
     async def save_social_media_messages(
         self,
         messages: List[Dict[str, Any]]
-    ) -> Dict[str, int]:
+    ) -> Dict[str, Any]:
         """
         批量保存社媒消息
 
@@ -165,7 +166,7 @@ class SocialMediaService:
             collection = await self._get_collection()
 
             # 构建查询条件
-            query = {}
+            query: Dict[str, Any] = {}
 
             if params.symbol:
                 query["symbol"] = params.symbol
@@ -231,8 +232,8 @@ class SocialMediaService:
         params: SocialMediaQueryParams,
     ) -> List[Dict[str, Any]]:
         try:
-            from app.db.message import query_social_media_messages
-            from app.db.session import get_session_factory
+            query_social_media_messages = getattr(importlib.import_module('app.db.message'), 'query_social_media_messages')
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
             async with get_session_factory()() as session:
                 return await query_social_media_messages(session, params)
@@ -242,8 +243,8 @@ class SocialMediaService:
 
     async def get_latest_messages(
         self,
-        symbol: str = None,
-        platform: str = None,
+        symbol: Optional[str] = None,
+        platform: Optional[str] = None,
         limit: int = 20
     ) -> List[Dict[str, Any]]:
         """获取最新社媒消息"""
@@ -259,8 +260,8 @@ class SocialMediaService:
     async def search_messages(
         self,
         query: str,
-        symbol: str = None,
-        platform: str = None,
+        symbol: Optional[str] = None,
+        platform: Optional[str] = None,
         limit: int = 50
     ) -> List[Dict[str, Any]]:
         """全文搜索社媒消息"""
@@ -278,7 +279,7 @@ class SocialMediaService:
             collection = await self._get_collection()
 
             # 构建搜索条件
-            search_query = {
+            search_query: Dict[str, Any] = {
                 "$text": {"$search": query}
             }
 
@@ -307,13 +308,13 @@ class SocialMediaService:
         self,
         query: str,
         *,
-        symbol: str = None,
-        platform: str = None,
+        symbol: Optional[str] = None,
+        platform: Optional[str] = None,
         limit: int = 50,
     ) -> List[Dict[str, Any]]:
         try:
-            from app.db.message import search_social_media_messages
-            from app.db.session import get_session_factory
+            search_social_media_messages = getattr(importlib.import_module('app.db.message'), 'search_social_media_messages')
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
             async with get_session_factory()() as session:
                 return await search_social_media_messages(
@@ -329,9 +330,9 @@ class SocialMediaService:
 
     async def get_social_media_statistics(
         self,
-        symbol: str = None,
-        start_time: datetime = None,
-        end_time: datetime = None
+        symbol: Optional[str] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None
     ) -> SocialMediaStats:
         """获取社媒消息统计信息"""
         try:
@@ -347,7 +348,7 @@ class SocialMediaService:
             collection = await self._get_collection()
 
             # 构建匹配条件
-            match_stage = {}
+            match_stage: Dict[str, Any] = {}
             if symbol:
                 match_stage["symbol"] = symbol
             if start_time or end_time:
@@ -412,13 +413,13 @@ class SocialMediaService:
     async def _get_social_media_statistics_from_postgres(
         self,
         *,
-        symbol: str = None,
-        start_time: datetime = None,
-        end_time: datetime = None,
+        symbol: Optional[str] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
     ) -> Optional[SocialMediaStats]:
         try:
-            from app.db.message import get_social_media_stats
-            from app.db.session import get_session_factory
+            get_social_media_stats = getattr(importlib.import_module('app.db.message'), 'get_social_media_stats')
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
             async with get_session_factory()() as session:
                 stats = await get_social_media_stats(

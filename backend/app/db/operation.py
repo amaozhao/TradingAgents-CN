@@ -98,7 +98,7 @@ async def get_operation_log_stats(session, days: int) -> OperationLogStats:
 
 
 def _filters(query) -> list[Any]:
-    filters = [OperationLogDocument.deleted.is_(False)]
+    filters: list[Any] = [OperationLogDocument.deleted.is_(False)]
 
     if query.start_date:
         filters.append(OperationLogDocument.timestamp >= _parse_datetime(query.start_date))

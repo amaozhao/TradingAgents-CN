@@ -2,6 +2,7 @@
 """
 简单的系统测试 - 验证配置和缓存系统
 """
+import importlib
 
 import sys
 import os
@@ -19,7 +20,7 @@ def test_basic_system():
         print(f"✅ 配置文件存在: {config_file}")
 
         try:
-            import json
+            json = importlib.import_module('json')
             with open(config_file, 'r', encoding='utf-8') as f:
                 config = json.load(f)
             print("✅ 配置文件格式正确")
@@ -36,7 +37,7 @@ def test_basic_system():
 
     # 检查pymongo
     try:
-        import pymongo
+        pymongo = importlib.import_module('pymongo')
         print("✅ pymongo 已安装")
 
         # 尝试连接MongoDB
@@ -55,7 +56,7 @@ def test_basic_system():
 
     # 检查redis
     try:
-        import redis
+        redis = importlib.import_module('redis')
         print("✅ redis 已安装")
 
         # 尝试连接Redis
@@ -74,7 +75,7 @@ def test_basic_system():
     # 3. 测试缓存系统
     print("\n💾 测试缓存系统...")
     try:
-        from trader.flows.cache.integrated import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache.integrated'), 'get_cache')
 
         cache = get_cache()
         print("✅ 缓存系统初始化成功")
@@ -105,14 +106,14 @@ def test_basic_system():
 
     except Exception as e:
         print(f"❌ 缓存系统测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
     # 4. 测试数据库管理器
     print("\n🔧 测试数据库管理器...")
     try:
-        from trader.config.databases import get_database_manager
+        get_database_manager = getattr(importlib.import_module('trader.config.databases'), 'get_database_manager')
 
         db_manager = get_database_manager()
         print("✅ 数据库管理器创建成功")
@@ -128,7 +129,7 @@ def test_basic_system():
 
     except Exception as e:
         print(f"❌ 数据库管理器测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -167,7 +168,7 @@ def main():
 
     except Exception as e:
         print(f"❌ 系统测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

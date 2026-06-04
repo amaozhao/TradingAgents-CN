@@ -13,8 +13,8 @@ import os
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from trader.flows.optimized_china_data import get_china_stock_data_cached
-from trader.flows.optimized_us_data import get_us_stock_data_cached
+from trader.flows.china import get_china_stock_data_cached
+from trader.flows.providers.us.optimized import get_us_stock_data_cached
 from trader.utils.logging.init import get_logger
 
 logger = get_logger("default")

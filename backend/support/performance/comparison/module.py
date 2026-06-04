@@ -4,6 +4,7 @@
 性能对比测试：验证优化前后基本面分析数据获取的性能差异
 对比数据传输量、处理时间等关键指标
 """
+import importlib
 
 import sys
 import os
@@ -39,11 +40,11 @@ def simulate_old_strategy():
 
         try:
             # 获取历史价格数据
-            from trader.flows.interface import get_china_stock_data_unified
+            get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
             stock_data = get_china_stock_data_unified(ticker, start_date, end_date)
 
             # 获取基本面数据
-            from trader.flows.china import OptimizedChinaDataProvider
+            OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
             analyzer = OptimizedChinaDataProvider()
             fundamentals_data = analyzer._generate_fundamentals_report(ticker, stock_data)
 
@@ -95,11 +96,11 @@ def test_new_strategy():
         recent_end_date = curr_date
         recent_start_date = (datetime.strptime(curr_date, '%Y-%m-%d') - timedelta(days=2)).strftime('%Y-%m-%d')
 
-        from trader.flows.interface import get_china_stock_data_unified
+        get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
         current_price_data = get_china_stock_data_unified(ticker, recent_start_date, recent_end_date)
 
         # 2. 获取基本面财务数据
-        from trader.flows.china import OptimizedChinaDataProvider
+        OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
         analyzer = OptimizedChinaDataProvider()
         fundamentals_data = analyzer._generate_fundamentals_report(ticker, current_price_data)
 

@@ -2,6 +2,7 @@
 """
 测试图路由修复
 """
+import importlib
 
 import os
 import sys
@@ -26,8 +27,8 @@ def test_graph_routing():
         return False
 
     try:
-        from trader.graph.setup import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.setup'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         print("🔧 创建交易分析图...")
 
@@ -95,7 +96,7 @@ def test_graph_routing():
         return False
     except Exception as e:
         print(f"❌ 其他错误: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

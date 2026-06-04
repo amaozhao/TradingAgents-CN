@@ -2,6 +2,7 @@
 """
 测试分析结果数据结构
 """
+import importlib
 import requests
 import json
 from datetime import datetime
@@ -167,7 +168,7 @@ def test_analysis_result():
 
     except Exception as e:
         print(f"❌ 测试过程中出现异常: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

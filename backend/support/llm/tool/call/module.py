@@ -3,6 +3,7 @@
 测试LLM工具调用机制的详细调试脚本
 模拟实际的LLM工具调用过程
 """
+import importlib
 
 import logging
 import sys
@@ -13,7 +14,7 @@ from typing import Dict, Any
 # 添加项目根目录到路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from trader.flows.realtime import get_realtime_stock_news
+from trader.flows.real.time import get_realtime_stock_news
 from trader.agents.utils.utils import Toolkit
 
 # 设置日志
@@ -54,7 +55,7 @@ def test_direct_call():
         return True, result
     except Exception as e:
         logger.error(f"直接调用失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(f"错误详情: {traceback.format_exc()}")
         return False, None
 
@@ -76,7 +77,7 @@ def test_toolkit_call():
         return True, result
     except Exception as e:
         logger.error(f"Toolkit调用失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(f"错误详情: {traceback.format_exc()}")
         return False, None
 
@@ -135,7 +136,7 @@ def simulate_llm_tool_call():
 
     except Exception as e:
         logger.error(f"模拟LLM调用失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(f"错误详情: {traceback.format_exc()}")
         return False, None
 

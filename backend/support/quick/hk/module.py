@@ -1,6 +1,7 @@
 """
 快速测试港股功能
 """
+import importlib
 
 import sys
 import os
@@ -14,7 +15,7 @@ def test_stock_recognition():
     print("🧪 测试股票识别...")
 
     try:
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         test_cases = [
             "0700.HK",  # 腾讯港股
@@ -38,7 +39,7 @@ def test_akshare_basic():
     print("\n🧪 测试AKShare基本功能...")
 
     try:
-        from trader.flows.akshare import get_akshare_provider
+        get_akshare_provider = getattr(importlib.import_module('trader.flows.akshare'), 'get_akshare_provider')
 
         provider = get_akshare_provider()
 
@@ -64,7 +65,7 @@ def test_unified_interface():
     print("\n🧪 测试统一接口...")
 
     try:
-        from trader.flows.interface import get_hk_stock_info_unified
+        get_hk_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_info_unified')
 
         symbol = "0700.HK"
         print(f"  获取 {symbol} 信息...")

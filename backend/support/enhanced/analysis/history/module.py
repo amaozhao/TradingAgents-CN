@@ -2,6 +2,7 @@
 """
 测试增强的分析历史功能
 """
+import importlib
 
 import sys
 import os
@@ -16,7 +17,7 @@ sys.path.insert(0, str(project_root))
 def test_load_analysis_results():
     """测试加载分析结果功能"""
     try:
-        from web.components.analysis import load_analysis_results
+        load_analysis_results = getattr(importlib.import_module('web.components.analysis'), 'load_analysis_results')
 
         print("🔍 测试加载分析结果...")
 
@@ -45,10 +46,8 @@ def test_load_analysis_results():
 def test_comparison_functions():
     """测试对比功能"""
     try:
-        from web.components.analysis import (
-            calculate_text_similarity,
-            get_report_content
-        )
+        calculate_text_similarity = getattr(importlib.import_module('web.components.analysis'), 'calculate_text_similarity')
+        get_report_content = getattr(importlib.import_module('web.components.analysis'), 'get_report_content')
 
         print("🔍 测试对比功能...")
 
@@ -79,11 +78,9 @@ def test_comparison_functions():
 def test_chart_functions():
     """测试图表功能"""
     try:
-        import pandas as pd
-        from web.components.analysis import (
-            render_comprehensive_dashboard,
-            render_time_distribution_charts
-        )
+        pd = importlib.import_module('pandas')
+        render_comprehensive_dashboard = getattr(importlib.import_module('web.components.analysis'), 'render_comprehensive_dashboard')
+        render_time_distribution_charts = getattr(importlib.import_module('web.components.analysis'), 'render_time_distribution_charts')
 
         print("🔍 测试图表功能...")
 

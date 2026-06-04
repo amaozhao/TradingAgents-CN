@@ -2,6 +2,7 @@
 """
 002027 股票代码专项测试
 """
+import importlib
 
 import os
 import sys
@@ -18,13 +19,13 @@ def test_002027_specifically():
     test_ticker = "002027"
 
     try:
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("default")
         logger.setLevel("INFO")
 
         # 测试1: 数据获取
         print("\n📊 测试1: 数据获取")
-        from trader.flows.interface import get_china_stock_data_tushare
+        get_china_stock_data_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_tushare')
         data = get_china_stock_data_tushare(test_ticker, "2025-07-01", "2025-07-15")
 
         if "002021" in data:
@@ -35,7 +36,7 @@ def test_002027_specifically():
 
         # 测试2: 基本面分析
         print("\n💰 测试2: 基本面分析")
-        from trader.flows.china import OptimizedChinaDataProvider
+        OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
         analyzer = OptimizedChinaDataProvider()
         report = analyzer._generate_fundamentals_report(test_ticker, data)
 
@@ -49,8 +50,8 @@ def test_002027_specifically():
         print("\n🤖 测试3: LLM处理")
         api_key = os.getenv("DASHSCOPE_API_KEY")
         if api_key:
-            from trader.llm.adapters import ChatDashScopeOpenAI
-            from langchain_core.messages import HumanMessage
+            ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+            HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
             llm = ChatDashScopeOpenAI(model="qwen-turbo", temperature=0.1, max_tokens=500)
 

@@ -3,6 +3,7 @@
 测试时间预估显示效果
 验证用户能够看到分析阶段的时间预估
 """
+import importlib
 
 import os
 import sys
@@ -18,7 +19,7 @@ def test_time_estimation_display():
     print("=" * 80)
 
     try:
-        from cli.main import CLIUserInterface
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
 
         ui = CLIUserInterface()
 
@@ -92,7 +93,7 @@ def test_time_estimation_display():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -102,7 +103,7 @@ def test_user_expectation_management():
     print("=" * 80)
 
     try:
-        from cli.main import CLIUserInterface
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
 
         ui = CLIUserInterface()
 
@@ -137,7 +138,7 @@ def test_time_estimation_scenarios():
     print("=" * 80)
 
     try:
-        from cli.main import CLIUserInterface
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
 
         ui = CLIUserInterface()
 
@@ -193,7 +194,7 @@ def test_progress_communication():
     print("=" * 80)
 
     try:
-        from cli.main import CLIUserInterface
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
 
         ui = CLIUserInterface()
 

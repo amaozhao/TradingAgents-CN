@@ -4,7 +4,7 @@ import hashlib
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from enum import Enum
-from typing import Any, Mapping
+from typing import Any, Mapping, cast
 
 try:
     from bson import ObjectId
@@ -496,8 +496,8 @@ def map_token_usage(document: Mapping[str, Any]) -> dict[str, Any]:
 
 def map_internal_message(document: Mapping[str, Any]) -> dict[str, Any]:
     message_id = _as_str(document.get("message_id"))
-    source = document.get("source") if isinstance(document.get("source"), Mapping) else {}
-    related_data = document.get("related_data") if isinstance(document.get("related_data"), Mapping) else {}
+    source = cast(Mapping[str, Any], document.get("source")) if isinstance(document.get("source"), Mapping) else {}
+    related_data = cast(Mapping[str, Any], document.get("related_data")) if isinstance(document.get("related_data"), Mapping) else {}
     return {
         **_base_values(document, f"internal_messages:{message_id}"),
         "message_id": message_id,
@@ -518,8 +518,8 @@ def map_internal_message(document: Mapping[str, Any]) -> dict[str, Any]:
 def map_social_media_message(document: Mapping[str, Any]) -> dict[str, Any]:
     message_id = _as_str(document.get("message_id"))
     platform = _as_str(document.get("platform"))
-    author = document.get("author") if isinstance(document.get("author"), Mapping) else {}
-    engagement = document.get("engagement") if isinstance(document.get("engagement"), Mapping) else {}
+    author = cast(Mapping[str, Any], document.get("author")) if isinstance(document.get("author"), Mapping) else {}
+    engagement = cast(Mapping[str, Any], document.get("engagement")) if isinstance(document.get("engagement"), Mapping) else {}
     return {
         **_base_values(document, f"social_media_messages:{platform}:{message_id}"),
         "message_id": message_id,

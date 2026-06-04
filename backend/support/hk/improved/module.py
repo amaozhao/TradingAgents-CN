@@ -1,6 +1,7 @@
 """
 改进的港股功能测试
 """
+import importlib
 
 import sys
 import os
@@ -14,7 +15,7 @@ def test_stock_recognition():
     print("🧪 测试股票识别功能...")
 
     try:
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         test_cases = [
             ("0700.HK", "港股", "HK$"),
@@ -50,8 +51,9 @@ def test_hk_data_unified():
     print("\n🧪 测试港股统一数据接口...")
 
     try:
-        from trader.flows.interface import get_hk_stock_data_unified
-        from datetime import datetime, timedelta
+        get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         # 设置测试日期
         end_date = datetime.now().strftime('%Y-%m-%d')
@@ -95,7 +97,7 @@ def test_hk_info_unified():
     print("\n🧪 测试港股信息统一接口...")
 
     try:
-        from trader.flows.interface import get_hk_stock_info_unified
+        get_hk_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_info_unified')
 
         symbol = "0700.HK"
         print(f"  获取 {symbol} 信息...")
@@ -129,8 +131,9 @@ def test_market_auto_selection():
     print("\n🧪 测试市场自动选择功能...")
 
     try:
-        from trader.flows.interface import get_stock_data_by_market
-        from datetime import datetime, timedelta
+        get_stock_data_by_market = getattr(importlib.import_module('trader.flows.interface'), 'get_stock_data_by_market')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         end_date = datetime.now().strftime('%Y-%m-%d')
         start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')

@@ -2,6 +2,7 @@
 速率限制中间件
 防止API滥用，实现用户级和端点级速率限制
 """
+import importlib
 
 from fastapi import Request, Response, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -133,7 +134,7 @@ class QuotaMiddleware(BaseHTTPMiddleware):
 
     async def check_daily_quota(self, user_id: str):
         """检查每日配额"""
-        import datetime
+        datetime = importlib.import_module('datetime')
 
         redis_service = get_redis_service()
 

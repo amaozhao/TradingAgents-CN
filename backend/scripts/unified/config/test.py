@@ -2,6 +2,7 @@
 """
 测试 unified_config 获取的模型配置
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -10,7 +11,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.core.unified_config import unified_config
+from app.core.unified import unified_config
 
 def main():
     """主函数"""
@@ -36,7 +37,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 错误: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

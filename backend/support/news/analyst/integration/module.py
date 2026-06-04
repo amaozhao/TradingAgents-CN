@@ -3,6 +3,7 @@
 """
 测试新闻分析师与统一新闻工具的集成
 """
+import importlib
 
 import os
 import sys
@@ -18,8 +19,8 @@ def test_news_analyst_integration():
 
     try:
         # 导入必要的模块
-        from trader.agents.analysts.news import create_news_analyst
-        from trader.tools.news import create_unified_news_tool
+        create_news_analyst = getattr(importlib.import_module('trader.agents.analysts.news'), 'create_news_analyst')
+        create_unified_news_tool = getattr(importlib.import_module('trader.tools.news'), 'create_unified_news_tool')
         print("✅ 成功导入必要模块")
 
         # 创建模拟工具包
@@ -167,7 +168,7 @@ def test_news_analyst_integration():
 
             except Exception as e:
                 print(f"❌ 测试股票 {stock_code} 时出错: {e}")
-                import traceback
+                traceback = importlib.import_module('traceback')
                 traceback.print_exc()
 
         print(f"\n{'='*60}")
@@ -176,7 +177,7 @@ def test_news_analyst_integration():
 
     except Exception as e:
         print(f"❌ 测试过程中出现错误: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

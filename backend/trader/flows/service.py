@@ -6,9 +6,10 @@
 """
 
 import pandas as pd
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional, Union
 from datetime import datetime, timedelta
 import logging
+import importlib
 
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
@@ -27,9 +28,13 @@ try:
     utils_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'utils')
     if utils_path not in sys.path:
         sys.path.append(utils_path)
-    from enhanced_stock_list_fetcher import enhanced_fetch_stock_list
+    enhanced_fetch_stock_list = getattr(
+        importlib.import_module("enhanced_stock_list_fetcher"),
+        "enhanced_fetch_stock_list",
+    )
     ENHANCED_FETCHER_AVAILABLE = True
 except ImportError:
+    enhanced_fetch_stock_list = None
     ENHANCED_FETCHER_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -41,7 +46,7 @@ class StockDataService:
     """
 
     def __init__(self):
-        self.db_manager = None
+        self.db_manager: Any = None
         self._init_services()
 
     def _init_services(self):
@@ -58,7 +63,9 @@ class StockDataService:
                 logger.error(f"⚠️ 数据库管理器初始化失败: {e}")
                 self.db_manager = None
 
-    def get_stock_basic_info(self, stock_code: str = None) -> Optional[Dict[str, Any]]:
+    def get_stock_basic_info(
+        self, stock_code: Optional[str] = None
+    ) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
         """
         获取股票基础信息（单个股票或全部股票）
 
@@ -70,7 +77,7 @@ class StockDataService:
         """
         logger.info(f"📊 获取股票基础信息: {stock_code or '全部股票'}")
 
-        from trader.config.runtime import use_app_cache_enabled
+        use_app_cache_enabled = getattr(importlib.import_module('trader.config.runtime'), 'use_app_cache_enabled')
         use_app_cache = use_app_cache_enabled(default=True)
 
         # 1. 启用 app cache 时优先从 MongoDB 获取
@@ -110,7 +117,9 @@ class StockDataService:
         logger.error(f"❌ 所有数据源都不可用")
         return self._get_fallback_data(stock_code)
 
-    def _get_from_mongodb(self, stock_code: str = None) -> Optional[Dict[str, Any]]:
+    def _get_from_mongodb(
+        self, stock_code: Optional[str] = None
+    ) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
         """从MongoDB获取数据"""
         try:
             mongodb_client = self.db_manager.get_mongodb_client()
@@ -134,12 +143,15 @@ class StockDataService:
             logger.error(f"MongoDB查询失败: {e}")
             return None
 
-    def _get_from_enhanced_fetcher(self, stock_code: str = None) -> Optional[Dict[str, Any]]:
+    def _get_from_enhanced_fetcher(
+        self, stock_code: Optional[str] = None
+    ) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
         """从增强获取器获取数据"""
         try:
             if stock_code:
                 # 获取单个股票信息 - 使用增强获取器获取所有股票然后筛选
-                stock_df = enhanced_fetch_stock_list(
+                fetcher: Any = enhanced_fetch_stock_list
+                stock_df = fetcher(
                     type_='stock',
                     enable_server_failover=True,
                     max_retries=3
@@ -170,7 +182,8 @@ class StockDataService:
                         }
             else:
                 # 获取所有股票列表
-                stock_df = enhanced_fetch_stock_list(
+                fetcher: Any = enhanced_fetch_stock_list
+                stock_df = fetcher(
                     type_='stock',
                     enable_server_failover=True,
                     max_retries=3
@@ -194,17 +207,20 @@ class StockDataService:
             logger.error(f"增强获取器查询失败: {e}")
             return None
 
-    def _get_from_tdx_api(self, stock_code: str = None) -> Optional[Dict[str, Any]]:
+    def _get_from_tdx_api(
+        self, stock_code: Optional[str] = None
+    ) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
         """旧版 TDX API 入口兼容；当前实现委托给增强股票列表获取器。"""
         return self._get_from_enhanced_fetcher(stock_code)
 
     def _cache_to_mongodb(self, data: Any) -> bool:
         """将数据缓存到MongoDB"""
-        if not self.db_manager or not self.db_manager.mongodb_db:
+        mongodb_db = getattr(self.db_manager, "mongodb_db", None) if self.db_manager else None
+        if not mongodb_db:
             return False
 
         try:
-            collection = self.db_manager.mongodb_db['stock_basic_info']
+            collection = mongodb_db['stock_basic_info']
 
             if isinstance(data, list):
                 # 批量插入
@@ -230,7 +246,7 @@ class StockDataService:
             logger.error(f"缓存到MongoDB失败: {e}")
             return False
 
-    def _get_fallback_data(self, stock_code: str = None) -> Dict[str, Any]:
+    def _get_fallback_data(self, stock_code: Optional[str] = None) -> Dict[str, Any]:
         """最后的降级数据"""
         if stock_code:
             return {
@@ -281,12 +297,12 @@ class StockDataService:
 
         # 首先确保股票基础信息可用
         stock_info = self.get_stock_basic_info(stock_code)
-        if stock_info and 'error' in stock_info:
+        if isinstance(stock_info, dict) and 'error' in stock_info:
             return f"❌ 无法获取股票{stock_code}的基础信息: {stock_info.get('error', '未知错误')}"
 
         # 调用统一的中国股票数据接口
         try:
-            from .interface import get_china_stock_data_unified
+            get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
 
             return get_china_stock_data_unified(stock_code, start_date, end_date)
         except Exception as e:

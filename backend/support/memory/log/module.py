@@ -1,4 +1,5 @@
 """Tests for TradingMemoryLog plus preserved CN role memory compatibility."""
+import importlib
 
 import pytest
 import pandas as pd
@@ -566,7 +567,7 @@ class TestDeferredReflection:
     def test_resolve_benchmark_china_a_shares(self):
         """A-share tickers route to their exchange composite (uses the real
         default benchmark_map, since A-share support relies on it)."""
-        from trader.default import DEFAULT_CONFIG
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
         mock_graph = MagicMock(spec=TradingAgentsGraph)
         mock_graph.config = {"benchmark_ticker": None,
                              "benchmark_map": DEFAULT_CONFIG["benchmark_map"]}
@@ -805,12 +806,12 @@ class TestLegacyMemoryCompatibility:
 
     def test_financial_situation_memory_preserved(self):
         """CN FinancialSituationMemory remains importable alongside TradingMemoryLog."""
-        import trader.agents.utils.memory as m
+        m = importlib.import_module('trader.agents.utils.memory')
         assert hasattr(m, "FinancialSituationMemory")
 
     def test_bm25_not_imported(self):
         """rank_bm25 must not be present in the memory module namespace."""
-        import trader.agents.utils.memory as m
+        m = importlib.import_module('trader.agents.utils.memory')
         assert not hasattr(m, "BM25Okapi")
 
     def test_reflect_and_remember_preserved(self):
@@ -826,7 +827,7 @@ class TestLegacyMemoryCompatibility:
 
     def test_full_pipeline_no_regression(self, tmp_path):
         """propagate() completes and stores the decision after the redesign."""
-        import functools
+        functools = importlib.import_module('functools')
 
         fake_state = {
             "final_trade_decision": "Rating: Buy\nBuy NVDA.",

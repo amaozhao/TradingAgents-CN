@@ -2,6 +2,7 @@
 """
 测试港股技术指标计算是否正确
 """
+import importlib
 
 import sys
 import os
@@ -10,7 +11,7 @@ import os
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 sys.path.insert(0, project_root)
 
-from trader.flows.providers.hk.improved_hk import get_hk_stock_data_akshare
+from trader.flows.providers.hk.improved import get_hk_stock_data_akshare
 
 def test_hk_technical_indicators():
     """测试港股技术指标计算"""
@@ -65,7 +66,7 @@ def test_hk_technical_indicators():
 
     # 提取技术指标数值
     print("\n📈 技术指标数值:")
-    import re
+    re = importlib.import_module('re')
 
     # 提取 MA 值
     ma_pattern = r'MA(\d+): HK\$([0-9.]+)'

@@ -10,6 +10,7 @@
 使用方法：
     python scripts/pe/pb/fix/test.py 600036
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -35,9 +36,9 @@ def test_parse_mongodb_financial_data(code: str):
     logger.info(f"🧪 测试 1: _parse_mongodb_financial_data 三层降级逻辑")
     logger.info("=" * 80)
 
-    from pymongo import MongoClient
-    from app.core.config import settings
-    from trader.flows.optimized_china_data import OptimizedChinaDataProvider
+    MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+    settings = getattr(importlib.import_module('app.core.config'), 'settings')
+    OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
 
     # 连接数据库
     client = MongoClient(settings.mongo_uri)
@@ -83,7 +84,7 @@ def test_parse_mongodb_financial_data(code: str):
 
     except Exception as e:
         logger.error(f"❌ 解析失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(traceback.format_exc())
         return False
 
@@ -97,9 +98,9 @@ def test_realtime_metrics(code: str):
     logger.info(f"🧪 测试 2: realtime_metrics 异步客户端兼容性")
     logger.info("=" * 80)
 
-    from trader.flows.realtime_metrics import get_pe_pb_with_fallback
-    from pymongo import MongoClient
-    from app.core.config import settings
+    get_pe_pb_with_fallback = getattr(importlib.import_module('trader.flows.metrics'), 'get_pe_pb_with_fallback')
+    MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+    settings = getattr(importlib.import_module('app.core.config'), 'settings')
 
     code6 = str(code).zfill(6)
 
@@ -120,13 +121,13 @@ def test_realtime_metrics(code: str):
         sync_client.close()
     except Exception as e:
         logger.error(f"❌ 同步客户端测试异常: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(traceback.format_exc())
 
     # 测试 2: 使用异步客户端（模拟诊断脚本的场景）
     logger.info(f"\n🔧 测试 2: 使用异步客户端")
     try:
-        from motor.motor_asyncio import AsyncIOMotorClient
+        AsyncIOMotorClient = getattr(importlib.import_module('motor.motor_asyncio'), 'AsyncIOMotorClient')
         async_client = AsyncIOMotorClient(settings.mongo_uri)
 
         metrics = get_pe_pb_with_fallback(code6, async_client)
@@ -143,7 +144,7 @@ def test_realtime_metrics(code: str):
 
     except Exception as e:
         logger.error(f"❌ 异步客户端测试异常: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(traceback.format_exc())
         return False
 
@@ -154,7 +155,7 @@ def test_fundamentals_report(code: str):
     logger.info(f"🧪 测试 3: 基本面分析报告生成")
     logger.info("=" * 80)
 
-    from trader.flows.optimized_china_data import OptimizedChinaDataProvider
+    OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
 
     code6 = str(code).zfill(6)
 
@@ -204,7 +205,7 @@ def test_fundamentals_report(code: str):
 
     except Exception as e:
         logger.error(f"❌ 报告生成失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(traceback.format_exc())
         return False
 

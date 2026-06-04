@@ -3,6 +3,7 @@
 数据源综合测试程序
 测试所有数据源的获取过程和优先级切换
 """
+import importlib
 
 import sys
 import os
@@ -34,7 +35,7 @@ def test_china_stock_data_sources():
         # 1. 测试统一数据源接口
         try:
             print(f"🔍 测试统一数据源接口...")
-            from trader.flows.interface import get_china_stock_data_unified
+            get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
 
             start_time = time.time()
             result = get_china_stock_data_unified(symbol, start_date, end_date)
@@ -60,7 +61,7 @@ def test_china_stock_data_sources():
         # 2. 测试优化版本
         try:
             print(f"🔍 测试优化版本...")
-            from trader.flows.china import get_china_stock_data_cached
+            get_china_stock_data_cached = getattr(importlib.import_module('trader.flows.china'), 'get_china_stock_data_cached')
 
             start_time = time.time()
             result = get_china_stock_data_cached(symbol, start_date, end_date, force_refresh=True)
@@ -85,7 +86,7 @@ def test_china_stock_data_sources():
         # 3. 测试数据源管理器
         try:
             print(f"🔍 测试数据源管理器...")
-            from trader.flows.sources import DataSourceManager
+            DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
 
             manager = DataSourceManager()
             print(f"   当前数据源: {manager.current_source.value}")
@@ -136,7 +137,7 @@ def test_us_stock_data_sources():
         # 1. 测试优化版本（FinnHub优先）
         try:
             print(f"🔍 测试优化版本（FinnHub优先）...")
-            from trader.flows.optimized_us_data import get_us_stock_data_cached
+            get_us_stock_data_cached = getattr(importlib.import_module('trader.flows.providers.us.optimized'), 'get_us_stock_data_cached')
 
             start_time = time.time()
             result = get_us_stock_data_cached(symbol, start_date, end_date, force_refresh=True)
@@ -168,7 +169,7 @@ def test_us_stock_data_sources():
         # 2. 测试原始yfinance接口
         try:
             print(f"🔍 测试原始yfinance接口...")
-            from trader.flows.interface import get_yfin_data_online
+            get_yfin_data_online = getattr(importlib.import_module('trader.flows.interface'), 'get_yfin_data_online')
 
             start_time = time.time()
             result = get_yfin_data_online(symbol, start_date, end_date)
@@ -212,7 +213,7 @@ def test_news_data_sources():
         # 1. 测试实时新闻聚合器
         try:
             print(f"🔍 测试实时新闻聚合器...")
-            from trader.flows.realtime import RealtimeNewsAggregator
+            RealtimeNewsAggregator = getattr(importlib.import_module('trader.flows.real.time'), 'RealtimeNewsAggregator')
 
             aggregator = RealtimeNewsAggregator()
             start_time = time.time()
@@ -239,7 +240,7 @@ def test_news_data_sources():
         # 2. 测试FinnHub新闻
         try:
             print(f"🔍 测试FinnHub新闻...")
-            from trader.flows.interface import get_finnhub_news
+            get_finnhub_news = getattr(importlib.import_module('trader.flows.interface'), 'get_finnhub_news')
 
             start_time = time.time()
             result = get_finnhub_news(symbol, "2025-07-01", "2025-07-12")
@@ -275,7 +276,7 @@ def test_cache_system():
 
     try:
         print(f"🔍 测试缓存管理器...")
-        from trader.flows.cache_manager import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
 
         cache = get_cache()
         print(f"   缓存类型: {type(cache).__name__}")
@@ -480,7 +481,7 @@ def main():
 
     except Exception as e:
         print(f"❌ 测试程序异常: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

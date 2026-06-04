@@ -2,6 +2,7 @@
 """
 测试配置加载问题
 """
+import importlib
 
 import os
 import sys
@@ -21,7 +22,7 @@ def test_pricing_config_loading():
     print("=" * 50)
 
     try:
-        from trader.config.manager import ConfigManager
+        ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
 
         # 创建配置管理器
         config_manager = ConfigManager()
@@ -36,7 +37,7 @@ def test_pricing_config_loading():
                 content = f.read()
             print(f"📄 文件内容长度: {len(content)}")
 
-            import json
+            json = importlib.import_module('json')
             data = json.loads(content)
             print(f"📊 JSON中的配置数量: {len(data)}")
 
@@ -65,7 +66,7 @@ def test_pricing_config_loading():
 
     except Exception as e:
         print(f"❌ 配置加载测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -75,7 +76,7 @@ def test_cost_calculation():
     print("=" * 50)
 
     try:
-        from trader.config.manager import ConfigManager
+        ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
 
         config_manager = ConfigManager()
 
@@ -111,7 +112,7 @@ def test_cost_calculation():
 
     except Exception as e:
         print(f"❌ 成本计算测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

@@ -3,6 +3,7 @@
 """
 验证统一新闻工具集成效果的最终测试
 """
+import importlib
 
 import os
 import sys
@@ -20,7 +21,7 @@ def test_final_integration():
     try:
         # 1. 测试统一新闻工具本身
         print("📦 第一步：测试统一新闻工具...")
-        from trader.tools.news import create_unified_news_tool
+        create_unified_news_tool = getattr(importlib.import_module('trader.tools.news'), 'create_unified_news_tool')
 
         # 创建模拟工具包
         class MockToolkit:
@@ -77,7 +78,7 @@ def test_final_integration():
 
         # 2. 测试新闻分析师的工具加载
         print(f"\n📰 第二步：测试新闻分析师工具加载...")
-        from trader.agents.analysts.news import create_news_analyst
+        create_news_analyst = getattr(importlib.import_module('trader.agents.analysts.news'), 'create_news_analyst')
 
         # 检查新闻分析师是否正确导入了统一新闻工具
         print(f"  ✅ 新闻分析师模块导入成功")
@@ -123,7 +124,7 @@ def test_final_integration():
 
     except Exception as e:
         print(f"❌ 测试过程中出现错误: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

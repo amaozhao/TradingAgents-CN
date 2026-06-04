@@ -4,6 +4,7 @@
 测试更新后的统一基本面分析函数
 验证300750的估值指标是否正确显示
 """
+import importlib
 
 import sys
 import os
@@ -51,7 +52,7 @@ def test_300750_fundamentals():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

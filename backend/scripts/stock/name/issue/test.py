@@ -1,6 +1,7 @@
 """
 测试市场分析时股票名称获取问题
 """
+import importlib
 import sys
 import os
 
@@ -34,7 +35,7 @@ def test_get_company_name():
         # 1. 测试 get_china_stock_info_unified
         print("\n1️⃣ 测试 get_china_stock_info_unified:")
         try:
-            from trader.flows.interface import get_china_stock_info_unified
+            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
             stock_info = get_china_stock_info_unified(symbol)
             print(f"返回结果:\n{stock_info}")
 
@@ -47,14 +48,14 @@ def test_get_company_name():
 
         except Exception as e:
             print(f"❌ 调用失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
 
         # 2. 测试 market_analyst 中的 _get_company_name 函数
         print("\n2️⃣ 测试 market_analyst._get_company_name:")
         try:
-            from trader.agents.analysts.market_analyst import _get_company_name
-            from trader.utils.stock_utils import StockUtils
+            _get_company_name = getattr(importlib.import_module('trader.agents.analysts.market'), '_get_company_name')
+            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
             market_info = StockUtils.get_market_info(symbol)
             company_name = _get_company_name(symbol, market_info)
@@ -67,13 +68,13 @@ def test_get_company_name():
 
         except Exception as e:
             print(f"❌ 调用失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
 
         # 3. 测试 data_source_manager.get_china_stock_info_unified
         print("\n3️⃣ 测试 data_source_manager.get_china_stock_info_unified:")
         try:
-            from trader.flows.data_source_manager import get_china_stock_info_unified
+            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.sources'), 'get_china_stock_info_unified')
             info_dict = get_china_stock_info_unified(symbol)
             print(f"返回结果: {info_dict}")
 
@@ -84,7 +85,7 @@ def test_get_company_name():
 
         except Exception as e:
             print(f"❌ 调用失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
 
 
@@ -95,7 +96,7 @@ def test_data_source_config():
     print("="*60)
 
     try:
-        from trader.flows.data_source_manager import get_data_source_manager
+        get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
         manager = get_data_source_manager()
 
         print(f"\n当前数据源: {manager.current_source.value}")
@@ -103,7 +104,7 @@ def test_data_source_config():
 
         # 检查是否启用了 app cache
         try:
-            from trader.config.runtime_settings import use_app_cache_enabled
+            use_app_cache_enabled = getattr(importlib.import_module('trader.config.runtime'), 'use_app_cache_enabled')
             use_cache = use_app_cache_enabled(False)
             print(f"App Cache 启用状态: {use_cache}")
         except Exception as e:
@@ -111,7 +112,7 @@ def test_data_source_config():
 
     except Exception as e:
         print(f"❌ 获取数据源配置失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

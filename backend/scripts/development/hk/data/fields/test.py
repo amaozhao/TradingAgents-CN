@@ -3,6 +3,7 @@
 测试 AKShare 港股历史数据接口返回的字段
 检查字段映射是否正确
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -183,7 +184,7 @@ def test_hk_stock_data_fields():
 
     except Exception as e:
         print(f"❌ 错误: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

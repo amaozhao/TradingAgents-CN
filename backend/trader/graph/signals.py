@@ -1,7 +1,11 @@
 # TradingAgents/graph/signal_processing.py
 
+import json
+import re
+
 from langchain_openai import ChatOpenAI
 from trader.agents.utils.rating import parse_rating
+from trader.utils.stocks import StockUtils
 
 # 导入统一日志系统和图处理模块日志装饰器
 from trader.utils.logging.init import get_logger
@@ -17,7 +21,7 @@ class SignalProcessor:
         self.quick_thinking_llm = quick_thinking_llm
 
     @log_graph_module("signal_processing")
-    def process_signal(self, full_signal: str, stock_symbol: str = None) -> dict:
+    def process_signal(self, full_signal: str, stock_symbol: str | None = None) -> dict:
         """
         Process a full trading signal to extract structured decision information.
 
@@ -58,9 +62,7 @@ class SignalProcessor:
             return rating_decision
 
         # 检测股票类型和货币
-        from trader.utils.stocks import StockUtils
-
-        market_info = StockUtils.get_market_info(stock_symbol)
+        market_info = StockUtils.get_market_info(stock_symbol or "")
         is_china = market_info['is_china']
         is_hk = market_info['is_hk']
         currency = market_info['currency_name']
@@ -114,12 +116,14 @@ class SignalProcessor:
         logger.debug(f"🔍 [SignalProcessor] 准备调用LLM，消息数量: {len(messages)}, 信号长度: {len(full_signal)}")
 
         try:
-            response = self.quick_thinking_llm.invoke(messages).content
-            logger.debug(f"🔍 [SignalProcessor] LLM响应: {response[:200]}...")
+            if self.quick_thinking_llm is None:
+                logger.warning("⚠️ [SignalProcessor] quick_thinking_llm 未配置，使用简单文本提取")
+                return self._extract_simple_decision(full_signal)
 
-            # 尝试解析JSON响应
-            import json
-            import re
+            response = self.quick_thinking_llm.invoke(messages).content
+            if not isinstance(response, str):
+                response = str(response)
+            logger.debug(f"🔍 [SignalProcessor] LLM响应: {response[:200]}...")
 
             # 提取JSON部分
             json_match = re.search(r'\{.*\}', response, re.DOTALL)
@@ -250,9 +254,7 @@ class SignalProcessor:
             "reasoning": f"根据组合经理结构化评级 {rating} 解析得到的投资建议。",
         }
 
-    def _extract_price_target(self, text: str):
-        import re
-
+    def _extract_price_target(self, text: str) -> float | None:
         patterns = [
             r"\*\*Price Target\*\*:\s*[¥￥$]?(\d+(?:\.\d+)?)",
             r"Price Target[：:]\s*[¥￥$]?(\d+(?:\.\d+)?)",
@@ -267,10 +269,8 @@ class SignalProcessor:
                     return None
         return None
 
-    def _smart_price_estimation(self, text: str, action: str, is_china: bool) -> float:
+    def _smart_price_estimation(self, text: str, action: str, is_china: bool) -> float | None:
         """智能价格推算方法"""
-        import re
-
         # 尝试从文本中提取当前价格和涨跌幅信息
         current_price = None
         percentage_change = None
@@ -334,8 +334,6 @@ class SignalProcessor:
 
     def _extract_simple_decision(self, text: str) -> dict:
         """简单的决策提取方法作为备用"""
-        import re
-
         # 提取动作
         action = '持有'  # 默认
         if re.search(r'买入|BUY', text, re.IGNORECASE):

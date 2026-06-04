@@ -2,6 +2,7 @@
 新闻过滤集成模块
 将新闻过滤器集成到现有的新闻获取流程中
 """
+import importlib
 
 import pandas as pd
 import logging
@@ -59,7 +60,7 @@ def integrate_news_filtering(original_get_stock_news_em):
 
             try:
                 # 导入过滤器
-                from trader.utils.news.enhanced import create_enhanced_news_filter
+                create_enhanced_news_filter = getattr(importlib.import_module('trader.utils.news.enhanced'), 'create_enhanced_news_filter')
 
                 # 创建过滤器
                 news_filter = create_enhanced_news_filter(
@@ -136,7 +137,7 @@ def create_filtered_realtime_news_function():
 
         try:
             # 导入原始函数
-            from trader.flows.news.realtime import get_realtime_stock_news
+            get_realtime_stock_news = getattr(importlib.import_module('trader.flows.news.real.time'), 'get_realtime_stock_news')
 
             # 调用原始函数获取新闻
             original_report = get_realtime_stock_news(ticker, curr_date, hours_back)
@@ -153,7 +154,7 @@ def create_filtered_realtime_news_function():
 
                 try:
                     # 注意：akshare_utils 已废弃，使用 AKShareProvider 替代
-                    from trader.flows.providers.china.akshare import get_akshare_provider
+                    get_akshare_provider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'get_akshare_provider')
 
                     # 清理股票代码
                     clean_ticker = ticker.replace('.SH', '').replace('.SZ', '').replace('.SS', '')\

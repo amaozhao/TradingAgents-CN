@@ -2,6 +2,7 @@
 """
 测试DeepSeek成本计算详细调试
 """
+import importlib
 
 import os
 import sys
@@ -26,7 +27,7 @@ def test_deepseek_cost_debug():
         return False
 
     try:
-        from trader.llm.adapters.deepseek import ChatDeepSeek
+        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
 
         print("🔧 创建DeepSeek实例...")
 
@@ -55,7 +56,7 @@ def test_deepseek_cost_debug():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

@@ -1,6 +1,7 @@
 """
 调试Web界面显示"True"的问题
 """
+import importlib
 
 import sys
 import os
@@ -62,7 +63,7 @@ def test_validation_function():
     print("\n🧪 测试验证函数...")
 
     try:
-        from web.utils.analysis import validate_analysis_params
+        validate_analysis_params = getattr(importlib.import_module('web.utils.analysis'), 'validate_analysis_params')
 
         # 测试港股验证
         errors = validate_analysis_params(
@@ -85,7 +86,7 @@ def test_validation_function():
 
     except Exception as e:
         print(f"❌ 验证函数测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -94,11 +95,13 @@ def test_analysis_runner_import():
     print("\n🧪 测试分析运行器导入...")
 
     try:
-        from web.utils.analysis import run_stock_analysis, validate_analysis_params, format_analysis_results
+        run_stock_analysis = getattr(importlib.import_module('web.utils.analysis'), 'run_stock_analysis')
+        validate_analysis_params = getattr(importlib.import_module('web.utils.analysis'), 'validate_analysis_params')
+        format_analysis_results = getattr(importlib.import_module('web.utils.analysis'), 'format_analysis_results')
         print("  ✅ 分析运行器导入成功")
 
         # 测试函数签名
-        import inspect
+        inspect = importlib.import_module('inspect')
 
         sig = inspect.signature(run_stock_analysis)
         print(f"  run_stock_analysis 参数: {list(sig.parameters.keys())}")
@@ -110,7 +113,7 @@ def test_analysis_runner_import():
 
     except Exception as e:
         print(f"❌ 分析运行器导入失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -120,8 +123,8 @@ def test_streamlit_components():
 
     try:
         # 测试组件导入
-        from web.components.form import render_analysis_form
-        from web.components.result import render_results
+        render_analysis_form = getattr(importlib.import_module('web.components.form'), 'render_analysis_form')
+        render_results = getattr(importlib.import_module('web.components.result'), 'render_results')
 
         print("  ✅ Streamlit组件导入成功")
 
@@ -129,7 +132,7 @@ def test_streamlit_components():
 
     except Exception as e:
         print(f"❌ Streamlit组件测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

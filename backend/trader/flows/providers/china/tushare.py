@@ -2,7 +2,8 @@
 统一的Tushare数据提供器
 合并app层和trading_agents层的所有优势功能
 """
-from typing import Optional, Dict, Any, List, Union
+import importlib
+from typing import Optional, Dict, Any, List, Union, cast
 from datetime import UTC, datetime, date, timedelta
 import pandas as pd
 import asyncio
@@ -12,12 +13,13 @@ from ..base import BaseStockDataProvider
 from trader.config.providers import get_provider_config
 
 # 尝试导入tushare
+ts: Any = None
 try:
-    import tushare as ts
+    import tushare as _tushare
+    ts = _tushare
     TUSHARE_AVAILABLE = True
 except ImportError:
     TUSHARE_AVAILABLE = False
-    ts = None
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ class TushareProvider(BaseStockDataProvider):
 
     def __init__(self):
         super().__init__("Tushare")
-        self.api = None
+        self.api: Any = None
         self.config = get_provider_config("tushare")
         self.token_source = None  # 记录 Token 来源: 'database' 或 'env'
 
@@ -46,7 +48,7 @@ class TushareProvider(BaseStockDataProvider):
         """
         try:
             self.logger.info("🔍 [DB查询] 开始从数据库读取 Token...")
-            from app.core.database import get_mongo_db_sync
+            get_mongo_db_sync = getattr(importlib.import_module('app.core.database'), 'get_mongo_db_sync')
             db = get_mongo_db_sync()
             config_collection = db.system_configs
 
@@ -80,7 +82,7 @@ class TushareProvider(BaseStockDataProvider):
             self.logger.info("⚠️ [DB查询] 数据库中未找到有效的 Tushare Token")
         except Exception as e:
             self.logger.error(f"❌ [DB查询] 从数据库读取 Token 失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             self.logger.error(f"❌ [DB查询] 堆栈跟踪:\n{traceback.format_exc()}")
 
         return None
@@ -262,7 +264,7 @@ class TushareProvider(BaseStockDataProvider):
 
     # ==================== 基础数据接口 ====================
 
-    def get_stock_list_sync(self, market: str = None) -> Optional[pd.DataFrame]:
+    def get_stock_list_sync(self, market: Optional[str] = None) -> Optional[pd.DataFrame]:
         """获取股票列表（同步版本）"""
         if not self.is_available():
             return None
@@ -282,7 +284,7 @@ class TushareProvider(BaseStockDataProvider):
             self.logger.error(f"❌ 获取股票列表失败: {e}")
             return None
 
-    async def get_stock_list(self, market: str = None) -> Optional[List[Dict[str, Any]]]:
+    async def get_stock_list(self, market: Optional[str] = None) -> Optional[List[Dict[str, Any]]]:
         """获取股票列表（异步版本）"""
         if not self.is_available():
             return None
@@ -322,7 +324,7 @@ class TushareProvider(BaseStockDataProvider):
             self.logger.error(f"❌ 获取股票列表失败: {e}")
             return None
 
-    async def get_stock_basic_info(self, symbol: str = None) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
+    async def get_stock_basic_info(self, symbol: Optional[str] = None) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
         """获取股票基础信息"""
         if not self.is_available():
             return None
@@ -366,7 +368,8 @@ class TushareProvider(BaseStockDataProvider):
             ts_code = self._normalize_ts_code(symbol)
 
             # 🔥 使用 daily 接口获取最新一天的数据（更节省配额）
-            from datetime import datetime, timedelta
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
             # 获取最近3天的数据（考虑周末和节假日）
             end_date = datetime.now().strftime('%Y%m%d')
@@ -465,7 +468,9 @@ class TushareProvider(BaseStockDataProvider):
             self.logger.info(f"✅ 获取到 {len(df)} 只股票的实时行情")
 
             # 🔥 获取当前日期（UTC+8）
-            from datetime import datetime, timezone, timedelta
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+            timezone = getattr(importlib.import_module('datetime'), 'timezone')
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
             cn_tz = timezone(timedelta(hours=8))
             now_cn = datetime.now(cn_tz)
             trade_date = now_cn.strftime("%Y%m%d")  # 格式：20251114（与 Tushare 格式一致）
@@ -538,7 +543,7 @@ class TushareProvider(BaseStockDataProvider):
         self,
         symbol: str,
         start_date: Union[str, date],
-        end_date: Union[str, date] = None,
+        end_date: Optional[Union[str, date]] = None,
         period: str = "daily"
     ) -> Optional[pd.DataFrame]:
         """
@@ -605,7 +610,7 @@ class TushareProvider(BaseStockDataProvider):
             return df
 
         except Exception as e:
-            import traceback
+            traceback = importlib.import_module('traceback')
             error_details = traceback.format_exc()
             self.logger.error(
                 f"❌ 获取历史数据失败 symbol={symbol}, period={period}\n"
@@ -676,7 +681,7 @@ class TushareProvider(BaseStockDataProvider):
             return None
 
     async def get_financial_data(self, symbol: str, report_type: str = "quarterly",
-                                period: str = None, limit: int = 4) -> Optional[Dict[str, Any]]:
+                                period: Optional[str] = None, limit: int = 4) -> Optional[Dict[str, Any]]:
         """
         获取财务数据
 
@@ -791,8 +796,8 @@ class TushareProvider(BaseStockDataProvider):
             self.logger.error(f"❌ 获取Tushare财务数据失败 symbol={symbol}: {e}")
             return None
 
-    async def get_stock_news(self, symbol: str = None, limit: int = 10,
-                           hours_back: int = 24, src: str = None) -> Optional[List[Dict[str, Any]]]:
+    async def get_stock_news(self, symbol: Optional[str] = None, limit: int = 10,
+                           hours_back: int = 24, src: Optional[str] = None) -> Optional[List[Dict[str, Any]]]:
         """
         获取股票新闻（需要Tushare新闻权限）
 
@@ -809,7 +814,8 @@ class TushareProvider(BaseStockDataProvider):
             return None
 
         try:
-            from datetime import datetime, timedelta
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
             # 计算时间范围
             end_time = datetime.now()
@@ -898,7 +904,7 @@ class TushareProvider(BaseStockDataProvider):
             return None
 
     def _process_tushare_news(self, news_df: pd.DataFrame, source: str,
-                            symbol: str = None, limit: int = 10) -> List[Dict[str, Any]]:
+                            symbol: Optional[str] = None, limit: int = 10) -> List[Dict[str, Any]]:
         """处理Tushare新闻数据"""
         news_list = []
 
@@ -906,18 +912,22 @@ class TushareProvider(BaseStockDataProvider):
         df_limited = news_df.head(limit * 2)  # 多获取一些，用于过滤
 
         for _, row in df_limited.iterrows():
+            title = str(row.get('title', '') or '')
+            content = str(row.get('content', '') or '')
+            channels = str(row.get('channels', '') or '')
+            datetime_text = str(row.get('datetime', '') or '')
             news_item = {
-                "title": str(row.get('title', '') or row.get('content', '')[:50] + '...'),
-                "content": str(row.get('content', '')),
-                "summary": self._generate_summary(row.get('content', '')),
+                "title": title or content[:50] + '...',
+                "content": content,
+                "summary": self._generate_summary(content),
                 "url": "",  # Tushare新闻接口不提供URL
                 "source": self._get_source_name(source),
                 "author": "",
-                "publish_time": self._parse_tushare_news_time(row.get('datetime', '')),
-                "category": self._classify_tushare_news(row.get('channels', ''), row.get('content', '')),
-                "sentiment": self._analyze_news_sentiment(row.get('content', ''), row.get('title', '')),
-                "importance": self._assess_news_importance(row.get('content', ''), row.get('title', '')),
-                "keywords": self._extract_keywords(row.get('content', ''), row.get('title', '')),
+                "publish_time": self._parse_tushare_news_time(datetime_text),
+                "category": self._classify_tushare_news(channels, content),
+                "sentiment": self._analyze_news_sentiment(content, title),
+                "importance": self._assess_news_importance(content, title),
+                "keywords": self._extract_keywords(content, title),
                 "data_source": "tushare",
                 "original_source": source
             }
@@ -1061,8 +1071,8 @@ class TushareProvider(BaseStockDataProvider):
         else:
             return 'other'
 
-    async def get_financial_data_by_period(self, symbol: str, start_period: str = None,
-                                         end_period: str = None, report_type: str = "quarterly") -> Optional[List[Dict[str, Any]]]:
+    async def get_financial_data_by_period(self, symbol: str, start_period: Optional[str] = None,
+                                         end_period: Optional[str] = None, report_type: str = "quarterly") -> Optional[List[Dict[str, Any]]]:
         """
         按时间范围获取财务数据
 
@@ -1353,7 +1363,12 @@ class TushareProvider(BaseStockDataProvider):
 
             # 提取基础信息
             symbol = ts_code.split('.')[0] if '.' in ts_code else ts_code
-            report_period = latest_income.get('end_date') or latest_balance.get('end_date') or latest_cashflow.get('end_date')
+            report_period = str(
+                latest_income.get('end_date')
+                or latest_balance.get('end_date')
+                or latest_cashflow.get('end_date')
+                or ""
+            )
             ann_date = latest_income.get('ann_date') or latest_balance.get('ann_date') or latest_cashflow.get('ann_date')
 
             # 计算 TTM 数据

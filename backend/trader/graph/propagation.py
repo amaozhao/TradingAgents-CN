@@ -1,3 +1,4 @@
+import importlib
 # TradingAgents/graph/propagation.py
 
 from typing import Dict, Any, List, Optional
@@ -28,7 +29,7 @@ class Propagator:
         instrument_context: str = "",
     ) -> Dict[str, Any]:
         """Create the initial state for the agent graph."""
-        from langchain_core.messages import HumanMessage
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         # 🔥 修复：创建明确的分析请求消息，而不是只传递股票代码
         # 这样可以确保所有LLM（包括DeepSeek）都能理解任务
@@ -94,7 +95,7 @@ class Propagator:
         # 使用 'values' 模式可以获取完整的状态更新
         stream_mode = "updates" if use_progress_callback else "values"
 
-        config = {"recursion_limit": self.max_recur_limit}
+        config: Dict[str, Any] = {"recursion_limit": self.max_recur_limit}
         if callbacks:
             config["callbacks"] = callbacks
 

@@ -2,6 +2,7 @@
 """
 DeepSeek V3集成测试
 """
+import importlib
 
 import sys
 import os
@@ -44,7 +45,8 @@ def test_deepseek_adapter():
     print("\n🧪 测试DeepSeek适配器...")
 
     try:
-        from trader.llm.deepseekadapter import DeepSeekAdapter, create_deepseek_adapter
+        DeepSeekAdapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'DeepSeekAdapter')
+        create_deepseek_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_adapter')
 
         # 测试适配器创建
         adapter = create_deepseek_adapter(model="deepseek-chat")
@@ -70,8 +72,8 @@ def test_deepseek_connection():
     print("\n🔗 测试DeepSeek连接...")
 
     try:
-        from trader.llm.deepseekadapter import create_deepseek_adapter
-        from langchain.schema import HumanMessage
+        create_deepseek_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_adapter')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         # 创建适配器
         adapter = create_deepseek_adapter(model="deepseek-chat")
@@ -96,8 +98,8 @@ def test_deepseek_tools():
     print("\n🛠️ 测试工具调用功能...")
 
     try:
-        from langchain.tools import tool
-        from trader.llm.deepseekadapter import create_deepseek_adapter
+        tool = getattr(importlib.import_module('langchain.tools'), 'tool')
+        create_deepseek_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_adapter')
 
         # 定义测试工具
         @tool
@@ -135,8 +137,8 @@ def test_deepseek_trading_graph():
     print("\n📊 测试交易图集成...")
 
     try:
-        from trader.default import DEFAULT_CONFIG
-        from trader.graph.trading import TradingAgentsGraph
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
 
         # 创建DeepSeek配置
         config = DEFAULT_CONFIG.copy()
@@ -164,7 +166,7 @@ def test_deepseek_models():
     print("\n🎯 测试不同DeepSeek模型...")
 
     try:
-        from trader.llm.deepseekadapter import create_deepseek_adapter
+        create_deepseek_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_adapter')
 
         models_to_test = ["deepseek-chat"]  # 仅测试最适合股票分析的模型
 

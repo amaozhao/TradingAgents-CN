@@ -1,6 +1,7 @@
 """
 测试FINNHUB港股支持
 """
+import importlib
 
 import sys
 import os
@@ -14,7 +15,7 @@ def test_finnhub_connection():
     print("🧪 测试FINNHUB连接...")
 
     try:
-        import finnhub
+        finnhub = importlib.import_module('finnhub')
 
         api_key = os.getenv('FINNHUB_API_KEY')
         if not api_key:
@@ -44,7 +45,7 @@ def test_finnhub_hk_symbols():
     print("\n🧪 测试FINNHUB港股代码格式...")
 
     try:
-        import finnhub
+        finnhub = importlib.import_module('finnhub')
 
         api_key = os.getenv('FINNHUB_API_KEY')
         if not api_key:
@@ -93,7 +94,7 @@ def test_finnhub_hk_company_info():
     print("\n🧪 测试FINNHUB港股公司信息...")
 
     try:
-        import finnhub
+        finnhub = importlib.import_module('finnhub')
 
         api_key = os.getenv('FINNHUB_API_KEY')
         if not api_key:
@@ -132,8 +133,9 @@ def test_optimized_us_data_finnhub_hk():
     print("\n🧪 测试优化数据模块的FINNHUB港股支持...")
 
     try:
-        from trader.flows.optimized_us_data import get_us_stock_data_cached
-        from datetime import datetime, timedelta
+        get_us_stock_data_cached = getattr(importlib.import_module('trader.flows.providers.us.optimized'), 'get_us_stock_data_cached')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         end_date = datetime.now().strftime('%Y-%m-%d')
         start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
@@ -176,8 +178,9 @@ def test_unified_interface_finnhub_priority():
     print("\n🧪 测试统一接口的FINNHUB优先级...")
 
     try:
-        from trader.flows.interface import get_hk_stock_data_unified
-        from datetime import datetime, timedelta
+        get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         end_date = datetime.now().strftime('%Y-%m-%d')
         start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')

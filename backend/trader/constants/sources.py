@@ -11,7 +11,7 @@
 
 from enum import Enum
 from typing import Dict, List, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 class DataSourceCode(str, Enum):
@@ -65,11 +65,10 @@ class DataSourceInfo:
     is_free: bool  # 是否免费
     official_website: Optional[str] = None  # 官方网站
     documentation_url: Optional[str] = None  # 文档地址
-    features: List[str] = None  # 特性列表
+    features: List[str] = field(default_factory=list)  # 特性列表
 
     def __post_init__(self):
-        if self.features is None:
-            self.features = []
+        pass
 
 
 # ==================== 数据源注册表 ====================

@@ -10,7 +10,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from trader.flows.providers.tushare_provider import TushareProvider
+from trader.flows.providers.tushare import TushareProvider
 from app.services.market.historical import get_historical_data_service
 from app.core.database import init_database
 from trader.config.databases import get_mongodb_client

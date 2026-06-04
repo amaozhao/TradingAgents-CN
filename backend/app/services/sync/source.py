@@ -7,6 +7,7 @@ Multi-source stock basics synchronization service
 - Provides unified interface for different data sources
 """
 from __future__ import annotations
+import importlib
 
 import asyncio
 import logging
@@ -149,7 +150,7 @@ class MultiSourceBasicsSyncService:
 
         return inserted, updated
 
-    async def run_full_sync(self, force: bool = False, preferred_sources: List[str] = None) -> Dict[str, Any]:
+    async def run_full_sync(self, force: bool = False, preferred_sources: Optional[List[str]] = None) -> Dict[str, Any]:
         """
         运行完整同步
 
@@ -157,6 +158,7 @@ class MultiSourceBasicsSyncService:
             force: 是否强制运行（即使已在运行中）
             preferred_sources: 优先使用的数据源列表
         """
+        preferred_sources = preferred_sources or []
         async with self._lock:
             if self._running and not force:
                 logger.info("Multi-source stock basics sync already running; skip start")
@@ -171,7 +173,7 @@ class MultiSourceBasicsSyncService:
 
         try:
             # Step 1: 获取数据源管理器
-            from app.services.sources.manager import DataSourceManager
+            DataSourceManager = getattr(importlib.import_module('app.services.sources.manager'), 'DataSourceManager')
             manager = DataSourceManager()
             available_adapters = manager.get_available_adapters()
 

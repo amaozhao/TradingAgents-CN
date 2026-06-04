@@ -2,6 +2,7 @@
 """
 测试Web界面的Google模型功能
 """
+import importlib
 
 import os
 import sys
@@ -23,14 +24,14 @@ def test_web_interface_config():
     try:
         # 测试sidebar配置
         print("📋 测试sidebar配置...")
-        from web.components.sidebar import render_sidebar
+        render_sidebar = getattr(importlib.import_module('web.components.sidebar'), 'render_sidebar')
 
         # 模拟Streamlit环境（简化测试）
         print("✅ sidebar模块导入成功")
 
         # 测试analysis_runner配置
         print("📊 测试analysis_runner配置...")
-        from web.utils.analysis import run_stock_analysis
+        run_stock_analysis = getattr(importlib.import_module('web.utils.analysis'), 'run_stock_analysis')
 
         print("✅ analysis_runner模块导入成功")
 
@@ -60,7 +61,7 @@ def test_web_interface_config():
 
     except Exception as e:
         print(f"❌ Web界面配置测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 

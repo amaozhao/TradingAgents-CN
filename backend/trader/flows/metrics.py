@@ -2,9 +2,14 @@
 实时估值指标计算模块
 基于实时行情和财务数据计算PE/PB等指标
 """
+import importlib
 import logging
 from typing import Optional, Dict, Any
 from datetime import datetime
+
+from app.core.config import settings
+from pymongo import MongoClient
+from trader.config.databases import get_database_manager
 
 logger = logging.getLogger(__name__)
 
@@ -84,20 +89,20 @@ def calculate_realtime_pe_pb(
     try:
         # 获取数据库连接（确保是同步客户端）
         if db_client is None:
-            from trader.config.databases import get_database_manager
             db_manager = get_database_manager()
             if not db_manager.is_mongodb_available():
                 logger.debug("MongoDB不可用，无法计算实时PE/PB")
                 return None
             db_client = db_manager.get_mongodb_client()
+            if db_client is None:
+                logger.debug("MongoDB客户端不可用，无法计算实时PE/PB")
+                return None
 
         # 检查是否是异步客户端（AsyncIOMotorClient）
         # 如果是异步客户端，需要转换为同步客户端
         client_type = type(db_client).__name__
         if 'AsyncIOMotorClient' in client_type or 'Motor' in client_type:
             # 这是异步客户端，创建同步客户端
-            from pymongo import MongoClient
-            from app.core.config import settings
             logger.debug(f"检测到异步客户端 {client_type}，转换为同步客户端")
             db_client = MongoClient(settings.mongo_uri)
 
@@ -170,8 +175,9 @@ def calculate_realtime_pe_pb(
 
         # 🔥 3. 判断是否需要重新计算市值
         # 如果 stock_basic_info 的更新时间在今天收盘后（15:00之后），说明数据已经是最新的
-        from datetime import datetime, time as dtime
-        from zoneinfo import ZoneInfo
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        dtime = getattr(importlib.import_module('datetime'), 'time')
+        ZoneInfo = getattr(importlib.import_module('zoneinfo'), 'ZoneInfo')
 
         need_recalculate = True
         if basic_info_updated_at:
@@ -438,18 +444,18 @@ def get_pe_pb_with_fallback(
     # 准备数据库连接
     try:
         if db_client is None:
-            from trader.config.databases import get_database_manager
             db_manager = get_database_manager()
             if not db_manager.is_mongodb_available():
                 logger.error("❌ [PE智能策略-失败] MongoDB不可用")
                 return {}
             db_client = db_manager.get_mongodb_client()
+            if db_client is None:
+                logger.error("❌ [PE智能策略-失败] MongoDB客户端不可用")
+                return {}
 
         # 检查是否是异步客户端
         client_type = type(db_client).__name__
         if 'AsyncIOMotorClient' in client_type or 'Motor' in client_type:
-            from pymongo import MongoClient
-            from app.core.config import settings
             logger.debug(f"检测到异步客户端 {client_type}，转换为同步客户端")
             db_client = MongoClient(settings.mongo_uri)
 

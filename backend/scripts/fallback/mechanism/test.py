@@ -3,6 +3,7 @@
 测试数据源降级机制
 验证当Tushare返回空数据时是否能正确降级到其他数据源
 """
+import importlib
 
 import sys
 import os
@@ -17,7 +18,8 @@ def test_data_source_availability():
     print("=" * 60)
 
     try:
-        from trader.flows.data_source_manager import DataSourceManager, ChinaDataSource
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
+        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
 
         manager = DataSourceManager()
 
@@ -29,7 +31,7 @@ def test_data_source_availability():
 
     except Exception as e:
         print(f"❌ 数据源管理器初始化失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None
 
@@ -64,7 +66,7 @@ def test_fallback_mechanism(manager):
 
     except Exception as e:
         print(f"❌ 测试过程中发生异常: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

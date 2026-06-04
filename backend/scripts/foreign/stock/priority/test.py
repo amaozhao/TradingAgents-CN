@@ -4,6 +4,7 @@
 测试港股和美股数据源优先级配置
 验证是否正确从数据库读取优先级
 """
+import importlib
 
 import sys
 import asyncio
@@ -16,8 +17,8 @@ sys.path.insert(0, str(project_root))
 
 async def test_priority():
     """测试数据源优先级读取"""
-    from app.core.database import get_mongo_db
-    from app.services.foreign_stock_service import ForeignStockService
+    get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
+    ForeignStockService = getattr(importlib.import_module('app.services.stocks.foreign'), 'ForeignStockService')
 
     print("=" * 80)
     print("📊 测试港股和美股数据源优先级配置")

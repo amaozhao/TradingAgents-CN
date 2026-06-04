@@ -2,6 +2,7 @@
 """
 调试AKShare的daily_basic功能
 """
+import importlib
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -22,7 +23,7 @@ def test_akshare_spot_data():
     print("=" * 60)
 
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
 
         print("✅ AKShare导入成功")
 
@@ -65,7 +66,7 @@ def test_akshare_spot_data():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def test_akshare_adapter():
@@ -75,7 +76,7 @@ def test_akshare_adapter():
     print("=" * 60)
 
     try:
-        from app.services.sources import AKShareAdapter
+        AKShareAdapter = getattr(importlib.import_module('app.services.sources'), 'AKShareAdapter')
 
         adapter = AKShareAdapter()
 
@@ -121,7 +122,7 @@ def test_akshare_adapter():
 
     except Exception as e:
         print(f"❌ 适配器测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def test_akshare_alternative_apis():
@@ -131,7 +132,7 @@ def test_akshare_alternative_apis():
     print("=" * 60)
 
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
 
         # 测试不同的API
         apis_to_test = [

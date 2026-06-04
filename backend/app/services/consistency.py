@@ -174,8 +174,8 @@ class DataConsistencyChecker:
                 return None
 
             # 计算平均值和差异
-            avg1 = np.mean(df1_values)
-            avg2 = np.mean(df2_values)
+            avg1 = float(np.mean(df1_values))
+            avg2 = float(np.mean(df2_values))
 
             if avg1 != 0:
                 diff_pct = abs(avg2 - avg1) / abs(avg1)
@@ -183,7 +183,7 @@ class DataConsistencyChecker:
                 diff_pct = float('inf') if avg2 != 0 else 0
 
             tolerance = self.tolerance_thresholds.get(metric, 0.1)
-            is_significant = diff_pct > tolerance
+            is_significant = bool(diff_pct > tolerance)
 
             return FinancialMetricComparison(
                 metric_name=metric,

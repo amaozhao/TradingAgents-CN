@@ -2,6 +2,7 @@
 """
 调试工具选择问题 - 检查LLM实际看到的工具列表
 """
+import importlib
 
 import os
 import sys
@@ -11,10 +12,10 @@ def test_llm_tool_binding():
     print("🔧 测试LLM工具绑定...")
 
     try:
-        from trader.agents.analysts.fundamentals import create_fundamentals_analyst
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
-        from trader.llm.adapters.dashscope.openai import ChatDashScopeOpenAI
+        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'ChatDashScopeOpenAI')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -49,7 +50,7 @@ def test_llm_tool_binding():
 
     except Exception as e:
         print(f"❌ 工具绑定测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -59,8 +60,8 @@ def test_tool_descriptions():
     print("\n🔧 测试工具描述...")
 
     try:
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True
@@ -100,9 +101,9 @@ def test_fundamentals_analyst_tool_selection():
 
     try:
         # 模拟基本面分析师的工具选择逻辑
-        from trader.utils.stocks import StockUtils
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True
@@ -148,7 +149,7 @@ def test_fundamentals_analyst_tool_selection():
 
     except Exception as e:
         print(f"❌ 基本面分析师工具选择测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

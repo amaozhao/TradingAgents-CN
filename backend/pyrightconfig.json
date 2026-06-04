@@ -5,27 +5,13 @@
     "cli",
     "tests"
   ],
+  "exclude": [
+    "data",
+    "web/data",
+    "**/__pycache__",
+    "**/.pytest_cache"
+  ],
   "pythonVersion": "3.13",
   "typeCheckingMode": "basic",
-  "reportMissingModuleSource": "none",
-  "reportMissingImports": "none",
-  "reportArgumentType": "none",
-  "reportAttributeAccessIssue": "none",
-  "reportOptionalMemberAccess": "none",
-  "reportCallIssue": "none",
-  "reportReturnType": "none",
-  "reportAssignmentType": "none",
-  "reportOptionalSubscript": "none",
-  "reportGeneralTypeIssues": "none",
-  "reportUnsupportedDunderAll": "none",
-  "reportOperatorIssue": "none",
-  "reportRedeclaration": "none",
-  "reportSelfClsParameterName": "none",
-  "reportOptionalOperand": "none",
-  "reportOptionalCall": "none",
-  "reportIndexIssue": "none",
-  "reportInvalidTypeForm": "none",
-  "reportUnhashable": "none",
-  "reportUnboundVariable": "none",
-  "reportOptionalIterable": "none"
+  "reportMissingModuleSource": "warning"
 }

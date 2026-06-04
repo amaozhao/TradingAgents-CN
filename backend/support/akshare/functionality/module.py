@@ -3,6 +3,7 @@
 AKShare功能检查测试
 检查当前分支中AKShare的可用性和功能完整性
 """
+import importlib
 
 import sys
 import os
@@ -13,7 +14,7 @@ def test_akshare_import():
     """测试AKShare库导入"""
     print("🔍 测试AKShare库导入...")
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
         print(f"✅ AKShare导入成功，版本: {ak.__version__}")
         return True, ak
     except ImportError as e:
@@ -24,7 +25,8 @@ def test_data_source_manager():
     """测试数据源管理器中的AKShare支持"""
     print("\n🔍 测试数据源管理器...")
     try:
-        from trader.flows.sources import DataSourceManager, ChinaDataSource
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
+        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
 
         # 检查AKShare是否在枚举中
         akshare_enum = ChinaDataSource.AKSHARE
@@ -50,7 +52,7 @@ def test_akshare_adapter():
     """测试AKShare适配器"""
     print("\n🔍 测试AKShare适配器...")
     try:
-        from trader.flows.sources import DataSourceManager
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
 
         manager = DataSourceManager()
 
@@ -79,7 +81,7 @@ def test_akshare_utils_file():
         print(f"✅ 找到AKShare工具文件: {akshare_utils_path}")
 
         try:
-            from trader.flows.akshare import get_akshare_provider
+            get_akshare_provider = getattr(importlib.import_module('trader.flows.akshare'), 'get_akshare_provider')
             print("✅ get_akshare_provider函数导入成功")
             return True
         except ImportError as e:
@@ -130,7 +132,7 @@ def test_data_source_switching():
     print("\n🔍 测试数据源切换功能...")
 
     try:
-        from trader.flows.interface import switch_china_data_source
+        switch_china_data_source = getattr(importlib.import_module('trader.flows.interface'), 'switch_china_data_source')
 
         # 尝试切换到AKShare
         result = switch_china_data_source("akshare")
@@ -153,10 +155,10 @@ def test_unified_data_interface():
     print("\n🔍 测试统一数据接口...")
 
     try:
-        from trader.flows.interface import get_china_stock_data_unified
+        get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
 
         # 设置使用AKShare数据源
-        from trader.flows.interface import switch_china_data_source
+        switch_china_data_source = getattr(importlib.import_module('trader.flows.interface'), 'switch_china_data_source')
         switch_china_data_source("akshare")
 
         # 测试获取股票数据

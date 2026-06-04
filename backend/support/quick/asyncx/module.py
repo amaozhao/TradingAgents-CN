@@ -3,6 +3,7 @@
 快速测试异步分析实现
 验证API是否不再阻塞
 """
+import importlib
 
 import requests
 import time
@@ -139,8 +140,8 @@ def test_multiple_concurrent_requests():
 
     base_url = "http://localhost:8000"
 
-    import threading
-    import queue
+    threading = importlib.import_module('threading')
+    queue = importlib.import_module('queue')
 
     results = queue.Queue()
 

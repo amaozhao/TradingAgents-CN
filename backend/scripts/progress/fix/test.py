@@ -2,6 +2,7 @@
 """
 测试修复后的进度跟踪功能
 """
+import importlib
 
 import sys
 import os
@@ -61,7 +62,7 @@ def test_progress_tracker():
         print(f"⏱️ 已用时间: {tracker.format_time(elapsed)}")
 
         # 模拟时间间隔
-        import time
+        time = importlib.import_module('time')
         time.sleep(0.5)
 
 if __name__ == "__main__":

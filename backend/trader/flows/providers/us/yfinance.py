@@ -1,3 +1,4 @@
+import importlib
 # gets data/stats
 
 import yfinance as yf
@@ -24,7 +25,7 @@ def get_cache():
     global _cache_module, CACHE_AVAILABLE
     if _cache_module is None:
         try:
-            from ...cache import get_cache as _get_cache
+            _get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
             _cache_module = _get_cache
             CACHE_AVAILABLE = True
         except ImportError as e:
@@ -48,6 +49,7 @@ def init_ticker(func: Callable) -> Callable:
 @decorate_all_methods(init_ticker)
 class YFinanceUtils:
 
+    @staticmethod
     def get_stock_data(
         symbol: Annotated[str, "ticker symbol"],
         start_date: Annotated[
@@ -56,31 +58,33 @@ class YFinanceUtils:
         end_date: Annotated[
             str, "end date for retrieving stock price data, YYYY-mm-dd"
         ],
-        save_path: SavePathType = None,
+        save_path: Optional[SavePathType] = None,
     ) -> DataFrame:
         """retrieve stock price data for designated ticker symbol"""
-        ticker = symbol
+        ticker: Any = symbol
         # add one day to the end_date so that the data range is inclusive
-        end_date = pd.to_datetime(end_date) + pd.DateOffset(days=1)
-        end_date = end_date.strftime("%Y-%m-%d")
-        stock_data = ticker.history(start=start_date, end=end_date)
+        end_dt = pd.to_datetime(end_date) + pd.DateOffset(days=1)
+        adjusted_end_date = end_dt.strftime("%Y-%m-%d")
+        stock_data = ticker.history(start=start_date, end=adjusted_end_date)
         # save_output(stock_data, f"Stock data for {ticker.ticker}", save_path)
         return stock_data
 
+    @staticmethod
     def get_stock_info(
         symbol: Annotated[str, "ticker symbol"],
     ) -> dict:
         """Fetches and returns latest stock information."""
-        ticker = symbol
+        ticker: Any = symbol
         stock_info = ticker.info
         return stock_info
 
+    @staticmethod
     def get_company_info(
         symbol: Annotated[str, "ticker symbol"],
         save_path: Optional[str] = None,
     ) -> DataFrame:
         """Fetches and returns company information as a DataFrame."""
-        ticker = symbol
+        ticker: Any = symbol
         info = ticker.info
         company_info = {
             "Company Name": info.get("shortName", "N/A"),
@@ -95,39 +99,44 @@ class YFinanceUtils:
             logger.info(f"Company info for {ticker.ticker} saved to {save_path}")
         return company_info_df
 
+    @staticmethod
     def get_stock_dividends(
         symbol: Annotated[str, "ticker symbol"],
         save_path: Optional[str] = None,
     ) -> DataFrame:
         """Fetches and returns the latest dividends data as a DataFrame."""
-        ticker = symbol
+        ticker: Any = symbol
         dividends = ticker.dividends
         if save_path:
             dividends.to_csv(save_path)
             logger.info(f"Dividends for {ticker.ticker} saved to {save_path}")
         return dividends
 
+    @staticmethod
     def get_income_stmt(symbol: Annotated[str, "ticker symbol"]) -> DataFrame:
         """Fetches and returns the latest income statement of the company as a DataFrame."""
-        ticker = symbol
+        ticker: Any = symbol
         income_stmt = ticker.financials
         return income_stmt
 
+    @staticmethod
     def get_balance_sheet(symbol: Annotated[str, "ticker symbol"]) -> DataFrame:
         """Fetches and returns the latest balance sheet of the company as a DataFrame."""
-        ticker = symbol
+        ticker: Any = symbol
         balance_sheet = ticker.balance_sheet
         return balance_sheet
 
+    @staticmethod
     def get_cash_flow(symbol: Annotated[str, "ticker symbol"]) -> DataFrame:
         """Fetches and returns the latest cash flow statement of the company as a DataFrame."""
-        ticker = symbol
+        ticker: Any = symbol
         cash_flow = ticker.cashflow
         return cash_flow
 
+    @staticmethod
     def get_analyst_recommendations(symbol: Annotated[str, "ticker symbol"]) -> tuple:
         """Fetches the latest analyst recommendations and returns the most common recommendation and its count."""
-        ticker = symbol
+        ticker: Any = symbol
         recommendations = ticker.recommendations
         if recommendations.empty:
             return None, 0  # No recommendations available
@@ -170,7 +179,7 @@ def get_stock_data_with_indicators(
             return f"No data found for symbol '{symbol}' between {start_date} and {end_date}"
 
         # 移除时区信息
-        if data.index.tz is not None:
+        if isinstance(data.index, pd.DatetimeIndex) and data.index.tz is not None:
             data.index = data.index.tz_localize(None)
 
         # 数值列保留2位小数
@@ -221,7 +230,7 @@ def get_technical_indicator(
     - mfi: 资金流量指标
     """
     try:
-        from stats import wrap
+        wrap = getattr(importlib.import_module('stats'), 'wrap')
 
         # 指标说明
         indicator_descriptions = {

@@ -1,3 +1,4 @@
+import importlib
 from langchain_core.messages import AIMessage
 import time
 import json
@@ -23,7 +24,7 @@ def create_bull_researcher(llm, memory):
 
         # 使用统一的股票类型检测
         ticker = state.get('company_of_interest', 'Unknown')
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
         market_info = StockUtils.get_market_info(ticker)
         is_china = market_info['is_china']
 
@@ -32,7 +33,7 @@ def create_bull_researcher(llm, memory):
             """根据股票代码获取公司名称"""
             try:
                 if market_info_dict['is_china']:
-                    from trader.flows.interface import get_china_stock_info_unified
+                    get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
                     stock_info = get_china_stock_info_unified(ticker_code)
                     if stock_info and "股票名称:" in stock_info:
                         name = stock_info.split("股票名称:")[1].split("\n")[0].strip()
@@ -41,7 +42,7 @@ def create_bull_researcher(llm, memory):
                     else:
                         # 降级方案
                         try:
-                            from trader.flows.sources import get_china_stock_info_unified as get_info_dict
+                            get_info_dict = getattr(importlib.import_module('trader.flows.sources'), 'get_china_stock_info_unified')
                             info_dict = get_info_dict(ticker_code)
                             if info_dict and info_dict.get('name'):
                                 name = info_dict['name']
@@ -51,7 +52,7 @@ def create_bull_researcher(llm, memory):
                             logger.error(f"❌ [多头研究员] 降级方案也失败: {e}")
                 elif market_info_dict['is_hk']:
                     try:
-                        from trader.flows.providers.hk.improved import get_hk_company_name_improved
+                        get_hk_company_name_improved = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_company_name_improved')
                         name = get_hk_company_name_improved(ticker_code)
                         return name
                     except Exception:

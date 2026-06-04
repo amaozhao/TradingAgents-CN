@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from app.worker.financial import get_financial_sync_service
 from app.services.market.financial import get_financial_data_service
-from app.core.response import ok
+from app.core.response import fail, ok
 from app.models.response import ApiResponse
 
 logger = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ async def get_latest_financial_data(
                 message="获取最新财务数据成功"
             )
         else:
-            return ok(success=False, data=None,
+            return fail(data=None,
                 message="未找到财务数据"
             )
 
@@ -202,8 +202,8 @@ async def sync_single_stock_financial(
         success_count = sum(1 for success in results.values() if success)
         total_count = len(results)
 
-        return ok(
-            success=success_count > 0,
+        response = ok if success_count > 0 else fail
+        return response(
             data={
                 "symbol": request.symbol,
                 "results": results,
@@ -265,7 +265,7 @@ async def health_check() -> dict:
 
     except Exception as e:
         logger.error(f"❌ 财务数据服务健康检查失败: {e}")
-        return ok(success=False, data={
+        return fail(data={
                 "service_status": "unhealthy",
                 "error": str(e)
             },

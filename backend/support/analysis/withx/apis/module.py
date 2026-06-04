@@ -2,6 +2,7 @@
 """
 测试在完整分析中使用Google和Reddit API
 """
+import importlib
 
 import os
 import sys
@@ -21,10 +22,10 @@ def test_news_analyst_with_google():
         print("🧪 测试新闻分析师使用Google工具")
         print("=" * 60)
 
-        from trader.agents.analysts.news import create_news_analyst
-        from trader.agents.utils.utils import Toolkit
-        from trader.llm.adapters import ChatDashScope
-        from trader.default import DEFAULT_CONFIG
+        create_news_analyst = getattr(importlib.import_module('trader.agents.analysts.news'), 'create_news_analyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -43,8 +44,8 @@ def test_news_analyst_with_google():
         print("✅ 新闻分析师创建成功")
 
         # 创建测试状态
-        from trader.agents.utils.states import AgentState
-        from langchain_core.messages import HumanMessage
+        AgentState = getattr(importlib.import_module('trader.agents.utils.states'), 'AgentState')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         test_state = {
             "messages": [HumanMessage(content="分析AAPL的新闻情况")],
@@ -73,7 +74,7 @@ def test_news_analyst_with_google():
 
     except Exception as e:
         print(f"❌ 新闻分析师测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 
@@ -83,10 +84,10 @@ def test_social_analyst_with_reddit():
         print("\n🧪 测试社交媒体分析师使用Reddit工具")
         print("=" * 60)
 
-        from trader.agents.analysts.social import create_social_media_analyst
-        from trader.agents.utils.utils import Toolkit
-        from trader.llm.adapters import ChatDashScope
-        from trader.default import DEFAULT_CONFIG
+        create_social_media_analyst = getattr(importlib.import_module('trader.agents.analysts.social'), 'create_social_media_analyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -105,7 +106,7 @@ def test_social_analyst_with_reddit():
         print("✅ 社交媒体分析师创建成功")
 
         # 创建测试状态
-        from langchain_core.messages import HumanMessage
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         test_state = {
             "messages": [HumanMessage(content="分析AAPL的社交媒体情绪")],
@@ -134,7 +135,7 @@ def test_social_analyst_with_reddit():
 
     except Exception as e:
         print(f"❌ 社交媒体分析师测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 

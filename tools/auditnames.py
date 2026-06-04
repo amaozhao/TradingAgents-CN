@@ -414,24 +414,77 @@ KNOWN_CODE_WORDS.update(
         "pandoc",
         "pb",
         "pypandoc",
-        "react",
-        "reasoning",
-        "removal",
-        "resume",
+    "react",
+    "real",
+    "reasoning",
+    "removal",
+    "resume",
         "safe",
         "scenario",
         "skip",
         "steps",
         "symbol",
-        "thread",
-        "ticket",
-        "ticker",
-        "timezone",
+    "thread",
+    "ticket",
+    "ticker",
+    "time",
+    "timezone",
         "token",
         "volume",
         "workflow",
     }
 )
+
+# These are intentionally treated as one lexical unit even if they can be
+# segmented into smaller repo terms. Keep this list small and explicit:
+# general code vocabulary belongs in KNOWN_CODE_WORDS so glued compounds are
+# still detected.
+ATOMIC_CODE_WORDS = {
+    "aiofiles",
+    "akshare",
+    "alembic",
+    "apscheduler",
+    "asyncpg",
+    "baostock",
+    "bcrypt",
+    "chromadb",
+    "dashscope",
+    "database",
+    "deepseek",
+    "eastmoney",
+    "fastapi",
+    "finnhub",
+    "httpx",
+    "jsonb",
+    "langchain",
+    "langgraph",
+    "mongodb",
+    "openai",
+    "openapi",
+    "pandas",
+    "parsel",
+    "plotly",
+    "postgres",
+    "praw",
+    "psutil",
+    "pydantic",
+    "pymongo",
+    "pypandoc",
+    "pyright",
+    "pytest",
+    "python",
+    "qianfan",
+    "runtime",
+    "sqlalchemy",
+    "stocktwits",
+    "streamlit",
+    "tushare",
+    "uvicorn",
+    "vscode",
+    "yfinance",
+}
+
+COMPOUND_PART_WORDS = KNOWN_CODE_WORDS - ATOMIC_CODE_WORDS
 
 RecordKind = Literal["source", "test", "magic"]
 
@@ -482,7 +535,7 @@ def _known_word_split(stem: str) -> tuple[str, ...] | None:
 
     for end in range(1, len(stem) + 1):
         prefix = stem[:end]
-        if prefix not in KNOWN_CODE_WORDS:
+        if prefix not in COMPOUND_PART_WORDS:
             continue
         suffix = _known_word_split(stem[end:])
         if suffix is not None:
@@ -492,7 +545,7 @@ def _known_word_split(stem: str) -> tuple[str, ...] | None:
 
 
 def _glued_compound_parts(stem: str) -> tuple[str, ...] | None:
-    if stem in KNOWN_CODE_WORDS:
+    if stem in ATOMIC_CODE_WORDS:
         return None
 
     parts = _known_word_split(stem)

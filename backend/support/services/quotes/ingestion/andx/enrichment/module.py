@@ -1,3 +1,4 @@
+import importlib
 import asyncio
 from types import SimpleNamespace
 from typing import Any, Dict, List
@@ -5,7 +6,7 @@ from typing import Any, Dict, List
 
 def test_enhanced_screening_enriches_from_db(monkeypatch):
     # Late import to patch module symbols correctly
-    from app.services.screening.enhanced import EnhancedScreeningService
+    EnhancedScreeningService = getattr(importlib.import_module('app.services.screening.enhanced'), 'EnhancedScreeningService')
 
     # Fake DB layer
     class FakeCursor:
@@ -36,7 +37,7 @@ def test_enhanced_screening_enriches_from_db(monkeypatch):
     ]
 
     # Patch get_mongo_db used inside enhanced_screening_service module
-    import app.services.screening.enhanced as ess_mod
+    ess_mod = importlib.import_module('app.services.screening.enhanced')
 
     def _fake_get_mongo_db():
         return FakeDB(quotes_docs)
@@ -77,8 +78,8 @@ def test_enhanced_screening_enriches_from_db(monkeypatch):
 
 
 def test_quotes_ingestion_run_once_writes_bulk(monkeypatch):
-    from app.services.quotes.ingestion import QuotesIngestionService
-    import app.services.quotes.ingestion as qis_mod
+    QuotesIngestionService = getattr(importlib.import_module('app.services.quotes.ingestion'), 'QuotesIngestionService')
+    qis_mod = importlib.import_module('app.services.quotes.ingestion')
 
     # Fake DataSourceManager to avoid external calls
     class _FakeManager:
@@ -155,13 +156,13 @@ def test_quotes_ingestion_run_once_writes_bulk(monkeypatch):
         assert dual_write_document_calls[0][1]["job"] == "quotes_ingestion"
         assert dual_write_document_calls[0][1]["success"] is True
 
-    import asyncio
+    asyncio = importlib.import_module('asyncio')
     asyncio.run(_run())
 
 
 def test_quotes_ingestion_status_dual_writes(monkeypatch):
-    from app.services.quotes.ingestion import QuotesIngestionService
-    import app.services.quotes.ingestion as qis_mod
+    QuotesIngestionService = getattr(importlib.import_module('app.services.quotes.ingestion'), 'QuotesIngestionService')
+    qis_mod = importlib.import_module('app.services.quotes.ingestion')
 
     class _FakeStatusCollection:
         def __init__(self):

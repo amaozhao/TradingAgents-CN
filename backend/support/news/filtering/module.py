@@ -2,6 +2,7 @@
 测试新闻过滤功能
 验证基于规则的过滤器和增强过滤器的效果
 """
+import importlib
 
 import sys
 import os
@@ -16,7 +17,7 @@ def test_basic_news_filter():
     print("=== 测试基础新闻过滤器 ===")
 
     try:
-        from trader.utils.news.filter import create_news_filter
+        create_news_filter = getattr(importlib.import_module('trader.utils.news.filter'), 'create_news_filter')
 
         # 创建过滤器
         filter = create_news_filter('600036')
@@ -80,7 +81,7 @@ def test_enhanced_news_filter():
     print("\n=== 测试增强新闻过滤器 ===")
 
     try:
-        from trader.utils.news.enhanced import create_enhanced_news_filter
+        create_enhanced_news_filter = getattr(importlib.import_module('trader.utils.news.enhanced'), 'create_enhanced_news_filter')
 
         # 创建增强过滤器（不使用外部模型依赖）
         enhanced_filter = create_enhanced_news_filter(
@@ -130,7 +131,7 @@ def test_enhanced_news_filter():
 
     except Exception as e:
         print(f"❌ 增强过滤器测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -140,8 +141,8 @@ def test_real_news_filtering():
     print("\n=== 测试真实新闻数据过滤 ===")
 
     try:
-        from trader.flows.akshare import get_stock_news_em
-        from trader.utils.news.filter import create_news_filter
+        get_stock_news_em = getattr(importlib.import_module('trader.flows.akshare'), 'get_stock_news_em')
+        create_news_filter = getattr(importlib.import_module('trader.utils.news.filter'), 'create_news_filter')
 
         print("📡 正在获取招商银行真实新闻数据...")
 
@@ -191,7 +192,7 @@ def test_real_news_filtering():
 
     except Exception as e:
         print(f"❌ 真实新闻过滤测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -201,7 +202,7 @@ def test_news_filter_integration():
     print("\n=== 测试新闻过滤集成功能 ===")
 
     try:
-        from trader.utils.news.filter_integration import apply_news_filtering_patches
+        apply_news_filtering_patches = getattr(importlib.import_module('trader.utils.news.integration'), 'apply_news_filtering_patches')
 
         print("🔧 正在应用新闻过滤补丁...")
         enhanced_function = apply_news_filtering_patches()
@@ -229,7 +230,7 @@ def test_news_filter_integration():
 
     except Exception as e:
         print(f"❌ 新闻过滤集成测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

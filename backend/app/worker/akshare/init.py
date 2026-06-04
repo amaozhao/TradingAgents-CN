@@ -2,11 +2,12 @@
 AKShare数据初始化服务
 用于首次部署时的完整数据初始化，包括基础数据、历史数据、财务数据等
 """
+import importlib
 import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from app.core.database import get_mongo_db
 
@@ -28,11 +29,7 @@ class AKShareInitializationStats:
     financial_records: int = 0
     quotes_count: int = 0
     news_count: int = 0
-    errors: List[Dict[str, Any]] = None
-
-    def __post_init__(self):
-        if self.errors is None:
-            self.errors = []
+    errors: List[Dict[str, Any]] = field(default_factory=list)
 
 
 class AKShareInitService:
@@ -49,13 +46,13 @@ class AKShareInitService:
     """
 
     def __init__(self):
-        self.db = None
-        self.sync_service = None
-        self.stats = None
+        self.db: Any = None
+        self.sync_service: Any = None
+        self.stats: Any = None
 
     async def initialize(self):
         """初始化服务"""
-        from app.worker.akshare.sync import get_akshare_sync_service
+        get_akshare_sync_service = getattr(importlib.import_module('app.worker.akshare.sync'), 'get_akshare_sync_service')
 
         self.db = get_mongo_db()
         self.sync_service = await get_akshare_sync_service()
@@ -67,7 +64,7 @@ class AKShareInitService:
         skip_if_exists: bool = True,
         batch_size: int = 100,
         enable_multi_period: bool = False,
-        sync_items: List[str] = None
+        sync_items: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         运行完整的数据初始化

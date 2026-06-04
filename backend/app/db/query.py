@@ -91,6 +91,7 @@ def representative_query_plan_specs() -> list[QueryPlanSpec]:
             name="operation_logs_page",
             statement=build_operation_log_select(
                 OperationLogQuery(
+                    keyword=None,
                     start_date="2026-06-01T00:00:00",
                     end_date="2026-06-03T23:59:59",
                     action_type="user_login",

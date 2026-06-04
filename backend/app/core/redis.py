@@ -1,7 +1,9 @@
 """
 Redis客户端配置和连接管理
 """
+import importlib
 
+import json
 import redis.asyncio as redis
 import logging
 from typing import Optional
@@ -114,15 +116,13 @@ class RedisService:
 
     async def get_json(self, key: str):
         """获取JSON格式的值"""
-        import json
         value = await self.redis.get(key)
         if value:
             return json.loads(value)
         return None
 
-    async def set_json(self, key: str, value: dict, ttl: int = None):
+    async def set_json(self, key: str, value: dict, ttl: Optional[int] = None):
         """设置JSON格式的值"""
-        import json
         json_str = json.dumps(value, ensure_ascii=False)
         if ttl:
             await self.redis.setex(key, ttl, json_str)
@@ -139,12 +139,12 @@ class RedisService:
 
     async def add_to_queue(self, queue_key: str, item: dict):
         """添加项目到队列"""
-        import json
+        json = importlib.import_module('json')
         await self.redis.lpush(queue_key, json.dumps(item, ensure_ascii=False))
 
     async def pop_from_queue(self, queue_key: str, timeout: int = 1):
         """从队列弹出项目"""
-        import json
+        json = importlib.import_module('json')
         result = await self.redis.brpop(queue_key, timeout=timeout)
         if result:
             return json.loads(result[1])
@@ -172,7 +172,7 @@ class RedisService:
 
     async def acquire_lock(self, lock_key: str, timeout: int = 30):
         """获取分布式锁"""
-        import uuid
+        uuid = importlib.import_module('uuid')
         lock_value = str(uuid.uuid4())
         acquired = await self.redis.set(lock_key, lock_value, nx=True, ex=timeout)
         if acquired:

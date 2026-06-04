@@ -3,6 +3,7 @@
 """
 实际场景测试：验证Google工具调用处理器修复效果
 """
+import importlib
 
 import sys
 import os
@@ -34,7 +35,7 @@ def test_configuration_status():
     print(f"🌐 online_tools (default_config): {online_tools}")
 
     # 检查工具包配置
-    from trader.agents.utils.utils import Toolkit
+    Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
     toolkit = Toolkit(config=DEFAULT_CONFIG)
     toolkit_online_tools = toolkit.config.get('online_tools', True)
     print(f"🛠️ online_tools (toolkit): {toolkit_online_tools}")
@@ -56,8 +57,8 @@ def test_social_media_analyst_tools():
     print("=" * 60)
 
     try:
-        from trader.agents.socialanalyst import SocialMediaAnalyst
-        from trader.agents.utils.utils import Toolkit
+        SocialMediaAnalyst = getattr(importlib.import_module('trader.agents.analysts.social'), 'SocialMediaAnalyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
 
         # 获取工具包
         toolkit = Toolkit(config=DEFAULT_CONFIG)
@@ -226,7 +227,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 实际场景测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

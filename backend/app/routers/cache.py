@@ -2,6 +2,7 @@
 缓存管理路由
 提供缓存统计、清理等功能
 """
+import importlib
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional
 from datetime import datetime, timedelta
@@ -25,7 +26,7 @@ async def get_cache_stats(current_user: dict = Depends(get_current_user)):
         dict: 缓存统计数据
     """
     try:
-        from trader.flows.cache import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
 
         cache = get_cache()
 
@@ -69,7 +70,7 @@ async def cleanup_old_cache(
         dict: 清理结果
     """
     try:
-        from trader.flows.cache import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
 
         cache = get_cache()
 
@@ -100,7 +101,7 @@ async def clear_all_cache(current_user: dict = Depends(get_current_user)):
         dict: 清理结果
     """
     try:
-        from trader.flows.cache import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
 
         cache = get_cache()
 
@@ -140,7 +141,7 @@ async def get_cache_details(
         dict: 缓存详情列表
     """
     try:
-        from trader.flows.cache import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
 
         cache = get_cache()
 
@@ -181,7 +182,7 @@ async def get_cache_backend_info(current_user: dict = Depends(get_current_user))
         dict: 缓存后端配置信息
     """
     try:
-        from trader.flows.cache import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
 
         cache = get_cache()
 

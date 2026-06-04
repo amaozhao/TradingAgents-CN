@@ -3,6 +3,7 @@
 测试详细进度显示效果
 验证用户在每个阶段都能看到系统在工作
 """
+import importlib
 
 import os
 import sys
@@ -18,7 +19,7 @@ def test_complete_analysis_flow():
     print("=" * 80)
 
     try:
-        from cli.main import CLIUserInterface
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
 
         ui = CLIUserInterface()
         completed_analysts = set()
@@ -118,7 +119,7 @@ def test_complete_analysis_flow():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -128,7 +129,7 @@ def test_problem_solving_effect():
     print("=" * 80)
 
     try:
-        from cli.main import CLIUserInterface
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
 
         ui = CLIUserInterface()
 
@@ -176,7 +177,7 @@ def test_analysis_stages():
     print("=" * 80)
 
     try:
-        from cli.main import CLIUserInterface
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
 
         ui = CLIUserInterface()
 

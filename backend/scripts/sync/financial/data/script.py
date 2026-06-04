@@ -12,6 +12,7 @@
     python scripts/sync/financial/data/script.py --all   # 同步所有股票
     python scripts/sync/financial/data/script.py --batch 100  # 批量同步前100只
 """
+import importlib
 
 import asyncio
 import sys
@@ -54,7 +55,7 @@ async def sync_single_stock_financial_data(
         logger.info(f"🔄 同步 {code6} 的财务数据...")
 
         # 1. 获取财务指标数据
-        import akshare as ak
+        ak = importlib.import_module('akshare')
 
         def fetch_financial_indicator():
             return ak.stock_financial_analysis_indicator(symbol=code6)
@@ -213,7 +214,7 @@ async def sync_single_stock_financial_data(
 
     except Exception as e:
         logger.error(f"❌ {code6} 财务数据同步失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(traceback.format_exc())
         return False
 

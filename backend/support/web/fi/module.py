@@ -2,6 +2,7 @@
 """
 测试Web界面修复
 """
+import importlib
 
 import sys
 import os
@@ -37,7 +38,7 @@ def test_render_decision_summary():
         # 模拟streamlit模块
         sys.modules['streamlit'] = MockStreamlit()
 
-        from web.components.result import render_decision_summary
+        render_decision_summary = getattr(importlib.import_module('web.components.result'), 'render_decision_summary')
 
         print("🧪 测试render_decision_summary修复...")
 
@@ -70,7 +71,7 @@ def test_render_decision_summary():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 
@@ -78,7 +79,7 @@ def test_currency_detection():
     """测试货币检测逻辑"""
 
     try:
-        import re
+        re = importlib.import_module('re')
 
         def is_china_stock(ticker_code):
             return re.match(r'^\d{6}$', str(ticker_code)) if ticker_code else False

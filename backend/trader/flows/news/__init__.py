@@ -21,11 +21,9 @@ except ImportError:
 
 # 导入实时新闻
 try:
-    from .realtime import (
-        get_realtime_news,
-        get_news_with_sentiment,
-        search_news_by_keyword
-    )
+    from .real.time import get_realtime_stock_news as get_realtime_news
+    get_news_with_sentiment = None
+    search_news_by_keyword = None
     REALTIME_NEWS_AVAILABLE = True
 except ImportError:
     get_realtime_news = None

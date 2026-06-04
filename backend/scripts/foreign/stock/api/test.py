@@ -2,6 +2,7 @@
 """
 测试港股和美股API接口
 """
+import importlib
 import asyncio
 import sys
 from pathlib import Path
@@ -10,7 +11,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.services.foreign_stock_service import ForeignStockService
+from app.services.stocks.foreign import ForeignStockService
 
 
 async def test_hk_quote():
@@ -77,7 +78,7 @@ async def test_cache():
 
     # 第一次获取（从API）
     print(f"\n📊 第一次获取 {code}（应该从API获取）")
-    import time
+    time = importlib.import_module('time')
     start = time.time()
     try:
         quote1 = await service.get_quote('US', code, force_refresh=True)
@@ -111,7 +112,7 @@ async def test_market_detection():
     print("测试市场类型检测")
     print("="*60)
 
-    from app.routers.stocks import _detect_market_and_code
+    _detect_market_and_code = getattr(importlib.import_module('app.routers.stocks'), '_detect_market_and_code')
 
     test_cases = [
         ('000001', 'CN', '000001'),

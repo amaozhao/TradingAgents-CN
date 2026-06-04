@@ -2,6 +2,7 @@
 """
 调试基本面分析师的工具选择问题
 """
+import importlib
 
 import os
 import sys
@@ -11,10 +12,10 @@ def test_fundamentals_analyst_directly():
     print("🔧 直接测试基本面分析师...")
 
     try:
-        from trader.agents.analysts.fundamentals import create_fundamentals_analyst
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
-        from trader.llm.adapters.dashscope.openai import ChatDashScopeOpenAI
+        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'ChatDashScopeOpenAI')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -60,7 +61,7 @@ def test_fundamentals_analyst_directly():
 
     except Exception as e:
         print(f"❌ 直接测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -70,7 +71,7 @@ def test_stock_utils_import():
     print("\n🔧 测试StockUtils导入...")
 
     try:
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         # 测试港股识别
         ticker = "0700.HK"
@@ -99,8 +100,8 @@ def test_toolkit_hk_tools():
     print("\n🔧 测试工具包港股工具...")
 
     try:
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True

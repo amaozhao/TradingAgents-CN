@@ -2,6 +2,7 @@
 """
 调试BaoStock股票列表获取问题
 """
+import importlib
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -22,7 +23,7 @@ def debug_baostock_query_all_stock():
     print("=" * 60)
 
     try:
-        import baostock as bs
+        bs = importlib.import_module('baostock')
 
         # 登录BaoStock
         lg = bs.login()
@@ -98,7 +99,7 @@ def debug_baostock_query_all_stock():
         print("❌ BaoStock未安装")
     except Exception as e:
         print(f"❌ 调试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def debug_baostock_stock_basic():
@@ -108,7 +109,7 @@ def debug_baostock_stock_basic():
     print("=" * 60)
 
     try:
-        import baostock as bs
+        bs = importlib.import_module('baostock')
 
         # 登录BaoStock
         lg = bs.login()
@@ -156,7 +157,7 @@ def test_baostock_adapter_stock_list():
     print("=" * 60)
 
     try:
-        from app.services.sources import BaoStockAdapter
+        BaoStockAdapter = getattr(importlib.import_module('app.services.sources'), 'BaoStockAdapter')
 
         adapter = BaoStockAdapter()
 
@@ -181,7 +182,7 @@ def test_baostock_adapter_stock_list():
 
     except Exception as e:
         print(f"❌ 适配器测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

@@ -1,9 +1,10 @@
+import importlib
 import asyncio
 
 
 def test_offhours_backfill_when_empty(monkeypatch):
-    from app.services.quotes.ingestion import QuotesIngestionService
-    import app.services.quotes.ingestion as qis_mod
+    QuotesIngestionService = getattr(importlib.import_module('app.services.quotes.ingestion'), 'QuotesIngestionService')
+    qis_mod = importlib.import_module('app.services.quotes.ingestion')
 
     # Fake DataSourceManager to avoid external calls
     class _FakeManager:

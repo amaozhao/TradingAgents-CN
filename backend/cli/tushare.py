@@ -3,12 +3,14 @@
 Tushare数据初始化CLI工具
 用于首次部署时的数据初始化操作
 """
+import importlib
 import asyncio
 import argparse
 import sys
 import os
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent
@@ -84,7 +86,7 @@ async def check_database_status():
     print("📊 检查数据库状态...")
 
     try:
-        from app.core.database import get_mongo_db
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
         db = get_mongo_db()
 
         # 检查各集合状态
@@ -155,7 +157,7 @@ async def run_basic_initialization():
         return False
 
 
-async def run_full_initialization(historical_days: int, force: bool, multi_period: bool = False, sync_items: list = None):
+async def run_full_initialization(historical_days: int, force: bool, multi_period: bool = False, sync_items: Optional[list] = None):
     """运行完整初始化"""
     if sync_items:
         print(f"🚀 开始数据初始化（历史数据: {historical_days}天）...")
@@ -268,7 +270,7 @@ async def main():
                     print(f"   有效选项: {', '.join(valid_items)}")
                     return
 
-            success = await run_full_initialization(args.historical_days, args.force, args.multi_period, sync_items)
+            success = await run_full_initialization(args.historical_days, args.force, args.multi_period, sync_items or [])
 
         else:
             print("❓ 请指定操作类型，使用 --help-detail 查看详细帮助")

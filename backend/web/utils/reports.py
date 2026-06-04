@@ -3,6 +3,7 @@
 报告导出工具
 支持将分析结果导出为多种格式
 """
+import importlib
 
 import streamlit as st
 import json
@@ -641,8 +642,8 @@ def _format_team_decision_content(content: Dict[str, Any], module_key: str) -> s
 def save_modular_reports_to_results_dir(results: Dict[str, Any], stock_symbol: str) -> Dict[str, str]:
     """保存分模块报告到results目录（CLI版本格式）"""
     try:
-        import os
-        from pathlib import Path
+        os = importlib.import_module('os')
+        Path = getattr(importlib.import_module('pathlib'), 'Path')
 
         # 获取项目根目录
         current_file = Path(__file__)
@@ -836,7 +837,7 @@ def save_modular_reports_to_results_dir(results: Dict[str, Any], stock_symbol: s
 
             except Exception as e:
                 logger.error(f"❌ MongoDB保存过程出错: {e}")
-                import traceback
+                traceback = importlib.import_module('traceback')
                 logger.error(f"❌ MongoDB保存详细错误: {traceback.format_exc()}")
                 # 不影响文件保存的成功返回
         else:
@@ -846,7 +847,7 @@ def save_modular_reports_to_results_dir(results: Dict[str, Any], stock_symbol: s
 
     except Exception as e:
         logger.error(f"❌ 保存分模块报告失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(f"❌ 详细错误: {traceback.format_exc()}")
         return {}
 
@@ -854,8 +855,8 @@ def save_modular_reports_to_results_dir(results: Dict[str, Any], stock_symbol: s
 def save_report_to_results_dir(content: bytes, filename: str, stock_symbol: str) -> str:
     """保存报告到results目录"""
     try:
-        import os
-        from pathlib import Path
+        os = importlib.import_module('os')
+        Path = getattr(importlib.import_module('pathlib'), 'Path')
 
         # 获取项目根目录（Web应用在web/子目录中运行）
         current_file = Path(__file__)
@@ -892,7 +893,7 @@ def save_report_to_results_dir(content: bytes, filename: str, stock_symbol: str)
 
     except Exception as e:
         logger.error(f"❌ 保存报告到results目录失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(f"❌ 详细错误: {traceback.format_exc()}")
         return ""
 

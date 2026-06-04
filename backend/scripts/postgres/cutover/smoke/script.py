@@ -15,13 +15,13 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from sqlalchemy import func, select
 
-from app.db.analysis_repository import (
+from app.db.analysis import (
     get_analysis_report_by_task_id,
     get_analysis_task_by_task_id,
     list_user_analysis_tasks,
 )
-from app.db.financial_repository import get_financial_data
-from app.db.message_repository import (
+from app.db.financial import get_financial_data
+from app.db.message import (
     get_internal_message_stats,
     get_social_media_stats,
     query_internal_messages,
@@ -44,18 +44,18 @@ from app.db.model import (
     UserSessionDocument,
     UserTag,
 )
-from app.db.news_repository import query_news
-from app.db.operation_log_repository import get_operation_log_stats, list_operation_logs
-from app.db.paper_repository import get_paper_account, list_paper_orders, list_paper_positions
+from app.db.news import query_news
+from app.db.operation import get_operation_log_stats, list_operation_logs
+from app.db.paper import get_paper_account, list_paper_orders, list_paper_positions
 from app.db.session import close_postgres, get_session_factory, init_postgres
-from app.db.stock_repository import (
+from app.db.stock import (
     get_market_quote,
     get_stock_basic_info,
     list_stock_daily_quotes,
     list_stocks,
 )
-from app.db.user_preferences_repository import list_user_favorites, list_user_tags
-from app.models.operation_log import OperationLogQuery
+from app.db.preference import list_user_favorites, list_user_tags
+from app.models.operations import OperationLogQuery
 
 
 @dataclass

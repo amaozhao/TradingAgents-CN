@@ -3,6 +3,7 @@
 异步进度显示组件
 支持定时刷新，从Redis或文件获取进度状态
 """
+import importlib
 
 import streamlit as st
 import time
@@ -100,7 +101,7 @@ class AsyncProgressDisplay:
                         # 尝试恢复分析结果（如果还没有的话）
                         if not st.session_state.get('analysis'):
                             try:
-                                from web.utils.analysis import format_analysis
+                                format_analysis = getattr(importlib.import_module('web.utils.analysis'), 'format_analysis')
                                 raw_results = progress_data.get('raw_results')
                                 if raw_results:
                                     formatted_results = format_analysis(raw_results)
@@ -222,7 +223,7 @@ def streamlit_auto_refresh_progress(analysis_id: str, refresh_interval: int = 2)
             # 尝试恢复分析结果（如果还没有的话）
             if not st.session_state.get('analysis'):
                 try:
-                    from web.utils.analysis import format_analysis
+                    format_analysis = getattr(importlib.import_module('web.utils.analysis'), 'format_analysis')
                     raw_results = progress_data.get('raw_results')
                     if raw_results:
                         formatted_results = format_analysis(raw_results)
@@ -265,7 +266,7 @@ def streamlit_auto_refresh_progress(analysis_id: str, refresh_interval: int = 2)
             default_value = st.session_state.get(auto_refresh_key, True)  # 默认为True
             auto_refresh = st.checkbox("🔄 自动刷新", value=default_value, key=auto_refresh_key)
             if auto_refresh and status == 'running':  # 只在运行时自动刷新
-                import time
+                time = importlib.import_module('time')
                 time.sleep(3)  # 等待3秒
                 st.rerun()
             elif auto_refresh and status in ['completed', 'failed']:
@@ -280,7 +281,7 @@ def display_static_progress(analysis_id: str) -> bool:
     显示静态进度（不自动刷新）
     返回是否已完成
     """
-    import streamlit as st
+    st = importlib.import_module('streamlit')
 
     # 使用session state避免重复创建组件
     progress_key = f"progress_display_{analysis_id}"
@@ -297,7 +298,7 @@ def display_static_progress(analysis_id: str) -> bool:
     status = progress_data.get('status', 'running')
 
     # 调试信息（可以在生产环境中移除）
-    import datetime
+    datetime = importlib.import_module('datetime')
     current_time = datetime.datetime.now().strftime('%H:%M:%S')
     logger.debug(f"📊 [进度显示] {current_time} - 状态: {status}, 进度: {progress_data.get('progress_percentage', 0):.1f}%")
 
@@ -356,8 +357,8 @@ def display_static_progress(analysis_id: str) -> bool:
             # 尝试恢复分析结果（如果还没有的话）
             if not st.session_state.get('analysis'):
                 try:
-                    from web.utils.progress import get_progress_by_id
-                    from web.utils.analysis import format_analysis
+                    get_progress_by_id = getattr(importlib.import_module('web.utils.progress'), 'get_progress_by_id')
+                    format_analysis = getattr(importlib.import_module('web.utils.analysis'), 'format_analysis')
                     progress_data = get_progress_by_id(analysis_id)
                     if progress_data and progress_data.get('raw_results'):
                         formatted_results = format_analysis(progress_data['raw_results'])
@@ -391,7 +392,7 @@ def display_static_progress(analysis_id: str) -> bool:
                 default_value = st.session_state.get(auto_refresh_key, True)  # 默认为True
                 auto_refresh = st.checkbox("🔄 自动刷新", value=default_value, key=auto_refresh_key)
                 if auto_refresh and status == 'running':  # 只在运行时自动刷新
-                    import time
+                    time = importlib.import_module('time')
                     time.sleep(3)  # 等待3秒
                     st.rerun()
                 elif auto_refresh and status in ['completed', 'failed']:
@@ -415,7 +416,7 @@ def display_unified_progress(analysis_id: str, show_refresh_controls: bool = Tru
     统一的进度显示函数，避免重复元素
     返回是否已完成
     """
-    import streamlit as st
+    st = importlib.import_module('streamlit')
 
     # 简化逻辑：直接调用显示函数，通过参数控制是否显示刷新按钮
     # 调用方负责确保只在需要的地方传入show_refresh_controls=True
@@ -426,8 +427,8 @@ def display_static_progress_with_controls(analysis_id: str, show_refresh_control
     """
     显示静态进度，可控制是否显示刷新控件
     """
-    import streamlit as st
-    from web.utils.progress import get_progress_by_id
+    st = importlib.import_module('streamlit')
+    get_progress_by_id = getattr(importlib.import_module('web.utils.progress'), 'get_progress_by_id')
 
     # 获取进度数据
     progress_data = get_progress_by_id(analysis_id)
@@ -451,7 +452,7 @@ def display_static_progress_with_controls(analysis_id: str, show_refresh_control
                 default_value = st.session_state.get(auto_refresh_key, True)  # 默认为True
                 auto_refresh = st.checkbox("🔄 自动刷新", value=default_value, key=auto_refresh_key)
                 if auto_refresh and status == 'running':  # 只在运行时自动刷新
-                    import time
+                    time = importlib.import_module('time')
                     time.sleep(3)  # 等待3秒
                     st.rerun()
                 elif auto_refresh and status in ['completed', 'failed']:
@@ -513,8 +514,8 @@ def display_static_progress_with_controls(analysis_id: str, show_refresh_control
             # 尝试恢复分析结果（如果还没有的话）
             if not st.session_state.get('analysis'):
                 try:
-                    from web.utils.progress import get_progress_by_id
-                    from web.utils.analysis import format_analysis
+                    get_progress_by_id = getattr(importlib.import_module('web.utils.progress'), 'get_progress_by_id')
+                    format_analysis = getattr(importlib.import_module('web.utils.analysis'), 'format_analysis')
                     progress_data = get_progress_by_id(analysis_id)
                     if progress_data and progress_data.get('raw_results'):
                         formatted_results = format_analysis(progress_data['raw_results'])
@@ -547,7 +548,7 @@ def display_static_progress_with_controls(analysis_id: str, show_refresh_control
             default_value = st.session_state.get(auto_refresh_key, True)  # 默认为True
             auto_refresh = st.checkbox("🔄 自动刷新", value=default_value, key=auto_refresh_key)
             if auto_refresh and status == 'running':  # 只在运行时自动刷新
-                import time
+                time = importlib.import_module('time')
                 time.sleep(3)  # 等待3秒
                 st.rerun()
             elif auto_refresh and status in ['completed', 'failed']:

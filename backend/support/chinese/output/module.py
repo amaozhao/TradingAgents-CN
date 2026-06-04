@@ -2,6 +2,7 @@
 """
 测试中文输出功能
 """
+import importlib
 
 import os
 import sys
@@ -18,7 +19,7 @@ load_dotenv(project_root / ".env", override=True)
 def test_dashscope_chinese():
     """测试阿里百炼模型的中文输出"""
     try:
-        from trader.llm.adapters import ChatDashScope
+        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
 
         print("🧪 测试阿里百炼模型中文输出")
         print("=" * 50)
@@ -62,15 +63,15 @@ def test_dashscope_chinese():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 
 def test_signal_processor_chinese():
     """测试信号处理器的中文输出"""
     try:
-        from trader.graph.signals import SignalProcessor
-        from trader.llm.adapters import ChatDashScope
+        SignalProcessor = getattr(importlib.import_module('trader.graph.signals'), 'SignalProcessor')
+        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
 
         print("\n🧪 测试信号处理器中文输出")
         print("=" * 50)
@@ -108,7 +109,7 @@ def test_signal_processor_chinese():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 

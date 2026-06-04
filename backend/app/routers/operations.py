@@ -1,6 +1,7 @@
 """
 操作日志API路由
 """
+import importlib
 
 import logging
 from typing import Dict, Any
@@ -46,7 +47,8 @@ async def get_operations(
             end_date=end_date,
             action_type=action_type,
             success=success,
-            keyword=keyword
+            keyword=keyword,
+            user_id=None,
         )
 
         logs, total = await service.get_logs(query)
@@ -221,14 +223,17 @@ async def export_logs_csv(
             page_size=10000,  # 导出时获取更多数据
             start_date=start_date,
             end_date=end_date,
-            action_type=action_type
+            action_type=action_type,
+            success=None,
+            keyword=None,
+            user_id=None,
         )
 
         logs, _ = await service.get_logs(query)
 
         # 生成CSV内容
-        import csv
-        import io
+        csv = importlib.import_module('csv')
+        io = importlib.import_module('io')
 
         output = io.StringIO()
         writer = csv.writer(output)
@@ -254,7 +259,7 @@ async def export_logs_csv(
         output.seek(0)
 
         # 返回CSV文件
-        from datetime import datetime
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
         filename = f"operations_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
 
         return StreamingResponse(

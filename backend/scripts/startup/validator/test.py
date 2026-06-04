@@ -3,6 +3,7 @@
 
 用于验证配置验证器是否正常工作
 """
+import importlib
 
 import sys
 import os
@@ -15,7 +16,7 @@ from dotenv import load_dotenv
 # 加载 .env 文件
 load_dotenv()
 
-from app.core.startup_validator import validate_startup_config, ConfigurationError
+from app.core.startup import validate_startup_config, ConfigurationError
 
 
 def main():
@@ -43,7 +44,7 @@ def main():
         return 1
     except Exception as e:
         print(f"\n❌ 发生错误: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return 1
 

@@ -2,6 +2,7 @@
 """
 测试完整的工具调用工作流程
 """
+import importlib
 
 import os
 import sys
@@ -21,9 +22,10 @@ def test_deepseek_complete_workflow():
     print("=" * 60)
 
     try:
-        from trader.llm.adapters.deepseek import ChatDeepSeek
-        from langchain_core.tools import BaseTool
-        from langchain_core.messages import HumanMessage, ToolMessage
+        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
+        BaseTool = getattr(importlib.import_module('langchain_core.tools'), 'BaseTool')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        ToolMessage = getattr(importlib.import_module('langchain_core.messages'), 'ToolMessage')
 
         # 创建DeepSeek实例
         deepseek_llm = ChatDeepSeek(
@@ -128,7 +130,7 @@ def test_deepseek_complete_workflow():
 
     except Exception as e:
         print(f"❌ DeepSeek测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None
 
@@ -138,16 +140,17 @@ def test_dashscope_react_agent():
     print("=" * 60)
 
     try:
-        from langchain.agents import create_react_agent, AgentExecutor
-        from langchain_core.prompts import PromptTemplate
-        from langchain_core.tools import BaseTool
+        create_react_agent = getattr(importlib.import_module('langchain.agents'), 'create_react_agent')
+        AgentExecutor = getattr(importlib.import_module('langchain.agents'), 'AgentExecutor')
+        PromptTemplate = getattr(importlib.import_module('langchain_core.prompts'), 'PromptTemplate')
+        BaseTool = getattr(importlib.import_module('langchain_core.tools'), 'BaseTool')
 
         # 检查是否有百炼API密钥
         if not os.getenv("DASHSCOPE_API_KEY"):
             print("⚠️ 未找到DASHSCOPE_API_KEY，跳过百炼测试")
             return None
 
-        from trader.llm.adapters.dashscope.native import ChatDashScope
+        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters.dashscope.native'), 'ChatDashScope')
 
         # 创建百炼实例
         dashscope_llm = ChatDashScope(
@@ -241,7 +244,7 @@ Question: {input}
 
     except Exception as e:
         print(f"❌ 百炼ReAct Agent测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None
 

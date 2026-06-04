@@ -3,11 +3,12 @@
 BaoStock数据同步服务
 提供BaoStock数据的批量同步功能，集成到APScheduler调度系统
 """
+import importlib
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field
 
 from app.core.config import get_settings
 from app.core.database import get_database
@@ -25,11 +26,7 @@ class BaoStockSyncStats:
     quotes_count: int = 0
     historical_records: int = 0
     financial_records: int = 0
-    errors: List[str] = None
-
-    def __post_init__(self):
-        if self.errors is None:
-            self.errors = []
+    errors: List[str] = field(default_factory=list)
 
 
 class BaoStockSyncService:
@@ -44,8 +41,8 @@ class BaoStockSyncService:
         try:
             self.settings = get_settings()
             self.provider = BaoStockProvider()
-            self.historical_service = None  # 延迟初始化
-            self.db = None  # 🔥 延迟初始化，在 initialize() 中设置
+            self.historical_service: Any = None  # 延迟初始化
+            self.db: Any = None  # 🔥 延迟初始化，在 initialize() 中设置
 
             logger.info("✅ BaoStock同步服务初始化成功")
         except Exception as e:
@@ -56,12 +53,12 @@ class BaoStockSyncService:
         """异步初始化服务"""
         try:
             # 🔥 初始化数据库连接（必须在异步上下文中）
-            from app.core.database import get_mongo_db
+            get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
             self.db = get_mongo_db()
 
             # 初始化历史数据服务
             if self.historical_service is None:
-                from app.services.market.historical import get_historical_data_service
+                get_historical_data_service = getattr(importlib.import_module('app.services.market.historical'), 'get_historical_data_service')
                 self.historical_service = await get_historical_data_service()
 
             logger.info("✅ BaoStock同步服务异步初始化完成")
@@ -501,7 +498,7 @@ class BaoStockSyncService:
             logger.error(f"❌ 更新历史数据到数据库失败: {e}")
             return 0
 
-    async def _get_last_sync_date(self, symbol: str = None) -> str:
+    async def _get_last_sync_date(self, symbol: Optional[str] = None) -> str:
         """
         获取最后同步日期
 

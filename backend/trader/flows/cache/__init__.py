@@ -16,7 +16,7 @@
 """
 
 import os
-from typing import Union
+from typing import Any
 
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
@@ -77,7 +77,7 @@ _cache_instance = None
 # 默认缓存策略（改为 integrated，优先使用 MongoDB/Redis 缓存）
 DEFAULT_CACHE_STRATEGY = os.getenv("TA_CACHE_STRATEGY", "integrated")
 
-def get_cache() -> Union[StockDataCache, IntegratedCacheManager]:
+def get_cache() -> Any:
     """
     获取缓存实例（统一入口）
 
@@ -99,16 +99,20 @@ def get_cache() -> Union[StockDataCache, IntegratedCacheManager]:
         if DEFAULT_CACHE_STRATEGY in ["integrated", "adaptive"]:
             if INTEGRATED_CACHE_AVAILABLE:
                 try:
-                    _cache_instance = IntegratedCacheManager()
+                    cache_cls: Any = IntegratedCacheManager
+                    _cache_instance = cache_cls()
                     logger.info("✅ 使用集成缓存系统（支持 MongoDB/Redis/File 自动选择）")
                 except Exception as e:
                     logger.warning(f"⚠️ 集成缓存初始化失败，降级到文件缓存: {e}")
-                    _cache_instance = StockDataCache()
+                    file_cache_cls: Any = StockDataCache
+                    _cache_instance = file_cache_cls()
             else:
                 logger.warning("⚠️ 集成缓存不可用，使用文件缓存")
-                _cache_instance = StockDataCache()
+                file_cache_cls: Any = StockDataCache
+                _cache_instance = file_cache_cls()
         else:
-            _cache_instance = StockDataCache()
+            file_cache_cls: Any = StockDataCache
+            _cache_instance = file_cache_cls()
             logger.info("✅ 使用文件缓存系统")
 
     return _cache_instance

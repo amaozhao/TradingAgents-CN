@@ -2,6 +2,7 @@
 """
 调试文件加载问题
 """
+import importlib
 
 import os
 import sys
@@ -21,7 +22,7 @@ def test_file_loading():
     print("=" * 80)
 
     try:
-        from trader.config.manager import ConfigManager
+        ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
 
         print("🔧 创建ConfigManager...")
         config_manager = ConfigManager()
@@ -50,7 +51,7 @@ def test_file_loading():
 
     except Exception as e:
         print(f"❌ 文件加载测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

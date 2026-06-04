@@ -2,6 +2,7 @@
 """
 测试多周期数据同步功能
 """
+import importlib
 import asyncio
 import sys
 from pathlib import Path
@@ -10,7 +11,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from trader.flows.providers.tushare_provider import TushareProvider
+from trader.flows.providers.tushare import TushareProvider
 from app.services.market.historical import get_historical_data_service
 from app.core.database import init_database
 from trader.config.databases import get_mongodb_client
@@ -143,7 +144,7 @@ async def test_multi_period_sync():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     print("\n" + "=" * 60)

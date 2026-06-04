@@ -3,6 +3,7 @@
 测试OpenAI配置修复效果
 验证在没有OpenAI API Key的情况下，系统是否正确跳过OpenAI API调用
 """
+import importlib
 
 import os
 import sys
@@ -28,7 +29,7 @@ def test_openai_config_detection():
         print(f"   FINNHUB_API_KEY: {'✅ 已配置' if finnhub_key else '❌ 未配置'}")
 
         # 检查配置
-        from trader.flows.config import get_config
+        get_config = getattr(importlib.import_module('trader.flows.config'), 'get_config')
         config = get_config()
 
         print(f"\n📊 当前系统配置:")
@@ -75,7 +76,7 @@ def test_openai_config_detection():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -86,7 +87,7 @@ def test_fundamentals_api_selection():
 
     try:
         # 设置日志级别
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("default")
         logger.setLevel("INFO")
 
@@ -99,7 +100,7 @@ def test_fundamentals_api_selection():
 
         print(f"\n🔄 调用基本面数据获取...")
 
-        from trader.flows.interface import get_fundamentals_openai
+        get_fundamentals_openai = getattr(importlib.import_module('trader.flows.interface'), 'get_fundamentals_openai')
 
         # 这个调用应该会跳过OpenAI，直接使用FinnHub
         result = get_fundamentals_openai(test_ticker, test_date)
@@ -131,7 +132,7 @@ def test_fundamentals_api_selection():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

@@ -14,7 +14,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # 导入需要测试的模块
-from trader.flows.realtime_news_utils import get_realtime_stock_news
+from trader.flows.real.time import get_realtime_stock_news
 from trader.utils.logging import get_logger
 
 # 获取日志记录器

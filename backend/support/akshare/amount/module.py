@@ -2,6 +2,7 @@
 测试 AKShare 成交额单位
 检查 AKShare 返回的成交额数据单位是否正确
 """
+import importlib
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -45,7 +46,8 @@ async def test_akshare_amount():
     print(f"\n3️⃣ 获取历史数据")
 
     # 获取历史数据（最近5天）
-    from datetime import datetime, timedelta
+    datetime = getattr(importlib.import_module('datetime'), 'datetime')
+    timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
     end_date = datetime.now()
     start_date = end_date - timedelta(days=5)
 

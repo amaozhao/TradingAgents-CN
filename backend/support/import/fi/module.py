@@ -1,6 +1,7 @@
 """
 测试导入修复
 """
+import importlib
 
 import sys
 import os
@@ -15,11 +16,11 @@ def test_fundamentals_analyst_import():
 
     try:
         # 测试导入基本面分析师
-        from trader.agents.analysts.fundamentals import create_fundamentals_analyst
+        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
         print("  ✅ 基本面分析师导入成功")
 
         # 测试is_china_stock函数导入
-        from trader.utils.stocks import is_china_stock
+        is_china_stock = getattr(importlib.import_module('trader.utils.stocks'), 'is_china_stock')
         print("  ✅ is_china_stock函数导入成功")
 
         # 测试函数调用
@@ -33,7 +34,7 @@ def test_fundamentals_analyst_import():
 
     except Exception as e:
         print(f"❌ 基本面分析师导入失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -42,12 +43,10 @@ def test_stock_utils_functions():
     print("\n🧪 测试股票工具函数...")
 
     try:
-        from trader.utils.stocks import (
-            is_china_stock,
-            is_hk_stock,
-            is_us_stock,
-            StockUtils
-        )
+        is_china_stock = getattr(importlib.import_module('trader.utils.stocks'), 'is_china_stock')
+        is_hk_stock = getattr(importlib.import_module('trader.utils.stocks'), 'is_hk_stock')
+        is_us_stock = getattr(importlib.import_module('trader.utils.stocks'), 'is_us_stock')
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         # 测试各种股票代码
         test_cases = [
@@ -80,7 +79,7 @@ def test_stock_utils_functions():
 
     except Exception as e:
         print(f"❌ 股票工具函数测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -89,7 +88,7 @@ def test_web_analysis_runner():
     print("\n🧪 测试Web分析运行器...")
 
     try:
-        from web.utils.analysis import validate_analysis_params
+        validate_analysis_params = getattr(importlib.import_module('web.utils.analysis'), 'validate_analysis_params')
 
         # 测试港股验证
         is_valid, errors = validate_analysis_params(
@@ -110,7 +109,7 @@ def test_web_analysis_runner():
 
     except Exception as e:
         print(f"❌ Web分析运行器测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -120,9 +119,9 @@ def test_complete_analysis_flow():
 
     try:
         # 测试所有必要的导入
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
-        from trader.agents.analysts.fundamentals import create_fundamentals_analyst
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
 
         print("  ✅ 交易图导入成功")
         print("  ✅ 默认配置导入成功")
@@ -137,7 +136,7 @@ def test_complete_analysis_flow():
 
     except Exception as e:
         print(f"❌ 完整分析流程导入测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

@@ -2,6 +2,7 @@
 """
 测试优化后的目标价生成系统
 """
+import importlib
 
 import sys
 import os
@@ -16,7 +17,7 @@ def test_signal_processor():
     print("🧪 测试信号处理器价格提取功能...")
 
     try:
-        from trader.agents.signals import SignalProcessor
+        SignalProcessor = getattr(importlib.import_module('trader.graph.signals'), 'SignalProcessor')
 
         processor = SignalProcessor()
 
@@ -60,7 +61,7 @@ def test_smart_price_estimation():
     print("\n🧪 测试智能价格推算功能...")
 
     try:
-        from trader.agents.signals import SignalProcessor
+        SignalProcessor = getattr(importlib.import_module('trader.graph.signals'), 'SignalProcessor')
 
         processor = SignalProcessor()
 
@@ -86,8 +87,8 @@ def test_trader_prompt():
     print("\n🧪 检查交易员提示词优化...")
 
     try:
-        from trader.agents.trader import trader_node
-        import inspect
+        trader_node = getattr(importlib.import_module('trader.agents.trader'), 'trader_node')
+        inspect = importlib.import_module('inspect')
 
         # 获取trader_node函数的源代码
         source = inspect.getsource(trader_node)

@@ -2,6 +2,7 @@
 """
 运行完整的股票分析，观察DeepSeek成本计算的详细日志
 """
+import importlib
 
 import os
 import sys
@@ -26,8 +27,8 @@ def test_full_stock_analysis():
         return False
 
     try:
-        from trader.graph.setup import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.setup'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         print("🔧 初始化交易分析图...")
 
@@ -92,7 +93,7 @@ def test_full_stock_analysis():
 
     except Exception as e:
         print(f"❌ 完整分析测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

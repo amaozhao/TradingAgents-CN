@@ -1,3 +1,4 @@
+import importlib
 import logging
 import logging.config
 import sys
@@ -35,7 +36,7 @@ def resolve_logging_cfg_path() -> Path:
 class SimpleJsonFormatter(logging.Formatter):
     """Minimal JSON formatter without external deps."""
     def format(self, record: logging.LogRecord) -> str:
-        import json
+        json = importlib.import_module('json')
         obj = {
             "time": self.formatTime(record, "%Y-%m-%d %H:%M:%S"),
             "name": record.name,

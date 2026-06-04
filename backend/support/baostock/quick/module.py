@@ -2,6 +2,7 @@
 """
 快速测试BaoStock数据源
 """
+import importlib
 
 import sys
 import os
@@ -14,7 +15,7 @@ def test_baostock_import():
     """测试BaoStock导入"""
     print("🔍 测试BaoStock导入...")
     try:
-        import baostock as bs
+        bs = importlib.import_module('baostock')
         print(f"✅ BaoStock导入成功")
         print(f"   版本: {bs.__version__}")
         return True
@@ -26,7 +27,7 @@ def test_baostock_connection():
     """测试BaoStock连接"""
     print("\n🔍 测试BaoStock连接...")
     try:
-        import baostock as bs
+        bs = importlib.import_module('baostock')
 
         # 登录系统
         lg = bs.login()
@@ -67,7 +68,7 @@ def test_baostock_connection():
     except Exception as e:
         print(f"❌ BaoStock连接异常: {e}")
         try:
-            import baostock as bs
+            bs = importlib.import_module('baostock')
             bs.logout()
         except:
             pass
@@ -77,7 +78,7 @@ def test_data_source_manager():
     """测试数据源管理器中的BaoStock"""
     print("\n🔍 测试数据源管理器中的BaoStock...")
     try:
-        from trader.flows.sources import DataSourceManager
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
 
         manager = DataSourceManager()
         print(f"✅ 数据源管理器初始化成功")

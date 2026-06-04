@@ -13,7 +13,7 @@ import os
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from trader.flows.data_source_manager import DataSourceManager, ChinaDataSource
+from trader.flows.sources import DataSourceManager, ChinaDataSource
 from trader.utils.logging.init import get_logger
 
 logger = get_logger("default")

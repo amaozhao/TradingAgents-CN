@@ -3,6 +3,7 @@
 阿里百炼 OpenAI 兼容适配器修复验证测试
 验证新的 OpenAI 兼容适配器是否解决了工具调用问题
 """
+import importlib
 
 import os
 import sys
@@ -19,21 +20,19 @@ def test_openai_adapter_import():
     print("=" * 60)
 
     try:
-        from trader.llm.adapters import ChatDashScopeOpenAI
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
         print("✅ ChatDashScopeOpenAI 导入成功")
 
-        from trader.llm.adapters.dashscope.openai import (
-            create_dashscope_openai_llm,
-            test_dashscope_openai_connection,
-            test_dashscope_openai_function_calling
-        )
+        create_dashscope_openai_llm = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'create_dashscope_openai_llm')
+        test_dashscope_openai_connection = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'test_dashscope_openai_connection')
+        test_dashscope_openai_function_calling = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'test_dashscope_openai_function_calling')
         print("✅ 相关函数导入成功")
 
         return True
 
     except Exception as e:
         print(f"❌ 导入失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -44,7 +43,7 @@ def test_openai_adapter_connection():
     print("=" * 60)
 
     try:
-        from trader.llm.adapters.dashscope.openai import test_dashscope_openai_connection
+        test_dashscope_openai_connection = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'test_dashscope_openai_connection')
 
         # 测试连接
         result = test_dashscope_openai_connection(model="qwen-turbo")
@@ -58,7 +57,7 @@ def test_openai_adapter_connection():
 
     except Exception as e:
         print(f"❌ 连接测试异常: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -69,7 +68,7 @@ def test_openai_adapter_function_calling():
     print("=" * 60)
 
     try:
-        from trader.llm.adapters.dashscope.openai import test_dashscope_openai_function_calling
+        test_dashscope_openai_function_calling = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'test_dashscope_openai_function_calling')
 
         # 测试 Function Calling
         result = test_dashscope_openai_function_calling(model="qwen-plus-latest")
@@ -83,7 +82,7 @@ def test_openai_adapter_function_calling():
 
     except Exception as e:
         print(f"❌ Function Calling 测试异常: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -94,10 +93,10 @@ def test_technical_analysis_with_new_adapter():
     print("=" * 60)
 
     try:
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from trader.agents.utils.utils import Toolkit
-        from langchain_core.messages import HumanMessage
-        from langchain_core.tools import tool
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
 
         # 创建新的 OpenAI 兼容适配器
         llm = ChatDashScopeOpenAI(
@@ -183,7 +182,7 @@ def test_technical_analysis_with_new_adapter():
 
     except Exception as e:
         print(f"❌ 技术面分析测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -194,7 +193,7 @@ def test_trading_graph_integration():
     print("=" * 60)
 
     try:
-        from trader.graph.trading import TradingAgentsGraph
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
 
         # 创建配置
         config = {
@@ -223,7 +222,7 @@ def test_trading_graph_integration():
 
     except Exception as e:
         print(f"❌ TradingGraph 集成测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

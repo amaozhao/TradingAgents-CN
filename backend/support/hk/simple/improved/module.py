@@ -2,6 +2,7 @@
 """
 测试改进的港股工具（简版，直接导入）
 """
+import importlib
 
 import os
 import sys
@@ -18,7 +19,7 @@ def test_hk_provider_direct():
 
     try:
         # 直接导入改进的港股工具
-        from improved_hk_utils import ImprovedHKStockProvider
+        ImprovedHKStockProvider = getattr(importlib.import_module('support.improved.hk.utils.module'), 'ImprovedHKStockProvider')
 
         provider = ImprovedHKStockProvider()
         print("✅ 改进港股提供器初始化成功")
@@ -57,7 +58,7 @@ def test_hk_provider_direct():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -67,7 +68,7 @@ def test_cache_direct():
     print("=" * 80)
 
     try:
-        from improved_hk_utils import ImprovedHKStockProvider
+        ImprovedHKStockProvider = getattr(importlib.import_module('support.improved.hk.utils.module'), 'ImprovedHKStockProvider')
 
         provider = ImprovedHKStockProvider()
 
@@ -110,7 +111,7 @@ def test_cache_direct():
             print("✅ 缓存文件已创建")
 
             # 读取缓存内容
-            import json
+            json = importlib.import_module('json')
             with open(cache_file, 'r', encoding='utf-8') as f:
                 cache_data = json.load(f)
 
@@ -124,7 +125,7 @@ def test_cache_direct():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -134,7 +135,7 @@ def test_normalization():
     print("=" * 80)
 
     try:
-        from improved_hk_utils import ImprovedHKStockProvider
+        ImprovedHKStockProvider = getattr(importlib.import_module('support.improved.hk.utils.module'), 'ImprovedHKStockProvider')
 
         provider = ImprovedHKStockProvider()
 
@@ -160,7 +161,7 @@ def test_normalization():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

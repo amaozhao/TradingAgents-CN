@@ -2,6 +2,7 @@
 """
 测试信号处理模块的日志记录修复
 """
+import importlib
 
 import os
 import sys
@@ -17,14 +18,14 @@ def test_signal_processing_logging():
 
     try:
         # 设置日志级别
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("default")
         logger.setLevel("INFO")
 
         print("🔧 创建信号处理器...")
 
         # 导入信号处理器
-        from trader.graph.signals import SignalProcessor
+        SignalProcessor = getattr(importlib.import_module('trader.graph.signals'), 'SignalProcessor')
 
         processor = SignalProcessor()
         print("✅ 信号处理器创建完成")
@@ -90,14 +91,14 @@ def test_signal_processing_logging():
 
             except Exception as e:
                 print(f"❌ 信号处理失败: {e}")
-                import traceback
+                traceback = importlib.import_module('traceback')
                 traceback.print_exc()
 
         return True
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -108,7 +109,7 @@ def test_logging_extraction():
 
     try:
         # 模拟信号处理模块的调用
-        from trader.utils.logging.tools import log_graph_module
+        log_graph_module = getattr(importlib.import_module('trader.utils.logging.tools'), 'log_graph_module')
 
         # 创建一个测试函数来验证日志装饰器
         @log_graph_module("signal_processing")
@@ -162,7 +163,7 @@ def test_logging_extraction():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

@@ -7,8 +7,9 @@
 import os
 import sys
 import logging
+import platform
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 # 添加项目根目录到路径
 project_root = Path(__file__).parent.parent.parent
@@ -45,7 +46,7 @@ def init_logging(config_override: Optional[dict] = None) -> None:
     logger.debug(f"🌍 环境变量: DOCKER_CONTAINER={os.getenv('DOCKER_CONTAINER', 'false')}")
 
 
-def get_session_logger(session_id: str, module_name: str = 'session') -> 'logging.Logger':
+def get_session_logger(session_id: str, module_name: str = 'session') -> logging.LoggerAdapter[Any]:
     """
     获取会话专用日志器
 
@@ -58,34 +59,7 @@ def get_session_logger(session_id: str, module_name: str = 'session') -> 'loggin
     """
     logger_name = f"{module_name}.{session_id[:8]}"  # 使用前8位会话ID
     logger = get_logger(logger_name)
-
-    # 添加会话ID到所有日志记录
-    class SessionAdapter:
-        def __init__(self, logger, session_id):
-            self.logger = logger
-            self.session_id = session_id
-
-        def debug(self, msg, *args, **kwargs):
-            kwargs.setdefault('extra', {})['session_id'] = self.session_id
-            return self.logger.debug(msg, *args, **kwargs)
-
-        def info(self, msg, *args, **kwargs):
-            kwargs.setdefault('extra', {})['session_id'] = self.session_id
-            return self.logger.info(msg, *args, **kwargs)
-
-        def warning(self, msg, *args, **kwargs):
-            kwargs.setdefault('extra', {})['session_id'] = self.session_id
-            return self.logger.warning(msg, *args, **kwargs)
-
-        def error(self, msg, *args, **kwargs):
-            kwargs.setdefault('extra', {})['session_id'] = self.session_id
-            return self.logger.error(msg, *args, **kwargs)
-
-        def critical(self, msg, *args, **kwargs):
-            kwargs.setdefault('extra', {})['session_id'] = self.session_id
-            return self.logger.critical(msg, *args, **kwargs)
-
-    return SessionAdapter(logger, session_id)
+    return logging.LoggerAdapter(logger, {"session_id": session_id})
 
 
 def log_startup_info():
@@ -97,7 +71,6 @@ def log_startup_info():
     logger.info("=" * 60)
 
     # 系统信息
-    import platform
     logger.info(f"🖥️  系统: {platform.system()} {platform.release()}")
     logger.info(f"🐍 Python: {platform.python_version()}")
 

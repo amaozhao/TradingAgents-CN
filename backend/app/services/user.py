@@ -1,6 +1,7 @@
 """
 用户服务 - 基于数据库的用户管理
 """
+import importlib
 
 import hashlib
 import time
@@ -11,7 +12,7 @@ from bson import ObjectId
 
 from app.core.config import settings
 from app.db.dual import dual_write_hot_document
-from app.models.user import User, UserCreate, UserUpdate, UserResponse
+from app.models.user import User, UserCreate, UserPreferences, UserUpdate, UserResponse
 
 # 尝试导入日志管理器
 try:
@@ -203,7 +204,7 @@ class UserService:
     async def update_user(self, username: str, user_data: UserUpdate) -> Optional[User]:
         """更新用户信息"""
         try:
-            update_data = {"updated_at": datetime.utcnow()}
+            update_data: Dict[str, Any] = {"updated_at": datetime.utcnow()}
 
             # 只更新提供的字段
             if user_data.email:
@@ -415,11 +416,9 @@ class UserService:
         user_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         try:
-            from app.db.session import get_session_factory
-            from app.db.account import (
-                get_user_by_legacy_id,
-                get_user_by_username,
-            )
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            get_user_by_legacy_id = getattr(importlib.import_module('app.db.account'), 'get_user_by_legacy_id')
+            get_user_by_username = getattr(importlib.import_module('app.db.account'), 'get_user_by_username')
 
             async with get_session_factory()() as session:
                 if username is not None:
@@ -438,8 +437,8 @@ class UserService:
 
     async def _list_users_from_postgres(self, *, skip: int, limit: int) -> List[UserResponse]:
         try:
-            from app.db.session import get_session_factory
-            from app.db.account import list_users
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            list_users = getattr(importlib.import_module('app.db.account'), 'list_users')
 
             async with get_session_factory()() as session:
                 documents = await list_users(session, skip=skip, limit=limit)
@@ -474,6 +473,7 @@ class UserService:
         if not ObjectId.is_valid(user_id):
             return None
         try:
+            preferences = document.get("preferences") or {}
             return UserResponse(
                 id=user_id,
                 username=document["username"],
@@ -482,7 +482,7 @@ class UserService:
                 is_verified=document.get("is_verified", False),
                 created_at=document.get("created_at") or datetime.utcnow(),
                 last_login=document.get("last_login"),
-                preferences=document.get("preferences") or {},
+                preferences=preferences if isinstance(preferences, UserPreferences) else UserPreferences(**preferences),
                 daily_quota=document.get("daily_quota", 1000),
                 concurrent_limit=document.get("concurrent_limit", 3),
                 total_analyses=document.get("total_analyses", 0),

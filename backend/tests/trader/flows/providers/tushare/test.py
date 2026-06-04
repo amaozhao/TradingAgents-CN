@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime, date
 import pandas as pd
 
-from trader.flows.providers.tushare import TushareProvider
+from trader.flows.providers.china.tushare import TushareProvider
 
 
 class TestTushareProvider:

@@ -2,10 +2,11 @@
 AKShare数据同步服务
 基于AKShare提供器的统一数据同步方案
 """
+import importlib
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from app.core.database import get_mongo_db
 from app.db.dual import dual_write_hot_document
@@ -28,12 +29,20 @@ class AKShareSyncService:
     """
 
     def __init__(self):
-        self.provider = None
-        self.historical_service = None  # 延迟初始化
-        self.news_service = None  # 延迟初始化
-        self.db = None
+        self.provider: Any = None
+        self.historical_service: Any = None  # 延迟初始化
+        self.news_service: Any = None  # 延迟初始化
+        self.db: Any = None
         self.batch_size = 100
         self.rate_limit_delay = 0.2  # AKShare建议的延迟
+
+    @staticmethod
+    def _as_dict(value: Any) -> Dict[str, Any]:
+        if hasattr(value, "model_dump"):
+            return cast(Dict[str, Any], value.model_dump())
+        if hasattr(value, "dict"):
+            return cast(Dict[str, Any], value.dict())
+        return cast(Dict[str, Any], value)
 
     async def initialize(self):
         """初始化同步服务"""
@@ -156,12 +165,7 @@ class AKShareSyncService:
 
                 if basic_info:
                     # 转换为字典格式
-                    if hasattr(basic_info, 'model_dump'):
-                        basic_data = basic_info.model_dump()
-                    elif hasattr(basic_info, 'dict'):
-                        basic_data = basic_info.dict()
-                    else:
-                        basic_data = basic_info
+                    basic_data = self._as_dict(basic_info)
 
                     # 🔥 确保 source 字段存在
                     if "source" not in basic_data:
@@ -236,7 +240,7 @@ class AKShareSyncService:
             logger.debug(f"检查数据新鲜度失败: {e}")
             return False
 
-    async def sync_realtime_quotes(self, symbols: List[str] = None, force: bool = False) -> Dict[str, Any]:
+    async def sync_realtime_quotes(self, symbols: Optional[List[str]] = None, force: bool = False) -> Dict[str, Any]:
         """
         同步实时行情数据
 
@@ -334,12 +338,7 @@ class AKShareSyncService:
                                 quotes = quotes_map.get(symbol)
                                 if quotes:
                                     # 转换为字典格式
-                                    if hasattr(quotes, 'model_dump'):
-                                        quotes_data = quotes.model_dump()
-                                    elif hasattr(quotes, 'dict'):
-                                        quotes_data = quotes.dict()
-                                    else:
-                                        quotes_data = quotes
+                                    quotes_data = self._as_dict(quotes)
 
                                     # 确保 symbol 和 code 字段存在
                                     if "symbol" not in quotes_data:
@@ -418,12 +417,7 @@ class AKShareSyncService:
                     quotes = quotes_map.get(symbol)
                     if quotes:
                         # 转换为字典格式
-                        if hasattr(quotes, 'model_dump'):
-                            quotes_data = quotes.model_dump()
-                        elif hasattr(quotes, 'dict'):
-                            quotes_data = quotes.dict()
-                        else:
-                            quotes_data = quotes
+                        quotes_data = self._as_dict(quotes)
 
                         # 确保 symbol 和 code 字段存在
                         if "symbol" not in quotes_data:
@@ -504,12 +498,7 @@ class AKShareSyncService:
             quotes = await self.provider.get_stock_quotes(symbol)
             if quotes:
                 # 转换为字典格式
-                if hasattr(quotes, 'model_dump'):
-                    quotes_data = quotes.model_dump()
-                elif hasattr(quotes, 'dict'):
-                    quotes_data = quotes.dict()
-                else:
-                    quotes_data = quotes
+                quotes_data = self._as_dict(quotes)
 
                 # 确保 symbol 字段存在
                 if "symbol" not in quotes_data:
@@ -547,9 +536,9 @@ class AKShareSyncService:
 
     async def sync_historical_data(
         self,
-        start_date: str = None,
-        end_date: str = None,
-        symbols: List[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        symbols: Optional[List[str]] = None,
         incremental: bool = True,
         period: str = "daily"
     ) -> Dict[str, Any]:
@@ -648,7 +637,7 @@ class AKShareSyncService:
     async def _process_historical_batch(
         self,
         batch: List[str],
-        start_date: str,
+        start_date: Optional[str],
         end_date: str,
         period: str = "daily",
         incremental: bool = False
@@ -711,7 +700,7 @@ class AKShareSyncService:
 
         return batch_stats
 
-    async def _get_last_sync_date(self, symbol: str = None) -> str:
+    async def _get_last_sync_date(self, symbol: Optional[str] = None) -> str:
         """
         获取最后同步日期
 
@@ -767,7 +756,7 @@ class AKShareSyncService:
             # 出错时返回30天前，确保不漏数据
             return (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
 
-    async def sync_financial_data(self, symbols: List[str] = None) -> Dict[str, Any]:
+    async def sync_financial_data(self, symbols: Optional[List[str]] = None) -> Dict[str, Any]:
         """
         同步财务数据
 
@@ -896,7 +885,7 @@ class AKShareSyncService:
         """保存财务数据"""
         try:
             # 使用统一的财务数据服务
-            from app.services.market.financial import get_financial_data_service
+            get_financial_data_service = getattr(importlib.import_module('app.services.market.financial'), 'get_financial_data_service')
 
             financial_service = await get_financial_data_service()
 
@@ -1013,7 +1002,7 @@ class AKShareSyncService:
 
     async def sync_news_data(
         self,
-        symbols: List[str] = None,
+        symbols: Optional[List[str]] = None,
         max_news_per_stock: int = 20,
         force_update: bool = False,
         favorites_only: bool = True

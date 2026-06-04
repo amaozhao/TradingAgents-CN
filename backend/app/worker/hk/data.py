@@ -76,6 +76,7 @@ class HKDataService:
             # 使用默认数据源
             if source is None:
                 source = self.default_source
+            source = str(source)
 
             # 标准化股票代码
             normalized_code = stock_code.lstrip('0').zfill(5)

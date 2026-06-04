@@ -3,6 +3,7 @@
 VSCode配置验证测试
 验证Python虚拟环境和项目配置是否正确
 """
+import importlib
 
 import os
 import sys
@@ -220,15 +221,15 @@ def test_simple_functionality():
 
     try:
         # 测试TradingAgents导入
-        from trader.llm.adapters import ChatDashScopeOpenAI
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
         print("✅ TradingAgents LLM适配器导入成功")
 
         # 测试数据流导入
-        from trader.flows import get_china_stock_data_unified
+        get_china_stock_data_unified = getattr(importlib.import_module('trader.flows'), 'get_china_stock_data_unified')
         print("✅ TradingAgents数据流导入成功")
 
         # 测试图形导入
-        from trader.graph.trading import TradingAgentsGraph
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
         print("✅ TradingAgents图形导入成功")
 
         return True

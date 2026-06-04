@@ -23,8 +23,10 @@ runs and providers instead of free-form per-model prose.
 See: https://github.com/TauricResearch/TradingAgents/issues/557
 See: https://github.com/TauricResearch/TradingAgents/issues/796
 """
+import importlib
 
 from datetime import datetime, timedelta
+from typing import Any, cast
 
 from langchain_core.messages import AIMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -39,8 +41,10 @@ from trader.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
 )
+from trader.flows.interface import get_chinese_social_sentiment, get_google_news
 from trader.flows.reddit import fetch_reddit_posts
 from trader.flows.stocktwits import fetch_stocktwits_messages
+from trader.utils.stocks import StockUtils
 
 
 def _seven_days_back(trade_date: str) -> str:
@@ -118,20 +122,13 @@ def create_sentiment_analyst(llm):
 def _fetch_source_blocks(ticker: str, start_date: str, end_date: str) -> tuple[str, str, str]:
     """Fetch sentiment sources with CN/HK/US market-aware routing."""
     try:
-        from trader.utils.stocks import StockUtils
-
         market_info = StockUtils.get_market_info(ticker)
     except Exception:
         market_info = {"is_china": False, "is_hk": False, "is_us": True}
 
     if market_info.get("is_china"):
         try:
-            from trader.flows.interface import (
-                get_chinese_social_sentiment,
-                get_google_news,
-            )
-
-            news_block = get_google_news(ticker, start_date, end_date)
+            news_block = get_google_news(ticker, end_date, 7)
             social_block = get_chinese_social_sentiment(ticker, end_date)
         except Exception as exc:
             news_block = f"<chinese news unavailable: {type(exc).__name__}>"
@@ -144,7 +141,7 @@ def _fetch_source_blocks(ticker: str, start_date: str, end_date: str) -> tuple[s
 
     if market_info.get("is_hk"):
         try:
-            news_block = get_news.func(ticker, start_date, end_date)
+            news_block = cast(Any, get_news).func(ticker, start_date, end_date)
         except Exception as exc:
             news_block = f"<hk news unavailable: {type(exc).__name__}>"
         return (
@@ -153,7 +150,7 @@ def _fetch_source_blocks(ticker: str, start_date: str, end_date: str) -> tuple[s
             "Reddit is not used for HK sentiment by default unless explicitly configured.",
         )
 
-    news_block = get_news.func(ticker, start_date, end_date)
+    news_block = cast(Any, get_news).func(ticker, start_date, end_date)
     stocktwits_block = fetch_stocktwits_messages(ticker, limit=30)
     reddit_block = fetch_reddit_posts(ticker)
     return news_block, stocktwits_block, reddit_block
@@ -236,7 +233,7 @@ def create_social_media_analyst(llm):
     .. deprecated::
         Import :func:`create_sentiment_analyst` directly instead.
     """
-    import warnings
+    warnings = importlib.import_module('warnings')
     warnings.warn(
         "create_social_media_analyst is deprecated and will be removed in a "
         "future version. Use create_sentiment_analyst instead.",

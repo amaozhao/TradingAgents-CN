@@ -3,6 +3,7 @@
 测试现有代码中的volume映射问题
 验证是否存在 KeyError: 'volume' 问题
 """
+import importlib
 
 import os
 import sys
@@ -19,7 +20,7 @@ def test_tushare_adapter_volume_mapping():
     print("=" * 60)
 
     try:
-        from trader.flows.adapter import get_tushare_adapter
+        get_tushare_adapter = getattr(importlib.import_module('trader.flows.adapter'), 'get_tushare_adapter')
 
         # 创建适配器
         adapter = get_tushare_adapter()
@@ -69,7 +70,7 @@ def test_tushare_adapter_volume_mapping():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -79,7 +80,7 @@ def test_data_source_manager_volume_access():
     print("=" * 60)
 
     try:
-        from trader.flows.sources import DataSourceManager
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
 
         # 创建数据源管理器
         manager = DataSourceManager()
@@ -116,7 +117,7 @@ def test_data_source_manager_volume_access():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -126,7 +127,7 @@ def test_real_tushare_data():
     print("=" * 60)
 
     try:
-        from trader.flows.sources import DataSourceManager
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
 
         # 检查Tushare是否可用
         tushare_token = os.getenv('TUSHARE_TOKEN')
@@ -137,7 +138,7 @@ def test_real_tushare_data():
         manager = DataSourceManager()
 
         # 设置为Tushare数据源
-        from trader.flows.sources import ChinaDataSource
+        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
         if ChinaDataSource.TUSHARE in manager.available_sources:
             manager.set_current_source(ChinaDataSource.TUSHARE)
 
@@ -164,7 +165,7 @@ def test_real_tushare_data():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -174,7 +175,7 @@ def test_column_mapping_logic():
     print("=" * 60)
 
     try:
-        from trader.flows.adapter import TushareAdapter
+        TushareAdapter = getattr(importlib.import_module('trader.flows.adapter'), 'TushareAdapter')
 
         # 创建适配器实例
         adapter = TushareAdapter()
@@ -239,7 +240,7 @@ def test_column_mapping_logic():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

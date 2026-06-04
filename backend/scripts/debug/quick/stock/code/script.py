@@ -2,6 +2,7 @@
 """
 快速测试股票代码传递问题
 """
+import importlib
 
 import requests
 import time
@@ -89,7 +90,7 @@ def quick_test():
                         print(f"   stock_symbol: {result_data.get('stock_symbol', 'NOT_FOUND')}")
 
                         # 检查保存的文件路径
-                        from pathlib import Path
+                        Path = getattr(importlib.import_module('pathlib'), 'Path')
 
                         # 检查是否保存到正确的目录
                         correct_dir = Path(f"data/analysis_results/000003/2025-08-20")

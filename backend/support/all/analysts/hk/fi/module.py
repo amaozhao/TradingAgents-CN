@@ -1,6 +1,7 @@
 """
 测试所有分析师节点的港股数据源修复
 """
+import importlib
 
 import sys
 import os
@@ -101,8 +102,8 @@ def test_toolkit_hk_method_availability():
     print("\n🧪 测试工具包港股方法可用性...")
 
     try:
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建工具包
         config = DEFAULT_CONFIG.copy()
@@ -130,7 +131,8 @@ def test_data_source_priority_summary():
     print("\n🧪 数据源优先级总结...")
 
     try:
-        from trader.flows.interface import AKSHARE_HK_AVAILABLE, HK_STOCK_AVAILABLE
+        AKSHARE_HK_AVAILABLE = getattr(importlib.import_module('trader.flows.interface'), 'AKSHARE_HK_AVAILABLE')
+        HK_STOCK_AVAILABLE = getattr(importlib.import_module('trader.flows.interface'), 'HK_STOCK_AVAILABLE')
 
         print("  📊 当前数据源可用性:")
         print(f"    AKShare港股: {AKSHARE_HK_AVAILABLE}")

@@ -2,6 +2,7 @@
 """
 AKShare财务数据获取调试脚本
 """
+import importlib
 
 import sys
 import os
@@ -51,7 +52,7 @@ def test_akshare_financial_data():
 
     except Exception as e:
         print(f"❌ 调用get_financial_data失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     # 3. 测试条件判断

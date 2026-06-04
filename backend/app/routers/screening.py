@@ -1,8 +1,9 @@
+import importlib
 
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, ConfigDict, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, cast
 from app.routers.account import get_current_user
 
 from app.services.screening.enhanced import get_enhanced_screening_service
@@ -162,6 +163,8 @@ def _convert_legacy_conditions_to_new_format(legacy_conditions: Dict[str, Any]) 
 
                     # 映射操作符
                     mapped_op = operator_mapping.get(op, op)
+                    if not mapped_field or not mapped_op:
+                        continue
 
                     # 处理市值单位转换（前端传入的是万元，数据库存储的是亿元）
                     if mapped_field == "total_mv" and isinstance(value, list):
@@ -175,9 +178,10 @@ def _convert_legacy_conditions_to_new_format(legacy_conditions: Dict[str, Any]) 
 
                     # 创建筛选条件
                     condition = ScreeningCondition(
-                        field=mapped_field,
-                        operator=mapped_op,
-                        value=value
+                        field=str(mapped_field),
+                        operator=cast(Any, mapped_op),
+                        value=cast(Any, value),
+                        field_type=None,
                     )
                     conditions.append(condition)
 
@@ -314,8 +318,8 @@ async def get_industries(user: dict = Depends(get_current_user)):
     返回按股票数量排序的行业列表
     """
     try:
-        from app.core.database import get_mongo_db
-        from app.core.unified import UnifiedConfigManager
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
+        UnifiedConfigManager = getattr(importlib.import_module('app.core.unified'), 'UnifiedConfigManager')
 
         db = get_mongo_db()
         collection = db["stock_basic_info"]

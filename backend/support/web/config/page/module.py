@@ -2,6 +2,7 @@
 """
 测试Web配置管理页面
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -16,12 +17,12 @@ def test_config_page_import():
     print("=" * 50)
 
     try:
-        from web.pages.config_management import render_config_management
+        render_config_management = getattr(importlib.import_module('web.modules.config'), 'render_config')
         print("✅ 配置管理页面导入成功")
         return True
     except Exception as e:
         print(f"❌ 配置管理页面导入失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(f"错误详情: {traceback.format_exc()}")
         return False
 
@@ -31,7 +32,8 @@ def test_config_manager_import():
     print("=" * 50)
 
     try:
-        from trader.config.manager import config_manager, token_tracker
+        config_manager = getattr(importlib.import_module('trader.config.manager'), 'config_manager')
+        token_tracker = getattr(importlib.import_module('trader.config.manager'), 'token_tracker')
         print("✅ 配置管理器导入成功")
 
         # 测试基本功能
@@ -47,7 +49,7 @@ def test_config_manager_import():
         return True
     except Exception as e:
         print(f"❌ 配置管理器导入失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(f"错误详情: {traceback.format_exc()}")
         return False
 
@@ -57,10 +59,10 @@ def test_streamlit_components():
     print("=" * 50)
 
     try:
-        import streamlit as st
-        import pandas as pd
-        import plotly.express as px
-        import plotly.graph_objects as go
+        st = importlib.import_module('streamlit')
+        pd = importlib.import_module('pandas')
+        px = importlib.import_module('plotly.express')
+        go = importlib.import_module('plotly.graph_objects')
 
         print("✅ Streamlit导入成功")
         print("✅ Pandas导入成功")

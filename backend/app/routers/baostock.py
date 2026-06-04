@@ -3,6 +3,7 @@
 BaoStock初始化API路由
 提供BaoStock数据初始化的RESTful API接口
 """
+import importlib
 import asyncio
 import logging
 from datetime import datetime
@@ -69,7 +70,7 @@ async def get_database_status():
 async def test_baostock_connection():
     """测试BaoStock连接"""
     try:
-        from app.worker.baostock.sync import BaoStockSyncService
+        BaoStockSyncService = getattr(importlib.import_module('app.worker.baostock.sync'), 'BaoStockSyncService')
 
         service = BaoStockSyncService()
         connected = await service.provider.test_connection()
@@ -324,7 +325,7 @@ async def _run_basic_initialization_task(task_id: str):
 async def get_service_status():
     """获取BaoStock服务状态"""
     try:
-        from app.worker.baostock.sync import BaoStockSyncService
+        BaoStockSyncService = getattr(importlib.import_module('app.worker.baostock.sync'), 'BaoStockSyncService')
 
         service = BaoStockSyncService()
         status = await service.check_service_status()

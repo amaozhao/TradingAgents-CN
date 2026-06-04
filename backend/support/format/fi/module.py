@@ -2,6 +2,7 @@
 """
 测试格式化修复
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -13,7 +14,7 @@ sys.path.insert(0, str(project_root))
 def test_format_analysis_results():
     """测试分析结果格式化函数"""
 
-    from web.utils.analysis import format_analysis_results
+    format_analysis_results = getattr(importlib.import_module('web.utils.analysis'), 'format_analysis_results')
 
     print("🧪 测试分析结果格式化")
     print("=" * 50)

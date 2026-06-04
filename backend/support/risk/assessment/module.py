@@ -2,6 +2,7 @@
 """
 测试风险评估功能
 """
+import importlib
 
 import os
 import sys
@@ -21,7 +22,7 @@ def test_risk_assessment_extraction():
     print("=" * 50)
 
     try:
-        from web.utils.analysis import extract_risk_assessment
+        extract_risk_assessment = getattr(importlib.import_module('web.utils.analysis'), 'extract_risk_assessment')
 
         # 模拟分析状态数据
         mock_state = {
@@ -111,7 +112,7 @@ def test_risk_assessment_extraction():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 
@@ -121,12 +122,12 @@ def test_web_interface_risk_display():
     print("=" * 50)
 
     try:
-        from web.utils.analysis import run_stock_analysis
+        run_stock_analysis = getattr(importlib.import_module('web.utils.analysis'), 'run_stock_analysis')
 
         print("📋 检查Web界面分析运行器...")
 
         # 检查函数是否包含风险评估提取逻辑
-        import inspect
+        inspect = importlib.import_module('inspect')
         source = inspect.getsource(run_stock_analysis)
 
         if 'extract_risk_assessment' in source:
@@ -164,8 +165,8 @@ def test_risk_assessment_integration():
 
         print("🚀 执行实际风险评估测试...")
 
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -218,7 +219,7 @@ def test_risk_assessment_integration():
                     print(f"   ❌ {component}: 无数据")
 
             # 测试提取功能
-            from web.utils.analysis import extract_risk_assessment
+            extract_risk_assessment = getattr(importlib.import_module('web.utils.analysis'), 'extract_risk_assessment')
             risk_assessment = extract_risk_assessment(state)
 
             if risk_assessment:
@@ -234,7 +235,7 @@ def test_risk_assessment_integration():
 
     except Exception as e:
         print(f"❌ 集成测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 

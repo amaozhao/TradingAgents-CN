@@ -4,7 +4,7 @@
 """
 
 try:
-    from webapi.models.user import PyObjectId, User
+    from app.models.user import PyObjectId, User
     from bson import ObjectId
 
     print("✅ 导入成功")

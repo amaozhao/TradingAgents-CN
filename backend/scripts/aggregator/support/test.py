@@ -4,6 +4,7 @@
 使用方法:
     python scripts/aggregator/support/test.py
 """
+import importlib
 
 import asyncio
 import sys
@@ -13,7 +14,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.services.model_capability_service import ModelCapabilityService
+from app.services.capability import ModelCapabilityService
 from app.constants.capabilities import (
     AGGREGATOR_PROVIDERS,
     is_aggregator_model,
@@ -160,7 +161,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return 1
 

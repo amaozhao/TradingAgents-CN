@@ -1,12 +1,13 @@
 """
 测试AKShare和BaoStock多周期数据同步功能
 """
+import importlib
 import asyncio
 import logging
 from datetime import datetime, timedelta
 from trader.config.databases import get_mongodb_client
-from trader.flows.providers.akshare_provider import AKShareProvider
-from trader.flows.providers.baostock_provider import BaoStockProvider
+from trader.flows.providers.china.akshare import AKShareProvider
+from trader.flows.providers.china.baostock import BaoStockProvider
 from app.services.market.historical import get_historical_data_service
 from app.core.database import init_database
 
@@ -110,7 +111,7 @@ async def test_provider_multi_period(provider_name: str, provider, symbol: str):
 
         except Exception as e:
             print(f"   ❌ {period_names[period]}数据同步失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
 
 
@@ -135,7 +136,7 @@ async def main():
         await test_provider_multi_period("AKShare", akshare_provider, test_symbol)
     except Exception as e:
         print(f"❌ AKShare测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     # 测试BaoStock
@@ -147,7 +148,7 @@ async def main():
         await test_provider_multi_period("BaoStock", baostock_provider, test_symbol)
     except Exception as e:
         print(f"❌ BaoStock测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     # 统计所有数据源的多周期数据

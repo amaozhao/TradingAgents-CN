@@ -11,6 +11,7 @@
 使用方法：
     python scripts/validation/test_market_analyst_lookback.py
 """
+import importlib
 
 import os
 import sys
@@ -32,7 +33,7 @@ def test_config_loading():
     print("=" * 80)
 
     try:
-        from app.core.config import get_settings
+        get_settings = getattr(importlib.import_module('app.core.config'), 'get_settings')
         settings = get_settings()
         lookback_days = settings.MARKET_ANALYST_LOOKBACK_DAYS
 
@@ -62,7 +63,7 @@ def test_date_range_calculation(lookback_days):
     print("=" * 80)
 
     try:
-        from trader.utils.flows import get_trading_date_range
+        get_trading_date_range = getattr(importlib.import_module('trader.utils.flows'), 'get_trading_date_range')
 
         # 使用今天作为目标日期
         target_date = datetime.now().strftime("%Y-%m-%d")
@@ -89,7 +90,7 @@ def test_date_range_calculation(lookback_days):
         return start_date, end_date, actual_days
     except Exception as e:
         print(f"❌ 日期范围计算失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None, None, None
 
@@ -101,7 +102,7 @@ def test_data_fetching(start_date, end_date):
     print("=" * 80)
 
     try:
-        from trader.flows.interface import get_china_stock_data_unified
+        get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
 
         # 使用一个常见的A股股票代码进行测试
         test_ticker = "300750"  # 平安银行
@@ -153,7 +154,7 @@ def test_data_fetching(start_date, end_date):
             return False
     except Exception as e:
         print(f"❌ 数据获取异常: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

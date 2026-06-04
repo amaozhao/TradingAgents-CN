@@ -1,3 +1,4 @@
+import importlib
 # 标准库导入
 import datetime
 import os
@@ -9,7 +10,7 @@ from collections import deque
 from difflib import get_close_matches
 from functools import wraps
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional, cast
 
 # 第三方库导入
 import typer
@@ -63,8 +64,8 @@ def setup_cli_logging():
     CLI模式下的日志配置：移除控制台输出，保持界面清爽
     Configure logging for CLI mode: remove console output to keep interface clean
     """
-    import logging
-    from trader.utils.logging.manager import get_logger_manager
+    logging = importlib.import_module('logging')
+    get_logger_manager = getattr(importlib.import_module('trader.utils.logging.manager'), 'get_logger_manager')
 
     logger_manager = get_logger_manager()
 
@@ -470,7 +471,7 @@ def update_display(layout, spinner_text=None):
 
     # Add a footer to indicate if messages were truncated
     if len(all_messages) > max_messages:
-        messages_table.footer = (
+        messages_table.caption = (
             f"[dim]Showing last {max_messages} of {len(all_messages)} messages[/dim]"
         )
 
@@ -739,7 +740,7 @@ def get_ticker(market):
         logger.info(f"用户输入股票代码: {ticker}")
 
         # 验证股票代码格式
-        import re
+        re = importlib.import_module('re')
 
         # 添加边界条件检查
         ticker = normalize_ticker_symbol(ticker)
@@ -1071,7 +1072,7 @@ def check_api_keys(llm_provider: str) -> bool:
     return True
 
 def run_analysis():
-    import time
+    time = importlib.import_module('time')
     start_time = time.time()  # 记录开始时间
 
     # First get all user selections
@@ -1218,7 +1219,7 @@ def run_analysis():
         ui.show_progress("🔍 验证股票代码并预获取数据...")
 
         try:
-            from trader.utils.validation import prepare_stock_data
+            prepare_stock_data = getattr(importlib.import_module('trader.utils.validation'), 'prepare_stock_data')
 
             # 确定市场类型
             market_type_map = {
@@ -1300,7 +1301,7 @@ def run_analysis():
         # 跟踪已完成的分析师，避免重复提示
         completed_analysts = set()
 
-        for chunk in graph.graph.stream(init_agent_state, **args):
+        for chunk in cast(Any, graph.graph).stream(init_agent_state, **args):
             if len(chunk["messages"]) > 0:
                 # Get the last message from the chunk
                 last_message = chunk["messages"][-1]
@@ -1819,7 +1820,7 @@ def data_config(
     配置数据目录路径
     Configure data directory paths
     """
-    from trader.config.manager import config_manager
+    config_manager = getattr(importlib.import_module('trader.config.manager'), 'config_manager')
 
     # 使用 config_manager 的方法
     get_data_dir = config_manager.get_data_dir

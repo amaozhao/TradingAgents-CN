@@ -2,6 +2,7 @@
 """
 调试导入问题
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -18,7 +19,7 @@ def test_google_news_import():
     try:
         # 尝试不同的导入方式
         print("1. 尝试导入googlenews_utils模块...")
-        from trader.flows import googlenewsutils
+        googlenewsutils = getattr(importlib.import_module('trader.flows'), 'googlenewsutils')
         print("✅ googlenews_utils模块导入成功")
 
         # 检查模块中的函数
@@ -55,7 +56,7 @@ def test_reddit_import():
     try:
         # 尝试不同的导入方式
         print("1. 尝试导入reddit_utils模块...")
-        from trader.flows import reddit_utils
+        reddit_utils = getattr(importlib.import_module('trader.flows'), 'reddit_utils')
         print("✅ reddit_utils模块导入成功")
 
         # 检查模块中的函数
@@ -100,7 +101,7 @@ def check_dependencies():
     for package, description in dependencies.items():
         try:
             if package == 'beautifulsoup4':
-                import bs4
+                bs4 = importlib.import_module('bs4')
                 print(f"✅ {description}: 已安装")
             else:
                 __import__(package)
@@ -122,7 +123,7 @@ def check_actual_file_contents():
                 content = f.read()
                 if 'def ' in content:
                     # 提取函数定义
-                    import re
+                    re = importlib.import_module('re')
                     functions = re.findall(r'def (\w+)\(', content)
                     print(f"   文件中的函数: {functions}")
                 else:
@@ -141,7 +142,7 @@ def check_actual_file_contents():
                 content = f.read()
                 if 'def ' in content:
                     # 提取函数定义
-                    import re
+                    re = importlib.import_module('re')
                     functions = re.findall(r'def (\w+)\(', content)
                     print(f"   文件中的函数: {functions}")
                 else:

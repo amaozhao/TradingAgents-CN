@@ -6,6 +6,7 @@
 2. 检查是否包含当天的实时数据
 3. 验证数据来源标识
 """
+import importlib
 import asyncio
 import sys
 from pathlib import Path
@@ -120,7 +121,7 @@ async def test_kline_realtime():
 
 def _is_trading_time(now: datetime) -> bool:
     """判断是否在交易时间内"""
-    from datetime import time as dtime
+    dtime = getattr(importlib.import_module('datetime'), 'time')
     current_time = now.time()
     return (
         dtime(9, 30) <= current_time <= dtime(15, 0) and

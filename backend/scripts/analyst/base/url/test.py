@@ -1,6 +1,7 @@
 """
 测试脚本：验证分析师使用的 base_url 是否正确
 """
+import importlib
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -14,7 +15,7 @@ def main():
     print("\n📊 1. 创建带有自定义 base_url 的 LLM")
     print("-" * 80)
 
-    from trader.llm.adapters import ChatDashScopeOpenAI
+    ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
 
     custom_url = "https://dashscope.aliyuncs.com/api/v2"
 
@@ -42,9 +43,9 @@ def main():
     print("\n\n📊 2. 测试基本面分析师")
     print("-" * 80)
 
-    from trader.agents.analysts.fundamentals_analyst import create_fundamentals_analyst
-    from trader.agents.utils.agent_utils import Toolkit
-    from trader.default import DEFAULT_CONFIG
+    create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
+    Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+    DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
     # 创建配置
     config = DEFAULT_CONFIG.copy()

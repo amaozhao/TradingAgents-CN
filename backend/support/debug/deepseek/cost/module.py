@@ -2,6 +2,7 @@
 """
 调试DeepSeek成本计算问题
 """
+import importlib
 
 import os
 import sys
@@ -19,7 +20,7 @@ def test_pricing_config():
     """测试定价配置"""
     print("🔍 测试定价配置...")
 
-    from trader.config.manager import ConfigManager
+    ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
 
     config_manager = ConfigManager()
     pricing_configs = config_manager.load_pricing()
@@ -33,7 +34,7 @@ def test_cost_calculation():
     """测试成本计算"""
     print("\n🧮 测试成本计算...")
 
-    from trader.config.manager import ConfigManager
+    ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
 
     config_manager = ConfigManager()
 
@@ -52,7 +53,7 @@ def test_token_tracking():
     """测试Token跟踪"""
     print("\n📝 测试Token跟踪...")
 
-    from trader.config.manager import token_tracker
+    token_tracker = getattr(importlib.import_module('trader.config.manager'), 'token_tracker')
 
     # 测试DeepSeek使用记录
     record = token_tracker.track_usage(
@@ -83,7 +84,7 @@ def test_deepseek_adapter():
         return
 
     try:
-        from trader.llm.adapters.deepseek import ChatDeepSeek
+        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
 
         # 创建DeepSeek实例
         llm = ChatDeepSeek(
@@ -112,7 +113,7 @@ def check_usage_statistics():
     """检查使用统计"""
     print("\n📊 检查使用统计...")
 
-    from trader.config.manager import config_manager
+    config_manager = getattr(importlib.import_module('trader.config.manager'), 'config_manager')
 
     stats = config_manager.get_usage_statistics(1)
 
@@ -148,7 +149,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 调试过程中出现错误: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

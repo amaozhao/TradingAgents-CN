@@ -5,6 +5,7 @@
 
 验证DataSourceManager是否正确支持新闻数据获取
 """
+import importlib
 
 import os
 import sys
@@ -27,7 +28,7 @@ def test_data_source_priority():
     """测试数据源优先级"""
     print_section("测试新闻数据统一功能")
 
-    from trader.flows.data_source_manager import get_data_source_manager
+    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
     manager = get_data_source_manager()
 
@@ -48,7 +49,7 @@ def test_stock_news():
     """测试个股新闻获取"""
     print_section("测试个股新闻获取")
 
-    from trader.flows.data_source_manager import get_data_source_manager
+    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
     manager = get_data_source_manager()
 
@@ -89,7 +90,7 @@ def test_market_news():
     """测试市场新闻获取"""
     print_section("测试市场新闻获取")
 
-    from trader.flows.data_source_manager import get_data_source_manager
+    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
     manager = get_data_source_manager()
 
@@ -127,7 +128,7 @@ def test_fallback_mechanism():
     """测试新闻数据降级机制"""
     print_section("测试新闻数据降级机制")
 
-    from trader.flows.data_source_manager import get_data_source_manager
+    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
     manager = get_data_source_manager()
 
@@ -166,7 +167,7 @@ def test_different_time_ranges():
     """测试不同时间范围的新闻获取"""
     print_section("测试不同时间范围的新闻获取")
 
-    from trader.flows.data_source_manager import get_data_source_manager
+    get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
     manager = get_data_source_manager()
 
@@ -230,7 +231,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return 1
 

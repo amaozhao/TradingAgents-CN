@@ -3,6 +3,7 @@
 港股错误处理测试脚本
 测试港股网络限制时的错误处理和用户提示
 """
+import importlib
 
 import sys
 import os
@@ -18,7 +19,7 @@ def test_hk_network_limitation_handling():
     print("=" * 80)
 
     try:
-        from trader.utils.stock_validator import prepare_stock_data
+        prepare_stock_data = getattr(importlib.import_module('trader.utils.validation'), 'prepare_stock_data')
 
         # 测试港股代码（可能遇到网络限制）
         hk_test_cases = [
@@ -83,7 +84,7 @@ def test_hk_network_limitation_handling():
 
     except Exception as e:
         print(f"❌ 测试过程中发生异常: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -93,7 +94,7 @@ def test_error_message_formatting():
     print("=" * 60)
 
     try:
-        from trader.utils.stock_validator import StockDataPreparer
+        StockDataPreparer = getattr(importlib.import_module('trader.utils.validation'), 'StockDataPreparer')
 
         preparer = StockDataPreparer()
 
@@ -137,7 +138,7 @@ def test_web_cli_integration():
     print("=" * 60)
 
     try:
-        from trader.utils.stock_validator import prepare_stock_data
+        prepare_stock_data = getattr(importlib.import_module('trader.utils.validation'), 'prepare_stock_data')
 
         # 模拟一个可能遇到网络限制的港股
         result = prepare_stock_data("0700.HK", "港股", 7)

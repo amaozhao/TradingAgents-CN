@@ -3,6 +3,7 @@
 Tushare集成测试
 验证Tushare数据源的集成功能，包括数据获取、缓存、接口调用等
 """
+import importlib
 
 import os
 import sys
@@ -20,7 +21,7 @@ def test_tushare_provider():
     print("=" * 60)
 
     try:
-        from trader.flows.tushare import get_tushare_provider
+        get_tushare_provider = getattr(importlib.import_module('trader.flows.tushare'), 'get_tushare_provider')
 
         print("✅ Tushare工具库加载成功")
 
@@ -65,7 +66,7 @@ def test_tushare_provider():
 
     except Exception as e:
         print(f"❌ Tushare提供器测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
@@ -75,7 +76,7 @@ def test_tushare_adapter():
     print("=" * 60)
 
     try:
-        from trader.flows.adapter import get_tushare_adapter
+        get_tushare_adapter = getattr(importlib.import_module('trader.flows.adapter'), 'get_tushare_adapter')
 
         print("✅ Tushare适配器库加载成功")
 
@@ -124,7 +125,7 @@ def test_tushare_adapter():
 
     except Exception as e:
         print(f"❌ Tushare适配器测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
@@ -134,12 +135,10 @@ def test_tushare_interface():
     print("=" * 60)
 
     try:
-        from trader.flows.interface import (
-            get_china_stock_data_tushare,
-            search_china_stocks_tushare,
-            get_china_stock_fundamentals_tushare,
-            get_china_stock_info_tushare
-        )
+        get_china_stock_data_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_tushare')
+        search_china_stocks_tushare = getattr(importlib.import_module('trader.flows.interface'), 'search_china_stocks_tushare')
+        get_china_stock_fundamentals_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_fundamentals_tushare')
+        get_china_stock_info_tushare = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_tushare')
 
         print("✅ Tushare接口函数加载成功")
 
@@ -184,7 +183,7 @@ def test_tushare_interface():
 
     except Exception as e:
         print(f"❌ Tushare接口函数测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
@@ -194,7 +193,7 @@ def test_tushare_cache():
     print("=" * 60)
 
     try:
-        from trader.flows.adapter import get_tushare_adapter
+        get_tushare_adapter = getattr(importlib.import_module('trader.flows.adapter'), 'get_tushare_adapter')
 
         adapter = get_tushare_adapter()
 
@@ -234,7 +233,7 @@ def test_tushare_cache():
 
     except Exception as e:
         print(f"❌ Tushare缓存测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
@@ -245,7 +244,7 @@ def check_tushare_environment():
 
     # 检查Tushare库
     try:
-        import tushare as ts
+        ts = importlib.import_module('tushare')
         print("✅ Tushare库已安装")
         print(f"📦 Tushare版本: {ts.__version__}")
     except ImportError:
@@ -264,7 +263,7 @@ def check_tushare_environment():
 
     # 检查缓存目录
     try:
-        from trader.flows.cache_manager import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
         cache = get_cache()
         print("✅ 缓存管理器可用")
     except Exception as e:

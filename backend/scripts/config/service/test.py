@@ -2,6 +2,7 @@
 """
 测试 config_service 读取的配置
 """
+import importlib
 
 import asyncio
 import sys
@@ -18,7 +19,7 @@ async def main():
     print("=" * 60)
 
     try:
-        from app.services.config_service import config_service
+        config_service = getattr(importlib.import_module('app.services.config'), 'config_service')
 
         # 获取系统配置
         config = await config_service.get_system_config()
@@ -36,7 +37,7 @@ async def main():
 
             # 打印所有设置
             print(f"\n所有系统设置:")
-            import json
+            json = importlib.import_module('json')
             print(json.dumps(config.system_settings, indent=2, ensure_ascii=False))
         else:
             print(f"\n❌ 未获取到配置")
@@ -45,7 +46,7 @@ async def main():
 
     except Exception as e:
         print(f"\n❌ 错误: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

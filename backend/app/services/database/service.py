@@ -1,6 +1,7 @@
 """
 数据库管理服务
 """
+import importlib
 
 import json
 import os
@@ -62,7 +63,7 @@ class DatabaseService:
             total_size = 0
 
             # 并行获取所有集合的统计信息
-            import asyncio
+            asyncio = importlib.import_module('asyncio')
 
             async def get_collection_stats(collection_name: str):
                 """获取单个集合的统计信息"""
@@ -121,7 +122,9 @@ class DatabaseService:
         """测试Redis连接（委托子模块）"""
         return await _db_status.test_redis_connection()
 
-    async def create_backup(self, name: str, collections: List[str] = None, user_id: str = None) -> Dict[str, Any]:
+    async def create_backup(
+        self, name: str, collections: Optional[List[str]] = None, user_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         创建数据库备份（自动选择最佳方法）
 
@@ -134,8 +137,8 @@ class DatabaseService:
             return await _db_backups.create_backup_native(
                 name=name,
                 backup_dir=self.backup_dir,
-                collections=collections,
-                user_id=user_id
+                collections=collections or [],
+                user_id=user_id or "",
             )
         else:
             logger.warning("⚠️ mongodump 不可用，使用 Python 备份（较慢）")
@@ -143,8 +146,8 @@ class DatabaseService:
             return await _db_backups.create_backup(
                 name=name,
                 backup_dir=self.backup_dir,
-                collections=collections,
-                user_id=user_id
+                collections=collections or [],
+                user_id=user_id or "",
             )
 
     async def list_backups(self) -> List[Dict[str, Any]]:
@@ -168,13 +171,15 @@ class DatabaseService:
         return await _db_cleanup.cleanup_operations(days)
 
     async def import_data(self, content: bytes, collection: str, format: str = "json",
-                         overwrite: bool = False, filename: str = None) -> Dict[str, Any]:
+                         overwrite: bool = False, filename: Optional[str] = None) -> Dict[str, Any]:
         """导入数据（委托子模块）"""
-        return await _db_backups.import_data(content, collection, format=format, overwrite=overwrite, filename=filename)
+        return await _db_backups.import_data(content, collection, format=format, overwrite=overwrite, filename=filename or "")
 
-    async def export_data(self, collections: List[str] = None, format: str = "json", sanitize: bool = False) -> str:
+    async def export_data(
+        self, collections: Optional[List[str]] = None, format: str = "json", sanitize: bool = False
+    ) -> str:
         """导出数据（委托子模块）"""
-        return await _db_backups.export_data(collections, export_dir=self.export_dir, format=format, sanitize=sanitize)
+        return await _db_backups.export_data(collections or [], export_dir=self.export_dir, format=format, sanitize=sanitize)
 
     def _serialize_document(self, doc: dict) -> dict:
         """序列化文档，处理特殊类型（委托子模块）"""

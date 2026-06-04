@@ -3,6 +3,7 @@
 缓存管理页面
 用户可以查看、管理和清理股票数据缓存
 """
+import importlib
 
 import streamlit as st
 import sys
@@ -25,7 +26,7 @@ except ImportError as e:
     st.error(f"缓存管理器不可用: {e}")
 
 try:
-    from trader.flows.optimized_china_data import get_optimized_china_data_provider
+    from trader.flows.china import get_optimized_china_data_provider
     OPTIMIZED_CHINA_AVAILABLE = True
 except ImportError:
     OPTIMIZED_CHINA_AVAILABLE = False
@@ -178,7 +179,8 @@ def main():
                 if us_symbol:
                     with st.spinner(f"测试 {us_symbol} 缓存..."):
                         try:
-                            from datetime import datetime, timedelta
+                            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+                            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
                             provider = get_optimized_us_data_provider()
                             result = provider.get_stock_data(
                                 symbol=us_symbol,
@@ -198,7 +200,8 @@ def main():
                 if china_symbol:
                     with st.spinner(f"测试 {china_symbol} 缓存..."):
                         try:
-                            from datetime import datetime, timedelta
+                            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+                            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
                             provider = get_optimized_china_data_provider()
                             result = provider.get_stock_data(
                                 symbol=china_symbol,
@@ -270,8 +273,8 @@ def main():
         metadata_files = list(cache.metadata_dir.glob("*_meta.json"))
 
         if metadata_files:
-            import json
-            from datetime import datetime
+            json = importlib.import_module('json')
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
 
             cache_items = []
             for metadata_file in metadata_files:
@@ -297,7 +300,7 @@ def main():
                 cache_items.sort(key=lambda x: x['cached_at'], reverse=True)
 
                 # 显示表格
-                import pandas as pd
+                pd = importlib.import_module('pandas')
                 df = pd.DataFrame(cache_items)
 
                 st.dataframe(

@@ -5,6 +5,7 @@
 1. 每次同步创建新的历史记录
 2. 时区显示正确
 """
+import importlib
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -26,8 +27,9 @@ async def test_multiple_sync_records():
     print("=" * 60)
 
     try:
-        from app.core.database import init_db, get_mongo_db
-        from app.services.sync.source import get_multi_source_sync_service
+        init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
+        get_multi_source_sync_service = getattr(importlib.import_module('app.services.sync.source'), 'get_multi_source_sync_service')
 
         # 初始化数据库
         await init_db()
@@ -153,7 +155,7 @@ async def test_multiple_sync_records():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None
 
@@ -164,7 +166,7 @@ async def test_api_response():
     print("=" * 60)
 
     try:
-        from app.routers.sources import get_sync_history
+        get_sync_history = getattr(importlib.import_module('app.routers.sources'), 'get_sync_history')
 
         # 测试获取历史记录
         print("📡 调用历史记录API...")

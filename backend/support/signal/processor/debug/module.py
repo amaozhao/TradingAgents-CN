@@ -2,6 +2,7 @@
 """
 测试信号处理器的调试脚本
 """
+import importlib
 
 import sys
 import os
@@ -12,8 +13,8 @@ def test_signal_processor():
     print("🔍 测试信号处理器...")
 
     try:
-        from trader.graph.signals import SignalProcessor
-        from trader.llm.adapters import ChatDashScope
+        SignalProcessor = getattr(importlib.import_module('trader.graph.signals'), 'SignalProcessor')
+        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
 
         # 创建LLM实例
         llm = ChatDashScope(
@@ -62,7 +63,7 @@ def test_signal_processor():
 
     except Exception as e:
         print(f"❌ 测试失败: {str(e)}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None
 
@@ -72,8 +73,8 @@ def test_trading_graph():
     print("🔍 测试完整交易图...")
 
     try:
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -104,7 +105,7 @@ def test_trading_graph():
 
     except Exception as e:
         print(f"❌ 测试失败: {str(e)}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None
 

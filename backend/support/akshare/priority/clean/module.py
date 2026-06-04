@@ -31,7 +31,8 @@ def clean_import_test():
                 del sys.modules[module_name]
 
         # 重新导入
-        from trader.flows.sources import DataSourceManager, ChinaDataSource
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
+        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
 
         # 创建数据源管理器
         manager = DataSourceManager()
@@ -50,7 +51,7 @@ def clean_import_test():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -80,7 +81,7 @@ def test_env_variable_directly():
 
         # 手动加载.env文件
         try:
-            from dotenv import load_dotenv
+            load_dotenv = getattr(importlib.import_module('dotenv'), 'load_dotenv')
             load_dotenv()
             env_value_after_load = os.getenv('DEFAULT_CHINA_DATA_SOURCE')
             print(f"📊 加载.env后的环境变量: {env_value_after_load}")
@@ -91,7 +92,7 @@ def test_env_variable_directly():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -115,7 +116,8 @@ def test_manual_env_setting():
                 del sys.modules[module_name]
 
         # 重新导入
-        from trader.flows.sources import DataSourceManager, ChinaDataSource
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
+        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
 
         manager = DataSourceManager()
 
@@ -131,7 +133,7 @@ def test_manual_env_setting():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -148,12 +150,12 @@ def test_fallback_order():
         if 'trader.flows.sources' in sys.modules:
             del sys.modules['trader.flows.sources']
 
-        from trader.flows.sources import DataSourceManager
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
 
         manager = DataSourceManager()
 
         # 检查源代码中的fallback_order
-        import inspect
+        inspect = importlib.import_module('inspect')
         source_code = inspect.getsource(manager._try_fallback_sources)
 
         print("📊 检查备用数据源顺序...")
@@ -185,7 +187,7 @@ def test_fallback_order():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

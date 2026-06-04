@@ -2,6 +2,7 @@
 测试港股功能
 验证港股代码识别、数据获取和处理功能
 """
+import importlib
 
 import sys
 import os
@@ -17,7 +18,7 @@ def test_stock_utils():
     print("\n🧪 测试股票工具类...")
 
     try:
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         # 测试港股代码识别
         test_cases = [
@@ -59,7 +60,7 @@ def test_hk_stock_provider():
     print("\n🧪 测试港股数据提供器...")
 
     try:
-        from trader.flows.hk_stock_utils import get_hk_stock_provider
+        get_hk_stock_provider = getattr(importlib.import_module('trader.flows.providers.hk.stock'), 'get_hk_stock_provider')
 
         provider = get_hk_stock_provider()
 
@@ -93,7 +94,7 @@ def test_hk_stock_info():
     print("\n🧪 测试港股信息获取...")
 
     try:
-        from trader.flows.hk_stock_utils import get_hk_stock_info
+        get_hk_stock_info = getattr(importlib.import_module('trader.flows.providers.hk.stock'), 'get_hk_stock_info')
 
         # 测试腾讯港股信息
         hk_symbol = "0700.HK"
@@ -132,8 +133,9 @@ def test_hk_stock_data():
     print("\n🧪 测试港股数据获取...")
 
     try:
-        from trader.flows.hk_stock_utils import get_hk_stock_data
-        from datetime import datetime, timedelta
+        get_hk_stock_data = getattr(importlib.import_module('trader.flows.providers.hk.stock'), 'get_hk_stock_data')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         # 设置测试日期范围（最近30天）
         end_date = datetime.now().strftime('%Y-%m-%d')
@@ -176,8 +178,9 @@ def test_optimized_us_data_hk_support():
     print("\n🧪 测试优化数据模块港股支持...")
 
     try:
-        from trader.flows.optimized_us_data import get_us_stock_data_cached
-        from datetime import datetime, timedelta
+        get_us_stock_data_cached = getattr(importlib.import_module('trader.flows.providers.us.optimized'), 'get_us_stock_data_cached')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         # 设置测试日期范围
         end_date = datetime.now().strftime('%Y-%m-%d')

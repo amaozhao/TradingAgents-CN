@@ -3,6 +3,7 @@
 股票信息获取调试测试
 专门诊断为什么某些股票显示"未知公司"
 """
+import importlib
 
 import os
 import sys
@@ -18,7 +19,7 @@ def test_stock_code_normalization():
     print("=" * 60)
 
     try:
-        from trader.flows.tushare import get_tushare_provider
+        get_tushare_provider = getattr(importlib.import_module('trader.flows.tushare'), 'get_tushare_provider')
 
         provider = get_tushare_provider()
 
@@ -41,8 +42,8 @@ def test_tushare_api_direct():
     print("=" * 60)
 
     try:
-        import tushare as ts
-        import os
+        ts = importlib.import_module('tushare')
+        os = importlib.import_module('os')
 
         token = os.getenv('TUSHARE_TOKEN')
         if not token:
@@ -105,7 +106,7 @@ def test_stock_list_search():
     print("=" * 60)
 
     try:
-        from trader.flows.tushare import get_tushare_provider
+        get_tushare_provider = getattr(importlib.import_module('trader.flows.tushare'), 'get_tushare_provider')
 
         provider = get_tushare_provider()
 
@@ -145,7 +146,7 @@ def test_stock_list_search():
 
     except Exception as e:
         print(f"❌ 股票列表搜索失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -156,7 +157,7 @@ def test_alternative_stock_codes():
     print("=" * 60)
 
     try:
-        from trader.flows.adapter import get_tushare_adapter
+        get_tushare_adapter = getattr(importlib.import_module('trader.flows.adapter'), 'get_tushare_adapter')
 
         adapter = get_tushare_adapter()
 

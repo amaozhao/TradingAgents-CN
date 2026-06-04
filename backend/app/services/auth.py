@@ -1,3 +1,4 @@
+import importlib
 import time
 from datetime import datetime, timedelta, timezone
 from app.utils.timezone import now_tz
@@ -25,7 +26,7 @@ class AuthService:
 
     @staticmethod
     def verify_token(token: str) -> Optional[TokenData]:
-        import logging
+        logging = importlib.import_module('logging')
         logger = logging.getLogger(__name__)
 
         try:
@@ -38,7 +39,7 @@ class AuthService:
             logger.debug(f"✅ Token解码成功")
             logger.debug(f"📋 Payload: {payload}")
 
-            token_data = TokenData(sub=payload.get("sub"), exp=int(payload.get("exp", time.time())))
+            token_data = TokenData(sub=str(payload.get("sub") or ""), exp=int(payload.get("exp", time.time())))
             logger.debug(f"🎯 Token数据: sub={token_data.sub}, exp={token_data.exp}")
 
             # 检查是否过期

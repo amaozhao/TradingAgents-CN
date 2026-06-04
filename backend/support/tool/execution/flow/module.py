@@ -3,6 +3,7 @@
 测试工具调用执行流程
 验证ToolNode如何处理工具调用并返回结果
 """
+import importlib
 
 import sys
 sys.path.append('.')
@@ -88,7 +89,7 @@ def test_tool_execution_flow():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

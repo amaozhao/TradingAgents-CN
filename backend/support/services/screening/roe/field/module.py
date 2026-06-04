@@ -1,8 +1,9 @@
+import importlib
 import asyncio
 
 
 def test_database_screening_builds_roe_query():
-    from app.services.screening.database import DatabaseScreeningService
+    DatabaseScreeningService = getattr(importlib.import_module('app.services.screening.database'), 'DatabaseScreeningService')
 
     svc = DatabaseScreeningService()
 
@@ -19,8 +20,8 @@ def test_database_screening_builds_roe_query():
 
 
 def test_database_screening_formats_roe_in_result(monkeypatch):
-    from app.services.screening.database import DatabaseScreeningService
-    import app.services.screening.database as mod
+    DatabaseScreeningService = getattr(importlib.import_module('app.services.screening.database'), 'DatabaseScreeningService')
+    mod = importlib.import_module('app.services.screening.database')
 
     # Fake collection returning docs that contain 'roe'
     class _FakeCursor:

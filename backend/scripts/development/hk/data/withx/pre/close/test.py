@@ -10,7 +10,7 @@ import os
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 sys.path.insert(0, project_root)
 
-from trader.flows.providers.hk.improved_hk import get_hk_stock_data_akshare
+from trader.flows.providers.hk.improved import get_hk_stock_data_akshare
 
 def test_hk_data_with_preclose():
     """测试港股数据是否包含昨收字段"""

@@ -4,7 +4,7 @@ Minimal stub for DataConsistencyChecker
 - Behavior: always mark data as consistent and prefer primary source
 """
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Tuple
 import pandas as pd
 
@@ -14,11 +14,10 @@ class DataConsistencyResult:
     is_consistent: bool = True
     confidence_score: float = 1.0
     recommended_action: str = "use_primary"
-    differences: List[Dict[str, Any]] = None
+    differences: List[Dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self):
-        if self.differences is None:
-            self.differences = []
+        pass
 
 
 class DataConsistencyChecker:

@@ -1,3 +1,4 @@
+import importlib
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field
 from typing import Literal, Optional, Dict, Any, List, Tuple
@@ -124,7 +125,7 @@ async def _get_or_create_account(user_id: str) -> Dict[str, Any]:
                 acc = await db["paper_accounts"].find_one({"user_id": user_id})
         except Exception as e:
             logger.error(f"❌ 账户结构迁移失败 user_id={user_id}: {e}")
-    return acc
+    return acc or {}
 
 
 async def _get_account_for_read(user_id: str) -> Dict[str, Any]:
@@ -156,8 +157,8 @@ async def _list_orders_for_read(user_id: str, *, limit: int) -> List[Dict[str, A
 
 async def _get_paper_account_from_postgres(user_id: str) -> Optional[Dict[str, Any]]:
     try:
-        from app.db.paper import get_paper_account
-        from app.db.session import get_session_factory
+        get_paper_account = getattr(importlib.import_module('app.db.paper'), 'get_paper_account')
+        get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
         async with get_session_factory()() as session:
             return await get_paper_account(session, user_id)
@@ -168,8 +169,8 @@ async def _get_paper_account_from_postgres(user_id: str) -> Optional[Dict[str, A
 
 async def _list_paper_positions_from_postgres(user_id: str) -> Optional[List[Dict[str, Any]]]:
     try:
-        from app.db.paper import list_paper_positions
-        from app.db.session import get_session_factory
+        list_paper_positions = getattr(importlib.import_module('app.db.paper'), 'list_paper_positions')
+        get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
         async with get_session_factory()() as session:
             return await list_paper_positions(session, user_id)
@@ -180,8 +181,8 @@ async def _list_paper_positions_from_postgres(user_id: str) -> Optional[List[Dic
 
 async def _list_paper_orders_from_postgres(user_id: str, *, limit: int) -> Optional[List[Dict[str, Any]]]:
     try:
-        from app.db.paper import list_paper_orders
-        from app.db.session import get_session_factory
+        list_paper_orders = getattr(importlib.import_module('app.db.paper'), 'list_paper_orders')
+        get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
         async with get_session_factory()() as session:
             return await list_paper_orders(session, user_id, limit=limit)
@@ -315,7 +316,7 @@ async def _get_last_price(code: str, market: str) -> Optional[float]:
     # 港股/美股：使用 ForeignStockService
     elif market in ['HK', 'US']:
         try:
-            from app.services.stocks.foreign import ForeignStockService
+            ForeignStockService = getattr(importlib.import_module('app.services.stocks.foreign'), 'ForeignStockService')
             db = get_mongo_db()
             service = ForeignStockService(db=db)
 
@@ -366,7 +367,7 @@ async def get_account(current_user: dict = Depends(get_current_user)):
         available_qty = p.get("available_qty", qty)
 
         # 获取最新价
-        last = await _get_last_price(code, market)
+        last = await _get_last_price(str(code), market)
         mkt_value = round((last or 0.0) * qty, 2)
         positions_value_by_currency[currency] += mkt_value
 
@@ -538,6 +539,8 @@ async def place_order(payload: PlaceOrderRequest, current_user: dict = Depends(g
                 status_code=400,
                 detail=f"可用持仓不足：需要 {qty}，可用 {available_qty}"
             )
+        if not pos:
+            raise HTTPException(status_code=400, detail="未找到可卖持仓")
 
         old_qty = int(pos.get("quantity", 0))
         avg_cost = float(pos.get("avg_cost", 0.0))
@@ -636,7 +639,7 @@ async def list_positions(current_user: dict = Depends(get_current_user)):
         available_qty = p.get("available_qty", qty)
         avg_cost = float(p.get("avg_cost", 0.0))
 
-        last = await _get_last_price(code, market)
+        last = await _get_last_price(str(code), market)
         mkt = round((last or 0.0) * qty, 2)
         enriched.append({
             "code": code,

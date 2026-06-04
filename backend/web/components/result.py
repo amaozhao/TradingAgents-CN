@@ -1,6 +1,7 @@
 """
 分析结果显示组件
 """
+import importlib
 
 import streamlit as st
 import plotly.graph_objects as go
@@ -252,7 +253,7 @@ def render_decision_summary(decision, stock_symbol=None):
 
         # 根据股票代码确定货币符号
         def is_china_stock(ticker_code):
-            import re
+            re = importlib.import_module('re')
 
             return re.match(r'^\d{6}$', str(ticker_code)) if ticker_code else False
 

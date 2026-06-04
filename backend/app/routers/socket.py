@@ -5,7 +5,7 @@ WebSocket 通知系统
 import asyncio
 import json
 import logging
-from typing import Dict, Set
+from typing import Dict, Optional, Set
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, HTTPException
 from datetime import datetime
 from pydantic import BaseModel
@@ -159,6 +159,8 @@ async def websocket_notifications_endpoint(
         }
     })
 
+    heartbeat_task: Optional[asyncio.Task[None]] = None
+
     try:
         # 心跳任务
         async def send_heartbeat():
@@ -193,7 +195,7 @@ async def websocket_notifications_endpoint(
 
     finally:
         # 取消心跳任务
-        if 'heartbeat_task' in locals():
+        if heartbeat_task is not None:
             heartbeat_task.cancel()
             try:
                 await heartbeat_task

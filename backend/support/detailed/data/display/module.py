@@ -4,6 +4,7 @@
 详细数据显示测试脚本
 完整显示基本面分析获取的所有数据内容
 """
+import importlib
 
 import sys
 import os
@@ -105,7 +106,7 @@ def test_detailed_data_display():
 
     except Exception as e:
         print(f"❌ 测试失败: {str(e)}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print("🔍 详细错误信息:")
         traceback.print_exc()
 

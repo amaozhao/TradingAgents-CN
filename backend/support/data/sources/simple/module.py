@@ -3,6 +3,7 @@
 简化版数据源测试程序
 快速测试主要数据源的可用性
 """
+import importlib
 
 import sys
 import os
@@ -20,7 +21,7 @@ def test_china_data_source():
 
     try:
         # 测试数据源管理器
-        from trader.flows.sources import DataSourceManager
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
 
         manager = DataSourceManager()
         print(f"✅ 数据源管理器初始化成功")
@@ -53,7 +54,7 @@ def test_us_data_source():
 
     try:
         # 测试优化版本
-        from trader.flows.optimized_us_data import get_us_stock_data_cached
+        get_us_stock_data_cached = getattr(importlib.import_module('trader.flows.providers.us.optimized'), 'get_us_stock_data_cached')
 
         print(f"📊 测试获取苹果(AAPL)数据...")
         start_time = time.time()
@@ -86,7 +87,7 @@ def test_cache_system():
     print("-" * 40)
 
     try:
-        from trader.flows.cache_manager import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
 
         cache = get_cache()
         print(f"✅ 缓存管理器初始化成功")

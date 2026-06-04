@@ -1,3 +1,4 @@
+import importlib
 from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage, AIMessage
 from typing import Any, List, Mapping, Optional
 from typing import Annotated
@@ -56,7 +57,7 @@ def resolve_instrument_identity(ticker: str) -> dict:
     )
     if is_plain_cn_code:
         try:
-            from trader.utils.stocks import StockUtils
+            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
             market_info = StockUtils.get_market_info(normalized_ticker)
             market_name = _clean_identity_value(market_info.get("market_name"))
@@ -98,7 +99,7 @@ def build_instrument_context(
     asset_type: str = "stock",
     identity: Optional[Mapping[str, str]] = None,
 ) -> str:
-    from trader.agents.utils.instruments import build_instrument_context as _build
+    _build = getattr(importlib.import_module('trader.agents.utils.instruments'), 'build_instrument_context')
 
     return _build(ticker, asset_type=asset_type, identity=identity)
 
@@ -152,8 +153,8 @@ class Toolkit:
         if config:
             self.update_config(config)
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_reddit_news(
         curr_date: Annotated[str, "Date you want to get news for in yyyy-mm-dd format"],
     ) -> str:
@@ -169,8 +170,8 @@ class Toolkit:
 
         return global_news_result
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_finnhub_news(
         ticker: Annotated[
             str,
@@ -191,9 +192,9 @@ class Toolkit:
 
         end_date_str = end_date
 
-        end_date = datetime.strptime(end_date, "%Y-%m-%d")
-        start_date = datetime.strptime(start_date, "%Y-%m-%d")
-        look_back_days = (end_date - start_date).days
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+        look_back_days = (end_dt - start_dt).days
 
         finnhub_news_result = interface.get_finnhub_news(
             ticker, end_date_str, look_back_days
@@ -201,8 +202,8 @@ class Toolkit:
 
         return finnhub_news_result
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_reddit_stock_info(
         ticker: Annotated[
             str,
@@ -223,8 +224,8 @@ class Toolkit:
 
         return stock_news_results
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_chinese_social_sentiment(
         ticker: Annotated[str, "Ticker of a company. e.g. AAPL, TSM"],
         curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
@@ -267,7 +268,7 @@ class Toolkit:
             logger.debug(f"📊 [DEBUG] ===== agent_utils.get_china_stock_data 开始调用 =====")
             logger.debug(f"📊 [DEBUG] 参数: stock_code={stock_code}, start_date={start_date}, end_date={end_date}")
 
-            from trader.flows.interface import get_china_stock_data_unified
+            get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
             logger.debug(f"📊 [DEBUG] 成功导入统一数据源接口")
 
             logger.debug(f"📊 [DEBUG] 正在调用统一数据源接口...")
@@ -281,7 +282,7 @@ class Toolkit:
 
             return result
         except Exception as e:
-            import traceback
+            traceback = importlib.import_module('traceback')
             error_details = traceback.format_exc()
             logger.error(f"❌ [DEBUG] ===== agent_utils.get_china_stock_data 异常 =====")
             logger.error(f"❌ [DEBUG] 错误类型: {type(e).__name__}")
@@ -291,8 +292,8 @@ class Toolkit:
             logger.error(f"❌ [DEBUG] ===== 异常处理结束 =====")
             return f"中国股票数据获取失败: {str(e)}。请检查网络连接或稍后重试。"
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_china_market_overview(
         curr_date: Annotated[str, "当前日期，格式 yyyy-mm-dd"],
     ) -> str:
@@ -305,12 +306,6 @@ class Toolkit:
             str: 包含主要指数实时行情的市场概览报告
         """
         try:
-            # 使用Tushare获取主要指数数据
-            from trader.flows.providers.china.tushare import get_tushare_adapter
-
-            adapter = get_tushare_adapter()
-
-
             # 使用Tushare获取主要指数信息
             # 这里可以扩展为获取具体的指数数据
             return f"""# 中国股市概览 - {curr_date}
@@ -332,8 +327,8 @@ class Toolkit:
         except Exception as e:
             return f"中国市场概览获取失败: {str(e)}。正在从TDX迁移到Tushare数据源。"
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_yfin_data(
         symbol: Annotated[str, "ticker symbol of the company"],
         start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
@@ -351,10 +346,10 @@ class Toolkit:
 
         result_data = interface.get_yfin_data(symbol, start_date, end_date)
 
-        return result_data
+        return result_data.to_string() if hasattr(result_data, "to_string") else str(result_data)
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_yfin_data_online(
         symbol: Annotated[str, "ticker symbol of the company"],
         start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
@@ -374,8 +369,8 @@ class Toolkit:
 
         return result_data
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_stockstats_indicators_report(
         symbol: Annotated[str, "ticker symbol of the company"],
         indicator: Annotated[
@@ -403,8 +398,8 @@ class Toolkit:
 
         return result_stats
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_stockstats_indicators_report_online(
         symbol: Annotated[str, "ticker symbol of the company"],
         indicator: Annotated[
@@ -432,8 +427,8 @@ class Toolkit:
 
         return result_stats
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_finnhub_company_insider_sentiment(
         ticker: Annotated[str, "ticker symbol for the company"],
         curr_date: Annotated[
@@ -456,8 +451,8 @@ class Toolkit:
 
         return data_sentiment
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_finnhub_company_insider_transactions(
         ticker: Annotated[str, "ticker symbol"],
         curr_date: Annotated[
@@ -480,8 +475,8 @@ class Toolkit:
 
         return data_trans
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_simfin_balance_sheet(
         ticker: Annotated[str, "ticker symbol"],
         freq: Annotated[
@@ -504,8 +499,8 @@ class Toolkit:
 
         return data_balance_sheet
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_simfin_cashflow(
         ticker: Annotated[str, "ticker symbol"],
         freq: Annotated[
@@ -528,8 +523,8 @@ class Toolkit:
 
         return data_cashflow
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_simfin_income_stmt(
         ticker: Annotated[str, "ticker symbol"],
         freq: Annotated[
@@ -554,8 +549,8 @@ class Toolkit:
 
         return data_income_stmt
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_google_news(
         query: Annotated[str, "Query to search with"],
         curr_date: Annotated[str, "Curr date in yyyy-mm-dd format"],
@@ -574,8 +569,8 @@ class Toolkit:
 
         return google_news_results
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_realtime_stock_news(
         ticker: Annotated[str, "Ticker of a company. e.g. AAPL, TSM"],
         curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
@@ -592,11 +587,11 @@ class Toolkit:
         Returns:
             str: 包含实时新闻分析、紧急程度评估、时效性说明的格式化报告
         """
-        from trader.flows.realtime import get_realtime_stock_news
+        get_realtime_stock_news = getattr(importlib.import_module('trader.flows.real.time'), 'get_realtime_stock_news')
         return get_realtime_stock_news(ticker, curr_date, hours_back=6)
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_stock_news_openai(
         ticker: Annotated[str, "the company's ticker"],
         curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
@@ -614,8 +609,8 @@ class Toolkit:
 
         return openai_news_results
 
-    @staticmethod
     @tool
+    @staticmethod
     def get_global_news_openai(
         curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
     ):
@@ -648,12 +643,12 @@ class Toolkit:
         logger.debug(f"📊 [DEBUG] get_fundamentals_openai 被调用: ticker={ticker}, date={curr_date}")
 
         # 检查是否为中国股票
-        import re
+        re = importlib.import_module('re')
         if re.match(r'^\d{6}$', str(ticker)):
             logger.debug(f"📊 [DEBUG] 检测到中国A股代码: {ticker}")
             # 使用统一接口获取中国股票名称
             try:
-                from trader.flows.interface import get_china_stock_info_unified
+                get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
                 stock_info = get_china_stock_info_unified(ticker)
 
                 # 解析股票名称
@@ -701,17 +696,18 @@ class Toolkit:
         logger.debug(f"📊 [DEBUG] get_china_fundamentals 被调用: ticker={ticker}, date={curr_date}")
 
         # 检查是否为中国股票
-        import re
+        re = importlib.import_module('re')
         if not re.match(r'^\d{6}$', str(ticker)):
             return f"错误：{ticker} 不是有效的中国A股代码格式"
 
         try:
             # 使用统一数据源接口获取股票数据（默认Tushare，支持备用数据源）
-            from trader.flows.interface import get_china_stock_data_unified
+            get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
             logger.debug(f"📊 [DEBUG] 正在获取 {ticker} 的股票数据...")
 
             # 获取最近30天的数据用于基本面分析
-            from datetime import datetime, timedelta
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
             end_date = datetime.strptime(curr_date, '%Y-%m-%d')
             start_date = end_date - timedelta(days=30)
 
@@ -727,7 +723,7 @@ class Toolkit:
                 return f"无法获取股票 {ticker} 的基本面数据：{stock_data}"
 
             # 调用真正的基本面分析
-            from trader.flows.china import OptimizedChinaDataProvider
+            OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
 
             # 创建分析器实例
             analyzer = OptimizedChinaDataProvider()
@@ -741,7 +737,7 @@ class Toolkit:
             return fundamentals_report
 
         except Exception as e:
-            import traceback
+            traceback = importlib.import_module('traceback')
             error_details = traceback.format_exc()
             logger.error(f"❌ [DEBUG] get_china_fundamentals 失败:")
             logger.error(f"❌ [DEBUG] 错误: {str(e)}")
@@ -769,7 +765,7 @@ class Toolkit:
         logger.debug(f"🇭🇰 [DEBUG] get_hk_stock_data_unified 被调用: symbol={symbol}, start_date={start_date}, end_date={end_date}")
 
         try:
-            from trader.flows.interface import get_hk_stock_data_unified
+            get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
 
             result = get_hk_stock_data_unified(symbol, start_date, end_date)
 
@@ -778,21 +774,21 @@ class Toolkit:
             return result
 
         except Exception as e:
-            import traceback
+            traceback = importlib.import_module('traceback')
             error_details = traceback.format_exc()
             logger.error(f"❌ [DEBUG] get_hk_stock_data_unified 失败:")
             logger.error(f"❌ [DEBUG] 错误: {str(e)}")
             logger.error(f"❌ [DEBUG] 堆栈: {error_details}")
             return f"港股数据获取失败: {str(e)}"
 
-    @staticmethod
     @tool
+    @staticmethod
     @log_tool_call(tool_name="get_stock_fundamentals_unified", log_args=True)
     def get_stock_fundamentals_unified(
         ticker: Annotated[str, "股票代码（支持A股、港股、美股）"],
-        start_date: Annotated[str, "开始日期，格式：YYYY-MM-DD"] = None,
-        end_date: Annotated[str, "结束日期，格式：YYYY-MM-DD"] = None,
-        curr_date: Annotated[str, "当前日期，格式：YYYY-MM-DD"] = None
+        start_date: Annotated[Optional[str], "开始日期，格式：YYYY-MM-DD"] = None,
+        end_date: Annotated[Optional[str], "结束日期，格式：YYYY-MM-DD"] = None,
+        curr_date: Annotated[Optional[str], "当前日期，格式：YYYY-MM-DD"] = None
     ) -> str:
         """
         统一的股票基本面分析工具
@@ -890,8 +886,9 @@ class Toolkit:
         original_ticker = ticker
 
         try:
-            from trader.utils.stocks import StockUtils
-            from datetime import datetime, timedelta
+            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
             # 自动识别股票类型
             market_info = StockUtils.get_market_info(ticker)
@@ -956,11 +953,12 @@ class Toolkit:
                 # 只获取当前股价信息（最近1-2天即可）和基本面财务数据
                 try:
                     # 获取最新股价信息（只需要最近1-2天的数据）
-                    from datetime import datetime, timedelta
+                    datetime = getattr(importlib.import_module('datetime'), 'datetime')
+                    timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
                     recent_end_date = curr_date
                     recent_start_date = (datetime.strptime(curr_date, '%Y-%m-%d') - timedelta(days=2)).strftime('%Y-%m-%d')
 
-                    from trader.flows.interface import get_china_stock_data_unified
+                    get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
                     logger.info(f"🔍 [股票代码追踪] 调用 get_china_stock_data_unified（仅获取最新价格），传入参数: ticker='{ticker}', start_date='{recent_start_date}', end_date='{recent_end_date}'")
                     current_price_data = get_china_stock_data_unified(ticker, recent_start_date, recent_end_date)
 
@@ -976,7 +974,7 @@ class Toolkit:
 
                 try:
                     # 获取基本面财务数据（这是基本面分析的核心）
-                    from trader.flows.china import OptimizedChinaDataProvider
+                    OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
                     analyzer = OptimizedChinaDataProvider()
                     logger.info(f"🔍 [股票代码追踪] 调用 OptimizedChinaDataProvider._generate_fundamentals_report，传入参数: ticker='{ticker}', analysis_modules='{analysis_modules}'")
 
@@ -1004,7 +1002,7 @@ class Toolkit:
 
                 # 主要数据源：AKShare
                 try:
-                    from trader.flows.interface import get_hk_stock_data_unified
+                    get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
                     hk_data = get_hk_stock_data_unified(ticker, start_date, end_date)
 
                     # 🔍 调试：打印返回数据的前500字符
@@ -1025,7 +1023,7 @@ class Toolkit:
                 # 备用方案：基础港股信息
                 if not hk_data_success:
                     try:
-                        from trader.flows.interface import get_hk_stock_info_unified
+                        get_hk_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_info_unified')
                         hk_info = get_hk_stock_info_unified(ticker)
 
                         basic_info = f"""## 港股基础信息
@@ -1074,7 +1072,7 @@ class Toolkit:
                 logger.info(f"🔍 [美股基本面] 统一策略：获取完整数据（忽略 data_depth 参数）")
 
                 try:
-                    from trader.flows.interface import get_fundamentals_openai
+                    get_fundamentals_openai = getattr(importlib.import_module('trader.flows.interface'), 'get_fundamentals_openai')
                     us_data = get_fundamentals_openai(ticker, curr_date)
                     result_data.append(f"## 美股基本面数据\n{us_data}")
                     logger.info(f"✅ [统一基本面工具] 美股数据获取成功")
@@ -1134,8 +1132,8 @@ class Toolkit:
             logger.error(f"❌ [统一基本面工具] {error_msg}")
             return error_msg
 
-    @staticmethod
     @tool
+    @staticmethod
     @log_tool_call(tool_name="get_stock_market_data_unified", log_args=True)
     def get_stock_market_data_unified(
         ticker: Annotated[str, "股票代码（支持A股、港股、美股）"],
@@ -1167,7 +1165,7 @@ class Toolkit:
         logger.info(f"📈 [统一市场工具] 分析股票: {ticker}")
 
         try:
-            from trader.utils.stocks import StockUtils
+            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
             # 自动识别股票类型
             market_info = StockUtils.get_market_info(ticker)
@@ -1185,7 +1183,7 @@ class Toolkit:
                 logger.info(f"🇨🇳 [统一市场工具] 处理A股市场数据...")
 
                 try:
-                    from trader.flows.interface import get_china_stock_data_unified
+                    get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
                     stock_data = get_china_stock_data_unified(ticker, start_date, end_date)
 
                     # 🔍 调试：打印返回数据的前500字符
@@ -1202,7 +1200,7 @@ class Toolkit:
                 logger.info(f"🇭🇰 [统一市场工具] 处理港股市场数据...")
 
                 try:
-                    from trader.flows.interface import get_hk_stock_data_unified
+                    get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
                     hk_data = get_hk_stock_data_unified(ticker, start_date, end_date)
 
                     # 🔍 调试：打印返回数据的前500字符
@@ -1219,7 +1217,7 @@ class Toolkit:
                 logger.info(f"🇺🇸 [统一市场工具] 处理美股市场数据...")
 
                 try:
-                    from trader.flows.providers.us.optimized import get_us_stock_data_cached
+                    get_us_stock_data_cached = getattr(importlib.import_module('trader.flows.providers.us.optimized'), 'get_us_stock_data_cached')
                     us_data = get_us_stock_data_cached(ticker, start_date, end_date)
                     result_data.append(f"## 美股市场数据\n{us_data}")
                 except Exception as e:
@@ -1246,8 +1244,8 @@ class Toolkit:
             logger.error(f"❌ [统一市场工具] {error_msg}")
             return error_msg
 
-    @staticmethod
     @tool
+    @staticmethod
     @log_tool_call(tool_name="get_stock_news_unified", log_args=True)
     def get_stock_news_unified(
         ticker: Annotated[str, "股票代码（支持A股、港股、美股）"],
@@ -1267,8 +1265,9 @@ class Toolkit:
         logger.info(f"📰 [统一新闻工具] 分析股票: {ticker}")
 
         try:
-            from trader.utils.stocks import StockUtils
-            from datetime import datetime, timedelta
+            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
             # 自动识别股票类型
             market_info = StockUtils.get_market_info(ticker)
@@ -1298,7 +1297,7 @@ class Toolkit:
                     logger.info(f"🇨🇳🇭🇰 [统一新闻工具] 尝试获取东方财富新闻: {clean_ticker}")
 
                     # 通过 AKShare Provider 获取新闻
-                    from trader.flows.providers.china.akshare import AKShareProvider
+                    AKShareProvider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'AKShareProvider')
 
                     provider = AKShareProvider()
 
@@ -1340,7 +1339,7 @@ class Toolkit:
                         search_query = f"{ticker} 港股"
                         logger.info(f"🇭🇰 [统一新闻工具] 港股Google新闻搜索关键词: {search_query}")
 
-                    from trader.flows.interface import get_google_news
+                    get_google_news = getattr(importlib.import_module('trader.flows.interface'), 'get_google_news')
                     news_data = get_google_news(search_query, curr_date)
                     result_data.append(f"## Google新闻\n{news_data}")
                     logger.info(f"🇨🇳🇭🇰 [统一新闻工具] 成功获取Google新闻")
@@ -1353,8 +1352,12 @@ class Toolkit:
                 logger.info(f"🇺🇸 [统一新闻工具] 处理美股新闻...")
 
                 try:
-                    from trader.flows.interface import get_finnhub_news
-                    news_data = get_finnhub_news(ticker, start_date_str, curr_date)
+                    get_finnhub_news = getattr(importlib.import_module('trader.flows.interface'), 'get_finnhub_news')
+                    look_back_days = (
+                        datetime.strptime(curr_date, "%Y-%m-%d")
+                        - datetime.strptime(start_date_str, "%Y-%m-%d")
+                    ).days
+                    news_data = get_finnhub_news(ticker, curr_date, look_back_days)
                     result_data.append(f"## 美股新闻\n{news_data}")
                 except Exception as e:
                     result_data.append(f"## 美股新闻\n获取失败: {e}")
@@ -1380,8 +1383,8 @@ class Toolkit:
             logger.error(f"❌ [统一新闻工具] {error_msg}")
             return error_msg
 
-    @staticmethod
     @tool
+    @staticmethod
     @log_tool_call(tool_name="get_stock_sentiment_unified", log_args=True)
     def get_stock_sentiment_unified(
         ticker: Annotated[str, "股票代码（支持A股、港股、美股）"],
@@ -1401,7 +1404,7 @@ class Toolkit:
         logger.info(f"😊 [统一情绪工具] 分析股票: {ticker}")
 
         try:
-            from trader.utils.stocks import StockUtils
+            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
             # 自动识别股票类型
             market_info = StockUtils.get_market_info(ticker)
@@ -1447,9 +1450,7 @@ class Toolkit:
                 logger.info(f"🇺🇸 [统一情绪工具] 处理美股情绪...")
 
                 try:
-                    from trader.flows.interface import get_reddit_sentiment
-
-                    sentiment_data = get_reddit_sentiment(ticker, curr_date)
+                    sentiment_data = interface.get_reddit_company_news(ticker, curr_date, 7, 5)
                     result_data.append(f"## 美股Reddit情绪\n{sentiment_data}")
                 except Exception as e:
                     result_data.append(f"## 美股Reddit情绪\n获取失败: {e}")

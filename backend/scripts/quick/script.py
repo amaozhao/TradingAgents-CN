@@ -2,6 +2,7 @@
 """
 快速测试脚本 - 验证API架构升级是否正常工作
 """
+import importlib
 
 import asyncio
 import sys
@@ -19,8 +20,11 @@ async def test_database_connections():
     print("🔗 测试数据库连接...")
 
     try:
-        from webapi.core.database import init_database, close_database, get_database_health
-        from webapi.core.redis_client import init_redis, close_redis
+        init_database = getattr(importlib.import_module('app.core.database'), 'init_database')
+        close_database = getattr(importlib.import_module('app.core.database'), 'close_database')
+        get_database_health = getattr(importlib.import_module('app.core.database'), 'get_database_health')
+        init_redis = getattr(importlib.import_module('app.core.redis'), 'init_redis')
+        close_redis = getattr(importlib.import_module('app.core.redis'), 'close_redis')
 
         # 初始化连接
         await init_database()
@@ -47,9 +51,11 @@ async def test_queue_service():
     print("\n📋 测试队列服务...")
 
     try:
-        from webapi.core.database import init_database, close_database
-        from webapi.core.redis_client import init_redis, close_redis
-        from webapi.services.queue_service import get_queue_service
+        init_database = getattr(importlib.import_module('app.core.database'), 'init_database')
+        close_database = getattr(importlib.import_module('app.core.database'), 'close_database')
+        init_redis = getattr(importlib.import_module('app.core.redis'), 'init_redis')
+        close_redis = getattr(importlib.import_module('app.core.redis'), 'close_redis')
+        get_queue_service = getattr(importlib.import_module('app.services.queue.service'), 'get_queue_service')
 
         # 初始化连接
         await init_database()
@@ -87,7 +93,7 @@ async def test_queue_service():
 
     except Exception as e:
         print(f"❌ 队列服务测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -97,10 +103,13 @@ async def test_analysis_service():
     print("\n🧠 测试分析服务...")
 
     try:
-        from webapi.core.database import init_database, close_database
-        from webapi.core.redis_client import init_redis, close_redis
-        from webapi.services.analysis_service import analysis_service
-        from webapi.models.analysis import SingleAnalysisRequest, AnalysisParameters
+        init_database = getattr(importlib.import_module('app.core.database'), 'init_database')
+        close_database = getattr(importlib.import_module('app.core.database'), 'close_database')
+        init_redis = getattr(importlib.import_module('app.core.redis'), 'init_redis')
+        close_redis = getattr(importlib.import_module('app.core.redis'), 'close_redis')
+        analysis_service = getattr(importlib.import_module('app.services.analysis.service'), 'analysis_service')
+        SingleAnalysisRequest = getattr(importlib.import_module('app.models.analysis'), 'SingleAnalysisRequest')
+        AnalysisParameters = getattr(importlib.import_module('app.models.analysis'), 'AnalysisParameters')
 
         # 初始化连接
         await init_database()
@@ -133,7 +142,7 @@ async def test_analysis_service():
 
     except Exception as e:
         print(f"❌ 分析服务测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -144,36 +153,41 @@ async def test_api_imports():
 
     try:
         # 测试核心模块
-        from webapi.core.config import settings
-        from webapi.core.database import DatabaseManager
-        from webapi.core.redis_client import RedisService
+        settings = getattr(importlib.import_module('app.core.config'), 'settings')
+        DatabaseManager = getattr(importlib.import_module('app.core.database'), 'DatabaseManager')
+        RedisService = getattr(importlib.import_module('app.core.redis'), 'RedisService')
         print("✅ 核心模块导入成功")
 
         # 测试服务模块
-        from webapi.services.queue_service import QueueService
-        from webapi.services.analysis_service import AnalysisService
+        QueueService = getattr(importlib.import_module('app.services.queue.service'), 'QueueService')
+        AnalysisService = getattr(importlib.import_module('app.services.analysis.service'), 'AnalysisService')
         print("✅ 服务模块导入成功")
 
         # 测试模型模块
-        from webapi.models.user import User, UserCreate
-        from webapi.models.analysis import AnalysisTask, AnalysisBatch
+        User = getattr(importlib.import_module('app.models.user'), 'User')
+        UserCreate = getattr(importlib.import_module('app.models.user'), 'UserCreate')
+        AnalysisTask = getattr(importlib.import_module('app.models.analysis'), 'AnalysisTask')
+        AnalysisBatch = getattr(importlib.import_module('app.models.analysis'), 'AnalysisBatch')
         print("✅ 模型模块导入成功")
 
         # 测试路由模块
-        from webapi.routers import analysis, auth, health, queue
+        analysis = getattr(importlib.import_module('app.routers'), 'analysis')
+        auth = getattr(importlib.import_module('app.routers'), 'auth')
+        health = getattr(importlib.import_module('app.routers'), 'health')
+        queue = getattr(importlib.import_module('app.routers'), 'queue')
         print("✅ 路由模块导入成功")
 
         # 测试中间件模块
-        from webapi.middleware.error_handler import ErrorHandlerMiddleware
-        from webapi.middleware.request_id import RequestIDMiddleware
-        from webapi.middleware.rate_limit import RateLimitMiddleware
+        ErrorHandlerMiddleware = getattr(importlib.import_module('app.middleware.errors'), 'ErrorHandlerMiddleware')
+        RequestIDMiddleware = getattr(importlib.import_module('app.middleware.requests'), 'RequestIDMiddleware')
+        RateLimitMiddleware = getattr(importlib.import_module('app.middleware.limits'), 'RateLimitMiddleware')
         print("✅ 中间件模块导入成功")
 
         return True
 
     except Exception as e:
         print(f"❌ 模块导入测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

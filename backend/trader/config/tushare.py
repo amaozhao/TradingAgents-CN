@@ -3,6 +3,7 @@
 Tushare配置管理
 专门处理Tushare相关的环境变量配置，兼容Python 3.13+
 """
+import importlib
 
 import os
 from typing import Dict, Any, Optional
@@ -20,7 +21,7 @@ class TushareConfig:
         """加载Tushare配置"""
         # 尝试加载python-dotenv
         try:
-            from dotenv import load_dotenv
+            load_dotenv = getattr(importlib.import_module('dotenv'), 'load_dotenv')
             load_dotenv()
         except ImportError:
             pass

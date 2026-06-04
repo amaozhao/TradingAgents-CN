@@ -21,15 +21,17 @@ except ImportError:
 
 # 导入 Baostock 提供器
 try:
-    from .baostock import BaostockProvider
+    from .baostock import BaoStockProvider
+    BaostockProvider = BaoStockProvider
     BAOSTOCK_AVAILABLE = True
 except ImportError:
+    BaoStockProvider = None
     BaostockProvider = None
     BAOSTOCK_AVAILABLE = False
 
 # 导入基本面快照工具
 try:
-    from .fundamentals import get_fundamentals_snapshot
+    from .fundamentals import get_cn_fund_snapshot as get_fundamentals_snapshot
     FUNDAMENTALS_SNAPSHOT_AVAILABLE = True
 except ImportError:
     get_fundamentals_snapshot = None
@@ -40,6 +42,7 @@ __all__ = [
     'AKSHARE_AVAILABLE',
     'TushareProvider',
     'TUSHARE_AVAILABLE',
+    'BaoStockProvider',
     'BaostockProvider',
     'BAOSTOCK_AVAILABLE',
     'get_fundamentals_snapshot',

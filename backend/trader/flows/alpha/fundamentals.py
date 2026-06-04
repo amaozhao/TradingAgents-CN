@@ -1,7 +1,8 @@
-from .alpha.common import _make_api_request
+from .common import _make_api_request
+from typing import Any, Optional
 
 
-def _filter_reports_by_date(result, curr_date: str):
+def _filter_reports_by_date(result: Any, curr_date: Optional[str]):
     """Filter annualReports/quarterlyReports to exclude entries after curr_date.
 
     Prevents look-ahead bias by removing fiscal periods that end after
@@ -18,7 +19,7 @@ def _filter_reports_by_date(result, curr_date: str):
     return result
 
 
-def get_fundamentals(ticker: str, curr_date: str = None) -> str:
+def get_fundamentals(ticker: str, curr_date: Optional[str] = None) -> str:
     """
     Retrieve comprehensive fundamental data for a given ticker symbol using Alpha Vantage.
 
@@ -33,22 +34,22 @@ def get_fundamentals(ticker: str, curr_date: str = None) -> str:
         "symbol": ticker,
     }
 
-    return _make_api_request("OVERVIEW", params)
+    return str(_make_api_request("OVERVIEW", params))
 
 
-def get_balance_sheet(ticker: str, freq: str = "quarterly", curr_date: str = None):
+def get_balance_sheet(ticker: str, freq: str = "quarterly", curr_date: Optional[str] = None):
     """Retrieve balance sheet data for a given ticker symbol using Alpha Vantage."""
     result = _make_api_request("BALANCE_SHEET", {"symbol": ticker})
     return _filter_reports_by_date(result, curr_date)
 
 
-def get_cashflow(ticker: str, freq: str = "quarterly", curr_date: str = None):
+def get_cashflow(ticker: str, freq: str = "quarterly", curr_date: Optional[str] = None):
     """Retrieve cash flow statement data for a given ticker symbol using Alpha Vantage."""
     result = _make_api_request("CASH_FLOW", {"symbol": ticker})
     return _filter_reports_by_date(result, curr_date)
 
 
-def get_income_statement(ticker: str, freq: str = "quarterly", curr_date: str = None):
+def get_income_statement(ticker: str, freq: str = "quarterly", curr_date: Optional[str] = None):
     """Retrieve income statement data for a given ticker symbol using Alpha Vantage."""
     result = _make_api_request("INCOME_STATEMENT", {"symbol": ticker})
     return _filter_reports_by_date(result, curr_date)

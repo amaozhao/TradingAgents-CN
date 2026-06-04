@@ -12,6 +12,7 @@ Usage:
   # 3) Run:
   #    python scripts/qianfan/connect/test.py
 """
+import importlib
 import os
 import sys
 import time
@@ -25,7 +26,7 @@ except Exception:
     pass
 
 from langchain_core.messages import HumanMessage
-from trader.llm.adapters.openai_compatible_base import (
+from trader.llm.adapters.openai.base import (
     create_openai_compatible_llm,
 )
 
@@ -86,7 +87,7 @@ def main() -> int:
         return 0
     except Exception as e:
         print(f"[ERROR] LLM call failed: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return 4
 

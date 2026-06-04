@@ -2,6 +2,7 @@
 """
 测试修复后的Google AI内存功能
 """
+import importlib
 
 import os
 import sys
@@ -21,8 +22,8 @@ def test_google_memory_fixed():
         print("🧪 测试修复后的Google AI内存功能")
         print("=" * 60)
 
-        from trader.agents.utils.memory import FinancialSituationMemory
-        from trader.default import DEFAULT_CONFIG
+        FinancialSituationMemory = getattr(importlib.import_module('trader.agents.utils.memory'), 'FinancialSituationMemory')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 检查API密钥
         google_key = os.getenv('GOOGLE_API_KEY')
@@ -88,7 +89,7 @@ def test_google_memory_fixed():
 
     except Exception as e:
         print(f"❌ Google AI内存测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 
@@ -98,8 +99,8 @@ def test_google_trading_agents_with_memory():
         print("\n🧪 测试带内存的Google AI TradingAgents")
         print("=" * 60)
 
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 检查API密钥
         google_key = os.getenv('GOOGLE_API_KEY')
@@ -166,7 +167,7 @@ def test_google_trading_agents_with_memory():
 
         except Exception as e:
             print(f"❌ 带内存的股票分析失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             print(traceback.format_exc())
             return False
 

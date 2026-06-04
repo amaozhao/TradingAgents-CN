@@ -1,7 +1,7 @@
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import trader.default as default_config
 
@@ -30,20 +30,25 @@ def set_config(config: Dict):
     """
     global _config
     initialize_config(force=False)
+    if _config is None:
+        _config = {}
+    current_config = _config
     incoming = deepcopy(config)
     for key, value in incoming.items():
-        if isinstance(value, dict) and isinstance(_config.get(key), dict):
-            _config[key].update(value)
+        if isinstance(value, dict) and isinstance(current_config.get(key), dict):
+            current_value = current_config[key]
+            if isinstance(current_value, dict):
+                current_value.update(value)
         else:
-            _config[key] = value
-    _ensure_data_dir_structure(_config.get("data_dir"))
+            current_config[key] = value
+    _ensure_data_dir_structure(current_config.get("data_dir"))
 
 
 def get_config() -> Dict:
     """Get the current configuration."""
     if _config is None:
         initialize_config()
-    return deepcopy(_config)
+    return deepcopy(_config or {})
 
 
 def _ensure_data_dir_structure(data_dir: Optional[str]) -> None:

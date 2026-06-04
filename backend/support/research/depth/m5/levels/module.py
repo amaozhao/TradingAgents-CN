@@ -1,6 +1,7 @@
 """
 测试5个研究深度级别的配置
 """
+import importlib
 import pytest
 from app.services.analysis.simple import create_analysis_config
 
@@ -164,14 +165,14 @@ class TestAnalysisParametersDefault:
 
     def test_default_research_depth_is_standard(self):
         """测试默认研究深度是'标准'"""
-        from app.models.analysis import AnalysisParameters
+        AnalysisParameters = getattr(importlib.import_module('app.models.analysis'), 'AnalysisParameters')
 
         params = AnalysisParameters()
         assert params.research_depth == "标准"
 
     def test_research_depth_accepts_all_5_levels(self):
         """测试研究深度接受所有5个级别"""
-        from app.models.analysis import AnalysisParameters
+        AnalysisParameters = getattr(importlib.import_module('app.models.analysis'), 'AnalysisParameters')
 
         valid_depths = ["快速", "基础", "标准", "深度", "全面"]
 

@@ -3,6 +3,7 @@
 真实的数据级别测试程序
 实际调用 get_stock_fundamentals_unified 函数，验证不同级别下的数据获取差异
 """
+import importlib
 
 import os
 import sys
@@ -56,13 +57,13 @@ def analyze_data_content(data, level_name):
 
     # 提取日期范围信息
     date_range = 'N/A'
-    import re
+    re = importlib.import_module('re')
     date_pattern = r'数据期间[：:]\s*(\d{4}-\d{2}-\d{2})\s*至\s*(\d{4}-\d{2}-\d{2})'
     match = re.search(date_pattern, data)
     if match:
         start_date, end_date = match.groups()
         # 计算天数
-        from datetime import datetime
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
         start_dt = datetime.strptime(start_date, '%Y-%m-%d')
         end_dt = datetime.strptime(end_date, '%Y-%m-%d')
         days = (end_dt - start_dt).days + 1
@@ -85,8 +86,8 @@ def test_stock_with_all_levels(ticker, stock_name):
     print(f"{'='*80}")
 
     # 导入必要模块
-    from trader.agents.utils.utils import Toolkit
-    from trader.default import DEFAULT_CONFIG
+    Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+    DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
     # 设置测试日期
     end_date = datetime.now().strftime('%Y-%m-%d')
@@ -139,7 +140,7 @@ def test_stock_with_all_levels(ticker, stock_name):
 
         except Exception as e:
             print(f"❌ 数据获取失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
             results[level_num] = {
                 'level_name': level_name,
@@ -197,7 +198,7 @@ def main():
             all_results[ticker] = results
         except Exception as e:
             print(f"❌ 测试股票 {stock_name} 失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
 
     # 生成总结报告

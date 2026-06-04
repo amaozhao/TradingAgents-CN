@@ -5,6 +5,7 @@
 - fetch_daily_basic_mv_map：根据交易日获取日度基础指标映射（市值/估值/交易）
 """
 from __future__ import annotations
+import importlib
 from datetime import datetime, timedelta
 from typing import Dict
 
@@ -16,10 +17,10 @@ def fetch_stock_basic_df():
 
     注意：这是一个同步函数，会等待 Tushare 连接完成。
     """
-    import time
-    import logging
-    from trader.flows.providers.china.tushare import get_tushare_provider
-    from app.core.config import settings
+    time = importlib.import_module('time')
+    logging = importlib.import_module('logging')
+    get_tushare_provider = getattr(importlib.import_module('trader.flows.providers.china.tushare'), 'get_tushare_provider')
+    settings = getattr(importlib.import_module('app.core.config'), 'settings')
 
     logger = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ def find_latest_trade_date() -> str:
     - 从今天起回溯最多 5 天；
     - 如都不可用，回退为昨天日期。
     """
-    from trader.flows.providers.china.tushare import get_tushare_provider
+    get_tushare_provider = getattr(importlib.import_module('trader.flows.providers.china.tushare'), 'get_tushare_provider')
 
     provider = get_tushare_provider()
     api = provider.api
@@ -120,7 +121,7 @@ def fetch_daily_basic_mv_map(trade_date: str) -> Dict[str, Dict[str, float]]:
     根据交易日获取日度基础指标映射。
     覆盖字段：total_mv/circ_mv/pe/pb/ps/turnover_rate/volume_ratio/pe_ttm/pb_mrq/ps_ttm
     """
-    from trader.flows.providers.china.tushare import get_tushare_provider
+    get_tushare_provider = getattr(importlib.import_module('trader.flows.providers.china.tushare'), 'get_tushare_provider')
 
     provider = get_tushare_provider()
     api = provider.api
@@ -170,8 +171,8 @@ def fetch_latest_roe_map() -> Dict[str, Dict[str, float]]:
     获取最近一个可用财报期的 ROE 映射（ts_code -> {"roe": float}）。
     优先按最近季度的 end_date 逆序探测，找到第一期非空数据。
     """
-    from trader.flows.providers.china.tushare import get_tushare_provider
-    from datetime import datetime
+    get_tushare_provider = getattr(importlib.import_module('trader.flows.providers.china.tushare'), 'get_tushare_provider')
+    datetime = getattr(importlib.import_module('datetime'), 'datetime')
 
     provider = get_tushare_provider()
     api = provider.api

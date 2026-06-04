@@ -3,12 +3,13 @@
 """
 测试从通达信获取股票代码和名称
 """
+import importlib
 
 import pytest
-pytest.importorskip("enhanced_stock_list_fetcher")
+enhanced_stock_list_fetcher = pytest.importorskip("enhanced_stock_list_fetcher")
 pytestmark = pytest.mark.integration
 
-from enhanced_stock_list_fetcher import enhanced_fetch_stock_list
+enhanced_fetch_stock_list = enhanced_stock_list_fetcher.enhanced_fetch_stock_list
 
 def test_get_stock_codes():
     """
@@ -62,7 +63,7 @@ def test_get_stock_codes():
 
     except Exception as e:
         print(f"❌ 获取股票数据时发生错误: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

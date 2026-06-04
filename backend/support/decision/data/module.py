@@ -2,6 +2,7 @@
 """
 测试decision数据是否正确保存和获取
 """
+import importlib
 import requests
 import json
 from datetime import datetime
@@ -74,7 +75,7 @@ def test_decision_data():
 
         # 2. 等待任务完成
         print(f"\n2. 等待任务完成...")
-        import time
+        time = importlib.import_module('time')
         max_wait = 300  # 最多等待5分钟
         wait_time = 0
 
@@ -183,7 +184,7 @@ def test_decision_data():
 
     except Exception as e:
         print(f"❌ 测试过程中出现异常: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

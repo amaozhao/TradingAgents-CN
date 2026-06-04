@@ -9,6 +9,7 @@
 3. 清空厂家的 API Key（使用环境变量）
 4. 验证配置优先级
 """
+import importlib
 
 import sys
 import os
@@ -27,9 +28,9 @@ load_dotenv()
 
 async def test_add_provider_with_key():
     """测试添加厂家并配置 API Key"""
-    from app.services.config_service import ConfigService
-    from app.models.config import LLMProvider
-    from app.core.database import init_db
+    ConfigService = getattr(importlib.import_module('app.services.config'), 'ConfigService')
+    LLMProvider = getattr(importlib.import_module('app.models.config'), 'LLMProvider')
+    init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
 
     # 初始化数据库
     await init_db()
@@ -74,15 +75,15 @@ async def test_add_provider_with_key():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None
 
 
 async def test_update_provider_key(provider_id: str):
     """测试更新厂家的 API Key"""
-    from app.services.config_service import ConfigService
-    from app.core.database import init_db
+    ConfigService = getattr(importlib.import_module('app.services.config'), 'ConfigService')
+    init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
 
     # 初始化数据库
     await init_db()
@@ -115,14 +116,14 @@ async def test_update_provider_key(provider_id: str):
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
 async def test_clear_provider_key(provider_id: str):
     """测试清空厂家的 API Key（使用环境变量）"""
-    from app.services.config_service import ConfigService
-    from app.core.database import init_db
+    ConfigService = getattr(importlib.import_module('app.services.config'), 'ConfigService')
+    init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
 
     # 初始化数据库
     await init_db()
@@ -155,14 +156,14 @@ async def test_clear_provider_key(provider_id: str):
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 
 async def test_cleanup(provider_id: str):
     """清理测试数据"""
-    from app.services.config_service import ConfigService
-    from app.core.database import init_db
+    ConfigService = getattr(importlib.import_module('app.services.config'), 'ConfigService')
+    init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
 
     # 初始化数据库
     await init_db()
@@ -217,7 +218,7 @@ async def main():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         sys.exit(1)
 

@@ -2,6 +2,7 @@
 """
 调试DeepSeek成本计算问题
 """
+import importlib
 
 import os
 import sys
@@ -21,7 +22,7 @@ def debug_config_manager():
     print("=" * 50)
 
     try:
-        from trader.config.manager import ConfigManager
+        ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
 
         # 创建配置管理器
         config_manager = ConfigManager()
@@ -77,7 +78,7 @@ def debug_config_manager():
 
     except Exception as e:
         print(f"❌ 配置管理器调试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -87,7 +88,8 @@ def debug_token_tracker():
     print("=" * 50)
 
     try:
-        from trader.config.manager import ConfigManager, TokenTracker
+        ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
+        TokenTracker = getattr(importlib.import_module('trader.config.manager'), 'TokenTracker')
 
         # 创建配置管理器和Token跟踪器
         config_manager = ConfigManager()
@@ -131,7 +133,7 @@ def debug_token_tracker():
 
     except Exception as e:
         print(f"❌ Token跟踪器调试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -146,7 +148,7 @@ def debug_deepseek_adapter():
         return True
 
     try:
-        from trader.llm.adapters.deepseek import ChatDeepSeek
+        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
 
         print(f"🔧 创建DeepSeek适配器...")
 
@@ -160,7 +162,7 @@ def debug_deepseek_adapter():
         print(f"📊 模型名称: {deepseek_llm.model_name}")
 
         # 检查TOKEN_TRACKING_ENABLED
-        from trader.llm.adapters.deepseek import TOKEN_TRACKING_ENABLED
+        TOKEN_TRACKING_ENABLED = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'TOKEN_TRACKING_ENABLED')
         print(f"📊 Token跟踪启用: {TOKEN_TRACKING_ENABLED}")
 
         # 测试调用
@@ -174,7 +176,7 @@ def debug_deepseek_adapter():
 
     except Exception as e:
         print(f"❌ DeepSeek适配器调试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -184,8 +186,8 @@ def debug_model_name_issue():
     print("=" * 50)
 
     try:
-        from trader.config.manager import ConfigManager
-        from trader.llm.adapters.deepseek import ChatDeepSeek
+        ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
+        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
 
         # 创建配置管理器
         config_manager = ConfigManager()
@@ -226,7 +228,7 @@ def debug_model_name_issue():
 
     except Exception as e:
         print(f"❌ 模型名称调试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

@@ -2,6 +2,7 @@
 """
 测试筛选字段配置API
 """
+import importlib
 
 import asyncio
 import sys
@@ -21,8 +22,8 @@ async def test_field_config_api():
 
     try:
         # 导入必要的模块
-        from app.core.database import init_db
-        from app.models.screening import BASIC_FIELDS_INFO
+        init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
+        BASIC_FIELDS_INFO = getattr(importlib.import_module('app.models.screening'), 'BASIC_FIELDS_INFO')
 
         # 初始化数据库
         await init_db()
@@ -72,7 +73,7 @@ async def test_field_config_api():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

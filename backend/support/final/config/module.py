@@ -3,6 +3,7 @@
 测试最终的.env配置系统
 验证启用开关是否正常工作
 """
+import importlib
 
 import os
 
@@ -49,7 +50,7 @@ def test_final_config():
     # 4. 测试数据库管理器
     print("\n🔧 测试数据库管理器...")
     try:
-        from trader.config.databases import get_database_manager
+        get_database_manager = getattr(importlib.import_module('trader.config.databases'), 'get_database_manager')
 
         db_manager = get_database_manager()
         print("✅ 数据库管理器创建成功")
@@ -70,14 +71,14 @@ def test_final_config():
 
     except Exception as e:
         print(f"❌ 数据库管理器测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
     # 5. 测试缓存系统
     print("\n💾 测试缓存系统...")
     try:
-        from trader.flows.cache.integrated import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache.integrated'), 'get_cache')
 
         cache = get_cache()
         print("✅ 缓存系统创建成功")
@@ -107,7 +108,7 @@ def test_final_config():
 
     except Exception as e:
         print(f"❌ 缓存系统测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -146,7 +147,7 @@ def main():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

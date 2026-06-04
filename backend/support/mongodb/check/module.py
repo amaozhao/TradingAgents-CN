@@ -2,6 +2,7 @@
 """
 检查MongoDB中的分析记录
 """
+import importlib
 
 import sys
 import os
@@ -78,7 +79,7 @@ def check_analysis_records():
 
     except Exception as e:
         print(f"❌ 检查分析记录失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(f"详细错误: {traceback.format_exc()}")
 
 def check_specific_stock(stock_symbol="000001"):

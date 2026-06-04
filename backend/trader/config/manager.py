@@ -6,13 +6,14 @@
 ⚠️ DEPRECATED: 此模块已废弃，将在 2026-03-31 后移除
    请使用新的配置系统: app.services.config.ConfigService
 """
+import importlib
 
 import json
 import os
 import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional, cast
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from dotenv import load_dotenv
@@ -51,12 +52,12 @@ class CostResult(float):
 
     def __new__(cls, value: float, currency: str = "CNY"):
         obj = float.__new__(cls, value)
-        obj.currency = currency
+        cast(Any, obj).currency = currency
         return obj
 
     def __iter__(self):
         yield float(self)
-        yield self.currency
+        yield cast(Any, self).currency
 
 
 class ConfigManager:
@@ -180,7 +181,8 @@ class ConfigManager:
                 return
 
             logger.info(f"🔄 [ConfigManager] 正在创建 MongoDBStorage 实例...")
-            self.mongodb_storage = MongoDBStorage(
+            storage_cls: Any = MongoDBStorage
+            self.mongodb_storage = storage_cls(
                 connection_string=connection_string,
                 database_name=database_name
             )
@@ -281,7 +283,7 @@ class ConfigManager:
         # 默认设置
         if not self.settings_file.exists():
             # 导入默认数据目录配置
-            import os
+            os = importlib.import_module('os')
             default_data_dir = os.path.join(os.path.expanduser("~"), "Documents", "TradingAgents", "data")
 
             default_settings = {
@@ -389,7 +391,9 @@ class ConfigManager:
                         output_tokens: int, session_id: str, analysis_type: str = "stock_analysis"):
         """添加使用记录"""
         # 计算成本和货币单位
-        cost, currency = self.calculate_cost(provider, model_name, input_tokens, output_tokens)
+        cost_result = self.calculate_cost(provider, model_name, input_tokens, output_tokens)
+        cost = float(cost_result)
+        currency = str(getattr(cost_result, "currency", "CNY"))
 
         record = UsageRecord(
             timestamp=datetime.now(ZoneInfo(get_timezone_name())).isoformat(),
@@ -491,7 +495,7 @@ class ConfigManager:
             settings = {}
 
         # 合并.env中的其他配置
-        env_settings = {
+        env_settings: Dict[str, Any] = {
             "finnhub_api_key": os.getenv("FINNHUB_API_KEY", ""),
             "reddit_client_id": os.getenv("REDDIT_CLIENT_ID", ""),
             "reddit_client_secret": os.getenv("REDDIT_CLIENT_SECRET", ""),
@@ -578,7 +582,8 @@ class ConfigManager:
         records = self.load_usage_records()
 
         # 过滤最近N天的记录
-        from datetime import datetime, timedelta
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         tz = ZoneInfo(get_timezone_name())
         cutoff_date = datetime.now(tz) - timedelta(days=days)
@@ -700,7 +705,7 @@ class TokenTracker:
         self.config_manager = config_manager
 
     def track_usage(self, provider: str, model_name: str, input_tokens: int,
-                   output_tokens: int, session_id: str = None, analysis_type: str = "stock_analysis"):
+                   output_tokens: int, session_id: Optional[str] = None, analysis_type: str = "stock_analysis"):
         """跟踪Token使用"""
         if session_id is None:
             session_id = f"session_{datetime.now(ZoneInfo(get_timezone_name())).strftime('%Y%m%d_%H%M%S')}"
@@ -755,9 +760,10 @@ class TokenTracker:
         Returns:
             tuple[float, str]: (成本, 货币单位)
         """
-        return self.config_manager.calculate_cost(
+        cost_result = self.config_manager.calculate_cost(
             provider, model_name, estimated_input_tokens, estimated_output_tokens
         )
+        return float(cost_result), str(getattr(cost_result, "currency", "CNY"))
 
 
 

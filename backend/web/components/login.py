@@ -6,6 +6,7 @@
 import streamlit as st
 import time
 import sys
+import importlib
 from pathlib import Path
 import base64
 
@@ -38,7 +39,9 @@ except ImportError:
                 from pathlib import Path
                 web_utils_path = Path(__file__).parent.parent / "utils"
                 sys.path.insert(0, str(web_utils_path))
-                from auth import AuthManager, auth as imported_auth
+                auth_module = importlib.import_module("auth")
+                AuthManager = auth_module.AuthManager
+                imported_auth = auth_module.auth
                 auth = imported_auth
             except ImportError:
                 # 如果都失败了，创建一个简单的认证管理器
@@ -370,7 +373,7 @@ def render_sidebar_user_info():
     login_time = st.session_state.get('login_time')
     login_time_str = ""
     if login_time:
-        import datetime
+        datetime = importlib.import_module('datetime')
         login_dt = datetime.datetime.fromtimestamp(login_time)
         login_time_str = login_dt.strftime("%H:%M")
 
@@ -512,7 +515,7 @@ def render_user_info():
     login_time = st.session_state.get('login_time')
     login_time_str = ""
     if login_time:
-        import datetime
+        datetime = importlib.import_module('datetime')
         login_dt = datetime.datetime.fromtimestamp(login_time)
         login_time_str = login_dt.strftime("%H:%M")
 

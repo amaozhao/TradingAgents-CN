@@ -3,6 +3,7 @@
 阿里百炼快速修复验证
 验证核心问题是否解决
 """
+import importlib
 
 import os
 import sys
@@ -18,7 +19,7 @@ def test_adapter_creation():
     print("=" * 40)
 
     try:
-        from trader.llm.adapters import ChatDashScopeOpenAI
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
 
         # 创建适配器（不调用API）
         llm = ChatDashScopeOpenAI(
@@ -44,8 +45,8 @@ def test_tool_binding_basic():
     print("=" * 40)
 
     try:
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from langchain_core.tools import tool
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
 
         # 定义简单工具
         @tool
@@ -75,7 +76,8 @@ def test_vs_old_adapter():
     print("=" * 40)
 
     try:
-        from trader.llm.adapters import ChatDashScope, ChatDashScopeOpenAI
+        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
 
         print("🔄 测试旧适配器...")
         old_llm = ChatDashScope(model="qwen-turbo")
@@ -86,7 +88,7 @@ def test_vs_old_adapter():
         print(f"   新适配器类型: {type(new_llm).__name__}")
 
         # 检查继承关系
-        from langchain_openai import ChatOpenAI
+        ChatOpenAI = getattr(importlib.import_module('langchain_openai'), 'ChatOpenAI')
         is_openai_compatible = isinstance(new_llm, ChatOpenAI)
         print(f"   OpenAI兼容: {'✅ 是' if is_openai_compatible else '❌ 否'}")
 
@@ -152,9 +154,9 @@ def test_technical_analysis_simulation():
     print("=" * 40)
 
     try:
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from langchain_core.tools import tool
-        from langchain_core.messages import HumanMessage
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         # 模拟股票数据工具
         @tool

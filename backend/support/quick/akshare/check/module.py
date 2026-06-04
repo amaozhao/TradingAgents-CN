@@ -2,11 +2,12 @@
 """
 快速AKShare功能检查
 """
+import importlib
 
 def check_akshare_import():
     """检查AKShare导入"""
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
         print(f"✅ AKShare导入成功，版本: {ak.__version__}")
         return True
     except ImportError as e:
@@ -17,7 +18,7 @@ def check_akshare_import():
 def check_akshare_utils():
     """检查akshare_utils.py"""
     try:
-        from trader.flows.akshare import get_akshare_provider
+        get_akshare_provider = getattr(importlib.import_module('trader.flows.akshare'), 'get_akshare_provider')
         provider = get_akshare_provider()
         print(f"✅ AKShare工具模块正常，连接状态: {provider.connected}")
         return True, provider
@@ -28,7 +29,7 @@ def check_akshare_utils():
 def check_data_source_manager():
     """检查数据源管理器"""
     try:
-        from trader.flows.sources import DataSourceManager
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
         manager = DataSourceManager()
 
         available = [s.value for s in manager.available_sources]
@@ -45,7 +46,7 @@ def check_data_source_manager():
 def test_basic_akshare():
     """测试基本AKShare功能"""
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
 
         # 测试获取股票列表
         print("📊 测试获取股票列表...")

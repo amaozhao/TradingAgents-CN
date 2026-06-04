@@ -2,6 +2,7 @@
 测试 AKShare 获取股票新闻数据
 测试 000002 万科的最新新闻时间
 """
+import importlib
 import asyncio
 import sys
 from pathlib import Path
@@ -23,7 +24,7 @@ async def test_akshare_news():
     try:
         # 1. 导入 AKShare Provider
         print("\n📦 步骤1: 导入 AKShare Provider...")
-        from trader.flows.providers.china.akshare import get_akshare_provider
+        get_akshare_provider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'get_akshare_provider')
 
         provider = get_akshare_provider()
         print(f"✅ AKShare Provider 初始化成功")
@@ -150,7 +151,7 @@ async def test_akshare_news():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

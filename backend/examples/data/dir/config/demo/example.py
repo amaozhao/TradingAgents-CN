@@ -3,6 +3,7 @@
 数据目录配置演示
 展示如何使用新的数据目录配置功能
 """
+import importlib
 
 import os
 import sys
@@ -16,7 +17,7 @@ logger = get_logger('default')
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from trader.config.config_manager import config_manager
+from trader.config.manager import config_manager
 from trader.flows.config import get_config, set_data_dir, get_data_dir
 from rich.console import Console
 from rich.table import Table
@@ -143,7 +144,7 @@ def demo_directory_auto_creation():
     test_dir = os.path.join(os.path.expanduser("~"), "Documents", "TradingAgents_AutoCreate", "data")
 
     # 确保目录不存在
-    import shutil
+    shutil = importlib.import_module('shutil')
     if os.path.exists(test_dir):
         shutil.rmtree(os.path.dirname(test_dir))
 
@@ -189,7 +190,7 @@ export TRADING_AGENTS_DATA_DIR=/path/to/data
 
 [bold green]3. 通过配置管理器:[/bold green]
 ```python
-from trader.config.config_manager import config_manager
+from trader.config.manager import config_manager
 config_manager.set_data_dir("/path/to/your/data/directory")
 ```
 
@@ -238,7 +239,7 @@ def main():
 
     except Exception as e:
         logger.error(f"\n[bold red]❌ 演示过程中出现错误: {e}[/bold red]")
-        import traceback
+        traceback = importlib.import_module('traceback')
 
         console.print(traceback.format_exc())
 

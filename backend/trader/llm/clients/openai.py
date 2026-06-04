@@ -131,7 +131,7 @@ class OpenAIClient(BaseLLMClient):
 
     def get_llm(self) -> Any:
         self.warn_if_unknown_model()
-        llm_kwargs = {"model": self.model}
+        llm_kwargs: dict[str, Any] = {"model": self.model}
 
         if self.provider in _PROVIDER_CONFIG:
             default_base_url, api_key_env = _PROVIDER_CONFIG[self.provider]

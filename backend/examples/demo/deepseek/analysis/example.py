@@ -3,6 +3,7 @@
 DeepSeek V3股票分析演示
 展示如何使用DeepSeek V3进行股票投资分析
 """
+import importlib
 
 import sys
 import os
@@ -48,7 +49,7 @@ def demo_simple_chat():
     logger.info(f"\n🤖 演示DeepSeek V3简单对话...")
 
     try:
-        from trader.llm.adapters.deepseek_direct_adapter import create_deepseek_direct_adapter
+        create_deepseek_direct_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_direct_adapter')
 
         # 创建DeepSeek模型
         llm = create_deepseek_direct_adapter(
@@ -81,7 +82,7 @@ def demo_reasoning_analysis():
     logger.info(f"\n🧠 演示DeepSeek V3推理分析...")
 
     try:
-        from trader.llm.adapters.deepseek_direct_adapter import create_deepseek_direct_adapter
+        create_deepseek_direct_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_direct_adapter')
 
         # 创建DeepSeek适配器
         adapter = create_deepseek_direct_adapter(
@@ -124,7 +125,7 @@ def demo_stock_analysis_with_tools():
     logger.info(f"\n📊 演示DeepSeek V3工具调用股票分析...")
 
     try:
-        from trader.llm.adapters.deepseek_direct_adapter import create_deepseek_direct_adapter
+        create_deepseek_direct_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_direct_adapter')
         # 移除langchain工具导入以避免兼容性问题
 
         # 定义股票分析工具（简化版本，不使用langchain装饰器）
@@ -204,7 +205,7 @@ def demo_trading_system():
     logger.info(f"\n🎯 演示DeepSeek V3完整交易分析系统...")
 
     try:
-        from trader.llm.adapters.deepseek_direct_adapter import create_deepseek_direct_adapter
+        create_deepseek_direct_adapter = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'create_deepseek_direct_adapter')
 
         # 创建DeepSeek适配器
         adapter = create_deepseek_direct_adapter()

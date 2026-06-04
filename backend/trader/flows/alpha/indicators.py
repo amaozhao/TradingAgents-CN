@@ -1,4 +1,5 @@
-from .alpha.common import _make_api_request, AlphaVantageNotConfiguredError
+import importlib
+from .common import _make_api_request, AlphaVantageNotConfiguredError
 
 def get_indicator(
     symbol: str,
@@ -24,8 +25,8 @@ def get_indicator(
     Returns:
         String containing indicator values and description
     """
-    from datetime import datetime
-    from dateutil.relativedelta import relativedelta
+    datetime = getattr(importlib.import_module('datetime'), 'datetime')
+    relativedelta = getattr(importlib.import_module('dateutil.relativedelta'), 'relativedelta')
 
     supported_indicators = {
         "close_50_sma": ("50 SMA", "close"),
@@ -150,6 +151,8 @@ def get_indicator(
             return f"Error: Indicator {indicator} not implemented yet."
 
         # Parse CSV data and extract values for the date range
+        if not isinstance(data, str):
+            return str(data)
         lines = data.strip().split('\n')
         if len(lines) < 2:
             return f"Error: No data returned for {indicator}"

@@ -3,6 +3,7 @@
 调试工具绑定问题
 验证LLM是否能访问未绑定的工具
 """
+import importlib
 
 import os
 import sys
@@ -12,11 +13,11 @@ def test_tool_isolation():
     print("🔧 测试工具隔离机制...")
 
     try:
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
-        from langchain_core.tools import tool
-        from langchain_core.messages import HumanMessage
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         # 检查API密钥
         api_key = os.getenv("DASHSCOPE_API_KEY")
@@ -119,7 +120,7 @@ def test_tool_isolation():
 
     except Exception as e:
         print(f"❌ 工具隔离测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -129,9 +130,9 @@ def test_llm_instance_reuse():
     print("\n🔧 测试LLM实例复用...")
 
     try:
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建工具包
         config = DEFAULT_CONFIG.copy()

@@ -4,7 +4,8 @@
 🔥 按照数据库配置的数据源优先级调用API
 🔥 请求去重机制：防止并发请求重复调用API
 """
-from typing import Optional, Dict, List, Tuple
+import importlib
+from typing import Any, Optional, Dict, List, Tuple, cast
 from datetime import datetime, timedelta
 import logging
 import json
@@ -46,7 +47,7 @@ class ForeignStockService:
         self.hk_provider = HKStockProvider()
 
         # 保存数据库连接（用于查询数据源优先级）
-        self.db = db
+        self.db: Any = db
 
         # 🔥 请求去重：为每个 (market, code, data_type) 创建独立的锁
         self._request_locks = defaultdict(asyncio.Lock)
@@ -139,7 +140,9 @@ class ForeignStockService:
                 cached_data = self.cache.load_stock_data(cache_key)
                 if cached_data:
                     logger.info(f"⚡ 从缓存获取港股行情: {code}")
-                    return self._parse_cached_data(cached_data, 'HK', code)
+                    parsed_data = self._parse_cached_data(cached_data, 'HK', code)
+                    if parsed_data:
+                        return parsed_data
 
         # 2. 🔥 请求去重：使用锁确保同一股票同时只有一个API调用
         request_key = f"HK_quote_{code}_{force_refresh}"
@@ -164,14 +167,18 @@ class ForeignStockService:
                             time_diff = (datetime.now() - cache_time).total_seconds()
                             if time_diff < 1:  # 1秒内的缓存，说明是并发请求刚刚完成的
                                 logger.info(f"⚡ [去重] 使用并发请求的结果: {code} (缓存时间: {time_diff:.2f}秒前)")
-                                return self._parse_cached_data(cached_data, 'HK', code)
+                                parsed_data = self._parse_cached_data(cached_data, 'HK', code)
+                                if parsed_data:
+                                    return parsed_data
                     except Exception as e:
                         logger.debug(f"检查缓存时间失败: {e}")
 
                     # 如果不是强制刷新，使用缓存
                     if not force_refresh:
                         logger.info(f"⚡ [去重后] 从缓存获取港股行情: {code}")
-                        return self._parse_cached_data(cached_data, 'HK', code)
+                        parsed_data = self._parse_cached_data(cached_data, 'HK', code)
+                        if parsed_data:
+                            return parsed_data
 
             logger.info(f"🔄 开始获取港股行情: {code} (force_refresh={force_refresh})")
 
@@ -180,7 +187,7 @@ class ForeignStockService:
 
             # 4. 按优先级尝试各个数据源
             quote_data = None
-            data_source = None
+            data_source = ""
 
             # 数据源名称映射（数据库名称 → 处理函数）
             # 🔥 只有这些是有效的数据源名称
@@ -282,7 +289,7 @@ class ForeignStockService:
 
     def _get_hk_quote_from_akshare(self, code: str) -> Dict:
         """从AKShare获取港股行情"""
-        from trader.flows.providers.hk.improved import get_hk_stock_info_akshare
+        get_hk_stock_info_akshare = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_stock_info_akshare')
         info = get_hk_stock_info_akshare(code)
         if not info or 'error' in info:
             raise Exception("无数据")
@@ -310,7 +317,9 @@ class ForeignStockService:
                 cached_data = self.cache.load_stock_data(cache_key)
                 if cached_data:
                     logger.info(f"⚡ 从缓存获取美股行情: {code}")
-                    return self._parse_cached_data(cached_data, 'US', code)
+                    parsed_data = self._parse_cached_data(cached_data, 'US', code)
+                    if parsed_data:
+                        return parsed_data
 
         # 2. 🔥 请求去重：使用锁确保同一股票同时只有一个API调用
         request_key = f"US_quote_{code}_{force_refresh}"
@@ -334,14 +343,18 @@ class ForeignStockService:
                             time_diff = (datetime.now() - cache_time).total_seconds()
                             if time_diff < 1:  # 1秒内的缓存，说明是并发请求刚刚完成的
                                 logger.info(f"⚡ [去重] 使用并发请求的结果: {code} (缓存时间: {time_diff:.2f}秒前)")
-                                return self._parse_cached_data(cached_data, 'US', code)
+                                parsed_data = self._parse_cached_data(cached_data, 'US', code)
+                                if parsed_data:
+                                    return parsed_data
                     except Exception as e:
                         logger.debug(f"检查缓存时间失败: {e}")
 
                     # 如果不是强制刷新，使用缓存
                     if not force_refresh:
                         logger.info(f"⚡ [去重后] 从缓存获取美股行情: {code}")
-                        return self._parse_cached_data(cached_data, 'US', code)
+                        parsed_data = self._parse_cached_data(cached_data, 'US', code)
+                        if parsed_data:
+                            return parsed_data
 
             logger.info(f"🔄 开始获取美股行情: {code} (force_refresh={force_refresh})")
 
@@ -350,7 +363,7 @@ class ForeignStockService:
 
             # 4. 按优先级尝试各个数据源
             quote_data = None
-            data_source = None
+            data_source = ""
 
             # 数据源名称映射（数据库名称 → 处理函数）
             # 🔥 只有这些是有效的数据源名称：alpha_vantage, yahoo_finance, finnhub
@@ -423,7 +436,7 @@ class ForeignStockService:
 
     def _get_us_quote_from_yfinance(self, code: str) -> Dict:
         """从yfinance获取美股行情"""
-        import yfinance as yf
+        yf = importlib.import_module('yfinance')
 
         ticker = yf.Ticker(code)
         hist = ticker.history(period='1d')
@@ -442,14 +455,15 @@ class ForeignStockService:
             'low': float(latest['Low']),
             'volume': int(latest['Volume']),
             'change_percent': round(((latest['Close'] - latest['Open']) / latest['Open'] * 100), 2),
-            'trade_date': hist.index[-1].strftime('%Y-%m-%d'),
+            'trade_date': cast(Any, hist.index[-1]).strftime('%Y-%m-%d'),
             'currency': info.get('currency', 'USD')
         }
 
     def _get_us_quote_from_alpha_vantage(self, code: str) -> Dict:
         """从Alpha Vantage获取美股行情"""
         try:
-            from trader.flows.providers.us.alpha.common import get_api_key, _make_api_request
+            get_api_key = getattr(importlib.import_module('trader.flows.providers.us.alpha.common'), 'get_api_key')
+            _make_api_request = getattr(importlib.import_module('trader.flows.providers.us.alpha.common'), '_make_api_request')
 
             # 获取 API Key
             api_key = get_api_key()
@@ -461,12 +475,12 @@ class ForeignStockService:
                 "symbol": code.upper(),
             }
 
-            data = _make_api_request("GLOBAL_QUOTE", params)
+            data = cast(Dict[str, Any], _make_api_request("GLOBAL_QUOTE", params))
 
             if not data or "Global Quote" not in data:
                 raise Exception("Alpha Vantage 返回数据为空")
 
-            quote = data["Global Quote"]
+            quote = cast(Dict[str, Any], data["Global Quote"])
 
             if not quote:
                 raise Exception("无数据")
@@ -492,8 +506,8 @@ class ForeignStockService:
     def _get_us_quote_from_finnhub(self, code: str) -> Dict:
         """从Finnhub获取美股行情"""
         try:
-            import finnhub
-            import os
+            finnhub = importlib.import_module('finnhub')
+            os = importlib.import_module('os')
 
             # 获取 API Key
             api_key = os.getenv('FINNHUB_API_KEY')
@@ -542,14 +556,16 @@ class ForeignStockService:
                 cached_data = self.cache.load_stock_data(cache_key)
                 if cached_data:
                     logger.info(f"⚡ 从缓存获取港股基础信息: {code}")
-                    return self._parse_cached_data(cached_data, 'HK', code)
+                    parsed_data = self._parse_cached_data(cached_data, 'HK', code)
+                    if parsed_data:
+                        return parsed_data
 
         # 2. 从数据库获取数据源优先级
         source_priority = await self._get_source_priority('HK')
 
         # 3. 按优先级尝试各个数据源
         info_data = None
-        data_source = None
+        data_source = ""
 
         # 数据源名称映射
         source_handlers = {
@@ -578,7 +594,7 @@ class ForeignStockService:
             handler_name, handler_func = source_handlers[source_key]
             try:
                 # 🔥 使用 asyncio.to_thread 避免阻塞事件循环
-                import asyncio
+                asyncio = importlib.import_module('asyncio')
                 info_data = await asyncio.to_thread(handler_func, code)
                 data_source = handler_name
 
@@ -621,14 +637,16 @@ class ForeignStockService:
                 cached_data = self.cache.load_stock_data(cache_key)
                 if cached_data:
                     logger.info(f"⚡ 从缓存获取美股基础信息: {code}")
-                    return self._parse_cached_data(cached_data, 'US', code)
+                    parsed_data = self._parse_cached_data(cached_data, 'US', code)
+                    if parsed_data:
+                        return parsed_data
 
         # 2. 从数据库获取数据源优先级
         source_priority = await self._get_source_priority('US')
 
         # 3. 按优先级尝试各个数据源
         info_data = None
-        data_source = None
+        data_source = ""
 
         # 数据源名称映射
         source_handlers = {
@@ -657,7 +675,7 @@ class ForeignStockService:
             handler_name, handler_func = source_handlers[source_key]
             try:
                 # 🔥 使用 asyncio.to_thread 避免阻塞事件循环
-                import asyncio
+                asyncio = importlib.import_module('asyncio')
                 info_data = await asyncio.to_thread(handler_func, code)
                 data_source = handler_name
 
@@ -732,7 +750,7 @@ class ForeignStockService:
 
         # 3. 按优先级尝试各个数据源
         kline_data = None
-        data_source = None
+        data_source = ""
 
         # 数据源名称映射
         source_handlers = {
@@ -761,7 +779,7 @@ class ForeignStockService:
             handler_name, handler_func = source_handlers[source_key]
             try:
                 # 🔥 使用 asyncio.to_thread 避免阻塞事件循环
-                import asyncio
+                asyncio = importlib.import_module('asyncio')
                 kline_data = await asyncio.to_thread(handler_func, code, period, limit)
                 data_source = handler_name
 
@@ -809,7 +827,7 @@ class ForeignStockService:
 
         # 3. 按优先级尝试各个数据源
         kline_data = None
-        data_source = None
+        data_source = ""
 
         # 数据源名称映射
         source_handlers = {
@@ -838,7 +856,7 @@ class ForeignStockService:
             handler_name, handler_func = source_handlers[source_key]
             try:
                 # 🔥 使用 asyncio.to_thread 避免阻塞事件循环
-                import asyncio
+                asyncio = importlib.import_module('asyncio')
                 kline_data = await asyncio.to_thread(handler_func, code, period, limit)
                 data_source = handler_name
 
@@ -907,7 +925,7 @@ class ForeignStockService:
             'updated_at': datetime.now().isoformat()
         }
 
-    def _parse_cached_data(self, cached_data: str, market: str, code: str) -> Dict:
+    def _parse_cached_data(self, cached_data: str, market: str, code: str) -> Optional[Dict]:
         """解析缓存的数据"""
         try:
             # 尝试解析JSON
@@ -949,7 +967,7 @@ class ForeignStockService:
 
     def _get_us_info_from_yfinance(self, code: str) -> Dict:
         """从yfinance获取美股基础信息"""
-        import yfinance as yf
+        yf = importlib.import_module('yfinance')
 
         ticker = yf.Ticker(code)
         info = ticker.info
@@ -979,7 +997,8 @@ class ForeignStockService:
 
     def _get_us_info_from_alpha_vantage(self, code: str) -> Dict:
         """从Alpha Vantage获取美股基础信息"""
-        from trader.flows.providers.us.alpha.common import get_api_key, _make_api_request
+        get_api_key = getattr(importlib.import_module('trader.flows.providers.us.alpha.common'), 'get_api_key')
+        _make_api_request = getattr(importlib.import_module('trader.flows.providers.us.alpha.common'), '_make_api_request')
 
         # 获取 API Key
         api_key = get_api_key()
@@ -988,7 +1007,7 @@ class ForeignStockService:
 
         # 调用 OVERVIEW API
         params = {"symbol": code.upper()}
-        data = _make_api_request("OVERVIEW", params)
+        data = cast(Dict[str, Any], _make_api_request("OVERVIEW", params))
 
         if not data or not data.get('Symbol'):
             raise Exception("无数据")
@@ -1006,8 +1025,8 @@ class ForeignStockService:
 
     def _get_us_info_from_finnhub(self, code: str) -> Dict:
         """从Finnhub获取美股基础信息"""
-        import finnhub
-        import os
+        finnhub = importlib.import_module('finnhub')
+        os = importlib.import_module('os')
 
         # 获取 API Key
         api_key = os.getenv('FINNHUB_API_KEY')
@@ -1036,7 +1055,7 @@ class ForeignStockService:
 
     def _get_us_kline_from_yfinance(self, code: str, period: str, limit: int) -> List[Dict]:
         """从yfinance获取美股K线数据"""
-        import yfinance as yf
+        yf = importlib.import_module('yfinance')
 
         ticker = yf.Ticker(code)
 
@@ -1060,23 +1079,25 @@ class ForeignStockService:
         # 格式化数据
         kline_data = []
         for date, row in hist.iterrows():
-            date_str = date.strftime('%Y-%m-%d')
+            row_data = cast(Any, row)
+            date_str = cast(Any, date).strftime('%Y-%m-%d')
             kline_data.append({
                 'date': date_str,
                 'trade_date': date_str,  # 前端需要这个字段
-                'open': float(row['Open']),
-                'high': float(row['High']),
-                'low': float(row['Low']),
-                'close': float(row['Close']),
-                'volume': int(row['Volume'])
+                'open': float(row_data['Open']),
+                'high': float(row_data['High']),
+                'low': float(row_data['Low']),
+                'close': float(row_data['Close']),
+                'volume': int(row_data['Volume'])
             })
 
         return kline_data
 
     def _get_us_kline_from_alpha_vantage(self, code: str, period: str, limit: int) -> List[Dict]:
         """从Alpha Vantage获取美股K线数据"""
-        from trader.flows.providers.us.alpha.common import get_api_key, _make_api_request
-        import pandas as pd
+        get_api_key = getattr(importlib.import_module('trader.flows.providers.us.alpha.common'), 'get_api_key')
+        _make_api_request = getattr(importlib.import_module('trader.flows.providers.us.alpha.common'), '_make_api_request')
+        pd = importlib.import_module('pandas')
 
         # 获取 API Key
         api_key = get_api_key()
@@ -1100,12 +1121,12 @@ class ForeignStockService:
             }
             time_series_key = "Time Series (Daily)"
 
-        data = _make_api_request(function, params)
+        data = cast(Dict[str, Any], _make_api_request(function, params))
 
         if not data or time_series_key not in data:
             raise Exception("无数据")
 
-        time_series = data[time_series_key]
+        time_series = cast(Dict[str, Any], data[time_series_key])
 
         # 转换为 DataFrame
         df = pd.DataFrame.from_dict(time_series, orient='index')
@@ -1118,24 +1139,26 @@ class ForeignStockService:
         # 格式化数据
         kline_data = []
         for date, row in df.iterrows():
-            date_str = date.strftime('%Y-%m-%d')
+            row_data = cast(Any, row)
+            date_str = cast(Any, date).strftime('%Y-%m-%d')
             kline_data.append({
                 'date': date_str,
                 'trade_date': date_str,  # 前端需要这个字段
-                'open': float(row['1. open']),
-                'high': float(row['2. high']),
-                'low': float(row['3. low']),
-                'close': float(row['4. close']),
-                'volume': int(row['5. volume'])
+                'open': float(row_data['1. open']),
+                'high': float(row_data['2. high']),
+                'low': float(row_data['3. low']),
+                'close': float(row_data['4. close']),
+                'volume': int(row_data['5. volume'])
             })
 
         return kline_data
 
     def _get_us_kline_from_finnhub(self, code: str, period: str, limit: int) -> List[Dict]:
         """从Finnhub获取美股K线数据"""
-        import finnhub
-        import os
-        from datetime import datetime, timedelta
+        finnhub = importlib.import_module('finnhub')
+        os = importlib.import_module('os')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         # 获取 API Key
         api_key = os.getenv('FINNHUB_API_KEY')
@@ -1213,7 +1236,8 @@ class ForeignStockService:
         Returns:
             包含新闻列表和数据源的字典
         """
-        from datetime import datetime, timedelta
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         logger.info(f"📰 开始获取港股新闻: {code}, days={days}, limit={limit}")
 
@@ -1235,7 +1259,7 @@ class ForeignStockService:
 
         # 3. 按优先级尝试各个数据源
         news_data = None
-        data_source = None
+        data_source = ""
 
         # 数据源名称映射
         source_handlers = {
@@ -1263,7 +1287,7 @@ class ForeignStockService:
             handler_name, handler_func = source_handlers[source_key]
             try:
                 # 🔥 使用 asyncio.to_thread 避免阻塞事件循环
-                import asyncio
+                asyncio = importlib.import_module('asyncio')
                 news_data = await asyncio.to_thread(handler_func, code, days, limit)
                 data_source = handler_name
 
@@ -1309,7 +1333,8 @@ class ForeignStockService:
         Returns:
             包含新闻列表和数据源的字典
         """
-        from datetime import datetime, timedelta
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         logger.info(f"📰 开始获取美股新闻: {code}, days={days}, limit={limit}")
 
@@ -1331,7 +1356,7 @@ class ForeignStockService:
 
         # 3. 按优先级尝试各个数据源
         news_data = None
-        data_source = None
+        data_source = ""
 
         # 数据源名称映射
         source_handlers = {
@@ -1359,7 +1384,7 @@ class ForeignStockService:
             handler_name, handler_func = source_handlers[source_key]
             try:
                 # 🔥 使用 asyncio.to_thread 避免阻塞事件循环
-                import asyncio
+                asyncio = importlib.import_module('asyncio')
                 news_data = await asyncio.to_thread(handler_func, code, days, limit)
                 data_source = handler_name
 
@@ -1395,8 +1420,10 @@ class ForeignStockService:
 
     def _get_us_news_from_alpha_vantage(self, code: str, days: int, limit: int) -> List[Dict]:
         """从Alpha Vantage获取美股新闻"""
-        from trader.flows.providers.us.alpha.common import get_api_key, _make_api_request
-        from datetime import datetime, timedelta
+        get_api_key = getattr(importlib.import_module('trader.flows.providers.us.alpha.common'), 'get_api_key')
+        _make_api_request = getattr(importlib.import_module('trader.flows.providers.us.alpha.common'), '_make_api_request')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         # 获取 API Key
         api_key = get_api_key()
@@ -1416,14 +1443,14 @@ class ForeignStockService:
             "limit": str(limit),
         }
 
-        data = _make_api_request("NEWS_SENTIMENT", params)
+        data = cast(Dict[str, Any], _make_api_request("NEWS_SENTIMENT", params))
 
         if not data or 'feed' not in data:
             raise Exception("无数据")
 
         # 格式化新闻数据
         news_list = []
-        for article in data.get('feed', [])[:limit]:
+        for article in cast(List[Dict[str, Any]], data.get('feed', []))[:limit]:
             # 解析时间
             time_published = article.get('time_published', '')
             try:
@@ -1458,9 +1485,10 @@ class ForeignStockService:
 
     def _get_us_news_from_finnhub(self, code: str, days: int, limit: int) -> List[Dict]:
         """从Finnhub获取美股新闻"""
-        import finnhub
-        import os
-        from datetime import datetime, timedelta
+        finnhub = importlib.import_module('finnhub')
+        os = importlib.import_module('os')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         # 获取 API Key
         api_key = os.getenv('FINNHUB_API_KEY')
@@ -1505,9 +1533,10 @@ class ForeignStockService:
 
     def _get_hk_news_from_finnhub(self, code: str, days: int, limit: int) -> List[Dict]:
         """从Finnhub获取港股新闻"""
-        import finnhub
-        import os
-        from datetime import datetime, timedelta
+        finnhub = importlib.import_module('finnhub')
+        os = importlib.import_module('os')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         # 获取 API Key
         api_key = os.getenv('FINNHUB_API_KEY')
@@ -1555,10 +1584,8 @@ class ForeignStockService:
 
     def _get_hk_info_from_akshare(self, code: str) -> Dict:
         """从AKShare获取港股基础信息和财务指标"""
-        from trader.flows.providers.hk.improved import (
-            get_hk_stock_info_akshare,
-            get_hk_financial_indicators
-        )
+        get_hk_stock_info_akshare = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_stock_info_akshare')
+        get_hk_financial_indicators = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_financial_indicators')
 
         # 1. 获取基础信息（包含当前价格）
         info = get_hk_stock_info_akshare(code)
@@ -1614,7 +1641,7 @@ class ForeignStockService:
 
     def _get_hk_info_from_yfinance(self, code: str) -> Dict:
         """从Yahoo Finance获取港股基础信息"""
-        import yfinance as yf
+        yf = importlib.import_module('yfinance')
 
         ticker = yf.Ticker(f"{code}.HK")
         info = ticker.info
@@ -1632,8 +1659,8 @@ class ForeignStockService:
 
     def _get_hk_info_from_finnhub(self, code: str) -> Dict:
         """从Finnhub获取港股基础信息"""
-        import finnhub
-        import os
+        finnhub = importlib.import_module('finnhub')
+        os = importlib.import_module('os')
 
         # 获取 API Key
         api_key = os.getenv('FINNHUB_API_KEY')
@@ -1665,10 +1692,11 @@ class ForeignStockService:
 
     def _get_hk_kline_from_akshare(self, code: str, period: str, limit: int) -> List[Dict]:
         """从AKShare获取港股K线数据"""
-        import akshare as ak
-        import pandas as pd
-        from datetime import datetime, timedelta
-        from trader.flows.providers.hk.improved import get_improved_hk_provider
+        ak = importlib.import_module('akshare')
+        pd = importlib.import_module('pandas')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
+        get_improved_hk_provider = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_improved_hk_provider')
 
         # 标准化代码
         provider = get_improved_hk_provider()
@@ -1686,24 +1714,26 @@ class ForeignStockService:
         # 格式化数据
         kline_data = []
         for _, row in df.iterrows():
+            row_data = cast(Any, row)
             # AKShare 返回的列名：date, open, close, high, low, volume
-            date_str = row['date'].strftime('%Y-%m-%d') if hasattr(row['date'], 'strftime') else str(row['date'])
+            date_value = row_data['date']
+            date_str = date_value.strftime('%Y-%m-%d') if hasattr(date_value, 'strftime') else str(date_value)
             kline_data.append({
                 'date': date_str,
                 'trade_date': date_str,
-                'open': float(row['open']),
-                'high': float(row['high']),
-                'low': float(row['low']),
-                'close': float(row['close']),
-                'volume': int(row['volume']) if 'volume' in row else 0
+                'open': float(row_data['open']),
+                'high': float(row_data['high']),
+                'low': float(row_data['low']),
+                'close': float(row_data['close']),
+                'volume': int(row_data['volume']) if 'volume' in row_data else 0
             })
 
         return kline_data
 
     def _get_hk_kline_from_yfinance(self, code: str, period: str, limit: int) -> List[Dict]:
         """从Yahoo Finance获取港股K线数据"""
-        import yfinance as yf
-        import pandas as pd
+        yf = importlib.import_module('yfinance')
+        pd = importlib.import_module('pandas')
 
         ticker = yf.Ticker(f"{code}.HK")
 
@@ -1727,24 +1757,26 @@ class ForeignStockService:
         # 格式化数据
         kline_data = []
         for date, row in hist.iterrows():
-            date_str = date.strftime('%Y-%m-%d')
+            row_data = cast(Any, row)
+            date_str = cast(Any, date).strftime('%Y-%m-%d')
             kline_data.append({
                 'date': date_str,
                 'trade_date': date_str,
-                'open': float(row['Open']),
-                'high': float(row['High']),
-                'low': float(row['Low']),
-                'close': float(row['Close']),
-                'volume': int(row['Volume'])
+                'open': float(row_data['Open']),
+                'high': float(row_data['High']),
+                'low': float(row_data['Low']),
+                'close': float(row_data['Close']),
+                'volume': int(row_data['Volume'])
             })
 
         return kline_data[-limit:]  # 返回最后limit条
 
     def _get_hk_kline_from_finnhub(self, code: str, period: str, limit: int) -> List[Dict]:
         """从Finnhub获取港股K线数据"""
-        import finnhub
-        import os
-        from datetime import datetime, timedelta
+        finnhub = importlib.import_module('finnhub')
+        os = importlib.import_module('os')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         # 获取 API Key
         api_key = os.getenv('FINNHUB_API_KEY')
@@ -1799,8 +1831,9 @@ class ForeignStockService:
     def _get_hk_news_from_akshare(self, code: str, days: int, limit: int) -> List[Dict]:
         """从AKShare获取港股新闻"""
         try:
-            import akshare as ak
-            from datetime import datetime, timedelta
+            ak = importlib.import_module('akshare')
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
             # AKShare 的港股新闻接口
             # 注意：AKShare 可能没有专门的港股新闻接口，这里使用通用新闻接口

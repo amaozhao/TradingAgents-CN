@@ -3,6 +3,7 @@
 测试pypandoc功能
 验证导出功能的依赖是否正常工作
 """
+import importlib
 
 import sys
 import os
@@ -17,7 +18,7 @@ def test_pypandoc_import():
     """测试pypandoc导入"""
     print("🔍 测试pypandoc导入...")
     try:
-        import pypandoc
+        pypandoc = importlib.import_module('pypandoc')
         print("✅ pypandoc导入成功")
         return True
     except ImportError as e:
@@ -28,7 +29,7 @@ def test_pandoc_version():
     """测试pandoc版本"""
     print("\n🔍 测试pandoc版本...")
     try:
-        import pypandoc
+        pypandoc = importlib.import_module('pypandoc')
         version = pypandoc.get_pandoc_version()
         print(f"✅ Pandoc版本: {version}")
         return True
@@ -40,7 +41,7 @@ def test_pandoc_download():
     """测试pandoc自动下载"""
     print("\n🔍 测试pandoc自动下载...")
     try:
-        import pypandoc
+        pypandoc = importlib.import_module('pypandoc')
 
         # 检查是否已有pandoc
         try:
@@ -67,7 +68,7 @@ def test_markdown_conversion():
     print("\n🔍 测试Markdown转换...")
 
     try:
-        import pypandoc
+        pypandoc = importlib.import_module('pypandoc')
 
         # 测试内容
         test_markdown = """# 测试报告
@@ -170,7 +171,7 @@ def test_report_exporter():
     print("\n🔍 测试报告导出器...")
 
     try:
-        from web.utils.reportexporter import ReportExporter
+        ReportExporter = getattr(importlib.import_module('web.utils.reports'), 'ReportExporter')
 
         # 创建导出器实例
         exporter = ReportExporter()

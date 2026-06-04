@@ -3,6 +3,7 @@
 为 TradingAgents 提供阿里百炼大模型的 OpenAI 兼容接口
 利用百炼模型的原生 OpenAI 兼容性，无需额外的工具转换
 """
+import importlib
 
 import os
 from typing import Any, Dict, List, Optional, Union, Sequence
@@ -14,6 +15,21 @@ from trader.config.manager import token_tracker
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
 logger = get_logger('agents')
+
+
+try:
+    from app.utils.keys import is_valid_api_key
+except ImportError:
+    def is_valid_api_key(api_key: Optional[str]) -> bool:
+        if not api_key or len(api_key) <= 10:
+            return False
+        if api_key.startswith('your_') or api_key.startswith('your-'):
+            return False
+        if api_key.endswith('_here') or api_key.endswith('-here'):
+            return False
+        if '...' in api_key:
+            return False
+        return True
 
 
 class ChatDashScopeOpenAI(ChatOpenAI):
@@ -35,23 +51,6 @@ class ChatDashScopeOpenAI(ChatOpenAI):
 
         # 如果 kwargs 中没有 API Key 或者是 None，尝试从环境变量读取
         if not api_key_from_kwargs:
-            # 导入 API Key 验证工具
-            try:
-                # 尝试从 app.utils 导入（后端环境）
-                from app.utils.keys import is_valid_api_key
-            except ImportError:
-                # 如果导入失败，使用本地简化版本
-                def is_valid_api_key(key):
-                    if not key or len(key) <= 10:
-                        return False
-                    if key.startswith('your_') or key.startswith('your-'):
-                        return False
-                    if key.endswith('_here') or key.endswith('-here'):
-                        return False
-                    if '...' in key:
-                        return False
-                    return True
-
             # 尝试从环境变量读取 API Key
             env_api_key = os.getenv("DASHSCOPE_API_KEY")
             logger.info(f"🔍 [DashScope初始化] 从环境变量读取 DASHSCOPE_API_KEY: {'有值' if env_api_key else '空'}")
@@ -254,11 +253,11 @@ def test_dashscope_openai_function_calling(
         # 定义测试工具
         def get_current_time() -> str:
             """获取当前时间"""
-            import datetime
+            datetime = importlib.import_module('datetime')
             return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # 创建 LangChain 工具
-        from langchain_core.tools import tool
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
 
         @tool
         def test_tool(query: str) -> str:

@@ -2,6 +2,7 @@
 """
 最终验证推荐的Gemini模型
 """
+import importlib
 
 import os
 import sys
@@ -21,8 +22,8 @@ def test_recommended_model():
         print("🧪 最终验证推荐模型: gemini-2.0-flash")
         print("=" * 60)
 
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 检查API密钥
         google_key = os.getenv('GOOGLE_API_KEY')
@@ -103,13 +104,13 @@ def test_recommended_model():
 
         except Exception as e:
             print(f"❌ 股票分析失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             print(traceback.format_exc())
             return False
 
     except Exception as e:
         print(f"❌ 最终验证失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 

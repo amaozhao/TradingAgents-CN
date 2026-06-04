@@ -1,4 +1,5 @@
 from __future__ import annotations
+import importlib
 
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
@@ -336,7 +337,9 @@ def _iter_business_keys(value) -> set[BusinessKey]:
         return value
     if isinstance(value, list | tuple) and value and isinstance(value[0], tuple):
         return set(value)
-    return {value}
+    if isinstance(value, tuple):
+        return {value}
+    return set()
 
 
 def _favorite_keys(document: dict[str, Any]) -> set[BusinessKey]:
@@ -351,43 +354,43 @@ def _favorite_keys(document: dict[str, Any]) -> set[BusinessKey]:
 
 
 def _stock_news_legacy_id(document: dict[str, Any]) -> str:
-    from app.db.document import map_stock_news
+    map_stock_news = getattr(importlib.import_module('app.db.document'), 'map_stock_news')
 
     return str(map_stock_news(document)["legacy_id"])
 
 
 def _scheduler_history_legacy_id(document: dict[str, Any]) -> str:
-    from app.db.document import map_scheduler_history
+    map_scheduler_history = getattr(importlib.import_module('app.db.document'), 'map_scheduler_history')
 
     return str(map_scheduler_history(document)["legacy_id"])
 
 
 def _analysis_result_legacy_id(document: dict[str, Any]) -> str:
-    from app.db.document import map_analysis_result
+    map_analysis_result = getattr(importlib.import_module('app.db.document'), 'map_analysis_result')
 
     return str(map_analysis_result(document)["legacy_id"])
 
 
 def _token_usage_legacy_id(document: dict[str, Any]) -> str:
-    from app.db.document import map_token_usage
+    map_token_usage = getattr(importlib.import_module('app.db.document'), 'map_token_usage')
 
     return str(map_token_usage(document)["legacy_id"])
 
 
 def _user_session_id(document: dict[str, Any]) -> str:
-    from app.db.document import map_user_session
+    map_user_session = getattr(importlib.import_module('app.db.document'), 'map_user_session')
 
     return str(map_user_session(document)["session_id"])
 
 
 def _login_attempt_legacy_id(document: dict[str, Any]) -> str:
-    from app.db.document import map_login_attempt
+    map_login_attempt = getattr(importlib.import_module('app.db.document'), 'map_login_attempt')
 
     return str(map_login_attempt(document)["legacy_id"])
 
 
 def _date_key(value: Any) -> str:
-    from app.db.document import map_stock_daily_quote
+    map_stock_daily_quote = getattr(importlib.import_module('app.db.document'), 'map_stock_daily_quote')
 
     mapped = map_stock_daily_quote({"symbol": "x", "trade_date": value, "data_source": "x"})
     trade_date = mapped["trade_date"]

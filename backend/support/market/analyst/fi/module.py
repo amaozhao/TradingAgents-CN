@@ -2,6 +2,7 @@
 """
 测试修复后的市场分析师
 """
+import importlib
 
 import os
 import sys
@@ -21,10 +22,10 @@ def test_deepseek_market_analyst():
     print("=" * 60)
 
     try:
-        from trader.agents.analysts.market import create_market_analyst
-        from trader.llm.adapters.deepseek import ChatDeepSeek
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        create_market_analyst = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst')
+        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建DeepSeek LLM
         deepseek_llm = ChatDeepSeek(
@@ -80,7 +81,7 @@ def test_deepseek_market_analyst():
 
     except Exception as e:
         print(f"❌ DeepSeek市场分析师测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -95,10 +96,10 @@ def test_dashscope_market_analyst():
             print("⚠️ 未找到DASHSCOPE_API_KEY，跳过百炼测试")
             return True  # 跳过不算失败
 
-        from trader.agents.analysts.market import create_market_analyst_react
-        from trader.llm.adapters.dashscope.native import ChatDashScope
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        create_market_analyst_react = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst_react')
+        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters.dashscope.native'), 'ChatDashScope')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建百炼LLM
         dashscope_llm = ChatDashScope(
@@ -154,7 +155,7 @@ def test_dashscope_market_analyst():
 
     except Exception as e:
         print(f"❌ 百炼市场分析师测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

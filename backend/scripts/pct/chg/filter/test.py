@@ -2,6 +2,7 @@
 """
 测试涨跌幅筛选
 """
+import importlib
 
 import sys
 import os
@@ -104,7 +105,7 @@ async def test_pct_chg_filter():
 
     except Exception as e:
         logger.error(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return 1
 

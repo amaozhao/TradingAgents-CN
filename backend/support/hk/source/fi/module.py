@@ -1,6 +1,7 @@
 """
 测试港股数据源修复
 """
+import importlib
 
 import sys
 import os
@@ -14,8 +15,8 @@ def test_toolkit_hk_method():
     print("🧪 测试工具包港股方法...")
 
     try:
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建工具包
         config = DEFAULT_CONFIG.copy()
@@ -35,7 +36,7 @@ def test_toolkit_hk_method():
 
     except Exception as e:
         print(f"❌ 工具包港股方法测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -44,10 +45,10 @@ def test_market_analyst_tools():
     print("\n🧪 测试市场分析师工具配置...")
 
     try:
-        from trader.agents.analysts.market import create_market_analyst
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
-        from trader.utils.stocks import StockUtils
+        create_market_analyst = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         # 创建工具包
         config = DEFAULT_CONFIG.copy()
@@ -77,7 +78,7 @@ def test_market_analyst_tools():
 
     except Exception as e:
         print(f"❌ 市场分析师工具配置测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -86,7 +87,8 @@ def test_akshare_hk_availability():
     print("\n🧪 测试AKShare港股可用性...")
 
     try:
-        from trader.flows.interface import AKSHARE_HK_AVAILABLE, HK_STOCK_AVAILABLE
+        AKSHARE_HK_AVAILABLE = getattr(importlib.import_module('trader.flows.interface'), 'AKSHARE_HK_AVAILABLE')
+        HK_STOCK_AVAILABLE = getattr(importlib.import_module('trader.flows.interface'), 'HK_STOCK_AVAILABLE')
 
         print(f"  AKShare港股可用: {AKSHARE_HK_AVAILABLE}")
         print(f"  Yahoo Finance港股可用: {HK_STOCK_AVAILABLE}")
@@ -95,7 +97,7 @@ def test_akshare_hk_availability():
             print("  ✅ AKShare港股数据源可用")
 
             # 测试AKShare港股函数
-            from trader.flows.akshare import get_hk_stock_data_akshare
+            get_hk_stock_data_akshare = getattr(importlib.import_module('trader.flows.akshare'), 'get_hk_stock_data_akshare')
             print("  ✅ AKShare港股函数导入成功")
 
         else:
@@ -107,14 +109,14 @@ def test_akshare_hk_availability():
             print("  ⚠️ Yahoo Finance港股数据源不可用")
 
         # 测试统一接口
-        from trader.flows.interface import get_hk_stock_data_unified
+        get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
         print("  ✅ 港股统一接口导入成功")
 
         return True
 
     except Exception as e:
         print(f"❌ AKShare港股可用性测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -123,8 +125,9 @@ def test_data_source_priority():
     print("\n🧪 测试数据源优先级...")
 
     try:
-        from trader.flows.interface import get_hk_stock_data_unified
-        from datetime import datetime, timedelta
+        get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         # 设置测试日期
         end_date = datetime.now().strftime('%Y-%m-%d')
@@ -145,7 +148,7 @@ def test_data_source_priority():
 
     except Exception as e:
         print(f"❌ 数据源优先级测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

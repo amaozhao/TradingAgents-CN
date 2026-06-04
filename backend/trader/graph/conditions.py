@@ -1,10 +1,20 @@
+import importlib
 # TradingAgents/graph/conditional_logic.py
+
+from typing import Any
 
 from trader.agents.utils.states import AgentState
 
 # 导入统一日志系统
 from trader.utils.logging.init import get_logger
 logger = get_logger("default")
+
+
+def _get_tool_calls(message: Any) -> list[Any]:
+    tool_calls = getattr(message, "tool_calls", None)
+    if isinstance(tool_calls, list):
+        return tool_calls
+    return []
 
 
 class ConditionalLogic:
@@ -17,7 +27,7 @@ class ConditionalLogic:
 
     def should_continue_market(self, state: AgentState):
         """Determine if market analysis should continue."""
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("agents")
 
         messages = state["messages"]
@@ -35,11 +45,12 @@ class ConditionalLogic:
         logger.info(f"🔀 [条件判断] - 报告长度: {len(market_report)}")
         logger.info(f"🔧 [死循环修复] - 工具调用次数: {tool_call_count}/{max_tool_calls}")
         logger.info(f"🔀 [条件判断] - 最后消息类型: {type(last_message).__name__}")
-        logger.info(f"🔀 [条件判断] - 是否有tool_calls: {hasattr(last_message, 'tool_calls')}")
-        if hasattr(last_message, 'tool_calls'):
-            logger.info(f"🔀 [条件判断] - tool_calls数量: {len(last_message.tool_calls) if last_message.tool_calls else 0}")
-            if last_message.tool_calls:
-                for i, tc in enumerate(last_message.tool_calls):
+        tool_calls = _get_tool_calls(last_message)
+        logger.info(f"🔀 [条件判断] - 是否有tool_calls: {bool(tool_calls)}")
+        if tool_calls:
+            logger.info(f"🔀 [条件判断] - tool_calls数量: {len(tool_calls)}")
+            if tool_calls:
+                for i, tc in enumerate(tool_calls):
                     logger.info(f"🔀 [条件判断] - tool_call[{i}]: {tc.get('name', 'unknown')}")
 
         # 死循环修复: 如果达到最大工具调用次数，强制结束
@@ -53,7 +64,7 @@ class ConditionalLogic:
             return "Msg Clear Market"
 
         # 只有AIMessage才有tool_calls属性
-        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+        if tool_calls:
             logger.info(f"🔀 [条件判断] 🔧 检测到tool_calls，返回: tools_market")
             return "tools_market"
 
@@ -62,7 +73,7 @@ class ConditionalLogic:
 
     def should_continue_social(self, state: AgentState):
         """Determine if social media analysis should continue."""
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("agents")
 
         messages = state["messages"]
@@ -79,6 +90,7 @@ class ConditionalLogic:
         logger.info(f"🔀 [条件判断] - 消息数量: {len(messages)}")
         logger.info(f"🔀 [条件判断] - 报告长度: {len(sentiment_report)}")
         logger.info(f"🔧 [死循环修复] - 工具调用次数: {tool_call_count}/{max_tool_calls}")
+        tool_calls = _get_tool_calls(last_message)
 
         # 死循环修复: 如果达到最大工具调用次数，强制结束
         if tool_call_count >= max_tool_calls:
@@ -91,7 +103,7 @@ class ConditionalLogic:
             return "Msg Clear Social"
 
         # 只有AIMessage才有tool_calls属性
-        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+        if tool_calls:
             logger.info(f"🔀 [条件判断] 🔧 检测到tool_calls，返回: tools_social")
             return "tools_social"
 
@@ -100,7 +112,7 @@ class ConditionalLogic:
 
     def should_continue_news(self, state: AgentState):
         """Determine if news analysis should continue."""
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("agents")
 
         messages = state["messages"]
@@ -117,6 +129,7 @@ class ConditionalLogic:
         logger.info(f"🔀 [条件判断] - 消息数量: {len(messages)}")
         logger.info(f"🔀 [条件判断] - 报告长度: {len(news_report)}")
         logger.info(f"🔧 [死循环修复] - 工具调用次数: {tool_call_count}/{max_tool_calls}")
+        tool_calls = _get_tool_calls(last_message)
 
         # 死循环修复: 如果达到最大工具调用次数，强制结束
         if tool_call_count >= max_tool_calls:
@@ -129,7 +142,7 @@ class ConditionalLogic:
             return "Msg Clear News"
 
         # 只有AIMessage才有tool_calls属性
-        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+        if tool_calls:
             logger.info(f"🔀 [条件判断] 🔧 检测到tool_calls，返回: tools_news")
             return "tools_news"
 
@@ -138,7 +151,7 @@ class ConditionalLogic:
 
     def should_continue_fundamentals(self, state: AgentState):
         """判断基本面分析是否应该继续"""
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("agents")
 
         messages = state["messages"]
@@ -166,12 +179,13 @@ class ConditionalLogic:
             logger.info(f"🤖 [条件判断] - 内容预览: {content_preview}")
 
         # 🔍 [调试日志] 打印tool_calls的详细信息
-        logger.info(f"🔀 [条件判断] - 是否有tool_calls: {hasattr(last_message, 'tool_calls')}")
-        if hasattr(last_message, 'tool_calls'):
-            logger.info(f"🔀 [条件判断] - tool_calls数量: {len(last_message.tool_calls) if last_message.tool_calls else 0}")
-            if last_message.tool_calls:
-                logger.info(f"🔧 [条件判断] 检测到 {len(last_message.tool_calls)} 个工具调用:")
-                for i, tc in enumerate(last_message.tool_calls):
+        tool_calls = _get_tool_calls(last_message)
+        logger.info(f"🔀 [条件判断] - 是否有tool_calls: {bool(tool_calls)}")
+        if tool_calls:
+            logger.info(f"🔀 [条件判断] - tool_calls数量: {len(tool_calls)}")
+            if tool_calls:
+                logger.info(f"🔧 [条件判断] 检测到 {len(tool_calls)} 个工具调用:")
+                for i, tc in enumerate(tool_calls):
                     logger.info(f"🔧 [条件判断] - 工具调用 {i+1}: {tc.get('name', 'unknown')} (ID: {tc.get('id', 'unknown')})")
                     if 'args' in tc:
                         logger.info(f"🔧 [条件判断] - 参数: {tc['args']}")
@@ -186,7 +200,7 @@ class ConditionalLogic:
             return "Msg Clear Fundamentals"
 
         # ✅ 优先级2: 如果有tool_calls，去执行工具
-        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+        if tool_calls:
             # 检查是否超过最大调用次数
             if tool_call_count >= max_tool_calls:
                 logger.warning(f"🔧 [死循环修复] 工具调用次数已达上限({tool_call_count}/{max_tool_calls})，但仍有tool_calls，强制结束")

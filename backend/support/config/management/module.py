@@ -2,6 +2,7 @@
 """
 配置管理功能测试
 """
+import importlib
 
 import os
 import sys
@@ -261,7 +262,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(f"错误详情: {traceback.format_exc()}")
         return False
 

@@ -2,6 +2,7 @@
 分析线程跟踪器
 用于跟踪和检测分析线程的存活状态
 """
+import importlib
 
 import threading
 import time
@@ -135,7 +136,7 @@ def check_analysis_status(analysis_id: str) -> str:
 
     # 线程不存在，检查进度数据确定最终状态
     try:
-        from .progress import get_progress_by_id
+        get_progress_by_id = getattr(importlib.import_module('web.utils.progress'), 'get_progress_by_id')
         progress_data = get_progress_by_id(analysis_id)
 
         if progress_data:

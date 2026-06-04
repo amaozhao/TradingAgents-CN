@@ -1,7 +1,8 @@
 """
 Tushare data source adapter
 """
-from typing import Optional, Dict
+import importlib
+from typing import Any, Optional, Dict
 import logging
 from datetime import datetime, timedelta
 import pandas as pd
@@ -16,13 +17,13 @@ class TushareAdapter(DataSourceAdapter):
 
     def __init__(self):
         super().__init__()  # 调用父类初始化
-        self._provider = None
+        self._provider: Any = None
         self._initialize()
 
     def _initialize(self):
         """Initialize Tushare provider"""
         try:
-            from trader.flows.providers.china.tushare import get_tushare_provider
+            get_tushare_provider = getattr(importlib.import_module('trader.flows.providers.china.tushare'), 'get_tushare_provider')
             self._provider = get_tushare_provider()
         except Exception as e:
             logger.warning(f"Failed to initialize Tushare provider: {e}")
@@ -95,6 +96,14 @@ class TushareAdapter(DataSourceAdapter):
         except Exception as e:
             logger.error(f"Tushare: Failed to fetch daily data for {trade_date}: {e}")
         return None
+
+    def _safe_float(self, value: Any) -> Optional[float]:
+        try:
+            if value is None or value == "" or value == "None":
+                return None
+            return float(value)
+        except (TypeError, ValueError):
+            return None
 
 
     def get_realtime_quotes(self):
@@ -175,7 +184,7 @@ class TushareAdapter(DataSourceAdapter):
         if not self.is_available():
             return None
         try:
-            from tushare.pro.data_pro import pro_bar
+            pro_bar = getattr(importlib.import_module('tushare.pro.data_pro'), 'pro_bar')
         except Exception:
             logger.error("Tushare pro_bar not available")
             return None
@@ -243,17 +252,19 @@ class TushareAdapter(DataSourceAdapter):
         """
         if not self.is_available():
             return None
-        api = self._provider.api if self._provider else None
+        provider: Any = self._provider
+        api = provider.api if provider else None
         if api is None:
             return None
         items = []
         # resolve ts_code and date range
         try:
-            ts_code = self._provider._normalize_symbol(code) if hasattr(self._provider, "_normalize_symbol") else code
+            ts_code = provider._normalize_symbol(code) if hasattr(provider, "_normalize_symbol") else code
         except Exception:
             ts_code = code
         try:
-            from datetime import datetime, timedelta
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
             end = datetime.now()
             start = end - timedelta(days=max(1, days))
             start_str = start.strftime('%Y%m%d')

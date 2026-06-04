@@ -2,6 +2,7 @@
 """
 测试AKShare性能优化
 """
+import importlib
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,7 +24,7 @@ def test_akshare_performance():
     print("=" * 60)
 
     try:
-        from app.services.sources import AKShareAdapter
+        AKShareAdapter = getattr(importlib.import_module('app.services.sources'), 'AKShareAdapter')
 
         adapter = AKShareAdapter()
 
@@ -79,7 +80,7 @@ def test_akshare_performance():
 
     except Exception as e:
         print(f"❌ 性能测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def test_web_api_simulation():
@@ -89,7 +90,7 @@ def test_web_api_simulation():
     print("=" * 60)
 
     try:
-        from app.services.sources import DataSourceManager
+        DataSourceManager = getattr(importlib.import_module('app.services.sources'), 'DataSourceManager')
 
         manager = DataSourceManager()
 
@@ -157,7 +158,7 @@ def test_web_api_simulation():
 
     except Exception as e:
         print(f"❌ Web API模拟测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

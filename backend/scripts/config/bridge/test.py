@@ -3,6 +3,7 @@
 测试配置桥接功能
 验证数据库配置是否正确桥接到环境变量
 """
+import importlib
 
 import os
 import sys
@@ -21,13 +22,13 @@ async def test_config_bridge():
 
     # 1. 初始化数据库
     print("\n1️⃣ 初始化数据库连接...")
-    from app.core.database import init_db
+    init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
     await init_db()
     print("✅ 数据库连接成功")
 
     # 2. 读取数据库中的配置
     print("\n2️⃣ 读取数据库配置...")
-    from app.core.database import get_mongo_db
+    get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
     db = get_mongo_db()
     config_doc = await db.system_configs.find_one({"is_active": True})
 
@@ -55,7 +56,7 @@ async def test_config_bridge():
 
     # 3. 执行配置桥接
     print("\n3️⃣ 执行配置桥接...")
-    from app.core.config_bridge import bridge_config_to_env
+    bridge_config_to_env = getattr(importlib.import_module('app.core.bridge'), 'bridge_config_to_env')
     success = bridge_config_to_env()
 
     if not success:
@@ -101,9 +102,10 @@ async def test_config_bridge():
     # 5. 测试 trading_agents 读取配置
     print("\n5️⃣ 测试 trading_agents 读取配置...")
     try:
-        from trader.config.runtime_settings import (
-            get_float, get_int, get_bool, use_app_cache_enabled
-        )
+        get_float = getattr(importlib.import_module('trader.config.runtime'), 'get_float')
+        get_int = getattr(importlib.import_module('trader.config.runtime'), 'get_int')
+        get_bool = getattr(importlib.import_module('trader.config.runtime'), 'get_bool')
+        use_app_cache_enabled = getattr(importlib.import_module('trader.config.runtime'), 'use_app_cache_enabled')
 
         print("\n📋 trading_agents 读取的配置值：")
 
@@ -152,7 +154,7 @@ async def test_config_bridge():
 
     except Exception as e:
         print(f"\n❌ trading_agents 配置读取失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         all_ok = False
 

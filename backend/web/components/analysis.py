@@ -2,6 +2,7 @@
 分析结果管理组件
 提供股票分析历史结果的查看和管理功能
 """
+import importlib
 
 import streamlit as st
 import pandas as pd
@@ -335,10 +336,10 @@ def render_analysis():
 
     # 检查权限
     try:
-        import sys
-        import os
+        sys = importlib.import_module('sys')
+        os = importlib.import_module('os')
         sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-        from utils.auth import auth
+        auth = getattr(importlib.import_module('utils.auth'), 'auth')
 
         if not auth or not auth.check_permission("analysis"):
             st.error("❌ 您没有权限访问分析结果")
@@ -939,7 +940,7 @@ def render_results_export(results: List[Dict[str, Any]]):
                 elif export_format == "Excel":
                     df = pd.DataFrame(summary_data)
 
-                    from io import BytesIO
+                    BytesIO = getattr(importlib.import_module('io'), 'BytesIO')
                     output = BytesIO()
                     with pd.ExcelWriter(output, engine='openpyxl') as writer:
                         df.to_excel(writer, index=False, sheet_name='分析摘要')
@@ -1038,7 +1039,7 @@ def render_results_comparison(results: List[Dict[str, Any]]):
         ]
     }
 
-    import pandas as pd
+    pd = importlib.import_module('pandas')
     df_comparison = pd.DataFrame(comparison_data)
     st.dataframe(df_comparison, use_container_width=True)
 
@@ -1594,7 +1595,7 @@ def save_analysis_result(analysis_id: str, stock_symbol: str, analysts: List[str
                         research_depth: int, result_data: Dict, status: str = "completed"):
     """保存分析结果"""
     try:
-        from web.utils.progress import safe_serialize
+        safe_serialize = getattr(importlib.import_module('web.utils.progress'), 'safe_serialize')
 
         # 创建结果条目，使用安全序列化
         result_entry = {
@@ -1635,8 +1636,8 @@ def save_analysis_result(analysis_id: str, stock_symbol: str, analysts: List[str
                 reports = {}
                 try:
                     # 构建报告目录路径
-                    from pathlib import Path
-                    import os
+                    Path = getattr(importlib.import_module('pathlib'), 'Path')
+                    os = importlib.import_module('os')
 
                     # 获取当前日期
                     current_date = datetime.now().strftime('%Y-%m-%d')

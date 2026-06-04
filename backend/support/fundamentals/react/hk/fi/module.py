@@ -1,6 +1,7 @@
 """
 测试基本面分析师ReAct模式的港股修复
 """
+import importlib
 
 import sys
 import os
@@ -106,8 +107,8 @@ def test_toolkit_method_usage():
     print("\n🧪 测试工具包方法使用...")
 
     try:
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建工具包
         config = DEFAULT_CONFIG.copy()
@@ -144,7 +145,7 @@ def test_stock_type_detection():
     print("\n🧪 测试股票类型检测...")
 
     try:
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         # 测试港股检测
         hk_stocks = ["0700.HK", "9988.HK", "3690.HK"]

@@ -6,6 +6,7 @@
 2. 验证字符串到枚举的转换
 3. 测试模型验证逻辑
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -23,7 +24,7 @@ async def test_mongodb_config():
     print("测试：从 MongoDB 读取模型配置")
     print("=" * 80)
 
-    from app.services.config_service import config_service
+    config_service = getattr(importlib.import_module('app.services.config'), 'config_service')
 
     system_config = await config_service.get_system_config()
 
@@ -67,8 +68,9 @@ def test_model_config_service():
     print("\n测试：模型配置服务")
     print("=" * 80)
 
-    from app.services.model_capability_service import ModelCapabilityService
-    from app.constants.capabilities import ModelFeature, ModelRole
+    ModelCapabilityService = getattr(importlib.import_module('app.services.capability'), 'ModelCapabilityService')
+    ModelFeature = getattr(importlib.import_module('app.constants.capabilities'), 'ModelFeature')
+    ModelRole = getattr(importlib.import_module('app.constants.capabilities'), 'ModelRole')
 
     service = ModelCapabilityService()
 
@@ -121,7 +123,7 @@ def test_model_validation():
     print("\n测试：模型对验证")
     print("=" * 80)
 
-    from app.services.model_capability_service import ModelCapabilityService
+    ModelCapabilityService = getattr(importlib.import_module('app.services.capability'), 'ModelCapabilityService')
 
     service = ModelCapabilityService()
 

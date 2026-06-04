@@ -2,6 +2,7 @@
 """
 简单的异步进度跟踪测试
 """
+import importlib
 
 import sys
 import os
@@ -13,7 +14,8 @@ def test_basic_functionality():
     print("🧪 测试异步进度跟踪基本功能...")
 
     try:
-        from web.utils.progress import AsyncProgressTracker, get_progress_by_id
+        AsyncProgressTracker = getattr(importlib.import_module('web.utils.progress'), 'AsyncProgressTracker')
+        get_progress_by_id = getattr(importlib.import_module('web.utils.progress'), 'get_progress_by_id')
         print("✅ 导入成功")
 
         # 创建跟踪器
@@ -71,7 +73,7 @@ def test_basic_functionality():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

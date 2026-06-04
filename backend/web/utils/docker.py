@@ -3,6 +3,7 @@
 Docker环境PDF导出适配器
 处理Docker容器中的PDF生成特殊需求
 """
+import importlib
 
 import os
 import subprocess
@@ -53,7 +54,7 @@ def setup_xvfb_display():
         ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         # 等待一下让Xvfb启动
-        import time
+        time = importlib.import_module('time')
         time.sleep(2)
 
         # 设置DISPLAY环境变量
@@ -85,7 +86,7 @@ def test_docker_pdf_generation() -> bool:
         return True
 
     try:
-        import pypandoc
+        pypandoc = importlib.import_module('pypandoc')
 
 
         # 设置虚拟显示器

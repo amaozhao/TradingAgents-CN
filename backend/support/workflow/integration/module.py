@@ -2,6 +2,7 @@
 """
 验证统一新闻工具在整体流程中的使用情况
 """
+import importlib
 
 import sys
 import os
@@ -43,7 +44,7 @@ def test_news_analyst_integration():
     try:
         # 1. 检查新闻分析师的工具绑定
         print(f"\n📰 第一步：检查新闻分析师的工具绑定...")
-        from trader.agents.analysts.news import create_news_analyst
+        create_news_analyst = getattr(importlib.import_module('trader.agents.analysts.news'), 'create_news_analyst')
 
         # 创建模拟工具包
         mock_toolkit = MockToolkit()
@@ -58,7 +59,7 @@ def test_news_analyst_integration():
 
         # 检查统一新闻工具是否能正常导入
         try:
-            from trader.tools.news import create_unified_news_tool
+            create_unified_news_tool = getattr(importlib.import_module('trader.tools.news'), 'create_unified_news_tool')
             test_tool = create_unified_news_tool(mock_toolkit)
             print(f"  ✅ 统一新闻工具导入成功")
             print(f"  📝 工具名称: {getattr(test_tool, 'name', '未设置')}")
@@ -166,7 +167,7 @@ def test_news_analyst_integration():
 
     except Exception as e:
         print(f"❌ 验证过程中出现错误: {str(e)}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

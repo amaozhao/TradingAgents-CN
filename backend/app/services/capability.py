@@ -3,6 +3,7 @@
 
 提供模型能力评估、验证和推荐功能。
 """
+import importlib
 
 from typing import Tuple, Dict, Optional, List, Any
 from app.constants.capabilities import (
@@ -123,9 +124,9 @@ class ModelCapabilityService:
         """
         # 1. 优先从 MongoDB 数据库配置读取（使用同步客户端）
         try:
-            from pymongo import MongoClient
-            from app.core.config import settings
-            from app.models.config import SystemConfig
+            MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+            settings = getattr(importlib.import_module('app.core.config'), 'settings')
+            SystemConfig = getattr(importlib.import_module('app.models.config'), 'SystemConfig')
 
             # 使用同步 MongoDB 客户端
             client = MongoClient(settings.mongo_uri)

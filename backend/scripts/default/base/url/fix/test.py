@@ -1,6 +1,7 @@
 """
 测试脚本：验证 default_base_url 修复是否生效
 """
+import importlib
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -14,7 +15,7 @@ def main():
     print("\n📊 1. 测试 create_llm_by_provider 函数")
     print("-" * 80)
 
-    from trader.graph.trading import create_llm_by_provider
+    create_llm_by_provider = getattr(importlib.import_module('trader.graph.trading'), 'create_llm_by_provider')
 
     # 测试参数
     provider = "dashscope"
@@ -58,14 +59,14 @@ def main():
 
     except Exception as e:
         print(f"\n❌ LLM 实例创建失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     # 2. 测试完整的分析流程
     print("\n\n📊 2. 测试完整的分析配置流程")
     print("-" * 80)
 
-    from app.services.simple_analysis_service import create_analysis_config
+    create_analysis_config = getattr(importlib.import_module('app.services.analysis.simple'), 'create_analysis_config')
 
     try:
         config = create_analysis_config(
@@ -92,7 +93,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 配置创建失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     # 3. 测试 TradingAgentsGraph 初始化
@@ -100,8 +101,8 @@ def main():
     print("-" * 80)
 
     try:
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -154,7 +155,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ TradingAgentsGraph 创建失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     print("\n" + "=" * 80)

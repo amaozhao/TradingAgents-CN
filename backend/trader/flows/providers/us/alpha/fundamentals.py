@@ -9,11 +9,11 @@ Alpha Vantage 基本面数据提供者
 参考原版 TradingAgents 实现
 """
 
-from typing import Annotated
+from typing import Annotated, Optional
 import json
 from datetime import datetime
 
-from ...alpha.common import _make_api_request, format_response_as_string
+from .common import _make_api_request, format_response_as_string
 
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
@@ -22,7 +22,7 @@ logger = get_logger('agents')
 
 def get_fundamentals(
     ticker: Annotated[str, "Ticker symbol of the company"],
-    curr_date: Annotated[str, "Current date (not used for Alpha Vantage)"] = None
+    curr_date: Annotated[Optional[str], "Current date (not used for Alpha Vantage)"] = None
 ) -> str:
     """
     获取公司综合基本面数据
@@ -136,7 +136,7 @@ def get_fundamentals(
             logger.info(f"✅ [Alpha Vantage] 成功获取基本面数据: {ticker}")
             return result
         else:
-            return format_response_as_string(data, f"Fundamentals for {ticker}")
+            return format_response_as_string(data, f"Fundamentals for {ticker}") if isinstance(data, dict) else str(data)
 
     except Exception as e:
         logger.error(f"❌ [Alpha Vantage] 获取基本面数据失败 {ticker}: {e}")
@@ -146,7 +146,7 @@ def get_fundamentals(
 def get_balance_sheet(
     ticker: Annotated[str, "Ticker symbol of the company"],
     freq: Annotated[str, "Reporting frequency: annual/quarterly (not used)"] = "quarterly",
-    curr_date: Annotated[str, "Current date (not used)"] = None
+    curr_date: Annotated[Optional[str], "Current date (not used)"] = None
 ) -> str:
     """
     获取资产负债表数据
@@ -165,7 +165,7 @@ def get_balance_sheet(
         params = {"symbol": ticker.upper()}
         data = _make_api_request("BALANCE_SHEET", params)
 
-        return format_response_as_string(data, f"Balance Sheet for {ticker}")
+        return format_response_as_string(data, f"Balance Sheet for {ticker}") if isinstance(data, dict) else str(data)
 
     except Exception as e:
         logger.error(f"❌ [Alpha Vantage] 获取资产负债表失败 {ticker}: {e}")
@@ -175,7 +175,7 @@ def get_balance_sheet(
 def get_cashflow(
     ticker: Annotated[str, "Ticker symbol of the company"],
     freq: Annotated[str, "Reporting frequency: annual/quarterly (not used)"] = "quarterly",
-    curr_date: Annotated[str, "Current date (not used)"] = None
+    curr_date: Annotated[Optional[str], "Current date (not used)"] = None
 ) -> str:
     """
     获取现金流量表数据
@@ -194,7 +194,7 @@ def get_cashflow(
         params = {"symbol": ticker.upper()}
         data = _make_api_request("CASH_FLOW", params)
 
-        return format_response_as_string(data, f"Cash Flow for {ticker}")
+        return format_response_as_string(data, f"Cash Flow for {ticker}") if isinstance(data, dict) else str(data)
 
     except Exception as e:
         logger.error(f"❌ [Alpha Vantage] 获取现金流量表失败 {ticker}: {e}")
@@ -204,7 +204,7 @@ def get_cashflow(
 def get_income_statement(
     ticker: Annotated[str, "Ticker symbol of the company"],
     freq: Annotated[str, "Reporting frequency: annual/quarterly (not used)"] = "quarterly",
-    curr_date: Annotated[str, "Current date (not used)"] = None
+    curr_date: Annotated[Optional[str], "Current date (not used)"] = None
 ) -> str:
     """
     获取利润表数据
@@ -223,7 +223,7 @@ def get_income_statement(
         params = {"symbol": ticker.upper()}
         data = _make_api_request("INCOME_STATEMENT", params)
 
-        return format_response_as_string(data, f"Income Statement for {ticker}")
+        return format_response_as_string(data, f"Income Statement for {ticker}") if isinstance(data, dict) else str(data)
 
     except Exception as e:
         logger.error(f"❌ [Alpha Vantage] 获取利润表失败 {ticker}: {e}")

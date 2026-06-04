@@ -3,6 +3,7 @@
 优化的A股数据获取工具
 集成缓存策略和Tushare数据接口，提高数据获取效率
 """
+import importlib
 
 import os
 import time
@@ -10,7 +11,7 @@ import random
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, cast
 from .cache import get_cache
 from trader.config.manager import config_manager
 
@@ -149,7 +150,7 @@ class OptimizedChinaDataProvider:
             self._wait_for_rate_limit()
 
             # 调用统一数据源接口（默认Tushare，支持备用数据源）
-            from .sources import get_china_stock_data_unified
+            get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.sources'), 'get_china_stock_data_unified')
 
             formatted_data = get_china_stock_data_unified(
                 symbol=symbol,
@@ -223,7 +224,7 @@ class OptimizedChinaDataProvider:
             # 查找基本面数据缓存
             for metadata_file in self.cache.metadata_dir.glob(f"*_meta.json"):
                 try:
-                    import json
+                    json = importlib.import_module('json')
                     with open(metadata_file, 'r', encoding='utf-8') as f:
                         metadata = json.load(f)
 
@@ -276,7 +277,7 @@ class OptimizedChinaDataProvider:
 
         try:
             # 从统一接口获取股票基本信息
-            from .interface import get_china_stock_info_unified
+            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
             stock_info = get_china_stock_info_unified(symbol)
 
             # 如果获取成功，直接返回基础信息
@@ -286,9 +287,9 @@ class OptimizedChinaDataProvider:
 
             # 如果基础信息获取失败，尝试从缓存获取最基本的信息
             try:
-                from trader.config.runtime import use_app_cache_enabled
+                use_app_cache_enabled = getattr(importlib.import_module('trader.config.runtime'), 'use_app_cache_enabled')
                 if use_app_cache_enabled(False):
-                    from .cache.app import get_market_quote_dataframe
+                    get_market_quote_dataframe = getattr(importlib.import_module('trader.flows.cache.app'), 'get_market_quote_dataframe')
                     df_q = get_market_quote_dataframe(symbol)
                     if df_q is not None and not df_q.empty:
                         row_q = df_q.iloc[-1]
@@ -338,7 +339,7 @@ class OptimizedChinaDataProvider:
         # 首先尝试从统一接口获取股票基本信息
         try:
             logger.debug(f"🔍 [股票代码追踪] 尝试获取{symbol}的基本信息...")
-            from .interface import get_china_stock_info_unified
+            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
             stock_info = get_china_stock_info_unified(symbol)
             logger.debug(f"🔍 [股票代码追踪] 获取到的股票信息: {stock_info}")
 
@@ -355,9 +356,9 @@ class OptimizedChinaDataProvider:
         # 若仍缺失当前价格/涨跌幅/成交量，且启用app缓存，则直接读取 market_quotes 兜底
         try:
             if (current_price == "N/A" or change_pct == "N/A" or volume == "N/A"):
-                from trader.config.runtime import use_app_cache_enabled  # type: ignore
+                use_app_cache_enabled = getattr(importlib.import_module('trader.config.runtime'), 'use_app_cache_enabled')
                 if use_app_cache_enabled(False):
-                    from .cache.app import get_market_quote_dataframe
+                    get_market_quote_dataframe = getattr(importlib.import_module('trader.flows.cache.app'), 'get_market_quote_dataframe')
                     df_q = get_market_quote_dataframe(symbol)
                     if df_q is not None and not df_q.empty:
                         row_q = df_q.iloc[-1]
@@ -688,8 +689,11 @@ class OptimizedChinaDataProvider:
 
         # 首先尝试从数据库获取真实的行业信息
         try:
-            from .cache.app import get_basics_from_cache
+            get_basics_from_cache = getattr(importlib.import_module('trader.flows.cache.app'), 'get_basics_from_cache')
             doc = get_basics_from_cache(symbol)
+            if isinstance(doc, list):
+                doc = doc[0] if doc else None
+            doc = cast(Optional[Dict[str, Any]], doc)
             if doc:
                 # 只记录关键字段，避免打印完整文档
                 logger.debug(f"🔍 [股票代码追踪] 从数据库获取到基础信息: code={doc.get('code')}, name={doc.get('name')}, industry={doc.get('industry')}")
@@ -841,17 +845,17 @@ class OptimizedChinaDataProvider:
         logger.error(f"❌ {error_msg}")
         raise ValueError(error_msg)
 
-    def _get_real_financial_metrics(self, symbol: str, price_value: float) -> dict:
+    def _get_real_financial_metrics(self, symbol: str, price_value: float) -> Optional[dict]:
         """获取真实财务指标 - 优先使用数据库缓存，再使用API"""
         try:
             # 🔥 优先从 market_quotes 获取实时股价，替换传入的 price_value
-            from trader.config.databases import get_database_manager
+            get_database_manager = getattr(importlib.import_module('trader.config.databases'), 'get_database_manager')
             db_manager = get_database_manager()
             db_client = None
 
             if db_manager.is_mongodb_available():
                 try:
-                    db_client = db_manager.get_mongodb_client()
+                    db_client = cast(Any, db_manager.get_mongodb_client())
                     db = db_client['trading_agents']
 
                     # 标准化股票代码为6位
@@ -871,12 +875,12 @@ class OptimizedChinaDataProvider:
                 logger.info(f"⚠️ MongoDB 不可用，使用传入价格: {price_value}元")
 
             # 第一优先级：从 MongoDB stock_financial_data 集合获取标准化财务数据
-            from trader.config.runtime import use_app_cache_enabled
+            use_app_cache_enabled = getattr(importlib.import_module('trader.config.runtime'), 'use_app_cache_enabled')
             if use_app_cache_enabled(False):
                 logger.info(f"🔍 优先从 MongoDB stock_financial_data 集合获取{symbol}财务数据")
 
                 # 直接从 MongoDB 获取标准化的财务数据
-                from trader.flows.cache.mongodb import get_mongodb_cache_adapter
+                get_mongodb_cache_adapter = getattr(importlib.import_module('trader.flows.cache.mongodb'), 'get_mongodb_cache_adapter')
                 adapter = get_mongodb_cache_adapter()
                 financial_data = adapter.get_financial_data(symbol)
 
@@ -895,8 +899,8 @@ class OptimizedChinaDataProvider:
                 logger.info(f"🔄 数据库缓存未启用，直接从AKShare API获取{symbol}财务数据")
 
             # 第二优先级：从AKShare API获取
-            from .providers.china.akshare import get_akshare_provider
-            import asyncio
+            get_akshare_provider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'get_akshare_provider')
+            asyncio = importlib.import_module('asyncio')
 
             akshare_provider = get_akshare_provider()
 
@@ -917,7 +921,7 @@ class OptimizedChinaDataProvider:
                     if metrics:
                         logger.info(f"✅ AKShare解析成功，返回指标")
                         # 缓存原始财务数据到数据库（而不是解析后的指标）
-                        self._cache_raw_financial_data(symbol, financial_data, stock_info)
+                        cast(Any, self)._cache_raw_financial_data(symbol, financial_data, stock_info)
                         return metrics
                     else:
                         logger.warning(f"⚠️ AKShare解析失败，返回None")
@@ -928,8 +932,8 @@ class OptimizedChinaDataProvider:
 
             # 第三优先级：使用Tushare数据源
             logger.info(f"🔄 使用Tushare备用数据源获取{symbol}财务数据")
-            from .providers.china.tushare import get_tushare_provider
-            import asyncio
+            get_tushare_provider = getattr(importlib.import_module('trader.flows.providers.china.tushare'), 'get_tushare_provider')
+            asyncio = importlib.import_module('asyncio')
 
             provider = get_tushare_provider()
             if not provider.connected:
@@ -945,12 +949,18 @@ class OptimizedChinaDataProvider:
 
             # 获取股票基本信息（异步方法）
             stock_info = loop.run_until_complete(provider.get_stock_basic_info(symbol))
+            if not isinstance(stock_info, dict):
+                stock_info = {}
 
             # 解析Tushare财务数据
+            if not isinstance(financial_data, dict):
+                logger.debug(f"Tushare返回的{symbol}财务数据不是字典格式")
+                return None
+
             metrics = self._parse_financial_data(financial_data, stock_info, price_value)
             if metrics:
                 # 缓存原始财务数据到数据库
-                self._cache_raw_financial_data(symbol, financial_data, stock_info)
+                cast(Any, self)._cache_raw_financial_data(symbol, financial_data, stock_info)
                 return metrics
 
         except Exception as e:
@@ -958,7 +968,7 @@ class OptimizedChinaDataProvider:
 
         return None
 
-    def _parse_mongodb_financial_data(self, financial_data: dict, price_value: float) -> dict:
+    def _parse_mongodb_financial_data(self, financial_data: dict, price_value: float) -> Optional[dict]:
         """解析 MongoDB 标准化的财务数据为指标"""
         try:
             logger.debug(f"📊 [财务数据] 开始解析 MongoDB 财务数据，包含字段: {list(financial_data.keys())}")
@@ -1045,8 +1055,8 @@ class OptimizedChinaDataProvider:
 
             try:
                 # 优先使用实时计算
-                from trader.flows.metrics import get_pe_pb_with_fallback
-                from trader.config.databases import get_database_manager
+                get_pe_pb_with_fallback = getattr(importlib.import_module('trader.flows.metrics'), 'get_pe_pb_with_fallback')
+                get_database_manager = getattr(importlib.import_module('trader.config.databases'), 'get_database_manager')
 
                 db_manager = get_database_manager()
                 if db_manager.is_mongodb_available():
@@ -1342,9 +1352,11 @@ class OptimizedChinaDataProvider:
             logger.error(f"❌ MongoDB财务数据解析失败: {e}", exc_info=True)
             return None
 
-    def _parse_akshare_financial_data(self, financial_data: dict, stock_info: dict, price_value: float) -> dict:
+    def _parse_akshare_financial_data(self, financial_data: dict, stock_info: Optional[dict], price_value: float) -> Optional[dict]:
         """解析AKShare财务数据为指标"""
         try:
+            stock_info = stock_info or {}
+
             # 获取最新的财务数据
             balance_sheet = financial_data.get('balance_sheet', [])
             income_statement = financial_data.get('income_statement', [])
@@ -1363,7 +1375,7 @@ class OptimizedChinaDataProvider:
                     return None
                 # 列表格式：[{指标: 值, ...}, ...]
                 # 转换为 DataFrame 以便统一处理
-                import pandas as pd
+                pd = importlib.import_module('pandas')
                 main_indicators = pd.DataFrame(main_indicators)
             elif hasattr(main_indicators, 'empty') and main_indicators.empty:
                 logger.warning("AKShare主要财务指标DataFrame为空")
@@ -1372,7 +1384,7 @@ class OptimizedChinaDataProvider:
             # main_indicators是DataFrame，需要转换为字典格式便于查找
             # 获取最新数据列（第3列，索引为2）
             latest_col = main_indicators.columns[2] if len(main_indicators.columns) > 2 else None
-            if not latest_col:
+            if latest_col is None:
                 logger.warning("AKShare主要财务指标缺少数据列")
                 return None
 
@@ -1401,8 +1413,8 @@ class OptimizedChinaDataProvider:
                 if stock_code:
                     logger.info(f"📊 [AKShare-PE计算-第1层] 尝试使用实时PE/PB计算: {stock_code}")
 
-                    from trader.config.databases import get_database_manager
-                    from trader.flows.metrics import get_pe_pb_with_fallback
+                    get_database_manager = getattr(importlib.import_module('trader.config.databases'), 'get_database_manager')
+                    get_pe_pb_with_fallback = getattr(importlib.import_module('trader.flows.metrics'), 'get_pe_pb_with_fallback')
 
                     db_manager = get_database_manager()
                     if db_manager.is_mongodb_available():
@@ -1490,17 +1502,17 @@ class OptimizedChinaDataProvider:
                             value_cols = [col for col in eps_row.columns if col != '指标']
 
                             # 构建 DataFrame 用于 TTM 计算
-                            import pandas as pd
+                            pd = importlib.import_module('pandas')
                             eps_data = []
                             for col in value_cols:
-                                eps_val = eps_row[col].iloc[0]
+                                eps_val = cast(Any, eps_row[col]).iloc[0]
                                 if eps_val is not None and str(eps_val) != 'nan' and eps_val != '--':
                                     eps_data.append({'报告期': col, '基本每股收益': eps_val})
 
                             if len(eps_data) >= 2:
                                 eps_df = pd.DataFrame(eps_data)
                                 # 使用 TTM 计算函数
-                                from scripts.sync.financial.data.script import _calculate_ttm_metric
+                                _calculate_ttm_metric = getattr(importlib.import_module('scripts.sync.financial.data.script'), '_calculate_ttm_metric')
                                 ttm_eps = _calculate_ttm_metric(eps_df, '基本每股收益')
                                 if ttm_eps:
                                     logger.info(f"✅ 计算 TTM EPS: {ttm_eps:.4f} 元")
@@ -1631,16 +1643,16 @@ class OptimizedChinaDataProvider:
                     if not revenue_row.empty:
                         value_cols = [col for col in revenue_row.columns if col != '指标']
 
-                        import pandas as pd
+                        pd = importlib.import_module('pandas')
                         revenue_data = []
                         for col in value_cols:
-                            rev_val = revenue_row[col].iloc[0]
+                            rev_val = cast(Any, revenue_row[col]).iloc[0]
                             if rev_val is not None and str(rev_val) != 'nan' and rev_val != '--':
                                 revenue_data.append({'报告期': col, '营业收入': rev_val})
 
                         if len(revenue_data) >= 2:
                             revenue_df = pd.DataFrame(revenue_data)
-                            from scripts.sync.financial.data.script import _calculate_ttm_metric
+                            _calculate_ttm_metric = getattr(importlib.import_module('scripts.sync.financial.data.script'), '_calculate_ttm_metric')
                             ttm_revenue = _calculate_ttm_metric(revenue_df, '营业收入')
                             if ttm_revenue:
                                 logger.info(f"✅ 计算 TTM 营业收入: {ttm_revenue:.2f} 万元")
@@ -1702,9 +1714,11 @@ class OptimizedChinaDataProvider:
             logger.error(f"❌ AKShare财务数据解析失败: {e}")
             return None
 
-    def _parse_financial_data(self, financial_data: dict, stock_info: dict, price_value: float) -> dict:
+    def _parse_financial_data(self, financial_data: dict, stock_info: Optional[dict], price_value: float) -> Optional[dict]:
         """解析财务数据为指标"""
         try:
+            stock_info = stock_info or {}
+
             # 获取最新的财务数据
             balance_sheet = financial_data.get('balance_sheet', [])
             income_statement = financial_data.get('income_statement', [])
@@ -1734,7 +1748,7 @@ class OptimizedChinaDataProvider:
             try:
                 if len(income_statement) >= 2:
                     # 准备数据用于 TTM 计算
-                    import pandas as pd
+                    pd = importlib.import_module('pandas')
 
                     # 构建营业收入 DataFrame
                     revenue_data = []
@@ -1746,7 +1760,7 @@ class OptimizedChinaDataProvider:
 
                     if len(revenue_data) >= 2:
                         revenue_df = pd.DataFrame(revenue_data)
-                        from scripts.sync.financial.data.script import _calculate_ttm_metric
+                        _calculate_ttm_metric = getattr(importlib.import_module('scripts.sync.financial.data.script'), '_calculate_ttm_metric')
                         ttm_revenue = _calculate_ttm_metric(revenue_df, '营业收入')
                         if ttm_revenue:
                             logger.info(f"✅ Tushare 计算 TTM 营业收入: {ttm_revenue:.2f} 万元")
@@ -2059,7 +2073,7 @@ class OptimizedChinaDataProvider:
             # 查找任何相关的缓存，不考虑TTL
             for metadata_file in self.cache.metadata_dir.glob(f"*_meta.json"):
                 try:
-                    import json
+                    json = importlib.import_module('json')
 
                     with open(metadata_file, 'r', encoding='utf-8') as f:
                         metadata = json.load(f)
@@ -2168,10 +2182,10 @@ def get_china_fundamentals_cached(symbol: str, force_refresh: bool = False) -> s
 def _add_financial_cache_methods():
     """为OptimizedChinaDataProvider类添加财务数据缓存方法"""
 
-    def _get_cached_raw_financial_data(self, symbol: str) -> dict:
+    def _get_cached_raw_financial_data(self, symbol: str) -> Optional[dict]:
         """从数据库缓存获取原始财务数据"""
         try:
-            from .cache.app import get_mongodb_client
+            get_mongodb_client = getattr(importlib.import_module('trader.flows.cache.app'), 'get_mongodb_client')
             client = get_mongodb_client()
             if not client:
                 logger.debug(f"📊 [财务缓存] MongoDB客户端不可用")
@@ -2253,7 +2267,8 @@ def _add_financial_cache_methods():
 
             if cache_doc:
                 # 检查缓存是否过期（24小时）
-                from datetime import datetime, timedelta
+                datetime = getattr(importlib.import_module('datetime'), 'datetime')
+                timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
                 cache_time = cache_doc.get('updated_at')
                 if cache_time and datetime.now() - cache_time < timedelta(hours=24):
                     financial_data = cache_doc.get('financial_data', {})
@@ -2273,7 +2288,7 @@ def _add_financial_cache_methods():
     def _get_cached_stock_info(self, symbol: str) -> dict:
         """从数据库缓存获取股票基本信息"""
         try:
-            from .cache.app import get_mongodb_client
+            get_mongodb_client = getattr(importlib.import_module('trader.flows.cache.app'), 'get_mongodb_client')
             client = get_mongodb_client()
             if not client:
                 return {}
@@ -2299,7 +2314,7 @@ def _add_financial_cache_methods():
     def _restore_financial_data_format(self, cached_data: dict) -> dict:
         """将缓存的财务数据恢复为DataFrame格式"""
         try:
-            import pandas as pd
+            pd = importlib.import_module('pandas')
             restored_data = {}
 
             for key, value in cached_data.items():
@@ -2317,12 +2332,12 @@ def _add_financial_cache_methods():
     def _cache_raw_financial_data(self, symbol: str, financial_data: dict, stock_info: dict):
         """将原始财务数据缓存到数据库"""
         try:
-            from trader.config.runtime import use_app_cache_enabled
+            use_app_cache_enabled = getattr(importlib.import_module('trader.config.runtime'), 'use_app_cache_enabled')
             if not use_app_cache_enabled(False):
                 logger.debug(f"📊 [财务缓存] 应用缓存未启用，跳过缓存保存")
                 return
 
-            from .cache.app import get_mongodb_client
+            get_mongodb_client = getattr(importlib.import_module('trader.flows.cache.app'), 'get_mongodb_client')
             client = get_mongodb_client()
             if not client:
                 logger.debug(f"📊 [财务缓存] MongoDB客户端不可用")
@@ -2331,7 +2346,7 @@ def _add_financial_cache_methods():
             db = client.get_database('trading_agents')
             collection = db.financial_data_cache
 
-            from datetime import datetime
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
 
             # 将DataFrame转换为可序列化的格式
             serializable_data = {}
@@ -2362,10 +2377,10 @@ def _add_financial_cache_methods():
             logger.debug(f"📊 [财务缓存] 缓存{symbol}原始财务数据失败: {e}")
 
     # 将方法添加到类中
-    OptimizedChinaDataProvider._get_cached_raw_financial_data = _get_cached_raw_financial_data
-    OptimizedChinaDataProvider._get_cached_stock_info = _get_cached_stock_info
-    OptimizedChinaDataProvider._restore_financial_data_format = _restore_financial_data_format
-    OptimizedChinaDataProvider._cache_raw_financial_data = _cache_raw_financial_data
+    setattr(OptimizedChinaDataProvider, "_get_cached_raw_financial_data", _get_cached_raw_financial_data)
+    setattr(OptimizedChinaDataProvider, "_get_cached_stock_info", _get_cached_stock_info)
+    setattr(OptimizedChinaDataProvider, "_restore_financial_data_format", _restore_financial_data_format)
+    setattr(OptimizedChinaDataProvider, "_cache_raw_financial_data", _cache_raw_financial_data)
 
 # 执行方法添加
 _add_financial_cache_methods()

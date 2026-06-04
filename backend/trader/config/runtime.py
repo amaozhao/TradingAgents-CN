@@ -8,6 +8,7 @@ TradingAgents 运行时配置适配器（弱依赖）
 """
 
 from __future__ import annotations
+import importlib
 
 import os
 import asyncio
@@ -40,7 +41,7 @@ def _get_system_settings_sync() -> dict:
         return {}
 
     try:
-        from app.services.provider import provider as config_provider  # type: ignore
+        config_provider = getattr(importlib.import_module('app.services.provider'), 'provider')
 
         if _get_event_loop_running():
             _logger.debug("导入后检测到事件循环，跳过动态配置获取")

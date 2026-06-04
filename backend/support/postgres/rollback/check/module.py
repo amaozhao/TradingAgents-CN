@@ -2,8 +2,7 @@ import json
 
 import pytest
 
-from backend.scripts import postgres_rollback_check
-from backend.scripts.postgres.rollback.check.script import check_rollback_evidence, write_rollback_target_manifest
+from scripts.postgres.rollback.check.script import check_rollback_evidence, write_rollback_target_manifest
 
 
 def test_rollback_check_passes_with_mongo_read_and_healthy_dual_write(tmp_path):

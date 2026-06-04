@@ -1,6 +1,8 @@
+import importlib
 import logging
+import traceback
 from datetime import datetime, time as dtime, timedelta
-from typing import Dict, Optional, Tuple, List
+from typing import Any, Dict, Optional, Tuple, List
 from zoneinfo import ZoneInfo
 from collections import deque
 
@@ -10,6 +12,8 @@ from app.core.config import settings
 from app.core.database import get_mongo_db
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
 from app.services.sources.manager import DataSourceManager
+from app.services.sources.akshare import AKShareAdapter
+from app.services.sources.tushare import TushareAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +31,6 @@ class QuotesIngestionService:
     """
 
     def __init__(self, collection_name: str = "market_quotes") -> None:
-        from collections import deque
-
         self.collection_name = collection_name
         self.status_collection_name = "quotes_ingestion_status"  # 状态记录集合
         self.tz = ZoneInfo(settings.TIMEZONE)
@@ -138,7 +140,7 @@ class QuotesIngestionService:
         except Exception as e:
             logger.warning(f"记录同步状态失败（忽略）: {e}")
 
-    async def get_sync_status(self) -> Dict[str, any]:
+    async def get_sync_status(self) -> Dict[str, Any]:
         """
         获取同步状态
 
@@ -218,7 +220,7 @@ class QuotesIngestionService:
             return self._tushare_has_premium or False
 
         try:
-            from app.services.sources.tushare import TushareAdapter
+            TushareAdapter = getattr(importlib.import_module('app.services.sources.tushare'), 'TushareAdapter')
             adapter = TushareAdapter()
 
             if not adapter.is_available():
@@ -442,6 +444,39 @@ class QuotesIngestionService:
         if result.status == "failed":
             logger.warning("⚠️ 实时行情同步状态 PostgreSQL 双写失败: %s", result.reason)
 
+    async def _fix_missing_volume(self) -> None:
+        """从最新历史行情补齐 market_quotes 中缺失的 volume 字段。"""
+        db = get_mongo_db()
+        quotes_collection = db[self.collection_name]
+        missing_cursor = quotes_collection.find(
+            {"$or": [{"volume": {"$exists": False}}, {"volume": None}]},
+            {"code": 1, "symbol": 1},
+        )
+        missing_docs = await missing_cursor.to_list(length=None)
+        if not missing_docs:
+            return
+
+        daily_collection = db["stock_daily_quotes"]
+        operations: List[UpdateOne] = []
+        for doc in missing_docs:
+            code = str(doc.get("code") or doc.get("symbol") or "").zfill(6)
+            if not code:
+                continue
+            daily_doc = await daily_collection.find_one(
+                {"$or": [{"code": code}, {"symbol": code}], "period": "daily"},
+                sort=[("trade_date", -1)],
+            )
+            if not daily_doc:
+                continue
+            volume = daily_doc.get("volume") or daily_doc.get("vol")
+            if volume is None:
+                continue
+            operations.append(UpdateOne({"_id": doc["_id"]}, {"$set": {"volume": volume}}))
+
+        if operations:
+            result = await quotes_collection.bulk_write(operations, ordered=False)
+            logger.info("✅ 修复缺失成交量记录: %s 条", result.modified_count)
+
     async def backfill_from_historical_data(self) -> None:
         """
         从历史数据集合导入前一天的收盘数据到 market_quotes
@@ -526,7 +561,6 @@ class QuotesIngestionService:
 
         except Exception as e:
             logger.error(f"❌ 从历史数据导入失败: {e}")
-            import traceback
             logger.error(f"堆栈跟踪:\n{traceback.format_exc()}")
 
     async def backfill_last_close_snapshot(self) -> None:
@@ -586,7 +620,6 @@ class QuotesIngestionService:
                 if not self._can_call_tushare():
                     return None, None
 
-                from app.services.sources.tushare import TushareAdapter
                 adapter = TushareAdapter()
 
                 if not adapter.is_available():
@@ -604,7 +637,6 @@ class QuotesIngestionService:
                     return None, None
 
             elif source_type == "akshare":
-                from app.services.sources.akshare import AKShareAdapter
                 adapter = AKShareAdapter()
 
                 if not adapter.is_available():

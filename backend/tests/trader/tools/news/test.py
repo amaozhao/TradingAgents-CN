@@ -3,6 +3,7 @@
 """
 测试统一新闻工具集成效果
 """
+import importlib
 
 import os
 import sys
@@ -30,7 +31,7 @@ def test_unified_news_tool():
     try:
         # 初始化工具包
         print("📦 初始化工具包...")
-        from trader.default import DEFAULT_CONFIG
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True
         toolkit = Toolkit(config=config)
@@ -86,7 +87,7 @@ def test_unified_news_tool():
 
             except Exception as e:
                 print(f"❌ 测试股票 {stock_code} 时出错: {e}")
-                import traceback
+                traceback = importlib.import_module('traceback')
                 traceback.print_exc()
 
         print(f"\n{'='*60}")
@@ -95,7 +96,7 @@ def test_unified_news_tool():
 
     except Exception as e:
         print(f"❌ 测试过程中出现错误: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

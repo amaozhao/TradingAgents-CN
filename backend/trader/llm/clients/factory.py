@@ -1,3 +1,4 @@
+import importlib
 from typing import Optional
 
 from .base import BaseLLMClient
@@ -41,21 +42,21 @@ def create_llm_client(
 
     if provider_lower in _OPENAI_COMPATIBLE:
         if provider_lower == "azure":
-            from .azure import AzureOpenAIClient
+            AzureOpenAIClient = getattr(importlib.import_module('trader.llm.clients.azure'), 'AzureOpenAIClient')
 
             return AzureOpenAIClient(model, base_url, **kwargs)
 
-        from .openai import OpenAIClient
+        OpenAIClient = getattr(importlib.import_module('trader.llm.clients.openai'), 'OpenAIClient')
 
         return OpenAIClient(model, base_url, provider=provider_lower, **kwargs)
 
     if provider_lower == "google":
-        from .google import GoogleClient
+        GoogleClient = getattr(importlib.import_module('trader.llm.clients.google'), 'GoogleClient')
 
         return GoogleClient(model, base_url, **kwargs)
 
     if provider_lower == "anthropic":
-        from .anthropic import AnthropicClient
+        AnthropicClient = getattr(importlib.import_module('trader.llm.clients.anthropic'), 'AnthropicClient')
 
         return AnthropicClient(model, base_url, **kwargs)
 

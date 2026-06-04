@@ -1,6 +1,7 @@
 """
 测试基本面分析师是否还会重复调用工具
 """
+import importlib
 import os
 import sys
 from datetime import datetime
@@ -15,7 +16,7 @@ def test_fundamentals_analyst():
     print("=" * 80)
 
     # 导入必要的模块
-    from trader.agents.graph import create_trading_graph
+    create_trading_graph = getattr(importlib.import_module('trader.agents.graph'), 'create_trading_graph')
 
     # 创建交易图
     print("\n1️⃣ 创建交易图...")
@@ -74,7 +75,7 @@ def test_fundamentals_analyst():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

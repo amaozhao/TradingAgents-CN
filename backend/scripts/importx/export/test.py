@@ -2,6 +2,7 @@
 """
 测试数据库导入导出功能
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -39,8 +40,8 @@ async def test_export_import():
     # 序列化为 JSON
     def serialize_doc(doc):
         """序列化文档"""
-        from bson import ObjectId
-        from datetime import datetime
+        ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
 
         if isinstance(doc, dict):
             return {k: serialize_doc(v) for k, v in doc.items()}

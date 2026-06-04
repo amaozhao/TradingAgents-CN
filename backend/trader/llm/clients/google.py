@@ -1,3 +1,4 @@
+import importlib
 from typing import Any
 
 from .base import BaseLLMClient
@@ -16,7 +17,7 @@ class GoogleClient(BaseLLMClient):
         self.warn_if_unknown_model()
         chat_cls = NormalizedChatGoogleGenerativeAI
         if chat_cls is None:
-            from trader.llm.adapters.google.openai import ChatGoogleOpenAI as chat_cls
+            chat_cls = getattr(importlib.import_module('trader.llm.adapters.google.openai'), 'ChatGoogleOpenAI')
 
         llm_kwargs = {"model": self.model}
 

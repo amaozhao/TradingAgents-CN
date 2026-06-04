@@ -2,6 +2,7 @@
 """
 测试新闻数据同步功能
 """
+import importlib
 import asyncio
 import sys
 from pathlib import Path
@@ -11,7 +12,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from app.core.database import init_database, get_mongo_db
-from app.worker.tushare_sync_service import get_tushare_sync_service
+from app.worker.tushare.sync import get_tushare_sync_service
 
 
 async def test_news_sync():
@@ -22,7 +23,7 @@ async def test_news_sync():
     print()
 
     # 启用详细日志
-    import logging
+    logging = importlib.import_module('logging')
     logging.basicConfig(level=logging.DEBUG)
 
     try:
@@ -93,7 +94,7 @@ async def test_news_sync():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         sys.exit(1)
 

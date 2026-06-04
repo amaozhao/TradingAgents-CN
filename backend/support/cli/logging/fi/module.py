@@ -3,6 +3,7 @@
 测试CLI日志修复效果
 验证用户界面是否清爽，日志是否只写入文件
 """
+import importlib
 
 import os
 import sys
@@ -19,8 +20,9 @@ def test_cli_logging_setup():
 
     try:
         # 导入CLI模块，触发日志设置
-        from cli.main import setup_cli_logging, logger
-        from trader.utils.logging.manager import get_logger_manager
+        setup_cli_logging = getattr(importlib.import_module('cli.main'), 'setup_cli_logging')
+        logger = getattr(importlib.import_module('cli.main'), 'logger')
+        get_logger_manager = getattr(importlib.import_module('trader.utils.logging.manager'), 'get_logger_manager')
 
         print("📊 测试前的日志处理器:")
         logger_manager = get_logger_manager()
@@ -56,7 +58,7 @@ def test_cli_logging_setup():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -66,7 +68,7 @@ def test_console_output():
     print("=" * 60)
 
     try:
-        from rich.console import Console
+        Console = getattr(importlib.import_module('rich.console'), 'Console')
 
         console = Console()
 
@@ -89,8 +91,8 @@ def test_log_file_writing():
     print("=" * 60)
 
     try:
-        from cli.main import logger
-        import glob
+        logger = getattr(importlib.import_module('cli.main'), 'logger')
+        glob = importlib.import_module('glob')
 
         # 写入测试日志
         test_message = "CLI日志修复测试消息 - 这应该只出现在日志文件中"
@@ -132,8 +134,8 @@ def test_cli_interface_preview():
     print("=" * 60)
 
     try:
-        from rich.console import Console
-        from rich.panel import Panel
+        Console = getattr(importlib.import_module('rich.console'), 'Console')
+        Panel = getattr(importlib.import_module('rich.panel'), 'Panel')
 
         console = Console()
 

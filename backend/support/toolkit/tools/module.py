@@ -2,6 +2,7 @@
 """
 测试工具包中的Google和Reddit工具
 """
+import importlib
 
 import os
 import sys
@@ -22,8 +23,8 @@ def test_toolkit_tools():
         print("=" * 60)
 
         # 正确导入Toolkit
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -88,7 +89,7 @@ def test_toolkit_tools():
 
     except Exception as e:
         print(f"❌ 工具包测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 
@@ -100,14 +101,14 @@ def test_social_news_analysts():
 
         # 检查社交媒体分析师
         try:
-            from trader.agents.analysts.social import create_social_media_analyst
+            create_social_media_analyst = getattr(importlib.import_module('trader.agents.analysts.social'), 'create_social_media_analyst')
             print("✅ 社交媒体分析师模块可用")
         except ImportError as e:
             print(f"❌ 社交媒体分析师导入失败: {e}")
 
         # 检查新闻分析师
         try:
-            from trader.agents.analysts.news import create_news_analyst
+            create_news_analyst = getattr(importlib.import_module('trader.agents.analysts.news'), 'create_news_analyst')
             print("✅ 新闻分析师模块可用")
         except ImportError as e:
             print(f"❌ 新闻分析师导入失败: {e}")

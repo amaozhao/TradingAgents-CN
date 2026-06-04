@@ -2,6 +2,7 @@
 """
 简化的Gemini测试（禁用内存功能）
 """
+import importlib
 
 import os
 import sys
@@ -21,8 +22,8 @@ def test_gemini_simple_analysis():
         print("🧪 测试Gemini简单分析功能")
         print("=" * 60)
 
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 检查API密钥
         google_api_key = os.getenv('GOOGLE_API_KEY')
@@ -88,13 +89,13 @@ def test_gemini_simple_analysis():
 
         except Exception as e:
             print(f"❌ 股票分析失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             print(traceback.format_exc())
             return False
 
     except Exception as e:
         print(f"❌ 简化测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 
@@ -104,11 +105,11 @@ def test_gemini_analyst_direct():
         print("\n🧪 直接测试Gemini分析师")
         print("=" * 60)
 
-        from trader.agents.analysts.market import create_market_analyst
-        from trader.agents.utils.utils import Toolkit
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        from trader.default import DEFAULT_CONFIG
-        from langchain_core.messages import HumanMessage
+        create_market_analyst = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        ChatGoogleGenerativeAI = getattr(importlib.import_module('langchain_google_genai'), 'ChatGoogleGenerativeAI')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -160,7 +161,7 @@ def test_gemini_analyst_direct():
 
     except Exception as e:
         print(f"❌ 直接分析师测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 

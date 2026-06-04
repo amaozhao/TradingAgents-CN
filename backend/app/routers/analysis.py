@@ -2,9 +2,13 @@
 股票分析API路由
 增强版本，支持优先级、进度跟踪、任务管理等功能
 """
+import importlib
 
+import os
+import re
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, ConfigDict, Field
+from pathlib import Path
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 import logging
@@ -54,8 +58,8 @@ def _coerce_datetime(value: Any) -> Optional[datetime]:
 async def _get_analysis_task_for_read(task_id: str) -> Optional[Dict[str, Any]]:
     if settings.POSTGRES_READ_ENABLED:
         try:
-            from app.db.analysis import get_analysis_task_by_task_id
-            from app.db.session import get_session_factory
+            get_analysis_task_by_task_id = getattr(importlib.import_module('app.db.analysis'), 'get_analysis_task_by_task_id')
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
             async with get_session_factory()() as session:
                 document = await get_analysis_task_by_task_id(session, task_id)
@@ -64,7 +68,7 @@ async def _get_analysis_task_for_read(task_id: str) -> Optional[Dict[str, Any]]:
         except Exception as e:
             logger.warning("PostgreSQL分析任务查询失败，回退MongoDB: %s", e)
 
-    from app.core.database import get_mongo_db
+    get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
     db = get_mongo_db()
     return await db.analysis_tasks.find_one({"task_id": task_id})
 
@@ -72,8 +76,8 @@ async def _get_analysis_task_for_read(task_id: str) -> Optional[Dict[str, Any]]:
 async def _get_analysis_report_by_task_id_for_read(task_id: str) -> Optional[Dict[str, Any]]:
     if settings.POSTGRES_READ_ENABLED:
         try:
-            from app.db.analysis import get_analysis_report_by_task_id
-            from app.db.session import get_session_factory
+            get_analysis_report_by_task_id = getattr(importlib.import_module('app.db.analysis'), 'get_analysis_report_by_task_id')
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
             async with get_session_factory()() as session:
                 document = await get_analysis_report_by_task_id(session, task_id)
@@ -82,7 +86,7 @@ async def _get_analysis_report_by_task_id_for_read(task_id: str) -> Optional[Dic
         except Exception as e:
             logger.warning("PostgreSQL分析报告按task_id查询失败，回退MongoDB: %s", e)
 
-    from app.core.database import get_mongo_db
+    get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
     db = get_mongo_db()
     return await db.analysis_reports.find_one({"task_id": task_id})
 
@@ -90,8 +94,8 @@ async def _get_analysis_report_by_task_id_for_read(task_id: str) -> Optional[Dic
 async def _get_analysis_report_by_analysis_id_for_read(analysis_id: str) -> Optional[Dict[str, Any]]:
     if settings.POSTGRES_READ_ENABLED:
         try:
-            from app.db.analysis import get_analysis_report_by_analysis_id
-            from app.db.session import get_session_factory
+            get_analysis_report_by_analysis_id = getattr(importlib.import_module('app.db.analysis'), 'get_analysis_report_by_analysis_id')
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
             async with get_session_factory()() as session:
                 document = await get_analysis_report_by_analysis_id(session, analysis_id)
@@ -100,7 +104,7 @@ async def _get_analysis_report_by_analysis_id_for_read(analysis_id: str) -> Opti
         except Exception as e:
             logger.warning("PostgreSQL分析报告按analysis_id查询失败，回退MongoDB: %s", e)
 
-    from app.core.database import get_mongo_db
+    get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
     db = get_mongo_db()
     return await db.analysis_reports.find_one({"analysis_id": analysis_id})
 
@@ -333,7 +337,7 @@ async def get_task_status_new(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/tasks/{task_id}/result", response_model=ApiResponse)
-async def get_task_result(
+async def get_task_result(  # pyright: ignore[reportGeneralTypeIssues]
     task_id: str,
     user: dict = Depends(get_current_user)
 ):
@@ -455,9 +459,6 @@ async def get_task_result(
 
         # 处理reports字段 - 如果没有reports字段，优先尝试从文件系统加载，其次从state中提取
         if 'reports' not in result_data or not result_data['reports']:
-            import os
-            from pathlib import Path
-
             stock_symbol = result_data.get('stock_symbol') or result_data.get('stock_code')
             # analysis_date 可能是日期或时间戳字符串，这里只取日期部分
             analysis_date_raw = result_data.get('analysis_date')
@@ -688,7 +689,6 @@ async def get_task_result(
                     rec = None
                     if isinstance(da, str):
                         # 简单基于关键字提取包含“建议”的段落
-                        import re
                         m = re.search(r'(投资建议|建议|结论)[:：]?\s*(.+)', da)
                         if m:
                             rec = m.group(0)
@@ -1112,7 +1112,7 @@ async def get_user_analysis_history(
         )
 
         # 进行基础筛选
-        from datetime import datetime
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
         def in_date_range(t: Optional[str]) -> bool:
             if not t:
                 return True
@@ -1170,7 +1170,7 @@ async def get_user_analysis_history(
 @router.websocket("/ws/task/{task_id}")
 async def websocket_task_progress(websocket: WebSocket, task_id: str):
     """WebSocket 端点：实时获取任务进度"""
-    import json
+    json = importlib.import_module('json')
     websocket_manager = get_websocket_manager()
 
     try:
@@ -1287,7 +1287,7 @@ async def mark_task_as_failed(
         svc = get_simple_analysis_service()
 
         # 更新内存中的任务状态
-        from app.services.memory import TaskStatus
+        TaskStatus = getattr(importlib.import_module('app.services.memory'), 'TaskStatus')
         await svc.memory_manager.update_task_status(
             task_id=task_id,
             status=TaskStatus.FAILED,

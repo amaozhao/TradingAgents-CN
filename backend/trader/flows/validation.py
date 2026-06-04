@@ -10,7 +10,7 @@ claim. Deterministic, no LLM involved.
 
 from __future__ import annotations
 
-from typing import Iterable, Optional
+from typing import Iterable, Optional, cast
 
 import pandas as pd
 from stockstats import wrap
@@ -39,7 +39,8 @@ def _verified_rows(symbol: str, curr_date: str) -> pd.DataFrame:
     df = data.copy()
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     df = df.dropna(subset=["Date"])
-    df = df[df["Date"] <= pd.to_datetime(curr_date)].sort_values("Date")
+    filtered = cast(pd.DataFrame, df[df["Date"] <= pd.to_datetime(curr_date)])
+    df = filtered.sort_values(by="Date")
     if df.empty:
         raise ValueError(f"No OHLCV rows on or before {curr_date} for {symbol}.")
     return df

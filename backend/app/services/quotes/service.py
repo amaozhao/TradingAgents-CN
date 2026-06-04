@@ -4,6 +4,7 @@ QuotesService: 提供A股批量实时快照获取（AKShare东方财富 spot 接
 - 仅用于筛选返回前对 items 进行行情富集。
 """
 from __future__ import annotations
+import importlib
 
 import asyncio
 import time
@@ -60,7 +61,7 @@ class QuotesService:
         不同版本可能有差异，做多列名兼容。
         """
         try:
-            import akshare as ak  # 已在项目中使用，不额外安装
+            ak = importlib.import_module('akshare')
             df = ak.stock_zh_a_spot_em()
             if df is None or getattr(df, "empty", True):
                 logger.warning("AKShare spot 返回空数据")

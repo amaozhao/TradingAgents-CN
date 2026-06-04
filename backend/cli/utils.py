@@ -2,7 +2,7 @@ import os
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import questionary
 from dotenv import find_dotenv, set_key
@@ -181,7 +181,7 @@ def get_analysis_date() -> str:
     return date.strip()
 
 
-def select_analysts(ticker: str = None) -> List[AnalystType]:
+def select_analysts(ticker: Optional[str] = None) -> List[AnalystType]:
     """Select analysts using an interactive checkbox."""
     available_analysts = ANALYST_ORDER.copy()
 
@@ -408,7 +408,10 @@ def select_llm_provider() -> tuple[str, str]:
             questionary.Choice(item["label"], value=(item["key"], item["base_url"]))
             for item in PROVIDER_OPTIONS
         ],
-        default=(PROVIDER_OPTIONS[0]["key"], PROVIDER_OPTIONS[0]["base_url"]),
+        default=questionary.Choice(
+            PROVIDER_OPTIONS[0]["label"],
+            value=(PROVIDER_OPTIONS[0]["key"], PROVIDER_OPTIONS[0]["base_url"]),
+        ),
         instruction="\n- 使用方向键导航 | Use arrow keys to navigate\n- 按回车键选择 | Press Enter to select\n- 🇨🇳 推荐使用阿里百炼 (默认选择)",
         style=questionary.Style(
             [

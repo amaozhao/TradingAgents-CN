@@ -3,6 +3,7 @@
 缓存优化功能测试
 测试美股和A股数据的缓存策略和性能
 """
+import importlib
 
 import os
 import sys
@@ -18,7 +19,7 @@ def test_cache_manager():
     print("🧪 测试缓存管理器...")
 
     try:
-        from trader.flows.cache_manager import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
 
         cache = get_cache()
         print(f"✅ 缓存管理器初始化成功")
@@ -46,7 +47,7 @@ def test_us_stock_cache():
     print("\n🇺🇸 测试美股数据缓存...")
 
     try:
-        from trader.flows.optimized_us_data import get_optimized_us_data_provider
+        get_optimized_us_data_provider = getattr(importlib.import_module('trader.flows.providers.us.optimized'), 'get_optimized_us_data_provider')
 
         provider = get_optimized_us_data_provider()
         symbol = "AAPL"
@@ -92,7 +93,7 @@ def test_china_stock_cache():
     print("\n🇨🇳 测试A股数据缓存...")
 
     try:
-        from trader.flows.china import get_optimized_china_data_provider
+        get_optimized_china_data_provider = getattr(importlib.import_module('trader.flows.china'), 'get_optimized_china_data_provider')
 
         provider = get_optimized_china_data_provider()
         symbol = "000001"
@@ -153,7 +154,7 @@ def test_cache_ttl():
     print("\n⏰ 测试缓存TTL功能...")
 
     try:
-        from trader.flows.cache_manager import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
 
         cache = get_cache()
 
@@ -193,7 +194,7 @@ def test_cache_cleanup():
     print("\n🧹 测试缓存清理功能...")
 
     try:
-        from trader.flows.cache_manager import get_cache
+        get_cache = getattr(importlib.import_module('trader.flows.cache'), 'get_cache')
 
         cache = get_cache()
 

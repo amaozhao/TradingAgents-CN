@@ -1,4 +1,5 @@
-from .alpha.common import _make_api_request, format_datetime_for_api
+import importlib
+from .common import _make_api_request, format_datetime_for_api
 
 def get_news(ticker, start_date, end_date) -> dict[str, str] | str:
     """Returns live and historical market news & sentiment data from premier news outlets worldwide.
@@ -35,7 +36,8 @@ def get_global_news(curr_date, look_back_days: int = 7, limit: int = 50) -> dict
     Returns:
         Dictionary containing global news sentiment data or JSON string.
     """
-    from datetime import datetime, timedelta
+    datetime = getattr(importlib.import_module('datetime'), 'datetime')
+    timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
     # Calculate start date
     curr_dt = datetime.strptime(curr_date, "%Y-%m-%d")

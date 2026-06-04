@@ -3,6 +3,7 @@
 MongoDB 缓存适配器
 根据 TA_USE_APP_CACHE 配置，优先使用 MongoDB 中的同步数据
 """
+import importlib
 
 import pandas as pd
 from typing import Optional, Dict, Any, List, Union
@@ -32,7 +33,7 @@ class MongoDBCacheAdapter:
     def _init_mongodb_connection(self):
         """初始化MongoDB连接"""
         try:
-            from trader.config.databases import get_mongodb_client
+            get_mongodb_client = getattr(importlib.import_module('trader.config.databases'), 'get_mongodb_client')
             self.mongodb_client = get_mongodb_client()
             if self.mongodb_client:
                 self.db = self.mongodb_client.get_database('trading_agents')
@@ -90,7 +91,8 @@ class MongoDBCacheAdapter:
         """
         try:
             # 1. 识别市场分类
-            from trader.utils.stocks import StockUtils, StockMarket
+            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+            StockMarket = getattr(importlib.import_module('trader.utils.stocks'), 'StockMarket')
             market = StockUtils.identify_stock_market(symbol)
 
             market_mapping = {
@@ -157,7 +159,7 @@ class MongoDBCacheAdapter:
         logger.info(f"📊 [数据源优先级] 使用默认顺序: ['tushare', 'akshare', 'baostock']")
         return ['tushare', 'akshare', 'baostock']
 
-    def get_historical_data(self, symbol: str, start_date: str = None, end_date: str = None,
+    def get_historical_data(self, symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None,
                           period: str = "daily") -> Optional[pd.DataFrame]:
         """
         获取历史数据，支持多周期，按数据源优先级查询
@@ -218,7 +220,7 @@ class MongoDBCacheAdapter:
             logger.warning(f"⚠️ 获取历史数据失败: {e}")
             return None
 
-    def get_financial_data(self, symbol: str, report_period: str = None) -> Optional[Dict[str, Any]]:
+    def get_financial_data(self, symbol: str, report_period: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """获取财务数据，按数据源优先级查询"""
         if not self.use_app_cache or self.db is None:
             return None
@@ -256,7 +258,9 @@ class MongoDBCacheAdapter:
             logger.warning(f"⚠️ [数据来源: MongoDB-财务数据] 获取财务数据失败: {e}")
             return None
 
-    def get_news_data(self, symbol: str = None, hours_back: int = 24, limit: int = 20) -> Optional[List[Dict[str, Any]]]:
+    def get_news_data(
+        self, symbol: Optional[str] = None, hours_back: int = 24, limit: int = 20
+    ) -> Optional[List[Dict[str, Any]]]:
         """获取新闻数据"""
         if not self.use_app_cache or self.db is None:
             return None
@@ -290,7 +294,9 @@ class MongoDBCacheAdapter:
             logger.warning(f"⚠️ [数据来源: MongoDB-新闻数据] 获取新闻数据失败: {e}")
             return None
 
-    def get_social_media_data(self, symbol: str = None, hours_back: int = 24, limit: int = 20) -> Optional[List[Dict[str, Any]]]:
+    def get_social_media_data(
+        self, symbol: Optional[str] = None, hours_back: int = 24, limit: int = 20
+    ) -> Optional[List[Dict[str, Any]]]:
         """获取社媒数据"""
         if not self.use_app_cache or self.db is None:
             return None
@@ -364,7 +370,7 @@ def get_enhanced_data_adapter() -> MongoDBCacheAdapter:
     return get_mongodb_cache_adapter()
 
 
-def get_stock_data_with_fallback(symbol: str, start_date: str = None, end_date: str = None,
+def get_stock_data_with_fallback(symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None,
                                 fallback_func=None) -> Union[pd.DataFrame, str, None]:
     """
     带降级的股票数据获取

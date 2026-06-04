@@ -2,6 +2,7 @@
 """
 测试市场分析回溯天数配置是否生效
 """
+import importlib
 
 import sys
 import os
@@ -45,7 +46,7 @@ def test_lookback_days():
 
     # 检查数据条数
     if "数据条数" in result:
-        import re
+        re = importlib.import_module('re')
         match = re.search(r'数据条数.*?(\d+)\s*条', result)
         if match:
             data_count = int(match.group(1))
@@ -61,7 +62,7 @@ def test_lookback_days():
 
     # 检查日期范围
     if "日期范围" in result:
-        import re
+        re = importlib.import_module('re')
         match = re.search(r'日期范围.*?(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})', result)
         if match:
             actual_start = match.group(1)
@@ -69,7 +70,7 @@ def test_lookback_days():
             print(f"📅 实际日期范围: {actual_start} ~ {actual_end}")
 
             # 计算天数
-            from datetime import datetime
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
             start_dt = datetime.strptime(actual_start, '%Y-%m-%d')
             end_dt = datetime.strptime(actual_end, '%Y-%m-%d')
             days = (end_dt - start_dt).days

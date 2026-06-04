@@ -2,12 +2,13 @@
 简化的股票分析服务
 直接调用现有的 TradingAgents 分析功能
 """
+import importlib
 
 import asyncio
 import uuid
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, cast
 from pathlib import Path
 import sys
 
@@ -38,7 +39,7 @@ def _ensure_trading_agents_logging() -> None:
     if _trading_agents_logging_initialized:
         return
 
-    from trader.utils.logging.init import init_logging
+    init_logging = getattr(importlib.import_module('trader.utils.logging.init'), 'init_logging')
 
     init_logging()
     _trading_agents_logging_initialized = True
@@ -50,7 +51,7 @@ def _get_stock_info_safe(stock_code: str):
     global _data_source_manager
     try:
         if _data_source_manager is None:
-            from trader.flows.sources import get_data_source_manager
+            get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
 
             _data_source_manager = get_data_source_manager()
         return _data_source_manager.get_stock_basic_info(stock_code)
@@ -99,7 +100,7 @@ async def get_provider_by_model_name(model_name: str) -> str:
         # 在LLM配置中查找匹配的模型
         for llm_config in system_config.llm_configs:
             if llm_config.model_name == model_name:
-                provider = llm_config.provider.value if hasattr(llm_config.provider, 'value') else str(llm_config.provider)
+                provider = str(getattr(llm_config.provider, "value", llm_config.provider))
                 logger.info(f"✅ 从数据库找到模型 {model_name} 的供应商: {provider}")
                 return provider
 
@@ -138,9 +139,9 @@ def get_provider_and_url_by_model_sync(model_name: str) -> dict:
     """
     try:
         # 使用同步 MongoDB 客户端直接查询
-        from pymongo import MongoClient
-        from app.core.config import settings
-        import os
+        MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+        settings = getattr(importlib.import_module('app.core.config'), 'settings')
+        os = importlib.import_module('os')
 
         client = MongoClient(settings.mongo_uri)
         db = client[settings.mongo_db]
@@ -193,7 +194,8 @@ def get_provider_and_url_by_model_sync(model_name: str) -> dict:
                         backend_url = _get_default_backend_url(provider)
                         logger.warning(f"⚠️ [同步查询] 厂家 {provider} 没有配置 default_base_url，使用硬编码默认值")
 
-                    from trader.llm.clients.providers import normalize_provider_key, default_backend_url
+                    normalize_provider_key = getattr(importlib.import_module('trader.llm.clients.providers'), 'normalize_provider_key')
+                    default_backend_url = getattr(importlib.import_module('trader.llm.clients.providers'), 'default_backend_url')
 
                     provider_key = normalize_provider_key(provider)
                     if provider_key == "qwen" and backend_url == "https://dashscope.aliyuncs.com/api/v1":
@@ -239,7 +241,8 @@ def get_provider_and_url_by_model_sync(model_name: str) -> dict:
                 if api_key:
                     logger.info(f"✅ [同步查询] 使用环境变量的 API Key")
 
-            from trader.llm.clients.providers import normalize_provider_key, default_backend_url
+            normalize_provider_key = getattr(importlib.import_module('trader.llm.clients.providers'), 'normalize_provider_key')
+            default_backend_url = getattr(importlib.import_module('trader.llm.clients.providers'), 'default_backend_url')
 
             provider_key = normalize_provider_key(provider)
             if provider_key == "qwen" and backend_url == "https://dashscope.aliyuncs.com/api/v1":
@@ -255,7 +258,7 @@ def get_provider_and_url_by_model_sync(model_name: str) -> dict:
             logger.warning(f"⚠️ [同步查询] 无法查询厂家配置: {e}")
 
         # 最后回退到硬编码的默认 URL 和环境变量 API Key
-        from trader.llm.clients.providers import normalize_provider_key
+        normalize_provider_key = getattr(importlib.import_module('trader.llm.clients.providers'), 'normalize_provider_key')
 
         provider_key = normalize_provider_key(provider)
         return {
@@ -270,8 +273,8 @@ def get_provider_and_url_by_model_sync(model_name: str) -> dict:
 
         # 尝试从厂家配置中获取 default_base_url 和 API Key
         try:
-            from pymongo import MongoClient
-            from app.core.config import settings
+            MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+            settings = getattr(importlib.import_module('app.core.config'), 'settings')
 
             client = MongoClient(settings.mongo_uri)
             db = client[settings.mongo_db]
@@ -313,7 +316,7 @@ def get_provider_and_url_by_model_sync(model_name: str) -> dict:
         }
 
 
-def _get_env_api_key_for_provider(provider: str) -> str:
+def _get_env_api_key_for_provider(provider: str) -> Optional[str]:
     """
     从环境变量获取指定供应商的 API Key
 
@@ -323,9 +326,10 @@ def _get_env_api_key_for_provider(provider: str) -> str:
     Returns:
         str: API Key，如果未找到则返回 None
     """
-    import os
+    os = importlib.import_module('os')
 
-    from trader.llm.clients.providers import env_key_for_provider, normalize_provider_key
+    env_key_for_provider = getattr(importlib.import_module('trader.llm.clients.providers'), 'env_key_for_provider')
+    normalize_provider_key = getattr(importlib.import_module('trader.llm.clients.providers'), 'normalize_provider_key')
 
     provider_key = normalize_provider_key(provider)
     env_key_name = env_key_for_provider(provider_key)
@@ -351,7 +355,8 @@ def _get_default_backend_url(provider: str) -> str:
     Returns:
         str: 默认的 backend_url
     """
-    from trader.llm.clients.providers import default_backend_url, normalize_provider_key
+    default_backend_url = getattr(importlib.import_module('trader.llm.clients.providers'), 'default_backend_url')
+    normalize_provider_key = getattr(importlib.import_module('trader.llm.clients.providers'), 'normalize_provider_key')
 
     provider_key = normalize_provider_key(provider)
     if provider_key == "302ai":
@@ -413,8 +418,8 @@ def create_analysis_config(
     deep_model: str,
     llm_provider: str,
     market_type: str = "A股",
-    quick_model_config: dict = None,  # 新增：快速模型的完整配置
-    deep_model_config: dict = None    # 新增：深度模型的完整配置
+    quick_model_config: Optional[dict] = None,  # 新增：快速模型的完整配置
+    deep_model_config: Optional[dict] = None    # 新增：深度模型的完整配置
 ) -> dict:
     """
     创建分析配置 - 支持数字等级和中文等级
@@ -475,7 +480,7 @@ def create_analysis_config(
         logger.warning(f"⚠️ 无效的研究深度类型: {type(research_depth)}，使用默认标准分析")
         research_depth = "标准"
 
-    from trader.default import DEFAULT_CONFIG
+    DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
     # 从DEFAULT_CONFIG开始，完全复制web目录的逻辑
     config = DEFAULT_CONFIG.copy()
@@ -605,7 +610,8 @@ class SimpleAnalysisService:
 
         # 🔧 创建共享的线程池，支持并发执行多个分析任务
         # 默认最多同时执行3个分析任务（可根据服务器资源调整）
-        import concurrent.futures
+        importlib.import_module('concurrent.futures')
+        concurrent = importlib.import_module('concurrent')
         self._thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 
         logger.info(f"🔧 [服务初始化] SimpleAnalysisService 实例ID: {id(self)}")
@@ -618,7 +624,7 @@ class SimpleAnalysisService:
 
         # 设置 WebSocket 管理器
         try:
-            from app.services.socket import get_websocket_manager
+            get_websocket_manager = getattr(importlib.import_module('app.services.socket'), 'get_websocket_manager')
             self.memory_manager.set_websocket_manager(get_websocket_manager())
         except ImportError:
             logger.warning("⚠️ WebSocket 管理器不可用")
@@ -636,8 +642,8 @@ class SimpleAnalysisService:
             )
 
             # 更新 MongoDB
-            from app.core.database import get_mongo_db
-            from datetime import datetime
+            get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
             db = get_mongo_db()
             update_data = {
                 "progress": progress,
@@ -696,18 +702,18 @@ class SimpleAnalysisService:
             if user_id == "admin":
                 admin_object_id = ObjectId("507f1f77bcf86cd799439011")
                 logger.info(f"🔄 转换admin用户ID: {user_id} -> {admin_object_id}")
-                return PyObjectId(admin_object_id)
+                return cast(PyObjectId, admin_object_id)
             else:
                 # 尝试将字符串转换为ObjectId
                 object_id = ObjectId(user_id)
                 logger.info(f"🔄 转换用户ID: {user_id} -> {object_id}")
-                return PyObjectId(object_id)
+                return cast(PyObjectId, object_id)
         except Exception as e:
             logger.error(f"❌ 用户ID转换失败: {user_id} -> {e}")
             # 如果转换失败，生成一个新的ObjectId
             new_object_id = ObjectId()
             logger.warning(f"⚠️ 生成新的用户ID: {new_object_id}")
-            return PyObjectId(new_object_id)
+            return cast(PyObjectId, new_object_id)
 
     def _get_trading_graph(self, config: Dict[str, Any]) -> Any:
         """获取或创建TradingAgents实例
@@ -722,7 +728,7 @@ class SimpleAnalysisService:
         # 不再使用缓存，因为 TradingAgentsGraph 有可变的实例变量
         logger.info(f"🔧 创建新的TradingAgents实例（并发安全模式）...")
         _ensure_trading_agents_logging()
-        from trader.graph.trading import TradingAgentsGraph
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
 
         trading_graph = TradingAgentsGraph(
             selected_analysts=config.get("selected_analysts", ["market", "fundamentals"]),
@@ -802,7 +808,7 @@ class SimpleAnalysisService:
                 logger.error(f"❌ 创建任务时写入MongoDB失败: {e}")
                 # 这里不应该忽略错误，因为没有MongoDB记录会导致状态查询失败
                 # 但为了不影响任务执行，我们记录错误但继续执行
-                import traceback
+                traceback = importlib.import_module('traceback')
                 logger.error(f"❌ MongoDB保存详细错误: {traceback.format_exc()}")
 
             return {
@@ -831,7 +837,7 @@ class SimpleAnalysisService:
             logger.info(f"🎯🎯🎯 [ENTRY] user_id={user_id}, stock_code={stock_code}")
         except Exception as entry_error:
             print(f"❌❌❌ [CRITICAL] 日志记录失败: {entry_error}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
 
         tracker = None
@@ -840,8 +846,8 @@ class SimpleAnalysisService:
 
             # 🔍 验证股票代码是否存在
             logger.info(f"🔍 开始验证股票代码: {stock_code}")
-            from trader.utils.validation import prepare_stock_data_async
-            from datetime import datetime
+            prepare_stock_data_async = getattr(importlib.import_module('trader.utils.validation'), 'prepare_stock_data_async')
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
 
             # 获取市场类型
             market_type = request.parameters.market_type if request.parameters else "A股"
@@ -886,7 +892,7 @@ class SimpleAnalysisService:
                 # 更新任务状态为失败
                 await self.memory_manager.update_task_status(
                     task_id=task_id,
-                    status=AnalysisStatus.FAILED,
+                    status=TaskStatus.FAILED,
                     progress=0,
                     error_message=user_friendly_error
                 )
@@ -906,14 +912,16 @@ class SimpleAnalysisService:
             logger.info(f"📈 历史数据: {'有' if validation_result.has_historical_data else '无'}")
             logger.info(f"📋 基本信息: {'有' if validation_result.has_basic_info else '无'}")
 
+            request_parameters = request.parameters or AnalysisParameters()
+
             # 在线程池中创建Redis进度跟踪器（避免阻塞事件循环）
             def create_tracker():
                 """在线程中创建进度跟踪器"""
                 logger.info(f"📊 [线程] 创建进度跟踪器: {task_id}")
                 tracker = RedisProgressTracker(
                     task_id=task_id,
-                    analysts=request.parameters.selected_analysts or ["market", "fundamentals"],
-                    research_depth=request.parameters.research_depth or "标准",
+                    analysts=request_parameters.selected_analysts or ["market", "fundamentals"],
+                    research_depth=request_parameters.research_depth or "标准",
                     llm_provider="dashscope"
                 )
                 logger.info(f"✅ [线程] 进度跟踪器创建完成: {task_id}")
@@ -1003,7 +1011,7 @@ class SimpleAnalysisService:
 
             # 创建通知：分析完成（方案B：REST+SSE）
             try:
-                from app.services.notification import get_notifications_service
+                get_notifications_service = getattr(importlib.import_module('app.services.notification'), 'get_notifications_service')
                 svc = get_notifications_service()
                 summary = str(result.get("summary", ""))[:120]
                 await svc.create_and_publish(
@@ -1025,15 +1033,17 @@ class SimpleAnalysisService:
             logger.error(f"❌ 后台分析任务失败: {task_id} - {e}")
 
             # 格式化错误信息为用户友好的提示
-            from ..utils.errors import ErrorFormatter
+            ErrorFormatter = getattr(importlib.import_module('app.utils.errors'), 'ErrorFormatter')
 
             # 收集上下文信息
             error_context = {}
             if hasattr(request, 'parameters') and request.parameters:
-                if hasattr(request.parameters, 'quick_model'):
-                    error_context['model'] = request.parameters.quick_model
-                if hasattr(request.parameters, 'deep_model'):
-                    error_context['model'] = request.parameters.deep_model
+                quick_model = getattr(request.parameters, "quick_analysis_model", None)
+                deep_model = getattr(request.parameters, "deep_analysis_model", None)
+                if quick_model:
+                    error_context['model'] = quick_model
+                if deep_model:
+                    error_context['model'] = deep_model
 
             # 格式化错误
             formatted_error = ErrorFormatter.format_error(str(e), error_context)
@@ -1102,7 +1112,8 @@ class SimpleAnalysisService:
         """同步执行分析的具体实现"""
         try:
             # 在线程中重新初始化日志系统
-            from trader.utils.logging.init import init_logging, get_logger
+            init_logging = getattr(importlib.import_module('trader.utils.logging.init'), 'init_logging')
+            get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
             init_logging()
             thread_logger = get_logger('analysis_thread')
 
@@ -1126,7 +1137,7 @@ class SimpleAnalysisService:
 
                     # 🔥 使用同步方式更新内存和 MongoDB，避免事件循环冲突
                     # 1. 更新内存中的任务状态（使用新事件循环）
-                    import asyncio
+                    asyncio = importlib.import_module('asyncio')
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
                     try:
@@ -1143,9 +1154,9 @@ class SimpleAnalysisService:
                         loop.close()
 
                     # 2. 更新 MongoDB（使用同步客户端，避免事件循环冲突）
-                    from pymongo import MongoClient
-                    from app.core.config import settings
-                    from datetime import datetime
+                    MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+                    settings = getattr(importlib.import_module('app.core.config'), 'settings')
+                    datetime = getattr(importlib.import_module('datetime'), 'datetime')
 
                     sync_client = MongoClient(settings.mongo_uri)
                     sync_db = sync_client[settings.mongo_db]
@@ -1170,7 +1181,7 @@ class SimpleAnalysisService:
             update_progress_sync(7, "⚙️ 配置分析参数", "configuration")
 
             # 🆕 智能模型选择逻辑
-            from app.services.capability import get_model_capability_service
+            get_model_capability_service = getattr(importlib.import_module('app.services.capability'), 'get_model_capability_service')
             capability_service = get_model_capability_service()
 
             research_depth = request.parameters.research_depth if request.parameters else "标准"
@@ -1290,7 +1301,7 @@ class SimpleAnalysisService:
 
             # 🔧 智能日期范围处理：获取最近10天的数据，自动处理周末/节假日
             # 这样可以确保即使是周末或节假日，也能获取到最后一个交易日的数据
-            from trader.utils.flows import get_trading_date_range
+            get_trading_date_range = getattr(importlib.import_module('trader.utils.flows'), 'get_trading_date_range')
             data_start_date, data_end_date = get_trading_date_range(analysis_date, lookback_days=10)
 
             logger.info(f"📅 分析目标日期: {analysis_date}")
@@ -1302,8 +1313,8 @@ class SimpleAnalysisService:
             update_progress_sync(10, "🤖 开始多智能体协作分析", "agent_analysis")
 
             # 启动一个异步任务来模拟进度更新
-            import threading
-            import time
+            threading = importlib.import_module('threading')
+            time = importlib.import_module('time')
 
             def simulate_progress():
                 """模拟TradingAgents内部进度"""
@@ -1436,8 +1447,8 @@ class SimpleAnalysisService:
 
                             # 🔥 同时更新内存和 MongoDB
                             try:
-                                import asyncio
-                                from datetime import datetime
+                                asyncio = importlib.import_module('asyncio')
+                                datetime = getattr(importlib.import_module('datetime'), 'datetime')
 
                                 # 尝试获取当前运行的事件循环
                                 try:
@@ -1449,8 +1460,8 @@ class SimpleAnalysisService:
                                     logger.debug(f"✅ [Graph进度] 已提交异步更新任务: {int(progress_pct)}%")
                                 except RuntimeError:
                                     # 没有运行的事件循环，使用同步方式更新 MongoDB
-                                    from pymongo import MongoClient
-                                    from app.core.config import settings
+                                    MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+                                    settings = getattr(importlib.import_module('app.core.config'), 'settings')
 
                                     # 创建同步 MongoDB 客户端
                                     sync_client = MongoClient(settings.mongo_uri)
@@ -1832,15 +1843,17 @@ class SimpleAnalysisService:
             logger.error(f"❌ [线程池] 分析执行失败: {task_id} - {e}")
 
             # 格式化错误信息为用户友好的提示
-            from ..utils.errors import ErrorFormatter
+            ErrorFormatter = getattr(importlib.import_module('app.utils.errors'), 'ErrorFormatter')
 
             # 收集上下文信息
             error_context = {}
             if request and hasattr(request, 'parameters') and request.parameters:
-                if hasattr(request.parameters, 'quick_model'):
-                    error_context['model'] = request.parameters.quick_model
-                if hasattr(request.parameters, 'deep_model'):
-                    error_context['model'] = request.parameters.deep_model
+                quick_model = getattr(request.parameters, "quick_analysis_model", None)
+                deep_model = getattr(request.parameters, "deep_analysis_model", None)
+                if quick_model:
+                    error_context['model'] = quick_model
+                if deep_model:
+                    error_context['model'] = deep_model
 
             # 格式化错误
             formatted_error = ErrorFormatter.format_error(str(e), error_context)
@@ -2038,8 +2051,8 @@ class SimpleAnalysisService:
         if not settings.POSTGRES_READ_ENABLED:
             return None
         try:
-            from app.db.analysis import list_user_analysis_tasks
-            from app.db.session import get_session_factory
+            list_user_analysis_tasks = getattr(importlib.import_module('app.db.analysis'), 'list_user_analysis_tasks')
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
             async with get_session_factory()() as session:
                 documents = await list_user_analysis_tasks(
@@ -2067,7 +2080,7 @@ class SimpleAnalysisService:
 
         if str(user_id) == 'admin':
             try:
-                from bson import ObjectId
+                ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
                 admin_oid_str = '507f1f77bcf86cd799439011'
                 uid_candidates.append(ObjectId(admin_oid_str))
                 uid_candidates.append(admin_oid_str)
@@ -2076,14 +2089,14 @@ class SimpleAnalysisService:
                 logger.warning(f"⚠️ [Tasks] admin用户ObjectId创建失败: {e}")
         else:
             try:
-                from bson import ObjectId
+                ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
                 uid_candidates.append(ObjectId(user_id))
                 logger.debug(f"📋 [Tasks] 用户ID已转换为ObjectId: {user_id}")
             except Exception as conv_err:
                 logger.warning(f"⚠️ [Tasks] 用户ID转换ObjectId失败，按字符串匹配: {conv_err}")
 
         base_condition = {"$in": uid_candidates}
-        query = {"$or": [{"user_id": base_condition}, {"user": base_condition}]}
+        query: Dict[str, Any] = {"$or": [{"user_id": base_condition}, {"user": base_condition}]}
 
         if task_status:
             query["status"] = task_status.value
@@ -2123,7 +2136,8 @@ class SimpleAnalysisService:
             if item.get(key) and hasattr(item[key], "isoformat"):
                 dt = item[key]
                 if dt.tzinfo is None:
-                    from datetime import timezone, timedelta
+                    timezone = getattr(importlib.import_module('datetime'), 'timezone')
+                    timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
                     china_tz = timezone(timedelta(hours=8))
                     dt = dt.replace(tzinfo=china_tz)
                 item[key] = dt.isoformat()
@@ -2242,7 +2256,8 @@ class SimpleAnalysisService:
             results = merged_tasks[offset:offset + limit]
 
             # 🔥 统一处理时区信息（确保所有时间字段都有时区标识）
-            from datetime import timezone, timedelta
+            timezone = getattr(importlib.import_module('datetime'), 'timezone')
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
             china_tz = timezone(timedelta(hours=8))
 
             for task in results:
@@ -2284,7 +2299,7 @@ class SimpleAnalysisService:
 
             # 2) 清理 MongoDB 中的僵尸任务
             db = get_mongo_db()
-            from datetime import timedelta
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
             cutoff_time = datetime.utcnow() - timedelta(hours=max_running_hours)
 
             # 查找长时间处于 processing 状态的任务
@@ -2342,7 +2357,7 @@ class SimpleAnalysisService:
         """
         try:
             db = get_mongo_db()
-            from datetime import timedelta
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
             cutoff_time = datetime.utcnow() - timedelta(hours=max_running_hours)
 
             # 查找长时间处于 processing 状态的任务
@@ -2391,7 +2406,7 @@ class SimpleAnalysisService:
         task_id: str,
         status: AnalysisStatus,
         progress: int,
-        error_message: str = None
+        error_message: Optional[str] = None
     ):
         """更新任务状态"""
         try:
@@ -2438,7 +2453,7 @@ class SimpleAnalysisService:
             db = get_mongo_db()
 
             # 生成分析ID（与web目录保持一致）
-            from datetime import datetime
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
             timestamp = datetime.utcnow()  # 存储 UTC 时间（标准做法）
             stock_symbol = result.get('stock_symbol') or result.get('stock_code', 'UNKNOWN')
             analysis_id = f"{stock_symbol}_{timestamp.strftime('%Y%m%d_%H%M%S')}"
@@ -2574,7 +2589,7 @@ class SimpleAnalysisService:
                             logger.warning(f"⚠️ 降级提取也失败: {fallback_error}")
 
             # 🔥 根据股票代码推断市场类型
-            from trader.utils.stocks import StockUtils
+            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
             market_info = StockUtils.get_market_info(stock_symbol)
             market_type_map = {
                 "china_a": "A股",
@@ -2590,7 +2605,7 @@ class SimpleAnalysisService:
             try:
                 if market_info.get("market") == "china_a":
                     # A股：使用统一接口获取股票信息
-                    from trader.flows.interface import get_china_stock_info_unified
+                    get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
                     stock_info = get_china_stock_info_unified(stock_symbol)
                     logger.debug(f"📊 获取股票信息返回: {stock_info[:200] if stock_info else 'None'}...")
 
@@ -2601,7 +2616,7 @@ class SimpleAnalysisService:
                         # 降级方案：尝试直接从数据源管理器获取
                         logger.warning(f"⚠️ 无法从统一接口解析股票名称: {stock_symbol}，尝试降级方案")
                         try:
-                            from trader.flows.sources import get_china_stock_info_unified as get_info_dict
+                            get_info_dict = getattr(importlib.import_module('trader.flows.sources'), 'get_china_stock_info_unified')
                             info_dict = get_info_dict(stock_symbol)
                             if info_dict and info_dict.get('name'):
                                 stock_name = info_dict['name']
@@ -2612,7 +2627,7 @@ class SimpleAnalysisService:
                 elif market_info.get("market") == "hong_kong":
                     # 港股：使用改进的港股工具
                     try:
-                        from trader.flows.providers.hk.improved import get_hk_company_name_improved
+                        get_hk_company_name_improved = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_company_name_improved')
                         stock_name = get_hk_company_name_improved(stock_symbol)
                         logger.info(f"📊 获取港股名称: {stock_symbol} -> {stock_name}")
                     except Exception:
@@ -2769,10 +2784,10 @@ class SimpleAnalysisService:
     async def _save_modular_reports_to_data_dir(self, result: Dict[str, Any], stock_symbol: str) -> Dict[str, str]:
         """保存分模块报告到data目录 - 完全采用web目录的文件结构"""
         try:
-            import os
-            from pathlib import Path
-            from datetime import datetime
-            import json
+            os = importlib.import_module('os')
+            Path = getattr(importlib.import_module('pathlib'), 'Path')
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+            json = importlib.import_module('json')
 
             # 获取仓库根目录，保持报告仍写入根目录 data/
             project_root = Path(__file__).resolve().parents[3]
@@ -2941,7 +2956,7 @@ class SimpleAnalysisService:
 
         except Exception as e:
             logger.error(f"❌ 保存分模块报告失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             logger.error(f"❌ 详细错误: {traceback.format_exc()}")
             return {}
 

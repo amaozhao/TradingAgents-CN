@@ -7,13 +7,13 @@ try:
     print("🔄 测试基础模块导入...")
 
     # 测试基础模块
-    from webapi.core.config import settings
+    from app.core.config import settings
     print("✅ 配置模块导入成功")
 
-    from webapi.models.user import User
+    from app.models.user import User
     print("✅ 用户模型导入成功")
 
-    from webapi.services.analysisservice import get_analysis_service
+    from app.services.analysis.service import get_analysis_service
     print("✅ 分析服务导入成功")
 
     print("🎉 所有模块导入成功！")

@@ -3,6 +3,7 @@
 """
 测试级别3死循环修复效果
 """
+import importlib
 
 import os
 import sys
@@ -20,8 +21,9 @@ def test_level3_analysis():
     start_time = time.time()  # 在try块外定义
 
     try:
-        from app.services.analysis.simple import SimpleAnalysisService
-        from app.models.analysis import SingleAnalysisRequest, AnalysisParameters
+        SimpleAnalysisService = getattr(importlib.import_module('app.services.analysis.simple'), 'SimpleAnalysisService')
+        SingleAnalysisRequest = getattr(importlib.import_module('app.models.analysis'), 'SingleAnalysisRequest')
+        AnalysisParameters = getattr(importlib.import_module('app.models.analysis'), 'AnalysisParameters')
 
         # 创建分析服务
         service = SimpleAnalysisService()

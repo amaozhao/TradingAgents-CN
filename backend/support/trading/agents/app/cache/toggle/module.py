@@ -1,3 +1,4 @@
+import importlib
 import os
 import types
 import builtins
@@ -35,10 +36,10 @@ def test_basics_prefers_app_cache_when_enabled(monkeypatch):
     os.environ["TA_USE_APP_CACHE"] = "true"
 
     # Ensure API branch is reachable in case of fallback
-    import trader.flows.service as sds_mod
+    sds_mod = importlib.import_module('trader.flows.service')
     monkeypatch.setattr(sds_mod, "ENHANCED_FETCHER_AVAILABLE", True, raising=False)
 
-    from trader.flows.service import StockDataService
+    StockDataService = getattr(importlib.import_module('trader.flows.service'), 'StockDataService')
 
     svc = StockDataService()
     # Inject dummy db_manager
@@ -66,10 +67,10 @@ def test_basics_fallback_to_api_when_cache_miss(monkeypatch):
     os.environ["TA_USE_APP_CACHE"] = "true"
 
     # Ensure API branch enabled
-    import trader.flows.service as sds_mod
+    sds_mod = importlib.import_module('trader.flows.service')
     monkeypatch.setattr(sds_mod, "ENHANCED_FETCHER_AVAILABLE", True, raising=False)
 
-    from trader.flows.service import StockDataService
+    StockDataService = getattr(importlib.import_module('trader.flows.service'), 'StockDataService')
 
     svc = StockDataService()
     monkeypatch.setattr(svc, "db_manager", DummyDBManager(True))
@@ -98,10 +99,10 @@ def test_basics_direct_first_when_disabled(monkeypatch):
     os.environ["TA_USE_APP_CACHE"] = "false"
 
     # Ensure API branch enabled
-    import trader.flows.service as sds_mod
+    sds_mod = importlib.import_module('trader.flows.service')
     monkeypatch.setattr(sds_mod, "ENHANCED_FETCHER_AVAILABLE", True, raising=False)
 
-    from trader.flows.service import StockDataService
+    StockDataService = getattr(importlib.import_module('trader.flows.service'), 'StockDataService')
 
     svc = StockDataService()
     monkeypatch.setattr(svc, "db_manager", DummyDBManager(True))
@@ -131,7 +132,7 @@ def test_realtime_quotes_prefers_app_market_quotes(monkeypatch):
     os.environ["TA_USE_APP_CACHE"] = "true"
 
     # Patch the app_cache_adapter before TushareAdapter tries to import from it
-    import trader.flows.app as app_cache_adapter
+    app_cache_adapter = importlib.import_module('trader.flows.app')
 
     def fake_get_market_quote_dataframe(symbol: str):
         # Return a minimal dataframe resembling the adapter output
@@ -152,7 +153,7 @@ def test_realtime_quotes_prefers_app_market_quotes(monkeypatch):
 
     monkeypatch.setattr(app_cache_adapter, "get_market_quote_dataframe", fake_get_market_quote_dataframe)
 
-    from trader.flows.adapter import TushareDataAdapter
+    TushareDataAdapter = getattr(importlib.import_module('trader.flows.adapter'), 'TushareDataAdapter')
 
     # Create adapter and stub provider to avoid real Tushare calls
     ada = TushareDataAdapter(enable_cache=False)

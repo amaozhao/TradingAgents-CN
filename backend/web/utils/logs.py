@@ -2,6 +2,7 @@
 进度日志处理器
 将日志系统中的模块完成消息转发给进度跟踪器
 """
+import importlib
 
 
 import logging
@@ -75,7 +76,7 @@ class ProgressLogHandler(logging.Handler):
 
     def _extract_stock_symbol(self, message: str) -> Optional[str]:
         """从消息中提取股票代码"""
-        import re
+        re = importlib.import_module('re')
 
         # 尝试匹配 "股票: XXXXX" 格式
         match = re.search(r'股票:\s*([A-Za-z0-9]+)', message)

@@ -3,6 +3,7 @@
 DashScope OpenAI 适配器修复测试脚本
 测试修复后的工具绑定、转换和调用机制
 """
+import importlib
 
 import os
 import sys
@@ -21,9 +22,9 @@ def test_enhanced_tool_binding():
     print("=" * 60)
 
     try:
-        from trader.llm.adapters.dashscope.openai import ChatDashScopeOpenAI
-        from langchain_core.tools import tool
-        from langchain_core.messages import HumanMessage
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'ChatDashScopeOpenAI')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         # 定义测试工具
         @tool
@@ -82,7 +83,7 @@ def test_tool_format_validation():
     print("=" * 60)
 
     try:
-        from trader.llm.adapters.dashscope.openai import ChatDashScopeOpenAI
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'ChatDashScopeOpenAI')
 
         # 创建适配器实例
         llm = ChatDashScopeOpenAI(model="qwen-turbo")
@@ -130,8 +131,8 @@ def test_backup_tool_creation():
     print("=" * 60)
 
     try:
-        from trader.llm.adapters.dashscope.openai import ChatDashScopeOpenAI
-        from langchain_core.tools import tool
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'ChatDashScopeOpenAI')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
 
         # 创建适配器实例
         llm = ChatDashScopeOpenAI(model="qwen-turbo")
@@ -169,7 +170,7 @@ def test_tool_call_response_validation():
     print("=" * 60)
 
     try:
-        from trader.llm.adapters.dashscope.openai import ChatDashScopeOpenAI
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'ChatDashScopeOpenAI')
 
         # 创建适配器实例
         llm = ChatDashScopeOpenAI(model="qwen-turbo")
@@ -220,9 +221,9 @@ def test_comprehensive_tool_calling():
     print("=" * 60)
 
     try:
-        from trader.llm.adapters.dashscope.openai import ChatDashScopeOpenAI
-        from langchain_core.tools import tool
-        from langchain_core.messages import HumanMessage
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters.dashscope.openai'), 'ChatDashScopeOpenAI')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         # 定义复杂的测试工具
         @tool

@@ -2,11 +2,12 @@
 新闻数据服务
 提供统一的新闻数据存储、查询和管理功能
 """
+import importlib
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 
 from pymongo import ReplaceOne
 from pymongo.errors import BulkWriteError
@@ -70,14 +71,8 @@ class NewsStats:
     high_importance_count: int = 0
     medium_importance_count: int = 0
     low_importance_count: int = 0
-    categories: Dict[str, int] = None
-    sources: Dict[str, int] = None
-
-    def __post_init__(self):
-        if self.categories is None:
-            self.categories = {}
-        if self.sources is None:
-            self.sources = {}
+    categories: Dict[str, int] = field(default_factory=dict)
+    sources: Dict[str, int] = field(default_factory=dict)
 
 
 class NewsDataService:
@@ -256,7 +251,7 @@ class NewsDataService:
             保存的记录数量
         """
         try:
-            from app.core.database import get_mongo_db_sync
+            get_mongo_db_sync = getattr(importlib.import_module('app.core.database'), 'get_mongo_db_sync')
 
             # 获取同步数据库连接
             db = get_mongo_db_sync()
@@ -330,7 +325,7 @@ class NewsDataService:
 
         except Exception as e:
             self.logger.error(f"❌ 保存新闻数据失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
 
             self.logger.error(traceback.format_exc())
             return 0
@@ -380,7 +375,7 @@ class NewsDataService:
 
         return standardized
 
-    def _get_full_symbol(self, symbol: str, market: str) -> str:
+    def _get_full_symbol(self, symbol: str, market: str) -> Optional[str]:
         """获取完整股票代码"""
         if not symbol:
             return None
@@ -535,7 +530,7 @@ class NewsDataService:
                 self.logger.warning(f"   ⚠️ 查询结果为空")
 
             self.logger.info(f"✅ [query_news] 查询完成，返回 {len(results)} 条记录")
-            return results
+            return cast(List[Dict[str, Any]], results)
 
         except Exception as e:
             self.logger.error(f"❌ 查询新闻数据失败: {e}", exc_info=True)
@@ -543,8 +538,8 @@ class NewsDataService:
 
     async def _query_news_from_postgres(self, params: NewsQueryParams) -> List[Dict[str, Any]]:
         try:
-            from app.db.news import query_news
-            from app.db.session import get_session_factory
+            query_news = getattr(importlib.import_module('app.db.news'), 'query_news')
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
 
             async with get_session_factory()() as session:
                 return await query_news(session, params)
@@ -552,7 +547,9 @@ class NewsDataService:
             self.logger.warning(f"PostgreSQL新闻查询失败，回退MongoDB: {e}")
             return []
 
-    async def get_latest_news(self, symbol: str = None, limit: int = 10, hours_back: int = 24) -> List[Dict[str, Any]]:
+    async def get_latest_news(
+        self, symbol: Optional[str] = None, limit: int = 10, hours_back: int = 24
+    ) -> List[Dict[str, Any]]:
         """
         获取最新新闻
 
@@ -573,7 +570,10 @@ class NewsDataService:
         return await self.query_news(params)
 
     async def get_news_statistics(
-        self, symbol: str = None, start_time: datetime = None, end_time: datetime = None
+        self,
+        symbol: Optional[str] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
     ) -> NewsStats:
         """
         获取新闻统计信息
@@ -703,7 +703,9 @@ class NewsDataService:
         if result.status == "failed":
             self.logger.warning("⚠️ 新闻数据 PostgreSQL tombstone 双写失败: %s", result.reason)
 
-    async def search_news(self, query_text: str, symbol: str = None, limit: int = 20) -> List[Dict[str, Any]]:
+    async def search_news(
+        self, query_text: str, symbol: Optional[str] = None, limit: int = 20
+    ) -> List[Dict[str, Any]]:
         """
         全文搜索新闻
 
@@ -719,7 +721,7 @@ class NewsDataService:
             collection = self._get_collection()
 
             # 构建查询条件
-            query = {"$text": {"$search": query_text}}
+            query: Dict[str, Any] = {"$text": {"$search": query_text}}
 
             if symbol:
                 query["symbol"] = symbol
@@ -731,7 +733,7 @@ class NewsDataService:
             results = await cursor.to_list(length=None)
 
             # 🔧 转换 ObjectId 为字符串，避免 JSON 序列化错误
-            results = convert_objectid_to_str(results)
+            results = cast(List[Dict[str, Any]], convert_objectid_to_str(results))
 
             self.logger.info(f"🔍 全文搜索返回 {len(results)} 条结果")
             return results

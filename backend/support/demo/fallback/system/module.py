@@ -4,6 +4,7 @@
 股票数据降级系统演示
 展示MongoDB -> Tushare数据接口的完整降级机制
 """
+import importlib
 
 import sys
 import os
@@ -56,9 +57,9 @@ def demo_fallback_mechanism():
     print("=" * 50)
 
     try:
-        from trader.api.stocks import (
-            get_stock_info, check_service_status, get_market_summary
-        )
+        get_stock_info = getattr(importlib.import_module('trader.api.stocks'), 'get_stock_info')
+        check_service_status = getattr(importlib.import_module('trader.api.stocks'), 'check_service_status')
+        get_market_summary = getattr(importlib.import_module('trader.api.stocks'), 'get_market_summary')
 
         print("\n📊 1. 检查服务状态:")
         status = check_service_status()
@@ -242,7 +243,7 @@ def main():
         print("\n⚠️ 演示被用户中断")
     except Exception as e:
         print(f"\n❌ 演示过程中出错: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == '__main__':

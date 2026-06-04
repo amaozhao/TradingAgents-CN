@@ -3,6 +3,7 @@
 财务数据同步服务
 统一管理三数据源的财务数据同步
 """
+import importlib
 import asyncio
 import logging
 from datetime import datetime, timezone
@@ -46,9 +47,9 @@ class FinancialDataSyncService:
     """财务数据同步服务"""
 
     def __init__(self):
-        self.db = None
-        self.financial_service = None
-        self.providers = {}
+        self.db: Any = None
+        self.financial_service: Any = None
+        self.providers: Dict[str, Any] = {}
 
     async def initialize(self):
         """初始化服务"""
@@ -56,9 +57,9 @@ class FinancialDataSyncService:
             self.db = get_mongo_db()
             self.financial_service = await get_financial_data_service()
 
-            from trader.flows.providers.china.akshare import get_akshare_provider
-            from trader.flows.providers.china.baostock import get_baostock_provider
-            from trader.flows.providers.china.tushare import get_tushare_provider
+            get_akshare_provider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'get_akshare_provider')
+            get_baostock_provider = getattr(importlib.import_module('trader.flows.providers.china.baostock'), 'get_baostock_provider')
+            get_tushare_provider = getattr(importlib.import_module('trader.flows.providers.china.tushare'), 'get_tushare_provider')
 
             # 初始化数据源提供者
             self.providers = {
@@ -75,9 +76,9 @@ class FinancialDataSyncService:
 
     async def sync_financial_data(
         self,
-        symbols: List[str] = None,
-        data_sources: List[str] = None,
-        report_types: List[str] = None,
+        symbols: Optional[List[str]] = None,
+        data_sources: Optional[List[str]] = None,
+        report_types: Optional[List[str]] = None,
         batch_size: int = 50,
         delay_seconds: float = 1.0
     ) -> Dict[str, FinancialSyncStats]:
@@ -275,7 +276,8 @@ class FinancialDataSyncService:
             if self.financial_service is None:
                 await self.initialize()
 
-            return await self.financial_service.get_financial_statistics()
+            financial_service: Any = self.financial_service
+            return await financial_service.get_financial_statistics()
 
         except Exception as e:
             logger.error(f"❌ 获取同步统计失败: {e}")
@@ -284,7 +286,7 @@ class FinancialDataSyncService:
     async def sync_single_stock(
         self,
         symbol: str,
-        data_sources: List[str] = None
+        data_sources: Optional[List[str]] = None
     ) -> Dict[str, bool]:
         """同步单只股票的财务数据"""
         if self.db is None:

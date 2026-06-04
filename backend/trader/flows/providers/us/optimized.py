@@ -3,6 +3,7 @@
 优化的美股数据获取工具
 集成缓存策略，减少API调用，提高响应速度
 """
+import importlib
 
 import os
 import time
@@ -10,18 +11,19 @@ import random
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional, cast
 import yfinance as yf
 import pandas as pd
 
 # 导入缓存管理器（支持新旧路径）
 try:
     from ...cache import StockDataCache
-    def get_cache():
-        return StockDataCache()
 except ImportError:
-    def get_cache():
-        return None
+    StockDataCache = None
+
+
+def get_cache() -> Any:
+    return StockDataCache() if StockDataCache is not None else None
 
 # 导入配置（支持新旧路径）
 try:
@@ -40,14 +42,14 @@ class OptimizedUSDataProvider:
     """优化的美股数据提供器 - 集成缓存和API限制处理"""
 
     def __init__(self):
-        self.cache = get_cache()
+        self.cache: Any = get_cache()
         self.config = get_config()
         self.last_api_call = 0
         self.min_api_interval = get_float("TA_US_MIN_API_INTERVAL_SECONDS", "ta_us_min_api_interval_seconds", 1.0)
 
         # 🔥 初始化数据源管理器（从数据库读取配置）
         try:
-            from trader.flows.sources import USDataSourceManager
+            USDataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'USDataSourceManager')
             self.us_manager = USDataSourceManager()
             logger.info(f"✅ 美股数据源管理器初始化成功")
         except Exception as e:
@@ -87,7 +89,8 @@ class OptimizedUSDataProvider:
         # 检查缓存（除非强制刷新）
         if not force_refresh:
             # 🔥 按照数据源优先级顺序查找缓存
-            from ...sources import get_us_data_source_manager, USDataSource
+            get_us_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_us_data_source_manager')
+            USDataSource = getattr(importlib.import_module('trader.flows.sources'), 'USDataSource')
             us_manager = get_us_data_source_manager()
 
             # 获取数据源优先级顺序
@@ -138,7 +141,7 @@ class OptimizedUSDataProvider:
         # 如果没有配置优先级，使用默认顺序
         if not source_priority:
             # 默认顺序：yfinance > alpha_vantage > finnhub
-            from trader.flows.sources import USDataSource
+            USDataSource = getattr(importlib.import_module('trader.flows.sources'), 'USDataSource')
             source_priority = [USDataSource.YFINANCE, USDataSource.ALPHA_VANTAGE, USDataSource.FINNHUB]
             logger.info(f"📊 [美股数据源优先级] 使用默认顺序: {[s.value for s in source_priority]}")
 
@@ -177,14 +180,14 @@ class OptimizedUSDataProvider:
         if not formatted_data:
             try:
                 # 检测股票类型
-                from trader.utils.stocks import StockUtils
+                StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
                 market_info = StockUtils.get_market_info(symbol)
 
                 if market_info['is_hk']:
                     # 港股优先使用AKShare数据源
                     logger.info(f"🇭🇰 [数据来源: API调用-AKShare] 尝试使用AKShare获取港股数据: {symbol}")
                     try:
-                        from trader.flows.interface import get_hk_stock_data_unified
+                        get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
                         hk_data_text = get_hk_stock_data_unified(symbol, start_date, end_date)
 
                         if hk_data_text and "❌" not in hk_data_text:
@@ -255,8 +258,9 @@ class OptimizedUSDataProvider:
         """格式化股票数据为字符串"""
 
         # 移除时区信息
-        if data.index.tz is not None:
-            data.index = data.index.tz_localize(None)
+        index = cast(Any, data.index)
+        if index.tz is not None:
+            data.index = index.tz_localize(None)
 
         # 四舍五入数值
         numeric_columns = ["Open", "High", "Low", "Close", "Adj Close"]
@@ -271,7 +275,7 @@ class OptimizedUSDataProvider:
 
         # 🔥 使用统一的技术指标计算函数
         # 注意：美股数据列名是大写的 Close, High, Low
-        from trader.tools.analysis.indicators import add_all_indicators
+        add_all_indicators = getattr(importlib.import_module('trader.tools.analysis.indicators'), 'add_all_indicators')
         data = add_all_indicators(data, close_col='Close', high_col='High', low_col='Low')
 
         # 获取最新技术指标
@@ -327,7 +331,7 @@ class OptimizedUSDataProvider:
             # 查找任何相关的缓存，不考虑TTL
             for metadata_file in self.cache.metadata_dir.glob(f"*_meta.json"):
                 try:
-                    import json
+                    json = importlib.import_module('json')
                     with open(metadata_file, 'r', encoding='utf-8') as f:
                         metadata = json.load(f)
 
@@ -346,12 +350,13 @@ class OptimizedUSDataProvider:
 
         return None
 
-    def _get_data_from_finnhub(self, symbol: str, start_date: str, end_date: str) -> str:
+    def _get_data_from_finnhub(self, symbol: str, start_date: str, end_date: str) -> Optional[str]:
         """从FINNHUB API获取股票数据"""
         try:
-            import finnhub
-            import os
-            from datetime import datetime, timedelta
+            finnhub = importlib.import_module('finnhub')
+            os = importlib.import_module('os')
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
 
             # 获取API密钥
@@ -403,7 +408,7 @@ class OptimizedUSDataProvider:
             logger.error(f"❌ FINNHUB数据获取失败: {e}")
             return None
 
-    def _get_data_from_yfinance(self, symbol: str, start_date: str, end_date: str) -> str:
+    def _get_data_from_yfinance(self, symbol: str, start_date: str, end_date: str) -> Optional[str]:
         """从 Yahoo Finance API 获取股票数据"""
         try:
             # 获取数据
@@ -423,12 +428,12 @@ class OptimizedUSDataProvider:
             logger.error(f"❌ Yahoo Finance数据获取失败: {e}")
             return None
 
-    def _get_data_from_alpha_vantage(self, symbol: str, start_date: str, end_date: str) -> str:
+    def _get_data_from_alpha_vantage(self, symbol: str, start_date: str, end_date: str) -> Optional[str]:
         """从 Alpha Vantage API 获取股票数据"""
         try:
-            from trader.flows.providers.us.alpha.common import get_api_key
-            import requests
-            from datetime import datetime
+            get_api_key = getattr(importlib.import_module('trader.flows.providers.us.alpha.common'), 'get_api_key')
+            requests = importlib.import_module('requests')
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
 
             # 获取 API Key
             api_key = get_api_key()
@@ -481,7 +486,7 @@ class OptimizedUSDataProvider:
                 return None
 
             # 格式化数据
-            formatted_data = self._format_stock_data(symbol, df, start_date, end_date)
+            formatted_data = self._format_stock_data(symbol, cast(pd.DataFrame, df), start_date, end_date)
             return formatted_data
 
         except Exception as e:
@@ -535,9 +540,9 @@ def get_us_stock_data_cached(symbol: str, start_date: str, end_date: str,
         格式化的股票数据字符串
     """
     # 🔧 智能日期范围处理：自动扩展到配置的回溯天数，处理周末/节假日
-    from trader.utils.flows import get_trading_date_range
-    from app.core.config import get_settings
-    from datetime import datetime
+    get_trading_date_range = getattr(importlib.import_module('trader.utils.flows'), 'get_trading_date_range')
+    get_settings = getattr(importlib.import_module('app.core.config'), 'get_settings')
+    datetime = getattr(importlib.import_module('datetime'), 'datetime')
 
     original_start_date = start_date
     original_end_date = end_date

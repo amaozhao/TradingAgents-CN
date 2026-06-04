@@ -3,6 +3,7 @@
 测试增强的Tushare日志功能
 验证详细日志是否能帮助追踪数据获取问题
 """
+import importlib
 
 import sys
 import os
@@ -18,7 +19,7 @@ def test_enhanced_logging():
     print("=" * 80)
 
     try:
-        from trader.flows.data_source_manager import DataSourceManager
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
 
         manager = DataSourceManager()
 
@@ -79,7 +80,7 @@ def test_enhanced_logging():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def test_direct_tushare_provider():
@@ -88,7 +89,7 @@ def test_direct_tushare_provider():
     print("=" * 80)
 
     try:
-        from trader.flows.tushare_utils import get_tushare_provider
+        get_tushare_provider = getattr(importlib.import_module('trader.flows.tushare'), 'get_tushare_provider')
 
         provider = get_tushare_provider()
 
@@ -113,7 +114,7 @@ def test_direct_tushare_provider():
 
     except Exception as e:
         print(f"❌ 直接测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def test_adapter_layer():
@@ -122,7 +123,7 @@ def test_adapter_layer():
     print("=" * 80)
 
     try:
-        from trader.flows.adapter import get_tushare_adapter
+        get_tushare_adapter = getattr(importlib.import_module('trader.flows.adapter'), 'get_tushare_adapter')
 
         adapter = get_tushare_adapter()
 
@@ -146,7 +147,7 @@ def test_adapter_layer():
 
     except Exception as e:
         print(f"❌ 适配器测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def main():

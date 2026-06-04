@@ -2,6 +2,7 @@
 """
 测试BaoStock股票过滤功能
 """
+import importlib
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -22,7 +23,7 @@ def test_baostock_stock_types():
     print("=" * 60)
 
     try:
-        import baostock as bs
+        bs = importlib.import_module('baostock')
 
         # 登录BaoStock
         lg = bs.login()
@@ -95,7 +96,7 @@ def test_baostock_stock_types():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def test_baostock_adapter_stock_filter():
@@ -105,7 +106,7 @@ def test_baostock_adapter_stock_filter():
     print("=" * 60)
 
     try:
-        from app.services.sources import BaoStockAdapter
+        BaoStockAdapter = getattr(importlib.import_module('app.services.sources'), 'BaoStockAdapter')
 
         adapter = BaoStockAdapter()
 
@@ -184,7 +185,7 @@ def test_baostock_adapter_stock_filter():
 
     except Exception as e:
         print(f"❌ 适配器测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

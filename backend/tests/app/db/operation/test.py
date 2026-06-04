@@ -18,6 +18,7 @@ def test_operation_log_select_filters_split_columns_for_log_page():
         end_date="2026-06-03T23:59:59",
         action_type="user_login",
         success=True,
+        keyword=None,
         user_id="user-1",
     )
 
@@ -36,7 +37,16 @@ def test_operation_log_select_filters_split_columns_for_log_page():
 
 
 def test_operation_log_count_uses_same_split_filters_without_ordering():
-    query = OperationLogQuery(action_type="data_import", success=False)
+    query = OperationLogQuery(
+        page=1,
+        page_size=20,
+        start_date=None,
+        end_date=None,
+        action_type="data_import",
+        success=False,
+        keyword=None,
+        user_id=None,
+    )
 
     sql = _compile(build_operation_log_count(query))
 

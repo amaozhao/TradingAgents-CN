@@ -2,6 +2,7 @@
 """
 测试 TradingAgents MongoDB 存储初始化
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -14,7 +15,7 @@ sys.path.insert(0, str(project_root))
 from trader.utils.logging.init import init_logging
 init_logging()
 
-from trader.config.config_manager import ConfigManager
+from trader.config.manager import ConfigManager
 
 def main():
     """主函数"""
@@ -45,7 +46,7 @@ def main():
         # 测试保存一条记录
         print("\n📝 测试保存 token 使用记录...")
 
-        from trader.config.config_manager import token_tracker
+        token_tracker = getattr(importlib.import_module('trader.config.manager'), 'token_tracker')
 
         record = token_tracker.track_usage(
             provider="dashscope",
@@ -73,7 +74,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ 错误: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

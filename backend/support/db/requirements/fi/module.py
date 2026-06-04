@@ -7,6 +7,7 @@
 import os
 import sys
 import tomllib
+import importlib
 from pathlib import Path
 
 # 添加仓库根目录和 backend 源码目录到 Python 路径
@@ -34,7 +35,7 @@ def test_pickle_compatibility():
     print("🔧 测试pickle兼容性...")
 
     try:
-        import pickle
+        pickle = importlib.import_module('pickle')
 
         # 检查协议版本
         max_protocol = pickle.HIGHEST_PROTOCOL
@@ -48,7 +49,7 @@ def test_pickle_compatibility():
 
         # 检查是否错误安装了pickle5
         try:
-            import pickle5
+            importlib.import_module("pickle5")
             print("  ⚠️ 检测到pickle5包，建议卸载")
             return False
         except ImportError:

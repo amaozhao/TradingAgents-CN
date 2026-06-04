@@ -3,7 +3,7 @@
 """
 from __future__ import annotations
 import time
-from typing import Dict
+from typing import Any, Dict, cast
 from redis.asyncio import Redis
 
 from .key import (
@@ -50,7 +50,7 @@ async def set_visibility_timeout(r: Redis, task_id: str, worker_id: str, visibil
         "worker_id": worker_id,
         "timeout_at": str(int(time.time()) + visibility_timeout),
     }
-    await r.hset(timeout_key, mapping=timeout_data)
+    await cast(Any, r).hset(timeout_key, mapping=timeout_data)
     await r.expire(timeout_key, visibility_timeout)
 
 

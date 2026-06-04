@@ -1,6 +1,7 @@
 """
 自选股管理API路由
 """
+import importlib
 
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -74,7 +75,7 @@ async def add_favorite(
     current_user: dict = Depends(get_current_user)
 ):
     """添加股票到自选股"""
-    import logging
+    logging = importlib.import_module('logging')
     logger = logging.getLogger("webapi")
 
     try:
@@ -254,10 +255,10 @@ async def sync_favorites_realtime(
 
         # 根据数据源选择同步服务
         if request.data_source == "tushare":
-            from app.worker.tushare.sync import get_tushare_sync_service
+            get_tushare_sync_service = getattr(importlib.import_module('app.worker.tushare.sync'), 'get_tushare_sync_service')
             service = await get_tushare_sync_service()
         elif request.data_source == "akshare":
-            from app.worker.akshare.sync import get_akshare_sync_service
+            get_akshare_sync_service = getattr(importlib.import_module('app.worker.akshare.sync'), 'get_akshare_sync_service')
             service = await get_akshare_sync_service()
         else:
             raise HTTPException(

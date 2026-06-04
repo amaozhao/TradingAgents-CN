@@ -1,9 +1,11 @@
+from typing import Any, cast
+
 import pytest
+
+from app.db import session as db_session
 
 
 def test_session_factory_requires_initialization():
-    from app.db import session as db_session
-
     db_session.reset_postgres_state_for_tests()
 
     with pytest.raises(RuntimeError, match="PostgreSQL session factory is not initialized"):
@@ -12,8 +14,6 @@ def test_session_factory_requires_initialization():
 
 @pytest.mark.asyncio
 async def test_init_and_dispose_postgres_engine(monkeypatch):
-    from app.db import session as db_session
-
     created_urls = []
     disposed = False
 
@@ -37,7 +37,7 @@ async def test_init_and_dispose_postgres_engine(monkeypatch):
     db_session.reset_postgres_state_for_tests()
     await db_session.init_postgres("postgresql+asyncpg://u:p@localhost/db")
 
-    factory = db_session.get_session_factory()
+    factory = cast(Any, db_session.get_session_factory())
 
     assert created_urls[0][0] == "postgresql+asyncpg://u:p@localhost/db"
     assert created_urls[0][1]["pool_pre_ping"] is True

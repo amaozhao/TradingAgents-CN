@@ -33,9 +33,9 @@ try:
     from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
     schema_module = types.ModuleType("langchain.schema")
-    schema_module.AIMessage = AIMessage
-    schema_module.HumanMessage = HumanMessage
-    schema_module.SystemMessage = SystemMessage
+    setattr(schema_module, "AIMessage", AIMessage)
+    setattr(schema_module, "HumanMessage", HumanMessage)
+    setattr(schema_module, "SystemMessage", SystemMessage)
     sys.modules.setdefault("langchain.schema", schema_module)
 except Exception:
     pass

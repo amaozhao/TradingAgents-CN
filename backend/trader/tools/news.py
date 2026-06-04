@@ -4,6 +4,7 @@
 整合A股、港股、美股等不同市场的新闻获取逻辑到一个工具函数中
 让大模型只需要调用一个工具就能获取所有类型股票的新闻数据
 """
+import importlib
 
 import logging
 from datetime import datetime
@@ -102,8 +103,8 @@ class UnifiedNewsAnalyzer:
             str: 格式化的新闻内容，如果没有新闻则返回空字符串
         """
         try:
-            from trader.flows.cache.app import get_mongodb_client
-            from datetime import timedelta
+            get_mongodb_client = getattr(importlib.import_module('trader.flows.cache.app'), 'get_mongodb_client')
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
             # 🔧 确保 max_news 是整数（防止传入浮点数）
             max_news = int(max_news)
@@ -180,7 +181,7 @@ class UnifiedNewsAnalyzer:
 
         except Exception as e:
             logger.error(f"[统一新闻工具] 从数据库获取新闻失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             logger.error(traceback.format_exc())
             return ""
 
@@ -197,8 +198,9 @@ class UnifiedNewsAnalyzer:
             bool: 是否同步成功
         """
         try:
-            import asyncio
-            import concurrent.futures
+            asyncio = importlib.import_module('asyncio')
+            importlib.import_module('concurrent.futures')
+            concurrent = importlib.import_module('concurrent')
 
             # 标准化股票代码（去除后缀）
             clean_code = stock_code.replace('.SH', '').replace('.SZ', '').replace('.SS', '')\
@@ -218,7 +220,7 @@ class UnifiedNewsAnalyzer:
                     async def get_news_task():
                         try:
                             # 动态导入 AKShare provider（正确的导入路径）
-                            from trader.flows.providers.china.akshare import AKShareProvider
+                            AKShareProvider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'AKShareProvider')
 
                             # 创建 provider 实例
                             provider = AKShareProvider()
@@ -233,7 +235,7 @@ class UnifiedNewsAnalyzer:
 
                         except Exception as e:
                             logger.error(f"[统一新闻工具] ❌ 获取新闻失败: {e}")
-                            import traceback
+                            traceback = importlib.import_module('traceback')
                             logger.error(traceback.format_exc())
                             return None
 
@@ -247,7 +249,7 @@ class UnifiedNewsAnalyzer:
                     logger.info(f"[统一新闻工具] 📥 获取到 {len(news_data)} 条新闻")
 
                     # 🔥 使用同步方法保存到数据库（不依赖事件循环）
-                    from app.services.market.news import NewsDataService
+                    NewsDataService = getattr(importlib.import_module('app.services.market.news'), 'NewsDataService')
 
                     news_service = NewsDataService()
                     saved_count = news_service.save_news_data_sync(
@@ -275,7 +277,7 @@ class UnifiedNewsAnalyzer:
             return False
         except Exception as e:
             logger.error(f"[统一新闻工具] ❌ 同步新闻失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             logger.error(traceback.format_exc())
             return False
 

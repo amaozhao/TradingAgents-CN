@@ -19,6 +19,20 @@ from trader.utils.logging.manager import get_logger, get_logger_manager
 logger = get_logger('agents')
 logger = setup_llm_logging()
 
+try:
+    from app.utils.keys import is_valid_api_key
+except ImportError:
+    def is_valid_api_key(api_key: Optional[str]) -> bool:
+        if not api_key or len(api_key) <= 10:
+            return False
+        if api_key.startswith('your_') or api_key.startswith('your-'):
+            return False
+        if api_key.endswith('_here') or api_key.endswith('-here'):
+            return False
+        if '...' in api_key:
+            return False
+        return True
+
 # 导入token跟踪器
 try:
     from trader.config.manager import token_tracker
@@ -72,21 +86,6 @@ class OpenAICompatibleBase(ChatOpenAI):
 
         # 获取API密钥
         if api_key is None:
-            # 导入 API Key 验证工具
-            try:
-                from app.utils.keys import is_valid_api_key
-            except ImportError:
-                def is_valid_api_key(key):
-                    if not key or len(key) <= 10:
-                        return False
-                    if key.startswith('your_') or key.startswith('your-'):
-                        return False
-                    if key.endswith('_here') or key.endswith('-here'):
-                        return False
-                    if '...' in key:
-                        return False
-                    return True
-
             # 从环境变量读取 API Key
             env_api_key = os.getenv(api_key_env_var)
             logger.info(f"🔍 [{provider_name}初始化] 从环境变量读取 {api_key_env_var}: {'有值' if env_api_key else '空'}")
@@ -256,21 +255,6 @@ class ChatQianfanOpenAI(OpenAICompatibleBase):
 
         # 如果没有传入 API Key，尝试从环境变量读取
         if not api_key:
-            # 导入 API Key 验证工具
-            try:
-                from app.utils.keys import is_valid_api_key
-            except ImportError:
-                def is_valid_api_key(key):
-                    if not key or len(key) <= 10:
-                        return False
-                    if key.startswith('your_') or key.startswith('your-'):
-                        return False
-                    if key.endswith('_here') or key.endswith('-here'):
-                        return False
-                    if '...' in key:
-                        return False
-                    return True
-
             env_api_key = os.getenv('QIANFAN_API_KEY')
             if env_api_key and is_valid_api_key(env_api_key):
                 qianfan_api_key = env_api_key

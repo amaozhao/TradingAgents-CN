@@ -2,6 +2,7 @@
 用户自定义标签服务
 """
 from __future__ import annotations
+import importlib
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from bson import ObjectId
@@ -24,7 +25,7 @@ class TagsService:
     async def _dual_write_tag(self, document: Dict[str, Any]) -> None:
         result = await dual_write_hot_document("user_tags", document)
         if result.status == "failed":
-            import logging
+            logging = importlib.import_module('logging')
             logging.getLogger(__name__).warning("⚠️ 标签 PostgreSQL 双写失败: %s", result.reason)
 
     async def ensure_indexes(self) -> None:
@@ -66,8 +67,8 @@ class TagsService:
 
     async def _list_tags_from_postgres(self, user_id: str) -> List[Dict[str, Any]]:
         try:
-            from app.db.session import get_session_factory
-            from app.db.preference import list_user_tags
+            get_session_factory = getattr(importlib.import_module('app.db.session'), 'get_session_factory')
+            list_user_tags = getattr(importlib.import_module('app.db.preference'), 'list_user_tags')
 
             async with get_session_factory()() as session:
                 return await list_user_tags(session, self._normalize_user_id(user_id))

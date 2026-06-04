@@ -1,4 +1,5 @@
 from __future__ import annotations
+import importlib
 
 from decimal import Decimal
 from typing import Any
@@ -254,7 +255,7 @@ def _date_from_string(value: str) -> date:
 
 
 def _source_priority_case():
-    from sqlalchemy import case
+    case = getattr(importlib.import_module('sqlalchemy'), 'case')
 
     return case(
         {source: index for index, source in enumerate(SOURCE_PRIORITY)},

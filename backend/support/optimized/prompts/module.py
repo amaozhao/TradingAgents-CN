@@ -3,6 +3,7 @@
 测试优化后的提示词效果
 验证股票代码和公司名称的正确分离
 """
+import importlib
 
 import os
 import sys
@@ -26,8 +27,8 @@ def test_company_name_extraction():
             ("0700.HK", "港股"),
         ]
 
-        from trader.utils.stocks import StockUtils
-        from trader.agents.analysts.market import _get_company_name
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        _get_company_name = getattr(importlib.import_module('trader.agents.analysts.market'), '_get_company_name')
 
         for ticker, market_type in test_cases:
             print(f"\n📊 测试股票: {ticker} ({market_type})")
@@ -51,7 +52,7 @@ def test_company_name_extraction():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -62,7 +63,7 @@ def test_market_analyst_prompt():
 
     try:
         # 设置日志级别
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("default")
         logger.setLevel("INFO")
 
@@ -75,9 +76,9 @@ def test_market_analyst_prompt():
         print(f"\n🔧 创建市场分析师...")
 
         # 创建LLM和工具包
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         llm = ChatDashScopeOpenAI(
             model="qwen-turbo",
@@ -91,7 +92,7 @@ def test_market_analyst_prompt():
         toolkit.update_config(config)
 
         # 创建市场分析师
-        from trader.agents.analysts.market import create_market_analyst
+        create_market_analyst = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst')
         market_analyst = create_market_analyst(llm, toolkit)
 
         print(f"✅ 市场分析师创建完成")
@@ -108,8 +109,8 @@ def test_market_analyst_prompt():
         print(f"🔍 [提示词验证] 检查提示词是否正确包含公司名称和股票代码...")
 
         # 这里我们不实际执行分析师（避免API调用），只验证提示词构建
-        from trader.utils.stocks import StockUtils
-        from trader.agents.analysts.market import _get_company_name
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        _get_company_name = getattr(importlib.import_module('trader.agents.analysts.market'), '_get_company_name')
 
         market_info = StockUtils.get_market_info(test_ticker)
         company_name = _get_company_name(test_ticker, market_info)
@@ -136,7 +137,7 @@ def test_market_analyst_prompt():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -147,8 +148,8 @@ def test_fundamentals_analyst_prompt():
 
     try:
         # 测试基本面分析师的公司名称获取
-        from trader.agents.analysts.fundamentals import _get_company_name_for_fundamentals
-        from trader.utils.stocks import StockUtils
+        _get_company_name_for_fundamentals = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), '_get_company_name_for_fundamentals')
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         test_ticker = "002027"
         market_info = StockUtils.get_market_info(test_ticker)
@@ -176,7 +177,7 @@ def test_fundamentals_analyst_prompt():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

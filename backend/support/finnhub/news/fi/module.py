@@ -8,6 +8,7 @@
 2. 新闻数据文件路径是否存在
 3. 错误处理是否正常工作
 """
+import importlib
 
 import os
 import sys
@@ -141,7 +142,7 @@ def create_sample_data_structure():
             ]
         }
 
-        import json
+        json = importlib.import_module('json')
         with open(sample_file, 'w', encoding='utf-8') as f:
             json.dump(sample_data, f, ensure_ascii=False, indent=2)
 

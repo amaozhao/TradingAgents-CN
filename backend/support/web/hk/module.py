@@ -1,6 +1,7 @@
 """
 测试Web版本港股功能
 """
+import importlib
 
 import sys
 import os
@@ -15,10 +16,10 @@ def test_analysis_form_hk_support():
 
     try:
         # 模拟Streamlit环境
-        import streamlit as st
+        st = importlib.import_module('streamlit')
 
         # 这里我们只能测试导入是否成功
-        from web.components.form import render_analysis_form
+        render_analysis_form = getattr(importlib.import_module('web.components.form'), 'render_analysis_form')
 
         print("  ✅ 分析表单组件导入成功")
         print("  ✅ 港股选项已添加到市场选择")
@@ -34,7 +35,8 @@ def test_analysis_runner_hk_support():
     print("\n🧪 测试分析运行器港股支持...")
 
     try:
-        from web.utils.analysis import validate_analysis_params, generate_demo_results
+        validate_analysis_params = getattr(importlib.import_module('web.utils.analysis'), 'validate_analysis_params')
+        generate_demo_results = getattr(importlib.import_module('web.utils.analysis'), 'generate_demo_results')
 
         # 测试港股代码验证
         print("  测试港股代码验证...")
@@ -106,7 +108,7 @@ def test_analysis_runner_hk_support():
 
     except Exception as e:
         print(f"❌ 分析运行器港股支持测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -180,7 +182,7 @@ def test_market_type_integration():
             print(f"  测试{config['market_type']}配置...")
 
             # 验证市场类型识别
-            from trader.utils.stocks import StockUtils
+            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
             market_info = StockUtils.get_market_info(config['symbol'])
 
             if config['currency'] == market_info['currency_symbol']:

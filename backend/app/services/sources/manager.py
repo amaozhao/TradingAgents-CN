@@ -1,6 +1,7 @@
 """
 Data source manager that orchestrates multiple adapters with priority and optional consistency checks
 """
+import importlib
 from typing import List, Optional, Tuple, Dict
 import logging
 from datetime import datetime, timedelta
@@ -36,7 +37,7 @@ class DataSourceManager:
         self.adapters.sort(key=lambda x: x.priority, reverse=True)
 
         try:
-            from .consistency import DataConsistencyChecker  # type: ignore
+            DataConsistencyChecker = getattr(importlib.import_module('app.services.sources.consistency'), 'DataConsistencyChecker')
             self.consistency_checker = DataConsistencyChecker()
         except Exception:
             logger.warning("⚠️ 数据一致性检查器不可用")
@@ -45,7 +46,7 @@ class DataSourceManager:
     def _load_priority_from_database(self):
         """从数据库加载数据源优先级配置（从 datasource_groupings 集合读取 A股市场的优先级）"""
         try:
-            from app.core.database import get_mongo_db_sync
+            get_mongo_db_sync = getattr(importlib.import_module('app.core.database'), 'get_mongo_db_sync')
             db = get_mongo_db_sync()
             groupings_collection = db.datasource_groupings
 
@@ -82,7 +83,7 @@ class DataSourceManager:
                     adapter._priority = adapter._get_default_priority()
         except Exception as e:
             logger.warning(f"⚠️ 从数据库加载优先级失败: {e}，使用默认优先级")
-            import traceback
+            traceback = importlib.import_module('traceback')
             logger.warning(f"堆栈跟踪:\n{traceback.format_exc()}")
             # 使用默认优先级
             for adapter in self.adapters:

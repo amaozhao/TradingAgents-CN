@@ -1,15 +1,17 @@
+import importlib
 # TradingAgents/graph/trading_graph.py
 
 import os
 from pathlib import Path
 import json
 from datetime import date, datetime, timedelta
-from typing import Dict, Any, Tuple, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, cast
 import time
 
 from trader.llm.clients import create_llm_client
 from trader.llm.clients.providers import env_key_for_provider, normalize_provider_key
 
+from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import ToolNode
 
 from trader.agents import Toolkit
@@ -63,7 +65,7 @@ def _configured_provider_kwargs(config: Dict[str, Any], provider: Optional[str])
     return provider_kwargs
 
 
-def create_llm_by_provider(provider: str, model: str, backend_url: str, temperature: float, max_tokens: int, timeout: int, api_key: str = None, **extra_kwargs):
+def create_llm_by_provider(provider: str, model: str, backend_url: str, temperature: float, max_tokens: int, timeout: int, api_key: Optional[str] = None, **extra_kwargs: Any):
     """
     根据 provider 创建对应的 LLM 实例
 
@@ -103,15 +105,15 @@ def create_llm_by_provider(provider: str, model: str, backend_url: str, temperat
     }:
         if not api_key:
             if normalized_provider == "siliconflow":
-                api_key = os.getenv('SILICONFLOW_API_KEY')
+                    api_key = os.getenv('SILICONFLOW_API_KEY') or ""
             elif normalized_provider == "openrouter":
-                api_key = os.getenv('OPENROUTER_API_KEY') or os.getenv('OPENAI_API_KEY')
+                    api_key = os.getenv('OPENROUTER_API_KEY') or os.getenv('OPENAI_API_KEY') or ""
             elif normalized_provider == "openai":
-                api_key = os.getenv('OPENAI_API_KEY')
+                api_key = os.getenv('OPENAI_API_KEY') or ""
             else:
                 env_key = env_key_for_provider(normalized_provider)
                 if env_key:
-                    api_key = os.getenv(env_key)
+                    api_key = os.getenv(env_key) or ""
 
         factory_provider = "openai" if normalized_provider == "siliconflow" else normalized_provider
         client = create_llm_client(
@@ -120,7 +122,7 @@ def create_llm_by_provider(provider: str, model: str, backend_url: str, temperat
             base_url=backend_url,
             api_key=api_key,
             temperature=temperature,
-            max_tokens=max_tokens,
+            max_completion_tokens=max_tokens,
             timeout=timeout,
             **extra_kwargs,
         )
@@ -138,7 +140,7 @@ def create_llm_by_provider(provider: str, model: str, backend_url: str, temperat
             base_url=backend_url if backend_url else None,
             api_key=google_api_key,
             temperature=temperature,
-            max_tokens=max_tokens,
+            max_completion_tokens=max_tokens,
             timeout=timeout,
             **extra_kwargs,
         )
@@ -151,7 +153,7 @@ def create_llm_by_provider(provider: str, model: str, backend_url: str, temperat
             base_url=backend_url,
             api_key=api_key,
             temperature=temperature,
-            max_tokens=max_tokens,
+            max_completion_tokens=max_tokens,
             timeout=timeout,
             **extra_kwargs,
         )
@@ -178,16 +180,15 @@ def create_llm_by_provider(provider: str, model: str, backend_url: str, temperat
         if not custom_api_key:
             logger.warning(f"⚠️ 未找到自定义厂家 {provider} 的 API Key，尝试使用默认配置")
 
-        from langchain_openai import ChatOpenAI
-
-        return ChatOpenAI(
-            model=model,
-            base_url=backend_url,
-            api_key=custom_api_key,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            timeout=timeout
-        )
+        params: Dict[str, Any] = {
+            "model": model,
+            "base_url": backend_url,
+            "api_key": custom_api_key,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "timeout": timeout,
+        }
+        return cast(Any, ChatOpenAI)(**params)
 
 
 def _create_provider_pair(
@@ -253,7 +254,7 @@ class TradingAgentsGraph:
         self,
         selected_analysts=["market", "social", "news", "fundamentals"],
         debug=False,
-        config: Dict[str, Any] = None,
+        config: Optional[Dict[str, Any]] = None,
     ):
         """Initialize the trading agents graph and components.
 
@@ -731,7 +732,7 @@ class TradingAgentsGraph:
         benchmark: str = "SPY",
     ) -> Tuple[Optional[float], Optional[float], Optional[int]]:
         try:
-            import yfinance as yf
+            yf = importlib.import_module('yfinance')
 
             start = datetime.strptime(str(trade_date), "%Y-%m-%d")
             end = start + timedelta(days=holding_days + 7)
@@ -768,7 +769,7 @@ class TradingAgentsGraph:
         updates = []
         for entry in pending:
             raw, alpha, days = self._fetch_returns(ticker, entry["date"], benchmark=benchmark)
-            if raw is None:
+            if raw is None or alpha is None:
                 continue
             reflection = self.reflector.reflect_on_final_decision(
                 final_decision=entry.get("decision", ""),
@@ -805,7 +806,7 @@ class TradingAgentsGraph:
             args.setdefault("config", {}).setdefault("configurable", {})["thread_id"] = thread_id(
                 company_name, str(trade_date)
             )
-        final_state = self.graph.invoke(init_agent_state, **args)
+        final_state = cast(Any, self.graph).invoke(init_agent_state, **args)
         self.curr_state = final_state
         self._log_state(trade_date, final_state)
         self.memory_log.store_decision(
@@ -896,7 +897,7 @@ class TradingAgentsGraph:
             if self.debug:
                 trace = []
                 final_state = None
-                for chunk in self.graph.stream(init_agent_state, **args):
+                for chunk in cast(Any, self.graph).stream(init_agent_state, **args):
                     for node_name in chunk.keys():
                         if not node_name.startswith('__'):
                             if current_node_name and current_node_start:
@@ -925,7 +926,7 @@ class TradingAgentsGraph:
                     final_state = trace[-1]
             elif progress_callback:
                 final_state = None
-                for chunk in self.graph.stream(init_agent_state, **args):
+                for chunk in cast(Any, self.graph).stream(init_agent_state, **args):
                     for node_name in chunk.keys():
                         if not node_name.startswith('__'):
                             if current_node_name and current_node_start:
@@ -948,7 +949,7 @@ class TradingAgentsGraph:
             else:
                 logger.info("⏱️ 使用 invoke 模式执行分析（无进度回调）")
                 final_state = None
-                for chunk in self.graph.stream(init_agent_state, **args):
+                for chunk in cast(Any, self.graph).stream(init_agent_state, **args):
                     for node_name in chunk.keys():
                         if not node_name.startswith('__'):
                             if current_node_name and current_node_start:
@@ -989,6 +990,9 @@ class TradingAgentsGraph:
         logger.info("🔍 [TIMING DEBUG] 准备调用 _print_timing_summary")
         self._print_timing_summary(node_timings, total_elapsed)
         logger.info("🔍 [TIMING DEBUG] _print_timing_summary 调用完成")
+
+        if final_state is None:
+            raise RuntimeError("图执行未产生最终状态")
 
         # 构建性能数据
         performance_data = self._build_performance_data(node_timings, total_elapsed)

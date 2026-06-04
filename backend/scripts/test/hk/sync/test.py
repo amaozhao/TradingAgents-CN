@@ -11,6 +11,7 @@
 使用方法：
     python scripts/test/hk/sync/test.py
 """
+import importlib
 
 import asyncio
 import sys
@@ -36,7 +37,7 @@ async def test_hk_yfinance_sync():
     logger.info("="*60)
 
     try:
-        from app.worker.hk_sync_service import run_hk_yfinance_basic_info_sync
+        run_hk_yfinance_basic_info_sync = getattr(importlib.import_module('app.worker.hk.sync'), 'run_hk_yfinance_basic_info_sync')
 
         # 执行同步
         await run_hk_yfinance_basic_info_sync()
@@ -46,7 +47,7 @@ async def test_hk_yfinance_sync():
 
     except Exception as e:
         logger.error(f"❌ yfinance 同步测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -58,7 +59,7 @@ async def test_hk_akshare_sync():
     logger.info("="*60)
 
     try:
-        from app.worker.hk_sync_service import run_hk_akshare_basic_info_sync
+        run_hk_akshare_basic_info_sync = getattr(importlib.import_module('app.worker.hk.sync'), 'run_hk_akshare_basic_info_sync')
 
         # 执行同步
         await run_hk_akshare_basic_info_sync()
@@ -68,7 +69,7 @@ async def test_hk_akshare_sync():
 
     except Exception as e:
         logger.error(f"❌ AKShare 同步测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -80,7 +81,7 @@ async def verify_hk_data():
     logger.info("="*60)
 
     try:
-        from app.core.database import get_mongo_db
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
 
         db = get_mongo_db()
         collection = db.stock_basic_info_hk
@@ -130,7 +131,7 @@ async def verify_hk_data():
 
     except Exception as e:
         logger.error(f"❌ 数据验证失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -142,8 +143,8 @@ async def test_unified_service():
     logger.info("="*60)
 
     try:
-        from app.services.unified_stock_service import UnifiedStockService
-        from app.core.database import get_mongo_db
+        UnifiedStockService = getattr(importlib.import_module('app.services.stocks.unified'), 'UnifiedStockService')
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
 
         db = get_mongo_db()
         service = UnifiedStockService(db)
@@ -189,7 +190,7 @@ async def test_unified_service():
 
     except Exception as e:
         logger.error(f"❌ 统一服务测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -201,7 +202,7 @@ async def main():
     # 初始化数据库连接
     logger.info("📊 初始化数据库连接...")
     try:
-        from app.core.database import init_db
+        init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
         await init_db()
         logger.info("✅ 数据库连接初始化成功")
     except Exception as e:

@@ -2,6 +2,7 @@
 测试使用统计记录功能
 模拟一次分析并检查是否正确记录
 """
+import importlib
 
 import asyncio
 import sys
@@ -21,7 +22,8 @@ async def test_usage_recording():
     # 1. 初始化数据库
     print("\n1️⃣ 初始化数据库...")
     try:
-        from app.core.database import init_db, get_mongo_db
+        init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
         await init_db()
         db = get_mongo_db()
         print("✅ 数据库初始化成功")
@@ -32,8 +34,8 @@ async def test_usage_recording():
     # 2. 创建测试使用记录
     print("\n2️⃣ 创建测试使用记录...")
     try:
-        from app.services.usage import UsageStatisticsService
-        from app.models.config import UsageRecord
+        UsageStatisticsService = getattr(importlib.import_module('app.services.usage'), 'UsageStatisticsService')
+        UsageRecord = getattr(importlib.import_module('app.models.config'), 'UsageRecord')
 
         usage_service = UsageStatisticsService()
 
@@ -68,7 +70,7 @@ async def test_usage_recording():
             return
     except Exception as e:
         print(f"❌ 创建记录失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return
 
@@ -109,7 +111,7 @@ async def test_usage_recording():
             print("⚠️  统计查询返回空数据")
     except Exception as e:
         print(f"❌ 统计查询失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     # 5. 清理测试数据
@@ -133,13 +135,15 @@ async def test_analysis_service_recording():
     print("=" * 80)
 
     try:
-        from app.core.database import init_db, get_mongo_db
+        init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
         await init_db()
         db = get_mongo_db()
 
-        from app.services.analysis_service import AnalysisService
-        from app.models.analysis import AnalysisTask, AnalysisResult
-        from bson import ObjectId
+        AnalysisService = getattr(importlib.import_module('app.services.analysis.service'), 'AnalysisService')
+        AnalysisTask = getattr(importlib.import_module('app.models.analysis'), 'AnalysisTask')
+        AnalysisResult = getattr(importlib.import_module('app.models.analysis'), 'AnalysisResult')
+        ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
 
         # 创建模拟任务
         task = AnalysisTask(
@@ -186,7 +190,7 @@ async def test_analysis_service_recording():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

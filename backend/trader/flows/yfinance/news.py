@@ -6,8 +6,8 @@ import yfinance as yf
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-from .config import get_config
-from .stats import yf_retry
+from ..config import get_config
+from ..stats import yf_retry
 
 
 def _extract_article_data(article: dict) -> dict:
@@ -67,7 +67,7 @@ def get_news_yfinance(
     Returns:
         Formatted string containing news articles
     """
-    article_limit = get_config()["news_article_limit"]
+    article_limit = int(get_config()["news_article_limit"])
     try:
         stock = yf.Ticker(ticker)
         news = yf_retry(lambda: stock.get_news(count=article_limit))
@@ -128,9 +128,9 @@ def get_global_news_yfinance(
     """
     config = get_config()
     if look_back_days is None:
-        look_back_days = config["global_news_lookback_days"]
+        look_back_days = int(config["global_news_lookback_days"])
     if limit is None:
-        limit = config["global_news_article_limit"]
+        limit = int(config["global_news_article_limit"])
     search_queries = config["global_news_queries"]
 
     all_news = []
@@ -144,7 +144,7 @@ def get_global_news_yfinance(
                 enable_fuzzy_query=True,
             ))
 
-            if search.news:
+            if search is not None and search.news:
                 for article in search.news:
                     # Handle both flat and nested structures
                     if "content" in article:

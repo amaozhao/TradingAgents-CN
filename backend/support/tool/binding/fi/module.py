@@ -2,6 +2,7 @@
 """
 测试统一新闻工具的LangChain绑定修复
 """
+import importlib
 
 from trader.agents.utils.utils import Toolkit
 from trader.tools.news import create_unified_news_tool
@@ -39,7 +40,7 @@ def test_tool_binding():
 
     except Exception as e:
         print(f"❌ LangChain工具转换失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -51,7 +52,7 @@ def test_tool_binding():
         print(f"结果预览: {result[:200]}...")
     except Exception as e:
         print(f"❌ 工具调用失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

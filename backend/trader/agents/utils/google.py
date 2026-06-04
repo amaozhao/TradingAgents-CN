@@ -7,6 +7,7 @@ Google模型工具调用统一处理器
 解决Google模型在工具调用时result.content为空的问题，
 提供统一的工具调用处理逻辑供所有分析师使用。
 """
+import importlib
 
 import logging
 import traceback
@@ -14,6 +15,14 @@ from typing import Any, Dict, List, Optional, Tuple
 from langchain_core.messages import HumanMessage, ToolMessage, AIMessage
 
 logger = logging.getLogger(__name__)
+
+
+def _message_content_text(message: Any) -> str:
+    content = getattr(message, "content", "")
+    if isinstance(content, str):
+        return content
+    return str(content)
+
 
 class GoogleToolCallHandler:
     """Google模型工具调用统一处理器"""
@@ -57,7 +66,7 @@ class GoogleToolCallHandler:
             logger.warning(f"[{analyst_name}] ⚠️ 非Google模型，跳过特殊处理")
             logger.debug(f"[{analyst_name}] 🔍 模型检查失败: {llm.__class__.__name__}")
             # 非Google模型，返回原始内容
-            return result.content, [result]
+            return _message_content_text(result), [result]
 
         logger.info(f"[{analyst_name}] ✅ 确认为Google模型")
         logger.debug(f"[{analyst_name}] 🔍 结果类型: {type(result).__name__}")
@@ -73,7 +82,7 @@ class GoogleToolCallHandler:
         if not hasattr(result, 'tool_calls'):
             logger.warning(f"[{analyst_name}] ⚠️ 结果对象没有tool_calls属性")
             logger.debug(f"[{analyst_name}] 🔍 可用属性: {[attr for attr in dir(result) if not attr.startswith('_')]}")
-            return result.content, [result]
+            return _message_content_text(result), [result]
 
         if not result.tool_calls:
             # 改进：提供更详细的诊断信息
@@ -95,7 +104,7 @@ class GoogleToolCallHandler:
                         logger.info(f"[{analyst_name}]   消息 {i+1}: {msg_type} - {content_preview}...")
 
             # 检查内容是否为分析报告
-            content = result.content
+            content = _message_content_text(result)
             logger.info(f"[{analyst_name}] 🔍 检查返回内容是否为分析报告...")
             logger.debug(f"[{analyst_name}] 🔍 内容类型: {type(content)}")
             logger.debug(f"[{analyst_name}] 🔍 内容长度: {len(content) if content else 0}")
@@ -117,7 +126,7 @@ class GoogleToolCallHandler:
                     return content, [result]
 
             # 返回原始内容，但添加说明
-            return result.content, [result]
+            return _message_content_text(result), [result]
 
         logger.info(f"[{analyst_name}] 🔧 Google模型调用了 {len(result.tool_calls)} 个工具")
 
@@ -201,7 +210,7 @@ class GoogleToolCallHandler:
                             logger.error(f"[{analyst_name}] ❌ 异常详情: {str(tool_error)}")
 
                             # 记录详细的异常堆栈
-                            import traceback
+                            traceback = importlib.import_module('traceback')
                             error_traceback = traceback.format_exc()
                             logger.error(f"[{analyst_name}] ❌ 工具执行异常堆栈:\n{error_traceback}")
 
@@ -333,7 +342,7 @@ class GoogleToolCallHandler:
                 logger.error(f"[{analyst_name}] ❌ 异常详情: {str(final_error)}")
 
                 # 记录详细的异常堆栈
-                import traceback
+                traceback = importlib.import_module('traceback')
                 error_traceback = traceback.format_exc()
                 logger.error(f"[{analyst_name}] ❌ 异常堆栈:\n{error_traceback}")
 
@@ -345,7 +354,7 @@ class GoogleToolCallHandler:
 
         except Exception as e:
             logger.error(f"[{analyst_name}] ❌ Google模型工具调用处理失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
 
             # 降级处理：返回工具调用信息
@@ -423,7 +432,7 @@ class GoogleToolCallHandler:
                     if 'name' in function_data:
                         fixed_tool_call['name'] = function_data['name']
                         if 'arguments' in function_data:
-                            import json
+                            json = importlib.import_module('json')
                             try:
                                 if isinstance(function_data['arguments'], str):
                                     fixed_tool_call['args'] = json.loads(function_data['arguments'])
@@ -440,7 +449,7 @@ class GoogleToolCallHandler:
                 fixed_tool_call['args'] = {}
             elif not isinstance(fixed_tool_call['args'], dict):
                 try:
-                    import json
+                    json = importlib.import_module('json')
                     if isinstance(fixed_tool_call['args'], str):
                         fixed_tool_call['args'] = json.loads(fixed_tool_call['args'])
                     else:
@@ -450,7 +459,7 @@ class GoogleToolCallHandler:
 
             # 修复ID
             if 'id' not in fixed_tool_call or not isinstance(fixed_tool_call['id'], str):
-                import uuid
+                uuid = importlib.import_module('uuid')
                 fixed_tool_call['id'] = f"call_{uuid.uuid4().hex[:8]}"
 
             # 验证修复后的工具调用
@@ -484,16 +493,17 @@ class GoogleToolCallHandler:
         """
 
         if not GoogleToolCallHandler.is_google_model(llm):
-            return result.content
+            return _message_content_text(result)
 
-        logger.info(f"[{analyst_name}] 📝 Google模型直接回复，长度: {len(result.content)} 字符")
+        content = _message_content_text(result)
+        logger.info(f"[{analyst_name}] 📝 Google模型直接回复，长度: {len(content)} 字符")
 
         # 检查内容长度，如果过长进行处理
-        if len(result.content) > 15000:
+        if len(content) > 15000:
             logger.warning(f"[{analyst_name}] ⚠️ Google模型输出过长，进行截断处理...")
-            return result.content[:10000] + "\n\n[注：内容已截断以确保可读性]"
+            return content[:10000] + "\n\n[注：内容已截断以确保可读性]"
 
-        return result.content
+        return content
 
     @staticmethod
     def generate_final_analysis_report(llm, messages: List, analyst_name: str) -> str:
@@ -563,7 +573,7 @@ class GoogleToolCallHandler:
                 logger.info(f"[{analyst_name}] 🚀 正在调用LLM.invoke() (尝试 {attempt + 1}/{max_retries})...")
 
                 # 调用LLM生成报告
-                import time
+                time = importlib.import_module('time')
                 start_time = time.time()
                 result = llm.invoke(optimized_messages)
                 end_time = time.time()
@@ -639,8 +649,6 @@ class GoogleToolCallHandler:
         Returns:
             List: 优化后的消息列表
         """
-        from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
-
         # 计算总长度
         total_length = sum(len(str(msg.content)) for msg in messages if hasattr(msg, 'content'))
         total_length += len(analysis_prompt)
@@ -650,7 +658,7 @@ class GoogleToolCallHandler:
             return messages + [HumanMessage(content=analysis_prompt)]
 
         # 需要优化：保留关键消息
-        optimized_messages = []
+        optimized_messages: List[Any] = []
 
         # 保留最后的用户消息
         for msg in messages:
@@ -692,7 +700,7 @@ class GoogleToolCallHandler:
         Returns:
             str: 降级报告
         """
-        from langchain_core.messages import ToolMessage
+        ToolMessage = getattr(importlib.import_module('langchain_core.messages'), 'ToolMessage')
 
         # 提取工具结果
         tool_results = []

@@ -2,6 +2,7 @@
 """
 测试DataFrame Arrow转换修复
 """
+import importlib
 
 import sys
 import os
@@ -15,8 +16,8 @@ sys.path.insert(0, str(project_root))
 def test_safe_dataframe():
     """测试安全DataFrame函数"""
     try:
-        from web.components.analysis import safe_dataframe
-        import pandas as pd
+        safe_dataframe = getattr(importlib.import_module('web.components.analysis'), 'safe_dataframe')
+        pd = importlib.import_module('pandas')
 
         print("🔍 测试安全DataFrame函数...")
 
@@ -60,7 +61,7 @@ def test_safe_dataframe():
 def test_comparison_data():
     """测试对比数据创建"""
     try:
-        from web.components.analysis import safe_dataframe
+        safe_dataframe = getattr(importlib.import_module('web.components.analysis'), 'safe_dataframe')
 
         print("\n🔍 测试对比数据创建...")
 
@@ -105,7 +106,7 @@ def test_comparison_data():
 def test_timeline_data():
     """测试时间线数据创建"""
     try:
-        from web.components.analysis import safe_dataframe
+        safe_dataframe = getattr(importlib.import_module('web.components.analysis'), 'safe_dataframe')
 
         print("\n🔍 测试时间线数据创建...")
 
@@ -139,8 +140,8 @@ def test_timeline_data():
 def test_arrow_conversion():
     """测试Arrow转换"""
     try:
-        from web.components.analysis import safe_dataframe
-        import pyarrow as pa
+        safe_dataframe = getattr(importlib.import_module('web.components.analysis'), 'safe_dataframe')
+        pa = importlib.import_module('pyarrow')
 
         print("\n🔍 测试Arrow转换...")
 

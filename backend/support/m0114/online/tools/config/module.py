@@ -3,6 +3,7 @@
 测试新的在线工具配置系统
 验证环境变量和配置文件的集成
 """
+import importlib
 
 import os
 import sys
@@ -33,7 +34,7 @@ def test_online_tools_config():
     # 2. 测试配置文件读取
     print("\n🔧 配置文件测试:")
     try:
-        from trader.default import DEFAULT_CONFIG
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         config_items = {
             'online_tools': DEFAULT_CONFIG.get('online_tools'),
@@ -78,8 +79,8 @@ def test_toolkit_integration():
     """测试工具包集成"""
     print("\n🔗 工具包集成测试:")
     try:
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建工具包实例
         toolkit = Toolkit(config=DEFAULT_CONFIG)

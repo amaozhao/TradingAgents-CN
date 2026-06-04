@@ -3,6 +3,7 @@
 测试同步用户反馈功能
 模拟同步过程中的状态变化，验证用户反馈机制
 """
+import importlib
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,8 +25,9 @@ async def simulate_sync_with_feedback():
     print("=" * 60)
 
     try:
-        from app.services.sync.source import get_multi_source_sync_service
-        from app.core.database import init_db, get_mongo_db
+        get_multi_source_sync_service = getattr(importlib.import_module('app.services.sync.source'), 'get_multi_source_sync_service')
+        init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
 
         # 初始化数据库
         await init_db()
@@ -154,7 +156,7 @@ async def simulate_sync_with_feedback():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None
 
@@ -165,7 +167,7 @@ async def test_status_polling_simulation():
     print("=" * 60)
 
     try:
-        from app.services.sync.source import get_multi_source_sync_service
+        get_multi_source_sync_service = getattr(importlib.import_module('app.services.sync.source'), 'get_multi_source_sync_service')
 
         service = get_multi_source_sync_service()
 

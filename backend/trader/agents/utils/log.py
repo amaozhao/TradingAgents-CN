@@ -16,7 +16,7 @@ class TradingMemoryLog:
     _DECISION_RE = re.compile(r"DECISION:\n(.*?)(?=\nREFLECTION:|\Z)", re.DOTALL)
     _REFLECTION_RE = re.compile(r"REFLECTION:\n(.*?)$", re.DOTALL)
 
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[dict] = None):
         cfg = config or {}
         self._log_path = None
         path = cfg.get("memory_log_path")

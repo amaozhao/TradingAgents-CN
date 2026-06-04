@@ -5,6 +5,7 @@
 - 如果系统已配置全局代理（如 V2Ray 系统代理模式），会自动使用
 - 不需要显式设置 HTTP_PROXY 环境变量
 """
+import importlib
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -16,7 +17,7 @@ def test_google_base_url():
     """测试 Google AI 的 base_url 参数"""
     print()
 
-    from trader.llm.adapters import ChatGoogleOpenAI
+    ChatGoogleOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatGoogleOpenAI')
 
     # 测试 1: 不提供 base_url（使用默认端点）
     print("\n📊 测试 1: 不提供 base_url（使用默认端点）")
@@ -82,7 +83,7 @@ def test_google_base_url():
     print("\n📊 测试 4: 使用 create_llm_by_provider 函数")
     print("-" * 80)
 
-    from trader.graph.trading import create_llm_by_provider
+    create_llm_by_provider = getattr(importlib.import_module('trader.graph.trading'), 'create_llm_by_provider')
 
     try:
         llm4 = create_llm_by_provider(

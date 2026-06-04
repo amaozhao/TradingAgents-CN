@@ -44,7 +44,7 @@ print("\n📦 测试模块导入...")
 
 # 测试缓存管理器
 try:
-    from trader.flows.cache_manager import get_cache, StockDataCache
+    from trader.flows.cache import get_cache, StockDataCache
     print("✅ cache_manager 导入成功")
 
     # 创建缓存实例
@@ -65,7 +65,7 @@ except Exception as e:
 
 # 测试优化美股数据
 try:
-    from trader.flows.optimized_us_data import get_optimized_us_data_provider
+    from trader.flows.providers.us.optimized import get_optimized_us_data_provider
     print("✅ optimized_us_data 导入成功")
 
     # 创建数据提供器

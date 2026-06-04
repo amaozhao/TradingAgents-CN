@@ -6,7 +6,8 @@
 import pandas as pd
 import re
 import logging
-from typing import List, Dict, Tuple, Optional
+import importlib
+from typing import Any, List, Dict, Tuple, Optional
 from datetime import datetime
 import numpy as np
 
@@ -33,12 +34,12 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
         self.use_local_model = use_local_model
 
         # 语义模型相关
-        self.sentence_model = None
-        self.company_embedding = None
+        self.sentence_model: Any = None
+        self.company_embedding: Any = None
 
         # 本地分类模型相关
-        self.classification_model = None
-        self.tokenizer = None
+        self.classification_model: Any = None
+        self.tokenizer: Any = None
 
         # 初始化模型
         if use_semantic:
@@ -53,7 +54,7 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
 
             # 尝试使用sentence-transformers
             try:
-                from sentence_transformers import SentenceTransformer
+                SentenceTransformer = importlib.import_module("sentence_transformers").SentenceTransformer
 
                 # 使用轻量级中文模型
                 model_name = "paraphrase-multilingual-MiniLM-L12-v2"  # 支持中文的轻量级模型
@@ -87,8 +88,9 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
 
             # 尝试使用transformers库的中文分类模型
             try:
-                from transformers import AutoTokenizer, AutoModelForSequenceClassification
-                import torch
+                transformers = importlib.import_module("transformers")
+                AutoTokenizer = transformers.AutoTokenizer
+                AutoModelForSequenceClassification = transformers.AutoModelForSequenceClassification
 
                 # 使用轻量级中文文本分类模型
                 model_name = "uer/roberta-base-finetuned-chinanews-chinese"
@@ -129,7 +131,10 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
 
             # 计算与公司相关文本的相似度
             similarities = []
-            for company_emb in self.company_embedding:
+            company_embedding = self.company_embedding
+            if company_embedding is None:
+                return 0
+            for company_emb in company_embedding:
                 similarity = np.dot(text_embedding[0], company_emb) / (
                     np.linalg.norm(text_embedding[0]) * np.linalg.norm(company_emb)
                 )
@@ -163,7 +168,11 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
             return 0
 
         try:
-            import torch
+            torch = importlib.import_module("torch")
+            tokenizer = self.tokenizer
+            classification_model = self.classification_model
+            if tokenizer is None or classification_model is None:
+                return 0
 
             # 构建分类文本
             text = f"{title} {content[:300]}"
@@ -172,7 +181,7 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
             context_text = f"关于{self.company_name}({self.stock_code})的新闻: {text}"
 
             # 分词和编码
-            inputs = self.tokenizer(
+            inputs = tokenizer(
                 context_text,
                 return_tensors="pt",
                 truncation=True,
@@ -182,7 +191,7 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
 
             # 模型推理
             with torch.no_grad():
-                outputs = self.classification_model(**inputs)
+                outputs = classification_model(**inputs)
                 logits = outputs.logits
 
                 # 使用softmax获取概率分布
@@ -273,8 +282,8 @@ class EnhancedNewsFilter(NewsRelevanceFilter):
         filtered_news = []
 
         for idx, row in news_df.iterrows():
-            title = row.get('新闻标题', row.get('标题', ''))
-            content = row.get('新闻内容', row.get('内容', ''))
+            title = str(row.get('新闻标题', row.get('标题', '')) or '')
+            content = str(row.get('新闻内容', row.get('内容', '')) or '')
 
             # 计算增强评分
             scores = self.calculate_enhanced_relevance_score(title, content)
@@ -320,8 +329,6 @@ def create_enhanced_news_filter(ticker: str, use_semantic: bool = True, use_loca
 # 使用示例
 if __name__ == "__main__":
     # 测试增强过滤器
-    import pandas as pd
-
     # 模拟新闻数据
     test_news = pd.DataFrame([
         {

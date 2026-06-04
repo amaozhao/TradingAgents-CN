@@ -9,7 +9,7 @@ try:
     from .china import (
         AKShareProvider,
         TushareProvider,
-        BaostockProvider as BaoStockProvider,
+        BaoStockProvider,
         AKSHARE_AVAILABLE,
         TUSHARE_AVAILABLE,
         BAOSTOCK_AVAILABLE
@@ -17,7 +17,7 @@ try:
 except ImportError:
     # 向后兼容：尝试从旧路径导入
     try:
-        from .tushare import TushareProvider
+        from .china.tushare import TushareProvider
     except ImportError:
         TushareProvider = None
 

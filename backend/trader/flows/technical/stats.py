@@ -46,7 +46,7 @@ class StockstatsUtils:
         else:
             # Get today's date as YYYY-mm-dd to add to cache
             today_date = pd.Timestamp.today()
-            curr_date = pd.to_datetime(curr_date)
+            curr_dt = pd.to_datetime(curr_date)
 
             end_date = today_date
             start_date = today_date - pd.DateOffset(years=15)
@@ -74,13 +74,19 @@ class StockstatsUtils:
                     progress=False,
                     auto_adjust=True,
                 )
+                if data is None:
+                    raise Exception("Stockstats fail: Yahoo Finance returned no data")
                 data = data.reset_index()
                 data.to_csv(data_file, index=False)
 
+            if data is None:
+                raise Exception("Stockstats fail: Yahoo Finance returned no data")
             df = wrap(data)
             df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
-            curr_date = curr_date.strftime("%Y-%m-%d")
+            curr_date = curr_dt.strftime("%Y-%m-%d")
 
+        if df is None:
+            raise Exception("Stockstats fail: stock data is unavailable")
         df[indicator]  # trigger stats to calculate the indicator
         matching_rows = df[df["Date"].str.startswith(curr_date)]
 

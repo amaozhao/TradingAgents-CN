@@ -2,6 +2,7 @@
 """
 正确测试Google和Reddit API工具
 """
+import importlib
 
 import os
 import sys
@@ -21,7 +22,7 @@ def test_google_news_tool():
         print("🧪 测试Google新闻工具")
         print("=" * 50)
 
-        from trader.flows.interface import get_google_news
+        get_google_news = getattr(importlib.import_module('trader.flows.interface'), 'get_google_news')
 
         print("✅ get_google_news函数导入成功")
 
@@ -57,7 +58,8 @@ def test_reddit_tools():
         print("\n🧪 测试Reddit工具")
         print("=" * 50)
 
-        from trader.flows.interface import get_reddit_global_news, get_reddit_company_news
+        get_reddit_global_news = getattr(importlib.import_module('trader.flows.interface'), 'get_reddit_global_news')
+        get_reddit_company_news = getattr(importlib.import_module('trader.flows.interface'), 'get_reddit_company_news')
 
         print("✅ Reddit工具函数导入成功")
 
@@ -132,8 +134,8 @@ def test_toolkit_integration():
         print("=" * 50)
 
         # 检查Toolkit类是否包含这些工具
-        from trader.agents.utils.toolkit import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True

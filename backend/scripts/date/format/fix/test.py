@@ -5,6 +5,7 @@
 1. 测试修复前后的日期格式
 2. 验证 MongoDB 查询是否正常
 """
+import importlib
 
 import sys
 from pathlib import Path
@@ -51,8 +52,8 @@ async def test_mongodb_query():
     print("\n测试：MongoDB 查询")
     print("=" * 80)
 
-    from motor.motor_asyncio import AsyncIOMotorClient
-    from app.core.config import settings
+    AsyncIOMotorClient = getattr(importlib.import_module('motor.motor_asyncio'), 'AsyncIOMotorClient')
+    settings = getattr(importlib.import_module('app.core.config'), 'settings')
 
     client = AsyncIOMotorClient(settings.mongo_uri)
     db = client[settings.mongo_db]
@@ -101,7 +102,7 @@ async def test_adapter():
     print("\n测试：MongoDB 适配器")
     print("=" * 80)
 
-    from trader.flows.cache.mongodb_cache_adapter import get_mongodb_cache_adapter
+    get_mongodb_cache_adapter = getattr(importlib.import_module('trader.flows.cache.mongodb'), 'get_mongodb_cache_adapter')
 
     adapter = get_mongodb_cache_adapter()
 

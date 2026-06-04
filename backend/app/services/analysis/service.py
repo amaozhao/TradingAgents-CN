@@ -2,13 +2,14 @@
 股票分析服务
 将现有的TradingAgents分析功能包装成API服务
 """
+import importlib
 
 import asyncio
 import uuid
 import json
 import logging
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Callable
+from typing import Dict, Any, List, Optional, Callable, cast
 from pathlib import Path
 import sys
 
@@ -16,7 +17,11 @@ import sys
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.services.analysis.simple import create_analysis_config, get_provider_by_model_name
+from app.services.analysis.simple import (
+    create_analysis_config,
+    get_provider_by_model_name,
+    get_provider_by_model_name_sync,
+)
 from app.models.analysis import (
     AnalysisParameters, AnalysisResult, AnalysisTask, AnalysisBatch,
     AnalysisStatus, BatchStatus, SingleAnalysisRequest, BatchAnalysisRequest
@@ -45,7 +50,7 @@ def _ensure_trading_agents_logging() -> None:
     if _trading_agents_logging_initialized:
         return
 
-    from trader.utils.logging.init import init_logging
+    init_logging = getattr(importlib.import_module('trader.utils.logging.init'), 'init_logging')
 
     init_logging()
     _trading_agents_logging_initialized = True
@@ -74,18 +79,18 @@ class AnalysisService:
                 # 使用固定的ObjectId作为admin用户ID
                 admin_object_id = ObjectId("507f1f77bcf86cd799439011")
                 logger.info(f"🔄 转换admin用户ID: {user_id} -> {admin_object_id}")
-                return PyObjectId(admin_object_id)
+                return cast(PyObjectId, admin_object_id)
             else:
                 # 尝试将字符串转换为ObjectId
                 object_id = ObjectId(user_id)
                 logger.info(f"🔄 转换用户ID: {user_id} -> {object_id}")
-                return PyObjectId(object_id)
+                return cast(PyObjectId, object_id)
         except Exception as e:
             logger.error(f"❌ 用户ID转换失败: {user_id} -> {e}")
             # 如果转换失败，生成一个新的ObjectId
             new_object_id = ObjectId()
             logger.warning(f"⚠️ 生成新的用户ID: {new_object_id}")
-            return PyObjectId(new_object_id)
+            return cast(PyObjectId, new_object_id)
 
     def _get_trading_graph(self, config: Dict[str, Any]) -> Any:
         """获取或创建TradingAgents图实例（带缓存）- 与单股分析保持一致"""
@@ -93,7 +98,7 @@ class AnalysisService:
 
         if config_key not in self._trading_graph_cache:
             _ensure_trading_agents_logging()
-            from trader.graph.trading import TradingAgentsGraph
+            TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
 
             # 直接使用完整配置，不再合并DEFAULT_CONFIG（因为create_analysis_config已经处理了）
             # 这与单股分析服务和web目录的方式一致
@@ -111,7 +116,8 @@ class AnalysisService:
         """同步执行分析任务（在线程池中运行，带进度跟踪）"""
         try:
             # 在线程中重新初始化日志系统
-            from trader.utils.logging.init import init_logging, get_logger
+            init_logging = getattr(importlib.import_module('trader.utils.logging.init'), 'init_logging')
+            get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
             init_logging()
             thread_logger = get_logger('analysis_thread')
 
@@ -122,7 +128,7 @@ class AnalysisService:
             tracker.update_progress("🔧 检查环境配置")
 
             # 使用标准配置函数创建完整配置
-            from app.core.unified import unified_config
+            unified_config = getattr(importlib.import_module('app.core.unified'), 'unified_config')
 
             quick_model = getattr(task.parameters, 'quick_analysis_model', None) or unified_config.get_quick_analysis_model()
             deep_model = getattr(task.parameters, 'deep_analysis_model', None) or unified_config.get_deep_analysis_model()
@@ -132,8 +138,8 @@ class AnalysisService:
             deep_model_config = None
 
             try:
-                from pymongo import MongoClient
-                from app.core.config import settings
+                MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+                settings = getattr(importlib.import_module('app.core.config'), 'settings')
 
                 # 使用同步 MongoDB 客户端
                 client = MongoClient(settings.mongo_uri)
@@ -179,15 +185,15 @@ class AnalysisService:
             tracker.update_progress("💰 预估分析成本")
 
             # 根据模型名称动态查找供应商（同步版本）
-            from trader.llm.clients.providers import normalize_provider_key
+            normalize_provider_key = getattr(importlib.import_module('trader.llm.clients.providers'), 'normalize_provider_key')
 
-            llm_provider = normalize_provider_key(get_provider_by_model_name(quick_model))
+            llm_provider = normalize_provider_key(get_provider_by_model_name_sync(quick_model))
 
             # 参数配置
             tracker.update_progress("⚙️ 配置分析参数")
 
             # 使用标准配置函数创建完整配置
-            from app.services.analysis.simple import create_analysis_config
+            create_analysis_config = getattr(importlib.import_module('app.services.analysis.simple'), 'create_analysis_config')
             config = create_analysis_config(
                 research_depth=task.parameters.research_depth,
                 selected_analysts=task.parameters.selected_analysts or ["market", "fundamentals"],
@@ -206,7 +212,7 @@ class AnalysisService:
             trading_graph = self._get_trading_graph(config)
 
             # 执行分析
-            from datetime import timezone
+            timezone = getattr(importlib.import_module('datetime'), 'timezone')
             start_time = datetime.now(timezone.utc)
             analysis_date = task.parameters.analysis_date or datetime.now().strftime("%Y-%m-%d")
 
@@ -252,7 +258,7 @@ class AnalysisService:
             logger.info(f"🔄 [线程池] 开始执行分析任务: {task.task_id} - {task.symbol}")
 
             # 使用标准配置函数创建完整配置
-            from app.core.unified import unified_config
+            unified_config = getattr(importlib.import_module('app.core.unified'), 'unified_config')
 
             quick_model = getattr(task.parameters, 'quick_analysis_model', None) or unified_config.get_quick_analysis_model()
             deep_model = getattr(task.parameters, 'deep_analysis_model', None) or unified_config.get_deep_analysis_model()
@@ -262,8 +268,8 @@ class AnalysisService:
             deep_model_config = None
 
             try:
-                from pymongo import MongoClient
-                from app.core.config import settings
+                MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+                settings = getattr(importlib.import_module('app.core.config'), 'settings')
 
                 # 使用同步 MongoDB 客户端
                 client = MongoClient(settings.mongo_uri)
@@ -306,12 +312,12 @@ class AnalysisService:
                 logger.warning(f"⚠️ 从 MongoDB 读取模型配置失败: {e}，将使用默认参数")
 
             # 根据模型名称动态查找供应商（同步版本）
-            from trader.llm.clients.providers import normalize_provider_key
+            normalize_provider_key = getattr(importlib.import_module('trader.llm.clients.providers'), 'normalize_provider_key')
 
-            llm_provider = normalize_provider_key(get_provider_by_model_name(quick_model))
+            llm_provider = normalize_provider_key(get_provider_by_model_name_sync(quick_model))
 
             # 使用标准配置函数创建完整配置
-            from app.services.analysis.simple import create_analysis_config
+            create_analysis_config = getattr(importlib.import_module('app.services.analysis.simple'), 'create_analysis_config')
             config = create_analysis_config(
                 research_depth=task.parameters.research_depth,
                 selected_analysts=task.parameters.selected_analysts or ["market", "fundamentals"],
@@ -327,7 +333,7 @@ class AnalysisService:
             trading_graph = self._get_trading_graph(config)
 
             # 执行分析
-            from datetime import timezone
+            timezone = getattr(importlib.import_module('datetime'), 'timezone')
             start_time = datetime.now(timezone.utc)
             analysis_date = task.parameters.analysis_date or datetime.now().strftime("%Y-%m-%d")
 
@@ -382,8 +388,9 @@ class AnalysisService:
             await self._update_task_status_with_tracker(task.task_id, AnalysisStatus.PROCESSING, tracker)
 
             # 在线程池中执行分析，避免阻塞事件循环
-            import asyncio
-            import concurrent.futures
+            asyncio = importlib.import_module('asyncio')
+            importlib.import_module('concurrent.futures')
+            concurrent = importlib.import_module('concurrent')
 
             loop = asyncio.get_event_loop()
 
@@ -397,7 +404,7 @@ class AnalysisService:
                 )
 
             # 标记完成
-            tracker.mark_completed("✅ 分析完成")
+            tracker.mark_completed()
             await self._update_task_status_with_tracker(task.task_id, AnalysisStatus.COMPLETED, tracker, result)
 
             # 记录 token 使用
@@ -410,8 +417,8 @@ class AnalysisService:
                 model_name = deep_model or quick_model or "qwen-plus"
 
                 # 根据模型名称确定供应商
-                from app.services.analysis.simple import get_provider_by_model_name
-                provider = get_provider_by_model_name(model_name)
+                get_provider_by_model_name = getattr(importlib.import_module('app.services.analysis.simple'), 'get_provider_by_model_name')
+                provider = await get_provider_by_model_name(model_name)
 
                 # 记录使用情况
                 await self._record_token_usage(task, result, provider, model_name)
@@ -428,7 +435,12 @@ class AnalysisService:
                 tracker.mark_failed(str(e))
                 await self._update_task_status_with_tracker(task.task_id, AnalysisStatus.FAILED, tracker)
             else:
-                await self._update_task_status(task.task_id, AnalysisStatus.FAILED, 0, str(e))
+                await self._update_task_status(
+                    task.task_id,
+                    AnalysisStatus.FAILED,
+                    0,
+                    AnalysisResult(error_message=str(e)),
+                )
         finally:
             # 清理进度跟踪器缓存
             if task.task_id in self._trackers:
@@ -505,7 +517,7 @@ class AnalysisService:
             logger.info(f"🚀 开始在后台执行分析任务...")
 
             # 创建后台任务，不等待完成
-            import asyncio
+            asyncio = importlib.import_module('asyncio')
             background_task = asyncio.create_task(
                 self._execute_single_analysis_async(task)
             )
@@ -649,7 +661,7 @@ class AnalysisService:
                 progress_callback(10, "初始化分析引擎...")
 
             # 使用标准配置函数创建完整配置 - 与单股分析保持一致
-            from app.core.unified import unified_config
+            unified_config = getattr(importlib.import_module('app.core.unified'), 'unified_config')
 
             quick_model = getattr(task.parameters, 'quick_analysis_model', None) or unified_config.get_quick_analysis_model()
             deep_model = getattr(task.parameters, 'deep_analysis_model', None) or unified_config.get_deep_analysis_model()
@@ -679,7 +691,7 @@ class AnalysisService:
                     }
 
             # 根据模型名称动态查找供应商
-            from trader.llm.clients.providers import normalize_provider_key
+            normalize_provider_key = getattr(importlib.import_module('trader.llm.clients.providers'), 'normalize_provider_key')
 
             llm_provider = normalize_provider_key(await get_provider_by_model_name(quick_model))
 
@@ -768,7 +780,7 @@ class AnalysisService:
     ) -> None:
         """更新任务状态（委托至拆分的工具函数）"""
         try:
-            from app.services.analysis.status import perform_update_task_status
+            perform_update_task_status = getattr(importlib.import_module('app.services.analysis.status'), 'perform_update_task_status')
             await perform_update_task_status(task_id, status, progress, result)
         except Exception as e:
             logger.error(f"更新任务状态失败: {task_id} - {e}")
@@ -782,7 +794,7 @@ class AnalysisService:
     ) -> None:
         """使用进度跟踪器更新任务状态（委托至拆分的工具函数）"""
         try:
-            from app.services.analysis.status import perform_update_task_status_with_tracker
+            perform_update_task_status_with_tracker = getattr(importlib.import_module('app.services.analysis.status'), 'perform_update_task_status_with_tracker')
             await perform_update_task_status_with_tracker(task_id, status, tracker, result)
         except Exception as e:
             logger.error(f"更新任务状态失败: {task_id} - {e}")
@@ -843,7 +855,7 @@ class AnalysisService:
                 estimated_total_time = 0
 
                 if task.get("started_at"):
-                    from datetime import datetime
+                    datetime = getattr(importlib.import_module('datetime'), 'datetime')
                     start_time = task.get("started_at")
                     if task.get("completed_at"):
                         # 任务已完成
@@ -887,7 +899,7 @@ class AnalysisService:
             await self._update_task_status(task_id, AnalysisStatus.CANCELLED, 0)
 
             # 从队列中移除（如果还在队列中）
-            await self.queue_service.remove_task(task_id)
+            await self.queue_service.cancel_task(task_id)
 
             logger.info(f"任务已取消: {task_id}")
             return True
@@ -918,7 +930,7 @@ class AnalysisService:
                 output_tokens = 1000  # 默认输出 token
 
             # 获取模型价格配置
-            from app.services.config import config_service
+            config_service = getattr(importlib.import_module('app.services.config'), 'config_service')
             config = await config_service.get_system_config()
 
             # 查找对应的 LLM 配置

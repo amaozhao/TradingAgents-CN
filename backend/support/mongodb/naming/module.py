@@ -1,10 +1,11 @@
+import importlib
 import os
 import unittest
 
 
 class MongoDbNamingTests(unittest.TestCase):
     def test_auto_scope_debug_uses_major_instance(self):
-        from app.core.config import Settings
+        Settings = getattr(importlib.import_module('app.core.config'), 'Settings')
 
         env = {
             "DEBUG": "true",
@@ -30,7 +31,7 @@ class MongoDbNamingTests(unittest.TestCase):
                     os.environ[k] = v
 
     def test_auto_scope_prod_uses_explicit(self):
-        from app.core.config import Settings
+        Settings = getattr(importlib.import_module('app.core.config'), 'Settings')
 
         env = {
             "DEBUG": "false",
@@ -54,7 +55,7 @@ class MongoDbNamingTests(unittest.TestCase):
                     os.environ[k] = v
 
     def test_debug_shared_db_requires_explicit_override(self):
-        from app.core.config import Settings
+        Settings = getattr(importlib.import_module('app.core.config'), 'Settings')
 
         env = {
             "DEBUG": "true",

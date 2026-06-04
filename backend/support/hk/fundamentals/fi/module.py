@@ -3,6 +3,7 @@
 测试港股基本面分析修复
 验证港股代码识别、工具选择和货币处理是否正确
 """
+import importlib
 
 import os
 import sys
@@ -12,7 +13,7 @@ def test_stock_type_detection():
     print("🧪 测试股票类型检测...")
 
     try:
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         test_cases = [
             ("0700.HK", "港股", "港币", "HK$"),
@@ -57,9 +58,9 @@ def test_fundamentals_analyst_tool_selection():
     print("\n🧪 测试基本面分析师工具选择...")
 
     try:
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
-        from trader.utils.stocks import StockUtils
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         # 创建工具包
         config = DEFAULT_CONFIG.copy()
@@ -111,7 +112,7 @@ def test_trader_currency_detection():
     print("\n🧪 测试交易员货币检测...")
 
     try:
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         test_cases = [
             ("0700.HK", "港币", "HK$"),
@@ -147,7 +148,7 @@ def test_hk_data_source():
     print("\n🧪 测试港股数据源...")
 
     try:
-        from trader.flows.interface import get_hk_stock_data_unified
+        get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
 
         # 测试港股数据获取
         hk_ticker = "0700.HK"

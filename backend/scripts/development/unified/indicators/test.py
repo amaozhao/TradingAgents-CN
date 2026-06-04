@@ -3,6 +3,7 @@
 测试统一的技术指标计算函数
 验证港股和美股数据是否使用了统一的技术指标计算
 """
+import importlib
 
 import sys
 import os
@@ -17,7 +18,7 @@ def test_hk_indicators():
     print("测试港股技术指标（使用统一计算函数）")
     print("=" * 80)
 
-    from trader.flows.providers.hk.improved_hk import get_hk_stock_data_akshare
+    get_hk_stock_data_akshare = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_stock_data_akshare')
 
     symbol = "00700.HK"
     start_date = "2024-11-09"
@@ -54,7 +55,7 @@ def test_us_indicators():
     print("测试美股技术指标（使用统一计算函数）")
     print("=" * 80)
 
-    from trader.flows.providers.us.optimized import get_us_stock_data_cached
+    get_us_stock_data_cached = getattr(importlib.import_module('trader.flows.providers.us.optimized'), 'get_us_stock_data_cached')
 
     symbol = "AAPL"
     start_date = "2024-11-09"
@@ -97,8 +98,8 @@ def test_indicator_library():
     print("测试技术指标计算库")
     print("=" * 80)
 
-    import pandas as pd
-    from trader.tools.analysis.indicators import add_all_indicators
+    pd = importlib.import_module('pandas')
+    add_all_indicators = getattr(importlib.import_module('trader.tools.analysis.indicators'), 'add_all_indicators')
 
     # 创建测试数据
     test_data = pd.DataFrame({

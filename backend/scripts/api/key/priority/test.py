@@ -9,6 +9,7 @@
 3. 数据库有无效的 Key（长度不够） → 使用环境变量的 Key
 4. 数据库和环境变量都没有 → 报错
 """
+import importlib
 
 import sys
 import os
@@ -27,7 +28,7 @@ load_dotenv()
 
 async def test_api_key_validation():
     """测试 API Key 验证逻辑"""
-    from app.services.config_service import ConfigService
+    ConfigService = getattr(importlib.import_module('app.services.config'), 'ConfigService')
 
     config_service = ConfigService()
 
@@ -57,8 +58,8 @@ async def test_api_key_validation():
 
 async def test_provider_key_priority():
     """测试厂家 API Key 优先级"""
-    from app.services.config_service import ConfigService
-    from app.core.database import init_db
+    ConfigService = getattr(importlib.import_module('app.services.config'), 'ConfigService')
+    init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
 
     # 初始化数据库
     await init_db()
@@ -117,7 +118,7 @@ async def main():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         sys.exit(1)
 

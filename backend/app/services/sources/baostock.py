@@ -1,7 +1,8 @@
 """
 BaoStock data source adapter
 """
-from typing import Optional
+import importlib
+from typing import Any, Optional, cast
 import logging
 from datetime import datetime, timedelta
 import pandas as pd
@@ -26,7 +27,7 @@ class BaoStockAdapter(DataSourceAdapter):
 
     def is_available(self) -> bool:
         try:
-            import baostock as bs  # noqa: F401
+            bs = importlib.import_module('baostock')
             return True
         except ImportError:
             return False
@@ -35,7 +36,7 @@ class BaoStockAdapter(DataSourceAdapter):
         if not self.is_available():
             return None
         try:
-            import baostock as bs
+            bs = importlib.import_module('baostock')
             lg = bs.login()
             if lg.error_code != '0':
                 logger.error(f"BaoStock: Login failed: {lg.error_msg}")
@@ -53,10 +54,11 @@ class BaoStockAdapter(DataSourceAdapter):
                     return None
                 df = pd.DataFrame(data_list, columns=rs.fields)
                 df = df[df['type'] == '1']
-                df['symbol'] = df['code'].str.replace(r'^(sh|sz)\.', '', regex=True)
+                code_series: Any = df['code']
+                df['symbol'] = code_series.str.replace(r'^(sh|sz)\.', '', regex=True)
                 df['ts_code'] = (
-                    df['code'].str.replace('sh.', '').str.replace('sz.', '')
-                    + df['code'].str.extract(r'^(sh|sz)\.').iloc[:, 0].str.upper().str.replace('SH', '.SH').str.replace('SZ', '.SZ')
+                    code_series.str.replace('sh.', '').str.replace('sz.', '')
+                    + code_series.str.extract(r'^(sh|sz)\.').iloc[:, 0].str.upper().str.replace('SH', '.SH').str.replace('SZ', '.SZ')
                 )
                 df['name'] = df['code_name']
                 df['area'] = ''
@@ -76,7 +78,7 @@ class BaoStockAdapter(DataSourceAdapter):
                             if not industry_str or pd.isna(industry_str):
                                 return ''
                             # 使用正则表达式去掉前面的字母和数字编码（如 I65、C31 等）
-                            import re
+                            re = importlib.import_module('re')
                             cleaned = re.sub(r'^[A-Z]\d+', '', str(industry_str))
                             return cleaned.strip()
 
@@ -85,7 +87,8 @@ class BaoStockAdapter(DataSourceAdapter):
                         # 创建行业映射字典 {code: industry_clean}
                         industry_map = dict(zip(industry_df['code'], industry_df['industry_clean']))
                         # 将行业信息合并到主DataFrame
-                        df['industry'] = df['code'].map(industry_map).fillna('')
+                        df_code_series: Any = df['code']
+                        df['industry'] = df_code_series.map(industry_map).fillna('')
                         logger.info(f"BaoStock: Successfully mapped industry info for {len(industry_map)} stocks")
                     else:
                         df['industry'] = ''
@@ -97,14 +100,14 @@ class BaoStockAdapter(DataSourceAdapter):
                 df['market'] = '\u4e3b\u677f'
                 df['list_date'] = ''
                 logger.info(f"BaoStock: Successfully fetched {len(df)} stocks")
-                return df[['symbol', 'name', 'ts_code', 'area', 'industry', 'market', 'list_date']]
+                return cast(pd.DataFrame, df[['symbol', 'name', 'ts_code', 'area', 'industry', 'market', 'list_date']])
             finally:
                 bs.logout()
         except Exception as e:
             logger.error(f"BaoStock: Failed to fetch stock list: {e}")
             return None
 
-    def get_daily_basic(self, trade_date: str, max_stocks: int = None) -> Optional[pd.DataFrame]:
+    def get_daily_basic(self, trade_date: str, max_stocks: Optional[int] = None) -> Optional[pd.DataFrame]:
         """
         获取每日基础数据（包含PE、PB、总市值等）
 
@@ -115,7 +118,7 @@ class BaoStockAdapter(DataSourceAdapter):
         if not self.is_available():
             return None
         try:
-            import baostock as bs
+            bs = importlib.import_module('baostock')
             logger.info(f"BaoStock: Attempting to get valuation data for {trade_date}")
             lg = bs.login()
             if lg.error_code != '0':
@@ -159,6 +162,9 @@ class BaoStockAdapter(DataSourceAdapter):
                                 frequency="d",
                                 adjustflag="3",
                             )
+                            if rs_valuation is None:
+                                failed_count += 1
+                                continue
                             if rs_valuation.error_code == '0':
                                 valuation_data = []
                                 while (rs_valuation.error_code == '0') & rs_valuation.next():

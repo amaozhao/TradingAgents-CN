@@ -3,6 +3,7 @@
 阿里百炼 OpenAI 兼容适配器简化测试
 验证核心功能是否正常
 """
+import importlib
 
 import os
 import sys
@@ -27,7 +28,7 @@ def test_basic_functionality():
         print(f"✅ API密钥: {api_key[:10]}...")
 
         # 导入新适配器
-        from trader.llm.adapters import ChatDashScopeOpenAI
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
         print("✅ 新适配器导入成功")
 
         # 创建实例
@@ -39,7 +40,7 @@ def test_basic_functionality():
         print("✅ 实例创建成功")
 
         # 测试简单调用
-        from langchain_core.messages import HumanMessage
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
         response = llm.invoke([HumanMessage(content="请回复：测试成功")])
         print(f"✅ 简单调用成功: {response.content}")
 
@@ -47,7 +48,7 @@ def test_basic_functionality():
 
     except Exception as e:
         print(f"❌ 基本功能测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -64,9 +65,9 @@ def test_tool_binding():
             print("⚠️ 未找到DASHSCOPE_API_KEY，跳过工具绑定测试")
             return True
 
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from langchain_core.tools import tool
-        from langchain_core.messages import HumanMessage
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         # 定义测试工具
         @tool
@@ -102,7 +103,7 @@ def test_tool_binding():
 
     except Exception as e:
         print(f"❌ 工具绑定测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -119,9 +120,10 @@ def test_vs_old_adapter():
             print("⚠️ 未找到DASHSCOPE_API_KEY，跳过对比测试")
             return True
 
-        from trader.llm.adapters import ChatDashScope, ChatDashScopeOpenAI
-        from langchain_core.messages import HumanMessage
-        from langchain_core.tools import tool
+        ChatDashScope = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScope')
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
 
         # 定义测试工具
         @tool
@@ -168,7 +170,7 @@ def test_trading_graph_creation():
     print("=" * 50)
 
     try:
-        from trader.graph.trading import TradingAgentsGraph
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
 
         # 简化配置
         config = {
@@ -200,7 +202,7 @@ def test_trading_graph_creation():
 
     except Exception as e:
         print(f"❌ TradingGraph创建失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

@@ -2,6 +2,7 @@
 """
 测试DeepSeek使用ReAct Agent的修复效果
 """
+import importlib
 
 import os
 import sys
@@ -26,10 +27,10 @@ def test_deepseek_react_market_analyst():
             print("⚠️ 未找到DEEPSEEK_API_KEY，无法测试")
             return False
 
-        from trader.agents.analysts.market import create_market_analyst_react
-        from trader.llm.adapters.deepseek import ChatDeepSeek
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        create_market_analyst_react = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst_react')
+        ChatDeepSeek = getattr(importlib.import_module('trader.llm.adapters.deepseek'), 'ChatDeepSeek')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建DeepSeek LLM
         deepseek_llm = ChatDeepSeek(
@@ -99,7 +100,7 @@ def test_deepseek_react_market_analyst():
 
     except Exception as e:
         print(f"❌ DeepSeek ReAct市场分析师测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -109,8 +110,8 @@ def test_graph_setup_logic():
     print("=" * 60)
 
     try:
-        from trader.graph.setup import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.setup'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 模拟DeepSeek配置
         config = DEFAULT_CONFIG.copy()
@@ -135,7 +136,7 @@ def test_graph_setup_logic():
 
     except Exception as e:
         print(f"❌ 图设置逻辑测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

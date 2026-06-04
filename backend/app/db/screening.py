@@ -144,6 +144,8 @@ def _filters(conditions: list[dict[str, Any]], source: str):
 
 def _condition_expression(condition: dict[str, Any]):
     field = condition.get("field")
+    if not isinstance(field, str):
+        return None
     operator = str(condition.get("operator"))
     value = condition.get("value")
     column = FIELD_COLUMNS.get(field)
@@ -179,7 +181,8 @@ def _order_by(order_by: list[dict[str, str]] | None):
 
     orders = []
     for order in order_by:
-        column = FIELD_COLUMNS.get(order.get("field"))
+        field = order.get("field")
+        column = FIELD_COLUMNS.get(field) if field else None
         if column is None:
             continue
         direction = order.get("direction", "desc").lower()

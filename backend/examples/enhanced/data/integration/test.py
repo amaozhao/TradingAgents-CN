@@ -3,6 +3,7 @@
 测试增强数据整合功能
 验证 TA_USE_APP_CACHE 配置对数据访问的影响
 """
+import importlib
 
 import os
 import sys
@@ -15,8 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # 设置环境变量
 os.environ['TA_USE_APP_CACHE'] = 'true'  # 启用MongoDB优先模式
 
-from trader.flows.enhanced_data_adapter import get_enhanced_data_adapter
-from trader.flows.optimized_china_data import get_optimized_china_data_provider
+from trader.flows.cache.mongodb import get_enhanced_data_adapter
+from trader.flows.china import get_optimized_china_data_provider
 
 def test_enhanced_data_adapter():
     """测试增强数据适配器"""
@@ -134,9 +135,10 @@ def test_cache_mode_comparison():
     print("\n📁 传统缓存模式:")
     os.environ['TA_USE_APP_CACHE'] = 'false'
     # 注意：需要重新创建实例以应用新配置
-    from importlib import reload
-    import trader.flows.enhanced_data_adapter
-    reload(trader.flows.enhanced_data_adapter)
+    reload = getattr(importlib.import_module('importlib'), 'reload')
+    importlib.import_module('trader.flows.cache.mongodb')
+    trader = importlib.import_module('trader')
+    reload(trader.flows.cache.mongodb)
 
     provider2 = get_optimized_china_data_provider()
 

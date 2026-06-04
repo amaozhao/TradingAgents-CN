@@ -1,3 +1,4 @@
+import importlib
 import inspect
 from types import SimpleNamespace
 
@@ -42,7 +43,7 @@ def test_scheduler_adds_quotes_job(monkeypatch):
             return None
 
     # Patch scheduler and service in app.main before startup runs
-    import app.main as main_mod
+    main_mod = importlib.import_module('app.main')
 
     fake_scheduler = _FakeScheduler()
 
@@ -74,7 +75,7 @@ def test_scheduler_adds_quotes_job(monkeypatch):
     monkeypatch.setattr(main_mod.asyncio, "create_task", _fake_asyncio_create_task, raising=True)
 
     # Directly drive the lifespan to avoid importing full router stack
-    import asyncio as _asyncio
+    _asyncio = importlib.import_module('asyncio')
 
     async def _run():
         async with main_mod.lifespan(FastAPI()):

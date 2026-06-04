@@ -2,6 +2,7 @@
 """
 测试增强的股票筛选功能
 """
+import importlib
 
 import asyncio
 import sys
@@ -21,9 +22,10 @@ async def test_enhanced_screening():
 
     try:
         # 导入服务
-        from app.core.database import init_db
-        from app.services.screening.enhanced import get_enhanced_screening_service
-        from app.models.screening import ScreeningCondition, OperatorType
+        init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
+        get_enhanced_screening_service = getattr(importlib.import_module('app.services.screening.enhanced'), 'get_enhanced_screening_service')
+        ScreeningCondition = getattr(importlib.import_module('app.models.screening'), 'ScreeningCondition')
+        OperatorType = getattr(importlib.import_module('app.models.screening'), 'OperatorType')
 
         # 初始化数据库
         await init_db()
@@ -184,7 +186,7 @@ async def test_enhanced_screening():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

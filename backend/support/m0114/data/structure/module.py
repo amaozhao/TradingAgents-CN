@@ -2,6 +2,7 @@
 """
 测试数据结构脚本
 """
+import importlib
 
 import sys
 import os
@@ -10,7 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'web'))
 def test_data_structure():
     """测试分析结果数据结构"""
     try:
-        from web.components.analysis import load_analysis_results
+        load_analysis_results = getattr(importlib.import_module('web.components.analysis'), 'load_analysis_results')
 
         print("🔍 测试分析结果数据结构...")
 
@@ -45,7 +46,7 @@ def test_data_structure():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None
 

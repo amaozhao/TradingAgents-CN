@@ -1,6 +1,7 @@
 """
 简单的港股功能测试
 """
+import importlib
 
 import sys
 import os
@@ -15,7 +16,7 @@ def test_basic():
 
     try:
         # 测试股票工具类
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         # 测试港股代码识别
         test_cases = [
@@ -35,7 +36,7 @@ def test_basic():
 
     except Exception as e:
         print(f"❌ 基本测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

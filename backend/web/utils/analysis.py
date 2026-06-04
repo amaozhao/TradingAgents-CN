@@ -1,6 +1,7 @@
 """
 股票分析执行工具
 """
+import importlib
 
 import sys
 import os
@@ -27,7 +28,7 @@ logger = setup_web_logging()
 
 # 添加配置管理器
 try:
-    from trader.config.config_manager import token_tracker
+    from trader.config.manager import token_tracker
     TOKEN_TRACKING_ENABLED = True
     logger.info("✅ Token跟踪功能已启用")
 except ImportError:
@@ -124,7 +125,7 @@ def run_stock_analysis(stock_symbol, analysis_date, analysts, research_depth, ll
     update_progress("🔍 验证股票代码并预获取数据...", 1, 10)
 
     try:
-        from trader.utils.stock_validator import prepare_stock_data
+        prepare_stock_data = getattr(importlib.import_module('trader.utils.validation'), 'prepare_stock_data')
 
         # 预获取股票数据（默认30天历史数据）
         preparation_result = prepare_stock_data(
@@ -170,7 +171,7 @@ def run_stock_analysis(stock_symbol, analysis_date, analysts, research_depth, ll
 
     # 记录分析开始的详细日志
     logger_manager = get_logger_manager()
-    import time
+    time = importlib.import_module('time')
     analysis_start_time = time.time()
 
     logger_manager.log_analysis_start(
@@ -225,8 +226,8 @@ def run_stock_analysis(stock_symbol, analysis_date, analysts, research_depth, ll
 
     try:
         # 导入必要的模块
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建配置
         update_progress("配置分析参数...")
@@ -550,7 +551,8 @@ def run_stock_analysis(stock_symbol, analysis_date, analysts, research_depth, ll
         # 保存分析报告到本地和MongoDB
         try:
             update_progress("💾 正在保存分析报告...")
-            from .reports import save_analysis_report, save_modular_reports_to_results_dir
+            save_analysis_report = getattr(importlib.import_module('web.utils.reports'), 'save_analysis_report')
+            save_modular_reports_to_results_dir = getattr(importlib.import_module('web.utils.reports'), 'save_modular_reports_to_results_dir')
 
             # 1. 保存分模块报告到本地目录
             logger.info(f"📁 [本地保存] 开始保存分模块报告到本地目录")
@@ -785,12 +787,12 @@ def validate_analysis_params(stock_symbol, analysis_date, analysts, research_dep
         symbol = stock_symbol.strip()
         if market_type == "A股":
             # A股：6位数字
-            import re
+            re = importlib.import_module('re')
             if not re.match(r'^\d{6}$', symbol):
                 errors.append("A股代码格式错误，应为6位数字（如：000001）")
         elif market_type == "港股":
             # 港股：4-5位数字.HK 或 纯4-5位数字
-            import re
+            re = importlib.import_module('re')
             symbol_upper = symbol.upper()
             # 检查是否为 XXXX.HK 或 XXXXX.HK 格式
             hk_format = re.match(r'^\d{4,5}\.HK$', symbol_upper)
@@ -801,7 +803,7 @@ def validate_analysis_params(stock_symbol, analysis_date, analysts, research_dep
                 errors.append("港股代码格式错误，应为4位数字.HK（如：0700.HK）或4位数字（如：0700）")
         elif market_type == "美股":
             # 美股：1-5位字母
-            import re
+            re = importlib.import_module('re')
             if not re.match(r'^[A-Z]{1,5}$', symbol.upper()):
                 errors.append("美股代码格式错误，应为1-5位字母（如：AAPL）")
 
@@ -820,7 +822,7 @@ def validate_analysis_params(stock_symbol, analysis_date, analysts, research_dep
 
     # 验证分析日期
     try:
-        from datetime import datetime
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
         datetime.strptime(analysis_date, '%Y-%m-%d')
     except ValueError:
         errors.append("分析日期格式无效，应为YYYY-MM-DD格式")
@@ -856,7 +858,7 @@ def generate_demo_results_deprecated(stock_symbol, analysis_date, analysts, rese
     现在我们使用占位符来代替演示数据。
     """
 
-    import random
+    random = importlib.import_module('random')
 
     # 根据市场类型设置货币符号和价格范围
     if market_type == "港股":

@@ -46,9 +46,7 @@ def get_win10_chromadb_client():
         is_persistent=False,
         # Windows 10 特定配置
         chroma_db_impl="duckdb+parquet",
-        chroma_api_impl="chromadb.api.segment.SegmentAPI",
-        # 使用临时目录避免权限问题
-        persist_directory=None
+        chroma_api_impl="chromadb.api.segment.SegmentAPI"
     )
 
     try:

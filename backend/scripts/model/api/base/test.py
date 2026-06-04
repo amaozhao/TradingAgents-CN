@@ -1,6 +1,7 @@
 """
 测试脚本：验证模型级别的 API 基础 URL 是否生效
 """
+import importlib
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -10,9 +11,9 @@ def main():
     print("🧪 测试：验证模型级别的 API 基础 URL 配置")
     print("=" * 80)
 
-    from pymongo import MongoClient
-    from app.core.config import settings
-    from app.services.simple_analysis_service import get_provider_and_url_by_model_sync
+    MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+    settings = getattr(importlib.import_module('app.core.config'), 'settings')
+    get_provider_and_url_by_model_sync = getattr(importlib.import_module('app.services.analysis.simple'), 'get_provider_and_url_by_model_sync')
 
     # 连接数据库
     client = MongoClient(settings.mongo_uri)

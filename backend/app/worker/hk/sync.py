@@ -14,6 +14,7 @@
 - 参考A股数据源管理方式（Tushare/AKShare/BaoStock）
 - 缓存时长可配置（默认24小时）
 """
+import importlib
 
 import asyncio
 import logging
@@ -70,8 +71,9 @@ class HKDataService:
             List[str]: 港股代码列表
         """
         try:
-            import akshare as ak
-            from datetime import datetime, timedelta
+            ak = importlib.import_module('akshare')
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
             # 检查缓存是否有效
             if (self.hk_stock_list and self._stock_list_cache_time and
@@ -247,8 +249,8 @@ class HKDataService:
             Dict: 同步统计信息 {updated: int, inserted: int, failed: int}
         """
         try:
-            import akshare as ak
-            from datetime import datetime
+            ak = importlib.import_module('akshare')
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
 
             logger.info("🇭🇰 开始批量同步港股基础信息 (数据源: akshare)")
 
@@ -293,18 +295,22 @@ class HKDataService:
                     }
 
                     # 可选字段：提取行情数据中的其他信息
-                    if '最新价' in row and row['最新价']:
-                        stock_info["latest_price"] = float(row['最新价'])
+                    latest_price: Any = row['最新价'] if '最新价' in row else None
+                    if latest_price:
+                        stock_info["latest_price"] = float(latest_price)
 
-                    if '涨跌幅' in row and row['涨跌幅']:
-                        stock_info["change_percent"] = float(row['涨跌幅'])
+                    change_percent: Any = row['涨跌幅'] if '涨跌幅' in row else None
+                    if change_percent:
+                        stock_info["change_percent"] = float(change_percent)
 
-                    if '总市值' in row and row['总市值']:
+                    total_mv: Any = row['总市值'] if '总市值' in row else None
+                    if total_mv:
                         # 转换为亿港币
-                        stock_info["total_mv"] = float(row['总市值']) / 100000000
+                        stock_info["total_mv"] = float(total_mv) / 100000000
 
-                    if '市盈率' in row and row['市盈率']:
-                        stock_info["pe"] = float(row['市盈率'])
+                    pe: Any = row['市盈率'] if '市盈率' in row else None
+                    if pe:
+                        stock_info["pe"] = float(pe)
 
                     # 批量更新操作
                     operations.append(

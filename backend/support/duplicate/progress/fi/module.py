@@ -3,6 +3,7 @@
 测试重复进度提示修复效果
 验证分析师完成提示不会重复显示
 """
+import importlib
 
 import os
 import sys
@@ -17,7 +18,7 @@ def test_duplicate_prevention():
     print("=" * 60)
 
     try:
-        from cli.main import CLIUserInterface
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
 
         ui = CLIUserInterface()
 
@@ -60,7 +61,7 @@ def test_duplicate_prevention():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -70,7 +71,7 @@ def test_stream_chunk_simulation():
     print("=" * 60)
 
     try:
-        from cli.main import CLIUserInterface
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
 
         ui = CLIUserInterface()
         completed_analysts = set()
@@ -123,7 +124,7 @@ def test_analyst_completion_order():
     print("=" * 60)
 
     try:
-        from cli.main import CLIUserInterface
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
 
         ui = CLIUserInterface()
         completed_analysts = set()
@@ -178,7 +179,7 @@ def test_real_scenario_simulation():
     print("=" * 60)
 
     try:
-        from cli.main import CLIUserInterface
+        CLIUserInterface = getattr(importlib.import_module('cli.main'), 'CLIUserInterface')
 
         ui = CLIUserInterface()
         completed_analysts = set()

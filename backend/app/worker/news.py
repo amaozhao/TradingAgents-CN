@@ -2,6 +2,7 @@
 新闻数据同步服务
 支持多数据源新闻数据同步和情绪分析
 """
+import importlib
 import asyncio
 import logging
 from typing import List, Dict, Any, Optional
@@ -9,6 +10,7 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 
 from app.services.market.news import get_news_data_service
+from trader.flows.news.real.time import RealtimeNewsAggregator
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +60,7 @@ class NewsDataSyncService:
     async def _get_tushare_provider(self):
         """获取Tushare提供者"""
         if self._tushare_provider is None:
-            from trader.flows.providers.china.tushare import get_tushare_provider
+            get_tushare_provider = getattr(importlib.import_module('trader.flows.providers.china.tushare'), 'get_tushare_provider')
             self._tushare_provider = get_tushare_provider()
             await self._tushare_provider.connect()
         return self._tushare_provider
@@ -66,7 +68,7 @@ class NewsDataSyncService:
     async def _get_akshare_provider(self):
         """获取AKShare提供者"""
         if self._akshare_provider is None:
-            from trader.flows.providers.china.akshare import get_akshare_provider
+            get_akshare_provider = getattr(importlib.import_module('trader.flows.providers.china.akshare'), 'get_akshare_provider')
 
             self._akshare_provider = get_akshare_provider()
             await self._akshare_provider.connect()
@@ -75,15 +77,13 @@ class NewsDataSyncService:
     async def _get_realtime_aggregator(self):
         """获取实时新闻聚合器"""
         if self._realtime_aggregator is None:
-            from trader.flows.news.realtime import RealtimeNewsAggregator
-
             self._realtime_aggregator = RealtimeNewsAggregator()
         return self._realtime_aggregator
 
     async def sync_stock_news(
         self,
         symbol: str,
-        data_sources: List[str] = None,
+        data_sources: Optional[List[str]] = None,
         hours_back: int = 24,
         max_news_per_source: int = 50
     ) -> NewsSyncStats:
@@ -426,7 +426,7 @@ class NewsDataSyncService:
 
     async def sync_market_news(
         self,
-        data_sources: List[str] = None,
+        data_sources: Optional[List[str]] = None,
         hours_back: int = 24,
         max_news_per_source: int = 100
     ) -> NewsSyncStats:
@@ -459,12 +459,12 @@ class NewsDataSyncService:
 
                     # 获取市场新闻（不指定股票代码）
                     news_items = aggregator.get_realtime_stock_news(
-                        None, hours_back, max_news_per_source
+                        "", hours_back, max_news_per_source
                     )
 
                     if news_items:
                         for news_item in news_items:
-                            standardized = self._standardize_realtime_news(news_item, None)
+                            standardized = self._standardize_realtime_news(news_item, "MARKET")
                             if standardized:
                                 all_news.append(standardized)
 

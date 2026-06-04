@@ -3,6 +3,7 @@
 测试提示词优化后的效果
 验证股票代码和公司名称正确分离，以及分析师输出质量
 """
+import importlib
 
 import os
 import sys
@@ -18,7 +19,7 @@ def test_fundamentals_analyst_prompt():
 
     try:
         # 设置日志级别
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("default")
         logger.setLevel("INFO")
 
@@ -31,9 +32,9 @@ def test_fundamentals_analyst_prompt():
         print(f"🔧 创建基本面分析师...")
 
         # 创建LLM和工具包
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         llm = ChatDashScopeOpenAI(
             model="qwen-turbo",
@@ -47,7 +48,7 @@ def test_fundamentals_analyst_prompt():
         toolkit.update_config(config)
 
         # 创建基本面分析师
-        from trader.agents.analysts.fundamentals import create_fundamentals_analyst
+        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
         fundamentals_analyst = create_fundamentals_analyst(llm, toolkit)
 
         print(f"✅ 基本面分析师创建完成")
@@ -73,8 +74,8 @@ def test_fundamentals_analyst_prompt():
             print(f"🔍 [提示词验证] 检查提示词构建...")
 
             # 获取公司名称（验证提示词构建逻辑）
-            from trader.agents.analysts.fundamentals import _get_company_name_for_fundamentals
-            from trader.utils.stocks import StockUtils
+            _get_company_name_for_fundamentals = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), '_get_company_name_for_fundamentals')
+            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
             market_info = StockUtils.get_market_info(ticker)
             company_name = _get_company_name_for_fundamentals(ticker, market_info)
@@ -147,14 +148,14 @@ def test_fundamentals_analyst_prompt():
 
             except Exception as e:
                 print(f"❌ 基本面分析执行失败: {e}")
-                import traceback
+                traceback = importlib.import_module('traceback')
                 traceback.print_exc()
 
         return True
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -173,9 +174,9 @@ def test_market_analyst_prompt():
         print(f"🔧 创建市场分析师...")
 
         # 创建LLM和工具包
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         llm = ChatDashScopeOpenAI(
             model="qwen-turbo",
@@ -189,7 +190,7 @@ def test_market_analyst_prompt():
         toolkit.update_config(config)
 
         # 创建市场分析师
-        from trader.agents.analysts.market import create_market_analyst
+        create_market_analyst = getattr(importlib.import_module('trader.agents.analysts.market'), 'create_market_analyst')
         market_analyst = create_market_analyst(llm, toolkit)
 
         print(f"✅ 市场分析师创建完成")
@@ -210,8 +211,8 @@ def test_market_analyst_prompt():
         print(f"🔍 [提示词验证] 检查提示词构建...")
 
         # 获取公司名称（验证提示词构建逻辑）
-        from trader.agents.analysts.market import _get_company_name
-        from trader.utils.stocks import StockUtils
+        _get_company_name = getattr(importlib.import_module('trader.agents.analysts.market'), '_get_company_name')
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         market_info = StockUtils.get_market_info(test_ticker)
         company_name = _get_company_name(test_ticker, market_info)
@@ -259,14 +260,14 @@ def test_market_analyst_prompt():
 
         except Exception as e:
             print(f"❌ 市场分析执行失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
 
         return True
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -287,9 +288,9 @@ def test_prompt_elements():
             print("-" * 40)
 
             # 获取市场信息和公司名称
-            from trader.utils.stocks import StockUtils
-            from trader.agents.analysts.fundamentals import _get_company_name_for_fundamentals
-            from trader.agents.analysts.market import _get_company_name
+            StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+            _get_company_name_for_fundamentals = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), '_get_company_name_for_fundamentals')
+            _get_company_name = getattr(importlib.import_module('trader.agents.analysts.market'), '_get_company_name')
 
             market_info = StockUtils.get_market_info(ticker)
             fundamentals_name = _get_company_name_for_fundamentals(ticker, market_info)
@@ -322,7 +323,7 @@ def test_prompt_elements():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

@@ -1,6 +1,7 @@
 """
 通知服务：持久化 + 列表 + 已读 + SSE 发布
 """
+import importlib
 import json
 import logging
 from datetime import datetime, timedelta
@@ -65,7 +66,7 @@ class NotificationsService:
 
         # 🔥 使用 WebSocket 发送通知
         try:
-            from app.routers.socket import send_notification_via_websocket
+            send_notification_via_websocket = getattr(importlib.import_module('app.routers.socket'), 'send_notification_via_websocket')
             await send_notification_via_websocket(payload.user_id, payload_to_publish)
             logger.debug(f"✅ [WS] 通知已通过 WebSocket 发送: user={payload.user_id}")
         except Exception as e:

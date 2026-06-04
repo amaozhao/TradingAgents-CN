@@ -8,6 +8,7 @@
 3. 报告长度不足时，应该继续执行
 4. 报告长度足够时，应该停止循环
 """
+import importlib
 
 from unittest.mock import Mock
 
@@ -24,7 +25,7 @@ def create_mock_message(has_tool_calls=False):
 
 def test_fundamentals_no_report_with_tool_calls():
     """测试：基本面分析 - 没有报告，有 tool_calls -> 应该继续执行工具"""
-    from trader.graph.conditions import ConditionalLogic
+    ConditionalLogic = getattr(importlib.import_module('trader.graph.conditions'), 'ConditionalLogic')
 
     logic = ConditionalLogic()
     state = {
@@ -39,7 +40,7 @@ def test_fundamentals_no_report_with_tool_calls():
 
 def test_fundamentals_has_report_with_tool_calls():
     """测试：基本面分析 - 有报告，有 tool_calls -> 应该停止循环"""
-    from trader.graph.conditions import ConditionalLogic
+    ConditionalLogic = getattr(importlib.import_module('trader.graph.conditions'), 'ConditionalLogic')
 
     logic = ConditionalLogic()
     state = {
@@ -54,7 +55,7 @@ def test_fundamentals_has_report_with_tool_calls():
 
 def test_all_analysts():
     """测试：所有分析师的行为一致性"""
-    from trader.graph.conditions import ConditionalLogic
+    ConditionalLogic = getattr(importlib.import_module('trader.graph.conditions'), 'ConditionalLogic')
 
     logic = ConditionalLogic()
     message = create_mock_message(has_tool_calls=True)
@@ -105,7 +106,7 @@ def test_conditional_logic_fix():
         return False
     except Exception as e:
         print(f"\n❌ 测试错误: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

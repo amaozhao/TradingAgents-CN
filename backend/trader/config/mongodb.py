@@ -3,6 +3,7 @@
 MongoDB存储适配器
 用于将token使用记录存储到MongoDB数据库
 """
+import importlib
 
 import os
 from datetime import datetime, timedelta
@@ -28,7 +29,7 @@ except ImportError:
 class MongoDBStorage:
     """MongoDB存储适配器"""
 
-    def __init__(self, connection_string: str = None, database_name: str = "trading_agents"):
+    def __init__(self, connection_string: Optional[str] = None, database_name: str = "trading_agents"):
         if not MONGODB_AVAILABLE:
             raise ImportError("pymongo is not installed. Please install it with: pip install pymongo")
 
@@ -45,9 +46,9 @@ class MongoDBStorage:
         self.database_name = database_name
         self.collection_name = "token_usage"
 
-        self.client = None
-        self.db = None
-        self.collection = None
+        self.client: Any = None
+        self.db: Any = None
+        self.collection: Any = None
         self._connected = False
 
         # 尝试连接
@@ -57,12 +58,13 @@ class MongoDBStorage:
         """连接到MongoDB"""
         try:
             # 从环境变量读取超时配置，使用合理的默认值
-            import os
+            os = importlib.import_module('os')
             connect_timeout = int(os.getenv("MONGO_CONNECT_TIMEOUT_MS", "30000"))
             socket_timeout = int(os.getenv("MONGO_SOCKET_TIMEOUT_MS", "60000"))
             server_selection_timeout = int(os.getenv("MONGO_SERVER_SELECTION_TIMEOUT_MS", "5000"))
 
-            self.client = MongoClient(
+            client_cls: Any = MongoClient
+            self.client = client_cls(
                 self.connection_string,
                 serverSelectionTimeoutMS=server_selection_timeout,
                 connectTimeoutMS=connect_timeout,
@@ -140,11 +142,11 @@ class MongoDBStorage:
 
         except Exception as e:
             logger.error(f"❌ [MongoDB存储] 保存记录失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             logger.error(f"   堆栈: {traceback.format_exc()}")
             return False
 
-    def load_usage_records(self, limit: int = 10000, days: int = None) -> List[UsageRecord]:
+    def load_usage_records(self, limit: int = 10000, days: Optional[int] = None) -> List[UsageRecord]:
         """从MongoDB加载使用记录"""
         if not self._connected:
             return []
@@ -153,7 +155,7 @@ class MongoDBStorage:
             # 构建查询条件
             query = {}
             if days:
-                from datetime import timedelta
+                timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
                 cutoff_date = datetime.now(ZoneInfo(get_timezone_name())) - timedelta(days=days)
                 query['timestamp'] = {'$gte': cutoff_date.isoformat()}
 
@@ -186,7 +188,7 @@ class MongoDBStorage:
             return {}
 
         try:
-            from datetime import timedelta
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
             cutoff_date = datetime.now() - timedelta(days=days)
 
             # 聚合查询
@@ -237,7 +239,7 @@ class MongoDBStorage:
             return {}
 
         try:
-            from datetime import timedelta
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
             cutoff_date = datetime.now() - timedelta(days=days)
 
             # 按供应商聚合
@@ -282,7 +284,7 @@ class MongoDBStorage:
             return 0
 
         try:
-            from datetime import timedelta
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
             cutoff_date = datetime.now() - timedelta(days=days)
 

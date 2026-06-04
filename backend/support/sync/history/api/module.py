@@ -3,6 +3,7 @@
 测试同步历史API功能
 验证历史记录的获取和显示
 """
+import importlib
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,8 +25,9 @@ async def test_sync_history_api():
     print("=" * 60)
 
     try:
-        from app.core.database import init_db, get_mongo_db
-        from app.services.sync.source import get_multi_source_sync_service
+        init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
+        get_multi_source_sync_service = getattr(importlib.import_module('app.services.sync.source'), 'get_multi_source_sync_service')
 
         # 初始化数据库
         await init_db()
@@ -77,7 +79,7 @@ async def test_sync_history_api():
         print("\n3. 🌐 测试历史记录API...")
 
         # 模拟API调用
-        from app.routers.sources import get_sync_history
+        get_sync_history = getattr(importlib.import_module('app.routers.sources'), 'get_sync_history')
 
         # 测试第一页
         print("   📄 测试第一页...")
@@ -146,7 +148,7 @@ async def test_sync_history_api():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return None
 

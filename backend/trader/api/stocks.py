@@ -61,6 +61,8 @@ def get_stock_info(stock_code: str) -> Dict[str, Any]:
             'suggestion': '请检查股票代码是否正确'
         }
 
+    if isinstance(result, list):
+        return result[0] if result else {}
     return result
 
 def get_all_stocks() -> List[Dict[str, Any]]:
@@ -91,7 +93,7 @@ def get_all_stocks() -> List[Dict[str, Any]]:
 
     return result if isinstance(result, list) else [result]
 
-def get_stock_data(stock_code: str, start_date: str = None, end_date: str = None) -> str:
+def get_stock_data(stock_code: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> str:
     """
     获取股票历史数据（带降级机制）
 

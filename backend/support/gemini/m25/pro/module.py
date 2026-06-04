@@ -2,6 +2,7 @@
 """
 测试Gemini 2.5 Pro模型
 """
+import importlib
 
 import os
 import sys
@@ -21,7 +22,7 @@ def test_gemini_25_pro_basic():
         print("🧪 测试Gemini 2.5 Pro基础功能")
         print("=" * 60)
 
-        from langchain_google_genai import ChatGoogleGenerativeAI
+        ChatGoogleGenerativeAI = getattr(importlib.import_module('langchain_google_genai'), 'ChatGoogleGenerativeAI')
 
         # 检查API密钥
         google_api_key = os.getenv('GOOGLE_API_KEY')
@@ -68,7 +69,7 @@ def test_gemini_25_pro_basic():
 
     except Exception as e:
         print(f"❌ Gemini 2.5 Pro基础测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 
@@ -78,8 +79,8 @@ def test_gemini_25_pro_trading_agents():
         print("\n🧪 测试Gemini 2.5 Pro在TradingAgents中的使用")
         print("=" * 60)
 
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建配置
         config = DEFAULT_CONFIG.copy()
@@ -139,13 +140,13 @@ def test_gemini_25_pro_trading_agents():
 
         except Exception as e:
             print(f"❌ 股票分析失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             print(traceback.format_exc())
             return False
 
     except Exception as e:
         print(f"❌ TradingAgents测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 
@@ -155,7 +156,7 @@ def test_gemini_25_pro_complex_reasoning():
         print("\n🧪 测试Gemini 2.5 Pro复杂推理能力")
         print("=" * 60)
 
-        from langchain_google_genai import ChatGoogleGenerativeAI
+        ChatGoogleGenerativeAI = getattr(importlib.import_module('langchain_google_genai'), 'ChatGoogleGenerativeAI')
 
         # 创建实例
         llm = ChatGoogleGenerativeAI(

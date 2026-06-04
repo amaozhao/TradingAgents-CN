@@ -2,6 +2,7 @@
 """
 测试同步控制的三个功能：开始同步、刷新状态、清空缓存
 """
+import importlib
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,8 +24,9 @@ async def test_sync_control_functions():
     print("=" * 60)
 
     try:
-        from app.services.sync.source import get_multi_source_sync_service
-        from app.core.database import init_db, get_mongo_db
+        get_multi_source_sync_service = getattr(importlib.import_module('app.services.sync.source'), 'get_multi_source_sync_service')
+        init_db = getattr(importlib.import_module('app.core.database'), 'init_db')
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
 
         # 初始化数据库
         await init_db()
@@ -66,7 +68,7 @@ async def test_sync_control_functions():
         print("\n3. 🚀 测试开始同步...")
         try:
             # 检查数据源可用性
-            from app.services.sources import DataSourceManager
+            DataSourceManager = getattr(importlib.import_module('app.services.sources'), 'DataSourceManager')
             manager = DataSourceManager()
             available_adapters = manager.get_available_adapters()
 
@@ -108,7 +110,7 @@ async def test_sync_control_functions():
 
         except Exception as e:
             print(f"   ❌ 同步测试失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
 
         # 4. 最终状态检查
@@ -129,7 +131,7 @@ async def test_sync_control_functions():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 async def test_api_endpoints():
@@ -141,7 +143,9 @@ async def test_api_endpoints():
     try:
         # 这里可以添加HTTP客户端测试
         # 但为了简化，我们直接调用路由函数
-        from app.routers.sources import get_sync_status, clear_sync_cache, run_stock_basics_sync
+        get_sync_status = getattr(importlib.import_module('app.routers.sources'), 'get_sync_status')
+        clear_sync_cache = getattr(importlib.import_module('app.routers.sources'), 'clear_sync_cache')
+        run_stock_basics_sync = getattr(importlib.import_module('app.routers.sources'), 'run_stock_basics_sync')
 
         print("1. 📊 测试获取同步状态API...")
         try:

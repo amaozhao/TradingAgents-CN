@@ -2,8 +2,10 @@
 分析任务Worker进程
 消费队列中的分析任务，调用TradingAgents进行股票分析
 """
+import importlib
 
 import asyncio
+import json
 import logging
 import signal
 import sys
@@ -116,6 +118,9 @@ class AnalysisWorker:
         while self.running:
             try:
                 # 从队列获取任务
+                if self.queue_service is None:
+                    await asyncio.sleep(self.poll_interval)
+                    continue
                 task_data = await self.queue_service.dequeue_task(self.worker_id)
 
                 if task_data:
@@ -135,6 +140,11 @@ class AnalysisWorker:
         task_id = task_data.get("id")
         stock_code = task_data.get("symbol")
         user_id = task_data.get("user")
+        if not task_id or not stock_code or not user_id:
+            logger.error(f"任务数据缺少必要字段: {task_data}")
+            return
+        task_id = str(task_id)
+        stock_code = str(stock_code)
 
         logger.info(f"📊 开始处理任务: {task_id} - {stock_code}")
 
@@ -145,7 +155,6 @@ class AnalysisWorker:
             # 构建分析任务对象
             parameters_dict = task_data.get("parameters", {})
             if isinstance(parameters_dict, str):
-                import json
                 parameters_dict = json.loads(parameters_dict)
 
             parameters = AnalysisParameters(**parameters_dict)
@@ -153,6 +162,7 @@ class AnalysisWorker:
             task = AnalysisTask(
                 task_id=task_id,
                 user_id=user_id,
+                symbol=stock_code,
                 stock_code=stock_code,
                 batch_id=task_data.get("batch_id"),
                 parameters=parameters
@@ -174,7 +184,8 @@ class AnalysisWorker:
         finally:
             # 确认任务完成
             try:
-                await self.queue_service.ack_task(task_id, success)
+                if self.queue_service is not None:
+                    await self.queue_service.ack_task(task_id, success)
             except Exception as e:
                 logger.error(f"确认任务失败: {task_id} - {e}")
 
@@ -199,7 +210,7 @@ class AnalysisWorker:
     async def _send_heartbeat(self):
         """发送心跳"""
         try:
-            from app.core.redis import get_redis_service
+            get_redis_service = getattr(importlib.import_module('app.core.redis'), 'get_redis_service')
             redis_service = get_redis_service()
 
             heartbeat_data = {
@@ -233,7 +244,7 @@ class AnalysisWorker:
 
         try:
             # 清理心跳记录
-            from app.core.redis import get_redis_service
+            get_redis_service = getattr(importlib.import_module('app.core.redis'), 'get_redis_service')
             redis_service = get_redis_service()
             heartbeat_key = f"worker:{self.worker_id}:heartbeat"
             await redis_service.redis.delete(heartbeat_key)

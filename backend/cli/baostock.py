@@ -61,7 +61,7 @@ async def test_connection():
     print("🔗 测试BaoStock连接...")
     try:
         # 不需要数据库连接，仅测试BaoStock API
-        service = BaoStockSyncService(require_db=False)
+        service = BaoStockSyncService()
         connected = await service.provider.test_connection()
 
         if connected:

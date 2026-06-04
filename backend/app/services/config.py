@@ -1,6 +1,7 @@
 """
 配置管理服务
 """
+import importlib
 
 import time
 import asyncio
@@ -451,7 +452,7 @@ class ConfigService:
             return True
         except Exception as e:
             print(f"❌ 更新分类数据源排序失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
             return False
 
@@ -674,7 +675,7 @@ class ConfigService:
 
         except Exception as e:
             print(f"❌ 保存配置失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
             return False
 
@@ -722,11 +723,11 @@ class ConfigService:
 
         except Exception as e:
             print(f"❌ 删除LLM配置失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
             return False
 
-    async def set_default_llm(self, model_name: str) -> bool:
+    async def _set_default_llm_legacy(self, model_name: str) -> bool:
         """设置默认大模型"""
         try:
             config = await self.get_system_config()
@@ -748,7 +749,7 @@ class ConfigService:
             print(f"设置默认LLM失败: {e}")
             return False
 
-    async def set_default_data_source(self, data_source_name: str) -> bool:
+    async def _set_default_data_source_legacy(self, data_source_name: str) -> bool:
         """设置默认数据源"""
         try:
             config = await self.get_system_config()
@@ -803,7 +804,7 @@ class ConfigService:
             # 同步到文件系统（供 unified_config 使用）
             if result:
                 try:
-                    from app.core.unified import unified_config
+                    unified_config = getattr(importlib.import_module('app.core.unified'), 'unified_config')
                     unified_config.sync_to_legacy_format(config)
                     print(f"✅ 系统设置已同步到文件系统")
                 except Exception as e:
@@ -949,7 +950,7 @@ class ConfigService:
         try:
             # 这里可以调用迁移脚本的逻辑
             # 或者直接在这里实现迁移逻辑
-            from scripts.migrate.config.to.web.api.script import ConfigMigrator
+            ConfigMigrator = getattr(importlib.import_module('scripts.migrate.config.to.web.api.script'), 'ConfigMigrator')
 
             migrator = ConfigMigrator()
             return await migrator.migrate_all_configs()
@@ -1006,7 +1007,7 @@ class ConfigService:
         """测试大模型配置 - 真实调用API进行验证"""
         start_time = time.time()
         try:
-            import requests
+            requests = importlib.import_module('requests')
 
             # 获取 provider 字符串值（兼容枚举和字符串）
             provider_str = self._provider_to_string(llm_config.provider)
@@ -1085,7 +1086,7 @@ class ConfigService:
 
                 # 🔧 智能版本号处理：只有在没有版本号的情况下才添加 /v1
                 # 避免对已有版本号的URL（如智谱AI的 /v4）重复添加 /v1
-                import re
+                re = importlib.import_module('re')
                 if not re.search(r'/v\d+$', api_base_normalized):
                     # URL末尾没有版本号，添加 /v1（OpenAI标准）
                     api_base_normalized = api_base_normalized + "/v1"
@@ -1255,8 +1256,8 @@ class ConfigService:
         """测试数据源配置 - 真实调用API进行验证"""
         start_time = time.time()
         try:
-            import requests
-            import os
+            requests = importlib.import_module('requests')
+            os = importlib.import_module('os')
 
             ds_type = ds_config.type.value if hasattr(ds_config.type, 'value') else str(ds_config.type)
 
@@ -1366,7 +1367,7 @@ class ConfigService:
                 # 测试 Tushare API
                 try:
                     logger.info(f"🔌 [TEST] Calling Tushare API with token (length: {len(api_key)})")
-                    import tushare as ts
+                    ts = importlib.import_module('tushare')
                     ts.set_token(api_key)
                     pro = ts.pro_api()
                     # 获取交易日历（轻量级测试）
@@ -1423,7 +1424,7 @@ class ConfigService:
             elif ds_type == "akshare":
                 # AKShare 不需要 API Key，直接测试
                 try:
-                    import akshare as ak
+                    ak = importlib.import_module('akshare')
                     # 使用更轻量级的接口测试 - 获取交易日历
                     # 这个接口数据量小，响应快，更适合测试连接
                     df = ak.tool_trade_date_hist_sina()
@@ -1464,7 +1465,7 @@ class ConfigService:
             elif ds_type == "baostock":
                 # BaoStock 不需要 API Key，直接测试登录
                 try:
-                    import baostock as bs
+                    bs = importlib.import_module('baostock')
                     # 测试登录
                     lg = bs.login()
 
@@ -1822,8 +1823,8 @@ class ConfigService:
             # 根据不同的数据库类型进行测试
             if db_type == "mongodb":
                 try:
-                    from motor.motor_asyncio import AsyncIOMotorClient
-                    import os
+                    AsyncIOMotorClient = getattr(importlib.import_module('motor.motor_asyncio'), 'AsyncIOMotorClient')
+                    os = importlib.import_module('os')
 
                     # 🔥 优先使用环境变量中的完整连接信息（包括host、用户名、密码）
                     host = db_config.host
@@ -1974,8 +1975,8 @@ class ConfigService:
 
             elif db_type == "redis":
                 try:
-                    import redis.asyncio as aioredis
-                    import os
+                    aioredis = importlib.import_module('redis.asyncio')
+                    os = importlib.import_module('os')
 
                     # 🔥 优先使用环境变量中的完整 Redis 配置（包括host、密码）
                     host = db_config.host
@@ -2088,7 +2089,7 @@ class ConfigService:
 
             elif db_type == "mysql":
                 try:
-                    import aiomysql
+                    aiomysql = importlib.import_module("aiomysql")
 
                     # 创建连接
                     conn = await aiomysql.connect(
@@ -2149,7 +2150,7 @@ class ConfigService:
 
             elif db_type == "postgresql":
                 try:
-                    import asyncpg
+                    asyncpg = importlib.import_module('asyncpg')
 
                     # 创建连接
                     conn = await asyncpg.connect(
@@ -2208,7 +2209,7 @@ class ConfigService:
 
             elif db_type == "sqlite":
                 try:
-                    import aiosqlite
+                    aiosqlite = importlib.import_module('aiosqlite')
 
                     # SQLite 使用文件路径，不需要 host/port
                     db_path = db_config.database or db_config.host
@@ -2296,7 +2297,7 @@ class ConfigService:
 
         except Exception as e:
             logger.error(f"❌ 添加数据库配置失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
             return False
 
@@ -2333,7 +2334,7 @@ class ConfigService:
 
         except Exception as e:
             logger.error(f"❌ 更新数据库配置失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
             return False
 
@@ -2373,7 +2374,7 @@ class ConfigService:
 
         except Exception as e:
             logger.error(f"❌ 删除数据库配置失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
             return False
 
@@ -2980,8 +2981,9 @@ class ConfigService:
 
     def _get_env_api_key(self, provider_name: str) -> Optional[str]:
         """从环境变量获取API密钥"""
-        import os
-        from trader.llm.clients.providers import env_key_for_provider, normalize_provider_key
+        os = importlib.import_module('os')
+        env_key_for_provider = getattr(importlib.import_module('trader.llm.clients.providers'), 'env_key_for_provider')
+        normalize_provider_key = getattr(importlib.import_module('trader.llm.clients.providers'), 'normalize_provider_key')
 
         # 环境变量映射表
         env_key_mapping = {
@@ -3085,7 +3087,7 @@ class ConfigService:
             return result.matched_count > 0
         except Exception as e:
             print(f"更新厂家失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
             return False
 
@@ -3139,7 +3141,7 @@ class ConfigService:
 
         except Exception as e:
             print(f"❌ 删除厂家失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
             return False
 
@@ -3187,7 +3189,7 @@ class ConfigService:
         Returns:
             初始化结果统计
         """
-        from app.constants.capabilities import AGGREGATOR_PROVIDERS
+        AGGREGATOR_PROVIDERS = getattr(importlib.import_module('app.constants.capabilities'), 'AGGREGATOR_PROVIDERS')
 
         try:
             db = await self._get_db()
@@ -3282,7 +3284,7 @@ class ConfigService:
 
         except Exception as e:
             print(f"❌ 初始化聚合渠道失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
             return {
                 "success": False,
@@ -3292,7 +3294,7 @@ class ConfigService:
 
     async def migrate_env_to_providers(self) -> Dict[str, Any]:
         """将环境变量配置迁移到厂家管理"""
-        import os
+        os = importlib.import_module('os')
 
         try:
             db = await self._get_db()
@@ -3431,7 +3433,7 @@ class ConfigService:
             providers_collection = db.llm_providers
 
             # 兼容处理：尝试 ObjectId 和字符串两种类型
-            from bson import ObjectId
+            ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
             provider_data = None
             try:
                 # 先尝试作为 ObjectId 查询
@@ -3482,7 +3484,7 @@ class ConfigService:
 
     async def _test_provider_connection(self, provider_name: str, api_key: str, display_name: str) -> dict:
         """测试具体厂家的连接"""
-        import asyncio
+        asyncio = importlib.import_module('asyncio')
 
         try:
             # 聚合渠道（使用 OpenAI 兼容 API）
@@ -3493,7 +3495,8 @@ class ConfigService:
                 provider_data = await providers_collection.find_one({"name": provider_name})
                 base_url = provider_data.get("default_base_url") if provider_data else None
                 return await asyncio.get_event_loop().run_in_executor(
-                    None, self._test_openai_compatible_api, api_key, display_name, base_url, provider_name
+                    None,
+                    lambda: self._test_openai_compatible_api(api_key, display_name, base_url, provider_name),
                 )
             elif provider_name == "google":
                 # 获取厂家的 base_url
@@ -3501,7 +3504,10 @@ class ConfigService:
                 providers_collection = db.llm_providers
                 provider_data = await providers_collection.find_one({"name": provider_name})
                 base_url = provider_data.get("default_base_url") if provider_data else None
-                return await asyncio.get_event_loop().run_in_executor(None, self._test_google_api, api_key, display_name, base_url)
+                return await asyncio.get_event_loop().run_in_executor(
+                    None,
+                    lambda: self._test_google_api(api_key, display_name, base_url),
+                )
             elif provider_name == "deepseek":
                 return await asyncio.get_event_loop().run_in_executor(None, self._test_deepseek_api, api_key, display_name)
             elif provider_name == "dashscope":
@@ -3530,7 +3536,8 @@ class ConfigService:
                     }
 
                 return await asyncio.get_event_loop().run_in_executor(
-                    None, self._test_openai_compatible_api, api_key, display_name, base_url, provider_name
+                    None,
+                    lambda: self._test_openai_compatible_api(api_key, display_name, base_url, provider_name),
                 )
         except Exception as e:
             return {
@@ -3538,10 +3545,10 @@ class ConfigService:
                 "message": f"{display_name} 连接测试失败: {str(e)}"
             }
 
-    def _test_google_api(self, api_key: str, display_name: str, base_url: str = None, model_name: str = None) -> dict:
+    def _test_google_api(self, api_key: str, display_name: str, base_url: Optional[str] = None, model_name: Optional[str] = None) -> dict:
         """测试Google AI API"""
         try:
-            import requests
+            requests = importlib.import_module('requests')
 
             # 如果没有指定模型，使用默认模型
             if not model_name:
@@ -3717,10 +3724,10 @@ class ConfigService:
                 "message": f"{display_name} API测试异常: {str(e)}"
             }
 
-    def _test_deepseek_api(self, api_key: str, display_name: str, model_name: str = None) -> dict:
+    def _test_deepseek_api(self, api_key: str, display_name: str, model_name: Optional[str] = None) -> dict:
         """测试DeepSeek API"""
         try:
-            import requests
+            requests = importlib.import_module('requests')
 
             # 如果没有指定模型，使用默认模型
             if not model_name:
@@ -3778,10 +3785,10 @@ class ConfigService:
                 "message": f"{display_name} API测试异常: {str(e)}"
             }
 
-    def _test_dashscope_api(self, api_key: str, display_name: str, model_name: str = None) -> dict:
+    def _test_dashscope_api(self, api_key: str, display_name: str, model_name: Optional[str] = None) -> dict:
         """测试阿里云百炼API"""
         try:
-            import requests
+            requests = importlib.import_module('requests')
 
             # 如果没有指定模型，使用默认模型
             if not model_name:
@@ -3843,7 +3850,7 @@ class ConfigService:
     def _test_openrouter_api(self, api_key: str, display_name: str) -> dict:
         """测试OpenRouter API"""
         try:
-            import requests
+            requests = importlib.import_module('requests')
 
             url = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -3899,7 +3906,7 @@ class ConfigService:
     def _test_openai_api(self, api_key: str, display_name: str) -> dict:
         """测试OpenAI API"""
         try:
-            import requests
+            requests = importlib.import_module('requests')
 
             url = "https://api.openai.com/v1/chat/completions"
 
@@ -3953,7 +3960,7 @@ class ConfigService:
     def _test_anthropic_api(self, api_key: str, display_name: str) -> dict:
         """测试Anthropic API"""
         try:
-            import requests
+            requests = importlib.import_module('requests')
 
             url = "https://api.anthropic.com/v1/messages"
 
@@ -4007,7 +4014,7 @@ class ConfigService:
     def _test_qianfan_api(self, api_key: str, display_name: str) -> dict:
         """测试百度千帆API"""
         try:
-            import requests
+            requests = importlib.import_module('requests')
 
             # 千帆新一代API使用OpenAI兼容接口
             url = "https://qianfan.baidubce.com/v2/chat/completions"
@@ -4086,7 +4093,7 @@ class ConfigService:
             providers_collection = db.llm_providers
 
             # 兼容处理：尝试 ObjectId 和字符串两种类型
-            from bson import ObjectId
+            ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
             provider_data = None
             try:
                 provider_data = await providers_collection.find_one({"_id": ObjectId(provider_id)})
@@ -4160,7 +4167,7 @@ class ConfigService:
 
         except Exception as e:
             logger.exception(f"❌ [fetch_provider_models] 获取模型列表失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
             return {
                 "success": False,
@@ -4168,18 +4175,18 @@ class ConfigService:
             }
 
     def _is_aihubmix_provider(self, provider_name: str | None, base_url: str | None) -> bool:
-        normalized_name = normalize_provider_key(provider_name)
+        normalized_name = normalize_provider_key(provider_name or "")
         base_url_lower = str(base_url or "").lower()
         return normalized_name == "aihubmix" or "aihubmix.com" in base_url_lower or "api.aihubmix.com" in base_url_lower
 
     def _fetch_models_from_api(self, api_key: str, base_url: str, display_name: str) -> dict:
         """从 API 获取模型列表"""
         try:
-            import requests
+            requests = importlib.import_module('requests')
 
             # 🔧 智能版本号处理：只有在没有版本号的情况下才添加 /v1
             # 避免对已有版本号的URL（如智谱AI的 /v4）重复添加 /v1
-            import re
+            re = importlib.import_module('re')
             base_url = base_url.rstrip("/")
             if not re.search(r'/v\d+$', base_url):
                 # URL末尾没有版本号，添加 /v1（OpenAI标准）
@@ -4215,7 +4222,7 @@ class ConfigService:
                     # 打印前几个模型的完整结构（用于调试价格字段）
                     if all_models:
                         print(f"🔍 第一个模型的完整结构:")
-                        import json
+                        json = importlib.import_module('json')
                         print(json.dumps(all_models[0], indent=2, ensure_ascii=False))
 
                     # 打印所有 Anthropic 模型（用于调试）
@@ -4271,7 +4278,7 @@ class ConfigService:
 
         except Exception as e:
             print(f"❌ 异常: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
             return {
                 "success": False,
@@ -4281,7 +4288,7 @@ class ConfigService:
     def _fetch_aihubmix_models(self, api_key: str, base_url: str, display_name: str, filters: dict) -> dict:
         """从 AiHubMix 的 Models API 获取模型列表。"""
         try:
-            import requests
+            requests = importlib.import_module('requests')
 
             root_url = re.sub(r"/v\d+$", "", base_url.rstrip("/"))
             url = f"{root_url}/api/v1/models"
@@ -4472,7 +4479,7 @@ class ConfigService:
         }
         pricing = model.get("pricing") or {}
         input_price = self._safe_float(pricing.get("input"), default=999999.0)
-        context_length = self._safe_int(model.get("context_length"), default=0)
+        context_length = self._safe_int(model.get("context_length"), default=0) or 0
         has_tools = 0 if ({"tools", "function_calling"} & features) else 1
         mainstream_rank = 0 if model_id.startswith(("gpt-", "claude-", "gemini", "deepseek-", "qwen-", "glm-", "kimi-")) else 1
         return (has_tools, mainstream_rank, -context_length, input_price, model_id)
@@ -4618,7 +4625,7 @@ class ConfigService:
 
     def _filter_popular_models(self, models: list) -> list:
         """过滤模型列表，只保留主流大厂的常用模型"""
-        import re
+        re = importlib.import_module('re')
 
         # 只保留三大厂：OpenAI、Anthropic、Google
         popular_providers = [
@@ -4692,10 +4699,10 @@ class ConfigService:
 
         return filtered
 
-    def _test_openai_compatible_api(self, api_key: str, display_name: str, base_url: str = None, provider_name: str = None) -> dict:
+    def _test_openai_compatible_api(self, api_key: str, display_name: str, base_url: Optional[str] = None, provider_name: Optional[str] = None) -> dict:
         """测试 OpenAI 兼容 API（用于聚合渠道和自定义厂家）"""
         try:
-            import requests
+            requests = importlib.import_module('requests')
 
             # 如果没有提供 base_url，使用默认值
             if not base_url:
@@ -4706,7 +4713,7 @@ class ConfigService:
 
             # 🔧 智能版本号处理：只有在没有版本号的情况下才添加 /v1
             # 避免对已有版本号的URL（如智谱AI的 /v4）重复添加 /v1
-            import re
+            re = importlib.import_module('re')
             logger.info(f"   [测试API] 原始 base_url: {base_url}")
             base_url = base_url.rstrip("/")
             logger.info(f"   [测试API] 去除斜杠后: {base_url}")

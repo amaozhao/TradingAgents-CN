@@ -1,4 +1,5 @@
 from __future__ import annotations
+import importlib
 
 import argparse
 import asyncio
@@ -177,7 +178,7 @@ def write_runtime_log_check(
 
 
 async def seed_local_mongo(services: LocalServices) -> dict[str, int]:
-    from motor.motor_asyncio import AsyncIOMotorClient
+    AsyncIOMotorClient = getattr(importlib.import_module('motor.motor_asyncio'), 'AsyncIOMotorClient')
 
     client = AsyncIOMotorClient(
         services.mongo_host,

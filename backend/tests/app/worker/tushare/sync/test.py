@@ -1,6 +1,7 @@
 """
 测试TushareSyncService
 """
+import importlib
 import pytest
 import asyncio
 from unittest.mock import Mock, patch, AsyncMock
@@ -212,7 +213,7 @@ class TestTushareSyncService:
         sync_service.db.stock_basic_info.find.return_value = mock_cursor
 
         # 模拟获取历史数据
-        import pandas as pd
+        pd = importlib.import_module('pandas')
         mock_df = pd.DataFrame({
             'date': ['2024-12-01'],
             'close': [12.60],

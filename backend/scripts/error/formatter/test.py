@@ -11,7 +11,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.utils.error_formatter import ErrorFormatter
+from app.utils.errors import ErrorFormatter
 
 
 def print_formatted_error(title: str, error_message: str, context: dict = None):

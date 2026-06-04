@@ -2,6 +2,7 @@
 """
 完整基本面分析流程测试
 """
+import importlib
 
 import os
 import sys
@@ -21,16 +22,16 @@ def test_full_fundamentals_flow():
 
     try:
         # 设置日志级别
-        from trader.utils.logging.init import get_logger
+        get_logger = getattr(importlib.import_module('trader.utils.logging.init'), 'get_logger')
         logger = get_logger("default")
         logger.setLevel("INFO")
 
         print(f"\n🔧 步骤1: 初始化LLM和工具包...")
 
         # 导入必要的模块
-        from trader.agents.analysts.fundamentals import create_fundamentals_analyst
-        from trader.agents.utils.utils import Toolkit
-        from trader.llm.adapters import get_llm
+        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        get_llm = getattr(importlib.import_module('trader.llm.adapters'), 'get_llm')
 
         # 获取LLM实例
         llm = get_llm()
@@ -90,7 +91,7 @@ def test_full_fundamentals_flow():
                         print(f"   002021 出现次数: {count_002021}")
 
                         # 找出错误代码的位置
-                        import re
+                        re = importlib.import_module('re')
                         positions = [m.start() for m in re.finditer("002021", report)]
                         print(f"   002021 出现位置: {positions}")
 
@@ -120,7 +121,7 @@ def test_full_fundamentals_flow():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

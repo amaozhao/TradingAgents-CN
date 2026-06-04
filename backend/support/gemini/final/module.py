@@ -2,6 +2,7 @@
 """
 最终测试修复后的Gemini集成
 """
+import importlib
 
 import os
 import sys
@@ -21,8 +22,8 @@ def test_gemini_trading_agents():
         print("🧪 测试修复后的Gemini与TradingAgents集成")
         print("=" * 60)
 
-        from trader.graph.trading import TradingAgentsGraph
-        from trader.default import DEFAULT_CONFIG
+        TradingAgentsGraph = getattr(importlib.import_module('trader.graph.trading'), 'TradingAgentsGraph')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 检查API密钥
         google_api_key = os.getenv('GOOGLE_API_KEY')
@@ -88,13 +89,13 @@ def test_gemini_trading_agents():
 
         except Exception as e:
             print(f"❌ 股票分析失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             print(traceback.format_exc())
             return False
 
     except Exception as e:
         print(f"❌ TradingAgents集成测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         print(traceback.format_exc())
         return False
 
@@ -104,7 +105,7 @@ def test_gemini_basic():
         print("🧪 基础Gemini功能测试")
         print("=" * 50)
 
-        from langchain_google_genai import ChatGoogleGenerativeAI
+        ChatGoogleGenerativeAI = getattr(importlib.import_module('langchain_google_genai'), 'ChatGoogleGenerativeAI')
 
         # 创建LangChain Gemini实例
         llm = ChatGoogleGenerativeAI(

@@ -6,11 +6,11 @@ Alpha Vantage 新闻数据提供者
 参考原版 TradingAgents 实现
 """
 
-from typing import Annotated, Dict, Any
+from typing import Annotated, Dict, Any, Optional
 import json
 from datetime import datetime
 
-from ...alpha.common import _make_api_request, format_datetime_for_api, format_response_as_string
+from .common import _make_api_request, format_datetime_for_api, format_response_as_string
 
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
@@ -101,7 +101,7 @@ def get_news(
             logger.info(f"✅ [Alpha Vantage] 成功获取 {len(feed)} 条新闻")
             return result
         else:
-            return format_response_as_string(data, f"News for {ticker}")
+            return str(data)
 
     except Exception as e:
         logger.error(f"❌ [Alpha Vantage] 获取新闻失败 {ticker}: {e}")
@@ -164,7 +164,7 @@ def get_insider_transactions(
             logger.info(f"✅ [Alpha Vantage] 成功获取 {len(transactions)} 笔内部人交易")
             return result
         else:
-            return format_response_as_string(data, f"Insider Transactions for {symbol}")
+            return str(data)
 
     except Exception as e:
         logger.error(f"❌ [Alpha Vantage] 获取内部人交易失败 {symbol}: {e}")
@@ -172,9 +172,9 @@ def get_insider_transactions(
 
 
 def get_market_news(
-    topics: Annotated[str, "News topics, e.g., 'technology,earnings'"] = None,
-    start_date: Annotated[str, "Start date, YYYY-MM-DD"] = None,
-    end_date: Annotated[str, "End date, YYYY-MM-DD"] = None,
+    topics: Annotated[Optional[str], "News topics, e.g., 'technology,earnings'"] = None,
+    start_date: Annotated[Optional[str], "Start date, YYYY-MM-DD"] = None,
+    end_date: Annotated[Optional[str], "End date, YYYY-MM-DD"] = None,
     limit: Annotated[int, "Number of articles to return"] = 50
 ) -> str:
     """
@@ -245,7 +245,7 @@ def get_market_news(
             logger.info(f"✅ [Alpha Vantage] 成功获取 {len(feed)} 条市场新闻")
             return result
         else:
-            return format_response_as_string(data, "Market News")
+            return str(data)
 
     except Exception as e:
         logger.error(f"❌ [Alpha Vantage] 获取市场新闻失败: {e}")

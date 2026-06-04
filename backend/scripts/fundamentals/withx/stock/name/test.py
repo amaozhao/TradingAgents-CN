@@ -3,6 +3,7 @@
 测试基本面分析是否能正确获取股票名称
 验证修复后的股票信息获取功能
 """
+import importlib
 
 import sys
 import os
@@ -25,13 +26,13 @@ def test_fundamentals_stock_name():
         try:
             # 1. 获取股票数据
             print(f"🔍 步骤1: 获取股票数据...")
-            from trader.flows.interface import get_china_stock_data_unified
+            get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
             stock_data = get_china_stock_data_unified(code, "2025-07-01", "2025-07-17")
             print(f"✅ 股票数据获取完成，长度: {len(stock_data) if stock_data else 0}")
 
             # 2. 生成基本面报告
             print(f"🔍 步骤2: 生成基本面报告...")
-            from trader.flows.optimized_china_data import OptimizedChinaDataProvider
+            OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
             analyzer = OptimizedChinaDataProvider()
 
             fundamentals_report = analyzer._generate_fundamentals_report(code, stock_data)
@@ -62,7 +63,7 @@ def test_fundamentals_stock_name():
 
         except Exception as e:
             print(f"❌ 测试{code}失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             traceback.print_exc()
 
 def test_stock_info_direct():
@@ -74,13 +75,13 @@ def test_stock_info_direct():
 
     try:
         # 测试统一接口
-        from trader.flows.interface import get_china_stock_info_unified
+        get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
         stock_info = get_china_stock_info_unified(test_code)
         print(f"✅ 统一接口结果:")
         print(stock_info)
 
         # 测试DataSourceManager
-        from trader.flows.data_source_manager import get_data_source_manager
+        get_data_source_manager = getattr(importlib.import_module('trader.flows.sources'), 'get_data_source_manager')
         manager = get_data_source_manager()
         manager_result = manager.get_stock_info(test_code)
         print(f"\n✅ DataSourceManager结果:")
@@ -88,7 +89,7 @@ def test_stock_info_direct():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def test_fundamentals_with_fallback():
@@ -103,12 +104,12 @@ def test_fundamentals_with_fallback():
         print(f"📊 测试不存在的股票代码: {fake_code}")
 
         # 1. 获取股票数据（应该会降级）
-        from trader.flows.interface import get_china_stock_data_unified
+        get_china_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_data_unified')
         stock_data = get_china_stock_data_unified(fake_code, "2025-07-01", "2025-07-17")
         print(f"✅ 股票数据: {stock_data[:100] if stock_data else 'None'}...")
 
         # 2. 生成基本面报告
-        from trader.flows.optimized_china_data import OptimizedChinaDataProvider
+        OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
         analyzer = OptimizedChinaDataProvider()
 
         fundamentals_report = analyzer._generate_fundamentals_report(fake_code, stock_data)
@@ -127,7 +128,7 @@ def test_fundamentals_with_fallback():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 def test_complete_fundamentals_flow():
@@ -139,7 +140,7 @@ def test_complete_fundamentals_flow():
 
     try:
         # 模拟完整的基本面分析调用
-        from trader.agents.utils.agent_utils import AgentUtils
+        AgentUtils = getattr(importlib.import_module('trader.agents.utils.utils'), 'AgentUtils')
 
         print(f"📊 调用统一基本面分析工具...")
         result = AgentUtils.get_stock_fundamentals_unified(
@@ -169,7 +170,7 @@ def test_complete_fundamentals_flow():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@
 2. 验证环境变量桥接是否有效
 3. 测试 API 密钥的实际使用
 """
+import importlib
 
 import os
 import sys
@@ -22,7 +23,7 @@ def test_config_manager():
     print("=" * 60)
     print()
 
-    from trader.config.config_manager import ConfigManager
+    ConfigManager = getattr(importlib.import_module('trader.config.manager'), 'ConfigManager')
 
     # 创建 ConfigManager 实例
     config_manager = ConfigManager()
@@ -86,7 +87,7 @@ def test_llm_adapter():
         print(f"  ✅ DASHSCOPE_API_KEY 环境变量: {dashscope_key[:20]}... (长度: {len(dashscope_key)})")
 
         try:
-            from trader.llm.adapters import ChatDashScopeOpenAI
+            ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
 
             # 尝试创建适配器（不实际调用 API）
             adapter = ChatDashScopeOpenAI(model="qwen-turbo")
@@ -256,7 +257,7 @@ def main():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return 1
 

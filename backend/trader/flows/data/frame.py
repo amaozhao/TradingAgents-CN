@@ -73,11 +73,13 @@ def _fetch_from_provider(provider_name: str, symbol: str, start_date: str, end_d
 
     getter = getattr(provider, "get_stock_data", None)
     if callable(getter):
-        return _standardize_daily_df(getter(symbol, start_date, end_date))
+        result = getter(symbol, start_date, end_date)
+        return _standardize_daily_df(result) if isinstance(result, pd.DataFrame) else pd.DataFrame()
 
     sync_getter = getattr(provider, "get_stock_data_sync", None)
     if callable(sync_getter):
-        return _standardize_daily_df(sync_getter(symbol, start_date, end_date))
+        result = sync_getter(symbol, start_date, end_date)
+        return _standardize_daily_df(result) if isinstance(result, pd.DataFrame) else pd.DataFrame()
 
     return pd.DataFrame()
 

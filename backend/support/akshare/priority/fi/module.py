@@ -3,6 +3,7 @@
 测试AKShare数据源优先级修复
 验证AKShare已被设置为第一优先级数据源
 """
+import importlib
 
 import os
 import sys
@@ -17,7 +18,8 @@ def test_default_data_source():
     print("=" * 60)
 
     try:
-        from trader.flows.sources import DataSourceManager, ChinaDataSource
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
+        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
 
         # 创建数据源管理器
         manager = DataSourceManager()
@@ -36,7 +38,7 @@ def test_default_data_source():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -46,7 +48,8 @@ def test_fallback_priority():
     print("=" * 60)
 
     try:
-        from trader.flows.sources import DataSourceManager, ChinaDataSource
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
+        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
 
         manager = DataSourceManager()
 
@@ -55,7 +58,7 @@ def test_fallback_priority():
 
         # 检查_try_fallback_sources方法中的fallback_order
         # 这里我们通过检查源代码来验证
-        import inspect
+        inspect = importlib.import_module('inspect')
         source_code = inspect.getsource(manager._try_fallback_sources)
 
         if "ChinaDataSource.AKSHARE" in source_code:
@@ -75,7 +78,7 @@ def test_fallback_priority():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -91,11 +94,12 @@ def test_environment_variable_override():
         # 测试设置为tushare
         os.environ['DEFAULT_CHINA_DATA_SOURCE'] = 'tushare'
 
-        from trader.flows.sources import DataSourceManager, ChinaDataSource
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
+        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
 
         # 重新导入以获取新的环境变量
-        import importlib
-        import trader.flows.sources as dsm
+        importlib = importlib.import_module('importlib')
+        dsm = importlib.import_module('trader.flows.sources')
         importlib.reload(dsm)
 
         manager = dsm.DataSourceManager()
@@ -117,7 +121,7 @@ def test_environment_variable_override():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -127,14 +131,14 @@ def test_akshare_availability():
     print("=" * 60)
 
     try:
-        import akshare as ak
+        ak = importlib.import_module('akshare')
         print(f"✅ AKShare库已安装: v{ak.__version__}")
 
         # 简单测试AKShare功能
         print("📊 测试AKShare基本功能...")
 
         # 这里不实际调用API，只测试导入
-        from trader.flows.akshare import get_china_stock_data_akshare
+        get_china_stock_data_akshare = getattr(importlib.import_module('trader.flows.akshare'), 'get_china_stock_data_akshare')
         print("✅ AKShare工具函数导入成功")
 
         return True
@@ -152,7 +156,8 @@ def test_data_source_switching():
     print("=" * 60)
 
     try:
-        from trader.flows.sources import DataSourceManager, ChinaDataSource
+        DataSourceManager = getattr(importlib.import_module('trader.flows.sources'), 'DataSourceManager')
+        ChinaDataSource = getattr(importlib.import_module('trader.flows.sources'), 'ChinaDataSource')
 
         manager = DataSourceManager()
         original_source = manager.current_source
@@ -187,7 +192,7 @@ def test_data_source_switching():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

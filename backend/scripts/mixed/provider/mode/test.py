@@ -45,7 +45,7 @@ test_cases = [
 ]
 
 # 导入查询函数
-from app.services.simple_analysis_service import get_provider_and_url_by_model_sync
+from app.services.analysis.simple import get_provider_and_url_by_model_sync
 
 for i, test_case in enumerate(test_cases, 1):
     print(f"\n{'=' * 80}")

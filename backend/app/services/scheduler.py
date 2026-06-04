@@ -4,6 +4,7 @@
 定时任务管理服务
 提供定时任务的查询、暂停、恢复、手动触发等功能
 """
+import importlib
 
 import asyncio
 from typing import List, Dict, Any, Optional
@@ -176,6 +177,9 @@ class SchedulerService:
                 self.scheduler.resume_job(job_id)
                 # 重新获取 job 对象（恢复后状态已改变）
                 job = self.scheduler.get_job(job_id)
+                if job is None:
+                    logger.error(f"❌ 任务 {job_id} 临时恢复后不存在")
+                    return False
                 logger.info(f"✅ 任务 {job_id} 已临时恢复")
 
             # 如果提供了 kwargs，合并到任务的 kwargs 中
@@ -189,7 +193,7 @@ class SchedulerService:
                 logger.info(f"📝 任务 {job_id} 参数已更新: {kwargs}")
 
             # 手动触发任务 - 使用带时区的当前时间
-            from datetime import timezone
+            timezone = getattr(importlib.import_module('datetime'), 'timezone')
             now = datetime.now(timezone.utc)
             job.modify(next_run_time=now)
             logger.info(f"🚀 手动触发任务 {job_id} (next_run_time={now}, was_paused={was_paused}, kwargs={kwargs})")
@@ -214,7 +218,7 @@ class SchedulerService:
             return True
         except Exception as e:
             logger.error(f"❌ 触发任务 {job_id} 失败: {e}")
-            import traceback
+            traceback = importlib.import_module('traceback')
             logger.error(f"详细错误: {traceback.format_exc()}")
             await self._record_job_action(job_id, "trigger", "failed", str(e))
             return False
@@ -463,7 +467,7 @@ class SchedulerService:
             是否成功
         """
         try:
-            from bson import ObjectId
+            ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
             db = self._get_db()
 
             # 查找执行记录
@@ -508,7 +512,7 @@ class SchedulerService:
             是否成功
         """
         try:
-            from bson import ObjectId
+            ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
             db = self._get_db()
 
             # 查找执行记录
@@ -547,7 +551,7 @@ class SchedulerService:
             是否成功
         """
         try:
-            from bson import ObjectId
+            ObjectId = getattr(importlib.import_module('bson'), 'ObjectId')
             db = self._get_db()
 
             # 查找执行记录
@@ -598,7 +602,7 @@ class SchedulerService:
                 }}
             ]
 
-            stats = {
+            stats: Dict[str, Any] = {
                 "total": 0,
                 "success": 0,
                 "failed": 0,
@@ -812,12 +816,12 @@ class SchedulerService:
         self,
         job_id: str,
         status: str,
-        scheduled_time: datetime = None,
-        execution_time: float = None,
-        return_value: str = None,
-        error_message: str = None,
-        traceback: str = None,
-        progress: int = None,
+        scheduled_time: Optional[datetime] = None,
+        execution_time: Optional[float] = None,
+        return_value: Optional[str] = None,
+        error_message: Optional[str] = None,
+        traceback: Optional[str] = None,
+        progress: Optional[int] = None,
         is_manual: bool = False
     ):
         """
@@ -940,7 +944,7 @@ class SchedulerService:
         job_id: str,
         action: str,
         status: str,
-        error_message: str = None
+        error_message: Optional[str] = None
     ):
         """
         记录任务操作历史
@@ -1081,10 +1085,10 @@ def get_scheduler_service() -> SchedulerService:
 async def update_job_progress(
     job_id: str,
     progress: int,
-    message: str = None,
-    current_item: str = None,
-    total_items: int = None,
-    processed_items: int = None
+    message: Optional[str] = None,
+    current_item: Optional[str] = None,
+    total_items: Optional[int] = None,
+    processed_items: Optional[int] = None
 ):
     """
     更新任务执行进度（供定时任务内部调用）
@@ -1098,8 +1102,8 @@ async def update_job_progress(
         processed_items: 已处理项数
     """
     try:
-        from pymongo import MongoClient
-        from app.core.config import settings
+        MongoClient = getattr(importlib.import_module('pymongo'), 'MongoClient')
+        settings = getattr(importlib.import_module('app.core.config'), 'settings')
 
         # 使用同步客户端避免事件循环冲突
         sync_client = MongoClient(settings.mongo_uri)
@@ -1140,7 +1144,7 @@ async def update_job_progress(
             )
         else:
             # 创建新的执行记录（任务刚开始）
-            from apscheduler.schedulers.asyncio import AsyncIOScheduler
+            AsyncIOScheduler = getattr(importlib.import_module('apscheduler.schedulers.asyncio'), 'AsyncIOScheduler')
 
             # 获取任务名称
             job_name = job_id

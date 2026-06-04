@@ -12,6 +12,7 @@ PS（市销率）计算验证程序
     python scripts/ps/calculation/verification/test.py 000001
     python scripts/ps/calculation/verification/test.py 600036 000001 000002
 """
+import importlib
 
 import sys
 import asyncio
@@ -331,7 +332,7 @@ async def main():
 
     except Exception as e:
         print(f"\n❌ 验证失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
     finally:
         await verifier.close()

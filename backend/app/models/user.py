@@ -72,7 +72,7 @@ class FavoriteStock(BaseModel):
 
 class User(BaseModel):
     """用户模型"""
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
+    id: Optional[PyObjectId] = Field(default_factory=ObjectId, alias="_id")
     username: str = Field(..., min_length=3, max_length=50)
     email: str = Field(..., pattern=r'^[^@]+@[^@]+\.[^@]+$')
     hashed_password: str

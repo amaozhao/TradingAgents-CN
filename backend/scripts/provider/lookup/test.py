@@ -9,7 +9,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.services.simple_analysis_service import get_provider_and_url_by_model_sync
+from app.services.analysis.simple import get_provider_and_url_by_model_sync
 
 def test_provider_lookup():
     """测试供应商和 URL 查找（同步版本）"""

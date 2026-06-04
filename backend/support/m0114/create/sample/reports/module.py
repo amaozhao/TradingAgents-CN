@@ -3,6 +3,7 @@
 创建示例分析报告
 用于测试Web界面的报告显示功能
 """
+import importlib
 
 import sys
 import os
@@ -139,7 +140,7 @@ def main():
     print("🎨 创建示例分析报告...")
 
     try:
-        from web.utils.mongodb import mongodb_report_manager
+        mongodb_report_manager = getattr(importlib.import_module('web.utils.mongodb'), 'mongodb_report_manager')
 
         if not mongodb_report_manager.connected:
             print("❌ MongoDB未连接")
@@ -178,7 +179,7 @@ def main():
 
     except Exception as e:
         print(f"❌ 创建示例报告失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 if __name__ == "__main__":

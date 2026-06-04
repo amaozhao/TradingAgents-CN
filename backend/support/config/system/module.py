@@ -7,6 +7,7 @@
 - 配置提供者
 - 配置兼容层
 """
+import importlib
 
 import pytest
 import os
@@ -188,14 +189,14 @@ class TestConfigCompat:
 
     def test_config_manager_compat_creation(self):
         """测试配置管理器兼容层创建"""
-        from app.core.configcompat import ConfigManagerCompat
+        ConfigManagerCompat = getattr(importlib.import_module('app.core.compat'), 'ConfigManagerCompat')
 
         config_manager = ConfigManagerCompat()
         assert config_manager is not None
 
     def test_get_data_dir(self):
         """测试获取数据目录"""
-        from app.core.configcompat import ConfigManagerCompat
+        ConfigManagerCompat = getattr(importlib.import_module('app.core.compat'), 'ConfigManagerCompat')
 
         config_manager = ConfigManagerCompat()
         data_dir = config_manager.get_data_dir()
@@ -206,7 +207,7 @@ class TestConfigCompat:
     @patch.dict(os.environ, {"DATA_DIR": "/custom/data/dir"})
     def test_get_data_dir_from_env(self):
         """测试从环境变量获取数据目录"""
-        from app.core.configcompat import ConfigManagerCompat
+        ConfigManagerCompat = getattr(importlib.import_module('app.core.compat'), 'ConfigManagerCompat')
 
         config_manager = ConfigManagerCompat()
         data_dir = config_manager.get_data_dir()
@@ -215,7 +216,7 @@ class TestConfigCompat:
 
     def test_load_settings(self):
         """测试加载系统设置"""
-        from app.core.configcompat import ConfigManagerCompat
+        ConfigManagerCompat = getattr(importlib.import_module('app.core.compat'), 'ConfigManagerCompat')
 
         config_manager = ConfigManagerCompat()
         settings = config_manager.load_settings()
@@ -226,14 +227,14 @@ class TestConfigCompat:
 
     def test_token_tracker_compat_creation(self):
         """测试 Token 跟踪器兼容层创建"""
-        from app.core.configcompat import TokenTrackerCompat
+        TokenTrackerCompat = getattr(importlib.import_module('app.core.compat'), 'TokenTrackerCompat')
 
         tracker = TokenTrackerCompat()
         assert tracker is not None
 
     def test_track_usage(self):
         """测试记录 Token 使用量"""
-        from app.core.configcompat import TokenTrackerCompat
+        TokenTrackerCompat = getattr(importlib.import_module('app.core.compat'), 'TokenTrackerCompat')
 
         tracker = TokenTrackerCompat()
         tracker.track_usage(
@@ -252,7 +253,7 @@ class TestConfigCompat:
 
     def test_reset_usage(self):
         """测试重置使用统计"""
-        from app.core.configcompat import TokenTrackerCompat
+        TokenTrackerCompat = getattr(importlib.import_module('app.core.compat'), 'TokenTrackerCompat')
 
         tracker = TokenTrackerCompat()
         tracker.track_usage("test", "model", 100, 50, 0.01)
@@ -277,7 +278,7 @@ class TestConfigPriority:
 
     def test_default_values(self):
         """测试默认值"""
-        from app.core.configcompat import ConfigManagerCompat
+        ConfigManagerCompat = getattr(importlib.import_module('app.core.compat'), 'ConfigManagerCompat')
 
         config_manager = ConfigManagerCompat()
         settings = config_manager._get_default_settings()

@@ -2,6 +2,7 @@
 测试财务数据降级逻辑
 验证当 MongoDB 没有数据时，是否能正确降级到 AKShare
 """
+import importlib
 import sys
 from pathlib import Path
 
@@ -29,14 +30,14 @@ def test_financial_fallback():
     try:
         # 导入数据提供者
         print("\n📦 步骤1: 导入 OptimizedChinaDataProvider...")
-        from trader.flows.optimized_china_data import OptimizedChinaDataProvider
+        OptimizedChinaDataProvider = getattr(importlib.import_module('trader.flows.china'), 'OptimizedChinaDataProvider')
 
         provider = OptimizedChinaDataProvider()
         print(f"✅ Provider 初始化成功")
 
         # 先检查 MongoDB 中是否有数据
         print(f"\n🔍 步骤2: 检查 MongoDB 中是否有 {test_symbol} 的财务数据...")
-        from trader.flows.cache.mongodb_cache_adapter import get_mongodb_cache_adapter
+        get_mongodb_cache_adapter = getattr(importlib.import_module('trader.flows.cache.mongodb'), 'get_mongodb_cache_adapter')
 
         adapter = get_mongodb_cache_adapter()
         financial_data = adapter.get_financial_data(test_symbol)
@@ -129,7 +130,7 @@ def test_financial_fallback():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
 

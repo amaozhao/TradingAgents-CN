@@ -3,6 +3,7 @@
 数据完整性检查器
 用于检查历史数据是否完整、是否包含最新交易日，并在需要时自动重新拉取
 """
+import importlib
 
 import logging
 from datetime import datetime, timedelta
@@ -156,7 +157,7 @@ class DataCompletenessChecker:
             # 尝试多种解析方式
 
             # 方式1：假设是 CSV 格式
-            from io import StringIO
+            StringIO = getattr(importlib.import_module('io'), 'StringIO')
             try:
                 df = pd.read_csv(StringIO(data))
                 if not df.empty:
@@ -191,8 +192,8 @@ class DataCompletenessChecker:
         try:
             if market == "CN":
                 # A股：使用 Tushare 查找最新交易日
-                from trader.flows.providers.china.tushare import TushareProvider
-                import asyncio
+                TushareProvider = getattr(importlib.import_module('trader.flows.providers.china.tushare'), 'TushareProvider')
+                asyncio = importlib.import_module('asyncio')
 
                 provider = TushareProvider()
                 if provider.is_available():

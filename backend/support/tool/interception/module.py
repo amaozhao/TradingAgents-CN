@@ -3,6 +3,7 @@
 测试工具拦截机制
 验证港股基本面分析是否正确使用港股工具
 """
+import importlib
 
 import os
 import sys
@@ -12,11 +13,11 @@ def test_hk_fundamentals_with_interception():
     print("🔧 测试港股基本面分析工具拦截...")
 
     try:
-        from trader.agents.analysts.fundamentals import create_fundamentals_analyst
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from trader.utils.stocks import StockUtils
+        create_fundamentals_analyst = getattr(importlib.import_module('trader.agents.analysts.fundamentals'), 'create_fundamentals_analyst')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         # 检查API密钥
         api_key = os.getenv("DASHSCOPE_API_KEY")
@@ -98,7 +99,7 @@ def test_hk_fundamentals_with_interception():
 
     except Exception as e:
         print(f"❌ 港股基本面分析测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -108,9 +109,9 @@ def test_tool_selection_logic():
     print("\n🔧 测试工具选择逻辑...")
 
     try:
-        from trader.utils.stocks import StockUtils
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         config = DEFAULT_CONFIG.copy()
         config["online_tools"] = True

@@ -1,6 +1,7 @@
 """
 测试港股验证修复
 """
+import importlib
 
 import sys
 import os
@@ -14,7 +15,7 @@ def test_hk_validation():
     print("🧪 测试港股验证修复...")
 
     try:
-        from web.utils.analysis import validate_analysis_params
+        validate_analysis_params = getattr(importlib.import_module('web.utils.analysis'), 'validate_analysis_params')
 
         # 测试用例
         test_cases = [
@@ -65,7 +66,7 @@ def test_hk_validation():
 
     except Exception as e:
         print(f"❌ 验证测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -74,7 +75,7 @@ def test_specific_case():
     print("\n🧪 测试具体的0700.HK案例...")
 
     try:
-        from web.utils.analysis import validate_analysis_params
+        validate_analysis_params = getattr(importlib.import_module('web.utils.analysis'), 'validate_analysis_params')
 
         # 测试0700.HK
         is_valid, errors = validate_analysis_params(
@@ -105,7 +106,7 @@ def test_regex_patterns():
     print("\n🧪 测试正则表达式模式...")
 
     try:
-        import re
+        re = importlib.import_module('re')
 
         # 测试港股正则模式（支持4-5位数字）
         hk_pattern = r'^\d{4,5}\.HK$'

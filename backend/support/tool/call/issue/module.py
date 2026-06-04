@@ -3,6 +3,7 @@
 测试LLM工具调用问题的详细脚本
 专门分析为什么LLM声称调用了工具但实际没有执行
 """
+import importlib
 
 import os
 import sys
@@ -30,11 +31,11 @@ def test_tool_call_mechanism():
     try:
         # 1. 导入必要模块
         logger.info("1. 导入模块...")
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from trader.agents.utils.utils import Toolkit
-        from trader.utils.realtimenewsutils import get_realtime_stock_news
-        from langchain_core.messages import HumanMessage
-        from langchain_core.tools import tool
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        get_realtime_stock_news = getattr(importlib.import_module('trader.flows.real.time'), 'get_realtime_stock_news')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
         os.makedirs(os.path.join('data', 'logs'), exist_ok=True)
 
         # 2. 创建LLM实例
@@ -125,7 +126,7 @@ def test_tool_call_mechanism():
 
                     except Exception as e:
                         logger.error(f"     工具执行失败: {e}")
-                        import traceback
+                        traceback = importlib.import_module('traceback')
                         logger.error(f"     错误详情: {traceback.format_exc()}")
             else:
                 logger.warning("   LLM没有调用任何工具")
@@ -149,7 +150,7 @@ def test_tool_call_mechanism():
 
     except Exception as e:
         logger.error(f"测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(f"错误详情: {traceback.format_exc()}")
         return False
 

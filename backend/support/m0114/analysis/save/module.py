@@ -3,6 +3,7 @@
 测试分析结果保存功能
 模拟分析完成后的保存过程
 """
+import importlib
 
 import sys
 import os
@@ -72,7 +73,7 @@ def test_save_analysis_result():
 
     try:
         # 导入保存函数
-        from web.components.analysis import save_analysis_result
+        save_analysis_result = getattr(importlib.import_module('web.components.analysis'), 'save_analysis_result')
 
         # 创建模拟数据
         analysis_id = f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -105,7 +106,7 @@ def test_save_analysis_result():
             print(f"\n📁 检查保存的文件:")
 
             # 检查JSON文件
-            from web.components.analysis import get_analysis_results_dir
+            get_analysis_results_dir = getattr(importlib.import_module('web.components.analysis'), 'get_analysis_results_dir')
             results_dir = get_analysis_results_dir()
             json_file = results_dir / f"analysis_{analysis_id}.json"
 
@@ -115,8 +116,8 @@ def test_save_analysis_result():
                 print(f"❌ JSON文件未找到: {json_file}")
 
             # 检查详细报告目录
-            import os
-            from pathlib import Path
+            os = importlib.import_module('os')
+            Path = getattr(importlib.import_module('pathlib'), 'Path')
 
             # 获取项目根目录
             project_root = Path(__file__).parent
@@ -153,7 +154,7 @@ def test_save_analysis_result():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -162,7 +163,7 @@ def test_mongodb_save():
     print(f"\n🗄️ 测试MongoDB保存...")
 
     try:
-        from web.utils.mongodb import mongodb_report_manager
+        mongodb_report_manager = getattr(importlib.import_module('web.utils.mongodb'), 'mongodb_report_manager')
 
         if not mongodb_report_manager.connected:
             print("❌ MongoDB未连接")

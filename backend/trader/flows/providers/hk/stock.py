@@ -45,7 +45,9 @@ class HKStockProvider:
 
         self.last_request_time = time.time()
 
-    def get_stock_data(self, symbol: str, start_date: str = None, end_date: str = None) -> Optional[pd.DataFrame]:
+    def get_stock_data(
+        self, symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None
+    ) -> Optional[pd.DataFrame]:
         """
         获取港股历史数据
 
@@ -188,6 +190,7 @@ class HKStockProvider:
 
             if not data.empty:
                 latest = data.iloc[-1]
+                latest_index: Any = data.index[-1]
                 return {
                     'symbol': symbol,
                     'price': latest['Close'],
@@ -195,7 +198,7 @@ class HKStockProvider:
                     'high': latest['High'],
                     'low': latest['Low'],
                     'volume': latest['Volume'],
-                    'timestamp': data.index[-1].strftime('%Y-%m-%d %H:%M:%S'),
+                    'timestamp': latest_index.strftime('%Y-%m-%d %H:%M:%S') if hasattr(latest_index, "strftime") else str(latest_index),
                     'currency': 'HKD'
                 }
             else:
@@ -276,7 +279,8 @@ class HKStockProvider:
             delta = data['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(window=14, min_periods=1).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(window=14, min_periods=1).mean()
-            rs = gain / (loss.replace(0, np.nan))
+            loss_values: Any = loss
+            rs = gain / loss_values.replace(0, np.nan)
             data['rsi'] = 100 - (100 / (1 + rs))
 
             # 计算MACD
@@ -300,7 +304,11 @@ class HKStockProvider:
             # 🔍 [调试日志] 打印最近5天的原始数据和技术指标
             logger.info(f"🔍 [港股技术指标详情] ===== 最近{display_rows}个交易日数据 =====")
             for i, (idx, row) in enumerate(display_data.iterrows(), 1):
-                date_str = row.get('Date', idx.strftime('%Y-%m-%d') if hasattr(idx, 'strftime') else str(idx))
+                index_value: Any = idx
+                date_str = row.get(
+                    'Date',
+                    index_value.strftime('%Y-%m-%d') if hasattr(index_value, 'strftime') else str(index_value),
+                )
                 logger.info(f"🔍 [港股技术指标详情] 第{i}天 ({date_str}):")
                 logger.info(f"   价格: 开={row.get('Open', 0):.2f}, 高={row.get('High', 0):.2f}, 低={row.get('Low', 0):.2f}, 收={row.get('Close', 0):.2f}")
                 logger.info(f"   MA: MA5={row.get('ma5', 0):.2f}, MA10={row.get('ma10', 0):.2f}, MA20={row.get('ma20', 0):.2f}, MA60={row.get('ma60', 0):.2f}")
@@ -453,9 +461,11 @@ class HKStockProvider:
             result += "📅 最近交易日数据\n"
             for _, row in display_data.iterrows():
                 if 'Date' in row:
-                    date_str = row['Date'].strftime('%Y-%m-%d')
+                    row_date: Any = row['Date']
+                    date_str = row_date.strftime('%Y-%m-%d') if hasattr(row_date, "strftime") else str(row_date)
                 else:
-                    date_str = row.name.strftime('%Y-%m-%d')
+                    row_name: Any = row.name
+                    date_str = row_name.strftime('%Y-%m-%d') if hasattr(row_name, "strftime") else str(row_name)
 
                 result += f"   {date_str}: "
                 result += f"开盘HK${row['Open']:.2f}, "
@@ -486,7 +496,9 @@ def get_hk_stock_provider() -> HKStockProvider:
     return _hk_provider
 
 
-def get_hk_stock_data(symbol: str, start_date: str = None, end_date: str = None) -> str:
+def get_hk_stock_data(
+    symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None
+) -> str:
     """
     获取港股数据的便捷函数
 
@@ -500,7 +512,9 @@ def get_hk_stock_data(symbol: str, start_date: str = None, end_date: str = None)
     """
     provider = get_hk_stock_provider()
     data = provider.get_stock_data(symbol, start_date, end_date)
-    return provider.format_stock_data(symbol, data, start_date, end_date)
+    if data is None:
+        return f"❌ 无法获取港股 {symbol} 的数据"
+    return provider.format_stock_data(symbol, data, start_date or "", end_date or "")
 
 
 def get_hk_stock_info(symbol: str) -> Dict:

@@ -1,6 +1,7 @@
 """
 测试AKShare港股功能
 """
+import importlib
 
 import sys
 import os
@@ -14,7 +15,7 @@ def test_akshare_hk_basic():
     print("🧪 测试AKShare港股基本功能...")
 
     try:
-        from trader.flows.akshare import get_akshare_provider
+        get_akshare_provider = getattr(importlib.import_module('trader.flows.akshare'), 'get_akshare_provider')
 
         provider = get_akshare_provider()
 
@@ -50,8 +51,9 @@ def test_akshare_hk_data():
     print("\n🧪 测试AKShare港股数据获取...")
 
     try:
-        from trader.flows.akshare import get_hk_stock_data_akshare
-        from datetime import datetime, timedelta
+        get_hk_stock_data_akshare = getattr(importlib.import_module('trader.flows.akshare'), 'get_hk_stock_data_akshare')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         # 设置测试日期
         end_date = datetime.now().strftime('%Y-%m-%d')
@@ -97,7 +99,7 @@ def test_akshare_hk_info():
     print("\n🧪 测试AKShare港股信息获取...")
 
     try:
-        from trader.flows.akshare import get_hk_stock_info_akshare
+        get_hk_stock_info_akshare = getattr(importlib.import_module('trader.flows.akshare'), 'get_hk_stock_info_akshare')
 
         symbol = "0700.HK"
         print(f"  获取 {symbol} 信息...")
@@ -132,8 +134,10 @@ def test_unified_interface():
     print("\n🧪 测试统一接口的AKShare支持...")
 
     try:
-        from trader.flows.interface import get_hk_stock_data_unified, get_hk_stock_info_unified
-        from datetime import datetime, timedelta
+        get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
+        get_hk_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_info_unified')
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
         end_date = datetime.now().strftime('%Y-%m-%d')
         start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')

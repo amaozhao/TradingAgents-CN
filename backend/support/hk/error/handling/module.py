@@ -3,6 +3,7 @@
 测试港股数据获取错误处理
 验证在部分数据获取失败时的优雅降级处理
 """
+import importlib
 
 import os
 import sys
@@ -12,8 +13,8 @@ def test_hk_data_error_handling():
     print("🔧 测试港股数据获取错误处理...")
 
     try:
-        from trader.agents.utils.utils import Toolkit
-        from trader.default import DEFAULT_CONFIG
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        DEFAULT_CONFIG = getattr(importlib.import_module('trader.default'), 'DEFAULT_CONFIG')
 
         # 创建工具包
         config = DEFAULT_CONFIG.copy()
@@ -73,7 +74,7 @@ def test_hk_data_error_handling():
 
     except Exception as e:
         print(f"❌ 港股数据获取错误处理测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -83,11 +84,11 @@ def test_akshare_error_recovery():
     print("\n🔧 测试AKShare错误恢复机制...")
 
     try:
-        from trader.flows.akshare import format_hk_stock_data_akshare
-        import pandas as pd
+        format_hk_stock_data_akshare = getattr(importlib.import_module('trader.flows.akshare'), 'format_hk_stock_data_akshare')
+        pd = importlib.import_module('pandas')
 
         # 创建模拟数据（使用正确的日期格式）
-        import datetime
+        datetime = importlib.import_module('datetime')
         test_data = pd.DataFrame({
             'Date': [
                 datetime.datetime(2025, 7, 10),
@@ -138,7 +139,7 @@ def test_akshare_error_recovery():
 
     except Exception as e:
         print(f"❌ AKShare错误恢复机制测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -148,7 +149,8 @@ def test_hk_fallback_mechanisms():
     print("\n🔧 测试港股备用机制...")
 
     try:
-        from trader.flows.interface import get_hk_stock_data_unified, get_hk_stock_info_unified
+        get_hk_stock_data_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_data_unified')
+        get_hk_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_hk_stock_info_unified')
 
         symbol = "0700.HK"
         start_date = "2025-06-14"
@@ -201,7 +203,7 @@ def test_hk_fallback_mechanisms():
 
     except Exception as e:
         print(f"❌ 港股备用机制测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """测试从数据库获取新闻"""
+import importlib
 
 import sys
 import asyncio
-from trader.agents.utils.agent_utils import Toolkit
-from trader.tools.unified_news_tool import UnifiedNewsAnalyzer
+from trader.agents.utils.utils import Toolkit
+from trader.tools.news import UnifiedNewsAnalyzer
 
 async def test_news_from_db():
     print("=" * 80)
@@ -31,7 +32,7 @@ async def test_news_from_db():
             print(f"❌ 未获取到 000001 的新闻")
     except Exception as e:
         print(f"❌ 获取 000001 新闻失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     # 测试获取 000002 的新闻（数据库中可能没有）
@@ -47,7 +48,7 @@ async def test_news_from_db():
             print(f"⚠️ 数据库中没有 000002 的新闻")
     except Exception as e:
         print(f"❌ 获取 000002 新闻失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
 
     print("\n" + "=" * 80)

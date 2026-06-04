@@ -9,7 +9,7 @@
 """
 import asyncio
 import aiohttp
-from typing import Optional, Dict, Any, List, Union
+from typing import Any, Dict, List, Optional, Union
 from datetime import datetime, date
 import pandas as pd
 
@@ -34,7 +34,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
     - 由app层的同步服务调用
     """
 
-    def __init__(self, api_key: str = None, base_url: str = None, **kwargs):
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, **kwargs: Any):
         super().__init__("ExampleSDK")
 
         # 配置参数
@@ -44,7 +44,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
         self.enabled = os.getenv("EXAMPLE_SDK_ENABLED", "false").lower() == "true"
 
         # HTTP会话
-        self.session = None
+        self.session: Any = None
 
         # 请求头
         self.headers = {
@@ -55,6 +55,23 @@ class ExampleSDKProvider(BaseStockDataProvider):
 
         if self.api_key:
             self.headers["Authorization"] = f"Bearer {self.api_key}"
+
+    @property
+    def name(self) -> str:
+        return self.provider_name
+
+    def _handle_error(self, error: Exception, message: str) -> None:
+        self.logger.error("%s: %s", message, error)
+
+    def _parse_timestamp(self, value: Any) -> Optional[datetime]:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        try:
+            return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError:
+            return None
 
     async def connect(self) -> bool:
         """连接到数据源"""
@@ -98,7 +115,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
         self.connected = False
         self.logger.info("ExampleSDK连接已断开")
 
-    async def get_stock_basic_info(self, symbol: str = None) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
+    async def get_stock_basic_info(self, symbol: Optional[str] = None) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]:
         """获取股票基础信息"""
         if not self.connected:
             await self.connect()
@@ -129,7 +146,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
             self._handle_error(e, f"获取股票基础信息失败 symbol={symbol}")
             return None
 
-    async def get_stock_list(self, market: str = None) -> Optional[List[Dict[str, Any]]]:
+    async def get_stock_list(self, market: Optional[str] = None) -> Optional[List[Dict[str, Any]]]:
         """获取股票列表"""
         if not self.connected:
             await self.connect()
@@ -175,7 +192,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
         self,
         symbol: str,
         start_date: Union[str, date],
-        end_date: Union[str, date] = None,
+        end_date: Optional[Union[str, date]] = None,
         period: str = "daily"
     ) -> Optional[pd.DataFrame]:
         """获取历史数据"""
@@ -225,7 +242,7 @@ class ExampleSDKProvider(BaseStockDataProvider):
             self._handle_error(e, f"获取财务数据失败 symbol={symbol}")
             return None
 
-    async def get_stock_news(self, symbol: str = None, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
+    async def get_stock_news(self, symbol: Optional[str] = None, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
         """获取股票新闻"""
         if not self.connected:
             await self.connect()

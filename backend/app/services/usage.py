@@ -95,7 +95,7 @@ class UsageStatisticsService:
             start_date = end_date - timedelta(days=days)
 
             # 构建查询条件
-            query = {
+            query: Dict[str, Any] = {
                 "timestamp": {
                     "$gte": start_date.isoformat(),
                     "$lte": end_date.isoformat()

@@ -13,6 +13,7 @@
 - 主要使用 yfinance 作为数据源
 - 批量更新操作提高性能
 """
+import importlib
 
 import asyncio
 import logging
@@ -60,8 +61,8 @@ class USSyncService:
         """获取 Finnhub 客户端（延迟初始化）"""
         if self._finnhub_client is None:
             try:
-                import finnhub
-                import os
+                finnhub = importlib.import_module('finnhub')
+                os = importlib.import_module('os')
 
                 api_key = os.getenv('FINNHUB_API_KEY')
                 if not api_key:
@@ -84,7 +85,8 @@ class USSyncService:
             List[str]: 美股代码列表
         """
         try:
-            from datetime import datetime, timedelta
+            datetime = getattr(importlib.import_module('datetime'), 'datetime')
+            timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
 
             # 检查缓存是否有效
             if (self.us_stock_list and self._stock_list_cache_time and
@@ -323,7 +325,7 @@ class USSyncService:
         for stock_code in self.us_stock_list:
             try:
                 # 获取最近1天的数据作为实时行情
-                import yfinance as yf
+                yf = importlib.import_module('yfinance')
                 ticker = yf.Ticker(stock_code)
                 data = ticker.history(period="1d")
 

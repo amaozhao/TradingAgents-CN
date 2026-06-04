@@ -1,6 +1,7 @@
 """
 测试CLI港股输入功能
 """
+import importlib
 
 import sys
 import os
@@ -15,7 +16,8 @@ def test_cli_market_selection():
 
     try:
         # 导入CLI相关模块
-        from cli.main import select_market, get_ticker
+        select_market = getattr(importlib.import_module('cli.main'), 'select_market')
+        get_ticker = getattr(importlib.import_module('cli.main'), 'get_ticker')
 
         # 模拟港股市场配置
         hk_market = {
@@ -29,7 +31,7 @@ def test_cli_market_selection():
         }
 
         # 测试港股代码验证
-        import re
+        re = importlib.import_module('re')
         test_codes = [
             ("0700.HK", True),
             ("9988.HK", True),
@@ -50,7 +52,7 @@ def test_cli_market_selection():
 
     except Exception as e:
         print(f"❌ CLI市场选择测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 
@@ -60,7 +62,7 @@ def test_stock_analysis_flow():
 
     try:
         # 测试股票类型识别
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
 
         # 测试港股
         hk_ticker = "0700.HK"
@@ -86,7 +88,7 @@ def test_stock_analysis_flow():
 
     except Exception as e:
         print(f"❌ 股票分析流程测试失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         return False
 

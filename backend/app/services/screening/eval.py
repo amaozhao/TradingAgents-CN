@@ -4,7 +4,7 @@ Extracted from ScreeningService to separate concerns while keeping API unchanged
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Iterable
+from typing import Any, Dict, Iterable, List, Optional
 import pandas as pd
 import numpy as np
 
@@ -38,18 +38,23 @@ def evaluate_fund_conditions(snap: Dict[str, Any], node: Dict[str, Any], fund_fi
         flags = [evaluate_fund_conditions(snap, c, fund_fields) for c in children]
         return all(flags) if logic == "AND" else any(flags)
     # leaf
+    fund_field_set = set(fund_fields)
     field = node.get("field")
     op = node.get("op")
-    if field not in fund_fields:
+    if not isinstance(field, str) or field not in fund_field_set:
         return True  # 非基本面字段在纯基本面路径中跳过
     left = snap.get(field)
     if left is None:
         return False
     if node.get("right_field"):
         rf = node.get("right_field")
+        if not isinstance(rf, str):
+            return False
         right = snap.get(rf)
     else:
         right = node.get("value")
+    if right is None:
+        return False
     try:
         if op == ">":
             return float(left) > float(right)
@@ -95,13 +100,15 @@ def evaluate_conditions(
     # 叶子：字段比较
     field = node.get("field")
     op = node.get("op")
-    if field not in allowed_fields or op not in set(allowed_ops):
+    allowed_field_set = set(allowed_fields)
+    allowed_op_set = set(allowed_ops)
+    if not isinstance(field, str) or field not in allowed_field_set or op not in allowed_op_set:
         return False
 
     # 需要最近两行（交叉）
     if op in {"cross_up", "cross_down"}:
         right_field = node.get("right_field")
-        if right_field not in allowed_fields:
+        if not isinstance(right_field, str) or right_field not in allowed_field_set:
             return False
         if len(df) < 2:
             return False
@@ -126,11 +133,13 @@ def evaluate_conditions(
 
     if node.get("right_field"):
         rf = node.get("right_field")
-        if rf not in allowed_fields:
+        if not isinstance(rf, str) or rf not in allowed_field_set:
             return False
         right = t0.get(rf)
     else:
         right = node.get("value")
+    if right is None:
+        return False
 
     try:
         if op == ">":

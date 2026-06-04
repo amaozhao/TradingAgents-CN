@@ -3,6 +3,7 @@
 阿里百炼工具调用优化测试
 解决LLM不主动调用工具的问题
 """
+import importlib
 
 import os
 import sys
@@ -19,9 +20,9 @@ def test_basic_tool_calling():
     print("=" * 50)
 
     try:
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from langchain_core.tools import tool
-        from langchain_core.messages import HumanMessage
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         # 定义简单工具
         @tool
@@ -89,9 +90,9 @@ def test_stock_analysis_tool_calling():
     print("=" * 50)
 
     try:
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from trader.agents.utils.utils import Toolkit
-        from langchain_core.messages import HumanMessage
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        Toolkit = getattr(importlib.import_module('trader.agents.utils.utils'), 'Toolkit')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         # 创建LLM
         llm = ChatDashScopeOpenAI(
@@ -169,9 +170,9 @@ def test_parameter_optimization():
     print("=" * 50)
 
     try:
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from langchain_core.tools import tool
-        from langchain_core.messages import HumanMessage
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         # 定义测试工具
         @tool
@@ -226,9 +227,9 @@ def test_model_comparison():
     print("=" * 50)
 
     try:
-        from trader.llm.adapters import ChatDashScopeOpenAI
-        from langchain_core.tools import tool
-        from langchain_core.messages import HumanMessage
+        ChatDashScopeOpenAI = getattr(importlib.import_module('trader.llm.adapters'), 'ChatDashScopeOpenAI')
+        tool = getattr(importlib.import_module('langchain_core.tools'), 'tool')
+        HumanMessage = getattr(importlib.import_module('langchain_core.messages'), 'HumanMessage')
 
         # 定义测试工具
         @tool

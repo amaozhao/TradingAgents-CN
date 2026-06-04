@@ -2,6 +2,7 @@
 基本面分析师 - 统一工具架构版本
 使用统一工具自动识别股票类型并调用相应数据源
 """
+import importlib
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import AIMessage, ToolMessage
@@ -33,7 +34,7 @@ def _get_company_name_for_fundamentals(ticker: str, market_info: dict) -> str:
     try:
         if market_info['is_china']:
             # 中国A股：使用统一接口获取股票信息
-            from trader.flows.interface import get_china_stock_info_unified
+            get_china_stock_info_unified = getattr(importlib.import_module('trader.flows.interface'), 'get_china_stock_info_unified')
             stock_info = get_china_stock_info_unified(ticker)
 
             logger.debug(f"📊 [基本面分析师] 获取股票信息返回: {stock_info[:200] if stock_info else 'None'}...")
@@ -47,7 +48,7 @@ def _get_company_name_for_fundamentals(ticker: str, market_info: dict) -> str:
                 # 降级方案：尝试直接从数据源管理器获取
                 logger.warning(f"⚠️ [基本面分析师] 无法从统一接口解析股票名称: {ticker}，尝试降级方案")
                 try:
-                    from trader.flows.sources import get_china_stock_info_unified as get_info_dict
+                    get_info_dict = getattr(importlib.import_module('trader.flows.sources'), 'get_china_stock_info_unified')
                     info_dict = get_info_dict(ticker)
                     if info_dict and info_dict.get('name'):
                         company_name = info_dict['name']
@@ -62,7 +63,7 @@ def _get_company_name_for_fundamentals(ticker: str, market_info: dict) -> str:
         elif market_info['is_hk']:
             # 港股：使用改进的港股工具
             try:
-                from trader.flows.providers.hk.improved import get_hk_company_name_improved
+                get_hk_company_name_improved = getattr(importlib.import_module('trader.flows.providers.hk.improved'), 'get_hk_company_name_improved')
                 company_name = get_hk_company_name_improved(ticker)
                 logger.debug(f"📊 [基本面分析师] 使用改进港股工具获取名称: {ticker} -> {company_name}")
                 return company_name
@@ -123,7 +124,8 @@ def create_fundamentals_analyst(llm, toolkit):
         # 🔧 基本面分析数据范围：固定获取10天数据（处理周末/节假日/数据延迟）
         # 基本面分析主要依赖财务数据（PE、PB、ROE等），只需要当前股价
         # 获取10天数据是为了保证能拿到数据，但实际分析只使用最近2天
-        from datetime import datetime, timedelta
+        datetime = getattr(importlib.import_module('datetime'), 'datetime')
+        timedelta = getattr(importlib.import_module('datetime'), 'timedelta')
         try:
             end_date_dt = datetime.strptime(current_date, "%Y-%m-%d")
             start_date_dt = end_date_dt - timedelta(days=10)
@@ -139,7 +141,7 @@ def create_fundamentals_analyst(llm, toolkit):
         logger.debug(f"📊 [DEBUG] 现有基本面报告: {state.get('fundamentals_report', 'None')}")
 
         # 获取股票市场信息
-        from trader.utils.stocks import StockUtils
+        StockUtils = getattr(importlib.import_module('trader.utils.stocks'), 'StockUtils')
         logger.info(f"📊 [基本面分析师] 正在分析股票: {ticker}")
 
         # 添加详细的股票代码追踪日志
@@ -616,7 +618,7 @@ def create_fundamentals_analyst(llm, toolkit):
                         # 将统一工具返回的数据写入日志，便于排查与分析
                         try:
                             if isinstance(combined_data, (dict, list)):
-                                import json
+                                json = importlib.import_module('json')
                                 _preview = json.dumps(combined_data, ensure_ascii=False, default=str)
                                 _full = _preview
                             else:

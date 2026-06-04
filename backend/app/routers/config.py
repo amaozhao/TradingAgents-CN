@@ -1,6 +1,7 @@
 """
 配置管理API路由
 """
+import importlib
 
 import logging
 from typing import List, Dict, Any
@@ -50,7 +51,7 @@ async def reload_config(current_user: dict = Depends(get_current_user)):
     用于配置更新后立即生效，无需重启服务
     """
     try:
-        from app.core.bridge import reload_bridged_config
+        reload_bridged_config = getattr(importlib.import_module('app.core.bridge'), 'reload_bridged_config')
 
         success = reload_bridged_config()
 
@@ -127,11 +128,9 @@ def _sanitize_datasource_configs(items):
     3. 如果都没有，返回 None
     """
     try:
-        from app.utils.keys import (
-            is_valid_api_key,
-            truncate_api_key,
-            get_env_api_key_for_datasource
-        )
+        is_valid_api_key = getattr(importlib.import_module('app.utils.keys'), 'is_valid_api_key')
+        truncate_api_key = getattr(importlib.import_module('app.utils.keys'), 'truncate_api_key')
+        get_env_api_key_for_datasource = getattr(importlib.import_module('app.utils.keys'), 'get_env_api_key_for_datasource')
 
         result = []
         for item in items:
@@ -295,11 +294,9 @@ async def get_llm_providers(
 ):
     """获取所有大模型厂家"""
     try:
-        from app.utils.keys import (
-            is_valid_api_key,
-            truncate_api_key,
-            get_env_api_key_for_provider
-        )
+        is_valid_api_key = getattr(importlib.import_module('app.utils.keys'), 'is_valid_api_key')
+        truncate_api_key = getattr(importlib.import_module('app.utils.keys'), 'truncate_api_key')
+        get_env_api_key_for_provider = getattr(importlib.import_module('app.utils.keys'), 'get_env_api_key_for_provider')
 
         providers = await config_service.get_llm_providers()
         result = []
@@ -367,7 +364,7 @@ async def add_llm_provider(
 ):
     """添加大模型厂家"""
     try:
-        from app.utils.keys import should_skip_api_key_update
+        should_skip_api_key_update = getattr(importlib.import_module('app.utils.keys'), 'should_skip_api_key_update')
 
         provider_data = request.model_dump()
 
@@ -411,7 +408,7 @@ async def update_llm_provider(
 ):
     """更新大模型厂家"""
     try:
-        from app.utils.keys import should_skip_api_key_update
+        should_skip_api_key_update = getattr(importlib.import_module('app.utils.keys'), 'should_skip_api_key_update')
 
         update_data = request.model_dump(exclude_unset=True)
 
@@ -557,7 +554,7 @@ async def fetch_provider_models(
         raise
     except Exception as e:
         print(f"获取模型列表失败: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -740,7 +737,7 @@ async def add_llm_config(
 
             # 同步定价配置到 trading_agents
             try:
-                from app.core.bridge import sync_pricing_config_now
+                sync_pricing_config_now = getattr(importlib.import_module('app.core.bridge'), 'sync_pricing_config_now')
                 sync_pricing_config_now()
                 logger.info(f"✅ 定价配置已同步到 trading_agents")
             except Exception as e:
@@ -769,7 +766,7 @@ async def add_llm_config(
         raise
     except Exception as e:
         logger.error(f"❌ 添加大模型配置异常: {e}")
-        import traceback
+        traceback = importlib.import_module('traceback')
         logger.error(f"📋 异常堆栈: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -796,7 +793,8 @@ async def add_data_source_config(
 
         # 添加新的数据源配置
         # 🔥 修改：支持保存 API Key（与大模型厂家管理逻辑一致）
-        from app.utils.keys import should_skip_api_key_update, is_valid_api_key
+        should_skip_api_key_update = getattr(importlib.import_module('app.utils.keys'), 'should_skip_api_key_update')
+        is_valid_api_key = getattr(importlib.import_module('app.utils.keys'), 'is_valid_api_key')
 
         _req = request.model_dump()
 
@@ -881,7 +879,7 @@ async def add_data_source_config(
 
 
 @router.post("/database", response_model=ConfigApiResponse, operation_id="add_database_config_legacy")
-async def add_database_config(
+async def add_database_config_legacy(
     request: DatabaseConfigRequest,
     current_user: User = Depends(get_current_user)
 ):
@@ -1075,7 +1073,7 @@ async def delete_llm_config(
 
             # 同步定价配置到 trading_agents
             try:
-                from app.core.bridge import sync_pricing_config_now
+                sync_pricing_config_now = getattr(importlib.import_module('app.core.bridge'), 'sync_pricing_config_now')
                 sync_pricing_config_now()
                 logger.info(f"✅ 定价配置已同步到 trading_agents")
             except Exception as e:
@@ -1111,7 +1109,7 @@ async def delete_llm_config(
 
 
 @router.post("/llm/set-default", response_model=ConfigApiResponse)
-async def set_default_llm(
+async def set_default_llm_legacy(
     request: SetDefaultRequest,
     current_user: User = Depends(get_current_user)
 ):
@@ -1180,7 +1178,8 @@ async def update_data_source_config(
             )
 
         # 查找并更新数据源配置
-        from app.utils.keys import should_skip_api_key_update, is_valid_api_key
+        should_skip_api_key_update = getattr(importlib.import_module('app.utils.keys'), 'should_skip_api_key_update')
+        is_valid_api_key = getattr(importlib.import_module('app.utils.keys'), 'is_valid_api_key')
 
         def _truncate_api_key(api_key: str, prefix_len: int = 6, suffix_len: int = 6) -> str:
             """截断 API Key 用于显示"""
@@ -1593,7 +1592,7 @@ async def add_datasource_to_category(
                     username=getattr(current_user, "username", "unknown"),
                     action_type=ActionType.CONFIG_MANAGEMENT,
                     action="add_datasource_to_category",
-                    details={"data_source_name": request.data_source_name, "category_id": request.category_id},
+                    details={"data_source_name": request.data_source_name, "category_id": request.market_category_id},
                     success=True,
                 )
             except Exception:
@@ -1730,7 +1729,7 @@ async def update_category_datasource_order(
 
 
 @router.post("/datasource/set-default", response_model=ConfigApiResponse)
-async def set_default_data_source(
+async def set_default_data_source_legacy(
     request: SetDefaultRequest,
     current_user: User = Depends(get_current_user)
 ):
@@ -2151,8 +2150,8 @@ async def save_model_catalog(
 
         # 记录操作日志
         await log_operation(
-            user_id=str(current_user["id"]),
-            username=current_user.get("username", "unknown"),
+            user_id=str(current_user.id),
+            username=current_user.username,
             action_type=ActionType.CONFIG_MANAGEMENT,
             action="update_model_catalog",
             details={"provider": request.provider, "provider_name": request.provider_name, "models_count": len(request.models)}
@@ -2185,8 +2184,8 @@ async def delete_model_catalog(
 
         # 记录操作日志
         await log_operation(
-            user_id=str(current_user["id"]),
-            username=current_user.get("username", "unknown"),
+            user_id=str(current_user.id),
+            username=current_user.username,
             action_type=ActionType.CONFIG_MANAGEMENT,
             action="delete_model_catalog",
             details={"provider": provider}

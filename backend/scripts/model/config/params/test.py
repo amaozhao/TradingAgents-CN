@@ -14,7 +14,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.services.simple_analysis_service import create_analysis_config
+from app.services.analysis.simple import create_analysis_config
 
 
 def test_model_config_params():

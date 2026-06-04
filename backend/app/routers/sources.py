@@ -2,10 +2,11 @@
 Multi-source synchronization API routes
 Provides endpoints for multi-source stock data synchronization
 """
+import importlib
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any, Union, cast
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
@@ -67,7 +68,7 @@ async def get_data_sources_status():
 
             # 添加 Token 来源信息（仅 Tushare）
             if adapter.name == "tushare" and is_available and hasattr(adapter, 'get_token_source'):
-                token_source = adapter.get_token_source()
+                token_source = cast(Any, adapter).get_token_source()
                 if token_source:
                     status_item["token_source"] = token_source
                     if token_source == 'database':
@@ -119,7 +120,7 @@ async def get_current_data_source():
 
         # 添加 Token 来源信息（仅 Tushare）
         if current_adapter.name == "tushare" and hasattr(current_adapter, 'get_token_source'):
-            token_source = current_adapter.get_token_source()
+            token_source = cast(Any, current_adapter).get_token_source()
             if token_source:
                 result["token_source"] = token_source
                 if token_source == 'database':
@@ -163,7 +164,7 @@ async def run_stock_basics_sync(
         service = get_multi_source_sync_service()
 
         # 解析优先数据源
-        sources_list = None
+        sources_list: List[str] = []
         if preferred_sources and isinstance(preferred_sources, str):
             sources_list = [s.strip() for s in preferred_sources.split(",") if s.strip()]
 
@@ -409,7 +410,7 @@ async def get_sync_history(
 ):
     """获取同步历史记录"""
     try:
-        from app.core.database import get_mongo_db
+        get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
         db = get_mongo_db()
 
         # 构建查询条件
@@ -458,7 +459,7 @@ async def clear_sync_cache():
 
         # 1. 清空同步状态
         try:
-            from app.core.database import get_mongo_db
+            get_mongo_db = getattr(importlib.import_module('app.core.database'), 'get_mongo_db')
             db = get_mongo_db()
 
             # 删除同步状态记录
