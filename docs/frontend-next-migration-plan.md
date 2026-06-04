@@ -349,13 +349,13 @@ frontend-next/
 - Create: `frontend-next/features/settings/`
 - Create: `frontend-next/features/system/`
 
-- [ ] Migrate settings index and config management.
-- [ ] Migrate LLM provider, model catalog, data source, grouping, market category, and sortable source dialogs with React Hook Form + Zod.
-- [ ] Migrate database management, operation logs, system logs, sync, cache, usage, and scheduler pages.
-- [ ] Preserve destructive action confirmations through AlertDialog.
-- [ ] Add Playwright tests for settings navigation and one representative config dialog.
-- [ ] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
-- [ ] Commit settings and system migration with a Lore commit.
+- [x] Migrate settings index and config management.
+- [x] Migrate LLM provider, model catalog, data source, grouping, market category, and sortable source dialogs with React Hook Form + Zod.
+- [x] Migrate database management, operation logs, system logs, sync, cache, usage, and scheduler pages.
+- [x] Preserve destructive action confirmations through AlertDialog.
+- [x] Add Playwright tests for settings navigation and one representative config dialog.
+- [x] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
+- [x] Commit settings and system migration with a Lore commit.
 
 ## Task 10: Migrate Stocks, Screening, Favorites, and Paper Trading
 
