@@ -101,7 +101,7 @@ frontend-next/
     settings/scheduler/page.tsx
     about/page.tsx
     paper/page.tsx
-    paper/[name].md/page.tsx
+    paper/[...slug]/page.tsx
     not-found.tsx
   components/
     ui/
@@ -386,21 +386,21 @@ frontend-next/
 - Create: `frontend-next/app/learning/page.tsx`
 - Create: `frontend-next/app/learning/[category]/page.tsx`
 - Create: `frontend-next/app/learning/article/[id]/page.tsx`
-- Create: `frontend-next/app/paper/[name].md/page.tsx`
+- Create: `frontend-next/app/paper/[...slug]/page.tsx`
 - Create: `frontend-next/app/about/page.tsx`
 - Create: `frontend-next/features/learning/learning-home-page.tsx`
 - Create: `frontend-next/features/learning/learning-category-page.tsx`
 - Create: `frontend-next/features/learning/learning-article-page.tsx`
 - Create: `frontend-next/features/about/about-page.tsx`
 
-- [ ] Migrate learning home, category, and article pages.
-- [ ] Preserve docs-backed content loading.
-- [ ] Preserve Markdown and Mermaid rendering.
-- [ ] Preserve `/paper/:name.md -> /learning/article/:name` redirect.
-- [ ] Migrate about page content and assets.
-- [ ] Add Playwright tests for learning article and paper redirect.
-- [ ] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
-- [ ] Commit learning and about migration with a Lore commit.
+- [x] Migrate learning home, category, and article pages.
+- [x] Preserve docs-backed content loading.
+- [x] Preserve Markdown and Mermaid rendering.
+- [x] Preserve `/paper/:name.md -> /learning/article/:name` redirect.
+- [x] Migrate about page content and assets.
+- [x] Add Playwright tests for learning article and paper redirect.
+- [x] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
+- [x] Commit learning and about migration with a Lore commit.
 
 ## Task 12: Migrate Notifications and WebSocket
 
