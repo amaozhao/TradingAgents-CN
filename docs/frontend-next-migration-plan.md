@@ -325,13 +325,13 @@ frontend-next/
 - Create: `frontend-next/features/reports/task-report-dialog.tsx`
 - Create: `frontend-next/features/reports/task-result-dialog.tsx`
 
-- [ ] Migrate report list with filters, pagination, actions, and navigation.
-- [ ] Migrate report detail rendering with Markdown/Mermaid where applicable.
-- [ ] Migrate token statistics charts/tables.
-- [ ] Preserve `/reports/view/:id` dynamic route.
-- [ ] Add Playwright tests for reports list and report detail route.
-- [ ] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
-- [ ] Commit reports migration with a Lore commit.
+- [x] Migrate report list with filters, pagination, actions, and navigation.
+- [x] Migrate report detail rendering with Markdown/Mermaid where applicable.
+- [x] Migrate token statistics charts/tables.
+- [x] Preserve `/reports/view/:id` dynamic route.
+- [x] Add Playwright tests for reports list and report detail route.
+- [x] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
+- [x] Commit reports migration with a Lore commit.
 
 ## Task 9: Migrate Settings and System Pages
 
