@@ -169,7 +169,7 @@ class UnifiedStockService:
     ) -> Optional[Dict]:
         try:
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
             get_stock_basic_info = getattr(
                 importlib.import_module("app.db.stock"), "get_stock_basic_info"
@@ -186,7 +186,7 @@ class UnifiedStockService:
     async def _get_stock_quote_from_postgres(self, code: str) -> Optional[Dict]:
         try:
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
             get_market_quote = getattr(
                 importlib.import_module("app.db.stock"), "get_market_quote"
@@ -275,7 +275,7 @@ class UnifiedStockService:
     ) -> List[Dict]:
         try:
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
             search_stocks = getattr(
                 importlib.import_module("app.db.stock"), "search_stocks"
@@ -346,7 +346,7 @@ class UnifiedStockService:
     ) -> List[Dict]:
         try:
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
             list_stock_daily_quotes = getattr(
                 importlib.import_module("app.db.stock"), "list_stock_daily_quotes"

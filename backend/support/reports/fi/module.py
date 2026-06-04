@@ -5,7 +5,7 @@ import time
 
 import requests
 
-from app.db.documentstore import create_sync_client
+from app.db.store import create_sync_client
 
 
 def test_reports_and_analysts_fix():

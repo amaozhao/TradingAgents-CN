@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from app.core.database import get_postgres_db
 from app.core.response import ok
 from app.db.dual import dual_write_hot_document
-from app.models.response import ApiResponse
+from app.schemas.response import ApiResponse
 from app.routers.account import get_current_user
 
 logger = logging.getLogger("webapi")

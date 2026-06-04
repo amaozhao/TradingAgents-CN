@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy import Select, desc, select
 
-from app.db.model import UserFavorite, UserTag
+from app.models.table import UserFavorite, UserTag
 
 
 def build_user_favorites_select(user_id: str) -> Select:

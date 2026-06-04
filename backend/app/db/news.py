@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy import Select, asc, desc, or_, select
 
-from app.db.model import StockNewsDocument
+from app.models.table import StockNewsDocument
 
 SORT_COLUMNS = {
     "publish_time": StockNewsDocument.publish_time,

@@ -1,4 +1,10 @@
 # ruff: noqa: F401,F403,F405,F821
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any
+
+
 @dataclass(frozen=True)
 class InsertOneResult:
     inserted_id: Any

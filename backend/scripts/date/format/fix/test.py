@@ -50,9 +50,7 @@ async def test_postgres_query():
     print("\n测试：PostgreSQL document store 查询")
     print("=" * 80)
 
-    create_client = getattr(
-        importlib.import_module("app.db.documentstore"), "create_client"
-    )
+    create_client = getattr(importlib.import_module("app.db.store"), "create_client")
     client = create_client()
     db = client["trading_agents"]
     collection = db.stock_daily_quotes

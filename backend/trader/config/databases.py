@@ -90,7 +90,7 @@ class DatabaseManager:
             return False, "PostgreSQL未启用 (POSTGRES_ENABLED=false)"
         try:
             create_sync_client = getattr(
-                importlib.import_module("app.db.documentstore"), "create_sync_client"
+                importlib.import_module("app.db.store"), "create_sync_client"
             )
             create_sync_client().admin.command("ping")
             return True, "PostgreSQL文档存储可用"
@@ -174,7 +174,7 @@ class DatabaseManager:
         if self.postgres_available:
             try:
                 create_sync_client = getattr(
-                    importlib.import_module("app.db.documentstore"),
+                    importlib.import_module("app.db.store"),
                     "create_sync_client",
                 )
                 self.postgres_client = create_sync_client()

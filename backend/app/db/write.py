@@ -35,7 +35,7 @@ from app.db.document import (
     map_user_session,
     map_user_tag,
 )
-from app.db.model import (
+from app.models.table import (
     AnalysisBatchDocument,
     AnalysisReport,
     AnalysisResultDocument,

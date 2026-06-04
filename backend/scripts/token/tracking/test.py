@@ -28,7 +28,7 @@ async def main():
     UsageStatisticsService = getattr(
         importlib.import_module("app.services.usage"), "UsageStatisticsService"
     )
-    UsageRecord = getattr(importlib.import_module("app.models.config"), "UsageRecord")
+    UsageRecord = getattr(importlib.import_module("app.schemas.config"), "UsageRecord")
 
     usage_service = UsageStatisticsService()
 

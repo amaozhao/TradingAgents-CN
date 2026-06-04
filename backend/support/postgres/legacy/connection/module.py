@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """测试 PostgreSQL document store 兼容连接"""
 
-from app.db.documentstore import create_sync_client
+from app.db.store import create_sync_client
 
 
 def test_connections():

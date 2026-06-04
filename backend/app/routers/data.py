@@ -9,12 +9,12 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
-from app.models import (
+from app.schemas import (
     MarketQuotesResponse,
     StockBasicInfoResponse,
     StockListResponse,
 )
-from app.models.response import ApiResponse
+from app.schemas.response import ApiResponse
 from app.routers.account import get_current_user
 from app.services.stocks.service import get_stock_data_service
 

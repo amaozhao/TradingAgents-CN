@@ -8,7 +8,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 
-from app.models.operations import (
+from app.schemas.operations import (
     ClearLogsRequest,
     ClearLogsResponse,
     OperationLogCreate,
@@ -16,7 +16,7 @@ from app.models.operations import (
     OperationLogQuery,
     OperationLogStatsResponse,
 )
-from app.models.response import ApiResponse
+from app.schemas.response import ApiResponse
 from app.routers.account import get_current_user
 from app.services.operation import get_operation_log_service
 

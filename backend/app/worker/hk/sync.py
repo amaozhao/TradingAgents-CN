@@ -24,7 +24,7 @@ from typing import Any, Dict, List
 
 from app.core.config import settings
 from app.core.database import get_postgres_db
-from app.db.documentstore import UpdateOne
+from app.db.store import UpdateOne
 from app.db.dual import dual_write_hot_documents
 from trader.flows.providers.hk.improved import ImprovedHKStockProvider
 from trader.flows.providers.hk.stock import HKStockProvider

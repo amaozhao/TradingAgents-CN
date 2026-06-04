@@ -183,7 +183,7 @@ class FavoritesService:
     ) -> List[Dict[str, Any]]:
         try:
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
             list_user_favorites = getattr(
                 importlib.import_module("app.db.preference"), "list_user_favorites"

@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from app.db.documentstore import create_sync_client
+from app.db.store import create_sync_client
 from trader.config.runtime import get_timezone_name
 
 # 导入日志模块

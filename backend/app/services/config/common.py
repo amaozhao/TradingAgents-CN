@@ -15,7 +15,7 @@ from app.core.database import get_postgres_db
 from app.core.unified import unified_config
 from app.db.dual import dual_write_hot_document
 from app.db.ids import DocumentId
-from app.models.config import (
+from app.schemas.config import (
     DatabaseConfig,
     DatabaseType,
     DataSourceConfig,

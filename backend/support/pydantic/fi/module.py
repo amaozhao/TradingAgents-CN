@@ -5,7 +5,7 @@
 
 try:
     from app.db.ids import DocumentId
-    from app.models.user import User
+    from app.schemas.user import User
 
     print("✅ 导入成功")
 

@@ -7,7 +7,7 @@ from app.db.operation import (
     build_operation_log_select,
     build_operation_log_totals_select,
 )
-from app.models.operations import OperationLogQuery
+from app.schemas.operations import OperationLogQuery
 
 
 def test_operation_log_select_filters_split_columns_for_log_page():

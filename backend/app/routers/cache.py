@@ -8,7 +8,7 @@ import importlib
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.response import ok
-from app.models.response import ApiResponse
+from app.schemas.response import ApiResponse
 from app.routers.account import get_current_user
 from trader.utils.logging.manager import get_logger
 

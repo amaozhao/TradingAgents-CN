@@ -24,10 +24,10 @@ async def test_screening_fields():
             "get_database_screening_service",
         )
         ScreeningCondition = getattr(
-            importlib.import_module("app.models.screening"), "ScreeningCondition"
+            importlib.import_module("app.schemas.screening"), "ScreeningCondition"
         )
         OperatorType = getattr(
-            importlib.import_module("app.models.screening"), "OperatorType"
+            importlib.import_module("app.schemas.screening"), "OperatorType"
         )
 
         # 初始化数据库

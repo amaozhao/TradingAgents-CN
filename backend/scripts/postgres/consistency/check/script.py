@@ -21,12 +21,14 @@ async def _run_cli(sample_limit: int) -> dict:
         "init_postgres_document_store_only",
     )
     close_postgres = getattr(
-        importlib.import_module("app.db.session"), "close_postgres"
+        importlib.import_module("app.core.session"), "close_postgres"
     )
     get_session_factory = getattr(
-        importlib.import_module("app.db.session"), "get_session_factory"
+        importlib.import_module("app.core.session"), "get_session_factory"
     )
-    init_postgres = getattr(importlib.import_module("app.db.session"), "init_postgres")
+    init_postgres = getattr(
+        importlib.import_module("app.core.session"), "init_postgres"
+    )
 
     await init_postgres_document_store_only()
     await init_postgres()

@@ -17,7 +17,7 @@ from typing import Any, Dict, Optional
 from app.core.config import settings
 from app.core.database import close_database, init_database
 from app.core.redis import close_redis, init_redis
-from app.models.analysis import AnalysisParameters, AnalysisTask
+from app.schemas.analysis import AnalysisParameters, AnalysisTask
 from app.services.analysis.service import get_analysis_service
 from app.services.provider import provider as config_provider
 from app.services.queue import (

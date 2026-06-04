@@ -23,7 +23,7 @@ from typing import Dict, List
 
 from app.core.config import settings
 from app.core.database import get_postgres_db
-from app.db.documentstore import UpdateOne
+from app.db.store import UpdateOne
 from app.db.dual import dual_write_hot_documents
 from trader.flows.providers.us.yfinance import YFinanceUtils
 

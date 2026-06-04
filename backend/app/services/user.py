@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.core.database import get_postgres_db_sync
 from app.db.dual import dual_write_hot_document
 from app.db.ids import DocumentId
-from app.models.user import User, UserCreate, UserPreferences, UserResponse, UserUpdate
+from app.schemas.user import User, UserCreate, UserPreferences, UserResponse, UserUpdate
 
 # 尝试导入日志管理器
 try:
@@ -449,7 +449,7 @@ class UserService:
     ) -> Optional[Dict[str, Any]]:
         try:
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
             get_user_by_legacy_id = getattr(
                 importlib.import_module("app.db.account"), "get_user_by_legacy_id"
@@ -478,7 +478,7 @@ class UserService:
     ) -> List[UserResponse]:
         try:
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
             list_users = getattr(
                 importlib.import_module("app.db.account"), "list_users"

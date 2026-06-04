@@ -1,7 +1,7 @@
 import pytest
 
 from app.core.config import settings
-from app.models.operations import (
+from app.schemas.operations import (
     OperationLogQuery,
     OperationLogResponse,
     OperationLogStats,

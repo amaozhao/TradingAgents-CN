@@ -220,7 +220,7 @@ class AnalysisStatusMixin:
                 importlib.import_module("app.db.analysis"), "list_user_analysis_tasks"
             )
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
 
             async with get_session_factory()() as session:

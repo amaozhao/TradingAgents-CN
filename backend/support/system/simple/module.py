@@ -40,7 +40,7 @@ def test_basic_system():
     # 检查 PostgreSQL document store
     try:
         create_sync_client = getattr(
-            importlib.import_module("app.db.documentstore"), "create_sync_client"
+            importlib.import_module("app.db.store"), "create_sync_client"
         )
         print("✅ PostgreSQL document store 可导入")
 

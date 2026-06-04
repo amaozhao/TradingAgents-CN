@@ -8,7 +8,7 @@ import asyncio
 import sys
 
 from app.core.unified import unified_config
-from app.models.config import LLMConfig, ModelProvider
+from app.schemas.config import LLMConfig, ModelProvider
 
 
 async def test_read_legacy_configs():

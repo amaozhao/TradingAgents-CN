@@ -12,8 +12,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
 from app.core.config import settings
-from app.models.operations import ActionType
-from app.models.user import UserCreate
+from app.schemas.operations import ActionType
+from app.schemas.user import UserCreate
 from app.services.auth import AuthService
 from app.services.operation import log_operation
 from app.services.user import user_service
@@ -350,9 +350,9 @@ async def me(user: dict = Depends(get_current_user)):
 async def update_me(payload: UpdateMeRequest, user: dict = Depends(get_current_user)):
     """更新当前用户信息"""
     try:
-        UserUpdate = getattr(importlib.import_module("app.models.user"), "UserUpdate")
+        UserUpdate = getattr(importlib.import_module("app.schemas.user"), "UserUpdate")
         UserPreferences = getattr(
-            importlib.import_module("app.models.user"), "UserPreferences"
+            importlib.import_module("app.schemas.user"), "UserPreferences"
         )
 
         payload_data = payload.model_dump(exclude_unset=True)

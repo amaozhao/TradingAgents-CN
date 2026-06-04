@@ -5,7 +5,7 @@ from typing import Any
 
 from sqlalchemy import Select, desc, select
 
-from app.db.model import StockFinancialData
+from app.models.table import StockFinancialData
 
 
 def build_financial_data_query(

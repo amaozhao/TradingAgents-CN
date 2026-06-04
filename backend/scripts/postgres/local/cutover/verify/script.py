@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from app.db.migrate import HOT_COLLECTIONS
+from app.core.migrate import HOT_COLLECTIONS
 from scripts.postgres.runtime.log.check.script import check_runtime_log
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -127,7 +127,7 @@ def build_verification_steps(
             command=[
                 sys.executable,
                 "-m",
-                "app.db.migrate",
+                "app.core.migrate",
                 "--batch-size",
                 str(batch_size),
             ],
@@ -173,9 +173,7 @@ def write_runtime_log_check(
 
 
 async def seed_local_postgres(services: LocalServices) -> dict[str, int]:
-    create_client = getattr(
-        importlib.import_module("app.db.documentstore"), "create_client"
-    )
+    create_client = getattr(importlib.import_module("app.db.store"), "create_client")
     client = create_client()
     try:
         db = client[LOCAL_DB]

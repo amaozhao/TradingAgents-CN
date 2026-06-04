@@ -31,7 +31,7 @@ def test_parse_postgres_financial_data(code: str):
     logger.info("=" * 80)
 
     create_sync_client = getattr(
-        importlib.import_module("app.db.documentstore"), "create_sync_client"
+        importlib.import_module("app.db.store"), "create_sync_client"
     )
     OptimizedChinaDataProvider = getattr(
         importlib.import_module("trader.flows.china"), "OptimizedChinaDataProvider"
@@ -99,7 +99,7 @@ def test_realtime_metrics(code: str):
         importlib.import_module("trader.flows.metrics"), "get_pe_pb_with_fallback"
     )
     create_sync_client = getattr(
-        importlib.import_module("app.db.documentstore"), "create_sync_client"
+        importlib.import_module("app.db.store"), "create_sync_client"
     )
 
     code6 = str(code).zfill(6)
@@ -128,7 +128,7 @@ def test_realtime_metrics(code: str):
     logger.info("\n🔧 测试 2: 使用异步客户端")
     try:
         create_client = getattr(
-            importlib.import_module("app.db.documentstore"), "create_client"
+            importlib.import_module("app.db.store"), "create_client"
         )
         async_client = create_client()
 

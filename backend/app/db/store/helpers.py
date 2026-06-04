@@ -1,4 +1,32 @@
 # ruff: noqa: F401,F403,F405,F821
+from __future__ import annotations
+
+import asyncio
+import atexit
+import copy
+import importlib
+import re
+import threading
+import uuid
+from collections.abc import Coroutine
+from datetime import date, datetime, timezone
+from decimal import Decimal
+from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
+
+from app.core.session import get_session_factory, init_postgres
+from app.db.document import normalize_payload
+from app.models.table import PostgresDocument, SystemConfigDocument
+
+from .imports import CONFIG_COLLECTIONS, SPECIALIZED_MODELS
+
+_sync_loop: asyncio.AbstractEventLoop | None = None
+_sync_loop_thread: threading.Thread | None = None
+_sync_loop_lock = threading.Lock()
+
+
 def _row_to_document(row: Any) -> dict[str, Any]:
     payload = copy.deepcopy(row.payload or {})
     if "_id" not in payload:
@@ -276,6 +304,52 @@ def _group_documents(
 def _run_blocking(coro: Coroutine[Any, Any, Any]) -> Any:
     loop = _get_sync_loop()
     return asyncio.run_coroutine_threadsafe(coro, loop).result()
+
+
+def build_document_upsert(collection: str, document: dict[str, Any]):
+    document = normalize_payload(_ensure_document_id(document))
+    now = datetime.now(timezone.utc)
+    statement = insert(PostgresDocument).values(
+        collection=collection,
+        document_id=str(document["_id"]),
+        payload=document,
+        updated_at=now,
+    )
+    return statement.on_conflict_do_update(
+        index_elements=[PostgresDocument.collection, PostgresDocument.document_id],
+        set_={"payload": document, "updated_at": now},
+    )
+
+
+async def _ensure_postgres() -> None:
+    try:
+        get_session_factory()
+    except RuntimeError:
+        await init_postgres()
+
+
+async def _write_specialized_table(collection: str, document: dict[str, Any]) -> None:
+    if _model_for_collection(collection) is None:
+        return
+    try:
+        await getattr(
+            importlib.import_module("app.db.dual"), "dual_write_hot_document"
+        )(collection, document, enabled=True, fail_open=True)
+    except Exception:
+        return
+
+
+def _model_for_collection(collection: str) -> Any | None:
+    if collection in CONFIG_COLLECTIONS:
+        return SystemConfigDocument
+    return SPECIALIZED_MODELS.get(collection)
+
+
+def _build_specialized_select(collection: str, model: Any):
+    statement = select(model)
+    if collection in CONFIG_COLLECTIONS:
+        return statement.where(model.config_type == collection)
+    return statement
 
 
 def _get_sync_loop() -> asyncio.AbstractEventLoop:

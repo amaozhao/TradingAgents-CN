@@ -28,7 +28,7 @@ async def _get_analysis_task_for_read(task_id: str) -> Optional[Dict[str, Any]]:
                 "get_analysis_task_by_task_id",
             )
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
 
             async with get_session_factory()() as session:
@@ -55,7 +55,7 @@ async def _get_analysis_report_by_task_id_for_read(
                 "get_analysis_report_by_task_id",
             )
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
 
             async with get_session_factory()() as session:
@@ -82,7 +82,7 @@ async def _get_analysis_report_by_analysis_id_for_read(
                 "get_analysis_report_by_analysis_id",
             )
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
 
             async with get_session_factory()() as session:

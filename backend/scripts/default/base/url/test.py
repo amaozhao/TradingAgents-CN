@@ -9,7 +9,7 @@
 
 import importlib
 
-from app.db.documentstore import create_sync_client
+from app.db.store import create_sync_client
 from app.services.analysis.simple import (
     create_analysis_config,
     get_provider_and_url_by_model_sync,

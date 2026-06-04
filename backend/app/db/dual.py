@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.core.config import settings
-from app.db.migrate import HOT_COLLECTIONS
-from app.db.session import get_session_factory
+from app.core.migrate import HOT_COLLECTIONS
+from app.core.session import get_session_factory
 
 logger = logging.getLogger(__name__)
 

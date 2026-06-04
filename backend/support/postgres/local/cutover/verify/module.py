@@ -2,7 +2,7 @@ import asyncio
 from pathlib import Path
 from types import SimpleNamespace
 
-from app.db.migrate import HOT_COLLECTIONS
+from app.core.migrate import HOT_COLLECTIONS
 from scripts.postgres.local.cutover.verify import script as local_verify
 from scripts.postgres.local.cutover.verify.script import (
     LocalServices,

@@ -29,11 +29,11 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.core.config import settings
 from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document
-from app.models.analysis import (
+from app.schemas.analysis import (
     BatchAnalysisRequest,
     SingleAnalysisRequest,
 )
-from app.models.response import ApiResponse
+from app.schemas.response import ApiResponse
 from app.routers.account import get_current_user
 from app.services.analysis.simple import get_simple_analysis_service
 from app.services.queue.service import QueueService, get_queue_service

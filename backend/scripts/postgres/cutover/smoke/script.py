@@ -22,7 +22,7 @@ from app.db.message import (
     query_internal_messages,
     query_social_media_messages,
 )
-from app.db.model import (
+from app.models.table import (
     AnalysisTask,
     InternalMessageDocument,
     LoginAttemptDocument,
@@ -43,14 +43,14 @@ from app.db.news import query_news
 from app.db.operation import get_operation_log_stats, list_operation_logs
 from app.db.paper import get_paper_account, list_paper_orders, list_paper_positions
 from app.db.preference import list_user_favorites, list_user_tags
-from app.db.session import close_postgres, get_session_factory, init_postgres
+from app.core.session import close_postgres, get_session_factory, init_postgres
 from app.db.stock import (
     get_market_quote,
     get_stock_basic_info,
     list_stock_daily_quotes,
     list_stocks,
 )
-from app.models.operations import OperationLogQuery
+from app.schemas.operations import OperationLogQuery
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 

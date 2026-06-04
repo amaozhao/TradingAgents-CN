@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from app.models.screening import BASIC_FIELDS_INFO, FieldType, ScreeningCondition
+from app.schemas.screening import BASIC_FIELDS_INFO, FieldType, ScreeningCondition
 
 
 def analyze_conditions(conditions: List[ScreeningCondition]) -> Dict[str, Any]:

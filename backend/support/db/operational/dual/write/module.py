@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.db.ids import DocumentId
-from app.models.operations import ActionType, OperationLogCreate
+from app.schemas.operations import ActionType, OperationLogCreate
 from app.services import operation as operation_log_service
 from app.services.database import backup
 

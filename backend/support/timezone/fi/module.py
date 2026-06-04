@@ -8,7 +8,7 @@ import datetime
 import importlib
 
 from app.core.database import get_postgres_db, init_db
-from app.models.operations import ActionType
+from app.schemas.operations import ActionType
 from app.services.operation import log_operation
 
 
@@ -83,7 +83,7 @@ async def test_timezone_fix():
             "get_operation_log_service",
         )
         OperationLogQuery = getattr(
-            importlib.import_module("app.models.operations"), "OperationLogQuery"
+            importlib.import_module("app.schemas.operations"), "OperationLogQuery"
         )
 
         service = get_operation_log_service()

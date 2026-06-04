@@ -132,7 +132,7 @@ class ModelCapabilityService:
             get_postgres_db_sync = getattr(
                 importlib.import_module("app.core.database"), "get_postgres_db_sync"
             )
-            getattr(importlib.import_module("app.models.config"), "SystemConfig")
+            getattr(importlib.import_module("app.schemas.config"), "SystemConfig")
 
             db = get_postgres_db_sync()
             collection = db.system_configs  # 注意：集合名是复数

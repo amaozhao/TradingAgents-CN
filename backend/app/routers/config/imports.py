@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 
 from app.core.response import ok
-from app.models.config import (
+from app.schemas.config import (
     ConfigTestRequest,
     ConfigTestResponse,
     DatabaseConfig,
@@ -32,9 +32,9 @@ from app.models.config import (
     ModelInfo,
     SystemConfigResponse,
 )
-from app.models.operations import ActionType
-from app.models.response import ApiResponse
-from app.models.user import User
+from app.schemas.operations import ActionType
+from app.schemas.response import ApiResponse
+from app.schemas.user import User
 from app.routers.account import get_current_user
 from app.services.config import config_service
 from app.services.operation import log_operation

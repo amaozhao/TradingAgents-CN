@@ -371,7 +371,7 @@ async def test_tushare_scheduler_progress_dual_writes_postgres(monkeypatch):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.db.documentstore",
+        "app.db.store",
         SimpleNamespace(
             PostgreSQLClient=lambda _uri: FakePostgreSQLClient(fake_collection)
         ),

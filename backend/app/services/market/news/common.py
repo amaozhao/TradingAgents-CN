@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Union, cast
 
 from app.core.config import settings
 from app.core.database import get_database
-from app.db.documentstore import BulkWriteError, ReplaceOne
+from app.db.store import BulkWriteError, ReplaceOne
 from app.db.dual import dual_write_hot_documents
 
 

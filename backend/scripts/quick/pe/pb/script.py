@@ -26,7 +26,7 @@ def test_pe_pb_from_basic_info(code: str):
     logger.info("=" * 80)
 
     create_sync_client = getattr(
-        importlib.import_module("app.db.documentstore"), "create_sync_client"
+        importlib.import_module("app.db.store"), "create_sync_client"
     )
     OptimizedChinaDataProvider = getattr(
         importlib.import_module("trader.flows.china"), "OptimizedChinaDataProvider"

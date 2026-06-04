@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from app.db.documentstore import create_sync_client
+from app.db.store import create_sync_client
 
 logger = logging.getLogger(__name__)
 

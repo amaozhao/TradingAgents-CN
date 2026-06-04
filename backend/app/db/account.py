@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy import Select, select
 
-from app.db.model import UserAccount
+from app.models.table import UserAccount
 
 
 def build_user_by_username_select(username: str) -> Select:

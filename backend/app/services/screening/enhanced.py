@@ -8,7 +8,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.core.database import get_postgres_db
-from app.models.screening import BASIC_FIELDS_INFO, ScreeningCondition
+from app.schemas.screening import BASIC_FIELDS_INFO, ScreeningCondition
 from app.services.screening.database import get_database_screening_service
 from app.services.screening.helper import (
     analyze_conditions as _analyze_conditions_util,

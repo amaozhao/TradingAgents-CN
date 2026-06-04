@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy import Select, desc, select
 
-from app.db.model import AnalysisReport, AnalysisTask
+from app.models.table import AnalysisReport, AnalysisTask
 
 
 def build_analysis_task_by_task_id_select(task_id: str) -> Select:

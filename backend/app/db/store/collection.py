@@ -1,4 +1,43 @@
 # ruff: noqa: F401,F403,F405,F821
+from __future__ import annotations
+
+from collections.abc import Iterable
+from typing import Any
+
+from sqlalchemy import delete, select
+
+from app.core.session import get_session_factory
+from app.db.document import normalize_payload
+from app.models.table import PostgresDocument
+
+from .cursor import PostgresCursor
+from .helpers import (
+    _apply_update,
+    _build_specialized_select,
+    _document_id_from_filter,
+    _ensure_document_id,
+    _ensure_postgres,
+    _get_value,
+    _group_documents,
+    _matches,
+    _merge_filter_identity,
+    _model_for_collection,
+    _new_document_id,
+    _project,
+    _row_to_document,
+    _write_specialized_table,
+    build_document_upsert,
+)
+from .imports import CONFIG_COLLECTIONS
+from .results import (
+    BulkWriteResult,
+    DeleteResult,
+    InsertManyResult,
+    InsertOneResult,
+    UpdateResult,
+)
+
+
 class PostgresCollection:
     def __init__(self, name: str):
         self.name = name

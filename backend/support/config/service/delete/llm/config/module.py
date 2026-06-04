@@ -2,7 +2,7 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from app.models.config import ModelProvider
+from app.schemas.config import ModelProvider
 from app.services.config import ConfigService
 
 

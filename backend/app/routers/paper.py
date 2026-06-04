@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.core.database import get_postgres_db
 from app.core.response import ok
 from app.db.dual import dual_write_hot_document
-from app.models.response import ApiResponse
+from app.schemas.response import ApiResponse
 from app.routers.account import get_current_user
 
 router = APIRouter(prefix="/paper", tags=["paper"])
@@ -168,7 +168,7 @@ async def _get_paper_account_from_postgres(user_id: str) -> Optional[Dict[str, A
             importlib.import_module("app.db.paper"), "get_paper_account"
         )
         get_session_factory = getattr(
-            importlib.import_module("app.db.session"), "get_session_factory"
+            importlib.import_module("app.core.session"), "get_session_factory"
         )
 
         async with get_session_factory()() as session:
@@ -186,7 +186,7 @@ async def _list_paper_positions_from_postgres(
             importlib.import_module("app.db.paper"), "list_paper_positions"
         )
         get_session_factory = getattr(
-            importlib.import_module("app.db.session"), "get_session_factory"
+            importlib.import_module("app.core.session"), "get_session_factory"
         )
 
         async with get_session_factory()() as session:
@@ -204,7 +204,7 @@ async def _list_paper_orders_from_postgres(
             importlib.import_module("app.db.paper"), "list_paper_orders"
         )
         get_session_factory = getattr(
-            importlib.import_module("app.db.session"), "get_session_factory"
+            importlib.import_module("app.core.session"), "get_session_factory"
         )
 
         async with get_session_factory()() as session:

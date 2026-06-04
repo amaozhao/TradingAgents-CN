@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy import Integer, Select, asc, case, cast, desc, func, or_, select
 
-from app.db.model import InternalMessageDocument, SocialMediaMessageDocument
+from app.models.table import InternalMessageDocument, SocialMediaMessageDocument
 
 INTERNAL_SORT_COLUMNS = {
     "created_time": InternalMessageDocument.created_time,

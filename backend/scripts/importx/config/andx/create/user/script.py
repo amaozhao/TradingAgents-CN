@@ -22,7 +22,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from app.db.documentstore import create_sync_client
+from app.db.store import create_sync_client
 from app.db.ids import DocumentId
 from support.path import BACKEND_ROOT
 

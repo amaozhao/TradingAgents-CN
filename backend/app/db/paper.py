@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy import Select, desc, select
 
-from app.db.model import PaperAccount, PaperOrder, PaperPosition
+from app.models.table import PaperAccount, PaperOrder, PaperPosition
 
 
 def build_paper_account_select(user_id: str) -> Select:

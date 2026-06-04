@@ -2,7 +2,7 @@
 直接测试 PostgreSQL document store 读取
 """
 
-from app.db.documentstore import create_sync_client
+from app.db.store import create_sync_client
 
 
 def test_direct():

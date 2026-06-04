@@ -25,7 +25,7 @@ async def test_add_provider_with_key():
     ConfigService = getattr(
         importlib.import_module("app.services.config"), "ConfigService"
     )
-    LLMProvider = getattr(importlib.import_module("app.models.config"), "LLMProvider")
+    LLMProvider = getattr(importlib.import_module("app.schemas.config"), "LLMProvider")
     init_db = getattr(importlib.import_module("app.core.database"), "init_db")
 
     # 初始化数据库

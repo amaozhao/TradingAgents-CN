@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy import Select, and_, asc, desc, func, literal, select
 
-from app.db.model import MarketQuote, StockBasicInfo, StockFinancialData
+from app.models.table import MarketQuote, StockBasicInfo, StockFinancialData
 
 FIELD_COLUMNS = {
     "code": StockBasicInfo.code,

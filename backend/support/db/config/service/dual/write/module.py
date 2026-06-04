@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.models.config import MarketCategory
+from app.schemas.config import MarketCategory
 from app.services import config as config_service
 
 

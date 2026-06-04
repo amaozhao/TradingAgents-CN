@@ -12,7 +12,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, s
 from pydantic import BaseModel, Field
 
 from app.core.response import ok
-from app.models.response import ApiResponse
+from app.schemas.response import ApiResponse
 from app.routers.account import get_current_user
 from app.services.market.news import NewsQueryParams, get_news_data_service
 from app.worker.news import get_news_data_sync_service

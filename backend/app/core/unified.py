@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from app.models.config import (
+from app.schemas.config import (
     DatabaseConfig,
     DatabaseType,
     DataSourceConfig,

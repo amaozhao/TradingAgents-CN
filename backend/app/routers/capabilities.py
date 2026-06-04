@@ -20,7 +20,7 @@ from app.constants.capabilities import (
 )
 from app.core.response import ok
 from app.core.unified import unified_config
-from app.models.response import ApiResponse
+from app.schemas.response import ApiResponse
 from app.services.capability import get_model_capability_service
 
 logger = logging.getLogger(__name__)

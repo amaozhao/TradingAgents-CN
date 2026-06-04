@@ -5,9 +5,9 @@ from typing import Any, Dict, List, Optional, cast
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.screening import BASIC_FIELDS_INFO, FieldInfo, ScreeningCondition
-from app.models.screening import ScreeningRequest as NewScreeningRequest
-from app.models.screening import ScreeningResponse as NewScreeningResponse
+from app.schemas.screening import BASIC_FIELDS_INFO, FieldInfo, ScreeningCondition
+from app.schemas.screening import ScreeningRequest as NewScreeningRequest
+from app.schemas.screening import ScreeningResponse as NewScreeningResponse
 from app.routers.account import get_current_user
 from app.services.screening.enhanced import get_enhanced_screening_service
 

@@ -9,7 +9,7 @@ from typing import Any
 HTTP_DECORATORS = {"get", "post", "put", "patch", "delete"}
 POSTGRES_IMPORT_MODULES = {
     "app.core.database",
-    "app.db.documentstore",
+    "app.db.store",
 }
 POSTGRES_HELPERS = {"get_postgres_db", "get_postgres_db_sync", "get_database"}
 POSTGRES_WRITE_METHODS = {

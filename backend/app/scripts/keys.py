@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from app.core.config import settings
-from app.db.documentstore import create_sync_client
+from app.db.store import create_sync_client
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
 from trader.llm.clients.providers import canonical_aliases, normalize_provider_key
 

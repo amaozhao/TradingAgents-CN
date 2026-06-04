@@ -1,6 +1,6 @@
 """检查用户数据库"""
 
-from app.db.documentstore import create_sync_client
+from app.db.store import create_sync_client
 
 
 def main() -> None:

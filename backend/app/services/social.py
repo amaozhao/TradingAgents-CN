@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
 from app.core.database import get_database
-from app.db.documentstore import BulkWriteError, ReplaceOne
+from app.db.store import BulkWriteError, ReplaceOne
 from app.db.dual import dual_write_hot_documents
 
 logger = logging.getLogger(__name__)
@@ -244,7 +244,7 @@ class SocialMediaService:
                 importlib.import_module("app.db.message"), "query_social_media_messages"
             )
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
 
             async with get_session_factory()() as session:
@@ -327,7 +327,7 @@ class SocialMediaService:
                 "search_social_media_messages",
             )
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
 
             async with get_session_factory()() as session:
@@ -446,7 +446,7 @@ class SocialMediaService:
                 importlib.import_module("app.db.message"), "get_social_media_stats"
             )
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
 
             async with get_session_factory()() as session:

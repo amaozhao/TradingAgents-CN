@@ -4,8 +4,8 @@ import pandas as pd
 import pytest
 
 from app.db.ids import DocumentId
-from app.models.config import UsageRecord
-from app.models.notification import NotificationCreate
+from app.schemas.config import UsageRecord
+from app.schemas.notification import NotificationCreate
 from app.services import (
     historical_data_service,
     internal_message_service,

@@ -7,7 +7,7 @@ from typing import Any
 
 from sqlalchemy import Select, func, select
 
-from app.db.model import (
+from app.models.table import (
     AnalysisBatchDocument,
     AnalysisReport,
     AnalysisResultDocument,

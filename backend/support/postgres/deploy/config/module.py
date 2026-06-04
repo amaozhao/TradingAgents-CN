@@ -145,7 +145,7 @@ def test_cutover_runbook_contains_docker_compose_migration_commands():
     assert "--env-file .env --env-file deploy/env/postgres-dual-write.env" in runbook
     assert "--env-file .env --env-file deploy/env/postgres-read.env" in runbook
     assert "cd /app/backend && alembic -c alembic.ini upgrade head" in runbook
-    assert "python -m app.db.migrate" in runbook
+    assert "python -m app.core.migrate" in runbook
     assert (
         "python backend/scripts/postgres/cutover/gate/script.py --require-explicit-env "
         "--target-env <target-env> --target-phase pre-read --skip-api-smoke"

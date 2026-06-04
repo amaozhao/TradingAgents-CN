@@ -1,13 +1,11 @@
-"""PostgreSQL database infrastructure."""
+"""Database access layer.
 
-from importlib import import_module as _import_module
+This package owns repository-style data access and PostgreSQL document-store
+compatibility. Runtime session lifecycle and data backfill entry points live in
+app.core; Alembic owns schema migrations. SQLAlchemy table models live in
+app.models; Pydantic API DTOs live in app.schemas.
+"""
 
-from app.db.base import Base
-from support.loader import alias as _alias
+from app.models.base import Base
 
-_store = _import_module("app.db.store")
-documentstore = _alias("app.db.documentstore", _store)
-
-__all__ = ["Base", "documentstore"]
-
-del _alias, _import_module, _store
+__all__ = ["Base"]

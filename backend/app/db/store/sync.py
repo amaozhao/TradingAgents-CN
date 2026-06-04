@@ -1,4 +1,20 @@
 # ruff: noqa: F401,F403,F405,F821
+from __future__ import annotations
+
+from typing import Any
+
+from .collection import PostgresCollection
+from .cursor import PostgresCursor
+from .helpers import _run_blocking
+from .results import (
+    BulkWriteResult,
+    DeleteResult,
+    InsertManyResult,
+    InsertOneResult,
+    UpdateResult,
+)
+
+
 class SyncPostgresCollection:
     def __init__(self, async_collection: PostgresCollection):
         self._async = async_collection

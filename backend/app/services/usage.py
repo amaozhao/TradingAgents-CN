@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
-from app.models.config import UsageRecord, UsageStatistics
+from app.schemas.config import UsageRecord, UsageStatistics
 
 logger = logging.getLogger("app.services.usage")
 

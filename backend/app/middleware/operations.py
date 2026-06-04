@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.models.operations import ActionType
+from app.schemas.operations import ActionType
 from app.services.operation import log_operation
 
 logger = logging.getLogger("webapi")

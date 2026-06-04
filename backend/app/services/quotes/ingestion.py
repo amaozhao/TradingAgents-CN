@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 
 from app.core.config import settings
 from app.core.database import get_postgres_db
-from app.db.documentstore import UpdateOne
+from app.db.store import UpdateOne
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
 from app.services.sources.akshare import AKShareAdapter
 from app.services.sources.manager import DataSourceManager

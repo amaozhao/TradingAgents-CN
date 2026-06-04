@@ -15,13 +15,13 @@ from app.core.config import settings
 from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document
 from app.db.ids import DocumentId
-from app.models.analysis import (
+from app.schemas.analysis import (
     AnalysisParameters,
     AnalysisStatus,
     SingleAnalysisRequest,
 )
-from app.models.notification import NotificationCreate
-from app.models.user import PyDocumentId
+from app.schemas.notification import NotificationCreate
+from app.schemas.user import PyDocumentId
 from app.services.config import ConfigService
 from app.services.memory import TaskStatus, get_memory_state_manager
 from app.services.progress.log import (

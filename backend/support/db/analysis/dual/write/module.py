@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.models.analysis import AnalysisStatus
+from app.schemas.analysis import AnalysisStatus
 from app.routers import analysis as analysis_router
 from app.routers import reports as reports_router
 from app.services.analysis import simple as simple_analysis_service

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.db.ids import DocumentId
-from app.models.user import UserCreate
+from app.schemas.user import UserCreate
 from app.services import user as user_service
 
 

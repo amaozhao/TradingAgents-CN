@@ -23,8 +23,8 @@ def test_alembic_env_uses_settings_postgres_url_and_model_metadata():
 
     text = env_py.read_text(encoding="utf-8")
     assert "from app.core.config import settings" in text
-    assert "from app.db.base import Base" in text
-    assert "import app.db.model" in text
+    assert "from app.models.base import Base" in text
+    assert "import app.models.table" in text
     assert "target_metadata = Base.metadata" in text
     assert "settings.postgres_url" in text
 

@@ -1,6 +1,6 @@
 import pytest
 
-from app.db.migrate import (
+from app.core.migrate import (
     HOT_COLLECTIONS,
     migrate_hot_collections,
 )

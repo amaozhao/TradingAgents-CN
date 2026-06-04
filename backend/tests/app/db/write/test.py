@@ -1,6 +1,6 @@
 from sqlalchemy.dialects import postgresql
 
-from app.db.model import (
+from app.models.table import (
     AnalysisBatchDocument,
     AnalysisReport,
     AnalysisResultDocument,

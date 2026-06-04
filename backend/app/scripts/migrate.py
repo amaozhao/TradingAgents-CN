@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set
 
 from app.core.config import settings
-from app.db.documentstore import create_sync_client
+from app.db.store import create_sync_client
 
 DEFAULT_EXCLUDED_COLLECTIONS = {
     "analysis_tasks",

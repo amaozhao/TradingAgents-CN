@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 from app.core.database import get_postgres_db
 from app.core.redis import RedisKeys, get_redis_service
 from app.db.dual import dual_write_hot_document
-from app.models.analysis import AnalysisResult, AnalysisStatus
+from app.schemas.analysis import AnalysisResult, AnalysisStatus
 
 
 async def perform_update_task_status(

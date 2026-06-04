@@ -34,7 +34,7 @@ async def test_usage_recording():
             importlib.import_module("app.services.usage"), "UsageStatisticsService"
         )
         UsageRecord = getattr(
-            importlib.import_module("app.models.config"), "UsageRecord"
+            importlib.import_module("app.schemas.config"), "UsageRecord"
         )
 
         usage_service = UsageStatisticsService()
@@ -148,10 +148,10 @@ async def test_analysis_service_recording():
             importlib.import_module("app.services.analysis.service"), "AnalysisService"
         )
         AnalysisTask = getattr(
-            importlib.import_module("app.models.analysis"), "AnalysisTask"
+            importlib.import_module("app.schemas.analysis"), "AnalysisTask"
         )
         AnalysisResult = getattr(
-            importlib.import_module("app.models.analysis"), "AnalysisResult"
+            importlib.import_module("app.schemas.analysis"), "AnalysisResult"
         )
         DocumentId = getattr(importlib.import_module("app.db.ids"), "DocumentId")
 

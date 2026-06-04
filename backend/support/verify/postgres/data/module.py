@@ -8,7 +8,7 @@ PostgreSQL document store 数据验证脚本
 import importlib
 from typing import Any
 
-from app.db.documentstore import create_sync_client
+from app.db.store import create_sync_client
 
 try:
     from dotenv import load_dotenv

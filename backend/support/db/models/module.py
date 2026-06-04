@@ -1,8 +1,8 @@
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 
-from app.db.base import Base
-from app.db.model import (
+from app.models.base import Base
+from app.models.table import (
     AnalysisBatchDocument,
     AnalysisReport,
     AnalysisResultDocument,

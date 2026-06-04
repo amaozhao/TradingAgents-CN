@@ -119,10 +119,10 @@ async def test_analysis_service():
             importlib.import_module("app.services.analysis.service"), "analysis_service"
         )
         SingleAnalysisRequest = getattr(
-            importlib.import_module("app.models.analysis"), "SingleAnalysisRequest"
+            importlib.import_module("app.schemas.analysis"), "SingleAnalysisRequest"
         )
         AnalysisParameters = getattr(
-            importlib.import_module("app.models.analysis"), "AnalysisParameters"
+            importlib.import_module("app.schemas.analysis"), "AnalysisParameters"
         )
 
         # 初始化连接
@@ -179,10 +179,10 @@ async def test_api_imports():
         print("✅ 服务模块导入成功")
 
         # 测试模型模块
-        getattr(importlib.import_module("app.models.user"), "User")
-        getattr(importlib.import_module("app.models.user"), "UserCreate")
-        getattr(importlib.import_module("app.models.analysis"), "AnalysisTask")
-        getattr(importlib.import_module("app.models.analysis"), "AnalysisBatch")
+        getattr(importlib.import_module("app.schemas.user"), "User")
+        getattr(importlib.import_module("app.schemas.user"), "UserCreate")
+        getattr(importlib.import_module("app.schemas.analysis"), "AnalysisTask")
+        getattr(importlib.import_module("app.schemas.analysis"), "AnalysisBatch")
         print("✅ 模型模块导入成功")
 
         # 测试路由模块

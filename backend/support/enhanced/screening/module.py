@@ -25,10 +25,10 @@ async def test_enhanced_screening():
             "get_enhanced_screening_service",
         )
         ScreeningCondition = getattr(
-            importlib.import_module("app.models.screening"), "ScreeningCondition"
+            importlib.import_module("app.schemas.screening"), "ScreeningCondition"
         )
         OperatorType = getattr(
-            importlib.import_module("app.models.screening"), "OperatorType"
+            importlib.import_module("app.schemas.screening"), "OperatorType"
         )
 
         # 初始化数据库

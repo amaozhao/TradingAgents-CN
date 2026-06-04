@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, cast
 from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
 from app.db.ids import DocumentId
-from app.models.notification import (
+from app.schemas.notification import (
     NotificationCreate,
     NotificationList,
     NotificationOut,

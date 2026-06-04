@@ -7,7 +7,7 @@ import importlib
 import logging
 from typing import Any, Dict, Optional
 
-from app.db.documentstore import create_sync_client
+from app.db.store import create_sync_client
 from trader.config.databases import get_database_manager
 
 logger = logging.getLogger(__name__)

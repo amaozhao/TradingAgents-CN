@@ -18,7 +18,7 @@ from trader.utils.stocks import StockUtils
 from ..core.database import get_postgres_db, get_postgres_db_sync
 from ..core.unified import UnifiedConfigManager
 from ..db.dual import dual_write_hot_document
-from ..models.response import ApiResponse
+from ..schemas.response import ApiResponse
 from ..utils.timezone import to_config_tz
 from .account import get_current_user
 

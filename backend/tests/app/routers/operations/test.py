@@ -7,7 +7,7 @@ import asyncio
 import importlib
 
 from app.core.database import get_postgres_db, init_db
-from app.models.operations import ActionType, OperationLogQuery
+from app.schemas.operations import ActionType, OperationLogQuery
 from app.services.operation import get_operation_log_service, log_operation
 
 

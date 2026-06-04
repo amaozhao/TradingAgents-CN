@@ -11,7 +11,7 @@ def main():
     print("=" * 80)
 
     create_sync_client = getattr(
-        importlib.import_module("app.db.documentstore"), "create_sync_client"
+        importlib.import_module("app.db.store"), "create_sync_client"
     )
     get_provider_and_url_by_model_sync = getattr(
         importlib.import_module("app.services.analysis.simple"),

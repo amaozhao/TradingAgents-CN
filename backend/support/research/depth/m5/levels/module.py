@@ -171,7 +171,7 @@ class TestAnalysisParametersDefault:
     def test_default_research_depth_is_standard(self):
         """测试默认研究深度是'标准'"""
         AnalysisParameters = getattr(
-            importlib.import_module("app.models.analysis"), "AnalysisParameters"
+            importlib.import_module("app.schemas.analysis"), "AnalysisParameters"
         )
 
         params = AnalysisParameters()
@@ -180,7 +180,7 @@ class TestAnalysisParametersDefault:
     def test_research_depth_accepts_all_5_levels(self):
         """测试研究深度接受所有5个级别"""
         AnalysisParameters = getattr(
-            importlib.import_module("app.models.analysis"), "AnalysisParameters"
+            importlib.import_module("app.schemas.analysis"), "AnalysisParameters"
         )
 
         valid_depths = ["快速", "基础", "标准", "深度", "全面"]

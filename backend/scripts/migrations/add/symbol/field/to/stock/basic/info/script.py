@@ -15,7 +15,7 @@ import asyncio
 import logging
 from typing import Any, Optional
 
-from app.db.documentstore import create_client
+from app.db.store import create_client
 
 # 配置日志
 logging.basicConfig(

@@ -2,7 +2,7 @@ import json
 import re
 from pathlib import Path
 
-from app.db.migrate import HOT_COLLECTIONS
+from app.core.migrate import HOT_COLLECTIONS
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MIGRATION_DOCS = REPO_ROOT / "docs" / "migration"

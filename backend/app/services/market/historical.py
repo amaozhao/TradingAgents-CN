@@ -166,7 +166,7 @@ class HistoricalDataService:
                     }
 
                     ReplaceOne = getattr(
-                        importlib.import_module("app.db.documentstore"), "ReplaceOne"
+                        importlib.import_module("app.db.store"), "ReplaceOne"
                     )
 
                     operations.append(

@@ -9,7 +9,7 @@ import pytest
 
 
 def load_session_module() -> ModuleType:
-    source_path = Path(__file__).resolve().parents[4] / "app" / "db" / "session.py"
+    source_path = Path(__file__).resolve().parents[4] / "app" / "core" / "session.py"
     spec = importlib.util.spec_from_file_location("testedpostgressession", source_path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot load session module from {source_path}")

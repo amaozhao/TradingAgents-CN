@@ -12,7 +12,7 @@ from app.db.paper import build_paper_orders_select, build_paper_positions_select
 from app.db.preference import build_user_favorites_select, build_user_tags_select
 from app.db.screening import build_screening_select
 from app.db.stock import build_list_stock_daily_quotes, build_stock_list
-from app.models.operations import OperationLogQuery
+from app.schemas.operations import OperationLogQuery
 
 
 @dataclass(frozen=True)

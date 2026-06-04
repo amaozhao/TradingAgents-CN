@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 from app.core.config import settings
 from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document
-from app.models.stocks import (
+from app.schemas.stocks import (
     MarketQuotesExtended,
     StockBasicInfoExtended,
 )
@@ -223,7 +223,7 @@ class StockDataService:
     ) -> Optional[Dict[str, Any]]:
         try:
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
             get_stock_basic_info = getattr(
                 importlib.import_module("app.db.stock"), "get_stock_basic_info"
@@ -242,7 +242,7 @@ class StockDataService:
     ) -> Optional[Dict[str, Any]]:
         try:
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
             get_market_quote = getattr(
                 importlib.import_module("app.db.stock"), "get_market_quote"
@@ -267,7 +267,7 @@ class StockDataService:
     ) -> List[Dict[str, Any]]:
         try:
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
             list_stocks = getattr(
                 importlib.import_module("app.db.stock"), "list_stocks"

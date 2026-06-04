@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from app.core.config import settings
 from app.core.database import get_postgres_db
-from app.db.documentstore import ReplaceOne
+from app.db.store import ReplaceOne
 from app.db.dual import dual_write_hot_documents
 
 logger = logging.getLogger(__name__)
@@ -266,7 +266,7 @@ class FinancialDataService:
                 importlib.import_module("app.db.financial"), "get_financial_data"
             )
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
 
             async with get_session_factory()() as session:

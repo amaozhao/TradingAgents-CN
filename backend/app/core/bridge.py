@@ -63,7 +63,7 @@ def bridge_config_to_env():
                 importlib.import_module("app.core.database"), "get_postgres_db_sync"
             )
             LLMProvider = getattr(
-                importlib.import_module("app.models.config"), "LLMProvider"
+                importlib.import_module("app.schemas.config"), "LLMProvider"
             )
 
             db = get_postgres_db_sync()
@@ -159,7 +159,7 @@ def bridge_config_to_env():
                 importlib.import_module("app.core.database"), "get_postgres_db_sync"
             )
             SystemConfig = getattr(
-                importlib.import_module("app.models.config"), "SystemConfig"
+                importlib.import_module("app.schemas.config"), "SystemConfig"
             )
 
             db = get_postgres_db_sync()
@@ -708,7 +708,7 @@ async def _sync_pricing_config_from_db():
         get_postgres_db = getattr(
             importlib.import_module("app.core.database"), "get_postgres_db"
         )
-        getattr(importlib.import_module("app.models.config"), "LLMConfig")
+        getattr(importlib.import_module("app.schemas.config"), "LLMConfig")
 
         db = get_postgres_db()
 

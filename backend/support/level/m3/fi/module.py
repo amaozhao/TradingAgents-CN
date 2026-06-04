@@ -21,10 +21,10 @@ def test_level3_analysis():
             "SimpleAnalysisService",
         )
         SingleAnalysisRequest = getattr(
-            importlib.import_module("app.models.analysis"), "SingleAnalysisRequest"
+            importlib.import_module("app.schemas.analysis"), "SingleAnalysisRequest"
         )
         AnalysisParameters = getattr(
-            importlib.import_module("app.models.analysis"), "AnalysisParameters"
+            importlib.import_module("app.schemas.analysis"), "AnalysisParameters"
         )
 
         # 创建分析服务

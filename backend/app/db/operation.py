@@ -5,8 +5,8 @@ from typing import Any
 
 from sqlalchemy import Select, case, desc, extract, func, or_, select
 
-from app.db.model import OperationLogDocument
-from app.models.operations import OperationLogStats
+from app.models.table import OperationLogDocument
+from app.schemas.operations import OperationLogStats
 
 
 def build_operation_log_select(query, *, offset: int, limit: int) -> Select:

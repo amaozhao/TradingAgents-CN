@@ -173,7 +173,7 @@ class NewsQueryMixin:
         try:
             query_news = getattr(importlib.import_module("app.db.news"), "query_news")
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
 
             async with get_session_factory()() as session:

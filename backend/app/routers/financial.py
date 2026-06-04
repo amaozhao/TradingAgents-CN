@@ -11,7 +11,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.core.response import fail, ok
-from app.models.response import ApiResponse
+from app.schemas.response import ApiResponse
 from app.services.market.financial import get_financial_data_service
 from app.worker.financial import get_financial_sync_service
 

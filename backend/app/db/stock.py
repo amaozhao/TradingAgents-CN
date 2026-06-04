@@ -7,7 +7,7 @@ from typing import Any
 
 from sqlalchemy import Select, desc, or_, select
 
-from app.db.model import MarketQuote, StockBasicInfo, StockDailyQuote
+from app.models.table import MarketQuote, StockBasicInfo, StockDailyQuote
 
 SOURCE_PRIORITY = ("tushare", "multi_source", "akshare", "baostock")
 

@@ -11,7 +11,7 @@ from typing import Optional
 from redis.asyncio import ConnectionPool, Redis
 from sqlalchemy import text
 
-from app.db.documentstore import (
+from app.db.store import (
     PostgresDocumentClient,
     PostgresDocumentDatabase,
     SyncPostgresDocumentClient,
@@ -21,7 +21,7 @@ from app.db.documentstore import (
     create_sync_client,
     create_sync_database,
 )
-from app.db.session import get_session_factory, init_postgres
+from app.core.session import get_session_factory, init_postgres
 
 from .config import settings
 
@@ -424,14 +424,16 @@ async def init_postgres_if_enabled() -> None:
     if not postgres_runtime_enabled():
         return
 
-    init_postgres = getattr(importlib.import_module("app.db.session"), "init_postgres")
+    init_postgres = getattr(
+        importlib.import_module("app.core.session"), "init_postgres"
+    )
 
     await init_postgres()
 
 
 async def close_postgres_if_enabled() -> None:
     close_postgres = getattr(
-        importlib.import_module("app.db.session"), "close_postgres"
+        importlib.import_module("app.core.session"), "close_postgres"
     )
 
     await close_postgres()

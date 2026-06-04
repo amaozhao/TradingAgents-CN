@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
 
-from app.db.documentstore import create_sync_client
+from app.db.store import create_sync_client
 from trader.config.runtime import get_timezone_name
 
 # 导入日志模块

@@ -16,7 +16,7 @@ from app.core.database import get_postgres_db, get_redis_client
 from app.core.redis import RedisKeys, get_redis_service
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
 from app.db.ids import DocumentId
-from app.models.analysis import (
+from app.schemas.analysis import (
     AnalysisBatch,
     AnalysisParameters,
     AnalysisResult,
@@ -26,8 +26,8 @@ from app.models.analysis import (
     BatchStatus,
     SingleAnalysisRequest,
 )
-from app.models.config import UsageRecord
-from app.models.user import PyDocumentId
+from app.schemas.config import UsageRecord
+from app.schemas.user import PyDocumentId
 from app.services.analysis.simple import (
     create_analysis_config,
     get_provider_by_model_name,

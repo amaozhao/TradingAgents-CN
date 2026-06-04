@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.core.response import ok
-from app.models.response import ApiResponse
+from app.schemas.response import ApiResponse
 from app.services.social import (
     SocialMediaQueryParams,
     get_social_media_service,

@@ -9,7 +9,7 @@ import sys
 
 # 导入webapi相关模块
 from app.core.database import DatabaseManager
-from app.models.config import (
+from app.schemas.config import (
     LLMConfig,
     ModelProvider,
 )

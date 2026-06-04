@@ -37,9 +37,9 @@ from app.db.document import (
     map_user_tag,
     normalize_payload,
 )
-from app.db.documentstore import _build_specialized_select
+from app.db.store import _build_specialized_select
 from app.db.ids import DocumentId
-from app.db.model import SystemConfigDocument
+from app.models.table import SystemConfigDocument
 
 
 def test_legacy_id_uses_postgres_document_id_and_payload_keeps_string_id():

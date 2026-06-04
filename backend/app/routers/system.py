@@ -147,7 +147,7 @@ async def validate_config():
                 importlib.import_module("app.core.database"), "get_postgres_db_sync"
             )
             LLMProvider = getattr(
-                importlib.import_module("app.models.config"), "LLMProvider"
+                importlib.import_module("app.schemas.config"), "LLMProvider"
             )
 
             db = get_postgres_db_sync()

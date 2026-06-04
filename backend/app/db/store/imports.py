@@ -18,7 +18,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.db.document import normalize_payload
-from app.db.model import (
+from app.models.table import (
     AnalysisBatchDocument,
     AnalysisReport,
     AnalysisResultDocument,
@@ -50,7 +50,7 @@ from app.db.model import (
     UserSessionDocument,
     UserTag,
 )
-from app.db.session import get_session_factory, init_postgres
+from app.core.session import get_session_factory, init_postgres
 
 _sync_loop: asyncio.AbstractEventLoop | None = None
 _sync_loop_thread: threading.Thread | None = None

@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
 from app.db.ids import DocumentId
-from app.models.operations import (
+from app.schemas.operations import (
     OperationLogCreate,
     OperationLogQuery,
     OperationLogResponse,
@@ -176,7 +176,7 @@ class OperationLogService:
                 importlib.import_module("app.db.operation"), "list_operations"
             )
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
 
             async with get_session_factory()() as session:
@@ -261,7 +261,7 @@ class OperationLogService:
                 importlib.import_module("app.db.operation"), "get_operation_log_stats"
             )
             get_session_factory = getattr(
-                importlib.import_module("app.db.session"), "get_session_factory"
+                importlib.import_module("app.core.session"), "get_session_factory"
             )
 
             async with get_session_factory()() as session:

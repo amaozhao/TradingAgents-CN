@@ -10,9 +10,9 @@ from typing import Any, Dict, List, Optional, Tuple
 from app.core.config import settings
 from app.core.database import get_postgres_db
 from app.db.screening import screen_stocks as pg_screen_stocks
-from app.db.session import get_session_factory
+from app.core.session import get_session_factory
 
-# from app.models.screening import ScreeningCondition  # 避免循环导入
+# from app.schemas.screening import ScreeningCondition  # 避免循环导入
 
 logger = logging.getLogger(__name__)
 

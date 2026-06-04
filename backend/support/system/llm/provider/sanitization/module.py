@@ -2,7 +2,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.models.user import User
+from app.schemas.user import User
 from app.routers import config as config_router
 from app.routers.auth import get_current_user
 from app.services.config import config_service

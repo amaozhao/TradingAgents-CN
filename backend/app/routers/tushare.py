@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from app.core.database import get_postgres_db
 from app.core.response import ok
-from app.models.response import ApiResponse
+from app.schemas.response import ApiResponse
 from app.routers.account import get_current_user
 from app.worker.tushare.init import get_tushare_init_service
 

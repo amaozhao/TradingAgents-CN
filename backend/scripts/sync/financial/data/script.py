@@ -19,7 +19,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from app.db.documentstore import create_client
+from app.db.store import create_client
 from trader.flows.providers.china.akshare import AKShareProvider
 
 # 配置日志

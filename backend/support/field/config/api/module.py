@@ -21,7 +21,7 @@ async def test_field_config_api():
         # 导入必要的模块
         init_db = getattr(importlib.import_module("app.core.database"), "init_db")
         BASIC_FIELDS_INFO = getattr(
-            importlib.import_module("app.models.screening"), "BASIC_FIELDS_INFO"
+            importlib.import_module("app.schemas.screening"), "BASIC_FIELDS_INFO"
         )
 
         # 初始化数据库

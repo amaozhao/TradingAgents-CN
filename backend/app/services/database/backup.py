@@ -21,7 +21,7 @@ from app.db.dual import (
     log_postgres_only_write,
 )
 from app.db.ids import DocumentId
-from app.db.migrate import HOT_COLLECTIONS
+from app.core.migrate import HOT_COLLECTIONS
 
 from .serialization import serialize_document
 
