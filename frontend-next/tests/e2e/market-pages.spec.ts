@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test"
+import { installNotificationMocks } from "./helpers"
 
 test.beforeEach(async ({ page }) => {
+  await installNotificationMocks(page)
   await page.addInitScript(() => {
     window.localStorage.setItem("auth-token", "access.payload.sig")
     window.localStorage.setItem("refresh-token", "refresh.payload.sig")
@@ -57,7 +59,7 @@ function mockPayload(path: string) {
     case "/api/screening/run":
       return { total: 1, items: [{ code: "000001", close: 12.34, pct_chg: 1.23, amount: 123456789, ma20: 12.1, rsi14: 55 }] }
     case "/api/favorites/":
-      return [{ symbol: "000001", stock_name: "平安银行", market: "A股", tags: ["关注"], current_price: 12.34, change_percent: 1.23, added_at: "2026-06-04T10:00:00Z" }]
+      return [{ symbol: "000001", stock_code: "000001", stock_name: "平安银行", market: "A股", tags: ["关注"], current_price: 12.34, change_percent: 1.23, added_at: "2026-06-04T10:00:00Z" }]
     case "/api/favorites/tags":
       return ["关注"]
     case "/api/paper/account":

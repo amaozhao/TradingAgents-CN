@@ -6,6 +6,7 @@ import { QueryClientProvider } from "@tanstack/react-query"
 
 import { GlobalToaster } from "@/components/feedback/global-toaster"
 import { AppInitializer } from "@/components/layout/app-initializer"
+import { PageTitleManager } from "@/components/layout/page-title-manager"
 import { queryClient } from "@/libs/api/query-client"
 
 type ProvidersProps = ThemeProviderProps & {
@@ -23,6 +24,7 @@ export function Providers({ children, ...props }: ProvidersProps) {
         {...props}
       >
         <AppInitializer />
+        <PageTitleManager />
         {children}
         <GlobalToaster />
       </ThemeProvider>

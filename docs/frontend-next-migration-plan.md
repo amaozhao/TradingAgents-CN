@@ -429,13 +429,13 @@ frontend-next/
 - Modify: `frontend-next/components/**`
 - Modify: `frontend-next/styles/**`
 
-- [ ] Compare every current Vue route against its Next route.
-- [ ] Confirm page title, menu visibility, breadcrumb, loading state, empty state, error state, primary action, and destructive confirmation for every route.
-- [ ] Confirm light and dark theme readability for charts, Markdown, Mermaid, tables, forms, dialogs, and toasts.
-- [ ] Confirm responsive layout for desktop and mobile widths.
-- [ ] Confirm browser console has no blocking runtime errors during core flows.
-- [ ] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
-- [ ] Commit parity pass with a Lore commit.
+- [x] Compare every current Vue route against its Next route.
+- [x] Confirm page title, menu visibility, breadcrumb, loading state, empty state, error state, primary action, and destructive confirmation for every route.
+- [x] Confirm light and dark theme readability for charts, Markdown, Mermaid, tables, forms, dialogs, and toasts.
+- [x] Confirm responsive layout for desktop and mobile widths.
+- [x] Confirm browser console has no blocking runtime errors during core flows.
+- [x] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
+- [x] Commit parity pass with a Lore commit.
 
 ## Task 14: Add Docker and Compose Cutover
 

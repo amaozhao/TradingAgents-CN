@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test"
+import { installNotificationMocks } from "./helpers"
 
 test.beforeEach(async ({ page }) => {
+  await installNotificationMocks(page)
   await page.addInitScript(() => {
     window.localStorage.setItem("auth-token", "access.payload.sig")
     window.localStorage.setItem("refresh-token", "refresh.payload.sig")

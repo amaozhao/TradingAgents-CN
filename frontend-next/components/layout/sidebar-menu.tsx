@@ -9,21 +9,30 @@ import { cn } from "@/libs/utils"
 
 interface SidebarMenuProps {
   collapsed: boolean
+  onNavigate?: () => void
 }
 
-export function SidebarMenu({ collapsed }: SidebarMenuProps) {
+export function SidebarMenu({ collapsed, onNavigate }: SidebarMenuProps) {
   return (
     <nav className="flex-1 overflow-y-auto p-2">
       <div className="space-y-1">
         {menuRoutes.map((route) => (
-          <SidebarMenuItem key={route.path} route={route} collapsed={collapsed} />
+          <SidebarMenuItem key={route.path} route={route} collapsed={collapsed} onNavigate={onNavigate} />
         ))}
       </div>
     </nav>
   )
 }
 
-function SidebarMenuItem({ route, collapsed }: { route: AppRoute; collapsed: boolean }) {
+function SidebarMenuItem({
+  route,
+  collapsed,
+  onNavigate
+}: {
+  route: AppRoute
+  collapsed: boolean
+  onNavigate?: () => void
+}) {
   const pathname = usePathname()
   const Icon = route.icon
   const active = pathname === route.path || pathname.startsWith(`${route.path}/`)
@@ -38,7 +47,7 @@ function SidebarMenuItem({ route, collapsed }: { route: AppRoute; collapsed: boo
         {!collapsed ? (
           <div className="ml-6 space-y-1 border-l pl-2">
             {route.children.map((child) => (
-              <SidebarMenuItem key={child.path} route={child} collapsed={false} />
+              <SidebarMenuItem key={child.path} route={child} collapsed={false} onNavigate={onNavigate} />
             ))}
           </div>
         ) : null}
@@ -50,6 +59,7 @@ function SidebarMenuItem({ route, collapsed }: { route: AppRoute; collapsed: boo
     <Link
       href={route.path}
       aria-label={route.title}
+      onClick={onNavigate}
       className={cn(
         "flex h-9 items-center gap-2 rounded-md px-3 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground"

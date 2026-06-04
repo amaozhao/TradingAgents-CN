@@ -13,7 +13,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-40 flex flex-col border-r bg-sidebar transition-[width]",
+        "fixed inset-y-0 left-0 z-40 hidden flex-col border-r bg-sidebar transition-[width] md:flex",
         collapsed ? "w-16" : "w-60"
       )}
     >
