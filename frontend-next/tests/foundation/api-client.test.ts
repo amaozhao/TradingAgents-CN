@@ -59,6 +59,38 @@ describe("api client", () => {
     expect(captured?.headers["Cache-Control"]).toBe("no-cache")
   })
 
+  it("returns successful ApiResponse payloads directly", async () => {
+    const client = createApiClient({
+      adapter: adapterWithResponse({
+        success: true,
+        data: { value: 42 },
+        message: "ok"
+      })
+    })
+
+    await expect(client.get("/api/example")).resolves.toEqual({
+      success: true,
+      data: { value: 42 },
+      message: "ok"
+    })
+  })
+
+  it("rejects non-auth business errors without auth cleanup", async () => {
+    const onAuthError = vi.fn()
+    const client = createApiClient({
+      adapter: adapterWithResponse({
+        success: false,
+        data: null,
+        message: "参数错误",
+        code: 40001
+      }),
+      onAuthError
+    })
+
+    await expect(client.get("/api/example")).rejects.toThrow("参数错误")
+    expect(onAuthError).not.toHaveBeenCalled()
+  })
+
   it("handles business auth errors before generic error handling", async () => {
     const onAuthError = vi.fn()
     const client = createApiClient({

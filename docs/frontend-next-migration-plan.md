@@ -262,14 +262,14 @@ frontend-next/
 - Create: `frontend-next/libs/api/templates.ts`
 - Create: `frontend-next/libs/api/usage.ts`
 
-- [ ] Port every current `frontend/src/api/*` module into `frontend-next/libs/api/*`.
-- [ ] Preserve endpoint paths, method names, request payload shapes, and response shapes.
-- [ ] Remove Vue Router, Pinia, Element Plus, and `import.meta.env` dependencies from API modules.
-- [ ] Replace `VITE_API_BASE_URL` with same-origin `/api` default and optional `NEXT_PUBLIC_API_BASE_URL` override only where needed.
-- [ ] Preserve the legacy `/api/stocks/quote` compatibility guard if current call sites still need it.
-- [ ] Add unit tests for API client success response, business error response, auth error response, and endpoint URL rewrite guard.
-- [ ] Verify `pnpm test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
-- [ ] Commit API migration with a Lore commit.
+- [x] Port every current `frontend/src/api/*` module into `frontend-next/libs/api/*`.
+- [x] Preserve endpoint paths, method names, request payload shapes, and response shapes.
+- [x] Remove Vue Router, Pinia, Element Plus, and `import.meta.env` dependencies from API modules.
+- [x] Replace `VITE_API_BASE_URL` with same-origin `/api` default and optional `NEXT_PUBLIC_API_BASE_URL` override only where needed.
+- [x] Preserve the legacy `/api/stocks/quote` compatibility guard if current call sites still need it.
+- [x] Add unit tests for API client success response, business error response, auth error response, and endpoint URL rewrite guard.
+- [x] Verify `pnpm test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
+- [x] Commit API migration with a Lore commit.
 
 ## Task 6: Migrate Auth, Dashboard, and App Initialization
 
