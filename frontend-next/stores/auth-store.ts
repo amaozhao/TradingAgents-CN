@@ -26,6 +26,7 @@ export interface AuthState {
   setRoles: (roles: string[]) => void
   setLoginLoading: (loading: boolean) => void
   setRedirectPath: (path: string) => void
+  getAndClearRedirectPath: () => string
   userAvatar: () => string | undefined
   userDisplayName: () => string
   isAdmin: () => boolean
@@ -100,6 +101,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setLoginLoading: (loading) => set({ loginLoading: loading }),
 
   setRedirectPath: (path) => set({ redirectPath: path }),
+
+  getAndClearRedirectPath: () => {
+    const path = get().redirectPath || "/dashboard"
+    set({ redirectPath: "/" })
+    return path === "/" ? "/dashboard" : path
+  },
 
   userAvatar: () => get().user?.avatar || undefined,
 

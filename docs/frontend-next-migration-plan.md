@@ -283,15 +283,15 @@ frontend-next/
 - Create: `frontend-next/features/config/config-wizard.tsx`
 - Create: `frontend-next/components/layout/network-status.tsx`
 
-- [ ] Migrate login and register behavior with React Hook Form + Zod.
-- [ ] Preserve login success redirect to stored target path.
-- [ ] Preserve invalid token cleanup on app initialization.
-- [ ] Preserve API connectivity check and offline-tolerant startup behavior.
-- [ ] Migrate dashboard with equivalent cards, statistics, charts, and navigation links.
-- [ ] Migrate first-time configuration wizard behavior.
-- [ ] Add Playwright tests for login, redirect, and protected dashboard access.
-- [ ] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
-- [ ] Commit auth and dashboard migration with a Lore commit.
+- [x] Migrate login and register behavior with React Hook Form + Zod.
+- [x] Preserve login success redirect to stored target path.
+- [x] Preserve invalid token cleanup on app initialization.
+- [x] Preserve API connectivity check and offline-tolerant startup behavior.
+- [x] Migrate dashboard with equivalent cards, statistics, charts, and navigation links.
+- [x] Migrate first-time configuration wizard behavior.
+- [x] Add Playwright tests for login, redirect, and protected dashboard access.
+- [x] Verify `pnpm test`, `pnpm exec playwright test`, `pnpm lint`, `pnpm type-check`, and `pnpm build`.
+- [x] Commit auth and dashboard migration with a Lore commit.
 
 ## Task 7: Migrate Analysis and Task Workflows
 

@@ -32,6 +32,7 @@ export interface AppState {
   setTheme: (theme: AppTheme) => void
   setOnlineStatus: (isOnline: boolean) => void
   setApiConnected: (connected: boolean) => void
+  checkApiConnection: (checker?: () => Promise<boolean>) => Promise<boolean>
   setSidebarCollapsed: (collapsed: boolean) => void
   setSidebarWidth: (width: number) => void
   updatePreferences: (preferences: Partial<AppPreferences>) => void
@@ -104,6 +105,15 @@ export const useAppStore = create<AppState>((set) => ({
       apiConnected: connected,
       lastApiCheck: Date.now()
     }),
+
+  checkApiConnection: async (checker = async () => false) => {
+    const connected = await checker()
+    set({
+      apiConnected: connected,
+      lastApiCheck: Date.now()
+    })
+    return connected
+  },
 
   setSidebarCollapsed: (collapsed) => {
     writeStorageValue("sidebar-collapsed", collapsed)
