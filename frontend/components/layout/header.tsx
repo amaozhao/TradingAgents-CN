@@ -1,6 +1,6 @@
 "use client"
 
-import { HelpCircle, Maximize, Moon, Sun } from "lucide-react"
+import { Maximize, Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 
 import { Button } from "@/components/ui/button"
@@ -33,14 +33,6 @@ export function HeaderActions() {
         <Maximize />
       </Button>
       <NotificationBell />
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label="帮助"
-        onClick={() => window.open("https://mp.weixin.qq.com/s/ppsYiBncynxlsfKFG8uEbw", "_blank")}
-      >
-        <HelpCircle />
-      </Button>
       <UserMenu />
     </div>
   )
