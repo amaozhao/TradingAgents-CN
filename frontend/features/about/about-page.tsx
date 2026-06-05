@@ -22,7 +22,7 @@ export function AboutPage() {
   return (
     <div>
       <PageHeader
-        title="TradingAgents-CN"
+        title="AGENTrader"
         description="现代化的多智能体股票分析学习平台。"
         actions={
           <div className="flex gap-2">
@@ -33,14 +33,14 @@ export function AboutPage() {
       />
       <section className="rounded-md border bg-background p-6">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-xl font-semibold">TradingAgents-CN</h2>
+          <h2 className="text-xl font-semibold">AGENTrader</h2>
           <Badge>v1.0.1</Badge>
         </div>
         <p className="mt-4 max-w-4xl text-sm leading-7 text-muted-foreground">
           基于先进的 AI 技术，为投资者提供股票分析学习工具。系统采用多智能体协作模式，从基本面、技术面、新闻与风险等角度进行分析，帮助用户理解投资研究流程。分析结果仅供学习和参考，不构成投资建议。
         </p>
         <p className="mt-3 text-sm text-muted-foreground">
-          基于 <a className="text-primary hover:underline" href="https://github.com/TauricResearch/TradingAgents" target="_blank" rel="noreferrer">TradingAgents</a> 项目开发，感谢原项目贡献。
+          AGENTrader 聚焦 AI 股票分析学习场景，强调数据复核、风险边界和多角色观点整合。
         </p>
       </section>
       <section className="mt-8">

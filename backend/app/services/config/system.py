@@ -137,13 +137,13 @@ class SystemConfigMixin:
                 "sse_task_max_idle_seconds": 300,
                 "sse_batch_poll_interval_seconds": 2.0,
                 "sse_batch_max_idle_seconds": 600,
-                # TradingAgents runtime intervals (optional; DB-managed)
+                # analysis runtime intervals (optional; DB-managed)
                 "ta_hk_min_request_interval_seconds": 2.0,
                 "ta_hk_timeout_seconds": 60,
                 "ta_hk_max_retries": 3,
                 "ta_hk_rate_limit_wait_seconds": 60,
                 "ta_hk_cache_ttl_seconds": 86400,
-                # 新增：TradingAgents 数据来源策略
+                # 新增：分析引擎数据来源策略
                 # 是否优先从 app 缓存(PostgreSQL 文档集合 stock_basic_info / market_quotes) 读取
                 "ta_use_app_cache": False,
                 "ta_china_min_api_interval_seconds": 0.5,

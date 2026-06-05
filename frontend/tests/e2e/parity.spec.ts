@@ -30,30 +30,30 @@ test("preserves page titles, core shell behavior, and notification drawer", asyn
   })
 
   for (const [route, title, heading] of [
-    ["/dashboard", "仪表板 - TradingAgents-CN", "欢迎使用 TradingAgents-CN"],
-    ["/analysis/single", "单股分析 - TradingAgents-CN", "单股分析"],
-    ["/analysis/batch", "批量分析 - TradingAgents-CN", "批量分析"],
-    ["/tasks", "任务中心 - TradingAgents-CN", "任务中心"],
-    ["/reports", "分析报告 - TradingAgents-CN", "分析报告"],
-    ["/reports/view/r1", "报告详情 - TradingAgents-CN", "贵州茅台 分析报告"],
-    ["/reports/token", "Token统计 - TradingAgents-CN", "Token使用统计"],
-    ["/screening", "股票筛选 - TradingAgents-CN", "股票筛选"],
-    ["/favorites", "我的自选股 - TradingAgents-CN", "我的自选股"],
-    ["/paper", "模拟交易 - TradingAgents-CN", "模拟交易"],
-    ["/stocks/000001", "股票详情 - TradingAgents-CN", "平安银行"],
-    ["/settings", "设置 - TradingAgents-CN", "设置"],
-    ["/settings/config", "配置管理 - TradingAgents-CN", "配置管理"],
-    ["/settings/database", "数据库管理 - TradingAgents-CN", "数据库管理"],
-    ["/settings/logs", "操作日志 - TradingAgents-CN", "操作日志"],
-    ["/settings/system-logs", "系统日志 - TradingAgents-CN", "系统日志"],
-    ["/settings/sync", "多数据源同步 - TradingAgents-CN", "多数据源同步"],
-    ["/settings/cache", "缓存管理 - TradingAgents-CN", "缓存管理"],
-    ["/settings/usage", "使用统计 - TradingAgents-CN", "使用统计"],
-    ["/settings/scheduler", "定时任务 - TradingAgents-CN", "定时任务"],
-    ["/learning", "学习中心 - TradingAgents-CN", "学习中心"],
-    ["/learning/ai-basics", "学习分类 - TradingAgents-CN", "AI基础知识"],
-    ["/learning/article/what-is-llm", "文章详情 - TradingAgents-CN", "什么是大语言模型（LLM）？"],
-    ["/about", "关于 - TradingAgents-CN", "TradingAgents-CN"]
+    ["/dashboard", "仪表板 - AGENTrader", "欢迎使用 AGENTrader"],
+    ["/analysis/single", "单股分析 - AGENTrader", "单股分析"],
+    ["/analysis/batch", "批量分析 - AGENTrader", "批量分析"],
+    ["/tasks", "任务中心 - AGENTrader", "任务中心"],
+    ["/reports", "分析报告 - AGENTrader", "分析报告"],
+    ["/reports/view/r1", "报告详情 - AGENTrader", "贵州茅台 分析报告"],
+    ["/reports/token", "Token统计 - AGENTrader", "Token使用统计"],
+    ["/screening", "股票筛选 - AGENTrader", "股票筛选"],
+    ["/favorites", "我的自选股 - AGENTrader", "我的自选股"],
+    ["/paper", "模拟交易 - AGENTrader", "模拟交易"],
+    ["/stocks/000001", "股票详情 - AGENTrader", "平安银行"],
+    ["/settings", "设置 - AGENTrader", "设置"],
+    ["/settings/config", "配置管理 - AGENTrader", "配置管理"],
+    ["/settings/database", "数据库管理 - AGENTrader", "数据库管理"],
+    ["/settings/logs", "操作日志 - AGENTrader", "操作日志"],
+    ["/settings/system-logs", "系统日志 - AGENTrader", "系统日志"],
+    ["/settings/sync", "多数据源同步 - AGENTrader", "多数据源同步"],
+    ["/settings/cache", "缓存管理 - AGENTrader", "缓存管理"],
+    ["/settings/usage", "使用统计 - AGENTrader", "使用统计"],
+    ["/settings/scheduler", "定时任务 - AGENTrader", "定时任务"],
+    ["/learning", "学习中心 - AGENTrader", "学习中心"],
+    ["/learning/ai-basics", "学习分类 - AGENTrader", "AI基础知识"],
+    ["/learning/article/what-is-llm", "文章详情 - AGENTrader", "什么是大语言模型（LLM）？"],
+    ["/about", "关于 - AGENTrader", "AGENTrader"]
   ] as const) {
     await page.goto(route)
     await expect(page).toHaveTitle(title)
@@ -76,9 +76,9 @@ test("keeps the app shell usable on mobile width", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto("/dashboard")
 
-  await expect(page.getByRole("heading", { name: "欢迎使用 TradingAgents-CN" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "欢迎使用 AGENTrader" })).toBeVisible()
   await page.getByRole("button", { name: "打开侧边栏" }).click()
-  await expect(page.getByRole("dialog", { name: "TradingAgents-CN" })).toBeVisible()
+  await expect(page.getByRole("dialog", { name: "AGENTrader" })).toBeVisible()
   await page.getByRole("link", { name: "任务中心" }).click()
 
   await expect(page).toHaveURL(/\/tasks/)
@@ -144,13 +144,13 @@ function mockApiPayload(path: string) {
     case "/api/config/datasource-groupings":
       return [{ data_source_name: "tushare", market_category_id: "cn", priority: 1, enabled: true }]
     case "/api/config/database":
-      return [{ name: "default", type: "postgresql", host: "localhost", port: 5432, database: "trading_agents_cn", connection_params: {}, pool_size: 5, max_overflow: 10, enabled: true }]
+      return [{ name: "default", type: "postgresql", host: "localhost", port: 5432, database: "agentrader", connection_params: {}, pool_size: 5, max_overflow: 10, enabled: true }]
     case "/api/config/settings":
       return { enable_cache: true, cache_ttl: 3600 }
     case "/api/config/model-catalog":
       return [{ provider: "dashscope", provider_name: "通义千问", models: [{ name: "qwen-turbo", display_name: "通义千问 Turbo" }] }]
     case "/api/system/database/status":
-      return { postgres: { connected: true, host: "localhost", port: 5432, database: "trading_agents_cn", version: "15" }, redis: { connected: true, host: "localhost", port: 6379, database: 0, version: "7" } }
+      return { postgres: { connected: true, host: "localhost", port: 5432, database: "agentrader", version: "15" }, redis: { connected: true, host: "localhost", port: 6379, database: 0, version: "7" } }
     case "/api/system/database/stats":
       return { total_collections: 3, total_documents: 12, total_size: 2048, collections: [] }
     case "/api/system/logs/list":

@@ -24,7 +24,7 @@ test("redirects an unauthenticated protected route to login", async ({ page }) =
   await page.goto("/dashboard")
 
   await expect(page).toHaveURL(/\/login/)
-  await expect(page.getByRole("heading", { name: "TradingAgents-CN" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "AGENTrader" })).toBeVisible()
 })
 
 test("redirects an authenticated login visit to dashboard", async ({ page }) => {
@@ -38,7 +38,7 @@ test("redirects an authenticated login visit to dashboard", async ({ page }) => 
   await page.goto("/login")
 
   await expect(page).toHaveURL(/\/dashboard/)
-  await expect(page.getByRole("heading", { name: "欢迎使用 TradingAgents-CN" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "欢迎使用 AGENTrader" })).toBeVisible()
 })
 
 test("logs in and redirects to dashboard", async ({ page }) => {
@@ -69,6 +69,6 @@ test("logs in and redirects to dashboard", async ({ page }) => {
   await page.getByRole("button", { name: "登录" }).click()
 
   await expect(page).toHaveURL(/\/dashboard/)
-  await expect(page.getByRole("heading", { name: "欢迎使用 TradingAgents-CN" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "欢迎使用 AGENTrader" })).toBeVisible()
   await expect(page.evaluate(() => window.localStorage.getItem("auth-token"))).resolves.toBe("access.payload.sig")
 })

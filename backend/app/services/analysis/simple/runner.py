@@ -265,7 +265,7 @@ class AnalysisRunnerMixin:
             time = importlib.import_module("time")
 
             def simulate_progress():
-                """模拟TradingAgents内部进度"""
+                """模拟分析引擎内部进度"""
                 try:
                     if not tracker:
                         return

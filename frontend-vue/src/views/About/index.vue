@@ -5,19 +5,19 @@
       <div class="hero-content">
         <div class="hero-text">
           <h1 class="hero-title">
-            TradingAgents-CN
+            AGENTrader
             <span class="version-badge">v1.0.1</span>
           </h1>
           <p class="hero-subtitle">
             现代化的多智能体股票分析学习平台
           </p>
           <p class="hero-description">
-            基于先进的AI技术，为投资者提供专业、准确、及时的股票分析服务。
-            采用多智能体协作模式，从不同角度对股票进行全方位分析，助您做出更明智的投资决策。
+            基于先进的AI技术，为用户提供股票分析学习工具。
+            采用多智能体协作模式，从不同角度整理研究材料，帮助用户理解分析流程和风险边界。
           </p>
           <div class="hero-acknowledgment">
             <el-icon><Star /></el-icon>
-            <span>基于 <a href="https://github.com/TauricResearch/TradingAgents" target="_blank" rel="noopener noreferrer">TradingAgents</a> 项目开发，感谢原项目的贡献</span>
+            <span>聚焦数据复核、风险提示和多角色观点整合。</span>
           </div>
           <div class="hero-actions">
             <el-button type="primary" size="large" @click="goToAnalysis">
@@ -246,11 +246,11 @@
       </div>
     </div>
 
-    <!-- 项目来源 -->
+    <!-- 产品定位 -->
     <div class="origin-section">
       <div class="section-header">
-        <h2 class="section-title">项目来源</h2>
-        <p class="section-subtitle">致敬开源，感谢原项目的贡献</p>
+        <h2 class="section-title">产品定位</h2>
+        <p class="section-subtitle">面向股票分析学习和研究复盘</p>
       </div>
 
       <div class="origin-content">
@@ -260,24 +260,16 @@
               <el-icon><Link /></el-icon>
             </div>
             <div class="origin-info">
-              <h3>TradingAgents</h3>
-              <a href="https://github.com/TauricResearch/TradingAgents"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 class="origin-link">
-                <el-icon><Link /></el-icon>
-                github.com/TauricResearch/TradingAgents
-              </a>
+              <h3>AGENTrader</h3>
             </div>
           </div>
 
           <div class="origin-description">
             <p>
-              <strong>TradingAgents-CN</strong> 是基于 <strong>TradingAgents</strong> 项目开发的中文本地化版本。
-              原项目由 Tauric Research 团队开发，是一个创新的多智能体股票分析框架。
+              <strong>AGENTrader</strong> 是一个多智能体股票分析学习平台，核心目标是帮助用户把数据、观点、风险和结论拆开复核。
             </p>
             <p>
-              我们在原项目的基础上进行了以下改进和扩展：
+              当前产品重点提供以下能力：
             </p>
             <ul class="origin-improvements">
               <li>
@@ -307,7 +299,7 @@
             </ul>
             <p class="origin-thanks">
               <el-icon><Star /></el-icon>
-              <strong>特别感谢</strong> Tauric Research 团队的开源贡献，为我们提供了优秀的技术基础和设计理念。
+              <strong>使用提示：</strong>平台分析仅供学习、研究与技术交流，不构成投资建议。
             </p>
           </div>
         </div>
@@ -397,7 +389,7 @@
             <el-icon><ChatDotRound /></el-icon>
           </div>
           <h4>微信公众号</h4>
-          <p>TradingAgents-CN</p>
+          <p>AGENTrader</p>
           <span class="contact-desc">最新动态和使用教程</span>
         </div>
 
@@ -422,7 +414,7 @@
     <!-- Footer -->
     <div class="footer-section">
       <div class="footer-content">
-        <p>&copy; 2025 TradingAgents-CN. All rights reserved.</p>
+        <p>&copy; 2025 AGENTrader. All rights reserved.</p>
         <p>许可证说明：开源组件遵循 Apache 2.0；前端与后端采用专有许可证（个人学习/研究免费，商业使用需授权）。</p>
       </div>
     </div>

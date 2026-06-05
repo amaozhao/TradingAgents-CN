@@ -1,8 +1,8 @@
 {
-  "name": "trading-agents-frontend",
+  "name": "agentrader-frontend",
   "version": "1.0.1",
   "private": true,
-  "description": "TradingAgents-CN Next.js frontend",
+  "description": "AGENTrader Next.js frontend",
   "type": "module",
   "packageManager": "pnpm@11.1.2",
   "scripts": {

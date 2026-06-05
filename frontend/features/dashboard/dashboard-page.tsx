@@ -111,7 +111,7 @@ export function DashboardPage() {
   return (
     <div>
       <PageHeader
-        title="欢迎使用 TradingAgents-CN"
+        title="欢迎使用 AGENTrader"
         description="现代化的多智能体股票分析学习平台，辅助你掌握更全面的市场视角。"
         actions={
           <>

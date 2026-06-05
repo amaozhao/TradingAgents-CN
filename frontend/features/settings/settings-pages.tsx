@@ -1552,7 +1552,7 @@ export function ConfigManagementPage() {
                     try {
                       const result = await configApi.exportConfig()
                       const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: "application/json" })
-                      downloadBlob(blob, `trading-agents-config-${new Date().toISOString().slice(0, 10)}.json`)
+                      downloadBlob(blob, `agentrader-config-${new Date().toISOString().slice(0, 10)}.json`)
                     } catch (error) {
                       toast.error(error instanceof Error ? error.message : "导出配置失败")
                     }
@@ -2013,7 +2013,7 @@ export function DatabaseManagementPage() {
               onClick={async () => {
                 try {
                   const blob = await databaseApi.exportData({ ...exportOptions, format: "json" })
-                  downloadBlob(blob, `trading-agents-${exportMode}-${new Date().toISOString().slice(0, 10)}.json`)
+                  downloadBlob(blob, `agentrader-${exportMode}-${new Date().toISOString().slice(0, 10)}.json`)
                 } catch (error) {
                   toast.error(error instanceof Error ? error.message : "导出失败")
                 }
@@ -2040,8 +2040,8 @@ export function DatabaseManagementPage() {
             <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
               <p className="font-medium text-foreground">请使用命令行工具进行备份和还原</p>
               <p className="mt-2">由于数据量较大，Web 界面备份体验较差，建议使用 PostgreSQL 原生工具。</p>
-              <code className="mt-2 block rounded bg-background p-2">pg_dump postgresql://postgres:postgres@localhost:5432/trading_agents_cn --format=custom --file=./backup/trading_agents.dump</code>
-              <code className="mt-2 block rounded bg-background p-2">pg_restore --dbname=postgresql://postgres:postgres@localhost:5432/trading_agents_cn ./backup/trading_agents.dump</code>
+              <code className="mt-2 block rounded bg-background p-2">pg_dump postgresql://postgres:postgres@localhost:5432/agentrader --format=custom --file=./backup/agentrader.dump</code>
+              <code className="mt-2 block rounded bg-background p-2">pg_restore --dbname=postgresql://postgres:postgres@localhost:5432/agentrader ./backup/agentrader.dump</code>
             </div>
           </div>
         </CardContent>

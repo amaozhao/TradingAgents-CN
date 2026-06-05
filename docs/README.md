@@ -1,4 +1,4 @@
-# TradingAgents-CN 文档入口
+# AGENTrader 文档入口
 
 此目录只保留前端学习中心、测试校验和基础部署配置仍需要的文档。
 
@@ -17,10 +17,10 @@
 - [模型对比与选择](./learning/03-model-selection/model-comparison.md)
 - [多智能体系统详解](./learning/04-analysis-principles/multi-agent-system.md)
 - [风险与局限性](./learning/05-risks-limitations/risk-warnings.md)
-- [TradingAgents 项目介绍](./learning/06-resources/trading_agents_intro.md)
-- [TradingAgents 论文解读](./learning/06-resources/paper-guide.md)
+- [AGENTrader 架构介绍](./learning/06-resources/agentrader_intro.md)
+- [AGENTrader 论文解读](./learning/06-resources/paper-guide.md)
 - [常见问题解答](./learning/08-faq/general-questions.md)
 
 ## 论文
 
-- [TradingAgents 论文中文版](./paper/TradingAgents_论文中文版.md)
+- [AGENTrader 论文中文版](./paper/AGENTrader_论文中文版.md)

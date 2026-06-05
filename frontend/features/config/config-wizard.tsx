@@ -74,7 +74,7 @@ export function ConfigWizard() {
           <StepIcon className="mb-4 size-8 text-primary" />
           {step === 0 ? (
             <div className="space-y-3">
-              <h3 className="text-lg font-semibold">欢迎使用 TradingAgents-CN</h3>
+              <h3 className="text-lg font-semibold">欢迎使用 AGENTrader</h3>
               <p className="text-sm text-muted-foreground">
                 如果您已经配置过系统，可以跳过此向导；也可以稍后在配置管理页面修改这些设置。
               </p>
@@ -83,7 +83,7 @@ export function ConfigWizard() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Input defaultValue="localhost" aria-label="PostgreSQL 主机" />
               <Input defaultValue="5432" aria-label="PostgreSQL 端口" />
-              <Input defaultValue="trading_agents" aria-label="数据库名" />
+              <Input defaultValue="agentrader" aria-label="数据库名" />
               <Input defaultValue="6379" aria-label="Redis 端口" />
             </div>
           ) : step === 2 ? (

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 
 import { getRouteByPathname } from "@/libs/routes/route-config"
 
-const appTitle = "TradingAgents-CN"
+const appTitle = "AGENTrader"
 
 export function PageTitleManager() {
   const pathname = usePathname()

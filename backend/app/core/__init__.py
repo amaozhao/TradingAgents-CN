@@ -1,3 +1,3 @@
 """
-Core module for TradingAgents FastAPI backend
+Core module for AGENTrader FastAPI backend
 """

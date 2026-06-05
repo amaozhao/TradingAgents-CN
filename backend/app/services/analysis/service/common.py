@@ -1,6 +1,6 @@
 """
 股票分析服务
-将现有的TradingAgents分析功能包装成API服务
+将现有的分析引擎功能包装成API服务
 """
 
 # ruff: noqa: F401

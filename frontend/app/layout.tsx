@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "TradingAgents-CN",
-  description: "TradingAgents-CN frontend",
+  title: "AGENTrader",
+  description: "AGENTrader frontend",
   icons: {
     icon: [
       {

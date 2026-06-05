@@ -1,6 +1,6 @@
 """
 进度日志处理器
-监控TradingAgents的日志输出，自动更新进度跟踪器
+监控分析引擎的日志输出，自动更新进度跟踪器
 """
 
 import logging
@@ -14,7 +14,7 @@ logger = logging.getLogger("app.services.progress.log")
 
 
 class ProgressLogHandler(logging.Handler):
-    """进度日志处理器，监控TradingAgents日志并更新进度"""
+    """进度日志处理器，监控分析引擎日志并更新进度"""
 
     def __init__(self):
         super().__init__()

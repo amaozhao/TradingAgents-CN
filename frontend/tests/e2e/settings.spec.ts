@@ -107,14 +107,14 @@ function mockApiPayload(path: string) {
     case "/api/config/datasource-groupings":
       return [{ data_source_name: "tushare", market_category_id: "cn", priority: 1, enabled: true }]
     case "/api/config/database":
-      return [{ name: "default", type: "postgresql", host: "localhost", port: 5432, database: "trading_agents_cn", connection_params: {}, pool_size: 5, max_overflow: 10, enabled: true }]
+      return [{ name: "default", type: "postgresql", host: "localhost", port: 5432, database: "agentrader", connection_params: {}, pool_size: 5, max_overflow: 10, enabled: true }]
     case "/api/config/settings":
       return { enable_cache: true, cache_ttl: 3600 }
     case "/api/config/model-catalog":
       return [{ provider: "dashscope", provider_name: "通义千问", models: [{ name: "qwen-turbo", display_name: "通义千问 Turbo" }] }]
     case "/api/system/database/status":
       return {
-        postgres: { connected: true, host: "localhost", port: 5432, database: "trading_agents_cn", version: "15" },
+        postgres: { connected: true, host: "localhost", port: 5432, database: "agentrader", version: "15" },
         redis: { connected: true, host: "localhost", port: 6379, database: 0, version: "7" }
       }
     case "/api/system/database/stats":

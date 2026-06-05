@@ -1,6 +1,6 @@
 """
 配置桥接模块
-将统一配置系统的配置桥接到环境变量，供 TradingAgents 核心库使用
+将统一配置系统的配置桥接到环境变量，供 分析引擎使用
 """
 
 import importlib
@@ -24,7 +24,7 @@ def bridge_config_to_env():
     4. 将数据源配置写入环境变量（API 密钥、超时、重试等）
     5. 将系统运行时配置写入环境变量
 
-    这样 TradingAgents 核心库就能通过环境变量读取到用户配置的数据
+    这样 分析引擎就能通过环境变量读取到用户配置的数据
     """
     try:
         unified_config = getattr(
@@ -313,7 +313,7 @@ def bridge_config_to_env():
 
     except Exception as e:
         logger.error(f"❌ 配置桥接失败: {e}", exc_info=True)
-        logger.warning("⚠️  TradingAgents 将使用 .env 文件中的配置")
+        logger.warning("⚠️  分析引擎将使用 .env 文件中的配置")
         return False
 
 
@@ -416,7 +416,7 @@ def _bridge_system_settings() -> int:
         logger.debug(f"  📋 获取到 {len(system_settings)} 个系统设置")
         bridged_count = 0
 
-        # TradingAgents 运行时配置
+        # 分析引擎运行时配置
         ta_settings = {
             "ta_hk_min_request_interval_seconds": "TA_HK_MIN_REQUEST_INTERVAL_SECONDS",
             "ta_hk_timeout_seconds": "TA_HK_TIMEOUT_SECONDS",
@@ -592,7 +592,7 @@ def clear_bridged_config():
             ]
         )
 
-    # 清除 TradingAgents 运行时配置
+    # 清除 分析引擎运行时配置
     ta_runtime_keys = [
         "TA_HK_MIN_REQUEST_INTERVAL_SECONDS",
         "TA_HK_TIMEOUT_SECONDS",

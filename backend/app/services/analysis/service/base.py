@@ -38,7 +38,7 @@ class AnalysisBaseMixin:
             return cast(PyDocumentId, new_document_id)
 
     def _get_trading_graph(self, config: Dict[str, Any]) -> Any:
-        """获取或创建TradingAgents图实例（带缓存）- 与单股分析保持一致"""
+        """获取或创建分析引擎图实例（带缓存）- 与单股分析保持一致"""
         config_key = json.dumps(config, sort_keys=True)
 
         if config_key not in self._trading_graph_cache:
@@ -58,7 +58,7 @@ class AnalysisBaseMixin:
             )
 
             logger.info(
-                f"创建新的TradingAgents实例: {config.get('llm_provider', 'default')}"
+                f"创建新的分析引擎实例: {config.get('llm_provider', 'default')}"
             )
 
         return self._trading_graph_cache[config_key]

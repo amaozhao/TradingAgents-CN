@@ -3,10 +3,10 @@ requires = ["setuptools>=82.0.1", "wheel>=0.47.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "trading-agents"
+name = "agentrader"
 version = "1.0.1"
 description = "Add your description here"
-readme = { text = "TradingAgents-CN backend package", content-type = "text/plain" }
+readme = { text = "AGENTrader backend package", content-type = "text/plain" }
 requires-python = ">=3.13"
 dependencies = [
     # 后端API框架和服务器

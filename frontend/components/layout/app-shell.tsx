@@ -31,8 +31,8 @@ export function AppShell({ children }: AppShellProps) {
         <SheetContent side="left" className="flex w-[280px] flex-col p-0">
           <SheetHeader className="border-b px-4 py-3 text-left">
             <SheetTitle className="flex items-center gap-2 text-sm">
-              <Image src="/logo.svg" alt="TradingAgents-CN" width={32} height={32} className="size-8" />
-              <span className="truncate">TradingAgents-CN</span>
+              <Image src="/logo.svg" alt="AGENTrader" width={32} height={32} className="size-8" />
+              <span className="truncate">AGENTrader</span>
             </SheetTitle>
             <SheetDescription className="sr-only">移动端主导航菜单</SheetDescription>
           </SheetHeader>

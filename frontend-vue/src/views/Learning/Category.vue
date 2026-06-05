@@ -74,9 +74,9 @@ const categoryMap: Record<string, any> = {
     description: '了解AI的潜在问题和正确使用方式'
   },
   'resources': {
-    title: '源项目与论文',
+    title: '架构与论文',
     icon: '📖',
-    description: 'TradingAgents项目介绍和学术论文资源'
+    description: 'AGENTrader架构介绍和学术论文资源'
   },
   'tutorials': {
     title: '实战教程',
@@ -146,7 +146,7 @@ const articlesDatabase: Record<string, any[]> = {
     {
       id: 'multi-agent-system',
       title: '多智能体系统详解',
-      description: '深入理解TradingAgents-CN的多智能体协作机制',
+      description: '深入理解AGENTrader的多智能体协作机制',
       readTime: '15分钟',
       views: 1654,
       difficulty: 'warning',
@@ -166,9 +166,9 @@ const articlesDatabase: Record<string, any[]> = {
   ],
   'resources': [
     {
-      id: 'trading_agents_intro',
-      title: 'TradingAgents项目介绍',
-      description: '了解TradingAgents-CN的源项目TradingAgents的架构和特性',
+      id: 'agentrader_intro',
+      title: 'AGENTrader架构介绍',
+      description: '了解AGENTrader的多智能体架构和核心特性',
       readTime: '15分钟',
       views: 1432,
       difficulty: 'warning',
@@ -176,8 +176,8 @@ const articlesDatabase: Record<string, any[]> = {
     },
     {
       id: 'paper-guide',
-      title: 'TradingAgents论文解读',
-      description: '深度解读TradingAgents学术论文的核心内容和创新点',
+      title: 'AGENTrader论文解读',
+      description: '深度解读AGENTrader学术论文的核心内容和创新点',
       readTime: '20分钟',
       views: 987,
       difficulty: 'danger',
@@ -188,7 +188,7 @@ const articlesDatabase: Record<string, any[]> = {
     {
       id: 'getting-started',
       title: '快速入门教程',
-      description: '从零开始学习如何使用TradingAgents-CN进行股票分析',
+      description: '从零开始学习如何使用AGENTrader进行股票分析',
       readTime: '10分钟',
       views: 3456,
       difficulty: 'success',
@@ -197,7 +197,7 @@ const articlesDatabase: Record<string, any[]> = {
     {
       id: 'usage-guide-preview',
       title: '使用指南（试用版）',
-      description: 'TradingAgents-CN v1.0.1 使用指南与试用说明',
+      description: 'AGENTrader v1.0.1 使用指南与试用说明',
       readTime: '15分钟',
       views: 1288,
       difficulty: 'success',

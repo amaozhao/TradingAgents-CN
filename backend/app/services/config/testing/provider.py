@@ -504,7 +504,7 @@ class ProviderApiTestMixin:
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {api_key}",
                 "HTTP-Referer": "https://trader.cn",  # OpenRouter要求
-                "X-Title": "TradingAgents-CN",
+                "X-Title": "AGENTrader",
             }
 
             data = {

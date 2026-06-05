@@ -22,11 +22,11 @@ test("opens learning article, preserves paper redirect, and opens about", async 
   await expect(page.getByRole("heading", { name: "什么是大语言模型（LLM）？" }).first()).toBeVisible()
   await expect(page.getByText("学习目标")).toBeVisible()
 
-  await page.goto("/paper/TradingAgents_论文中文版.md")
-  await expect(page).toHaveURL(/\/learning\/article\/TradingAgents_/)
-  await expect(page.getByRole("heading", { name: "TradingAgents 论文中文版" }).first()).toBeVisible()
+  await page.goto("/paper/AGENTrader_论文中文版.md")
+  await expect(page).toHaveURL(/\/learning\/article\/AGENTrader_/)
+  await expect(page.getByRole("heading", { name: "AGENTrader 论文中文版" }).first()).toBeVisible()
 
   await page.goto("/about")
-  await expect(page.getByRole("heading", { name: "TradingAgents-CN" }).first()).toBeVisible()
+  await expect(page.getByRole("heading", { name: "AGENTrader" }).first()).toBeVisible()
   await expect(page.getByText("核心功能")).toBeVisible()
 })

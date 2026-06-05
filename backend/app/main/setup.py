@@ -149,7 +149,7 @@ async def _print_config_summary(logger):
     """显示配置摘要"""
     try:
         logger.info("=" * 70)
-        logger.info("📋 TradingAgents-CN Configuration Summary")
+        logger.info("📋 AGENTrader Configuration Summary")
         logger.info("=" * 70)
 
         # .env 文件路径信息

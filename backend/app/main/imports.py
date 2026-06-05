@@ -1,6 +1,6 @@
 # ruff: noqa: F401,F403,F405,F821
 """
-TradingAgents-CN v1.0.1 FastAPI Backend
+AGENTrader v1.0.1 FastAPI Backend
 主应用程序入口
 
 Copyright (c) 2025 hsliuping. All rights reserved.

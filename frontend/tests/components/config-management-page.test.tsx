@@ -93,7 +93,7 @@ describe("ConfigManagementPage", () => {
       { data_source_name: "tushare", market_category_id: "cn", priority: 1, enabled: true }
     ])
     vi.mocked(configApi.getDatabaseConfigs).mockResolvedValue([
-      { name: "default", type: "postgresql", host: "localhost", port: 5432, database: "trading_agents_cn", connection_params: {}, pool_size: 5, max_overflow: 10, enabled: true }
+      { name: "default", type: "postgresql", host: "localhost", port: 5432, database: "agentrader", connection_params: {}, pool_size: 5, max_overflow: 10, enabled: true }
     ])
     vi.mocked(configApi.getSystemSettings).mockResolvedValue({
       default_data_source: "tushare",

@@ -12,8 +12,8 @@ export default function LoginPage() {
       <main className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
         <section className="w-full max-w-md">
           <div className="mb-8 text-center">
-            <Image src="/logo.svg" alt="TradingAgents-CN" width={64} height={64} className="mx-auto mb-4" />
-            <h1 className="text-3xl font-semibold tracking-normal">TradingAgents-CN</h1>
+            <Image src="/logo.svg" alt="AGENTrader" width={64} height={64} className="mx-auto mb-4" />
+            <h1 className="text-3xl font-semibold tracking-normal">AGENTrader</h1>
             <p className="mt-2 text-sm text-muted-foreground">多智能体股票分析学习平台</p>
           </div>
           <Card>

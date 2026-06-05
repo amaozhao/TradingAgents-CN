@@ -56,12 +56,12 @@
         </el-card>
       </el-col>
 
-      <!-- 源项目与论文 -->
+      <!-- 架构与论文 -->
       <el-col :xs="24" :sm="12" :md="8" :lg="6">
         <el-card class="category-card" shadow="hover" @click="navigateTo('resources')">
           <div class="card-icon">📖</div>
-          <h3>源项目与论文</h3>
-          <p>TradingAgents项目介绍和学术论文资源</p>
+          <h3>架构与论文</h3>
+          <p>AGENTrader架构介绍和学术论文资源</p>
           <el-tag type="primary" size="small">2篇文章</el-tag>
         </el-card>
       </el-col>
@@ -342,4 +342,3 @@ const openArticle = (articleId: string) => {
   }
 }
 </style>
-

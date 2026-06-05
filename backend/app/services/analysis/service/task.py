@@ -82,7 +82,7 @@ class AnalysisTaskMixin:
             if progress_callback:
                 progress_callback(30, "创建分析图...")
 
-            # 获取TradingAgents实例
+            # 获取分析引擎实例
             trading_graph = self._get_trading_graph(config)
 
             if progress_callback:

@@ -1,7 +1,7 @@
 # ruff: noqa: F401
 """
 简化的股票分析服务
-直接调用现有的 TradingAgents 分析功能
+直接调用现有的 分析引擎功能
 """
 
 import asyncio

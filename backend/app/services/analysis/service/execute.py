@@ -130,7 +130,7 @@ class AnalysisExecuteMixin:
             # 启动引擎
             tracker.update_progress("🚀 初始化AI分析引擎")
 
-            # 获取TradingAgents实例
+            # 获取分析引擎实例
             trading_graph = self._get_trading_graph(config)
 
             # 执行分析
@@ -284,7 +284,7 @@ class AnalysisExecuteMixin:
                 deep_model_config=deep_model_config,  # 传递模型配置
             )
 
-            # 获取TradingAgents实例
+            # 获取分析引擎实例
             trading_graph = self._get_trading_graph(config)
 
             # 执行分析

@@ -18,8 +18,8 @@ export function Sidebar({ collapsed }: SidebarProps) {
       )}
     >
       <div className="flex h-14 items-center gap-2 border-b px-4">
-        <Image src="/logo.svg" alt="TradingAgents-CN" width={32} height={32} className="size-8" />
-        {!collapsed ? <span className="truncate text-sm font-semibold">TradingAgents-CN</span> : null}
+        <Image src="/logo.svg" alt="AGENTrader" width={32} height={32} className="size-8" />
+        {!collapsed ? <span className="truncate text-sm font-semibold">AGENTrader</span> : null}
       </div>
       <SidebarMenu collapsed={collapsed} />
     </aside>
