@@ -448,14 +448,33 @@ export function ConfigManagementPage() {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [confirm, setConfirm] = useState<ConfirmState>(null)
+  const [editingProvider, setEditingProvider] = useState<LLMProvider | null>(null)
   const [modelDialogOpen, setModelDialogOpen] = useState(false)
   const [dataSourceDialogOpen, setDataSourceDialogOpen] = useState(false)
+  const [editingDataSourceName, setEditingDataSourceName] = useState<string | null>(null)
   const [marketDialogOpen, setMarketDialogOpen] = useState(false)
   const [groupingDialogOpen, setGroupingDialogOpen] = useState(false)
+  const [databaseDialogOpen, setDatabaseDialogOpen] = useState(false)
+  const [editingDatabaseName, setEditingDatabaseName] = useState<string | null>(null)
+  const [settingsDraft, setSettingsDraft] = useState<Record<string, unknown>>({})
+  const [configImportFile, setConfigImportFile] = useState<File | null>(null)
   const [modelForm, setModelForm] = useState({ provider: "", provider_name: "", model_name: "" })
   const [dataSourceForm, setDataSourceForm] = useState({ name: "", type: "stock", display_name: "", priority: 1 })
   const [marketForm, setMarketForm] = useState({ id: "", name: "", display_name: "", sort_order: 1 })
   const [groupingForm, setGroupingForm] = useState({ data_source_name: "", market_category_id: "", priority: 1 })
+  const [databaseForm, setDatabaseForm] = useState({
+    name: "",
+    type: "postgresql",
+    host: "localhost",
+    port: 5432,
+    username: "",
+    password: "",
+    database: "",
+    pool_size: 5,
+    max_overflow: 10,
+    enabled: true,
+    description: ""
+  })
 
   const providersQuery = useQuery({ queryKey: ["config", "llm-providers"], queryFn: () => configApi.getLLMProviders(), retry: false })
   const llmQuery = useQuery({ queryKey: ["config", "llm"], queryFn: () => configApi.getLLMConfigs(), retry: false })
@@ -463,6 +482,7 @@ export function ConfigManagementPage() {
   const marketQuery = useQuery({ queryKey: ["config", "market-categories"], queryFn: () => configApi.getMarketCategories(), retry: false })
   const databaseQuery = useQuery({ queryKey: ["config", "database"], queryFn: () => configApi.getDatabaseConfigs(), retry: false })
   const settingsQuery = useQuery({ queryKey: ["config", "settings"], queryFn: () => configApi.getSystemSettings(), retry: false })
+  const settingsMetaQuery = useQuery({ queryKey: ["config", "settings-meta"], queryFn: () => configApi.getSystemSettingsMeta(), retry: false })
   const modelCatalogQuery = useQuery({ queryKey: ["config", "model-catalog"], queryFn: () => configApi.getModelCatalog(), retry: false })
   const groupingsQuery = useQuery({ queryKey: ["config", "datasource-groupings"], queryFn: () => configApi.getDataSourceGroupings(), retry: false })
 
@@ -482,11 +502,15 @@ export function ConfigManagementPage() {
     void queryClient.invalidateQueries({ queryKey: ["config"] })
   }
 
-  const addProviderMutation = useMutation({
-    mutationFn: (values: ProviderFormValues) => configApi.addLLMProvider(values as Partial<LLMProvider> & { api_key?: string }),
+  const saveProviderMutation = useMutation({
+    mutationFn: (values: ProviderFormValues) => {
+      const payload = values as Partial<LLMProvider> & { api_key?: string }
+      return editingProvider ? configApi.updateLLMProvider(editingProvider.id, payload) : configApi.addLLMProvider(payload)
+    },
     onSuccess: () => {
       toast.success("厂家已保存")
       setOpen(false)
+      setEditingProvider(null)
       form.reset()
       refreshConfig()
     },
@@ -507,9 +531,12 @@ export function ConfigManagementPage() {
   const dataSources = dataSourceQuery.data || []
   const marketCategories = marketQuery.data || []
   const databases = databaseQuery.data || []
-  const settings = settingsQuery.data || {}
+  const settings = useMemo(() => settingsQuery.data || {}, [settingsQuery.data])
   const catalog = modelCatalogQuery.data || []
   const groupings = groupingsQuery.data || []
+  const settingsMeta = useMemo(() => settingsMetaQuery.data?.items || [], [settingsMetaQuery.data])
+  const settingsMetaMap = useMemo(() => new Map(settingsMeta.map((item) => [item.key, item])), [settingsMeta])
+  const settingsValues = useMemo(() => ({ ...settings, ...settingsDraft }), [settings, settingsDraft])
 
   const providerModelCount = useMemo(() => {
     const counts = new Map<string, number>()
@@ -517,12 +544,97 @@ export function ConfigManagementPage() {
     return counts
   }, [llmConfigs])
 
+  const openAddProviderDialog = () => {
+    setEditingProvider(null)
+    form.reset({ id: "", name: "", display_name: "", default_base_url: "", api_key: "", description: "" })
+    setOpen(true)
+  }
+
+  const openEditProviderDialog = (provider: LLMProvider) => {
+    setEditingProvider(provider)
+    form.reset({
+      id: provider.id,
+      name: provider.name,
+      display_name: provider.display_name,
+      default_base_url: provider.default_base_url || "",
+      api_key: "",
+      description: provider.description || ""
+    })
+    setOpen(true)
+  }
+
+  const openAddDataSourceDialog = () => {
+    setEditingDataSourceName(null)
+    setDataSourceForm({ name: "", type: "stock", display_name: "", priority: 1 })
+    setDataSourceDialogOpen(true)
+  }
+
+  const openEditDataSourceDialog = (source: DataSourceConfig) => {
+    setEditingDataSourceName(source.name)
+    setDataSourceForm({
+      name: source.name,
+      type: source.type,
+      display_name: source.display_name || "",
+      priority: source.priority
+    })
+    setDataSourceDialogOpen(true)
+  }
+
+  const defaultDatabaseForm = () => ({
+    name: "",
+    type: "postgresql",
+    host: "localhost",
+    port: 5432,
+    username: "",
+    password: "",
+    database: "",
+    pool_size: 5,
+    max_overflow: 10,
+    enabled: true,
+    description: ""
+  })
+
+  const openAddDatabaseDialog = () => {
+    setEditingDatabaseName(null)
+    setDatabaseForm(defaultDatabaseForm())
+    setDatabaseDialogOpen(true)
+  }
+
+  const openEditDatabaseDialog = (database: DatabaseConfig) => {
+    setEditingDatabaseName(database.name)
+    setDatabaseForm({
+      name: database.name,
+      type: database.type,
+      host: database.host,
+      port: database.port,
+      username: database.username || "",
+      password: "",
+      database: database.database || "",
+      pool_size: database.pool_size,
+      max_overflow: database.max_overflow,
+      enabled: database.enabled,
+      description: database.description || ""
+    })
+    setDatabaseDialogOpen(true)
+  }
+
+  const updateSettingDraft = (key: string, value: unknown) => {
+    setSettingsDraft((previous) => ({ ...previous, [key]: value }))
+  }
+
+  const parseImportFile = async (file: File) => JSON.parse(await file.text()) as Record<string, unknown>
+
   return (
     <div>
       <PageHeader
         title="配置管理"
         description="管理大模型厂家、模型目录、数据源、市场分类、数据库和系统设置。"
-        actions={<Button onClick={() => setOpen(true)}>新增厂家</Button>}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => actionMutation.mutate(() => configApi.reloadConfig())}>重新加载配置</Button>
+            <Button onClick={openAddProviderDialog}>新增厂家</Button>
+          </div>
+        }
       />
 
       <Tabs defaultValue="providers" className="space-y-4">
@@ -533,6 +645,7 @@ export function ConfigManagementPage() {
           <TabsTrigger value="markets">市场分类</TabsTrigger>
           <TabsTrigger value="database">数据库</TabsTrigger>
           <TabsTrigger value="settings">系统设置</TabsTrigger>
+          <TabsTrigger value="io">配置导入导出</TabsTrigger>
         </TabsList>
 
         <TabsContent value="providers">
@@ -575,6 +688,7 @@ export function ConfigManagementPage() {
                       <TableCell className="whitespace-nowrap">{boolBadge(provider.is_active)}</TableCell>
                       <TableCell className="whitespace-nowrap">
                         <div className="flex justify-end gap-2">
+                          <Button variant="outline" size="sm" aria-label={`编辑 ${provider.name}`} onClick={() => openEditProviderDialog(provider)}>编辑</Button>
                           <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.testProviderAPI(provider.id))}>测试</Button>
                           <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.toggleLLMProvider(provider.id, !provider.is_active))}>
                             {provider.is_active ? "停用" : "启用"}
@@ -633,6 +747,14 @@ export function ConfigManagementPage() {
                       <TableCell>{boolBadge(config.enabled)}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            aria-label={`测试模型 ${config.model_name}`}
+                            onClick={() => actionMutation.mutate(() => configApi.testConfig({ config_type: "llm", config_data: config as unknown as Record<string, unknown> }))}
+                          >
+                            测试
+                          </Button>
                           <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.setDefaultLLM(config.model_name))}>设为默认</Button>
                           <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.updateLLMConfig({ ...config, enabled: !config.enabled }))}>
                             {config.enabled ? "停用" : "启用"}
@@ -672,7 +794,7 @@ export function ConfigManagementPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>数据源配置</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => setDataSourceDialogOpen(true)}>新增数据源</Button>
+              <Button variant="outline" size="sm" onClick={openAddDataSourceDialog}>新增数据源</Button>
             </CardHeader>
             <CardContent>
               <GenericTable<DataSourceConfig> rows={dataSources} emptyText="暂无数据源配置">
@@ -699,6 +821,30 @@ export function ConfigManagementPage() {
                       <TableCell>{boolBadge(source.enabled)}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">
+                          <Button variant="outline" size="sm" aria-label={`编辑数据源 ${source.name}`} onClick={() => openEditDataSourceDialog(source)}>编辑</Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            aria-label={`测试数据源 ${source.name}`}
+                            onClick={() => actionMutation.mutate(() => configApi.testConfig({ config_type: "datasource", config_data: source as unknown as Record<string, unknown> }))}
+                          >
+                            测试
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            aria-label={`管理分组 ${source.name}`}
+                            onClick={() => {
+                              setGroupingForm({
+                                data_source_name: source.name,
+                                market_category_id: source.market_categories?.[0] || marketCategories[0]?.id || "",
+                                priority: source.priority
+                              })
+                              setGroupingDialogOpen(true)
+                            }}
+                          >
+                            分组
+                          </Button>
                           <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.setDefaultDataSource(source.name))}>设为默认</Button>
                           <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.updateDataSourceConfig(source.name, { ...source, enabled: !source.enabled }))}>
                             {source.enabled ? "停用" : "启用"}
@@ -839,7 +985,10 @@ export function ConfigManagementPage() {
 
         <TabsContent value="database">
           <Card>
-            <CardHeader><CardTitle>数据库配置</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>数据库配置</CardTitle>
+              <Button variant="outline" size="sm" onClick={openAddDatabaseDialog}>新增数据库</Button>
+            </CardHeader>
             <CardContent>
               <GenericTable<DatabaseConfig> rows={databases} emptyText="暂无数据库配置">
                 <TableHeader>
@@ -859,7 +1008,22 @@ export function ConfigManagementPage() {
                       <TableCell>{database.pool_size} + {database.max_overflow}</TableCell>
                       <TableCell>{boolBadge(database.enabled)}</TableCell>
                       <TableCell>
-                        <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.testDatabaseConfig(database.name))}>测试连接</Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button variant="outline" size="sm" aria-label={`编辑数据库 ${database.name}`} onClick={() => openEditDatabaseDialog(database)}>编辑</Button>
+                          <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.testDatabaseConfig(database.name))}>测试连接</Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setConfirm({
+                              title: "删除数据库配置",
+                              description: `确定要删除数据库配置 ${database.name} 吗？`,
+                              confirmText: "删除",
+                              onConfirm: () => actionMutation.mutate(() => configApi.deleteDatabaseConfig(database.name))
+                            })}
+                          >
+                            删除
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -873,31 +1037,121 @@ export function ConfigManagementPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>系统设置</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.reloadConfig())}>重新加载配置</Button>
+              <LoadingButton
+                variant="outline"
+                size="sm"
+                loading={actionMutation.isPending}
+                onClick={() => actionMutation.mutate(() => configApi.updateSystemSettings(settingsValues))}
+              >
+                保存系统设置
+              </LoadingButton>
             </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-2">
-              {Object.entries(settings).slice(0, 24).map(([key, value]) => (
-                <div key={key} className="rounded-md border p-3">
-                  <div className="text-sm font-medium">{key}</div>
-                  <div className="mt-1 truncate text-xs text-muted-foreground">{String(value)}</div>
-                </div>
-              ))}
-              {!Object.keys(settings).length ? <EmptyState title="暂无系统设置" className="md:col-span-2" /> : null}
+            <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Object.entries(settingsValues).map(([key, value]) => {
+                const meta = settingsMetaMap.get(key)
+                const disabled = Boolean(meta && (!meta.editable || meta.sensitive || meta.source === "environment"))
+                const label = ({
+                  default_data_source: "数据供应商",
+                  quick_analysis_model: "快速分析模型",
+                  deep_analysis_model: "深度决策模型",
+                  enable_cost_tracking: "启用成本跟踪",
+                  cost_alert_threshold: "成本警告阈值",
+                  currency_preference: "货币偏好",
+                  timezone: "系统时区",
+                  analysis_timeout: "分析超时时间",
+                  enable_cache: "启用缓存",
+                  cache_ttl: "缓存TTL",
+                  log_level: "日志级别"
+                } as Record<string, string>)[key] || key
+
+                return (
+                  <div key={key} className="grid gap-2 rounded-md border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor={`setting-${key}`}>{label}</Label>
+                      {disabled ? <Badge variant="secondary">锁定</Badge> : null}
+                    </div>
+                    {typeof value === "boolean" ? (
+                      <label className="flex items-center gap-2 text-sm">
+                        <input id={`setting-${key}`} type="checkbox" checked={value} disabled={disabled} onChange={(event) => updateSettingDraft(key, event.target.checked)} />
+                        {value ? "启用" : "关闭"}
+                      </label>
+                    ) : typeof value === "number" ? (
+                      <Input id={`setting-${key}`} type="number" value={value} disabled={disabled} onChange={(event) => updateSettingDraft(key, Number(event.target.value) || 0)} />
+                    ) : (
+                      <Input id={`setting-${key}`} value={String(value ?? "")} disabled={disabled} onChange={(event) => updateSettingDraft(key, event.target.value)} />
+                    )}
+                    {meta ? <div className="text-xs text-muted-foreground">来源：{meta.source}</div> : null}
+                  </div>
+                )
+              })}
+              {!Object.keys(settingsValues).length ? <EmptyState title="暂无系统设置" className="md:col-span-2 xl:col-span-3" /> : null}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="io">
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card>
+              <CardHeader><CardTitle>配置导出</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">导出当前配置快照，用于备份或迁移。</p>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const result = await configApi.exportConfig()
+                      const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: "application/json" })
+                      downloadBlob(blob, `trading-agents-config-${new Date().toISOString().slice(0, 10)}.json`)
+                    } catch (error) {
+                      toast.error(error instanceof Error ? error.message : "导出配置失败")
+                    }
+                  }}
+                >
+                  <Download className="mr-2 size-4" />导出配置
+                </Button>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle>配置导入</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <Input aria-label="导入配置文件" type="file" accept=".json,application/json" onChange={(event) => setConfigImportFile(event.target.files?.[0] || null)} />
+                <LoadingButton
+                  loading={actionMutation.isPending}
+                  disabled={!configImportFile}
+                  onClick={() => {
+                    if (!configImportFile) return
+                    actionMutation.mutate(async () => {
+                      const parsed = await parseImportFile(configImportFile)
+                      await configApi.importConfig(parsed)
+                      setConfigImportFile(null)
+                    })
+                  }}
+                >
+                  导入配置
+                </LoadingButton>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle>配置迁移</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">迁移旧版配置结构到当前配置存储。</p>
+                <LoadingButton loading={actionMutation.isPending} variant="outline" onClick={() => actionMutation.mutate(() => configApi.migrateLegacyConfig())}>迁移旧配置</LoadingButton>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>新增厂家</DialogTitle>
-            <DialogDescription>添加新的大模型服务厂家配置。</DialogDescription>
+            <DialogTitle>{editingProvider ? "编辑厂家" : "新增厂家"}</DialogTitle>
+            <DialogDescription>{editingProvider ? "更新大模型服务厂家信息。" : "添加新的大模型服务厂家配置。"}</DialogDescription>
           </DialogHeader>
-          <form className="space-y-4" onSubmit={form.handleSubmit((values) => addProviderMutation.mutate(values))}>
+          <form className="space-y-4" onSubmit={form.handleSubmit((values) => saveProviderMutation.mutate(values))}>
             <div className="grid gap-2">
               <Label htmlFor="provider-id">厂家 ID</Label>
-              <Input id="provider-id" aria-label="厂家 ID" placeholder="dashscope" {...form.register("id")} />
+              <Input id="provider-id" aria-label="厂家 ID" placeholder="dashscope" disabled={Boolean(editingProvider)} {...form.register("id")} />
               {form.formState.errors.id ? <p className="text-xs text-destructive">{form.formState.errors.id.message}</p> : null}
             </div>
             <div className="grid gap-2">
@@ -912,13 +1166,13 @@ export function ConfigManagementPage() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="provider-api-key">API 密钥</Label>
-              <Input id="provider-api-key" type="password" aria-label="API 密钥" {...form.register("api_key")} />
+              <Input id="provider-api-key" type="password" aria-label="API 密钥" placeholder={editingProvider ? "留空则保持原密钥" : undefined} {...form.register("api_key")} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="provider-base-url">默认 Base URL</Label>
               <Input id="provider-base-url" aria-label="默认 Base URL" {...form.register("default_base_url")} />
             </div>
-            <LoadingButton type="submit" loading={addProviderMutation.isPending}>保存</LoadingButton>
+            <LoadingButton type="submit" loading={saveProviderMutation.isPending}>保存</LoadingButton>
           </form>
         </DialogContent>
       </Dialog>
@@ -969,8 +1223,8 @@ export function ConfigManagementPage() {
       <Dialog open={dataSourceDialogOpen} onOpenChange={setDataSourceDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>新增数据源</DialogTitle>
-            <DialogDescription>创建股票数据源配置。</DialogDescription>
+            <DialogTitle>{editingDataSourceName ? "编辑数据源" : "新增数据源"}</DialogTitle>
+            <DialogDescription>{editingDataSourceName ? "更新股票数据源配置。" : "创建股票数据源配置。"}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid gap-2">
@@ -993,7 +1247,7 @@ export function ConfigManagementPage() {
                   return
                 }
                 actionMutation.mutate(async () => {
-                  await configApi.addDataSourceConfig({
+                  const payload = {
                     name: dataSourceForm.name,
                     type: dataSourceForm.type,
                     display_name: dataSourceForm.display_name || dataSourceForm.name,
@@ -1002,8 +1256,14 @@ export function ConfigManagementPage() {
                     rate_limit: 100,
                     enabled: true,
                     config_params: {}
-                  })
+                  }
+                  if (editingDataSourceName) {
+                    await configApi.updateDataSourceConfig(editingDataSourceName, payload)
+                  } else {
+                    await configApi.addDataSourceConfig(payload)
+                  }
                   setDataSourceDialogOpen(false)
+                  setEditingDataSourceName(null)
                   setDataSourceForm({ name: "", type: "stock", display_name: "", priority: 1 })
                 })
               }}
@@ -1081,6 +1341,104 @@ export function ConfigManagementPage() {
               保存
             </LoadingButton>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={databaseDialogOpen} onOpenChange={setDatabaseDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{editingDatabaseName ? "编辑数据库配置" : "新增数据库配置"}</DialogTitle>
+            <DialogDescription>维护数据库连接、连接池和启用状态。</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="database-name">配置名称</Label>
+              <Input id="database-name" value={databaseForm.name} disabled={Boolean(editingDatabaseName)} onChange={(event) => setDatabaseForm((value) => ({ ...value, name: event.target.value }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="database-type">数据库类型</Label>
+              <Select value={databaseForm.type} onValueChange={(value) => setDatabaseForm((formValue) => ({ ...formValue, type: value }))}>
+                <SelectTrigger id="database-type"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="postgresql">PostgreSQL</SelectItem>
+                  <SelectItem value="postgres">Postgres</SelectItem>
+                  <SelectItem value="redis">Redis</SelectItem>
+                  <SelectItem value="mysql">MySQL</SelectItem>
+                  <SelectItem value="sqlite">SQLite</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="database-host">主机地址</Label>
+              <Input id="database-host" value={databaseForm.host} onChange={(event) => setDatabaseForm((value) => ({ ...value, host: event.target.value }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="database-port">端口号</Label>
+              <Input id="database-port" type="number" value={databaseForm.port} onChange={(event) => setDatabaseForm((value) => ({ ...value, port: Number(event.target.value) || 0 }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="database-username">用户名</Label>
+              <Input id="database-username" value={databaseForm.username} onChange={(event) => setDatabaseForm((value) => ({ ...value, username: event.target.value }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="database-password">密码</Label>
+              <Input id="database-password" type="password" value={databaseForm.password} placeholder={editingDatabaseName ? "留空则保持原密码" : undefined} onChange={(event) => setDatabaseForm((value) => ({ ...value, password: event.target.value }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="database-database">数据库名</Label>
+              <Input id="database-database" value={databaseForm.database} onChange={(event) => setDatabaseForm((value) => ({ ...value, database: event.target.value }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="database-pool-size">连接池大小</Label>
+              <Input id="database-pool-size" type="number" value={databaseForm.pool_size} onChange={(event) => setDatabaseForm((value) => ({ ...value, pool_size: Number(event.target.value) || 0 }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="database-max-overflow">最大溢出连接</Label>
+              <Input id="database-max-overflow" type="number" value={databaseForm.max_overflow} onChange={(event) => setDatabaseForm((value) => ({ ...value, max_overflow: Number(event.target.value) || 0 }))} />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={databaseForm.enabled} onChange={(event) => setDatabaseForm((value) => ({ ...value, enabled: event.target.checked }))} />
+              启用状态
+            </label>
+            <div className="grid gap-2 md:col-span-2">
+              <Label htmlFor="database-description">描述</Label>
+              <Input id="database-description" value={databaseForm.description} onChange={(event) => setDatabaseForm((value) => ({ ...value, description: event.target.value }))} />
+            </div>
+          </div>
+          <LoadingButton
+            loading={actionMutation.isPending}
+            onClick={() => {
+              if (!databaseForm.name || !databaseForm.type || !databaseForm.host || !databaseForm.port) {
+                toast.error("请填写完整数据库配置")
+                return
+              }
+              actionMutation.mutate(async () => {
+                const payload: Partial<DatabaseConfig> = {
+                  name: databaseForm.name,
+                  type: databaseForm.type,
+                  host: databaseForm.host,
+                  port: databaseForm.port,
+                  username: databaseForm.username || undefined,
+                  password: databaseForm.password || undefined,
+                  database: databaseForm.database || undefined,
+                  pool_size: databaseForm.pool_size,
+                  max_overflow: databaseForm.max_overflow,
+                  enabled: databaseForm.enabled,
+                  description: databaseForm.description || undefined,
+                  connection_params: {}
+                }
+                if (editingDatabaseName) {
+                  await configApi.updateDatabaseConfig(editingDatabaseName, payload)
+                } else {
+                  await configApi.addDatabaseConfig(payload)
+                }
+                setDatabaseDialogOpen(false)
+                setEditingDatabaseName(null)
+              })
+            }}
+          >
+            保存
+          </LoadingButton>
         </DialogContent>
       </Dialog>
 
