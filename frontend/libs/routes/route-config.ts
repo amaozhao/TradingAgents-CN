@@ -1,7 +1,6 @@
 import type { LucideIcon } from "lucide-react"
 import {
   BarChart3,
-  Bell,
   BookOpen,
   ChartNoAxesCombined,
   ClipboardList,
@@ -12,8 +11,6 @@ import {
   Info,
   LayoutDashboard,
   ListChecks,
-  LockKeyhole,
-  Palette,
   ScrollText,
   Search,
   Settings,
@@ -29,6 +26,7 @@ export interface AppRoute {
   icon?: LucideIcon
   requiresAuth: boolean
   href?: string
+  activePaths?: string[]
   hideInMenu?: boolean
   children?: AppRoute[]
 }
@@ -93,40 +91,37 @@ export const menuRoutes: AppRoute[] = [
     href: "/settings",
     children: [
       {
-        path: "/settings-personal",
+        ...getRequiredRoute("/settings"),
         title: "个人设置",
-        requiresAuth: true,
+        icon: SlidersHorizontal,
         href: "/settings",
-        children: [
-          { ...getRequiredRoute("/settings"), title: "通用设置", icon: SlidersHorizontal },
-          { ...getRequiredRoute("/settings"), path: "/settings?tab=appearance", title: "外观设置", icon: Palette },
-          { ...getRequiredRoute("/settings"), path: "/settings?tab=analysis", title: "分析偏好", icon: ChartNoAxesCombined },
-          { ...getRequiredRoute("/settings"), path: "/settings?tab=notifications", title: "通知设置", icon: Bell },
-          { ...getRequiredRoute("/settings"), path: "/settings?tab=security", title: "安全设置", icon: LockKeyhole }
+        activePaths: [
+          "/settings",
+          "/settings?tab=appearance",
+          "/settings?tab=analysis",
+          "/settings?tab=notifications",
+          "/settings?tab=security"
         ]
       },
       {
-        path: "/settings-config",
+        ...getRequiredRoute("/settings/config"),
         title: "系统配置",
-        requiresAuth: true,
+        icon: Settings,
         href: "/settings/config",
-        children: [
-          getRequiredRoute("/settings/config"),
-          getRequiredRoute("/settings/cache")
-        ]
+        activePaths: ["/settings/config", "/settings/cache"]
       },
       {
-        path: "/settings-admin",
+        ...getRequiredRoute("/settings/database"),
         title: "系统管理",
-        requiresAuth: true,
+        icon: Database,
         href: "/settings/database",
-        children: [
-          getRequiredRoute("/settings/database"),
-          getRequiredRoute("/settings/logs"),
-          getRequiredRoute("/settings/system-logs"),
-          getRequiredRoute("/settings/sync"),
-          getRequiredRoute("/settings/scheduler"),
-          getRequiredRoute("/settings/usage")
+        activePaths: [
+          "/settings/database",
+          "/settings/logs",
+          "/settings/system-logs",
+          "/settings/sync",
+          "/settings/scheduler",
+          "/settings/usage"
         ]
       }
     ]

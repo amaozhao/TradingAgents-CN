@@ -46,13 +46,13 @@ describe("SidebarMenu", () => {
     render(<SidebarMenu collapsed={false} />)
 
     const nav = screen.getByRole("navigation")
-    expect(within(nav).getByRole("link", { name: "配置管理" })).toBeInTheDocument()
+    expect(within(nav).getByRole("link", { name: "系统配置" })).toHaveClass("bg-sidebar-accent")
     expect(within(nav).queryByRole("link", { name: "批量分析" })).not.toBeInTheDocument()
     expect(within(nav).queryByRole("link", { name: "外观设置" })).not.toBeInTheDocument()
-    expect(within(nav).queryByRole("link", { name: "数据库管理" })).not.toBeInTheDocument()
+    expect(within(nav).queryByRole("link", { name: "配置管理" })).not.toBeInTheDocument()
   })
 
-  it("expands personal settings on the default settings page", () => {
+  it("shows only settings category entries on the default settings page", () => {
     pathname = "/settings"
 
     render(<SidebarMenu collapsed={false} />)
@@ -60,59 +60,47 @@ describe("SidebarMenu", () => {
     const nav = screen.getByRole("navigation")
     expect(within(nav).getByText("个人设置")).toBeInTheDocument()
     expect(within(nav).getByText("系统配置")).toBeInTheDocument()
-    expect(within(nav).getByRole("link", { name: "通用设置" })).toBeInTheDocument()
-    expect(within(nav).getByRole("link", { name: "外观设置" })).toBeInTheDocument()
-  })
-
-  it("reopens personal settings after navigating back from config management", () => {
-    pathname = "/settings/config"
-    const { rerender } = render(<SidebarMenu collapsed={false} />)
-
-    const nav = screen.getByRole("navigation")
-    expect(within(nav).getByRole("link", { name: "配置管理" })).toBeInTheDocument()
+    expect(within(nav).getByText("系统管理")).toBeInTheDocument()
     expect(within(nav).queryByRole("link", { name: "通用设置" })).not.toBeInTheDocument()
-
-    pathname = "/settings"
-    rerender(<SidebarMenu collapsed={false} />)
-
-    expect(within(nav).getByRole("link", { name: "通用设置" })).toBeInTheDocument()
-    expect(within(nav).getByRole("link", { name: "安全设置" })).toBeInTheDocument()
+    expect(within(nav).queryByRole("link", { name: "外观设置" })).not.toBeInTheDocument()
   })
 
-  it("keeps active personal settings expanded after clicking the group title", async () => {
+  it("keeps settings categories visible after clicking personal settings", async () => {
     const user = userEvent.setup()
     pathname = "/settings"
 
     render(<SidebarMenu collapsed={false} onNavigate={(event) => event?.preventDefault()} />)
 
     const nav = screen.getByRole("navigation")
-    expect(within(nav).getByRole("link", { name: "通用设置" })).toBeInTheDocument()
+    expect(within(nav).getByRole("link", { name: "个人设置" })).toHaveAttribute("href", "/settings")
 
     await user.click(within(nav).getByRole("link", { name: "个人设置" }))
 
-    expect(within(nav).getByRole("link", { name: "通用设置" })).toBeInTheDocument()
-    expect(within(nav).getByRole("link", { name: "安全设置" })).toBeInTheDocument()
+    expect(within(nav).getByRole("link", { name: "个人设置" })).toBeInTheDocument()
+    expect(within(nav).getByRole("link", { name: "系统配置" })).toBeInTheDocument()
+    expect(within(nav).queryByRole("link", { name: "安全设置" })).not.toBeInTheDocument()
   })
 
-  it("expands personal settings when a personal tab is active", () => {
+  it("highlights personal settings when a personal tab is active", () => {
     pathname = "/settings"
     search = "tab=appearance"
 
     render(<SidebarMenu collapsed={false} />)
 
     const nav = screen.getByRole("navigation")
-    expect(within(nav).getByRole("link", { name: "外观设置" })).toBeInTheDocument()
+    expect(within(nav).getByRole("link", { name: "个人设置" })).toHaveClass("bg-sidebar-accent")
+    expect(within(nav).queryByRole("link", { name: "外观设置" })).not.toBeInTheDocument()
     expect(within(nav).queryByRole("link", { name: "配置管理" })).not.toBeInTheDocument()
   })
 
-  it("highlights only the selected personal settings tab", () => {
-    pathname = "/settings"
-    search = "tab=analysis"
+  it("highlights the matching settings category for hidden settings routes", () => {
+    pathname = "/settings/scheduler"
 
     render(<SidebarMenu collapsed={false} />)
 
     const nav = screen.getByRole("navigation")
-    expect(within(nav).getByRole("link", { name: "分析偏好" })).toHaveClass("bg-sidebar-accent")
-    expect(within(nav).getByRole("link", { name: "通用设置" })).not.toHaveClass("bg-sidebar-accent")
+    expect(within(nav).getByRole("link", { name: "系统管理" })).toHaveClass("bg-sidebar-accent")
+    expect(within(nav).getByRole("link", { name: "个人设置" })).not.toHaveClass("bg-sidebar-accent")
+    expect(within(nav).queryByRole("link", { name: "定时任务" })).not.toBeInTheDocument()
   })
 })

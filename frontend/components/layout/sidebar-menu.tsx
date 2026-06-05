@@ -125,7 +125,9 @@ function SidebarMenuItem({
 function isRouteActive(route: AppRoute, pathname: string, currentPath: string): boolean {
   const routePath = route.path.split("?")[0]
   const isQueryRoute = route.path.includes("?")
+  const activePaths = route.activePaths ?? []
 
+  if (activePaths.some((activePath) => (activePath.includes("?") ? currentPath === activePath : pathname === activePath))) return true
   if (isQueryRoute && currentPath === route.path) return true
   if (!isQueryRoute && pathname === routePath) {
     if (route.children?.length) return true

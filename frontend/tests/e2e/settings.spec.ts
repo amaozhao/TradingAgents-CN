@@ -47,12 +47,14 @@ test("opens settings routes and a representative config dialog", async ({ page }
   }
 })
 
-test("keeps personal settings submenu visible after returning from config management", async ({ page }) => {
+test("keeps settings sidebar at category depth after returning from config management", async ({ page }) => {
   await page.goto("/settings")
   await expect(page.getByRole("heading", { name: "设置" })).toBeVisible()
 
   const nav = page.getByRole("navigation")
-  await expect(nav.getByRole("link", { name: "通用设置" })).toBeVisible()
+  await expect(nav.getByRole("link", { name: "个人设置" })).toBeVisible()
+  await expect(nav.getByRole("link", { name: "系统配置" })).toBeVisible()
+  await expect(nav.getByRole("link", { name: "通用设置" })).toHaveCount(0)
 
   await page.getByRole("main").getByRole("link", { name: /配置管理/ }).click()
   await expect(page).toHaveURL(/\/settings\/config$/)
@@ -60,8 +62,8 @@ test("keeps personal settings submenu visible after returning from config manage
 
   await nav.getByRole("link", { name: "个人设置" }).click()
   await expect(page).toHaveURL(/\/settings$/)
-  await expect(nav.getByRole("link", { name: "通用设置" })).toBeVisible()
-  await expect(nav.getByRole("link", { name: "安全设置" })).toBeVisible()
+  await expect(nav.getByRole("link", { name: "系统管理" })).toBeVisible()
+  await expect(nav.getByRole("link", { name: "安全设置" })).toHaveCount(0)
 })
 
 test("navigates from the sidebar without reloading the app shell", async ({ page }) => {
@@ -78,9 +80,8 @@ test("navigates from the sidebar without reloading the app shell", async ({ page
   await nav.getByRole("link", { name: "设置" }).click()
   await expect(page).toHaveURL(/\/settings$/)
   await nav.getByRole("link", { name: "系统管理" }).click()
-  await nav.getByRole("link", { name: "定时任务" }).click()
-  await expect(page).toHaveURL(/\/settings\/scheduler$/)
-  await expect(page.getByRole("heading", { name: "定时任务", exact: true })).toBeVisible()
+  await expect(page).toHaveURL(/\/settings\/database$/)
+  await expect(page.getByRole("heading", { name: "数据库管理", exact: true })).toBeVisible()
 
   await expect
     .poll(() => page.evaluate(() => performance.getEntriesByType("navigation").length))

@@ -88,36 +88,24 @@ describe("route config", () => {
       "系统配置",
       "系统管理"
     ])
-    expect(menuRoutes.find((route) => route.path === "/settings")?.children?.[0]?.children?.map((route) => route.title)).toEqual([
-      "通用设置",
-      "外观设置",
-      "分析偏好",
-      "通知设置",
-      "安全设置"
-    ])
-    expect(menuRoutes.find((route) => route.path === "/settings")?.children?.[1]?.children?.map((route) => route.path)).toEqual([
-      "/settings/config",
-      "/settings/cache"
-    ])
-    expect(menuRoutes.find((route) => route.path === "/settings")?.children?.[2]?.children?.map((route) => route.path)).toEqual([
-      "/settings/database",
-      "/settings/logs",
-      "/settings/system-logs",
-      "/settings/sync",
-      "/settings/scheduler",
-      "/settings/usage"
+    expect(menuRoutes.find((route) => route.path === "/settings")?.children?.map((route) => route.children)).toEqual([
+      undefined,
+      undefined,
+      undefined
     ])
   })
 
-  it("keeps personal settings group icon-free while entries use distinct semantic icons", () => {
-    const personalSettings = menuRoutes
-      .find((route) => route.path === "/settings")
-      ?.children?.find((route) => route.path === "/settings-personal")
-    const personalEntries = personalSettings?.children ?? []
-    const personalIcons = personalEntries.map((route) => route.icon)
+  it("maps settings category entries to their representative routes and active paths", () => {
+    const settingsChildren = menuRoutes.find((route) => route.path === "/settings")?.children ?? []
+    const personalSettings = settingsChildren.find((route) => route.title === "个人设置")
+    const systemConfig = settingsChildren.find((route) => route.title === "系统配置")
+    const systemAdmin = settingsChildren.find((route) => route.title === "系统管理")
 
-    expect(personalSettings?.icon).toBeUndefined()
-    expect(personalIcons.every(Boolean)).toBe(true)
-    expect(new Set(personalIcons).size).toBe(personalIcons.length)
+    expect(personalSettings).toMatchObject({ path: "/settings", href: "/settings" })
+    expect(systemConfig).toMatchObject({ path: "/settings/config", href: "/settings/config" })
+    expect(systemAdmin).toMatchObject({ path: "/settings/database", href: "/settings/database" })
+    expect(personalSettings?.activePaths).toContain("/settings?tab=appearance")
+    expect(systemConfig?.activePaths).toEqual(["/settings/config", "/settings/cache"])
+    expect(systemAdmin?.activePaths).toContain("/settings/scheduler")
   })
 })
