@@ -12,7 +12,13 @@ class MarketCategoryMixin:
             categories_collection = db.market_categories
 
             categories_data = await categories_collection.find({}).to_list(length=None)
-            categories = [MarketCategory(**data) for data in categories_data]
+            categories_by_id: Dict[str, MarketCategory] = {}
+            for data in categories_data:
+                category = MarketCategory(**data)
+                existing = categories_by_id.get(category.id)
+                if existing is None or category.sort_order < existing.sort_order:
+                    categories_by_id[category.id] = category
+            categories = list(categories_by_id.values())
 
             # 如果没有分类，创建默认分类
             if not categories:

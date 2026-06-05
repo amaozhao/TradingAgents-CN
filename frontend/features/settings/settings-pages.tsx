@@ -375,8 +375,8 @@ function ConfigValidationPanel({
             ) : null}
             {postgresValidation.warnings?.length ? (
               <div className="space-y-2">
-                {postgresValidation.warnings.map((warning) => (
-                  <div key={warning} className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{warning}</div>
+                {postgresValidation.warnings.map((warning, index) => (
+                  <div key={`${warning}-${index}`} className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{warning}</div>
                 ))}
               </div>
             ) : null}
@@ -386,8 +386,8 @@ function ConfigValidationPanel({
         {envValidation?.warnings?.length ? (
           <section className="space-y-2">
             <h3 className="flex items-center gap-2 text-sm font-semibold"><Info className="size-4" />环境变量警告</h3>
-            {envValidation.warnings.map((warning) => (
-              <div key={warning} className="rounded-md border p-3 text-sm text-muted-foreground">{warning}</div>
+            {envValidation.warnings.map((warning, index) => (
+              <div key={`${warning}-${index}`} className="rounded-md border p-3 text-sm text-muted-foreground">{warning}</div>
             ))}
           </section>
         ) : null}
@@ -977,7 +977,7 @@ export function ConfigManagementPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {provider.supported_features?.length ? provider.supported_features.map((feature) => <Badge key={feature} variant="secondary">{feature}</Badge>) : <span className="text-sm text-muted-foreground">-</span>}
+                          {provider.supported_features?.length ? provider.supported_features.map((feature, index) => <Badge key={`${feature}-${index}`} variant="secondary">{feature}</Badge>) : <span className="text-sm text-muted-foreground">-</span>}
                         </div>
                         <div className="mt-1 text-xs text-muted-foreground">模型数：{providerModelCount.get(provider.name) || 0}</div>
                       </TableCell>
@@ -1043,7 +1043,7 @@ export function ConfigManagementPage() {
                         </Button>
                       </div>
                       <div className="mt-4 flex flex-wrap gap-2">
-                        {item.models.slice(0, 12).map((model) => <Badge key={model.name} variant="secondary">{model.display_name || model.name}</Badge>)}
+                        {item.models.slice(0, 12).map((model, index) => <Badge key={`${model.name}-${index}`} variant="secondary">{model.display_name || model.name}</Badge>)}
                         {item.models.length > 12 ? <Badge variant="outline">+{item.models.length - 12}</Badge> : null}
                       </div>
                     </div>
@@ -1219,8 +1219,8 @@ export function ConfigManagementPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {marketCategories.map((category) => (
-                    <TableRow key={category.id}>
+                  {marketCategories.map((category, index) => (
+                    <TableRow key={`${category.id}-${category.name}-${index}`}>
                       <TableCell>
                         <div className="font-medium">{category.display_name}</div>
                         <div className="text-xs text-muted-foreground">{category.name} / {category.description || "暂无描述"}</div>
@@ -1258,8 +1258,8 @@ export function ConfigManagementPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {groupings.map((grouping) => (
-                      <TableRow key={`${grouping.market_category_id}-${grouping.data_source_name}`}>
+                    {groupings.map((grouping, index) => (
+                      <TableRow key={`${grouping.market_category_id}-${grouping.data_source_name}-${index}`}>
                         <TableCell>{marketCategories.find((item) => item.id === grouping.market_category_id)?.display_name || grouping.market_category_id}</TableCell>
                         <TableCell>{grouping.data_source_name}</TableCell>
                         <TableCell>{grouping.priority}</TableCell>
@@ -1653,13 +1653,13 @@ export function ConfigManagementPage() {
             <Select value={groupingForm.data_source_name || undefined} onValueChange={(value) => setGroupingForm((formValue) => ({ ...formValue, data_source_name: value }))}>
               <SelectTrigger><SelectValue placeholder="选择数据源" /></SelectTrigger>
               <SelectContent>
-                {dataSources.map((source) => <SelectItem key={source.name} value={source.name}>{source.display_name || source.name}</SelectItem>)}
+                {dataSources.map((source, index) => <SelectItem key={`${source.name}-${index}`} value={source.name}>{source.display_name || source.name}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={groupingForm.market_category_id || undefined} onValueChange={(value) => setGroupingForm((formValue) => ({ ...formValue, market_category_id: value }))}>
               <SelectTrigger><SelectValue placeholder="选择市场分类" /></SelectTrigger>
               <SelectContent>
-                {marketCategories.map((category) => <SelectItem key={category.id} value={category.id}>{category.display_name}</SelectItem>)}
+                {marketCategories.map((category, index) => <SelectItem key={`${category.id}-${index}`} value={category.id}>{category.display_name}</SelectItem>)}
               </SelectContent>
             </Select>
             <Input type="number" min={0} value={groupingForm.priority} onChange={(event) => setGroupingForm((value) => ({ ...value, priority: Number(event.target.value) || 0 }))} />
@@ -2563,8 +2563,8 @@ export function SyncManagementPage() {
             <div className="font-medium">优化建议</div>
             <div className="font-medium">配置示例</div>
             <div className="text-muted-foreground">环境变量配置 / API调用示例</div>
-            {(recommendations?.suggestions || []).map((item) => <div key={item} className="rounded-md border p-3">{item}</div>)}
-            {(recommendations?.warnings || []).map((item) => <div key={item} className="rounded-md border border-destructive/30 p-3 text-destructive">{item}</div>)}
+            {(recommendations?.suggestions || []).map((item, index) => <div key={`${item}-${index}`} className="rounded-md border p-3">{item}</div>)}
+            {(recommendations?.warnings || []).map((item, index) => <div key={`${item}-${index}`} className="rounded-md border border-destructive/30 p-3 text-destructive">{item}</div>)}
           </CardContent>
         </Card>
       </div>

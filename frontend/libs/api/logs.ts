@@ -2,10 +2,7 @@
  * 日志管理 API
  */
 
-import { ApiClient, type ApiResponse } from './request'
-
-const unwrapResponse = <T>(promise: Promise<ApiResponse<T>>): Promise<T> =>
-  promise.then((res) => res.data)
+import request from './request'
 
 export interface LogFileInfo {
   name: string
@@ -59,14 +56,14 @@ export const LogsApi = {
    * 获取日志文件列表
    */
   listLogFiles(): Promise<LogFileInfo[]> {
-    return unwrapResponse(ApiClient.get<LogFileInfo[]>('/api/system/system-logs/files'))
+    return request.get<LogFileInfo[]>('/api/system/system-logs/files')
   },
 
   /**
    * 读取日志文件内容
    */
-  readLogFile(request: LogReadRequest): Promise<LogContentResponse> {
-    return unwrapResponse(ApiClient.post<LogContentResponse>('/api/system/system-logs/read', request))
+  readLogFile(payload: LogReadRequest): Promise<LogContentResponse> {
+    return request.post<LogContentResponse>('/api/system/system-logs/read', payload)
   },
 
   /**
@@ -90,14 +87,13 @@ export const LogsApi = {
    * 获取日志统计信息
    */
   getStatistics(days: number = 7): Promise<LogStatistics> {
-    return unwrapResponse(ApiClient.get<LogStatistics>('/api/system/system-logs/statistics', { days }))
+    return request.get<LogStatistics>('/api/system/system-logs/statistics', { params: { days } })
   },
 
   /**
    * 删除日志文件
    */
   deleteLogFile(filename: string): Promise<{ success: boolean; message: string }> {
-    return unwrapResponse(ApiClient.delete<{ success: boolean; message: string }>(`/api/system/system-logs/files/${filename}`))
+    return request.delete<{ success: boolean; message: string }>(`/api/system/system-logs/files/${filename}`)
   }
 }
-

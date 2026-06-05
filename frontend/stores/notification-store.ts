@@ -41,6 +41,21 @@ interface NotificationState {
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 let manualDisconnect = false
 const maxReconnectAttempts = 10
+const websocketConnectingState = 0
+const websocketOpenState = 1
+
+function getNotificationWebSocketUrl(token: string) {
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
+  const isLocalFrontend = ["3000", "5173"].includes(window.location.port)
+  const fallbackOrigin = isLocalFrontend
+    ? `${window.location.protocol}//${window.location.hostname}:8000`
+    : window.location.origin
+  const url = new URL("/api/ws/notifications", apiBaseUrl || fallbackOrigin)
+
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:"
+  url.searchParams.set("token", token)
+  return url.toString()
+}
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
   items: [],
@@ -115,6 +130,10 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     }
 
     const activeSocket = get().ws
+    if (activeSocket && [websocketConnectingState, websocketOpenState].includes(activeSocket.readyState)) {
+      return
+    }
+
     if (activeSocket) {
       manualDisconnect = true
       set({ ws: null, wsConnected: false })
@@ -130,10 +149,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     const token = useAuthStore.getState().token || localStorage.getItem("auth-token") || ""
     if (!token) return
 
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:"
-    const socket = new WebSocket(
-      `${wsProtocol}//${window.location.host}/api/ws/notifications?token=${encodeURIComponent(token)}`
-    )
+    const socket = new WebSocket(getNotificationWebSocketUrl(token))
 
     socket.onopen = () => {
       if (get().ws !== socket) return
@@ -192,7 +208,11 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     const socket = get().ws
     if (socket) {
       try {
-        socket.close()
+        if (socket.readyState === websocketConnectingState) {
+          socket.onopen = () => socket.close()
+        } else {
+          socket.close()
+        }
       } catch {
         // noop
       }

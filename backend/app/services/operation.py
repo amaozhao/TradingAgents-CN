@@ -221,19 +221,20 @@ class OperationLogService:
             async for doc in action_type_cursor:
                 action_type_distribution[doc["_id"]] = doc["count"]
 
-            # 小时分布统计
-            hourly_pipeline = [
-                {"$match": time_filter},
-                {"$group": {"_id": {"$hour": "$timestamp"}, "count": {"$sum": 1}}},
-                {"$sort": {"_id": 1}},
-            ]
-            hourly_cursor = db[self.collection_name].aggregate(hourly_pipeline)
-            hourly_distribution = []
             hourly_data = {i: 0 for i in range(24)}  # 初始化24小时
 
+            hourly_cursor = db[self.collection_name].find(time_filter)
             async for doc in hourly_cursor:
-                hourly_data[doc["_id"]] = doc["count"]
+                timestamp = doc.get("timestamp")
+                if isinstance(timestamp, str):
+                    try:
+                        timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                    except ValueError:
+                        timestamp = None
+                if isinstance(timestamp, datetime):
+                    hourly_data[timestamp.hour] += 1
 
+            hourly_distribution = []
             for hour, count in hourly_data.items():
                 hourly_distribution.append({"hour": f"{hour:02d}:00", "count": count})
 
