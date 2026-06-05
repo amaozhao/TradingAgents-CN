@@ -99,6 +99,7 @@ import { formatDateTime } from "@/libs/utils/datetime"
 import { useAppStore, type AppLanguage, type AppTheme } from "@/stores/app-store"
 import { useAuthStore } from "@/stores/auth-store"
 type PersonalSettingsTab = "general" | "appearance" | "analysis" | "notifications" | "security"
+type SystemManagementTab = "database" | "logs" | "system-logs" | "sync" | "scheduler" | "usage"
 
 const personalSettingsTabs: Array<{ value: PersonalSettingsTab; title: string }> = [
   { value: "general", title: "通用设置" },
@@ -109,6 +110,14 @@ const personalSettingsTabs: Array<{ value: PersonalSettingsTab; title: string }>
 ]
 
 const personalTabValues = new Set<PersonalSettingsTab>(personalSettingsTabs.map((item) => item.value))
+const systemManagementTabs: Array<{ value: SystemManagementTab; title: string; href: string }> = [
+  { value: "database", title: "数据库管理", href: "/settings/database" },
+  { value: "logs", title: "操作日志", href: "/settings/logs" },
+  { value: "system-logs", title: "系统日志", href: "/settings/system-logs" },
+  { value: "sync", title: "多数据源同步", href: "/settings/sync" },
+  { value: "scheduler", title: "定时任务", href: "/settings/scheduler" },
+  { value: "usage", title: "使用统计", href: "/settings/usage" }
+]
 
 function getPersonalSettingsTab(value: string | null): PersonalSettingsTab {
   return value && personalTabValues.has(value as PersonalSettingsTab) ? (value as PersonalSettingsTab) : "general"
@@ -116,6 +125,29 @@ function getPersonalSettingsTab(value: string | null): PersonalSettingsTab {
 
 function getPersonalSettingsHref(tab: PersonalSettingsTab) {
   return tab === "general" ? "/settings" : `/settings?tab=${tab}`
+}
+
+function SystemManagementTabs({ active }: { active: SystemManagementTab }) {
+  const router = useRouter()
+
+  return (
+    <Tabs
+      value={active}
+      onValueChange={(value) => {
+        const nextTab = systemManagementTabs.find((item) => item.value === value)
+        if (nextTab) router.push(nextTab.href)
+      }}
+      className="mb-6"
+    >
+      <TabsList className="flex h-auto flex-wrap justify-start">
+        {systemManagementTabs.map((item) => (
+          <TabsTrigger key={item.value} value={item.value}>
+            {item.title}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
+  )
 }
 
 const providerSchema = z.object({
@@ -1918,6 +1950,7 @@ export function DatabaseManagementPage() {
         description="PostgreSQL + Redis 数据库管理和监控"
         actions={<LoadingButton variant="outline" loading={statusQuery.isFetching} onClick={() => void statusQuery.refetch()}>刷新状态</LoadingButton>}
       />
+      <SystemManagementTabs active="database" />
       <div className="grid gap-4 md:grid-cols-2">
         {renderConnection("PostgreSQL", status?.postgres)}
         {renderConnection("Redis", status?.redis)}
@@ -2092,6 +2125,7 @@ export function OperationLogsPage() {
         description="系统操作日志查看、过滤和分析"
         actions={<Button variant="outline" onClick={() => void logsQuery.refetch()}>刷新</Button>}
       />
+      <SystemManagementTabs active="logs" />
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="总日志数" value={stats?.total_logs ?? 0} />
         <StatCard label="成功操作" value={stats?.success_logs ?? 0} />
@@ -2331,6 +2365,7 @@ export function SystemLogsPage() {
           </div>
         }
       />
+      <SystemManagementTabs active="system-logs" />
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard label="日志文件数" value={stats?.total_files ?? 0} />
         <StatCard label="总大小 (MB)" value={stats?.total_size_mb?.toFixed?.(2) ?? 0} />
@@ -2693,6 +2728,7 @@ export function SyncManagementPage() {
           </div>
         }
       />
+      <SystemManagementTabs active="sync" />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
@@ -3248,6 +3284,7 @@ export function UsageStatisticsPage() {
           </div>
         }
       />
+      <SystemManagementTabs active="usage" />
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="总请求数" value={stats?.total_requests ?? 0} />
         <StatCard label="总输入 Token" value={stats?.total_input_tokens ?? 0} />
@@ -3377,6 +3414,7 @@ export function SchedulerManagementPage() {
           </div>
         }
       />
+      <SystemManagementTabs active="scheduler" />
       {schedulerInitialLoading ? <SchedulerPageLoading /> : (
       <>
       <div className="grid gap-4 md:grid-cols-4">

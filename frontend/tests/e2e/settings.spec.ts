@@ -33,6 +33,10 @@ test("opens settings routes and a representative config dialog", async ({ page }
 
   await page.goto("/settings/database")
   await expect(page.getByRole("heading", { name: "数据库管理" })).toBeVisible()
+  const systemTabs = page.getByRole("tablist")
+  for (const tab of ["数据库管理", "操作日志", "系统日志", "多数据源同步", "定时任务", "使用统计"]) {
+    await expect(systemTabs.getByRole("tab", { name: tab })).toBeVisible()
+  }
 
   for (const [route, heading] of [
     ["/settings/logs", "操作日志"],
