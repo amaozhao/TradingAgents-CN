@@ -49,7 +49,6 @@ dependencies = [
     "stockstats>=0.6.8",
 
     # AI和LLM
-    "chainlit>=2.11.1",
     "chromadb>=1.5.9",
     "dashscope>=1.25.20",
     "google-genai>=2.7.0",
