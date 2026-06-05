@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useMemo, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -16,20 +15,14 @@ import {
   Cpu,
   Database,
   Download,
-  FileText,
   Gauge,
-  HardDrive,
   Info,
   Key,
   ListChecks,
   Loader2,
-  LogOut,
-  RefreshCw,
   Settings,
   Shield,
   Star,
-  Timer,
-  Trash2
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useForm } from "react-hook-form"
@@ -101,17 +94,6 @@ import { deleteOldRecords, getUsageRecords, getUsageStatistics, type UsageRecord
 import { formatDateTime } from "@/libs/utils/datetime"
 import { useAppStore, type AppLanguage, type AppTheme } from "@/stores/app-store"
 import { useAuthStore } from "@/stores/auth-store"
-const settingsLinks = [
-  { href: "/settings/config", title: "配置管理", icon: Settings, description: "大模型、数据源、数据库和系统设置" },
-  { href: "/settings/database", title: "数据库管理", icon: Database, description: "数据库状态、导入导出和清理" },
-  { href: "/settings/logs", title: "操作日志", icon: ListChecks, description: "用户操作记录、过滤和统计" },
-  { href: "/settings/system-logs", title: "系统日志", icon: FileText, description: "后端日志文件读取、筛选和导出" },
-  { href: "/settings/sync", title: "多数据源同步", icon: RefreshCw, description: "同步状态、建议、历史和手动同步" },
-  { href: "/settings/cache", title: "缓存管理", icon: Trash2, description: "缓存统计、详情和清理" },
-  { href: "/settings/usage", title: "使用统计", icon: HardDrive, description: "Token、成本和模型使用记录" },
-  { href: "/settings/scheduler", title: "定时任务", icon: Timer, description: "调度任务、执行历史和健康状态" }
-]
-
 type PersonalSettingsTab = "general" | "appearance" | "analysis" | "notifications" | "security"
 
 const personalSettingsTabs: Array<{ value: PersonalSettingsTab; title: string }> = [
@@ -208,12 +190,10 @@ function GenericTable<T>({
   children: React.ReactNode
   tableClassName?: string
 }) {
-  if (!rows.length) {
-    return <EmptyState title={emptyText} className="rounded-md border p-8" />
-  }
   return (
     <div className="overflow-x-auto rounded-md border">
       <Table className={tableClassName}>{children}</Table>
+      {!rows.length ? <EmptyState title={emptyText} className="border-t p-8" /> : null}
     </div>
   )
 }
@@ -515,10 +495,9 @@ export function SettingsIndexPage() {
   const setLanguage = useAppStore((state) => state.setLanguage)
   const setSidebarWidth = useAppStore((state) => state.setSidebarWidth)
   const updatePreferences = useAppStore((state) => state.updatePreferences)
-  const resetPreferences = useAppStore((state) => state.resetPreferences)
+  const user = useAuthStore((state) => state.user)
   const userDisplayName = useAuthStore((state) => state.userDisplayName())
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  const clearAuthInfo = useAuthStore((state) => state.clearAuthInfo)
 
   const activeTab = getPersonalSettingsTab(searchParams.get("tab"))
 
@@ -533,16 +512,16 @@ export function SettingsIndexPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="设置" description="管理个人偏好和系统配置。" />
+      <PageHeader title={personalSettingsTabs.find((item) => item.value === activeTab)?.title || "设置"} description="个性化配置和偏好设置" />
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-        <TabsList className="flex h-auto flex-wrap justify-start">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="grid gap-6 lg:grid-cols-[240px_1fr]">
+        <TabsList className="flex h-auto flex-wrap justify-start lg:flex-col lg:items-stretch lg:self-start">
           {personalSettingsTabs.map((item) => (
-            <TabsTrigger key={item.value} value={item.value}>{item.title}</TabsTrigger>
+            <TabsTrigger key={item.value} value={item.value} className="justify-start lg:w-full">{item.title}</TabsTrigger>
           ))}
         </TabsList>
 
-        <TabsContent value="general">
+        <TabsContent value="general" className="mt-0 lg:col-start-2">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -550,22 +529,19 @@ export function SettingsIndexPage() {
                 通用设置
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-5 md:grid-cols-2">
+            <CardContent className="grid max-w-2xl gap-5">
               <div className="space-y-2">
-                <Label htmlFor="default-market">默认市场</Label>
-                <Select value={preferences.defaultMarket} onValueChange={(value) => updatePreferences({ defaultMarket: value as "A股" | "美股" | "港股" })}>
-                  <SelectTrigger id="default-market"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="A股">A股</SelectItem>
-                    <SelectItem value="美股">美股</SelectItem>
-                    <SelectItem value="港股">港股</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="settings-username">用户名</Label>
+                <Input id="settings-username" value={isAuthenticated ? userDisplayName : "未登录"} disabled />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="language">界面语言</Label>
+                <Label htmlFor="settings-email">邮箱</Label>
+                <Input id="settings-email" value={user?.email || ""} placeholder="admin@trader.cn" readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="settings-language">语言</Label>
                 <Select value={language} onValueChange={(value) => setLanguage(value as AppLanguage)}>
-                  <SelectTrigger id="language"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="settings-language"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="zh-CN">简体中文</SelectItem>
                     <SelectItem value="en-US">English</SelectItem>
@@ -573,31 +549,22 @@ export function SettingsIndexPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="refresh-interval">刷新间隔（秒）</Label>
-                <Input
-                  id="refresh-interval"
-                  min={5}
-                  max={300}
-                  type="number"
-                  value={preferences.refreshInterval}
-                  onChange={(event) => updatePreferences({ refreshInterval: Number(event.target.value) || 30 })}
-                />
+                <Label htmlFor="settings-timezone">时区</Label>
+                <Select value="Asia/Shanghai">
+                  <SelectTrigger id="settings-timezone"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Asia/Shanghai">北京时间 (UTC+8)</SelectItem>
+                    <SelectItem value="America/New_York">纽约时间 (UTC-5)</SelectItem>
+                    <SelectItem value="Europe/London">伦敦时间 (UTC+0)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex items-end gap-3">
-                <Button
-                  type="button"
-                  variant={preferences.autoRefresh ? "default" : "outline"}
-                  onClick={() => updatePreferences({ autoRefresh: !preferences.autoRefresh })}
-                >
-                  {preferences.autoRefresh ? "自动刷新已启用" : "自动刷新已停用"}
-                </Button>
-                <Button type="button" variant="outline" onClick={resetPreferences}>重置偏好</Button>
-              </div>
+              <Button type="button" className="w-fit" onClick={() => toast.success("设置已保存")}>保存设置</Button>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="appearance">
+        <TabsContent value="appearance" className="mt-0 lg:col-start-2">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -605,17 +572,14 @@ export function SettingsIndexPage() {
                 外观设置
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-5 md:grid-cols-2">
+            <CardContent className="grid max-w-2xl gap-5">
               <div className="space-y-2">
                 <Label htmlFor="theme-mode">主题模式</Label>
-                <Select value={theme} onValueChange={(value) => handleThemeChange(value as AppTheme)}>
-                  <SelectTrigger id="theme-mode"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">跟随系统</SelectItem>
-                    <SelectItem value="light">浅色</SelectItem>
-                    <SelectItem value="dark">深色</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant={theme === "light" ? "default" : "outline"} onClick={() => handleThemeChange("light")}>浅色主题</Button>
+                  <Button type="button" variant={theme === "dark" ? "default" : "outline"} onClick={() => handleThemeChange("dark")}>深色主题</Button>
+                  <Button type="button" variant={theme === "auto" ? "default" : "outline"} onClick={() => handleThemeChange("auto")}>跟随系统</Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="sidebar-width">侧边栏宽度</Label>
@@ -628,20 +592,12 @@ export function SettingsIndexPage() {
                   onChange={(event) => setSidebarWidth(Number(event.target.value) || 240)}
                 />
               </div>
-              <div className="md:col-span-2">
-                <Button
-                  type="button"
-                  variant={preferences.showWelcome ? "default" : "outline"}
-                  onClick={() => updatePreferences({ showWelcome: !preferences.showWelcome })}
-                >
-                  {preferences.showWelcome ? "欢迎页已启用" : "欢迎页已停用"}
-                </Button>
-              </div>
+              <Button type="button" className="w-fit" onClick={() => toast.success("设置已保存")}>保存设置</Button>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="analysis">
+        <TabsContent value="analysis" className="mt-0 lg:col-start-2">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -649,22 +605,9 @@ export function SettingsIndexPage() {
                 分析偏好
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-5 md:grid-cols-2">
+            <CardContent className="grid max-w-2xl gap-5">
               <div className="space-y-2">
-                <Label htmlFor="default-depth">默认分析深度</Label>
-                <Select value={preferences.defaultDepth} onValueChange={(value) => updatePreferences({ defaultDepth: value as "1" | "2" | "3" | "4" | "5" })}>
-                  <SelectTrigger id="default-depth"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">1级</SelectItem>
-                    <SelectItem value="2">2级</SelectItem>
-                    <SelectItem value="3">3级</SelectItem>
-                    <SelectItem value="4">4级</SelectItem>
-                    <SelectItem value="5">5级</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="analysis-market">分析市场</Label>
+                <Label htmlFor="analysis-market">默认市场</Label>
                 <Select value={preferences.defaultMarket} onValueChange={(value) => updatePreferences({ defaultMarket: value as "A股" | "美股" | "港股" })}>
                   <SelectTrigger id="analysis-market"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -674,11 +617,57 @@ export function SettingsIndexPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="default-depth">默认分析深度</Label>
+                <Select value={preferences.defaultDepth} onValueChange={(value) => updatePreferences({ defaultDepth: value as "1" | "2" | "3" | "4" | "5" })}>
+                  <SelectTrigger id="default-depth"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1级 - 快速分析</SelectItem>
+                    <SelectItem value="2">2级 - 基础分析</SelectItem>
+                    <SelectItem value="3">3级 - 标准分析（推荐）</SelectItem>
+                    <SelectItem value="4">4级 - 深度分析</SelectItem>
+                    <SelectItem value="5">5级 - 全面分析</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>默认分析师</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {["市场分析师", "基本面分析师", "新闻分析师", "社媒分析师"].map((analyst) => (
+                    <label key={analyst} className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" defaultChecked />
+                      {analyst}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={preferences.autoRefresh} onChange={(event) => updatePreferences({ autoRefresh: event.target.checked })} />
+                自动刷新
+                <span className="text-muted-foreground">自动刷新分析结果</span>
+              </label>
+              <div className="space-y-2">
+                <Label htmlFor="refresh-interval">刷新间隔</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="refresh-interval"
+                    min={10}
+                    max={300}
+                    step={10}
+                    type="number"
+                    value={preferences.refreshInterval}
+                    disabled={!preferences.autoRefresh}
+                    onChange={(event) => updatePreferences({ refreshInterval: Number(event.target.value) || 30 })}
+                  />
+                  <span className="text-sm text-muted-foreground">秒</span>
+                </div>
+              </div>
+              <Button type="button" className="w-fit" onClick={() => toast.success("设置已保存")}>保存设置</Button>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="notifications">
+        <TabsContent value="notifications" className="mt-0 lg:col-start-2">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -686,26 +675,26 @@ export function SettingsIndexPage() {
                 通知设置
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Button
-                type="button"
-                variant={preferences.autoRefresh ? "default" : "outline"}
-                onClick={() => updatePreferences({ autoRefresh: !preferences.autoRefresh })}
-              >
-                {preferences.autoRefresh ? "状态刷新通知开启" : "状态刷新通知关闭"}
-              </Button>
-              <Button
-                type="button"
-                variant={preferences.showWelcome ? "default" : "outline"}
-                onClick={() => updatePreferences({ showWelcome: !preferences.showWelcome })}
-              >
-                {preferences.showWelcome ? "启动提示开启" : "启动提示关闭"}
-              </Button>
+            <CardContent className="grid max-w-2xl gap-5">
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" defaultChecked />
+                桌面通知
+                <span className="text-muted-foreground">显示桌面通知</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" defaultChecked />
+                分析完成通知
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" defaultChecked />
+                系统维护通知
+              </label>
+              <Button type="button" className="w-fit" onClick={() => toast.success("设置已保存")}>保存设置</Button>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="security">
+        <TabsContent value="security" className="mt-0 lg:col-start-2">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -713,35 +702,15 @@ export function SettingsIndexPage() {
                 安全设置
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
-              <div>
-                <div className="font-medium">{isAuthenticated ? userDisplayName : "未登录"}</div>
-                <div className="mt-1 text-sm text-muted-foreground">{isAuthenticated ? "当前浏览器会话有效" : "当前没有登录会话"}</div>
+            <CardContent className="grid max-w-2xl gap-5">
+              <div className="space-y-2">
+                <Label>修改密码</Label>
+                <Button type="button" onClick={() => toast.info("修改密码功能将使用账户接口处理")}>修改密码</Button>
               </div>
-              <Button type="button" variant="outline" onClick={clearAuthInfo} disabled={!isAuthenticated}>
-                <LogOut className="mr-2 size-4" />
-                清除会话
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-
-      <div className="space-y-3">
-        <h2 className="text-base font-semibold">系统配置</h2>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {settingsLinks.map((item) => {
-            const Icon = item.icon
-            return (
-              <Link key={item.href} href={item.href} className="rounded-md border bg-background p-4 transition-colors hover:bg-muted">
-                <Icon className="mb-3 size-5 text-primary" />
-                <div className="font-medium">{item.title}</div>
-                <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
-              </Link>
-            )
-          })}
-        </div>
-      </div>
     </div>
   )
 }
@@ -1835,7 +1804,6 @@ export function DatabaseManagementPage() {
   const [cleanupDays, setCleanupDays] = useState(30)
   const [logCleanupDays, setLogCleanupDays] = useState(90)
   const [exportMode, setExportMode] = useState("config_and_reports")
-  const [importCollection, setImportCollection] = useState("config_and_reports")
   const [importOverwrite, setImportOverwrite] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [confirm, setConfirm] = useState<ConfirmState>(null)
@@ -1853,7 +1821,7 @@ export function DatabaseManagementPage() {
   const importMutation = useMutation({
     mutationFn: () => {
       if (!importFile) throw new Error("请选择要导入的 JSON 文件")
-      return databaseApi.importData(importFile, { collection: importCollection, format: "json", overwrite: importOverwrite })
+      return databaseApi.importData(importFile, { collection: "config_and_reports", format: "json", overwrite: importOverwrite })
     },
     onSuccess: () => {
       toast.success("数据导入完成")
@@ -1888,7 +1856,7 @@ export function DatabaseManagementPage() {
     <div>
       <PageHeader
         title="数据库管理"
-        description="查看数据库状态、统计、导入导出和清理操作。"
+        description="PostgreSQL + Redis 数据库管理和监控"
         actions={<LoadingButton variant="outline" loading={statusQuery.isFetching} onClick={() => void statusQuery.refetch()}>刷新状态</LoadingButton>}
       />
       <div className="grid gap-4 md:grid-cols-2">
@@ -1896,19 +1864,34 @@ export function DatabaseManagementPage() {
         {renderConnection("Redis", status?.redis)}
       </div>
       <div className="mt-4 grid gap-4 md:grid-cols-3">
-        <StatCard label="集合数" value={stats?.total_collections ?? 0} />
+        <StatCard label="PostgreSQL 集合数" value={stats?.total_collections ?? 0} />
         <StatCard label="文档数" value={stats?.total_documents ?? 0} />
         <StatCard label="数据库大小" value={formatBytes(stats?.total_size ?? 0)} />
       </div>
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle>数据导出</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <Select value={exportMode} onValueChange={setExportMode}>
-              <SelectTrigger aria-label="导出范围"><SelectValue /></SelectTrigger>
+      <Card className="mt-6">
+        <CardHeader><CardTitle>数据管理操作</CardTitle></CardHeader>
+        <CardContent className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-3 rounded-md border p-4">
+            <h3 className="font-medium">数据导出</h3>
+            <p className="text-sm text-muted-foreground">导出数据库数据到文件</p>
+            <Label>导出格式</Label>
+            <Select value="json">
+              <SelectTrigger aria-label="导出格式"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="config">仅配置数据（自动脱敏）</SelectItem>
-                <SelectItem value="config_and_reports">配置和报告数据</SelectItem>
+                <SelectItem value="json">JSON</SelectItem>
+                <SelectItem value="csv">CSV</SelectItem>
+                <SelectItem value="xlsx">Excel</SelectItem>
+              </SelectContent>
+            </Select>
+            <Label>数据集合</Label>
+            <Select value={exportMode} onValueChange={setExportMode}>
+              <SelectTrigger aria-label="数据集合"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="config_and_reports">配置和报告（用于迁移）</SelectItem>
+                <SelectItem value="config">配置数据（用于演示系统，已脱敏）</SelectItem>
+                <SelectItem value="analysis_reports">分析报告</SelectItem>
+                <SelectItem value="user_configs">用户配置</SelectItem>
+                <SelectItem value="operation_logs">操作日志</SelectItem>
                 <SelectItem value="all">全部数据</SelectItem>
               </SelectContent>
             </Select>
@@ -1925,31 +1908,35 @@ export function DatabaseManagementPage() {
             >
               <Download className="mr-2 size-4" />导出数据
             </Button>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>数据导入</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <Select value={importCollection} onValueChange={setImportCollection}>
-              <SelectTrigger aria-label="导入集合"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="config_and_reports">配置和报告数据</SelectItem>
-                <SelectItem value="analysis_results">分析结果</SelectItem>
-                <SelectItem value="operation_logs">操作日志</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input aria-label="导入 JSON 文件" type="file" accept=".json,application/json" onChange={(event) => setImportFile(event.target.files?.[0] || null)} />
+          </div>
+          <div className="space-y-3 rounded-md border p-4">
+            <h3 className="font-medium">数据导入</h3>
+            <p className="text-sm text-muted-foreground">从导出文件导入数据</p>
+            <Label>选择文件</Label>
+            <Input aria-label="选择文件" type="file" accept=".json,application/json" onChange={(event) => setImportFile(event.target.files?.[0] || null)} />
+            <Label>导入选项</Label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={importOverwrite} onChange={(event) => setImportOverwrite(event.target.checked)} />
               覆盖现有数据
             </label>
+            <div className="text-xs text-muted-foreground">勾选后将删除现有数据再导入</div>
             <LoadingButton loading={importMutation.isPending} disabled={!importFile} onClick={() => importMutation.mutate()}>导入数据</LoadingButton>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+          <div className="space-y-3 rounded-md border p-4 lg:col-span-2">
+            <h3 className="font-medium">数据备份与还原</h3>
+            <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">请使用命令行工具进行备份和还原</p>
+              <p className="mt-2">由于数据量较大，Web 界面备份体验较差，建议使用 PostgreSQL 原生工具。</p>
+              <code className="mt-2 block rounded bg-background p-2">pg_dump postgresql://postgres:postgres@localhost:5432/trading_agents_cn --format=custom --file=./backup/trading_agents.dump</code>
+              <code className="mt-2 block rounded bg-background p-2">pg_restore --dbname=postgresql://postgres:postgres@localhost:5432/trading_agents_cn ./backup/trading_agents.dump</code>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       <Card className="mt-6">
-        <CardHeader><CardTitle>数据维护</CardTitle></CardHeader>
+        <CardHeader><CardTitle>数据清理</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 md:col-span-3">危险操作：以下操作将永久删除数据，请谨慎操作</div>
           <LoadingButton loading={actionMutation.isPending} onClick={() => actionMutation.mutate(() => databaseApi.testConnections())}>测试连接</LoadingButton>
           <div className="flex gap-2">
             <Input aria-label="分析结果清理天数" type="number" min={1} max={365} value={cleanupDays} onChange={(event) => setCleanupDays(Number(event.target.value) || 30)} />
@@ -2043,7 +2030,7 @@ export function OperationLogsPage() {
     <div>
       <PageHeader
         title="操作日志"
-        description="查看用户操作日志、行为统计和清理记录。"
+        description="系统操作日志查看、过滤和分析"
         actions={<Button variant="outline" onClick={() => void logsQuery.refetch()}>刷新</Button>}
       />
       <div className="grid gap-4 md:grid-cols-4">
@@ -2053,26 +2040,40 @@ export function OperationLogsPage() {
         <StatCard label="成功率" value={`${stats?.success_rate ?? 0}%`} />
       </div>
       <Card className="mt-6">
-        <CardHeader><CardTitle>筛选</CardTitle></CardHeader>
+        <CardHeader><CardTitle>筛选控制面板</CardTitle></CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-4">
-          <Input placeholder="搜索操作内容" value={keyword} onChange={(event) => { setKeyword(event.target.value); setPage(1) }} />
+          <div className="space-y-2">
+            <Label>时间范围</Label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input aria-label="开始时间" type="datetime-local" value={startDate} onChange={(event) => { setStartDate(event.target.value); setPage(1) }} />
+              <Input aria-label="结束时间" type="datetime-local" value={endDate} onChange={(event) => { setEndDate(event.target.value); setPage(1) }} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>操作类型</Label>
           <Select value={actionType} onValueChange={setActionType}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="全部类型" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部类型</SelectItem>
               {Object.values(ActionTypes).map((type) => <SelectItem key={type} value={type}>{getActionTypeName(type)}</SelectItem>)}
             </SelectContent>
           </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>操作状态</Label>
           <Select value={success} onValueChange={setSuccess}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部状态</SelectItem>
               <SelectItem value="success">成功</SelectItem>
               <SelectItem value="failed">失败</SelectItem>
             </SelectContent>
           </Select>
-          <Input aria-label="开始日期" type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); setPage(1) }} />
-          <Input aria-label="结束日期" type="date" value={endDate} onChange={(event) => { setEndDate(event.target.value); setPage(1) }} />
+          </div>
+          <div className="space-y-2">
+            <Label>关键词</Label>
+            <Input placeholder="搜索操作内容" value={keyword} onChange={(event) => { setKeyword(event.target.value); setPage(1) }} />
+          </div>
           <Select value={pageSize} onValueChange={(value) => { setPageSize(value); setPage(1) }}>
             <SelectTrigger aria-label="每页条数"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -2082,6 +2083,20 @@ export function OperationLogsPage() {
               <SelectItem value="200">200 条/页</SelectItem>
             </SelectContent>
           </Select>
+          <Button onClick={() => void logsQuery.refetch()}>查询</Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setKeyword("")
+              setActionType("all")
+              setSuccess("all")
+              setStartDate("")
+              setEndDate("")
+              setPage(1)
+            }}
+          >
+            重置
+          </Button>
           <Button
             variant="outline"
             onClick={async () => {
@@ -2112,15 +2127,36 @@ export function OperationLogsPage() {
           </Button>
         </CardContent>
       </Card>
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle>操作类型分布</CardTitle></CardHeader>
+          <CardContent className="h-40 text-sm text-muted-foreground">按操作类型统计当前日志分布。</CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>操作趋势</CardTitle></CardHeader>
+          <CardContent className="h-40 text-sm text-muted-foreground">按时间维度展示操作变化趋势。</CardContent>
+        </Card>
+      </div>
       <Card className="mt-6">
-        <CardHeader><CardTitle>日志列表</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>操作日志列表</CardTitle>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => void logsQuery.refetch()}>刷新</Button>
+            <Button size="sm" variant="destructive" onClick={() => setConfirm({
+              title: "清空操作日志",
+              description: "确定要清空匹配当前筛选条件的操作日志吗？此操作不可恢复。",
+              confirmText: "清空",
+              onConfirm: () => clearMutation.mutate()
+            })}>清空日志</Button>
+          </div>
+        </CardHeader>
         <CardContent>
           <GenericTable<OperationLog> rows={logs} emptyText="暂无操作日志">
             <TableHeader>
               <TableRow>
                 <TableHead>时间</TableHead>
                 <TableHead>类型</TableHead>
-                <TableHead>操作</TableHead>
+                <TableHead>操作内容</TableHead>
                 <TableHead>状态</TableHead>
                 <TableHead>耗时</TableHead>
                 <TableHead>IP</TableHead>
@@ -2227,8 +2263,8 @@ export function SystemLogsPage() {
   return (
     <div>
       <PageHeader
-        title="系统日志"
-        description="读取、筛选、导出和删除后端系统日志文件。"
+        title="日志管理"
+        description="系统日志文件查看、过滤、导出和删除"
         actions={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => void filesQuery.refetch()}>刷新</Button>
@@ -2238,19 +2274,23 @@ export function SystemLogsPage() {
       />
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard label="日志文件数" value={stats?.total_files ?? 0} />
-        <StatCard label="总大小 MB" value={stats?.total_size_mb?.toFixed?.(2) ?? 0} />
+        <StatCard label="总大小 (MB)" value={stats?.total_size_mb?.toFixed?.(2) ?? 0} />
         <StatCard label="错误日志文件" value={stats?.error_files ?? 0} />
+      </div>
+      <div className="mt-3">
+        <Button variant="outline" onClick={() => void statsQuery.refetch()}>刷新统计</Button>
       </div>
       <Card className="mt-6">
         <CardHeader><CardTitle>日志文件列表</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <Input placeholder="搜索文件名" value={keyword} onChange={(event) => setKeyword(event.target.value)} />
+          <Label htmlFor="system-log-search">搜索文件名</Label>
+          <Input id="system-log-search" placeholder="搜索文件名" value={keyword} onChange={(event) => setKeyword(event.target.value)} />
           <GenericTable<LogFileInfo> rows={files} emptyText="暂无日志文件">
             <TableHeader>
               <TableRow>
                 <TableHead>文件名</TableHead>
                 <TableHead>类型</TableHead>
-                <TableHead>大小</TableHead>
+                <TableHead>大小 (MB)</TableHead>
                 <TableHead>修改时间</TableHead>
                 <TableHead>操作</TableHead>
               </TableRow>
@@ -2284,7 +2324,7 @@ export function SystemLogsPage() {
                           downloadBlob(blob, `${file.name}.txt`)
                         }}
                       >
-                        导出
+                        下载
                       </Button>
                       <Button
                         size="sm"
@@ -2460,11 +2500,16 @@ export function SyncManagementPage() {
     <div>
       <PageHeader
         title="多数据源同步"
-        description="查看同步状态、数据源健康、同步建议和历史记录。"
+        description="管理和监控多个数据源的股票基础信息同步，支持自动fallback和优先级配置"
         actions={
           <div className="flex flex-wrap gap-2">
-            <LoadingButton loading={testMutation.isPending} variant="outline" onClick={() => testMutation.mutate(undefined)}>全面测试</LoadingButton>
-            <LoadingButton loading={maintenanceMutation.isPending} variant="outline" onClick={() => maintenanceMutation.mutate(() => clearSyncCache())}>清同步缓存</LoadingButton>
+            <LoadingButton loading={testMutation.isPending} onClick={() => testMutation.mutate(undefined)}>全面测试</LoadingButton>
+            <Button variant="outline" onClick={() => {
+              void statusQuery.refetch()
+              void sourcesQuery.refetch()
+              void recommendationsQuery.refetch()
+              void historyQuery.refetch()
+            }}>刷新</Button>
           </div>
         }
       />
@@ -2481,8 +2526,14 @@ export function SyncManagementPage() {
             <input type="checkbox" checked={force} onChange={(event) => setForce(event.target.checked)} />
             强制同步
           </label>
-          <LoadingButton loading={syncMutation.isPending} onClick={() => syncMutation.mutate()}>运行股票基础信息同步</LoadingButton>
-          <LoadingButton loading={maintenanceMutation.isPending} variant="outline" onClick={() => maintenanceMutation.mutate(() => runSingleSourceSync())}>运行传统单源同步</LoadingButton>
+          <LoadingButton loading={syncMutation.isPending} onClick={() => syncMutation.mutate()}>开始同步</LoadingButton>
+          <Button variant="outline" onClick={() => void statusQuery.refetch()}>刷新状态</Button>
+          <LoadingButton loading={maintenanceMutation.isPending} variant="outline" onClick={() => maintenanceMutation.mutate(() => clearSyncCache())}>清空缓存</LoadingButton>
+          <LoadingButton loading={maintenanceMutation.isPending} variant="outline" onClick={() => maintenanceMutation.mutate(() => runSingleSourceSync())}>传统单源同步</LoadingButton>
+          <LoadingButton loading={syncMutation.isPending} variant="outline" onClick={() => {
+            setForce(true)
+            syncMutation.mutate()
+          }}>强制重新同步</LoadingButton>
         </CardContent>
       </Card>
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -2495,8 +2546,9 @@ export function SyncManagementPage() {
                   <div className="font-medium">{source.name}</div>
                   {boolBadge(source.available, "可用", "不可用")}
                 </div>
-                <div className="mt-1 text-sm text-muted-foreground">优先级 {source.priority} / {source.description}</div>
-                <Button className="mt-3" size="sm" variant="outline" onClick={() => testMutation.mutate(source.name)}>测试此数据源</Button>
+                <div className="mt-1 text-sm text-muted-foreground">优先级: {source.priority}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{source.description}</div>
+                <Button className="mt-3" size="sm" variant="outline" onClick={() => testMutation.mutate(source.name)}>测试</Button>
               </div>
             ))}
             {!sources.length ? <EmptyState title="暂无数据源状态" /> : null}
@@ -2505,7 +2557,12 @@ export function SyncManagementPage() {
         <Card>
           <CardHeader><CardTitle>同步建议</CardTitle></CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div>主数据源：{recommendations?.primary_source?.name || "-"}</div>
+            <div className="font-medium">使用建议</div>
+            <div>推荐主数据源：{recommendations?.primary_source?.name || "-"}</div>
+            <div>备用数据源：{recommendations?.fallback_sources?.map((source) => source.name).join(", ") || "-"}</div>
+            <div className="font-medium">优化建议</div>
+            <div className="font-medium">配置示例</div>
+            <div className="text-muted-foreground">环境变量配置 / API调用示例</div>
             {(recommendations?.suggestions || []).map((item) => <div key={item} className="rounded-md border p-3">{item}</div>)}
             {(recommendations?.warnings || []).map((item) => <div key={item} className="rounded-md border border-destructive/30 p-3 text-destructive">{item}</div>)}
           </CardContent>
@@ -2621,11 +2678,10 @@ export function CacheManagementPage() {
     <div>
       <PageHeader
         title="缓存管理"
-        description="查看缓存统计、详情、后端信息并执行清理操作。"
+        description="管理股票数据缓存，优化系统性能"
         actions={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => void statsQuery.refetch()}>刷新统计</Button>
-            <Button variant="outline" onClick={() => void detailsQuery.refetch()}>刷新详情</Button>
           </div>
         }
       />
@@ -2636,19 +2692,34 @@ export function CacheManagementPage() {
         <StatCard label="新闻数据" value={stats?.newsDataCount ?? 0} />
       </div>
       <Card className="mt-6">
+        <CardHeader><CardTitle>缓存使用情况</CardTitle></CardHeader>
+        <CardContent>
+          <div className="h-3 rounded bg-muted">
+            <div className="h-3 rounded bg-primary" style={{ width: `${usagePercent}%` }} />
+          </div>
+          <div className="mt-2 text-sm text-muted-foreground">已使用 {formatBytes(stats?.totalSize ?? 0)} / {formatBytes(maxSize)}</div>
+          <div className="mt-1 text-xs text-muted-foreground">后端：{backendQuery.data?.system || "-"}，主缓存：{backendQuery.data?.primary_backend || "unknown"}，回退：{backendQuery.data?.fallback_enabled ? "启用" : "关闭"}</div>
+        </CardContent>
+      </Card>
+      <Card className="mt-6">
         <CardHeader><CardTitle>缓存操作</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           <div className="rounded-md border p-4">
-            <div className="text-sm font-medium">缓存使用率</div>
-            <div className="mt-2 h-2 rounded bg-muted">
-              <div className="h-2 rounded bg-primary" style={{ width: `${usagePercent}%` }} />
-            </div>
-            <div className="mt-2 text-xs text-muted-foreground">{usagePercent}% / {backendQuery.data?.primary_backend || "unknown"}</div>
-            <div className="mt-1 text-xs text-muted-foreground">后端：{backendQuery.data?.system || "-"}，回退：{backendQuery.data?.fallback_enabled ? "启用" : "关闭"}</div>
+            <div className="text-sm font-medium">刷新统计</div>
+            <p className="mt-2 text-sm text-muted-foreground">重新获取最新的缓存统计信息</p>
+            <Button className="mt-3" variant="outline" onClick={() => void statsQuery.refetch()}>刷新统计</Button>
           </div>
-          <div className="flex gap-2">
-            <Input type="number" min={1} max={30} value={cleanupDays} onChange={(event) => setCleanupDays(Number(event.target.value) || 7)} />
+          <div className="rounded-md border p-4">
+            <div className="text-sm font-medium">清理过期缓存</div>
+            <p className="mt-2 text-sm text-muted-foreground">删除指定天数之前的缓存文件</p>
+            <Label htmlFor="cleanup-days" className="mt-3 block">清理天数</Label>
+            <Input id="cleanup-days" className="mt-2" type="number" min={1} max={30} value={cleanupDays} onChange={(event) => setCleanupDays(Number(event.target.value) || 7)} />
+            <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span>1天</span><span>1周</span><span>2周</span><span>1月</span>
+            </div>
+            <div className="mt-2 text-sm text-muted-foreground">将清理 {cleanupDays} 天前的缓存文件</div>
             <Button
+              className="mt-3"
               variant="outline"
               onClick={() => setConfirm({
                 title: "清理过期缓存",
@@ -2660,31 +2731,39 @@ export function CacheManagementPage() {
               清理过期缓存
             </Button>
           </div>
-          <Button
-            variant="destructive"
-            onClick={() => setConfirm({
-              title: "清空所有缓存",
-              description: "确定要删除所有缓存吗？此操作不可恢复。",
-              confirmText: "清空",
-              onConfirm: () => actionMutation.mutate(() => clearAllCache())
-            })}
-          >
-            清空所有缓存
-          </Button>
+          <div className="rounded-md border p-4">
+            <div className="text-sm font-medium">清空所有缓存</div>
+            <p className="mt-2 text-sm text-destructive">此操作将删除所有缓存文件，无法恢复</p>
+            <Button
+              className="mt-3"
+              variant="destructive"
+              onClick={() => setConfirm({
+                title: "清空所有缓存",
+                description: "确定要删除所有缓存吗？此操作不可恢复。",
+                confirmText: "清空",
+                onConfirm: () => actionMutation.mutate(() => clearAllCache())
+              })}
+            >
+              清空所有缓存
+            </Button>
+          </div>
         </CardContent>
       </Card>
       <Card className="mt-6">
         <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle>缓存详情</CardTitle>
-          <Select value={pageSize} onValueChange={(value) => { setPageSize(value); setPage(1) }}>
-            <SelectTrigger aria-label="缓存每页条数" className="w-36"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10 条/页</SelectItem>
-              <SelectItem value="20">20 条/页</SelectItem>
-              <SelectItem value="50">50 条/页</SelectItem>
-              <SelectItem value="100">100 条/页</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => void detailsQuery.refetch()}>刷新</Button>
+            <Select value={pageSize} onValueChange={(value) => { setPageSize(value); setPage(1) }}>
+              <SelectTrigger aria-label="缓存每页条数" className="w-36"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10 条/页</SelectItem>
+                <SelectItem value="20">20 条/页</SelectItem>
+                <SelectItem value="50">50 条/页</SelectItem>
+                <SelectItem value="100">100 条/页</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           <GenericTable<CacheDetailItem> rows={details} emptyText="暂无缓存详情">
@@ -2696,6 +2775,7 @@ export function CacheManagementPage() {
                 <TableHead>创建时间</TableHead>
                 <TableHead>最后访问</TableHead>
                 <TableHead>命中</TableHead>
+                <TableHead>操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -2707,6 +2787,7 @@ export function CacheManagementPage() {
                   <TableCell>{formatDateTime(item.created_at)}</TableCell>
                   <TableCell>{formatDateTime(item.last_accessed)}</TableCell>
                   <TableCell>{item.hit_count}</TableCell>
+                  <TableCell><Button size="sm" variant="outline" disabled>删除</Button></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -2769,29 +2850,45 @@ export function UsageStatisticsPage() {
   return (
     <div>
       <PageHeader
-        title="使用统计"
+        title="使用统计与计费"
         description="查看 Token、成本、模型和供应商使用统计。"
         actions={
-          <Select value={days} onValueChange={setDays}>
-            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">最近7天</SelectItem>
-              <SelectItem value="30">最近30天</SelectItem>
-              <SelectItem value="90">最近90天</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select value={days} onValueChange={setDays}>
+              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">最近7天</SelectItem>
+                <SelectItem value="30">最近30天</SelectItem>
+                <SelectItem value="90">最近90天</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={() => {
+              void statisticsQuery.refetch()
+              void recordsQuery.refetch()
+            }}>刷新</Button>
+          </div>
         }
       />
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="总请求数" value={stats?.total_requests ?? 0} />
-        <StatCard label="输入 Token" value={stats?.total_input_tokens ?? 0} />
-        <StatCard label="输出 Token" value={stats?.total_output_tokens ?? 0} />
+        <StatCard label="总输入 Token" value={stats?.total_input_tokens ?? 0} />
+        <StatCard label="总输出 Token" value={stats?.total_output_tokens ?? 0} />
         <StatCard label="总成本" value={Object.entries(stats?.cost_by_currency || {}).map(([currency, value]) => `${value.toFixed(4)} ${currency}`).join(" / ") || "0"} />
       </div>
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <EChartPanel option={providerOption} empty={!Object.keys(stats?.by_provider || {}).length} height={300} />
-        <EChartPanel option={modelOption} empty={!Object.keys(stats?.by_model || {}).length} height={300} />
+        <Card>
+          <CardHeader><CardTitle>按供应商统计</CardTitle></CardHeader>
+          <CardContent><EChartPanel option={providerOption} empty={!Object.keys(stats?.by_provider || {}).length} height={300} /></CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>按模型统计</CardTitle></CardHeader>
+          <CardContent><EChartPanel option={modelOption} empty={!Object.keys(stats?.by_model || {}).length} height={300} /></CardContent>
+        </Card>
       </div>
+      <Card className="mt-6">
+        <CardHeader><CardTitle>每日成本趋势</CardTitle></CardHeader>
+        <CardContent className="h-[300px] text-sm text-muted-foreground">暂无每日成本趋势数据</CardContent>
+      </Card>
       <Card className="mt-6">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>使用记录</CardTitle>
@@ -2804,10 +2901,11 @@ export function UsageStatisticsPage() {
                 <TableHead>时间</TableHead>
                 <TableHead>供应商</TableHead>
                 <TableHead>模型</TableHead>
-                <TableHead>输入</TableHead>
-                <TableHead>输出</TableHead>
+                <TableHead>输入 Token</TableHead>
+                <TableHead>输出 Token</TableHead>
                 <TableHead>成本</TableHead>
                 <TableHead>分析类型</TableHead>
+                <TableHead>会话ID</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -2820,6 +2918,7 @@ export function UsageStatisticsPage() {
                   <TableCell>{record.output_tokens}</TableCell>
                   <TableCell>{record.cost.toFixed(4)} {record.currency || "CNY"}</TableCell>
                   <TableCell>{record.analysis_type}</TableCell>
+                  <TableCell className="max-w-[220px] truncate">{record.session_id}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -2833,11 +2932,13 @@ export function UsageStatisticsPage() {
 export function SchedulerManagementPage() {
   const [keyword, setKeyword] = useState("")
   const [status, setStatus] = useState("all")
+  const [dataSourceFilter, setDataSourceFilter] = useState("all")
   const [editingJob, setEditingJob] = useState<Job | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [executionStatus, setExecutionStatus] = useState("all")
   const [executionMode, setExecutionMode] = useState("all")
   const [selectedExecution, setSelectedExecution] = useState<JobExecution | null>(null)
+  const [selectedJobDetail, setSelectedJobDetail] = useState<Job | null>(null)
   const [description, setDescription] = useState("")
   const [displayName, setDisplayName] = useState("")
   const queryClient = useQueryClient()
@@ -2876,7 +2977,9 @@ export function SchedulerManagementPage() {
   const jobs = (jobsQuery.data || []).filter((job) => {
     const matchesKeyword = job.name.toLowerCase().includes(keyword.toLowerCase()) || (job.display_name || "").toLowerCase().includes(keyword.toLowerCase())
     const matchesStatus = status === "all" || (status === "running" ? !job.paused : job.paused)
-    return matchesKeyword && matchesStatus
+    const sourceText = `${job.name} ${job.display_name || ""} ${job.description || ""}`.toLowerCase()
+    const matchesSource = dataSourceFilter === "all" || sourceText.includes(dataSourceFilter.toLowerCase())
+    return matchesKeyword && matchesStatus && matchesSource
   })
   const stats = statsQuery.data
   const health = healthQuery.data
@@ -2885,8 +2988,8 @@ export function SchedulerManagementPage() {
   return (
     <div>
       <PageHeader
-        title="定时任务"
-        description="管理调度任务、执行历史、任务健康和失败处理。"
+        title="定时任务管理"
+        description="管理系统中的所有定时任务，支持暂停、恢复和手动触发"
         actions={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => void jobsQuery.refetch()}>刷新</Button>
@@ -2901,17 +3004,42 @@ export function SchedulerManagementPage() {
         <StatCard label="调度器" value={health?.status || "unknown"} />
       </div>
       <Card className="mt-6">
-        <CardHeader><CardTitle>筛选</CardTitle></CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
+        <CardHeader><CardTitle>搜索和筛选</CardTitle></CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-4">
+          <div className="space-y-2">
+            <Label>任务名称</Label>
           <Input placeholder="搜索任务名称" value={keyword} onChange={(event) => setKeyword(event.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>数据源</Label>
+            <Select value={dataSourceFilter} onValueChange={setDataSourceFilter}>
+              <SelectTrigger><SelectValue placeholder="全部数据源" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部数据源</SelectItem>
+                <SelectItem value="Tushare">Tushare</SelectItem>
+                <SelectItem value="AKShare">AKShare</SelectItem>
+                <SelectItem value="BaoStock">BaoStock</SelectItem>
+                <SelectItem value="多数据源">多数据源</SelectItem>
+                <SelectItem value="其他">其他</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>状态</Label>
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="全部状态" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部状态</SelectItem>
               <SelectItem value="running">运行中</SelectItem>
               <SelectItem value="paused">已暂停</SelectItem>
             </SelectContent>
           </Select>
+          </div>
+          <Button variant="outline" className="self-end" onClick={() => {
+            setKeyword("")
+            setStatus("all")
+            setDataSourceFilter("all")
+          }}>重置</Button>
         </CardContent>
       </Card>
       <Card className="mt-6">
@@ -2920,10 +3048,11 @@ export function SchedulerManagementPage() {
           <GenericTable<Job> rows={jobs} emptyText="暂无定时任务">
             <TableHeader>
               <TableRow>
-                <TableHead>任务</TableHead>
+                <TableHead>任务名称</TableHead>
+                <TableHead>触发器名称</TableHead>
                 <TableHead>触发器</TableHead>
-                <TableHead>下次执行</TableHead>
-                <TableHead>状态</TableHead>
+                <TableHead>备注</TableHead>
+                <TableHead>下次执行时间</TableHead>
                 <TableHead>操作</TableHead>
               </TableRow>
             </TableHeader>
@@ -2931,12 +3060,15 @@ export function SchedulerManagementPage() {
               {jobs.map((job) => (
                 <TableRow key={job.id}>
                   <TableCell>
-                    <div className="font-medium">{job.display_name || job.name}</div>
-                    <div className="text-xs text-muted-foreground">{job.description || job.id}</div>
+                    <div className="flex items-center gap-2">
+                      {boolBadge(!job.paused, "运行中", "已暂停")}
+                      <span className="font-medium">{job.name}</span>
+                    </div>
                   </TableCell>
+                  <TableCell>{job.display_name || "-"}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{job.trigger}</TableCell>
+                  <TableCell className="max-w-[260px] truncate">{job.description || "-"}</TableCell>
                   <TableCell>{job.next_run_time ? formatDateTime(job.next_run_time) : "-"}</TableCell>
-                  <TableCell>{boolBadge(!job.paused, "运行中", "已暂停")}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-2">
                       <Button
@@ -2954,6 +3086,7 @@ export function SchedulerManagementPage() {
                         {job.paused ? "恢复" : "暂停"}
                       </Button>
                       <Button size="sm" onClick={() => actionMutation.mutate(() => triggerJob(job.id, true))}>立即执行</Button>
+                      <Button size="sm" variant="outline" onClick={() => setSelectedJobDetail(job)}>详情</Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -2962,6 +3095,23 @@ export function SchedulerManagementPage() {
           </GenericTable>
         </CardContent>
       </Card>
+      <Dialog open={Boolean(selectedJobDetail)} onOpenChange={(nextOpen) => !nextOpen && setSelectedJobDetail(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>任务详情</DialogTitle>
+            <DialogDescription>{selectedJobDetail?.name || ""}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 text-sm">
+            <div>任务ID：{selectedJobDetail?.id || "-"}</div>
+            <div>任务名称：{selectedJobDetail?.name || "-"}</div>
+            <div>状态：{selectedJobDetail ? (selectedJobDetail.paused ? "已暂停" : "运行中") : "-"}</div>
+            <div>触发器：{selectedJobDetail?.trigger || "-"}</div>
+            <div>下次执行时间：{selectedJobDetail?.next_run_time ? formatDateTime(selectedJobDetail.next_run_time) : "已暂停"}</div>
+            {selectedJobDetail?.func ? <div>执行函数：{selectedJobDetail.func}</div> : null}
+            {selectedJobDetail?.kwargs ? <pre className="overflow-auto rounded-md bg-muted p-3 text-xs">参数：{JSON.stringify(selectedJobDetail.kwargs, null, 2)}</pre> : null}
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={Boolean(editingJob)} onOpenChange={(nextOpen) => !nextOpen && setEditingJob(null)}>
         <DialogContent>
           <DialogHeader>

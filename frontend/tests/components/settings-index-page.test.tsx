@@ -22,7 +22,9 @@ describe("SettingsIndexPage", () => {
     render(<SettingsIndexPage />)
 
     expect(screen.getByRole("tab", { name: "通用设置" })).toHaveAttribute("data-state", "active")
-    expect(screen.getByText("默认市场")).toBeInTheDocument()
+    expect(screen.getByText("用户名")).toBeInTheDocument()
+    expect(screen.getByText("邮箱")).toBeInTheDocument()
+    expect(screen.getByText("时区")).toBeInTheDocument()
   })
 
   it("opens the personal settings tab from the URL query", () => {
