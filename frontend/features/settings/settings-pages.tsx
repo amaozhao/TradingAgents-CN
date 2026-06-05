@@ -514,14 +514,14 @@ export function SettingsIndexPage() {
     <div className="space-y-6">
       <PageHeader title={personalSettingsTabs.find((item) => item.value === activeTab)?.title || "设置"} description="个性化配置和偏好设置" />
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="grid gap-6 lg:grid-cols-[240px_1fr]">
-        <TabsList className="flex h-auto flex-wrap justify-start lg:flex-col lg:items-stretch lg:self-start">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
+        <TabsList className="flex h-auto flex-wrap justify-start">
           {personalSettingsTabs.map((item) => (
-            <TabsTrigger key={item.value} value={item.value} className="justify-start lg:w-full">{item.title}</TabsTrigger>
+            <TabsTrigger key={item.value} value={item.value}>{item.title}</TabsTrigger>
           ))}
         </TabsList>
 
-        <TabsContent value="general" className="mt-0 lg:col-start-2">
+        <TabsContent value="general" className="mt-0">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -564,7 +564,7 @@ export function SettingsIndexPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="appearance" className="mt-0 lg:col-start-2">
+        <TabsContent value="appearance" className="mt-0">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -597,7 +597,7 @@ export function SettingsIndexPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="analysis" className="mt-0 lg:col-start-2">
+        <TabsContent value="analysis" className="mt-0">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -667,7 +667,7 @@ export function SettingsIndexPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="notifications" className="mt-0 lg:col-start-2">
+        <TabsContent value="notifications" className="mt-0">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -694,7 +694,7 @@ export function SettingsIndexPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="security" className="mt-0 lg:col-start-2">
+        <TabsContent value="security" className="mt-0">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -909,12 +909,12 @@ export function ConfigManagementPage() {
         }
       />
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ConfigTabValue)} className="grid gap-6 lg:grid-cols-[220px_1fr]">
-        <TabsList className="flex h-auto flex-wrap justify-start lg:flex-col lg:items-stretch lg:justify-start lg:self-start">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ConfigTabValue)} className="space-y-4">
+        <TabsList className="flex h-auto flex-wrap justify-start">
           {configTabs.map((item) => {
             const Icon = item.icon
             return (
-              <TabsTrigger key={item.value} value={item.value} className="justify-start gap-2 lg:w-full">
+              <TabsTrigger key={item.value} value={item.value} className="gap-2">
                 <Icon className="size-4" />
                 {item.label}
               </TabsTrigger>
@@ -922,7 +922,7 @@ export function ConfigManagementPage() {
           })}
         </TabsList>
 
-        <TabsContent value="validation" className="mt-0 lg:col-start-2">
+        <TabsContent value="validation" className="mt-0">
           <ConfigValidationPanel
             validation={validationQuery.data}
             validating={validationQuery.isFetching}
@@ -930,7 +930,7 @@ export function ConfigManagementPage() {
           />
         </TabsContent>
 
-        <TabsContent value="providers" className="mt-0 lg:col-start-2">
+        <TabsContent value="providers" className="mt-0">
           <Card>
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle>大模型厂家管理</CardTitle>
@@ -1010,7 +1010,7 @@ export function ConfigManagementPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="model-catalog" className="mt-0 lg:col-start-2">
+        <TabsContent value="model-catalog" className="mt-0">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>模型目录</CardTitle>
@@ -1056,7 +1056,7 @@ export function ConfigManagementPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="llm" className="mt-0 lg:col-start-2">
+        <TabsContent value="llm" className="mt-0">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>大模型配置</CardTitle>
@@ -1121,7 +1121,7 @@ export function ConfigManagementPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="datasource" className="mt-0 space-y-4 lg:col-start-2">
+        <TabsContent value="datasource" className="mt-0 space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>数据源配置</CardTitle>
@@ -1311,7 +1311,7 @@ export function ConfigManagementPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="database" className="mt-0 lg:col-start-2">
+        <TabsContent value="database" className="mt-0">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>数据库配置</CardTitle>
@@ -1361,7 +1361,7 @@ export function ConfigManagementPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="system" className="mt-0 lg:col-start-2">
+        <TabsContent value="system" className="mt-0">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>系统设置</CardTitle>
@@ -1417,7 +1417,7 @@ export function ConfigManagementPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="api-keys" className="mt-0 lg:col-start-2">
+        <TabsContent value="api-keys" className="mt-0">
           <ApiKeyStatusPanel
             providers={providers}
             llmConfigs={llmConfigs}
@@ -1428,7 +1428,7 @@ export function ConfigManagementPage() {
           />
         </TabsContent>
 
-        <TabsContent value="import-export" className="mt-0 lg:col-start-2">
+        <TabsContent value="import-export" className="mt-0">
           <div className="grid gap-4 lg:grid-cols-3">
             <Card>
               <CardHeader><CardTitle>配置导出</CardTitle></CardHeader>
