@@ -55,22 +55,30 @@ import { LogsApi, type LogFileInfo } from "@/libs/api/logs"
 import { ActionTypes, getActionTypeName, OperationLogsApi, type OperationLog } from "@/libs/api/operation-logs"
 import {
   getDataSourcesStatus,
+  clearSyncCache,
+  runSingleSourceSync,
   getSyncHistory,
   getSyncRecommendations,
   getSyncStatus,
   runStockBasicsSync,
   testDataSources,
+  type DataSourceTestResult,
   type SyncStatus
 } from "@/libs/api/sync"
 import {
+  cancelExecution,
+  deleteExecution,
+  getJobExecutions,
   getJobs,
   getSchedulerHealth,
   getSchedulerStats,
+  markExecutionFailed,
   pauseJob,
   resumeJob,
   triggerJob,
   updateJobMetadata,
-  type Job
+  type Job,
+  type JobExecution
 } from "@/libs/api/scheduler"
 import { deleteOldRecords, getUsageRecords, getUsageStatistics, type UsageRecord } from "@/libs/api/usage"
 import { formatDateTime } from "@/libs/utils/datetime"
@@ -1097,6 +1105,11 @@ export function ConfigManagementPage() {
 export function DatabaseManagementPage() {
   const queryClient = useQueryClient()
   const [cleanupDays, setCleanupDays] = useState(30)
+  const [logCleanupDays, setLogCleanupDays] = useState(90)
+  const [exportMode, setExportMode] = useState("config_and_reports")
+  const [importCollection, setImportCollection] = useState("config_and_reports")
+  const [importOverwrite, setImportOverwrite] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
   const [confirm, setConfirm] = useState<ConfirmState>(null)
   const statusQuery = useQuery({ queryKey: ["database", "status"], queryFn: () => databaseApi.getStatus(), retry: false })
   const statsQuery = useQuery({ queryKey: ["database", "stats"], queryFn: () => databaseApi.getStats(), retry: false })
@@ -1109,9 +1122,26 @@ export function DatabaseManagementPage() {
     },
     onError: (error) => toast.error(error.message)
   })
+  const importMutation = useMutation({
+    mutationFn: () => {
+      if (!importFile) throw new Error("请选择要导入的 JSON 文件")
+      return databaseApi.importData(importFile, { collection: importCollection, format: "json", overwrite: importOverwrite })
+    },
+    onSuccess: () => {
+      toast.success("数据导入完成")
+      setImportFile(null)
+      void queryClient.invalidateQueries({ queryKey: ["database"] })
+    },
+    onError: (error) => toast.error(error.message)
+  })
 
   const status = statusQuery.data
   const stats = statsQuery.data
+  const exportOptions = {
+    config: { collections: ["llm_providers", "llm_configs", "data_sources", "system_settings", "market_categories", "datasource_groupings"], sanitize: true },
+    config_and_reports: { collections: ["config_and_reports"], sanitize: true },
+    all: { collections: undefined, sanitize: false }
+  }[exportMode] || { collections: ["config_and_reports"], sanitize: true }
 
   const renderConnection = (name: string, item?: DatabaseStatus["postgres"] | DatabaseStatus["redis"]) => (
     <Card>
@@ -1142,25 +1172,59 @@ export function DatabaseManagementPage() {
         <StatCard label="文档数" value={stats?.total_documents ?? 0} />
         <StatCard label="数据库大小" value={formatBytes(stats?.total_size ?? 0)} />
       </div>
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle>数据导出</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <Select value={exportMode} onValueChange={setExportMode}>
+              <SelectTrigger aria-label="导出范围"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="config">仅配置数据（自动脱敏）</SelectItem>
+                <SelectItem value="config_and_reports">配置和报告数据</SelectItem>
+                <SelectItem value="all">全部数据</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const blob = await databaseApi.exportData({ ...exportOptions, format: "json" })
+                  downloadBlob(blob, `trading-agents-${exportMode}-${new Date().toISOString().slice(0, 10)}.json`)
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "导出失败")
+                }
+              }}
+            >
+              <Download className="mr-2 size-4" />导出数据
+            </Button>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>数据导入</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <Select value={importCollection} onValueChange={setImportCollection}>
+              <SelectTrigger aria-label="导入集合"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="config_and_reports">配置和报告数据</SelectItem>
+                <SelectItem value="analysis_results">分析结果</SelectItem>
+                <SelectItem value="operation_logs">操作日志</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input aria-label="导入 JSON 文件" type="file" accept=".json,application/json" onChange={(event) => setImportFile(event.target.files?.[0] || null)} />
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={importOverwrite} onChange={(event) => setImportOverwrite(event.target.checked)} />
+              覆盖现有数据
+            </label>
+            <LoadingButton loading={importMutation.isPending} disabled={!importFile} onClick={() => importMutation.mutate()}>导入数据</LoadingButton>
+          </CardContent>
+        </Card>
+      </div>
       <Card className="mt-6">
-        <CardHeader><CardTitle>数据管理操作</CardTitle></CardHeader>
+        <CardHeader><CardTitle>数据维护</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           <LoadingButton loading={actionMutation.isPending} onClick={() => actionMutation.mutate(() => databaseApi.testConnections())}>测试连接</LoadingButton>
-          <Button
-            variant="outline"
-            onClick={async () => {
-              try {
-                const blob = await databaseApi.exportData({ collections: ["config_and_reports"], format: "json", sanitize: true })
-                downloadBlob(blob, `trading-agents-data-${new Date().toISOString().slice(0, 10)}.json`)
-              } catch (error) {
-                toast.error(error instanceof Error ? error.message : "导出失败")
-              }
-            }}
-          >
-            <Download className="mr-2 size-4" />导出数据
-          </Button>
           <div className="flex gap-2">
-            <Input aria-label="清理天数" type="number" min={1} max={365} value={cleanupDays} onChange={(event) => setCleanupDays(Number(event.target.value) || 30)} />
+            <Input aria-label="分析结果清理天数" type="number" min={1} max={365} value={cleanupDays} onChange={(event) => setCleanupDays(Number(event.target.value) || 30)} />
             <Button
               variant="destructive"
               onClick={() => setConfirm({
@@ -1170,7 +1234,21 @@ export function DatabaseManagementPage() {
                 onConfirm: () => actionMutation.mutate(() => databaseApi.cleanupAnalysisResults(cleanupDays))
               })}
             >
-              清理
+              清理分析结果
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Input aria-label="操作日志清理天数" type="number" min={1} max={365} value={logCleanupDays} onChange={(event) => setLogCleanupDays(Number(event.target.value) || 90)} />
+            <Button
+              variant="destructive"
+              onClick={() => setConfirm({
+                title: "清理操作日志",
+                description: `确定要删除 ${logCleanupDays} 天前的操作日志吗？此操作不可恢复。`,
+                confirmText: "清理",
+                onConfirm: () => actionMutation.mutate(() => databaseApi.cleanupOperationLogs(logCleanupDays))
+              })}
+            >
+              清理操作日志
             </Button>
           </div>
         </CardContent>
@@ -1197,15 +1275,22 @@ export function OperationLogsPage() {
   const [keyword, setKeyword] = useState("")
   const [actionType, setActionType] = useState("all")
   const [success, setSuccess] = useState("all")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState("50")
+  const [selectedLog, setSelectedLog] = useState<OperationLog | null>(null)
   const [confirm, setConfirm] = useState<ConfirmState>(null)
   const queryClient = useQueryClient()
 
   const logsQuery = useQuery({
-    queryKey: ["operation-logs", keyword, actionType, success],
+    queryKey: ["operation-logs", keyword, actionType, success, startDate, endDate, page, pageSize],
     queryFn: () => OperationLogsApi.getOperationLogs({
-      page: 1,
-      page_size: 50,
+      page,
+      page_size: Number(pageSize),
       keyword: keyword || undefined,
+      start_date: startDate || undefined,
+      end_date: endDate || undefined,
       action_type: actionType === "all" ? undefined : actionType,
       success: success === "all" ? undefined : success === "success"
     }),
@@ -1222,6 +1307,8 @@ export function OperationLogsPage() {
   })
 
   const logs = logsQuery.data?.logs || []
+  const total = logsQuery.data?.total || 0
+  const totalPages = logsQuery.data?.total_pages || Math.max(1, Math.ceil(total / Number(pageSize)))
   const stats = statsQuery.data
 
   return (
@@ -1240,7 +1327,7 @@ export function OperationLogsPage() {
       <Card className="mt-6">
         <CardHeader><CardTitle>筛选</CardTitle></CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-4">
-          <Input placeholder="搜索操作内容" value={keyword} onChange={(event) => setKeyword(event.target.value)} />
+          <Input placeholder="搜索操作内容" value={keyword} onChange={(event) => { setKeyword(event.target.value); setPage(1) }} />
           <Select value={actionType} onValueChange={setActionType}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -1256,11 +1343,39 @@ export function OperationLogsPage() {
               <SelectItem value="failed">失败</SelectItem>
             </SelectContent>
           </Select>
+          <Input aria-label="开始日期" type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); setPage(1) }} />
+          <Input aria-label="结束日期" type="date" value={endDate} onChange={(event) => { setEndDate(event.target.value); setPage(1) }} />
+          <Select value={pageSize} onValueChange={(value) => { setPageSize(value); setPage(1) }}>
+            <SelectTrigger aria-label="每页条数"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="20">20 条/页</SelectItem>
+              <SelectItem value="50">50 条/页</SelectItem>
+              <SelectItem value="100">100 条/页</SelectItem>
+              <SelectItem value="200">200 条/页</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              try {
+                const blob = await OperationLogsApi.exportOperationLogsCSV({
+                  start_date: startDate || undefined,
+                  end_date: endDate || undefined,
+                  action_type: actionType === "all" ? undefined : actionType
+                })
+                downloadBlob(blob, `operation-logs-${new Date().toISOString().slice(0, 10)}.csv`)
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "导出操作日志失败")
+              }
+            }}
+          >
+            <Download className="mr-2 size-4" />导出
+          </Button>
           <Button
             variant="destructive"
             onClick={() => setConfirm({
               title: "清空操作日志",
-              description: "确定要清空当前操作日志吗？此操作不可恢复。",
+              description: "确定要清空匹配当前筛选条件的操作日志吗？此操作不可恢复。",
               confirmText: "清空",
               onConfirm: () => clearMutation.mutate()
             })}
@@ -1281,6 +1396,7 @@ export function OperationLogsPage() {
                 <TableHead>状态</TableHead>
                 <TableHead>耗时</TableHead>
                 <TableHead>IP</TableHead>
+                <TableHead>操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1292,12 +1408,38 @@ export function OperationLogsPage() {
                   <TableCell>{boolBadge(log.success, "成功", "失败")}</TableCell>
                   <TableCell>{log.duration_ms ? `${log.duration_ms}ms` : "-"}</TableCell>
                   <TableCell>{log.ip_address || "-"}</TableCell>
+                  <TableCell><Button size="sm" variant="outline" onClick={() => setSelectedLog(log)}>详情</Button></TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </GenericTable>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+            <div>共 {total} 条，第 {page} / {totalPages} 页</div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>上一页</Button>
+              <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)}>下一页</Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
+      <Dialog open={Boolean(selectedLog)} onOpenChange={(nextOpen) => !nextOpen && setSelectedLog(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>操作日志详情</DialogTitle>
+            <DialogDescription>{selectedLog ? `${formatDateTime(selectedLog.timestamp)} / ${getActionTypeName(selectedLog.action_type)}` : ""}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 text-sm md:grid-cols-2">
+            <div>用户：{selectedLog?.username || selectedLog?.user_id || "-"}</div>
+            <div>状态：{selectedLog ? (selectedLog.success ? "成功" : "失败") : "-"}</div>
+            <div>耗时：{selectedLog?.duration_ms ? `${selectedLog.duration_ms}ms` : "-"}</div>
+            <div>IP：{selectedLog?.ip_address || "-"}</div>
+            <div className="md:col-span-2">会话：{selectedLog?.session_id || "-"}</div>
+            <div className="md:col-span-2">操作：{selectedLog?.action || "-"}</div>
+          </div>
+          {selectedLog?.error_message ? <pre className="max-h-40 overflow-auto rounded-md bg-destructive/10 p-3 text-sm text-destructive">{selectedLog.error_message}</pre> : null}
+          {selectedLog?.details ? <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs">{JSON.stringify(selectedLog.details, null, 2)}</pre> : null}
+        </DialogContent>
+      </Dialog>
       <ConfirmDialog
         open={Boolean(confirm)}
         title={confirm?.title || ""}
@@ -1319,14 +1461,26 @@ export function OperationLogsPage() {
 export function SystemLogsPage() {
   const [keyword, setKeyword] = useState("")
   const [selectedFile, setSelectedFile] = useState<LogFileInfo | null>(null)
+  const [viewLevel, setViewLevel] = useState("all")
+  const [viewKeyword, setViewKeyword] = useState("")
+  const [viewLines, setViewLines] = useState(1000)
+  const [exportOpen, setExportOpen] = useState(false)
+  const [exportLevel, setExportLevel] = useState("all")
+  const [exportFormat, setExportFormat] = useState<"txt" | "zip">("zip")
+  const [exportNames, setExportNames] = useState("")
   const [confirm, setConfirm] = useState<ConfirmState>(null)
   const queryClient = useQueryClient()
 
   const filesQuery = useQuery({ queryKey: ["system-logs", "files"], queryFn: () => LogsApi.listLogFiles(), retry: false })
   const statsQuery = useQuery({ queryKey: ["system-logs", "stats"], queryFn: () => LogsApi.getStatistics(7), retry: false })
   const contentQuery = useQuery({
-    queryKey: ["system-logs", "content", selectedFile?.name],
-    queryFn: () => LogsApi.readLogFile({ filename: selectedFile?.name || "", lines: 1000 }),
+    queryKey: ["system-logs", "content", selectedFile?.name, viewLevel, viewKeyword, viewLines],
+    queryFn: () => LogsApi.readLogFile({
+      filename: selectedFile?.name || "",
+      lines: viewLines,
+      level: viewLevel === "all" ? undefined : viewLevel as "ERROR" | "WARNING" | "INFO" | "DEBUG",
+      keyword: viewKeyword || undefined
+    }),
     enabled: Boolean(selectedFile),
     retry: false
   })
@@ -1347,7 +1501,12 @@ export function SystemLogsPage() {
       <PageHeader
         title="系统日志"
         description="读取、筛选、导出和删除后端系统日志文件。"
-        actions={<Button variant="outline" onClick={() => void filesQuery.refetch()}>刷新</Button>}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => void filesQuery.refetch()}>刷新</Button>
+            <Button variant="outline" onClick={() => setExportOpen(true)}><Download className="mr-2 size-4" />导出日志</Button>
+          </div>
+        }
       />
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard label="日志文件数" value={stats?.total_files ?? 0} />
@@ -1377,7 +1536,18 @@ export function SystemLogsPage() {
                   <TableCell>{formatDateTime(file.modified_at)}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setSelectedFile(file)}>查看</Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedFile(file)
+                          setViewKeyword("")
+                          setViewLevel("all")
+                          setViewLines(1000)
+                        }}
+                      >
+                        查看
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
@@ -1412,11 +1582,90 @@ export function SystemLogsPage() {
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>{selectedFile?.name || "日志内容"}</DialogTitle>
-            <DialogDescription>显示最近 1000 行日志内容。</DialogDescription>
+            <DialogDescription>按级别、关键词和行数读取日志内容。</DialogDescription>
           </DialogHeader>
+          <div className="grid gap-3 md:grid-cols-4">
+            <Select value={viewLevel} onValueChange={setViewLevel}>
+              <SelectTrigger aria-label="日志级别"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部级别</SelectItem>
+                <SelectItem value="ERROR">ERROR</SelectItem>
+                <SelectItem value="WARNING">WARNING</SelectItem>
+                <SelectItem value="INFO">INFO</SelectItem>
+                <SelectItem value="DEBUG">DEBUG</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input placeholder="搜索关键词" value={viewKeyword} onChange={(event) => setViewKeyword(event.target.value)} />
+            <Input aria-label="读取行数" type="number" min={100} max={10000} step={100} value={viewLines} onChange={(event) => setViewLines(Number(event.target.value) || 1000)} />
+            <Button variant="outline" onClick={() => void contentQuery.refetch()}>筛选</Button>
+          </div>
+          {contentQuery.data?.stats ? (
+            <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-5">
+              <div>总行数：{contentQuery.data.stats.total_lines}</div>
+              <div>过滤后：{contentQuery.data.stats.filtered_lines}</div>
+              <div>ERROR：{contentQuery.data.stats.error_count}</div>
+              <div>WARNING：{contentQuery.data.stats.warning_count}</div>
+              <div>INFO：{contentQuery.data.stats.info_count}</div>
+            </div>
+          ) : null}
           <pre className="max-h-[60vh] overflow-auto rounded-md bg-muted p-4 text-xs">
             {(contentQuery.data?.lines || []).join("\n") || "暂无日志内容"}
           </pre>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>导出日志</DialogTitle>
+            <DialogDescription>可按文件名和日志级别导出，文件名留空表示导出全部日志。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="export-log-names">日志文件名</Label>
+              <Input id="export-log-names" placeholder="多个文件用逗号分隔" value={exportNames} onChange={(event) => setExportNames(event.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label>日志级别</Label>
+              <Select value={exportLevel} onValueChange={setExportLevel}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部级别</SelectItem>
+                  <SelectItem value="ERROR">ERROR</SelectItem>
+                  <SelectItem value="WARNING">WARNING</SelectItem>
+                  <SelectItem value="INFO">INFO</SelectItem>
+                  <SelectItem value="DEBUG">DEBUG</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>导出格式</Label>
+              <Select value={exportFormat} onValueChange={(value: "txt" | "zip") => setExportFormat(value)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="zip">ZIP</SelectItem>
+                  <SelectItem value="txt">TXT</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              onClick={async () => {
+                try {
+                  const filenames = exportNames.split(",").map((name) => name.trim()).filter(Boolean)
+                  const blob = await LogsApi.exportLogs({
+                    filenames: filenames.length ? filenames : undefined,
+                    level: exportLevel === "all" ? undefined : exportLevel as "ERROR" | "WARNING" | "INFO" | "DEBUG",
+                    format: exportFormat
+                  })
+                  downloadBlob(blob, `logs-export-${new Date().toISOString().slice(0, 10)}.${exportFormat}`)
+                  setExportOpen(false)
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "导出日志失败")
+                }
+              }}
+            >
+              导出
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
       <ConfirmDialog
@@ -1439,11 +1688,14 @@ export function SystemLogsPage() {
 
 export function SyncManagementPage() {
   const [force, setForce] = useState(false)
+  const [historyStatus, setHistoryStatus] = useState("all")
+  const [testResults, setTestResults] = useState<DataSourceTestResult[]>([])
+  const [testDialogOpen, setTestDialogOpen] = useState(false)
   const queryClient = useQueryClient()
   const statusQuery = useQuery({ queryKey: ["sync", "status"], queryFn: () => getSyncStatus().then(getResponseData), retry: false })
   const sourcesQuery = useQuery({ queryKey: ["sync", "sources"], queryFn: () => getDataSourcesStatus().then(getResponseData), retry: false })
   const recommendationsQuery = useQuery({ queryKey: ["sync", "recommendations"], queryFn: () => getSyncRecommendations().then(getResponseData), retry: false })
-  const historyQuery = useQuery({ queryKey: ["sync", "history"], queryFn: () => getSyncHistory({ page: 1, page_size: 20 }).then(getResponseData), retry: false })
+  const historyQuery = useQuery({ queryKey: ["sync", "history", historyStatus], queryFn: () => getSyncHistory({ page: 1, page_size: 20, status: historyStatus === "all" ? undefined : historyStatus }).then(getResponseData), retry: false })
 
   const syncMutation = useMutation({
     mutationFn: () => runStockBasicsSync({ force }).then(getResponseData),
@@ -1454,8 +1706,20 @@ export function SyncManagementPage() {
     onError: (error) => toast.error(error.message)
   })
   const testMutation = useMutation({
-    mutationFn: () => testDataSources().then(getResponseData),
-    onSuccess: (data) => toast.success(`测试完成：${data.test_results.filter((item) => item.available).length}/${data.test_results.length} 可用`),
+    mutationFn: (sourceName?: string) => testDataSources(sourceName).then(getResponseData),
+    onSuccess: (data) => {
+      setTestResults(data.test_results)
+      setTestDialogOpen(true)
+      toast.success(`测试完成：${data.test_results.filter((item) => item.available).length}/${data.test_results.length} 可用`)
+    },
+    onError: (error) => toast.error(error.message)
+  })
+  const maintenanceMutation = useMutation({
+    mutationFn: async (action: () => Promise<unknown>) => action(),
+    onSuccess: () => {
+      toast.success("同步操作已完成")
+      void queryClient.invalidateQueries({ queryKey: ["sync"] })
+    },
     onError: (error) => toast.error(error.message)
   })
 
@@ -1469,7 +1733,12 @@ export function SyncManagementPage() {
       <PageHeader
         title="多数据源同步"
         description="查看同步状态、数据源健康、同步建议和历史记录。"
-        actions={<LoadingButton loading={testMutation.isPending} variant="outline" onClick={() => testMutation.mutate()}>全面测试</LoadingButton>}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <LoadingButton loading={testMutation.isPending} variant="outline" onClick={() => testMutation.mutate(undefined)}>全面测试</LoadingButton>
+            <LoadingButton loading={maintenanceMutation.isPending} variant="outline" onClick={() => maintenanceMutation.mutate(() => clearSyncCache())}>清同步缓存</LoadingButton>
+          </div>
+        }
       />
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="当前状态" value={status?.status || "unknown"} />
@@ -1485,6 +1754,7 @@ export function SyncManagementPage() {
             强制同步
           </label>
           <LoadingButton loading={syncMutation.isPending} onClick={() => syncMutation.mutate()}>运行股票基础信息同步</LoadingButton>
+          <LoadingButton loading={maintenanceMutation.isPending} variant="outline" onClick={() => maintenanceMutation.mutate(() => runSingleSourceSync())}>运行传统单源同步</LoadingButton>
         </CardContent>
       </Card>
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -1498,6 +1768,7 @@ export function SyncManagementPage() {
                   {boolBadge(source.available, "可用", "不可用")}
                 </div>
                 <div className="mt-1 text-sm text-muted-foreground">优先级 {source.priority} / {source.description}</div>
+                <Button className="mt-3" size="sm" variant="outline" onClick={() => testMutation.mutate(source.name)}>测试此数据源</Button>
               </div>
             ))}
             {!sources.length ? <EmptyState title="暂无数据源状态" /> : null}
@@ -1513,7 +1784,19 @@ export function SyncManagementPage() {
         </Card>
       </div>
       <Card className="mt-6">
-        <CardHeader><CardTitle>同步历史</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <CardTitle>同步历史</CardTitle>
+          <Select value={historyStatus} onValueChange={setHistoryStatus}>
+            <SelectTrigger aria-label="同步历史状态" className="w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部状态</SelectItem>
+              <SelectItem value="running">运行中</SelectItem>
+              <SelectItem value="success">成功</SelectItem>
+              <SelectItem value="success_with_errors">部分成功</SelectItem>
+              <SelectItem value="failed">失败</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardHeader>
         <CardContent>
           <GenericTable<SyncStatus> rows={history} emptyText="暂无同步历史">
             <TableHeader>
@@ -1539,16 +1822,57 @@ export function SyncManagementPage() {
           </GenericTable>
         </CardContent>
       </Card>
+      <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>全面测试结果</DialogTitle>
+            <DialogDescription>共测试 {testResults.length} 个数据源，{testResults.filter((item) => item.available).length} 个可用。</DialogDescription>
+          </DialogHeader>
+          <GenericTable<DataSourceTestResult> rows={testResults} emptyText="暂无测试结果">
+            <TableHeader>
+              <TableRow>
+                <TableHead>数据源</TableHead>
+                <TableHead>优先级</TableHead>
+                <TableHead>状态</TableHead>
+                <TableHead>Token 来源</TableHead>
+                <TableHead>消息</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {testResults.map((item) => (
+                <TableRow key={item.name}>
+                  <TableCell>{item.name}</TableCell>
+                  <TableCell>{item.priority}</TableCell>
+                  <TableCell>{boolBadge(item.available, "可用", "不可用")}</TableCell>
+                  <TableCell>{item.token_source || "-"}</TableCell>
+                  <TableCell>{item.message}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </GenericTable>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), test_results: testResults }, null, 2)], { type: "application/json" })
+              downloadBlob(blob, `sync-test-results-${new Date().toISOString().slice(0, 10)}.json`)
+            }}
+          >
+            导出结果
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
 export function CacheManagementPage() {
   const [cleanupDays, setCleanupDays] = useState(7)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState("20")
   const [confirm, setConfirm] = useState<ConfirmState>(null)
   const queryClient = useQueryClient()
   const statsQuery = useQuery({ queryKey: ["cache", "stats"], queryFn: () => getCacheStats(), retry: false })
-  const detailsQuery = useQuery({ queryKey: ["cache", "details"], queryFn: () => getCacheDetails(1, 20), retry: false })
+  const detailsQuery = useQuery({ queryKey: ["cache", "details", page, pageSize], queryFn: () => getCacheDetails(page, Number(pageSize)), retry: false })
   const backendQuery = useQuery({ queryKey: ["cache", "backend"], queryFn: () => getCacheBackendInfo(), retry: false })
   const actionMutation = useMutation({
     mutationFn: async (action: () => Promise<unknown>) => action(),
@@ -1560,6 +1884,8 @@ export function CacheManagementPage() {
   })
   const stats = statsQuery.data
   const details = detailsQuery.data?.items || []
+  const total = detailsQuery.data?.total || 0
+  const totalPages = Math.max(1, Math.ceil(total / Number(pageSize)))
   const maxSize = stats?.maxSize || 1
   const usagePercent = Math.min(Math.round(((stats?.totalSize || 0) / maxSize) * 100), 100)
 
@@ -1568,7 +1894,12 @@ export function CacheManagementPage() {
       <PageHeader
         title="缓存管理"
         description="查看缓存统计、详情、后端信息并执行清理操作。"
-        actions={<Button variant="outline" onClick={() => void statsQuery.refetch()}>刷新统计</Button>}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => void statsQuery.refetch()}>刷新统计</Button>
+            <Button variant="outline" onClick={() => void detailsQuery.refetch()}>刷新详情</Button>
+          </div>
+        }
       />
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="总文件数" value={stats?.totalFiles ?? 0} />
@@ -1585,6 +1916,7 @@ export function CacheManagementPage() {
               <div className="h-2 rounded bg-primary" style={{ width: `${usagePercent}%` }} />
             </div>
             <div className="mt-2 text-xs text-muted-foreground">{usagePercent}% / {backendQuery.data?.primary_backend || "unknown"}</div>
+            <div className="mt-1 text-xs text-muted-foreground">后端：{backendQuery.data?.system || "-"}，回退：{backendQuery.data?.fallback_enabled ? "启用" : "关闭"}</div>
           </div>
           <div className="flex gap-2">
             <Input type="number" min={1} max={30} value={cleanupDays} onChange={(event) => setCleanupDays(Number(event.target.value) || 7)} />
@@ -1614,7 +1946,18 @@ export function CacheManagementPage() {
         </CardContent>
       </Card>
       <Card className="mt-6">
-        <CardHeader><CardTitle>缓存详情</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <CardTitle>缓存详情</CardTitle>
+          <Select value={pageSize} onValueChange={(value) => { setPageSize(value); setPage(1) }}>
+            <SelectTrigger aria-label="缓存每页条数" className="w-36"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10 条/页</SelectItem>
+              <SelectItem value="20">20 条/页</SelectItem>
+              <SelectItem value="50">50 条/页</SelectItem>
+              <SelectItem value="100">100 条/页</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardHeader>
         <CardContent>
           <GenericTable<CacheDetailItem> rows={details} emptyText="暂无缓存详情">
             <TableHeader>
@@ -1640,6 +1983,13 @@ export function CacheManagementPage() {
               ))}
             </TableBody>
           </GenericTable>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+            <div>共 {total} 条，第 {page} / {totalPages} 页</div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>上一页</Button>
+              <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)}>下一页</Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
       <ConfirmDialog
@@ -1756,18 +2106,41 @@ export function SchedulerManagementPage() {
   const [keyword, setKeyword] = useState("")
   const [status, setStatus] = useState("all")
   const [editingJob, setEditingJob] = useState<Job | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [executionStatus, setExecutionStatus] = useState("all")
+  const [executionMode, setExecutionMode] = useState("all")
+  const [selectedExecution, setSelectedExecution] = useState<JobExecution | null>(null)
   const [description, setDescription] = useState("")
   const [displayName, setDisplayName] = useState("")
   const queryClient = useQueryClient()
   const jobsQuery = useQuery({ queryKey: ["scheduler", "jobs"], queryFn: () => getJobs().then(getResponseData), retry: false })
   const statsQuery = useQuery({ queryKey: ["scheduler", "stats"], queryFn: () => getSchedulerStats().then(getResponseData), retry: false })
   const healthQuery = useQuery({ queryKey: ["scheduler", "health"], queryFn: () => getSchedulerHealth().then(getResponseData), retry: false })
+  const executionsQuery = useQuery({
+    queryKey: ["scheduler", "executions", executionStatus, executionMode],
+    queryFn: () => getJobExecutions({
+      status: executionStatus === "all" ? undefined : executionStatus as "success" | "failed" | "missed" | "running",
+      is_manual: executionMode === "all" ? undefined : executionMode === "manual",
+      limit: 50,
+      offset: 0
+    }).then(getResponseData),
+    enabled: historyOpen,
+    retry: false
+  })
   const actionMutation = useMutation({
     mutationFn: async (action: () => Promise<unknown>) => action(),
     onSuccess: () => {
       toast.success("调度任务已更新")
       void queryClient.invalidateQueries({ queryKey: ["scheduler"] })
       setEditingJob(null)
+    },
+    onError: (error) => toast.error(error.message)
+  })
+  const executionMutation = useMutation({
+    mutationFn: async (action: () => Promise<unknown>) => action(),
+    onSuccess: () => {
+      toast.success("执行记录已更新")
+      void queryClient.invalidateQueries({ queryKey: ["scheduler", "executions"] })
     },
     onError: (error) => toast.error(error.message)
   })
@@ -1779,13 +2152,19 @@ export function SchedulerManagementPage() {
   })
   const stats = statsQuery.data
   const health = healthQuery.data
+  const executions = executionsQuery.data?.items || []
 
   return (
     <div>
       <PageHeader
         title="定时任务"
         description="管理调度任务、执行历史、任务健康和失败处理。"
-        actions={<Button variant="outline" onClick={() => void jobsQuery.refetch()}>刷新</Button>}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => void jobsQuery.refetch()}>刷新</Button>
+            <Button variant="outline" onClick={() => setHistoryOpen(true)}>执行历史</Button>
+          </div>
+        }
       />
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="总任务数" value={stats?.total_jobs ?? 0} />
@@ -1879,6 +2258,90 @@ export function SchedulerManagementPage() {
               保存
             </LoadingButton>
           </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-w-6xl">
+          <DialogHeader>
+            <DialogTitle>执行历史</DialogTitle>
+            <DialogDescription>查看手动和自动执行记录，可终止运行中任务、标记失败或删除记录。</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 md:grid-cols-3">
+            <Select value={executionStatus} onValueChange={setExecutionStatus}>
+              <SelectTrigger aria-label="执行状态"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部状态</SelectItem>
+                <SelectItem value="running">执行中</SelectItem>
+                <SelectItem value="success">成功</SelectItem>
+                <SelectItem value="failed">失败</SelectItem>
+                <SelectItem value="missed">错过</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={executionMode} onValueChange={setExecutionMode}>
+              <SelectTrigger aria-label="执行来源"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部来源</SelectItem>
+                <SelectItem value="manual">手动触发</SelectItem>
+                <SelectItem value="auto">自动执行</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={() => void executionsQuery.refetch()}>刷新</Button>
+          </div>
+          <GenericTable<JobExecution> rows={executions} emptyText="暂无执行记录">
+            <TableHeader>
+              <TableRow>
+                <TableHead>任务</TableHead>
+                <TableHead>状态</TableHead>
+                <TableHead>来源</TableHead>
+                <TableHead>开始时间</TableHead>
+                <TableHead>耗时</TableHead>
+                <TableHead>进度</TableHead>
+                <TableHead>操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {executions.map((item) => (
+                <TableRow key={item._id}>
+                  <TableCell>
+                    <div className="font-medium">{item.job_name || item.job_id}</div>
+                    <div className="text-xs text-muted-foreground">{item.current_item || item.progress_message || item.job_id}</div>
+                  </TableCell>
+                  <TableCell>{item.status}</TableCell>
+                  <TableCell>{item.is_manual ? "手动" : "自动"}</TableCell>
+                  <TableCell>{formatDateTime(item.timestamp || item.scheduled_time)}</TableCell>
+                  <TableCell>{typeof item.execution_time === "number" ? `${item.execution_time.toFixed(2)}s` : "-"}</TableCell>
+                  <TableCell>{typeof item.progress === "number" ? `${item.progress}%` : "-"}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" onClick={() => setSelectedExecution(item)}>详情</Button>
+                      {item.status === "running" ? <Button size="sm" variant="outline" onClick={() => executionMutation.mutate(() => cancelExecution(item._id))}>终止</Button> : null}
+                      {item.status !== "failed" ? <Button size="sm" variant="outline" onClick={() => executionMutation.mutate(() => markExecutionFailed(item._id))}>标失败</Button> : null}
+                      <Button size="sm" variant="destructive" onClick={() => executionMutation.mutate(() => deleteExecution(item._id))}>删除</Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </GenericTable>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(selectedExecution)} onOpenChange={(nextOpen) => !nextOpen && setSelectedExecution(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>执行详情</DialogTitle>
+            <DialogDescription>{selectedExecution?.job_name || selectedExecution?.job_id || ""}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 text-sm md:grid-cols-2">
+            <div>状态：{selectedExecution?.status || "-"}</div>
+            <div>计划时间：{selectedExecution?.scheduled_time ? formatDateTime(selectedExecution.scheduled_time) : "-"}</div>
+            <div>开始时间：{selectedExecution?.timestamp ? formatDateTime(selectedExecution.timestamp) : "-"}</div>
+            <div>更新时间：{selectedExecution?.updated_at ? formatDateTime(selectedExecution.updated_at) : "-"}</div>
+            <div>进度：{typeof selectedExecution?.progress === "number" ? `${selectedExecution.progress}%` : "-"}</div>
+            <div>当前项目：{selectedExecution?.current_item || "-"}</div>
+          </div>
+          {selectedExecution?.return_value ? <pre className="max-h-40 overflow-auto rounded-md bg-muted p-3 text-xs">{selectedExecution.return_value}</pre> : null}
+          {selectedExecution?.error_message ? <pre className="max-h-40 overflow-auto rounded-md bg-destructive/10 p-3 text-xs text-destructive">{selectedExecution.error_message}</pre> : null}
+          {selectedExecution?.traceback ? <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs">{selectedExecution.traceback}</pre> : null}
         </DialogContent>
       </Dialog>
     </div>

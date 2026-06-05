@@ -1,7 +1,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -29,11 +29,13 @@ const analystOptions = ["市场分析师", "基本面分析师", "新闻分析�
 
 export function SingleAnalysisPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const initialMarket = searchParams.get("market")
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: {
-      market_type: "A股",
-      stock_symbol: "",
+      market_type: initialMarket === "港股" || initialMarket === "美股" ? initialMarket : "A股",
+      stock_symbol: searchParams.get("symbol") || searchParams.get("stock") || "",
       analysis_date: new Date().toISOString().slice(0, 10),
       research_depth: "3",
       analysts: ["市场分析师", "基本面分析师", "新闻分析师"]

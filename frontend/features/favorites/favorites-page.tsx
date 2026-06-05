@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Plus, RefreshCw } from "lucide-react"
+import { Database, Plus, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog"
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { favoritesApi, type FavoriteItem } from "@/libs/api/favorites"
+import { stockSyncApi } from "@/libs/api/stock-sync"
 import { formatDateTime } from "@/libs/utils/datetime"
 
 function unwrap<T>(response: { data: T }) {
@@ -31,8 +32,17 @@ export function FavoritesPage() {
   const queryClient = useQueryClient()
   const [keyword, setKeyword] = useState("")
   const [open, setOpen] = useState(false)
+  const [batchSyncOpen, setBatchSyncOpen] = useState(false)
   const [removeTarget, setRemoveTarget] = useState<FavoriteItem | null>(null)
   const [form, setForm] = useState({ symbol: "", stock_name: "", market: "A股", tags: "", notes: "" })
+  const [selectedSymbols, setSelectedSymbols] = useState<string[]>([])
+  const [batchSyncForm, setBatchSyncForm] = useState({
+    syncHistorical: true,
+    syncFinancial: false,
+    syncBasic: false,
+    dataSource: "tushare" as "tushare" | "akshare",
+    days: 365
+  })
   const listQuery = useQuery({ queryKey: ["favorites", "list"], queryFn: () => favoritesApi.list().then(unwrap), retry: false })
   const tagsQuery = useQuery({ queryKey: ["favorites", "tags"], queryFn: () => favoritesApi.tags().then(unwrap), retry: false })
 
@@ -62,11 +72,38 @@ export function FavoritesPage() {
     },
     onError: (error) => toast.error(error.message)
   })
+  const batchSyncMutation = useMutation({
+    mutationFn: () => stockSyncApi.syncBatch({
+      symbols: selectedSymbols,
+      sync_historical: batchSyncForm.syncHistorical,
+      sync_financial: batchSyncForm.syncFinancial,
+      sync_basic: batchSyncForm.syncBasic,
+      data_source: batchSyncForm.dataSource,
+      days: batchSyncForm.days
+    }),
+    onSuccess: (response) => {
+      const data = response.data
+      toast.success(`批量同步完成：${data.total} 只股票`)
+      setBatchSyncOpen(false)
+      setSelectedSymbols([])
+      void queryClient.invalidateQueries({ queryKey: ["favorites"] })
+    },
+    onError: (error) => toast.error(error.message)
+  })
 
   const favorites = (listQuery.data || []).filter((item) => {
     const text = `${symbolOf(item)} ${item.stock_name} ${(item.tags || []).join(" ")}`.toLowerCase()
     return text.includes(keyword.toLowerCase())
   })
+  const selectedItems = favorites.filter((item) => selectedSymbols.includes(symbolOf(item)))
+  const canBatchSync = selectedItems.length > 0 && selectedItems.every((item) => (item.market || "A股") === "A股")
+
+  const toggleSelected = (symbol: string, checked: boolean) => {
+    setSelectedSymbols((current) => {
+      if (checked) return current.includes(symbol) ? current : [...current, symbol]
+      return current.filter((item) => item !== symbol)
+    })
+  }
 
   return (
     <div>
@@ -75,6 +112,10 @@ export function FavoritesPage() {
         description="管理关注股票、标签、备注和实时行情同步。"
         actions={
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setBatchSyncOpen(true)} disabled={!canBatchSync}>
+              <Database className="mr-2 size-4" />
+              批量同步数据 ({selectedSymbols.length})
+            </Button>
             <Button variant="outline" onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending}><RefreshCw className="mr-2 size-4" />同步实时行情</Button>
             <Button onClick={() => setOpen(true)}><Plus className="mr-2 size-4" />添加自选股</Button>
           </div>
@@ -97,6 +138,9 @@ export function FavoritesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <span className="sr-only">选择</span>
+                    </TableHead>
                     <TableHead>股票</TableHead>
                     <TableHead>市场</TableHead>
                     <TableHead>价格</TableHead>
@@ -109,6 +153,14 @@ export function FavoritesPage() {
                 <TableBody>
                   {favorites.map((item) => (
                     <TableRow key={symbolOf(item)}>
+                      <TableCell>
+                        <input
+                          aria-label={`选择 ${symbolOf(item)}`}
+                          type="checkbox"
+                          checked={selectedSymbols.includes(symbolOf(item))}
+                          onChange={(event) => toggleSelected(symbolOf(item), event.target.checked)}
+                        />
+                      </TableCell>
                       <TableCell><Link className="text-primary hover:underline" href={`/stocks/${symbolOf(item)}`}>{symbolOf(item)} · {item.stock_name}</Link></TableCell>
                       <TableCell>{item.market || "A股"}</TableCell>
                       <TableCell>{item.current_price?.toFixed(2) || "-"}</TableCell>
@@ -142,6 +194,62 @@ export function FavoritesPage() {
             <div className="grid gap-2"><Label>标签</Label><Input placeholder="逗号分隔" value={form.tags} onChange={(event) => setForm((value) => ({ ...value, tags: event.target.value }))} /></div>
             <div className="grid gap-2"><Label>备注</Label><Input value={form.notes} onChange={(event) => setForm((value) => ({ ...value, notes: event.target.value }))} /></div>
             <Button onClick={() => addMutation.mutate()} disabled={addMutation.isPending}>添加</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={batchSyncOpen} onOpenChange={setBatchSyncOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>批量同步股票数据</DialogTitle>
+            <DialogDescription>已选择 {selectedSymbols.length} 只 A 股，批量同步可能需要较长时间。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-3">
+              <Label>同步类型</Label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={batchSyncForm.syncHistorical} onChange={(event) => setBatchSyncForm((value) => ({ ...value, syncHistorical: event.target.checked }))} />
+                历史行情
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={batchSyncForm.syncFinancial} onChange={(event) => setBatchSyncForm((value) => ({ ...value, syncFinancial: event.target.checked }))} />
+                财务数据
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={batchSyncForm.syncBasic} onChange={(event) => setBatchSyncForm((value) => ({ ...value, syncBasic: event.target.checked }))} />
+                基础资料
+              </label>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="batch-sync-source">数据源</Label>
+              <select
+                id="batch-sync-source"
+                className="h-9 rounded-md border bg-background px-3 text-sm"
+                value={batchSyncForm.dataSource}
+                onChange={(event) => setBatchSyncForm((value) => ({ ...value, dataSource: event.target.value as "tushare" | "akshare" }))}
+              >
+                <option value="tushare">Tushare</option>
+                <option value="akshare">AKShare</option>
+              </select>
+            </div>
+            {batchSyncForm.syncHistorical ? (
+              <div className="grid gap-2">
+                <Label htmlFor="batch-sync-days">历史数据天数</Label>
+                <Input
+                  id="batch-sync-days"
+                  min={1}
+                  max={3650}
+                  type="number"
+                  value={batchSyncForm.days}
+                  onChange={(event) => setBatchSyncForm((value) => ({ ...value, days: Number(event.target.value) || 365 }))}
+                />
+              </div>
+            ) : null}
+            <Button
+              onClick={() => batchSyncMutation.mutate()}
+              disabled={batchSyncMutation.isPending || (!batchSyncForm.syncHistorical && !batchSyncForm.syncFinancial && !batchSyncForm.syncBasic)}
+            >
+              开始同步
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -130,9 +130,5 @@ function isRouteActive(route: AppRoute, pathname: string, currentPath: string): 
   if (!isQueryRoute && pathname === routePath) return true
   if (route.children?.length && pathname.startsWith(`${routePath}/`)) return true
 
-  if (route.path === "/settings-personal" && pathname === route.href) {
-    return route.children?.some((child) => child.path.includes("?") && isRouteActive(child, pathname, currentPath)) ?? false
-  }
-
   return route.children?.some((child) => isRouteActive(child, pathname, currentPath)) ?? false
 }

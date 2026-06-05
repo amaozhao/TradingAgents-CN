@@ -1,8 +1,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ScreeningPage } from "@/features/screening/screening-page"
+import { screeningApi } from "@/libs/api/screening"
+
+const push = vi.fn()
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push })
+}))
 
 vi.mock("@/libs/api/screening", () => ({
   screeningApi: {
@@ -36,6 +44,7 @@ function renderWithQueryClient(ui: React.ReactElement) {
 
 describe("ScreeningPage", () => {
   beforeEach(() => {
+    push.mockClear()
     vi.spyOn(console, "error").mockImplementation(() => {})
   })
 
@@ -46,5 +55,30 @@ describe("ScreeningPage", () => {
       expect(screen.getByText(/当前数据源：akshare/)).toBeInTheDocument()
     })
     expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("Query data cannot be undefined"))
+  })
+
+  it("sends selected screening results to batch analysis", async () => {
+    const user = userEvent.setup()
+    vi.mocked(screeningApi.run).mockResolvedValue({
+      success: true,
+      data: {
+        items: [
+          { code: "000001", close: 12.2, pct_chg: 1.2, amount: 100000000, ma20: 12, rsi14: 55 },
+          { code: "600519", close: 1500, pct_chg: -0.5, amount: 200000000, ma20: 1490, rsi14: 48 }
+        ],
+        total: 2
+      },
+      message: "ok"
+    })
+
+    renderWithQueryClient(<ScreeningPage />)
+
+    await user.click(screen.getByRole("button", { name: /开始筛选/ }))
+    await screen.findByRole("link", { name: "000001" })
+
+    await user.click(screen.getByLabelText("选择 000001"))
+    await user.click(screen.getByRole("button", { name: "批量分析 (1)" }))
+
+    expect(push).toHaveBeenCalledWith("/analysis/batch?stocks=000001")
   })
 })

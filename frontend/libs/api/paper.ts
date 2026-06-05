@@ -16,7 +16,11 @@ export interface PaperAccountSummary {
 
 export interface PaperPositionItem {
   code: string
+  name?: string
+  market?: 'CN' | 'HK' | 'US' | string
+  currency?: 'CNY' | 'HKD' | 'USD' | string
   quantity: number
+  available_qty?: number
   avg_cost: number
   last_price?: number | null
   market_value?: number
@@ -26,6 +30,8 @@ export interface PaperPositionItem {
 export interface PaperOrderItem {
   user_id?: string
   code: string
+  name?: string
+  market?: 'CN' | 'HK' | 'US' | string
   side: 'buy' | 'sell'
   quantity: number
   price: number
@@ -33,6 +39,7 @@ export interface PaperOrderItem {
   status: 'filled' | 'rejected' | string
   created_at: string
   filled_at?: string
+  analysis_id?: string
 }
 
 export interface GetAccountResponse {

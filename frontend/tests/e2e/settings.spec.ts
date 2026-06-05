@@ -8,6 +8,7 @@ test.beforeEach(async ({ page }) => {
     window.localStorage.setItem("refresh-token", "refresh.payload.sig")
     window.localStorage.setItem("user-info", JSON.stringify({ username: "admin" }))
     window.localStorage.setItem("config-wizard-completed", "true")
+    window.localStorage.setItem("sidebar-collapsed", "false")
   })
   await page.route("**/api/health", async (route) => {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ success: true }) })
@@ -44,6 +45,23 @@ test("opens settings routes and a representative config dialog", async ({ page }
     await page.goto(route)
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible()
   }
+})
+
+test("keeps personal settings submenu visible after returning from config management", async ({ page }) => {
+  await page.goto("/settings")
+  await expect(page.getByRole("heading", { name: "设置" })).toBeVisible()
+
+  const nav = page.getByRole("navigation")
+  await expect(nav.getByRole("link", { name: "通用设置" })).toBeVisible()
+
+  await page.getByRole("main").getByRole("link", { name: /配置管理/ }).click()
+  await expect(page).toHaveURL(/\/settings\/config$/)
+  await expect(page.getByRole("heading", { name: "配置管理" })).toBeVisible()
+
+  await nav.getByRole("link", { name: "个人设置" }).click()
+  await expect(page).toHaveURL(/\/settings$/)
+  await expect(nav.getByRole("link", { name: "通用设置" })).toBeVisible()
+  await expect(nav.getByRole("link", { name: "安全设置" })).toBeVisible()
 })
 
 function mockApiPayload(path: string) {

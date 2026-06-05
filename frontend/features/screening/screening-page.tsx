@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { useMutation, useQuery } from "@tanstack/react-query"
-import { Search } from "lucide-react"
+import { BarChart3, Search } from "lucide-react"
 import { toast } from "sonner"
 
 import { EmptyState } from "@/components/feedback/empty-state"
@@ -22,12 +23,14 @@ function unwrap<T>(response: T | { data: T }): T {
 }
 
 export function ScreeningPage() {
+  const router = useRouter()
   const [industry, setIndustry] = useState("all")
   const [peMax, setPeMax] = useState("")
   const [pbMax, setPbMax] = useState("")
   const [changeMin, setChangeMin] = useState("")
   const [limit, setLimit] = useState("50")
   const [results, setResults] = useState<ScreeningRunItem[]>([])
+  const [selectedCodes, setSelectedCodes] = useState<string[]>([])
 
   const currentSourceQuery = useQuery({ queryKey: ["sync", "current-source"], queryFn: () => getCurrentDataSource().then(unwrap), retry: false })
   const industriesQuery = useQuery({ queryKey: ["screening", "industries"], queryFn: () => screeningApi.getIndustries().then(unwrap), retry: false })
@@ -47,6 +50,7 @@ export function ScreeningPage() {
     }).then(unwrap),
     onSuccess: (data) => {
       setResults(data.items)
+      setSelectedCodes([])
       toast.success(`筛选完成：${data.total} 条结果`)
     },
     onError: (error) => toast.error(error.message)
@@ -54,13 +58,40 @@ export function ScreeningPage() {
 
   const industries = industriesQuery.data?.industries || []
   const totalAmount = useMemo(() => results.reduce((sum, item) => sum + (item.amount || 0), 0), [results])
+  const selectedSet = useMemo(() => new Set(selectedCodes), [selectedCodes])
+
+  const toggleSelectedCode = (code: string, checked: boolean) => {
+    setSelectedCodes((current) => {
+      if (checked) return current.includes(code) ? current : [...current, code]
+      return current.filter((item) => item !== code)
+    })
+  }
+
+  const goToBatchAnalysis = () => {
+    if (!selectedCodes.length) {
+      toast.warning("请先选择要分析的股票")
+      return
+    }
+    router.push(`/analysis/batch?stocks=${encodeURIComponent(selectedCodes.join(","))}`)
+  }
 
   return (
     <div>
       <PageHeader
         title="股票筛选"
         description={`通过多维度筛选条件查找股票。当前数据源：${currentSourceQuery.data?.name || "未知"}`}
-        actions={<Button onClick={() => runMutation.mutate()} disabled={runMutation.isPending}><Search className="mr-2 size-4" />开始筛选</Button>}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={goToBatchAnalysis} disabled={!selectedCodes.length}>
+              <BarChart3 className="mr-2 size-4" />
+              批量分析 ({selectedCodes.length})
+            </Button>
+            <Button onClick={() => runMutation.mutate()} disabled={runMutation.isPending}>
+              <Search className="mr-2 size-4" />
+              开始筛选
+            </Button>
+          </div>
+        }
       />
       <Card>
         <CardHeader><CardTitle>筛选条件</CardTitle></CardHeader>
@@ -94,6 +125,9 @@ export function ScreeningPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <span className="sr-only">选择</span>
+                    </TableHead>
                     <TableHead>股票代码</TableHead>
                     <TableHead>收盘价</TableHead>
                     <TableHead>涨跌幅</TableHead>
@@ -105,6 +139,14 @@ export function ScreeningPage() {
                 <TableBody>
                   {results.map((item) => (
                     <TableRow key={item.code}>
+                      <TableCell>
+                        <input
+                          aria-label={`选择 ${item.code}`}
+                          type="checkbox"
+                          checked={selectedSet.has(item.code)}
+                          onChange={(event) => toggleSelectedCode(item.code, event.target.checked)}
+                        />
+                      </TableCell>
                       <TableCell><Link className="text-primary hover:underline" href={`/stocks/${item.code}`}>{item.code}</Link></TableCell>
                       <TableCell>{item.close?.toFixed(2) || "-"}</TableCell>
                       <TableCell>{item.pct_chg?.toFixed(2) || "-"}%</TableCell>

@@ -52,7 +52,7 @@ describe("SidebarMenu", () => {
     expect(within(nav).queryByRole("link", { name: "数据库管理" })).not.toBeInTheDocument()
   })
 
-  it("does not expand personal settings on the default settings page", () => {
+  it("expands personal settings on the default settings page", () => {
     pathname = "/settings"
 
     render(<SidebarMenu collapsed={false} />)
@@ -60,18 +60,33 @@ describe("SidebarMenu", () => {
     const nav = screen.getByRole("navigation")
     expect(within(nav).getByText("个人设置")).toBeInTheDocument()
     expect(within(nav).getByText("系统配置")).toBeInTheDocument()
-    expect(within(nav).queryByRole("link", { name: "通用设置" })).not.toBeInTheDocument()
-    expect(within(nav).queryByRole("link", { name: "外观设置" })).not.toBeInTheDocument()
+    expect(within(nav).getByRole("link", { name: "通用设置" })).toBeInTheDocument()
+    expect(within(nav).getByRole("link", { name: "外观设置" })).toBeInTheDocument()
   })
 
-  it("expands personal settings after clicking the group title", async () => {
+  it("reopens personal settings after navigating back from config management", () => {
+    pathname = "/settings/config"
+    const { rerender } = render(<SidebarMenu collapsed={false} />)
+
+    const nav = screen.getByRole("navigation")
+    expect(within(nav).getByRole("link", { name: "配置管理" })).toBeInTheDocument()
+    expect(within(nav).queryByRole("link", { name: "通用设置" })).not.toBeInTheDocument()
+
+    pathname = "/settings"
+    rerender(<SidebarMenu collapsed={false} />)
+
+    expect(within(nav).getByRole("link", { name: "通用设置" })).toBeInTheDocument()
+    expect(within(nav).getByRole("link", { name: "安全设置" })).toBeInTheDocument()
+  })
+
+  it("keeps active personal settings expanded after clicking the group title", async () => {
     const user = userEvent.setup()
     pathname = "/settings"
 
     render(<SidebarMenu collapsed={false} onNavigate={(event) => event?.preventDefault()} />)
 
     const nav = screen.getByRole("navigation")
-    expect(within(nav).queryByRole("link", { name: "通用设置" })).not.toBeInTheDocument()
+    expect(within(nav).getByRole("link", { name: "通用设置" })).toBeInTheDocument()
 
     await user.click(within(nav).getByRole("link", { name: "个人设置" }))
 
