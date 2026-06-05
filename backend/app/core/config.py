@@ -11,7 +11,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.runtime import apply_runtime_env
 
-_PROJECT_ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_BACKEND_ROOT = Path(__file__).resolve().parents[2]
+_PROJECT_ENV_FILE = _PROJECT_ROOT / ".env"
+_BACKEND_ENV_FILE = _BACKEND_ROOT / ".env"
 
 # Legacy env var aliases (deprecated): map API_HOST/PORT/DEBUG -> HOST/PORT/DEBUG
 _LEGACY_ENV_ALIASES = {
@@ -359,7 +362,9 @@ class Settings(BaseSettings):
 
     # Ignore any extra environment variables present in .env or process env
     model_config = SettingsConfigDict(
-        env_file=str(_PROJECT_ENV_FILE), env_file_encoding="utf-8", extra="ignore"
+        env_file=(str(_PROJECT_ENV_FILE), str(_BACKEND_ENV_FILE)),
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
 

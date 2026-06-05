@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
 from app.core.session import get_session_factory
 from app.db.document import normalize_payload
@@ -71,6 +71,10 @@ class PostgresCollection:
         return PostgresCursor(loader=load)
 
     async def count_documents(self, query: dict[str, Any] | None = None) -> int:
+        quick_count = await self._count_documents_in_database(query or {})
+        if quick_count is not None:
+            return quick_count
+
         cursor = self.find(query)
         return len(await cursor.to_list(None))
 
@@ -306,6 +310,32 @@ class PostgresCollection:
                         documents.append(document)
             return documents
 
+    async def _count_documents_in_database(
+        self, query: dict[str, Any]
+    ) -> int | None:
+        if not _can_count_in_database(query):
+            return None
+
+        await _ensure_postgres()
+        model = _model_for_collection(self.name)
+        factory = get_session_factory()
+        async with factory() as session:
+            if model is not None and self.name not in CONFIG_COLLECTIONS:
+                conditions = _specialized_count_conditions(model, query)
+                if conditions is not None:
+                    result = await session.execute(
+                        select(func.count()).select_from(model).where(*conditions)
+                    )
+                    return int(result.scalar_one())
+
+            statement = select(func.count()).select_from(PostgresDocument).where(
+                PostgresDocument.collection == self.name
+            )
+            if query:
+                statement = statement.where(PostgresDocument.payload.contains(query))
+            result = await session.execute(statement)
+            return int(result.scalar_one())
+
     async def _save_document(self, document: dict[str, Any]) -> None:
         await _ensure_postgres()
         document = normalize_payload(_ensure_document_id(document))
@@ -330,3 +360,25 @@ class PostgresCollection:
                 )
             )
             await session.commit()
+
+
+def _can_count_in_database(query: dict[str, Any]) -> bool:
+    for key, value in query.items():
+        if key.startswith("$") or "." in key or isinstance(value, dict):
+            return False
+    return True
+
+
+def _specialized_count_conditions(model: Any, query: dict[str, Any]) -> list[Any] | None:
+    conditions: list[Any] = []
+    for key, value in query.items():
+        column = getattr(model, key, None)
+        if column is None:
+            return None
+        conditions.append(column == value)
+
+    deleted_column = getattr(model, "deleted", None)
+    if deleted_column is not None and "deleted" not in query:
+        conditions.append(deleted_column.is_(False))
+
+    return conditions

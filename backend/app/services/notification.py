@@ -7,9 +7,13 @@ import logging
 from datetime import timedelta
 from typing import Any, Dict, List, Optional, cast
 
+from sqlalchemy import func, select
+
 from app.core.database import get_postgres_db
+from app.core.session import get_session_factory
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
 from app.db.ids import DocumentId
+from app.models.table import NotificationDocument
 from app.schemas.notification import (
     NotificationCreate,
     NotificationList,
@@ -126,10 +130,25 @@ class NotificationsService:
         return doc_id
 
     async def unread_count(self, user_id: str) -> int:
-        db = get_postgres_db()
-        return await db[self.collection].count_documents(
-            {"user_id": user_id, "status": "unread"}
-        )
+        try:
+            session_factory = get_session_factory()
+            async with session_factory() as session:
+                result = await session.execute(
+                    select(func.count())
+                    .select_from(NotificationDocument)
+                    .where(
+                        NotificationDocument.user_id == user_id,
+                        NotificationDocument.status == "unread",
+                        NotificationDocument.deleted.is_(False),
+                    )
+                )
+                return int(result.scalar_one())
+        except Exception as e:
+            logger.warning("通知未读数快速查询失败，回退到文档查询: %s", e)
+            db = get_postgres_db()
+            return await db[self.collection].count_documents(
+                {"user_id": user_id, "status": "unread"}
+            )
 
     async def list(
         self,
