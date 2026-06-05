@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.migrate import HOT_COLLECTIONS
-from scripts.postgres.runtime.log.check.script import check_runtime_log
+from scripts.postgres.log.check.script import check_runtime_log
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_ROOT.parent

@@ -32,7 +32,6 @@ def test_build_gate_steps_can_include_runtime_log_check(tmp_path):
         require_runtime_startup_gate=False,
         require_runtime_dual_write=False,
         allow_runtime_dual_write_failures=True,
-        allow_runtime_postgres_only=True,
     )
 
     assert [step.name for step in steps] == [
@@ -46,13 +45,12 @@ def test_build_gate_steps_can_include_runtime_log_check(tmp_path):
     runtime_step = steps[-1]
     assert runtime_step.output_file == "runtime_log_check.json"
     assert (
-        "backend/scripts/postgres/runtime/log/check/script.py" in runtime_step.command
+        "backend/scripts/postgres/log/check/script.py" in runtime_step.command
     )
     assert str(log_path) in runtime_step.command
     assert "--no-require-startup-gate" in runtime_step.command
     assert "--no-require-dual-write" in runtime_step.command
     assert "--allow-dual-write-failures" in runtime_step.command
-    assert "--allow-postgres-only" in runtime_step.command
 
 
 def test_cutover_gate_dry_run_writes_summary_without_running_commands(
@@ -216,19 +214,19 @@ def test_cutover_gate_require_explicit_env_passes_and_runs_gates_with_target_env
 
     def fake_run(command, cwd, stdout, stderr, text, check):
         command_text = " ".join(command)
-        if "postgres_migration_inventory.py" in command_text:
+        if "backend/scripts/postgres/migration/inventory/script.py" in command_text:
             stdout.write(
                 json.dumps(
                     {"response_model_dict_endpoints": 0, "raw_dict_request_bodies": 0}
                 )
             )
-        elif "postgres_consistency_check.py" in command_text:
+        elif "backend/scripts/postgres/consistency/check/script.py" in command_text:
             stdout.write(json.dumps({"all_consistent": True}))
-        elif "postgres_query_plan_check.py" in command_text:
+        elif "backend/scripts/postgres/query/plan/check/script.py" in command_text:
             stdout.write(json.dumps({"all_required_without_payload_filter": True}))
-        elif "postgres_cutover_smoke.py" in command_text:
+        elif "backend/scripts/postgres/cutover/smoke/script.py" in command_text:
             stdout.write(json.dumps({"all_passed": True}))
-        elif "postgres_api_smoke.py" in command_text:
+        elif "backend/scripts/postgres/api/smoke/script.py" in command_text:
             stdout.write(
                 json.dumps(
                     {
@@ -243,7 +241,7 @@ def test_cutover_gate_require_explicit_env_passes_and_runs_gates_with_target_env
                     }
                 )
             )
-        elif "postgres_runtime_log_check.py" in command_text:
+        elif "backend/scripts/postgres/log/check/script.py" in command_text:
             stdout.write(json.dumps({"all_passed": True}))
         else:
             stdout.write("offline sql")
@@ -337,17 +335,17 @@ def test_cutover_gate_fails_when_successful_consistency_command_reports_inconsis
 ):
     def fake_run(command, cwd, stdout, stderr, text, check):
         command_text = " ".join(command)
-        if "postgres_consistency_check.py" in command_text:
+        if "backend/scripts/postgres/consistency/check/script.py" in command_text:
             stdout.write(json.dumps({"all_consistent": False}))
-        elif "postgres_migration_inventory.py" in command_text:
+        elif "backend/scripts/postgres/migration/inventory/script.py" in command_text:
             stdout.write(
                 json.dumps(
                     {"response_model_dict_endpoints": 0, "raw_dict_request_bodies": 0}
                 )
             )
-        elif "postgres_query_plan_check.py" in command_text:
+        elif "backend/scripts/postgres/query/plan/check/script.py" in command_text:
             stdout.write(json.dumps({"all_required_without_payload_filter": True}))
-        elif "postgres_cutover_smoke.py" in command_text:
+        elif "backend/scripts/postgres/cutover/smoke/script.py" in command_text:
             stdout.write(json.dumps({"all_passed": True}))
         else:
             stdout.write("offline sql")
@@ -376,17 +374,17 @@ def test_cutover_gate_fails_when_successful_smoke_command_reports_failed_checks(
 ):
     def fake_run(command, cwd, stdout, stderr, text, check):
         command_text = " ".join(command)
-        if "postgres_migration_inventory.py" in command_text:
+        if "backend/scripts/postgres/migration/inventory/script.py" in command_text:
             stdout.write(
                 json.dumps(
                     {"response_model_dict_endpoints": 0, "raw_dict_request_bodies": 0}
                 )
             )
-        elif "postgres_consistency_check.py" in command_text:
+        elif "backend/scripts/postgres/consistency/check/script.py" in command_text:
             stdout.write(json.dumps({"all_consistent": True}))
-        elif "postgres_query_plan_check.py" in command_text:
+        elif "backend/scripts/postgres/query/plan/check/script.py" in command_text:
             stdout.write(json.dumps({"all_required_without_payload_filter": True}))
-        elif "postgres_cutover_smoke.py" in command_text:
+        elif "backend/scripts/postgres/cutover/smoke/script.py" in command_text:
             stdout.write(json.dumps({"all_passed": False}))
         else:
             stdout.write("offline sql")

@@ -36,7 +36,7 @@ def test_build_verification_steps_runs_schema_migrator_and_gate_without_api_by_d
         "cutover_gate",
         "evidence_bundle_check",
     ]
-    assert steps[0].cwd == Path(__file__).resolve().parents[1]
+    assert steps[0].cwd == local_verify.BACKEND_ROOT
     assert steps[1].command[-2:] == ["--batch-size", "5"]
     gate_command = steps[2].command
     evidence_command = steps[3].command

@@ -98,7 +98,7 @@ SCRIPT_COMPILE_STEP = TestStep(
         "backend/scripts/postgres/migration/inventory/script.py",
         "backend/scripts/postgres/query/plan/check/script.py",
         "backend/scripts/postgres/rollback/check/script.py",
-        "backend/scripts/postgres/runtime/log/check/script.py",
+        "backend/scripts/postgres/log/check/script.py",
         "backend/scripts/postgres/gate/script.py",
     ],
 )

@@ -42,7 +42,6 @@ def build_gate_steps(
     require_runtime_startup_gate: bool = True,
     require_runtime_dual_write: bool = True,
     allow_runtime_dual_write_failures: bool = False,
-    allow_runtime_postgres_only: bool = False,
 ) -> list[GateStep]:
     python = sys.executable
     query_plan_command = [python, "backend/scripts/postgres/query/plan/check/script.py"]
@@ -50,7 +49,7 @@ def build_gate_steps(
         query_plan_command.append("--compile-only")
     runtime_log_command = [
         python,
-        "backend/scripts/postgres/runtime/log/check/script.py",
+        "backend/scripts/postgres/log/check/script.py",
     ]
     if runtime_log is not None:
         runtime_log_command.append(str(runtime_log))
@@ -60,8 +59,6 @@ def build_gate_steps(
             runtime_log_command.append("--no-require-dual-write")
         if allow_runtime_dual_write_failures:
             runtime_log_command.append("--allow-dual-write-failures")
-        if allow_runtime_postgres_only:
-            runtime_log_command.append("--allow-postgres-only")
 
     steps = [
         GateStep(
@@ -133,7 +130,6 @@ def run_gate(
     require_runtime_startup_gate: bool = True,
     require_runtime_dual_write: bool = True,
     allow_runtime_dual_write_failures: bool = False,
-    allow_runtime_postgres_only: bool = False,
     dry_run: bool,
     require_explicit_env: bool = False,
     target_env: str | None = None,
@@ -148,7 +144,6 @@ def run_gate(
         require_runtime_startup_gate=require_runtime_startup_gate,
         require_runtime_dual_write=require_runtime_dual_write,
         allow_runtime_dual_write_failures=allow_runtime_dual_write_failures,
-        allow_runtime_postgres_only=allow_runtime_postgres_only,
     )
     results: list[GateResult] = []
 
@@ -468,7 +463,6 @@ def main() -> None:
     parser.add_argument("--no-require-runtime-startup-gate", action="store_true")
     parser.add_argument("--no-require-runtime-dual-write", action="store_true")
     parser.add_argument("--allow-runtime-dual-write-failures", action="store_true")
-    parser.add_argument("--allow-runtime-postgres-only", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
         "--require-explicit-env",
@@ -495,7 +489,6 @@ def main() -> None:
         require_runtime_startup_gate=not args.no_require_runtime_startup_gate,
         require_runtime_dual_write=not args.no_require_runtime_dual_write,
         allow_runtime_dual_write_failures=args.allow_runtime_dual_write_failures,
-        allow_runtime_postgres_only=args.allow_runtime_postgres_only,
         dry_run=args.dry_run,
         require_explicit_env=args.require_explicit_env,
         target_env=args.target_env,
