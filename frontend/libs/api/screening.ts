@@ -12,10 +12,26 @@ export interface ScreeningRunReq {
 }
 
 export interface ScreeningRunItem {
+  symbol?: string
   code: string
+  name?: string
+  market?: string
+  industry?: string
+  area?: string
+  board?: string
+  exchange?: string
+  total_mv?: number
+  circ_mv?: number
+  pe?: number
+  pb?: number
+  pe_ttm?: number
+  pb_mrq?: number
+  roe?: number
   close?: number
   pct_chg?: number
   amount?: number
+  turnover_rate?: number
+  volume_ratio?: number
   ma20?: number
   rsi14?: number
   kdj_k?: number

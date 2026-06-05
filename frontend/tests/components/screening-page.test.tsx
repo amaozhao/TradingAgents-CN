@@ -31,6 +31,14 @@ vi.mock("@/libs/api/sync", () => ({
   }))
 }))
 
+vi.mock("@/libs/api/favorites", () => ({
+  favoritesApi: {
+    list: vi.fn(async () => []),
+    add: vi.fn(),
+    remove: vi.fn()
+  }
+}))
+
 function renderWithQueryClient(ui: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -73,12 +81,25 @@ describe("ScreeningPage", () => {
 
     renderWithQueryClient(<ScreeningPage />)
 
-    await user.click(screen.getByRole("button", { name: /开始筛选/ }))
+    await user.click(screen.getAllByRole("button", { name: /开始筛选/ })[0])
     await screen.findByRole("link", { name: "000001" })
 
     await user.click(screen.getByLabelText("选择 000001"))
-    await user.click(screen.getByRole("button", { name: "批量分析 (1)" }))
+    await user.click(screen.getAllByRole("button", { name: "批量分析 (1)" })[0])
 
     expect(push).toHaveBeenCalledWith("/analysis/batch?stocks=000001")
+  })
+
+  it("keeps Vue-compatible screening filters visible", async () => {
+    renderWithQueryClient(<ScreeningPage />)
+
+    expect(screen.getByText("市场类型")).toBeInTheDocument()
+    expect(screen.getByText("市值范围")).toBeInTheDocument()
+    expect(screen.getByText("市盈率 (PE)")).toBeInTheDocument()
+    expect(screen.getByText("市净率 (PB)")).toBeInTheDocument()
+    expect(screen.getByText("ROE (%)")).toBeInTheDocument()
+    expect(screen.getByText("涨跌幅 (%)")).toBeInTheDocument()
+    expect(screen.getByText("成交量")).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText(/当前数据源：akshare/)).toBeInTheDocument())
   })
 })
