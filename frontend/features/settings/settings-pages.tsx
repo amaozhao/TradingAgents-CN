@@ -7,19 +7,27 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { EChartsOption } from "echarts"
 import {
+  AlertTriangle,
   Bell,
   Brush,
+  Building2,
+  CheckCircle2,
+  CircleX,
+  Cpu,
   Database,
   Download,
   FileText,
   Gauge,
   HardDrive,
+  Info,
+  Key,
   ListChecks,
   Loader2,
   LogOut,
   RefreshCw,
   Settings,
   Shield,
+  Star,
   Timer,
   Trash2
 } from "lucide-react"
@@ -49,7 +57,16 @@ import {
   getCacheStats,
   type CacheDetailItem
 } from "@/libs/api/cache"
-import { configApi, type DataSourceConfig, type DatabaseConfig, type LLMConfig, type LLMProvider } from "@/libs/api/config"
+import {
+  configApi,
+  type DataSourceConfig,
+  type DatabaseConfig,
+  type EnvConfigValidation,
+  type LLMConfig,
+  type LLMProvider,
+  type PostgresConfigValidation,
+  type SystemConfigValidation
+} from "@/libs/api/config"
 import { databaseApi, formatBytes, type DatabaseStatus } from "@/libs/api/database"
 import { LogsApi, type LogFileInfo } from "@/libs/api/logs"
 import { ActionTypes, getActionTypeName, OperationLogsApi, type OperationLog } from "@/libs/api/operation-logs"
@@ -198,6 +215,291 @@ function GenericTable<T>({
     <div className="overflow-x-auto rounded-md border">
       <Table className={tableClassName}>{children}</Table>
     </div>
+  )
+}
+
+const configTabs = [
+  { value: "validation", label: "配置验证", icon: CheckCircle2 },
+  { value: "providers", label: "厂家管理", icon: Building2 },
+  { value: "model-catalog", label: "模型目录", icon: ListChecks },
+  { value: "llm", label: "大模型配置", icon: Cpu },
+  { value: "datasource", label: "数据源配置", icon: Gauge },
+  { value: "database", label: "数据库配置", icon: Database },
+  { value: "system", label: "系统设置", icon: Settings },
+  { value: "api-keys", label: "API密钥状态", icon: Key },
+  { value: "import-export", label: "导入导出", icon: Download }
+] as const
+
+type ConfigTabValue = (typeof configTabs)[number]["value"]
+
+const requiredConfigItems = [
+  { key: "POSTGRES_HOST", name: "PostgreSQL 主机", description: "PostgreSQL 数据库主机地址" },
+  { key: "POSTGRES_PORT", name: "PostgreSQL 端口", description: "PostgreSQL 数据库端口" },
+  { key: "POSTGRES_DB", name: "PostgreSQL 数据库", description: "PostgreSQL 数据库名称" },
+  { key: "REDIS_HOST", name: "Redis 主机", description: "Redis 缓存主机地址" },
+  { key: "REDIS_PORT", name: "Redis 端口", description: "Redis 缓存端口" },
+  { key: "JWT_SECRET", name: "JWT 密钥", description: "JWT 认证密钥" }
+] as const
+
+const recommendedConfigItems = [
+  { key: "AIHUBMIX_API_KEY", name: "AIHubMix API", description: "AIHubMix API 密钥", help: "用于 AI 分析功能" },
+  { key: "DEEPSEEK_API_KEY", name: "DeepSeek API", description: "DeepSeek 大模型 API 密钥", help: "用于 AI 分析功能" },
+  { key: "DASHSCOPE_API_KEY", name: "通义千问 API", description: "阿里云通义千问 API 密钥", help: "用于 AI 分析功能" },
+  { key: "TUSHARE_TOKEN", name: "Tushare Token", description: "Tushare 数据源 Token", help: "用于获取专业A股数据" }
+] as const
+
+function StatusBadge({ configured, warningText }: { configured: boolean; warningText?: string }) {
+  const text = warningText || (configured ? "已配置" : "未配置")
+  return (
+    <Badge variant={configured ? "default" : "secondary"} className={configured ? "" : "bg-amber-100 text-amber-800 hover:bg-amber-100"}>
+      {text}
+    </Badge>
+  )
+}
+
+function ConfigStatusItem({
+  title,
+  description,
+  configured,
+  help,
+  status
+}: {
+  title: string
+  description: string
+  configured: boolean
+  help?: string
+  status?: string
+}) {
+  const Icon = configured ? CheckCircle2 : AlertTriangle
+  return (
+    <div className="flex items-start gap-3 rounded-md border p-3">
+      <Icon className={configured ? "mt-0.5 size-5 text-emerald-600" : "mt-0.5 size-5 text-amber-600"} />
+      <div className="min-w-0 flex-1">
+        <div className="font-medium">{title}</div>
+        <div className="mt-1 text-sm text-muted-foreground">{description}</div>
+        {help ? <div className="mt-1 text-xs text-muted-foreground">{help}</div> : null}
+      </div>
+      <StatusBadge configured={configured} warningText={status} />
+    </div>
+  )
+}
+
+function ValidationSummary({ validation }: { validation?: SystemConfigValidation }) {
+  if (!validation) {
+    return <EmptyState title="正在加载配置验证结果" className="rounded-md border p-8" />
+  }
+
+  const envValidation = validation.env_validation
+  const postgresValidation = validation.postgres_validation
+  const missingRequired = envValidation?.missing_required?.length || 0
+  const invalidConfigs = envValidation?.invalid_configs?.length || 0
+  const missingRecommended = envValidation?.missing_recommended?.length || 0
+  const postgresWarnings = postgresValidation?.warnings?.length || 0
+  const hasWarnings = missingRecommended > 0 || postgresWarnings > 0
+
+  if (!validation.success) {
+    return (
+      <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4">
+        <div className="flex items-center gap-2 font-medium text-destructive"><CircleX className="size-5" />配置验证失败</div>
+        {missingRequired ? <p className="mt-2 text-sm">缺少 {missingRequired} 个必需配置</p> : null}
+        {invalidConfigs ? <p className="mt-1 text-sm">{invalidConfigs} 个配置无效</p> : null}
+      </div>
+    )
+  }
+
+  if (hasWarnings) {
+    return (
+      <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+        <div className="flex items-center gap-2 font-medium"><AlertTriangle className="size-5" />配置验证通过（有推荐配置未设置）</div>
+        {missingRecommended ? <p className="mt-2 text-sm">缺少 {missingRecommended} 个推荐配置</p> : null}
+        {postgresWarnings ? <p className="mt-1 text-sm">{postgresWarnings} 个 PostgreSQL 配置警告</p> : null}
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-md border border-emerald-300 bg-emerald-50 p-4 text-emerald-900">
+      <div className="flex items-center gap-2 font-medium"><CheckCircle2 className="size-5" />配置验证通过</div>
+      <p className="mt-2 text-sm">所有配置已正确设置</p>
+    </div>
+  )
+}
+
+function ConfigValidationPanel({
+  validation,
+  validating,
+  onValidate
+}: {
+  validation?: SystemConfigValidation
+  validating: boolean
+  onValidate: () => void
+}) {
+  const envValidation: EnvConfigValidation | undefined = validation?.env_validation
+  const postgresValidation: PostgresConfigValidation | undefined = validation?.postgres_validation
+
+  const requiredRows = requiredConfigItems.map((item) => {
+    const missing = envValidation?.missing_required?.find((config) => config.key === item.key)
+    const invalid = envValidation?.invalid_configs?.find((config) => config.key === item.key)
+    return { ...item, configured: !missing && !invalid, error: invalid?.error || (missing ? "未配置" : undefined) }
+  })
+  const recommendedRows = recommendedConfigItems.map((item) => {
+    const missing = envValidation?.missing_recommended?.find((config) => config.key === item.key)
+    return { ...item, configured: !missing }
+  })
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2"><CheckCircle2 className="size-5" />配置验证</CardTitle>
+        <LoadingButton variant="outline" size="sm" loading={validating} onClick={onValidate}>重新验证</LoadingButton>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <ValidationSummary validation={validation} />
+
+        <section className="space-y-3">
+          <h3 className="flex items-center gap-2 text-sm font-semibold"><Star className="size-4" />必需配置</h3>
+          <div className="space-y-3">
+            {requiredRows.map((item) => (
+              <ConfigStatusItem key={item.key} title={item.name} description={item.description} configured={item.configured} status={item.error} />
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <h3 className="flex items-center gap-2 text-sm font-semibold"><AlertTriangle className="size-4" />推荐配置</h3>
+          <div className="space-y-3">
+            {recommendedRows.map((item) => (
+              <ConfigStatusItem key={item.key} title={item.name} description={item.description} configured={item.configured} help={item.help} />
+            ))}
+          </div>
+        </section>
+
+        {postgresValidation ? (
+          <section className="space-y-4">
+            <h3 className="flex items-center gap-2 text-sm font-semibold"><Database className="size-4" />PostgreSQL 配置验证</h3>
+            {postgresValidation.llm_providers?.length ? (
+              <div className="space-y-3">
+                <div className="text-sm font-medium">大模型厂家</div>
+                {postgresValidation.llm_providers.map((item) => (
+                  <ConfigStatusItem key={item.name} title={item.display_name} description={item.name} configured={item.status.includes("已配置")} status={item.status} />
+                ))}
+              </div>
+            ) : null}
+            {postgresValidation.data_source_configs?.length ? (
+              <div className="space-y-3">
+                <div className="text-sm font-medium">数据源配置</div>
+                {postgresValidation.data_source_configs.map((item) => (
+                  <ConfigStatusItem key={item.name} title={item.name} description={item.type} configured={item.status.includes("已配置")} status={item.status} />
+                ))}
+              </div>
+            ) : null}
+            {postgresValidation.warnings?.length ? (
+              <div className="space-y-2">
+                {postgresValidation.warnings.map((warning) => (
+                  <div key={warning} className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{warning}</div>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {envValidation?.warnings?.length ? (
+          <section className="space-y-2">
+            <h3 className="flex items-center gap-2 text-sm font-semibold"><Info className="size-4" />环境变量警告</h3>
+            {envValidation.warnings.map((warning) => (
+              <div key={warning} className="rounded-md border p-3 text-sm text-muted-foreground">{warning}</div>
+            ))}
+          </section>
+        ) : null}
+
+        <section className="rounded-md border p-4">
+          <h3 className="text-sm font-semibold">如何修复配置问题？</h3>
+          <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+            <p>必需配置需要在 .env 文件中设置，保存后重启后端服务才能生效。</p>
+            <p>推荐配置可以在 .env 中设置，也可以在厂家管理、大模型配置或数据源配置中维护。</p>
+          </div>
+        </section>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ApiKeyStatusPanel({
+  providers,
+  llmConfigs,
+  onRefresh,
+  onConfigure,
+  onMigrate,
+  loading
+}: {
+  providers: LLMProvider[]
+  llmConfigs: LLMConfig[]
+  onRefresh: () => void
+  onConfigure: (provider: LLMProvider) => void
+  onMigrate: () => void
+  loading: boolean
+}) {
+  const configuredProviders = providers.filter((provider) => provider.extra_config?.has_api_key).length
+  const activeProviders = providers.filter((provider) => provider.is_active).length
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>API密钥状态</CardTitle>
+        <LoadingButton variant="outline" size="sm" loading={loading} onClick={onRefresh}>刷新状态</LoadingButton>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold">AI厂家密钥状态</h3>
+            {providers.length ? providers.map((provider) => (
+              <div key={provider.id} className="flex items-center gap-3 rounded-md border p-3">
+                <Key className="size-4 text-muted-foreground" />
+                <div className="min-w-0 flex-1 font-medium">{provider.display_name || provider.name}</div>
+                <Badge variant={provider.extra_config?.has_api_key ? "default" : "destructive"}>
+                  {provider.extra_config?.has_api_key ? provider.extra_config.source === "environment" ? "环境变量" : "已配置" : "未配置"}
+                </Badge>
+                {!provider.extra_config?.has_api_key ? <Button variant="outline" size="sm" onClick={() => onConfigure(provider)}>配置</Button> : null}
+              </div>
+            )) : (
+              <EmptyState title="暂无厂家配置" className="rounded-md border p-8" />
+            )}
+          </section>
+
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold">配置统计</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <StatCard label="总厂家数" value={providers.length} />
+              <StatCard label="已配置密钥" value={configuredProviders} />
+              <StatCard label="启用厂家" value={activeProviders} />
+              <StatCard label="配置模型" value={llmConfigs.length} />
+            </div>
+          </section>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card>
+            <CardHeader><CardTitle className="text-sm">如何配置API密钥？</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm text-muted-foreground">
+              <p>在厂家管理中添加或编辑 AI 厂家，填入 API 密钥后，大模型配置会自动使用厂家密钥。</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-sm">从环境变量迁移</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">如果 .env 已配置密钥，可以一键迁移到厂家管理。</p>
+              <Button size="sm" onClick={onMigrate}>迁移环境变量</Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-sm">安全提示</CardTitle></CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">敏感密钥通过环境变量或运维配置注入，后端响应会脱敏；请勿在导出文件中保存真实密钥。</p>
+            </CardContent>
+          </Card>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -448,6 +750,7 @@ export function ConfigManagementPage() {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [confirm, setConfirm] = useState<ConfirmState>(null)
+  const [activeTab, setActiveTab] = useState<ConfigTabValue>("validation")
   const [editingProvider, setEditingProvider] = useState<LLMProvider | null>(null)
   const [modelDialogOpen, setModelDialogOpen] = useState(false)
   const [dataSourceDialogOpen, setDataSourceDialogOpen] = useState(false)
@@ -485,6 +788,7 @@ export function ConfigManagementPage() {
   const settingsMetaQuery = useQuery({ queryKey: ["config", "settings-meta"], queryFn: () => configApi.getSystemSettingsMeta(), retry: false })
   const modelCatalogQuery = useQuery({ queryKey: ["config", "model-catalog"], queryFn: () => configApi.getModelCatalog(), retry: false })
   const groupingsQuery = useQuery({ queryKey: ["config", "datasource-groupings"], queryFn: () => configApi.getDataSourceGroupings(), retry: false })
+  const validationQuery = useQuery({ queryKey: ["config", "validation"], queryFn: () => configApi.validateSystemConfig(), retry: false })
 
   const form = useForm<ProviderFormValues>({
     resolver: zodResolver(providerSchema),
@@ -628,31 +932,41 @@ export function ConfigManagementPage() {
     <div>
       <PageHeader
         title="配置管理"
-        description="管理大模型厂家、模型目录、数据源、市场分类、数据库和系统设置。"
+        description="管理系统配置、大模型、数据源等设置"
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => actionMutation.mutate(() => configApi.reloadConfig())}>重新加载配置</Button>
-            <Button onClick={openAddProviderDialog}>新增厂家</Button>
+            <Button variant="outline" onClick={() => actionMutation.mutate(() => configApi.reloadConfig())}>重载配置</Button>
           </div>
         }
       />
 
-      <Tabs defaultValue="providers" className="space-y-4">
-        <TabsList className="flex h-auto flex-wrap justify-start">
-          <TabsTrigger value="providers">厂家</TabsTrigger>
-          <TabsTrigger value="models">模型</TabsTrigger>
-          <TabsTrigger value="datasources">数据源</TabsTrigger>
-          <TabsTrigger value="markets">市场分类</TabsTrigger>
-          <TabsTrigger value="database">数据库</TabsTrigger>
-          <TabsTrigger value="settings">系统设置</TabsTrigger>
-          <TabsTrigger value="io">配置导入导出</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ConfigTabValue)} className="grid gap-6 lg:grid-cols-[220px_1fr]">
+        <TabsList className="flex h-auto flex-wrap justify-start lg:flex-col lg:items-stretch lg:justify-start lg:self-start">
+          {configTabs.map((item) => {
+            const Icon = item.icon
+            return (
+              <TabsTrigger key={item.value} value={item.value} className="justify-start gap-2 lg:w-full">
+                <Icon className="size-4" />
+                {item.label}
+              </TabsTrigger>
+            )
+          })}
         </TabsList>
 
-        <TabsContent value="providers">
+        <TabsContent value="validation" className="mt-0 lg:col-start-2">
+          <ConfigValidationPanel
+            validation={validationQuery.data}
+            validating={validationQuery.isFetching}
+            onValidate={() => void validationQuery.refetch()}
+          />
+        </TabsContent>
+
+        <TabsContent value="providers" className="mt-0 lg:col-start-2">
           <Card>
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle>大模型厂家</CardTitle>
+              <CardTitle>大模型厂家管理</CardTitle>
               <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={openAddProviderDialog}>添加厂家</Button>
                 <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.migrateEnvToProviders())}>迁移环境变量</Button>
                 <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.initAggregatorProviders())}>初始化聚合渠道</Button>
               </div>
@@ -660,18 +974,20 @@ export function ConfigManagementPage() {
             <CardContent>
               <GenericTable<LLMProvider> rows={providers} emptyText="暂无厂家配置" tableClassName="min-w-[1100px] table-fixed">
                 <colgroup>
-                  <col className="w-[58%]" />
-                  <col className="w-[96px]" />
-                  <col className="w-[88px]" />
-                  <col className="w-[96px]" />
-                  <col className="w-[210px]" />
+                  <col className="w-[180px]" />
+                  <col className="w-[108px]" />
+                  <col className="w-[360px]" />
+                  <col className="w-[108px]" />
+                  <col className="w-[180px]" />
+                  <col className="w-[260px]" />
                 </colgroup>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>厂家</TableHead>
-                    <TableHead className="whitespace-nowrap">密钥</TableHead>
-                    <TableHead className="whitespace-nowrap text-center">模型数</TableHead>
+                    <TableHead>厂家信息</TableHead>
+                    <TableHead className="whitespace-nowrap">API密钥</TableHead>
+                    <TableHead>描述</TableHead>
                     <TableHead className="whitespace-nowrap">状态</TableHead>
+                    <TableHead>支持功能</TableHead>
                     <TableHead className="whitespace-nowrap text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -681,11 +997,21 @@ export function ConfigManagementPage() {
                       <TableCell className="pr-6">
                         <div className="font-medium">{provider.display_name || provider.name}</div>
                         <div className="text-xs text-muted-foreground">{provider.name}</div>
-                        <div className="mt-1 line-clamp-2 max-w-[920px] text-xs leading-5 text-muted-foreground">{provider.description || "暂无描述"}</div>
                       </TableCell>
                       <TableCell className="whitespace-nowrap">{provider.extra_config?.has_api_key ? "已配置" : "未配置"}</TableCell>
-                      <TableCell className="text-center tabular-nums">{providerModelCount.get(provider.name) || 0}</TableCell>
-                      <TableCell className="whitespace-nowrap">{boolBadge(provider.is_active)}</TableCell>
+                      <TableCell><div className="line-clamp-2 text-sm text-muted-foreground">{provider.description || "暂无描述"}</div></TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex flex-col items-start gap-1">
+                          {boolBadge(provider.is_active, "启用", "禁用")}
+                          {provider.extra_config?.has_api_key ? <Badge variant="secondary">{provider.extra_config.source === "environment" ? "ENV" : "DB"}</Badge> : null}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {provider.supported_features?.length ? provider.supported_features.map((feature) => <Badge key={feature} variant="secondary">{feature}</Badge>) : <span className="text-sm text-muted-foreground">-</span>}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">模型数：{providerModelCount.get(provider.name) || 0}</div>
+                      </TableCell>
                       <TableCell className="whitespace-nowrap">
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" aria-label={`编辑 ${provider.name}`} onClick={() => openEditProviderDialog(provider)}>编辑</Button>
@@ -715,13 +1041,58 @@ export function ConfigManagementPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="models">
+        <TabsContent value="model-catalog" className="mt-0 lg:col-start-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>模型配置与目录</CardTitle>
+              <CardTitle>模型目录</CardTitle>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setModelDialogOpen(true)}>新增模型目录</Button>
                 <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.initModelCatalog())}>初始化模型目录</Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {catalog.length ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {catalog.map((item) => (
+                    <div key={item.provider} className="rounded-md border p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="font-medium">{item.provider_name}</div>
+                          <div className="mt-1 text-sm text-muted-foreground">{item.provider} / {item.models.length} 个模型</div>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setConfirm({
+                            title: "删除模型目录",
+                            description: `确定要删除 ${item.provider_name} 的模型目录吗？`,
+                            confirmText: "删除",
+                            onConfirm: () => actionMutation.mutate(() => configApi.deleteModelCatalog(item.provider))
+                          })}
+                        >
+                          删除
+                        </Button>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {item.models.slice(0, 12).map((model) => <Badge key={model.name} variant="secondary">{model.display_name || model.name}</Badge>)}
+                        {item.models.length > 12 ? <Badge variant="outline">+{item.models.length - 12}</Badge> : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState title="暂无模型目录" className="rounded-md border p-8" />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="llm" className="mt-0 lg:col-start-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>大模型配置</CardTitle>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setModelDialogOpen(true)}>添加模型</Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -777,20 +1148,11 @@ export function ConfigManagementPage() {
                   ))}
                 </TableBody>
               </GenericTable>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                {catalog.map((item) => (
-                  <div key={item.provider} className="rounded-md border p-4">
-                    <div className="font-medium">{item.provider_name}</div>
-                    <div className="mt-1 text-sm text-muted-foreground">{item.provider} / {item.models.length} 个模型</div>
-                  </div>
-                ))}
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="datasources">
+        <TabsContent value="datasource" className="mt-0 space-y-4 lg:col-start-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>数据源配置</CardTitle>
@@ -869,9 +1231,6 @@ export function ConfigManagementPage() {
               </GenericTable>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="markets">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>市场分类</CardTitle>
@@ -983,7 +1342,7 @@ export function ConfigManagementPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="database">
+        <TabsContent value="database" className="mt-0 lg:col-start-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>数据库配置</CardTitle>
@@ -1033,7 +1392,7 @@ export function ConfigManagementPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="settings">
+        <TabsContent value="system" className="mt-0 lg:col-start-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>系统设置</CardTitle>
@@ -1089,7 +1448,18 @@ export function ConfigManagementPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="io">
+        <TabsContent value="api-keys" className="mt-0 lg:col-start-2">
+          <ApiKeyStatusPanel
+            providers={providers}
+            llmConfigs={llmConfigs}
+            loading={providersQuery.isFetching}
+            onRefresh={refreshConfig}
+            onConfigure={openEditProviderDialog}
+            onMigrate={() => actionMutation.mutate(() => configApi.migrateEnvToProviders())}
+          />
+        </TabsContent>
+
+        <TabsContent value="import-export" className="mt-0 lg:col-start-2">
           <div className="grid gap-4 lg:grid-cols-3">
             <Card>
               <CardHeader><CardTitle>配置导出</CardTitle></CardHeader>

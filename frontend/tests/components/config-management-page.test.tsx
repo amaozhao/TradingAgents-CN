@@ -46,6 +46,7 @@ vi.mock("@/libs/api/config", () => ({
     saveModelCatalog: vi.fn(),
     deleteModelCatalog: vi.fn(),
     initModelCatalog: vi.fn(),
+    validateSystemConfig: vi.fn(),
     exportConfig: vi.fn(),
     importConfig: vi.fn(),
     migrateLegacyConfig: vi.fn(),
@@ -95,6 +96,21 @@ describe("ConfigManagementPage", () => {
     vi.mocked(configApi.getModelCatalog).mockResolvedValue([
       { provider: "dashscope", provider_name: "通义千问", models: [{ name: "qwen-turbo", display_name: "通义千问 Turbo" }] }
     ])
+    vi.mocked(configApi.validateSystemConfig).mockResolvedValue({
+      success: true,
+      env_validation: {
+        success: true,
+        missing_required: [],
+        missing_recommended: [{ key: "TUSHARE_TOKEN", description: "Tushare 数据源 Token" }],
+        invalid_configs: [],
+        warnings: []
+      },
+      postgres_validation: {
+        llm_providers: [{ name: "dashscope", display_name: "通义千问", is_active: true, has_api_key: true, status: "已配置" }],
+        data_source_configs: [{ name: "akshare", type: "akshare", enabled: true, has_api_key: true, status: "已配置（无需密钥）" }],
+        warnings: []
+      }
+    })
     vi.mocked(configApi.reloadConfig).mockResolvedValue({ success: true, message: "ok" })
     vi.mocked(configApi.testConfig).mockResolvedValue({ success: true, message: "ok" })
     vi.mocked(configApi.updateSystemSettings).mockResolvedValue({ message: "ok" })
@@ -107,15 +123,26 @@ describe("ConfigManagementPage", () => {
     const user = userEvent.setup()
     renderWithQueryClient(<ConfigManagementPage />)
 
-    expect(await screen.findByRole("button", { name: "重新加载配置" })).toBeInTheDocument()
-    expect(screen.getByRole("tab", { name: "配置导入导出" })).toBeInTheDocument()
+    expect(await screen.findByRole("button", { name: "重载配置" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "配置验证" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "厂家管理" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "模型目录" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "大模型配置" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "数据源配置" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "数据库配置" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "API密钥状态" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "导入导出" })).toBeInTheDocument()
+    expect(await screen.findByText("配置验证通过（有推荐配置未设置）")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("tab", { name: "厂家管理" }))
     expect(await screen.findByRole("button", { name: "编辑 dashscope" })).toBeInTheDocument()
 
-    await user.click(screen.getByRole("tab", { name: "数据源" }))
+    await user.click(screen.getByRole("tab", { name: "数据源配置" }))
     expect(await screen.findByRole("button", { name: "测试数据源 tushare" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "管理分组 tushare" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "新增分类" })).toBeInTheDocument()
 
-    await user.click(screen.getByRole("tab", { name: "数据库" }))
+    await user.click(screen.getByRole("tab", { name: "数据库配置" }))
     expect(await screen.findByRole("button", { name: "新增数据库" })).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "编辑数据库 default" }))
     expect(screen.getByRole("dialog", { name: "编辑数据库配置" })).toBeInTheDocument()
@@ -138,7 +165,7 @@ describe("ConfigManagementPage", () => {
     const user = userEvent.setup()
     renderWithQueryClient(<ConfigManagementPage />)
 
-    await user.click(await screen.findByRole("tab", { name: "配置导入导出" }))
+    await user.click(await screen.findByRole("tab", { name: "导入导出" }))
     const file = new File([JSON.stringify({ default_data_source: "akshare" })], "config.json", { type: "application/json" })
     await user.upload(screen.getByLabelText("导入配置文件"), file)
     await user.click(screen.getByRole("button", { name: "导入配置" }))

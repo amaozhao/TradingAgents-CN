@@ -174,6 +174,40 @@ export interface SettingMeta {
   has_value: boolean
 }
 
+export interface EnvConfigValidation {
+  success: boolean
+  missing_required?: Array<{ key: string; description: string }>
+  missing_recommended?: Array<{ key: string; description: string }>
+  invalid_configs?: Array<{ key: string; error: string }>
+  warnings?: string[]
+}
+
+export interface PostgresConfigValidation {
+  llm_providers?: Array<{
+    name: string
+    display_name: string
+    is_active: boolean
+    has_api_key: boolean
+    status: string
+    source?: string | null
+  }>
+  data_source_configs?: Array<{
+    name: string
+    type: string
+    enabled: boolean
+    has_api_key: boolean
+    status: string
+    source?: string | null
+  }>
+  warnings?: string[]
+}
+
+export interface SystemConfigValidation {
+  success: boolean
+  env_validation?: EnvConfigValidation
+  postgres_validation?: PostgresConfigValidation
+}
+
 const unwrapResponse = <T>(promise: Promise<ApiResponse<T>>): Promise<T> =>
   promise.then((res) => res.data)
 
@@ -541,6 +575,11 @@ export const configApi = {
   // 配置重载
   reloadConfig(): Promise<{ success: boolean; message: string; data?: unknown }> {
     return unwrapResponse(ApiClient.post<{ success: boolean; message: string; data?: unknown }>('/api/config/reload'))
+  },
+
+  // 验证当前生效配置
+  validateSystemConfig(): Promise<SystemConfigValidation> {
+    return unwrapResponse(ApiClient.get<SystemConfigValidation>('/api/system/config/validate'))
   }
 }
 
