@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { EChartsOption } from "echarts"
@@ -11,6 +11,7 @@ import {
   Brush,
   Building2,
   CheckCircle2,
+  Clock,
   CircleX,
   Cpu,
   Database,
@@ -20,9 +21,12 @@ import {
   Key,
   ListChecks,
   Loader2,
+  Play,
+  RefreshCw,
   Settings,
   Shield,
   Star,
+  Trash2,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useForm } from "react-hook-form"
@@ -66,7 +70,6 @@ import { ActionTypes, getActionTypeName, OperationLogsApi, type OperationLog } f
 import {
   getDataSourcesStatus,
   clearSyncCache,
-  runSingleSourceSync,
   getSyncHistory,
   getSyncRecommendations,
   getSyncStatus,
@@ -2454,31 +2457,121 @@ export function SystemLogsPage() {
   )
 }
 
+function getSyncStatusText(status?: string) {
+  const textMap: Record<string, string> = {
+    idle: "空闲",
+    running: "运行中",
+    success: "成功",
+    success_with_errors: "部分成功",
+    failed: "失败",
+    never_run: "未运行"
+  }
+
+  return textMap[status || "never_run"] || "未知"
+}
+
+function syncStatusBadge(status?: string) {
+  const label = getSyncStatusText(status)
+  const classNameMap: Record<string, string> = {
+    running: "border-amber-200 bg-amber-50 text-amber-900",
+    success: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    success_with_errors: "border-amber-200 bg-amber-50 text-amber-900",
+    failed: "border-destructive/30 bg-destructive/5 text-destructive",
+    idle: "border-border bg-muted text-muted-foreground",
+    never_run: "border-border bg-muted text-muted-foreground"
+  }
+
+  return <Badge variant="outline" className={classNameMap[status || "never_run"] || classNameMap.never_run}>{label}</Badge>
+}
+
+function getSyncButtonText(status: SyncStatus | undefined, syncing: boolean, progress: number) {
+  if (syncing) return "启动中..."
+  if (status?.status === "running") return progress > 0 ? `同步中 ${progress}%` : "同步中..."
+  return "开始同步"
+}
+
+function formatSyncHistoryTime(time?: string) {
+  if (!time) return ""
+  const date = new Date(time)
+  if (Number.isNaN(date.getTime())) return time
+
+  const diff = Date.now() - date.getTime()
+  if (diff >= 0 && diff < 24 * 60 * 60 * 1000) {
+    return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+  }
+
+  return date.toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+}
+
+function getSyncDuration(startTime?: string, endTime?: string) {
+  if (!startTime || !endTime) return ""
+  const start = new Date(startTime).getTime()
+  const end = new Date(endTime).getTime()
+  if (Number.isNaN(start) || Number.isNaN(end)) return ""
+
+  const duration = Math.max(0, end - start)
+  if (duration < 1000) return `${duration}ms`
+  if (duration < 60000) return `${Math.round(duration / 1000)}s`
+
+  const minutes = Math.floor(duration / 60000)
+  const seconds = Math.round((duration % 60000) / 1000)
+  return `${minutes}m ${seconds}s`
+}
+
+function getPreferredSourcesExample(recommendations?: {
+  primary_source?: { name: string }
+  fallback_sources?: Array<{ name: string }>
+}) {
+  const sources = [
+    recommendations?.primary_source?.name,
+    recommendations?.fallback_sources?.[0]?.name
+  ].filter(Boolean)
+
+  return sources.join(",") || "tushare,akshare"
+}
+
 export function SyncManagementPage() {
   const [force, setForce] = useState(false)
-  const [historyStatus, setHistoryStatus] = useState("all")
+  const [preferredSources, setPreferredSources] = useState<string[]>([])
+  const [historyPage, setHistoryPage] = useState(1)
   const [testResults, setTestResults] = useState<DataSourceTestResult[]>([])
   const [testDialogOpen, setTestDialogOpen] = useState(false)
+  const [sourceTestResults, setSourceTestResults] = useState<Record<string, DataSourceTestResult>>({})
+  const [confirm, setConfirm] = useState<ConfirmState>(null)
   const queryClient = useQueryClient()
   const statusQuery = useQuery({ queryKey: ["sync", "status"], queryFn: () => getSyncStatus().then(getResponseData), retry: false })
   const sourcesQuery = useQuery({ queryKey: ["sync", "sources"], queryFn: () => getDataSourcesStatus().then(getResponseData), retry: false })
   const recommendationsQuery = useQuery({ queryKey: ["sync", "recommendations"], queryFn: () => getSyncRecommendations().then(getResponseData), retry: false })
-  const historyQuery = useQuery({ queryKey: ["sync", "history", historyStatus], queryFn: () => getSyncHistory({ page: 1, page_size: 20, status: historyStatus === "all" ? undefined : historyStatus }).then(getResponseData), retry: false })
+  const historyQuery = useQuery({ queryKey: ["sync", "history", historyPage], queryFn: () => getSyncHistory({ page: 1, page_size: historyPage * 10 }).then(getResponseData), retry: false })
 
   const syncMutation = useMutation({
-    mutationFn: () => runStockBasicsSync({ force }).then(getResponseData),
-    onSuccess: () => {
-      toast.success("同步任务已启动")
+    mutationFn: (params: { force?: boolean; preferred_sources?: string }) => runStockBasicsSync(params).then(getResponseData),
+    onSuccess: (data) => {
+      toast.success(data.status === "running" ? "同步任务已启动" : `同步状态：${getSyncStatusText(data.status)}`)
       void queryClient.invalidateQueries({ queryKey: ["sync"] })
     },
     onError: (error) => toast.error(error.message)
   })
   const testMutation = useMutation({
     mutationFn: (sourceName?: string) => testDataSources(sourceName).then(getResponseData),
-    onSuccess: (data) => {
+    onSuccess: (data, sourceName) => {
       setTestResults(data.test_results)
+      setSourceTestResults((value) => ({
+        ...value,
+        ...Object.fromEntries(data.test_results.map((item) => [item.name, item]))
+      }))
+      if (sourceName) {
+        const result = data.test_results.find((item) => item.name === sourceName)
+        if (result?.available) {
+          toast.success(`${sourceName.toUpperCase()} 连接成功`)
+        } else {
+          toast.warning(`${sourceName.toUpperCase()} 连接失败：${result?.message || "未知错误"}`)
+        }
+        return
+      }
+
       setTestDialogOpen(true)
-      toast.success(`测试完成：${data.test_results.filter((item) => item.available).length}/${data.test_results.length} 可用`)
+      toast.success(`全面测试完成：${data.test_results.filter((item) => item.available).length}/${data.test_results.length} 数据源可用`)
     },
     onError: (error) => toast.error(error.message)
   })
@@ -2492,9 +2585,37 @@ export function SyncManagementPage() {
   })
 
   const status = statusQuery.data
-  const sources = sourcesQuery.data || []
+  const sources = [...(sourcesQuery.data || [])].sort((left, right) => right.priority - left.priority)
   const history = historyQuery.data?.records || []
   const recommendations = recommendationsQuery.data
+  const processed = (status?.inserted || 0) + (status?.updated || 0)
+  const progress = status?.total ? Math.min(100, Math.round((processed / status.total) * 100)) : 0
+  const isRunning = status?.status === "running"
+  const historyHasMore = Boolean(historyQuery.data?.has_more)
+  const selectedPreferredSources = preferredSources.filter((sourceName) => sources.some((source) => source.name === sourceName))
+  const startSync = (overrideForce = force) => {
+    syncMutation.mutate({
+      force: overrideForce,
+      preferred_sources: selectedPreferredSources.length ? selectedPreferredSources.join(",") : undefined
+    })
+  }
+  const refreshAll = () => {
+    void statusQuery.refetch()
+    void sourcesQuery.refetch()
+    void recommendationsQuery.refetch()
+    void historyQuery.refetch()
+  }
+
+  useEffect(() => {
+    if (!isRunning) return
+
+    const timer = window.setInterval(() => {
+      void statusQuery.refetch()
+      void historyQuery.refetch()
+    }, 5000)
+
+    return () => window.clearInterval(timer)
+  }, [historyQuery, isRunning, statusQuery])
 
   return (
     <div>
@@ -2503,110 +2624,299 @@ export function SyncManagementPage() {
         description="管理和监控多个数据源的股票基础信息同步，支持自动fallback和优先级配置"
         actions={
           <div className="flex flex-wrap gap-2">
-            <LoadingButton loading={testMutation.isPending} onClick={() => testMutation.mutate(undefined)}>全面测试</LoadingButton>
+            <LoadingButton loading={testMutation.isPending} onClick={() => testMutation.mutate(undefined)}>
+              <RefreshCw className="size-4" />
+              全面测试
+            </LoadingButton>
             <Button variant="outline" onClick={() => {
-              void statusQuery.refetch()
-              void sourcesQuery.refetch()
-              void recommendationsQuery.refetch()
-              void historyQuery.refetch()
-            }}>刷新</Button>
+              refreshAll()
+            }}>
+              <RefreshCw className="size-4" />
+              刷新
+            </Button>
           </div>
         }
       />
-      <div className="grid gap-4 md:grid-cols-4">
-        <StatCard label="当前状态" value={status?.status || "unknown"} />
-        <StatCard label="总数" value={status?.total ?? 0} />
-        <StatCard label="新增" value={status?.inserted ?? 0} />
-        <StatCard label="更新" value={status?.updated ?? 0} />
-      </div>
-      <Card className="mt-6">
-        <CardHeader><CardTitle>同步控制</CardTitle></CardHeader>
-        <CardContent className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={force} onChange={(event) => setForce(event.target.checked)} />
-            强制同步
-          </label>
-          <LoadingButton loading={syncMutation.isPending} onClick={() => syncMutation.mutate()}>开始同步</LoadingButton>
-          <Button variant="outline" onClick={() => void statusQuery.refetch()}>刷新状态</Button>
-          <LoadingButton loading={maintenanceMutation.isPending} variant="outline" onClick={() => maintenanceMutation.mutate(() => clearSyncCache())}>清空缓存</LoadingButton>
-          <LoadingButton loading={maintenanceMutation.isPending} variant="outline" onClick={() => maintenanceMutation.mutate(() => runSingleSourceSync())}>传统单源同步</LoadingButton>
-          <LoadingButton loading={syncMutation.isPending} variant="outline" onClick={() => {
-            setForce(true)
-            syncMutation.mutate()
-          }}>强制重新同步</LoadingButton>
-        </CardContent>
-      </Card>
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-6">
         <Card>
-          <CardHeader><CardTitle>数据源状态</CardTitle></CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <CardTitle>数据源状态</CardTitle>
+            <Button size="sm" variant="outline" onClick={() => void sourcesQuery.refetch()}>
+              <RefreshCw className="size-4" />
+              刷新
+            </Button>
+          </CardHeader>
           <CardContent className="space-y-3">
             {sources.map((source) => (
-              <div key={source.name} className="rounded-md border p-3">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">{source.name}</div>
-                  {boolBadge(source.available, "可用", "不可用")}
+              <div key={source.name} className={`rounded-md border p-4 ${source.available ? "border-emerald-200 bg-emerald-50/40" : "border-destructive/25 bg-destructive/5"}`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={source.available ? "default" : "destructive"}>{source.available ? "可用" : "不可用"}</Badge>
+                    <div className="font-semibold uppercase">{source.name}</div>
+                    <Badge variant="outline">优先级: {source.priority}</Badge>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => testMutation.mutate(source.name)} disabled={testMutation.isPending}>
+                    {testMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+                    测试
+                  </Button>
                 </div>
-                <div className="mt-1 text-sm text-muted-foreground">优先级: {source.priority}</div>
-                <div className="mt-1 text-sm text-muted-foreground">{source.description}</div>
-                <Button className="mt-3" size="sm" variant="outline" onClick={() => testMutation.mutate(source.name)}>测试</Button>
+                <div className="mt-2 text-sm text-muted-foreground">{source.description}</div>
+                {sourceTestResults[source.name] ? (
+                  <div className={`mt-3 rounded-md border p-3 text-sm ${sourceTestResults[source.name].available ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-destructive/30 bg-destructive/5 text-destructive"}`}>
+                    <div className="font-medium">最后测试结果</div>
+                    <div className="mt-1">{sourceTestResults[source.name].message}</div>
+                  </div>
+                ) : null}
               </div>
             ))}
             {!sources.length ? <EmptyState title="暂无数据源状态" /> : null}
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader><CardTitle>同步建议</CardTitle></CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="font-medium">使用建议</div>
-            <div>推荐主数据源：{recommendations?.primary_source?.name || "-"}</div>
-            <div>备用数据源：{recommendations?.fallback_sources?.map((source) => source.name).join(", ") || "-"}</div>
-            <div className="font-medium">优化建议</div>
-            <div className="font-medium">配置示例</div>
-            <div className="text-muted-foreground">环境变量配置 / API调用示例</div>
-            {(recommendations?.suggestions || []).map((item, index) => <div key={`${item}-${index}`} className="rounded-md border p-3">{item}</div>)}
-            {(recommendations?.warnings || []).map((item, index) => <div key={`${item}-${index}`} className="rounded-md border border-destructive/30 p-3 text-destructive">{item}</div>)}
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <CardTitle>使用建议</CardTitle>
+            <Button size="sm" variant="outline" onClick={() => void recommendationsQuery.refetch()}>
+              <RefreshCw className="size-4" />
+              刷新
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-5 text-sm">
+            {recommendations?.primary_source ? (
+              <section className="space-y-2">
+                <div className="flex items-center gap-2 font-semibold"><Star className="size-4 text-amber-500" />推荐主数据源</div>
+                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className="uppercase">{recommendations.primary_source.name}</Badge>
+                    <span className="text-muted-foreground">优先级: {recommendations.primary_source.priority}</span>
+                  </div>
+                  <div className="mt-2 text-emerald-900">{recommendations.primary_source.reason}</div>
+                </div>
+              </section>
+            ) : null}
+
+            {recommendations?.fallback_sources?.length ? (
+              <section className="space-y-2">
+                <div className="font-semibold">备用数据源</div>
+                <div className="space-y-2">
+                  {recommendations.fallback_sources.map((source) => (
+                    <div key={source.name} className="flex items-center gap-2 rounded-md border p-3">
+                      <Badge variant="secondary" className="uppercase">{source.name}</Badge>
+                      <span className="text-muted-foreground">优先级: {source.priority}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {(recommendations?.suggestions || []).length ? (
+              <section className="space-y-2">
+                <div className="font-semibold">优化建议</div>
+                {(recommendations?.suggestions || []).map((item, index) => <div key={`${item}-${index}`} className="rounded-md border p-3">{item}</div>)}
+              </section>
+            ) : null}
+
+            {(recommendations?.warnings || []).length ? (
+              <section className="space-y-2">
+                <div className="font-semibold">注意事项</div>
+                {(recommendations?.warnings || []).map((item, index) => <div key={`${item}-${index}`} className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">{item}</div>)}
+              </section>
+            ) : null}
+
+            <section className="space-y-3">
+              <div className="font-semibold">配置示例</div>
+              <div className="rounded-md border bg-muted/30 p-3">
+                <div className="font-medium">环境变量配置</div>
+                <pre className="mt-2 overflow-x-auto rounded bg-background p-3 text-xs"><code>{`# Tushare配置（推荐）
+TUSHARE_ENABLED=true
+TUSHARE_TOKEN=your_tushare_token_here
+
+# AKShare配置
+AKSHARE_ENABLED=true
+
+# BaoStock配置
+BAOSTOCK_ENABLED=true
+
+# 默认数据源
+DEFAULT_CHINA_DATA_SOURCE=${recommendations?.primary_source?.name || "tushare"}`}</code></pre>
+              </div>
+              <div className="rounded-md border bg-muted/30 p-3">
+                <div className="font-medium">API调用示例</div>
+                <pre className="mt-2 overflow-x-auto rounded bg-background p-3 text-xs"><code>{`# 使用默认优先级同步
+POST /api/sync/multi-source/stock_basics/run
+
+# 指定优先数据源
+POST /api/sync/multi-source/stock_basics/run?preferred_sources=${getPreferredSourcesExample(recommendations)}
+
+# 强制同步
+POST /api/sync/multi-source/stock_basics/run?force=true`}</code></pre>
+              </div>
+            </section>
           </CardContent>
         </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>同步控制</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              <section className="space-y-3">
+                <div className="font-semibold">当前状态</div>
+                <div className="flex flex-wrap items-center gap-3">
+                  {syncStatusBadge(status?.status)}
+                  {statusQuery.isFetching ? <span className="flex items-center gap-1 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />刷新中</span> : null}
+                </div>
+                {isRunning ? (
+                  <div className="space-y-2">
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+                    </div>
+                    <div className="text-sm text-muted-foreground">正在同步中... {status?.total ? `${processed}/${status.total}` : ""}</div>
+                  </div>
+                ) : null}
+              </section>
+
+              {status && status.status !== "never_run" ? (
+                <section className="space-y-3">
+                  <div className="font-semibold">同步统计</div>
+                  <div className="grid gap-3 sm:grid-cols-4">
+                    <StatCard label="总数" value={status.total ?? 0} />
+                    <StatCard label="新增" value={status.inserted ?? 0} />
+                    <StatCard label="更新" value={status.updated ?? 0} />
+                    <StatCard label="错误" value={status.errors ?? 0} />
+                  </div>
+                  {status.data_sources_used?.length ? (
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">使用的数据源:</div>
+                      <div className="flex flex-wrap gap-2">
+                        {status.data_sources_used.map((source) => <Badge key={source} variant="secondary">{source}</Badge>)}
+                      </div>
+                    </div>
+                  ) : null}
+                  {status.finished_at ? <div className="text-sm text-muted-foreground">完成时间: {formatDateTime(status.finished_at)}</div> : null}
+                  {status.message && status.status === "failed" ? <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{status.message}</div> : null}
+                </section>
+              ) : null}
+
+              <section className="space-y-4">
+                <div className="font-semibold">同步操作</div>
+                <div className="grid gap-3">
+                  <Label>优先数据源:</Label>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {sources.map((source) => (
+                      <label key={source.name} className={`flex items-center gap-2 rounded-md border p-3 text-sm ${!source.available ? "cursor-not-allowed opacity-60" : ""}`}>
+                        <input
+                          type="checkbox"
+                          disabled={!source.available}
+                          checked={preferredSources.includes(source.name)}
+                          onChange={(event) => {
+                            setPreferredSources((value) => event.target.checked
+                              ? [...value, source.name]
+                              : value.filter((item) => item !== source.name))
+                          }}
+                        />
+                        <span className="font-medium uppercase">{source.name}</span>
+                        <span className="text-muted-foreground">优先级: {source.priority}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="text-xs text-muted-foreground">选择优先使用的数据源（可选）</div>
+                </div>
+
+                <label className="flex flex-wrap items-center gap-3 text-sm">
+                  <span className="font-medium">强制同步:</span>
+                  <input type="checkbox" checked={force} onChange={(event) => setForce(event.target.checked)} />
+                  <span>{force ? "是" : "否"}</span>
+                  <span className="text-muted-foreground">强制同步将忽略正在运行的同步任务</span>
+                </label>
+
+                <div className="flex flex-wrap gap-2">
+                  <LoadingButton loading={syncMutation.isPending || isRunning} disabled={isRunning && !force} onClick={() => startSync()}>
+                    <Play className="size-4" />
+                    {getSyncButtonText(status, syncMutation.isPending, progress)}
+                  </LoadingButton>
+                  <Button variant="outline" onClick={() => void statusQuery.refetch()}>
+                    <RefreshCw className="size-4" />
+                    刷新状态
+                  </Button>
+                  <LoadingButton
+                    loading={maintenanceMutation.isPending}
+                    variant="outline"
+                    onClick={() => setConfirm({
+                      title: "确认清空缓存",
+                      description: "确定要清空同步缓存吗？这将删除所有缓存的数据。",
+                      confirmText: "清空缓存",
+                      onConfirm: () => maintenanceMutation.mutate(() => clearSyncCache())
+                    })}
+                  >
+                    <Trash2 className="size-4" />
+                    清空缓存
+                  </LoadingButton>
+                  <LoadingButton loading={syncMutation.isPending} variant="outline" onClick={() => startSync(true)}>
+                    <RefreshCw className="size-4" />
+                    强制重新同步
+                  </LoadingButton>
+                </div>
+              </section>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <CardTitle>同步历史</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => {
+                setHistoryPage(1)
+                void historyQuery.refetch()
+              }}>
+                <RefreshCw className="size-4" />
+                刷新
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {history.length ? (
+                <div className="max-h-[600px] space-y-4 overflow-y-auto pr-1">
+                  {history.map((item, index) => (
+                    <div key={`${item.job}-${item.started_at || item.finished_at}-${index}`} className="border-l-2 border-border pl-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Clock className="size-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">{formatSyncHistoryTime(item.finished_at || item.started_at)}</span>
+                        {syncStatusBadge(item.status)}
+                        <span className="font-medium">{item.job}</span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-3 text-sm">
+                        <span>总数: {item.total}</span>
+                        <span className="text-emerald-700">新增: {item.inserted}</span>
+                        <span className="text-primary">更新: {item.updated}</span>
+                        <span className="text-destructive">错误: {item.errors}</span>
+                      </div>
+                      {item.data_sources_used?.length ? (
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                          <span className="text-muted-foreground">数据源:</span>
+                          {item.data_sources_used.map((source) => <Badge key={source} variant="secondary">{source}</Badge>)}
+                        </div>
+                      ) : null}
+                      {item.last_trade_date ? <div className="mt-2 text-sm text-muted-foreground">交易日期: {item.last_trade_date}</div> : null}
+                      {item.message ? <div className={`mt-2 rounded-md border p-3 text-sm ${item.status === "failed" ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-amber-200 bg-amber-50 text-amber-900"}`}>{item.message}</div> : null}
+                      {getSyncDuration(item.started_at, item.finished_at) ? <div className="mt-2 text-xs text-muted-foreground">{getSyncDuration(item.started_at, item.finished_at)}</div> : null}
+                    </div>
+                  ))}
+                  {historyHasMore ? (
+                    <div className="pt-2">
+                      <Button variant="outline" onClick={() => setHistoryPage((value) => value + 1)} disabled={historyQuery.isFetching}>
+                        {historyQuery.isFetching ? <Loader2 className="size-4 animate-spin" /> : null}
+                        加载更多
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : <EmptyState title="暂无同步历史" />}
+            </CardContent>
+          </Card>
+        </div>
       </div>
-      <Card className="mt-6">
-        <CardHeader className="flex flex-row items-center justify-between gap-3">
-          <CardTitle>同步历史</CardTitle>
-          <Select value={historyStatus} onValueChange={setHistoryStatus}>
-            <SelectTrigger aria-label="同步历史状态" className="w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部状态</SelectItem>
-              <SelectItem value="running">运行中</SelectItem>
-              <SelectItem value="success">成功</SelectItem>
-              <SelectItem value="success_with_errors">部分成功</SelectItem>
-              <SelectItem value="failed">失败</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardHeader>
-        <CardContent>
-          <GenericTable<SyncStatus> rows={history} emptyText="暂无同步历史">
-            <TableHeader>
-              <TableRow>
-                <TableHead>任务</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead>开始时间</TableHead>
-                <TableHead>结束时间</TableHead>
-                <TableHead>错误数</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {history.map((item) => (
-                <TableRow key={`${item.job}-${item.started_at || item.finished_at}`}>
-                  <TableCell>{item.job}</TableCell>
-                  <TableCell>{item.status}</TableCell>
-                  <TableCell>{item.started_at ? formatDateTime(item.started_at) : "-"}</TableCell>
-                  <TableCell>{item.finished_at ? formatDateTime(item.finished_at) : "-"}</TableCell>
-                  <TableCell>{item.errors}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </GenericTable>
-        </CardContent>
-      </Card>
+
       <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
@@ -2646,6 +2956,19 @@ export function SyncManagementPage() {
           </Button>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={Boolean(confirm)}
+        title={confirm?.title || ""}
+        description={confirm?.description || ""}
+        confirmText={confirm?.confirmText}
+        onOpenChange={(open) => {
+          if (!open) setConfirm(null)
+        }}
+        onConfirm={() => {
+          confirm?.onConfirm()
+          setConfirm(null)
+        }}
+      />
     </div>
   )
 }
