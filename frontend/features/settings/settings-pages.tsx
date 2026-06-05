@@ -821,6 +821,7 @@ export function ConfigManagementPage() {
   const [activeTab, setActiveTab] = useState<ConfigTabValue>(() => getConfigTab(requestedTab))
   const [editingProvider, setEditingProvider] = useState<LLMProvider | null>(null)
   const [modelDialogOpen, setModelDialogOpen] = useState(false)
+  const [llmDialogOpen, setLlmDialogOpen] = useState(false)
   const [dataSourceDialogOpen, setDataSourceDialogOpen] = useState(false)
   const [editingDataSourceName, setEditingDataSourceName] = useState<string | null>(null)
   const [marketDialogOpen, setMarketDialogOpen] = useState(false)
@@ -830,6 +831,14 @@ export function ConfigManagementPage() {
   const [settingsDraft, setSettingsDraft] = useState<Record<string, unknown>>({})
   const [configImportFile, setConfigImportFile] = useState<File | null>(null)
   const [modelForm, setModelForm] = useState({ provider: "", provider_name: "", model_name: "" })
+  const [llmForm, setLlmForm] = useState({
+    provider: "",
+    model_name: "",
+    model_display_name: "",
+    api_base: "",
+    max_tokens: 4000,
+    temperature: 0.7
+  })
   const [dataSourceForm, setDataSourceForm] = useState({ name: "", type: "stock", display_name: "", priority: 1 })
   const [marketForm, setMarketForm] = useState({ id: "", name: "", display_name: "", sort_order: 1 })
   const [groupingForm, setGroupingForm] = useState({ data_source_name: "", market_category_id: "", priority: 1 })
@@ -938,6 +947,19 @@ export function ConfigManagementPage() {
       description: provider.description || ""
     })
     setOpen(true)
+  }
+
+  const openAddLlmDialog = () => {
+    const firstProvider = providers.find((provider) => provider.is_active) || providers[0]
+    setLlmForm({
+      provider: firstProvider?.name || "",
+      model_name: "",
+      model_display_name: "",
+      api_base: firstProvider?.default_base_url || "",
+      max_tokens: 4000,
+      temperature: 0.7
+    })
+    setLlmDialogOpen(true)
   }
 
   const openAddDataSourceDialog = () => {
@@ -1173,7 +1195,7 @@ export function ConfigManagementPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>大模型配置</CardTitle>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setModelDialogOpen(true)}>添加模型</Button>
+                <Button variant="outline" size="sm" onClick={openAddLlmDialog}>添加模型</Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1625,6 +1647,90 @@ export function ConfigManagementPage() {
             </div>
             <LoadingButton type="submit" loading={saveProviderMutation.isPending}>保存</LoadingButton>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={llmDialogOpen} onOpenChange={setLlmDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>新增模型配置</DialogTitle>
+            <DialogDescription>创建可用于分析任务的大模型配置。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="llm-provider">厂家</Label>
+              <Select
+                value={llmForm.provider}
+                onValueChange={(providerName) => {
+                  const provider = providers.find((item) => item.name === providerName)
+                  setLlmForm((value) => ({
+                    ...value,
+                    provider: providerName,
+                    api_base: value.api_base || provider?.default_base_url || ""
+                  }))
+                }}
+              >
+                <SelectTrigger id="llm-provider">
+                  <SelectValue placeholder="选择厂家" />
+                </SelectTrigger>
+                <SelectContent>
+                  {providers.map((provider) => (
+                    <SelectItem key={provider.id} value={provider.name}>
+                      {provider.display_name || provider.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="llm-model-name">模型名称</Label>
+              <Input id="llm-model-name" value={llmForm.model_name} onChange={(event) => setLlmForm((value) => ({ ...value, model_name: event.target.value }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="llm-display-name">显示名称</Label>
+              <Input id="llm-display-name" value={llmForm.model_display_name} onChange={(event) => setLlmForm((value) => ({ ...value, model_display_name: event.target.value }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="llm-api-base">Base URL</Label>
+              <Input id="llm-api-base" value={llmForm.api_base} onChange={(event) => setLlmForm((value) => ({ ...value, api_base: event.target.value }))} />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="llm-max-tokens">最大 Tokens</Label>
+                <Input id="llm-max-tokens" type="number" min={1} value={llmForm.max_tokens} onChange={(event) => setLlmForm((value) => ({ ...value, max_tokens: Number(event.target.value) || 4000 }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="llm-temperature">温度</Label>
+                <Input id="llm-temperature" type="number" min={0} max={2} step={0.1} value={llmForm.temperature} onChange={(event) => setLlmForm((value) => ({ ...value, temperature: Number(event.target.value) || 0 }))} />
+              </div>
+            </div>
+            <LoadingButton
+              loading={actionMutation.isPending}
+              onClick={() => {
+                if (!llmForm.provider || !llmForm.model_name) {
+                  toast.error("请选择厂家并填写模型名称")
+                  return
+                }
+                actionMutation.mutate(async () => {
+                  await configApi.updateLLMConfig({
+                    provider: llmForm.provider,
+                    model_name: llmForm.model_name,
+                    model_display_name: llmForm.model_display_name || llmForm.model_name,
+                    api_base: llmForm.api_base || undefined,
+                    max_tokens: llmForm.max_tokens,
+                    temperature: llmForm.temperature,
+                    timeout: 180,
+                    retry_times: 3,
+                    enabled: true
+                  })
+                  setLlmDialogOpen(false)
+                  setLlmForm({ provider: "", model_name: "", model_display_name: "", api_base: "", max_tokens: 4000, temperature: 0.7 })
+                })
+              }}
+            >
+              保存
+            </LoadingButton>
+          </div>
         </DialogContent>
       </Dialog>
 

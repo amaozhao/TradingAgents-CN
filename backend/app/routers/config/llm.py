@@ -20,13 +20,17 @@ async def get_llm_configs(current_user: User = Depends(get_current_user)):
 
         # 获取所有供应商信息，用于过滤被禁用供应商的模型
         providers = await config_service.get_llm_providers()
-        active_provider_names = {p.name for p in providers if p.is_active}
+        active_providers = [p for p in providers if p.is_active]
 
         # 过滤：只返回启用的模型 且 供应商也启用的模型
         filtered_configs = [
             llm_config
             for llm_config in config.llm_configs
-            if llm_config.enabled and llm_config.provider in active_provider_names
+            if llm_config.enabled
+            and any(
+                config_service._providers_match(llm_config.provider, provider.name)
+                for provider in active_providers
+            )
         ]
 
         sorted_configs = _sort_llm_configs_by_newest(filtered_configs)
