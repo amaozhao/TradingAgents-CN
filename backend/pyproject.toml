@@ -29,12 +29,9 @@ dependencies = [
 
     # 任务调度和异步
     "apscheduler>=3.11.2",
-    "aiofiles>=25.1.0",
 
     # HTTP客户端和SSE
     "httpx>=0.28.1",
-    "httpx2>=0.1.0",
-    "sse-starlette>=3.4.4",
 
     # 日志处理
     "concurrent-log-handler>=0.9.29",  # Windows 友好的日志轮转处理器
@@ -42,7 +39,6 @@ dependencies = [
     # 数据源和金融数据
     "akshare>=1.18.64",
     "baostock>=0.9.1",
-    "eodhd>=1.0.32",
     "finnhub-python>=2.4.28",
     "tushare>=1.4.29",
     "yfinance>=1.4.1",
@@ -56,7 +52,6 @@ dependencies = [
     "langchain-anthropic>=1.4.4",
     "langchain-community>=0.4.2",
     "langchain-core>=1.4.0",
-    "langchain-experimental>=0.4.2",
     "langchain-google-genai>=4.2.4",  # 修复 client_options 未定义错误
     "langchain-openai>=1.2.2",
     "langgraph>=1.2.2",
@@ -72,8 +67,6 @@ dependencies = [
     # 网络爬虫和解析
     "curl-cffi>=0.15.0",  # 模拟真实浏览器TLS指纹，绕过反爬虫检测
     "feedparser>=6.0.12",
-    "parsel>=1.11.0",
-    "praw>=7.8.1",
     "requests>=2.34.2",
 
     # 文档和格式化
@@ -83,14 +76,12 @@ dependencies = [
     "pdfkit>=1.0.0",  # PDF生成工具，需要wkhtmltopdf
 
     # 工具和辅助
-    "psutil>=7.2.2",
     "pytest>=9.0.3",
     "pytest-asyncio>=1.4.0",
     "python-dotenv>=1.2.2",
     "pytz>=2026.2",
     "questionary>=2.1.1",
     "rich>=15.0.0",
-    "setuptools>=82.0.1",
     "streamlit>=1.58.0",
     "toml>=0.10.2",
     "tqdm>=4.67.3",
