@@ -44,6 +44,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -147,6 +148,61 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
         <div className="mt-2 text-2xl font-semibold">{value}</div>
       </CardContent>
     </Card>
+  )
+}
+
+function SchedulerPageLoading() {
+  return (
+    <div aria-busy="true" aria-label="定时任务加载中" className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Card key={index}>
+            <CardContent className="p-5">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="mt-3 h-8 w-16" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-24" />
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-4">
+          <Skeleton className="h-10" />
+          <Skeleton className="h-10" />
+          <Skeleton className="h-10" />
+          <Skeleton className="h-10" />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-20" />
+        </CardHeader>
+        <CardContent>
+          <SchedulerTableLoading columns={6} rows={5} />
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function SchedulerTableLoading({ columns, rows }: { columns: number; rows: number }) {
+  return (
+    <div className="overflow-hidden rounded-md border" aria-busy="true" aria-label="表格加载中">
+      <div className="grid gap-px bg-border" style={{ gridTemplateColumns: `repeat(${columns}, minmax(120px, 1fr))` }}>
+        {Array.from({ length: columns }).map((_, index) => (
+          <div key={`head-${index}`} className="bg-card p-3">
+            <Skeleton className="h-4 w-20" />
+          </div>
+        ))}
+        {Array.from({ length: rows * columns }).map((_, index) => (
+          <div key={`cell-${index}`} className="bg-background p-3">
+            <Skeleton className="h-4 w-full" />
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -3307,6 +3363,7 @@ export function SchedulerManagementPage() {
   const stats = statsQuery.data
   const health = healthQuery.data
   const executions = executionsQuery.data?.items || []
+  const schedulerInitialLoading = jobsQuery.isLoading || statsQuery.isLoading || healthQuery.isLoading
 
   return (
     <div>
@@ -3315,11 +3372,13 @@ export function SchedulerManagementPage() {
         description="管理系统中的所有定时任务，支持暂停、恢复和手动触发"
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => void jobsQuery.refetch()}>刷新</Button>
+            <LoadingButton variant="outline" loading={jobsQuery.isFetching} onClick={() => void jobsQuery.refetch()}>刷新</LoadingButton>
             <Button variant="outline" onClick={() => setHistoryOpen(true)}>执行历史</Button>
           </div>
         }
       />
+      {schedulerInitialLoading ? <SchedulerPageLoading /> : (
+      <>
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="总任务数" value={stats?.total_jobs ?? 0} />
         <StatCard label="运行中" value={stats?.running_jobs ?? 0} />
@@ -3486,8 +3545,11 @@ export function SchedulerManagementPage() {
                 <SelectItem value="auto">自动执行</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={() => void executionsQuery.refetch()}>刷新</Button>
+            <LoadingButton variant="outline" loading={executionsQuery.isFetching} onClick={() => void executionsQuery.refetch()}>刷新</LoadingButton>
           </div>
+          {executionsQuery.isLoading ? (
+            <SchedulerTableLoading columns={7} rows={5} />
+          ) : (
           <GenericTable<JobExecution> rows={executions} emptyText="暂无执行记录">
             <TableHeader>
               <TableRow>
@@ -3524,6 +3586,7 @@ export function SchedulerManagementPage() {
               ))}
             </TableBody>
           </GenericTable>
+          )}
         </DialogContent>
       </Dialog>
       <Dialog open={Boolean(selectedExecution)} onOpenChange={(nextOpen) => !nextOpen && setSelectedExecution(null)}>
@@ -3545,6 +3608,8 @@ export function SchedulerManagementPage() {
           {selectedExecution?.traceback ? <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs">{selectedExecution.traceback}</pre> : null}
         </DialogContent>
       </Dialog>
+      </>
+      )}
     </div>
   )
 }

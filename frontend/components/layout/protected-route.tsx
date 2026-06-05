@@ -3,6 +3,7 @@
 import { Suspense, useEffect } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
+import { PageLoading } from "@/components/feedback/page-loading"
 import { useAuthStore } from "@/stores/auth-store"
 
 interface GuardProps {
@@ -70,5 +71,5 @@ export function AuthEntryRoute({ children }: GuardProps) {
 }
 
 function RouteFallback() {
-  return <div className="min-h-screen bg-background" aria-label="加载中" />
+  return <PageLoading className="min-h-screen" />
 }

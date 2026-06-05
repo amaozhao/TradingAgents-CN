@@ -64,6 +64,29 @@ test("keeps personal settings submenu visible after returning from config manage
   await expect(nav.getByRole("link", { name: "安全设置" })).toBeVisible()
 })
 
+test("navigates from the sidebar without reloading the app shell", async ({ page }) => {
+  await page.goto("/dashboard")
+  await expect(page.getByRole("heading", { name: "仪表板" })).toBeVisible()
+
+  const initialNavigationCount = await page.evaluate(() => performance.getEntriesByType("navigation").length)
+  const nav = page.getByRole("navigation")
+
+  await nav.getByRole("link", { name: "我的自选股" }).click()
+  await expect(page).toHaveURL(/\/favorites$/)
+  await expect(page.getByRole("heading", { name: "我的自选股" })).toBeVisible()
+
+  await nav.getByRole("link", { name: "设置" }).click()
+  await expect(page).toHaveURL(/\/settings$/)
+  await nav.getByRole("link", { name: "系统管理" }).click()
+  await nav.getByRole("link", { name: "定时任务" }).click()
+  await expect(page).toHaveURL(/\/settings\/scheduler$/)
+  await expect(page.getByRole("heading", { name: "定时任务", exact: true })).toBeVisible()
+
+  await expect
+    .poll(() => page.evaluate(() => performance.getEntriesByType("navigation").length))
+    .toBe(initialNavigationCount)
+})
+
 function mockApiPayload(path: string) {
   switch (path) {
     case "/api/health":
