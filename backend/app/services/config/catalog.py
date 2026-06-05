@@ -1,5 +1,6 @@
 # ruff: noqa: F403,F405
 from .common import *
+from app.db.ids import DocumentId
 
 
 class ModelCatalogMixin:
@@ -12,7 +13,14 @@ class ModelCatalogMixin:
             catalog_collection = db.model_catalog
 
             catalogs = []
+            seen_providers = set()
             async for doc in catalog_collection.find():
+                provider = doc.get("provider")
+                if provider in seen_providers:
+                    continue
+                seen_providers.add(provider)
+                if not DocumentId.is_valid(str(doc.get("_id", ""))):
+                    doc.pop("_id", None)
                 catalogs.append(ModelCatalog(**doc))
 
             return catalogs
@@ -28,6 +36,8 @@ class ModelCatalogMixin:
 
             doc = await catalog_collection.find_one({"provider": provider})
             if doc:
+                if not DocumentId.is_valid(str(doc.get("_id", ""))):
+                    doc.pop("_id", None)
                 return ModelCatalog(**doc)
             return None
         except Exception as e:

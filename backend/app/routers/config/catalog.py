@@ -95,6 +95,12 @@ async def get_available_models(current_user: User = Depends(get_current_user)):
 # ========== 模型目录管理 ==========
 
 
+def _current_user_value(current_user, key: str, default: str = ""):
+    if isinstance(current_user, dict):
+        return current_user.get(key, default)
+    return getattr(current_user, key, default)
+
+
 @router.get("/model-catalog", response_model=ConfigApiResponse)
 async def get_model_catalog(current_user: User = Depends(get_current_user)):
     """获取所有模型目录"""
@@ -172,18 +178,22 @@ async def save_model_catalog(
                 detail="保存模型目录失败",
             )
 
-        # 记录操作日志
-        await log_operation(
-            user_id=str(current_user.id),
-            username=current_user.username,
-            action_type=ActionType.CONFIG_MANAGEMENT,
-            action="update_model_catalog",
-            details={
-                "provider": request.provider,
-                "provider_name": request.provider_name,
-                "models_count": len(request.models),
-            },
-        )
+        # 审计日志不应影响模型目录保存结果。
+        try:
+            await log_operation(
+                user_id=str(_current_user_value(current_user, "id")),
+                username=_current_user_value(current_user, "username", "unknown"),
+                action_type=ActionType.CONFIG_MANAGEMENT,
+                action="update_model_catalog",
+                details={
+                    "provider": request.provider,
+                    "provider_name": request.provider_name,
+                    "models_count": len(request.models),
+                },
+                success=True,
+            )
+        except Exception:
+            pass
 
         return ok(
             data={"success": True, "message": "模型目录保存成功"},
@@ -212,14 +222,18 @@ async def delete_model_catalog(
                 detail=f"未找到厂家 {provider} 的模型目录",
             )
 
-        # 记录操作日志
-        await log_operation(
-            user_id=str(current_user.id),
-            username=current_user.username,
-            action_type=ActionType.CONFIG_MANAGEMENT,
-            action="delete_model_catalog",
-            details={"provider": provider},
-        )
+        # 审计日志不应影响模型目录删除结果。
+        try:
+            await log_operation(
+                user_id=str(_current_user_value(current_user, "id")),
+                username=_current_user_value(current_user, "username", "unknown"),
+                action_type=ActionType.CONFIG_MANAGEMENT,
+                action="delete_model_catalog",
+                details={"provider": provider},
+                success=True,
+            )
+        except Exception:
+            pass
 
         return ok(
             data={"success": True, "message": "模型目录删除成功"},
