@@ -104,4 +104,15 @@ describe("SidebarMenu", () => {
     expect(within(nav).getByRole("link", { name: "外观设置" })).toBeInTheDocument()
     expect(within(nav).queryByRole("link", { name: "配置管理" })).not.toBeInTheDocument()
   })
+
+  it("highlights only the selected personal settings tab", () => {
+    pathname = "/settings"
+    search = "tab=analysis"
+
+    render(<SidebarMenu collapsed={false} />)
+
+    const nav = screen.getByRole("navigation")
+    expect(within(nav).getByRole("link", { name: "分析偏好" })).toHaveClass("bg-sidebar-accent")
+    expect(within(nav).getByRole("link", { name: "通用设置" })).not.toHaveClass("bg-sidebar-accent")
+  })
 })

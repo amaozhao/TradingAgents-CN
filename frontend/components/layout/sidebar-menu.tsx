@@ -127,7 +127,11 @@ function isRouteActive(route: AppRoute, pathname: string, currentPath: string): 
   const isQueryRoute = route.path.includes("?")
 
   if (isQueryRoute && currentPath === route.path) return true
-  if (!isQueryRoute && pathname === routePath) return true
+  if (!isQueryRoute && pathname === routePath) {
+    if (route.children?.length) return true
+    if (routePath === "/settings") return currentPath === pathname
+    return true
+  }
   if (route.children?.length && pathname.startsWith(`${routePath}/`)) return true
 
   return route.children?.some((child) => isRouteActive(child, pathname, currentPath)) ?? false
