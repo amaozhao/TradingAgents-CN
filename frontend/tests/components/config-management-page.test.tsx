@@ -6,6 +6,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ConfigManagementPage } from "@/features/settings/settings-pages"
 import { configApi } from "@/libs/api/config"
 
+let routeSearch = ""
+const replace = vi.fn()
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace }),
+  useSearchParams: () => new URLSearchParams(routeSearch)
+}))
+
 vi.mock("@/libs/api/config", () => ({
   configApi: {
     getLLMProviders: vi.fn(),
@@ -67,6 +75,8 @@ function renderWithQueryClient(ui: React.ReactElement) {
 
 describe("ConfigManagementPage", () => {
   beforeEach(() => {
+    routeSearch = ""
+    replace.mockClear()
     vi.mocked(configApi.getLLMProviders).mockResolvedValue([
       { id: "dashscope", name: "dashscope", display_name: "通义千问", is_active: true, supported_features: ["chat"], extra_config: { has_api_key: true } }
     ])
@@ -171,5 +181,13 @@ describe("ConfigManagementPage", () => {
     await user.click(screen.getByRole("button", { name: "导入配置" }))
 
     await waitFor(() => expect(configApi.importConfig).toHaveBeenCalledWith({ default_data_source: "akshare" }))
+  })
+
+  it("opens the requested config tab from the URL", async () => {
+    routeSearch = "tab=llm"
+    renderWithQueryClient(<ConfigManagementPage />)
+
+    expect(await screen.findByText("通义千问 Turbo")).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "大模型配置" })).toHaveAttribute("data-state", "active")
   })
 })

@@ -1,7 +1,8 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { BarChart3, Check, FileText, Info, MessageCircle, Search, Shield, TrendingUp } from "lucide-react"
+import { AlertCircle, BarChart3, Check, Cpu, ExternalLink, FileText, Info, MessageCircle, Search, Settings, Shield, TrendingUp } from "lucide-react"
+import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo } from "react"
 import { useForm } from "react-hook-form"
@@ -77,6 +78,8 @@ export function SingleAnalysisPage() {
     const enabled = (modelsQuery.data || []).filter((model) => model.enabled)
     return enabled.length ? enabled : fallbackModels
   }, [modelsQuery.data])
+  const configuredModelCount = useMemo(() => (modelsQuery.data || []).filter((model) => model.enabled).length, [modelsQuery.data])
+  const usingFallbackModels = !configuredModelCount
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -334,14 +337,61 @@ export function SingleAnalysisPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <section className="space-y-4">
-                  <SectionTitle icon="🤖" title="AI模型配置" compact />
-                  <ModelSelect name="quick_analysis_model" label="快速分析模型" models={modelOptions} />
-                  <ModelSelect name="deep_analysis_model" label="深度决策模型" models={modelOptions} />
+                  <div className="flex items-start justify-between gap-3">
+                    <SectionTitle icon="🤖" title="AI模型配置" compact />
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/settings/config?tab=llm">
+                        <Settings className="size-4" />
+                        配置模型
+                      </Link>
+                    </Button>
+                  </div>
+                  <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                    <div className="flex items-start gap-2">
+                      <Cpu className="mt-0.5 size-4 shrink-0 text-primary" />
+                      <div className="space-y-1">
+                        <p className="font-medium">这里选择本次分析实际调用的 AI 模型。</p>
+                        <p className="text-muted-foreground">先到“配置管理”添加厂家 API Key，再在“大模型配置”里启用模型；启用后会出现在下面两个下拉框。</p>
+                      </div>
+                    </div>
+                  </div>
+                  {usingFallbackModels ? (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                        <div>
+                          <p className="font-medium">当前没有读取到已启用模型配置。</p>
+                          <p className="mt-1">下拉框展示的是内置示例模型。正式分析前请先配置厂家密钥并启用模型。</p>
+                          <Button asChild variant="outline" size="sm" className="mt-3 bg-background">
+                            <Link href="/settings/config?tab=providers">
+                              去配置厂家 API Key
+                              <ExternalLink className="size-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                      已读取 {configuredModelCount} 个已启用模型配置，可直接选择。
+                    </div>
+                  )}
+                  <ModelSelect
+                    name="quick_analysis_model"
+                    label="快速分析模型"
+                    description="用于行情、新闻、基本面等初筛步骤。建议选择速度快、成本低的模型。"
+                    models={modelOptions}
+                  />
+                  <ModelSelect
+                    name="deep_analysis_model"
+                    label="深度决策模型"
+                    description="用于综合推理、风险判断和最终结论。建议选择推理能力更强的模型。"
+                    models={modelOptions}
+                  />
                   <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
-                    <div className="font-medium text-foreground">模型推荐</div>
-                    <p className="mt-1">
-                      {selectedDepth.label}分析建议快速模型负责市场、新闻和基本面初筛，深度模型负责综合决策和风险评估。
-                    </p>
+                    <div className="font-medium text-foreground">推荐选择</div>
+                    <p className="mt-1">{selectedDepth.label}分析：快速模型用 Turbo/Flash/轻量模型，深度模型用 Plus/Max/推理能力更强的模型。</p>
+                    <p className="mt-1">如果只有一个可用模型，两个下拉框可以选择同一个模型。</p>
                   </div>
                 </section>
 
@@ -369,7 +419,17 @@ export function SingleAnalysisPage() {
     </div>
   )
 
-  function ModelSelect({ name, label, models }: { name: "quick_analysis_model" | "deep_analysis_model"; label: string; models: LLMConfig[] }) {
+  function ModelSelect({
+    name,
+    label,
+    description,
+    models
+  }: {
+    name: "quick_analysis_model" | "deep_analysis_model"
+    label: string
+    description: string
+    models: LLMConfig[]
+  }) {
     return (
       <FormField
         control={form.control}
@@ -377,6 +437,7 @@ export function SingleAnalysisPage() {
         render={({ field }) => (
           <FormItem>
             <FormLabel>{label}</FormLabel>
+            <p className="text-xs leading-5 text-muted-foreground">{description}</p>
             <Select value={field.value} onValueChange={field.onChange}>
               <FormControl>
                 <SelectTrigger><SelectValue /></SelectTrigger>

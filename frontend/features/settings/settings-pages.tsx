@@ -302,6 +302,11 @@ const configTabs = [
 ] as const
 
 type ConfigTabValue = (typeof configTabs)[number]["value"]
+const configTabValues = new Set<ConfigTabValue>(configTabs.map((item) => item.value))
+
+function getConfigTab(value: string | null): ConfigTabValue {
+  return value && configTabValues.has(value as ConfigTabValue) ? (value as ConfigTabValue) : "validation"
+}
 
 const requiredConfigItems = [
   { key: "POSTGRES_HOST", name: "PostgreSQL 主机", description: "PostgreSQL 数据库主机地址" },
@@ -808,9 +813,12 @@ export function SettingsIndexPage() {
 
 export function ConfigManagementPage() {
   const queryClient = useQueryClient()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const requestedTab = searchParams.get("tab")
   const [open, setOpen] = useState(false)
   const [confirm, setConfirm] = useState<ConfirmState>(null)
-  const [activeTab, setActiveTab] = useState<ConfigTabValue>("validation")
+  const [activeTab, setActiveTab] = useState<ConfigTabValue>(() => getConfigTab(requestedTab))
   const [editingProvider, setEditingProvider] = useState<LLMProvider | null>(null)
   const [modelDialogOpen, setModelDialogOpen] = useState(false)
   const [dataSourceDialogOpen, setDataSourceDialogOpen] = useState(false)
@@ -849,6 +857,11 @@ export function ConfigManagementPage() {
   const modelCatalogQuery = useQuery({ queryKey: ["config", "model-catalog"], queryFn: () => configApi.getModelCatalog(), retry: false })
   const groupingsQuery = useQuery({ queryKey: ["config", "datasource-groupings"], queryFn: () => configApi.getDataSourceGroupings(), retry: false })
   const validationQuery = useQuery({ queryKey: ["config", "validation"], queryFn: () => configApi.validateSystemConfig(), retry: false })
+
+  useEffect(() => {
+    const nextTab = getConfigTab(requestedTab)
+    setActiveTab((current) => (current === nextTab ? current : nextTab))
+  }, [requestedTab])
 
   const form = useForm<ProviderFormValues>({
     resolver: zodResolver(providerSchema),
@@ -1000,7 +1013,15 @@ export function ConfigManagementPage() {
         }
       />
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ConfigTabValue)} className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          const tab = getConfigTab(value)
+          setActiveTab(tab)
+          router.replace(`/settings/config?tab=${tab}`)
+        }}
+        className="space-y-4"
+      >
         <TabsList className="flex h-auto flex-wrap justify-start">
           {configTabs.map((item) => {
             const Icon = item.icon
