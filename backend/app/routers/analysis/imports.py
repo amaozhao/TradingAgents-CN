@@ -41,3 +41,19 @@ from app.services.socket import get_websocket_manager
 
 router = APIRouter()
 logger = logging.getLogger("webapi")
+
+
+def _analysis_request_queue_params(
+    request: SingleAnalysisRequest, task_id: str, user_id: str
+) -> Dict[str, Any]:
+    params = request.parameters.model_dump(mode="json") if request.parameters else {}
+    symbol = request.get_symbol()
+    params.update(
+        {
+            "task_id": task_id,
+            "stock_code": symbol,
+            "symbol": symbol,
+            "user_id": user_id,
+        }
+    )
+    return params

@@ -14,8 +14,10 @@ from datetime import datetime
 from typing import Any, Optional
 
 # Add project root to path for importing analysis runner
-from app.core.database import close_db, get_redis_client, init_db
+from app.core.database import close_db, get_postgres_db, get_redis_client, init_db
 from app.core.logs import setup_logging
+from app.schemas.analysis import AnalysisParameters, SingleAnalysisRequest
+from app.services.analysis.simple import get_simple_analysis_service
 
 # Redis keys (must match queue_service)
 READY_LIST = "qa:ready"
@@ -85,22 +87,7 @@ async def process_task(task_id: str) -> None:
                 params = {}
 
         symbol = data.get("symbol", "")
-        data.get("user", "")
-
-        # Extract analysis parameters with defaults
-        analysts = params.get(
-            "analysts", ["Bull Analyst", "Bear Analyst", "Research Manager"]
-        )
-        research_depth = params.get("research_depth", 2)
-        normalize_provider_key = getattr(
-            importlib.import_module("trader.llm.clients.providers"),
-            "normalize_provider_key",
-        )
-
-        llm_provider = normalize_provider_key(params.get("llm_provider", "dashscope"))
-        llm_model = params.get("llm_model", "qwen-plus")
-        market_type = params.get("market_type", "美股")
-        analysis_date = params.get("analysis_date", datetime.now().strftime("%Y-%m-%d"))
+        user_id = str(data.get("user", ""))
 
         # Progress callback function
         async def progress_callback(
@@ -110,61 +97,44 @@ async def process_task(task_id: str) -> None:
 
         await progress_callback("🚀 开始执行股票分析...")
 
-        # Import and call the actual analysis function
         try:
-            run_stock_analysis = getattr(
-                importlib.import_module("web.utils.analysis"), "run_stock_analysis"
+            service = get_simple_analysis_service()
+            analysis_params = AnalysisParameters.model_validate(params or {})
+            request = SingleAnalysisRequest(
+                symbol=symbol,
+                stock_code=symbol,
+                parameters=analysis_params,
             )
 
-            loop = asyncio.get_running_loop()
-
-            # Wrap the sync function in an async executor
-            def sync_analysis():
-                # Define a thread-safe callback to publish progress from worker thread
-                def safe_progress(msg, step=None, total=None):
-                    asyncio.run_coroutine_threadsafe(
-                        progress_callback(msg, step, total), loop
-                    )
-
-                return run_stock_analysis(
-                    stock_symbol=symbol,
-                    analysis_date=analysis_date,
-                    analysts=analysts,
-                    research_depth=research_depth,
-                    llm_provider=llm_provider,
-                    llm_model=llm_model,
-                    market_type=market_type,
-                    progress_callback=safe_progress,
-                )
-
-            # Run analysis in thread pool to avoid blocking
-            analysis_result = await loop.run_in_executor(None, sync_analysis)
+            await service.execute_analysis_background(task_id, user_id, request)
 
             await progress_callback("✅ 分析完成，正在保存结果...")
-
-            # Prepare result
-            if analysis_result and analysis_result.get("success", False):
-                result = {
+            task_document = await get_postgres_db().analysis_tasks.find_one(
+                {"task_id": task_id}
+            )
+            status = (
+                str(task_document.get("status", "completed"))
+                if task_document
+                else "completed"
+            )
+            success = status == "completed"
+            result = (
+                task_document.get("result")
+                if task_document and task_document.get("result") is not None
+                else {
                     "symbol": symbol,
-                    "analysis_result": analysis_result,
                     "completed_at": datetime.now().isoformat(),
-                    "success": True,
+                    "success": success,
                 }
-                status = "completed"
+            )
+            if success:
                 await progress_callback("🎉 任务成功完成")
             else:
-                error_msg = (
-                    analysis_result.get("error", "分析失败")
-                    if analysis_result
-                    else "分析返回空结果"
+                error_msg = str(
+                    (task_document or {}).get("error_message")
+                    or (task_document or {}).get("last_error")
+                    or "分析失败"
                 )
-                result = {
-                    "symbol": symbol,
-                    "error": error_msg,
-                    "completed_at": datetime.now().isoformat(),
-                    "success": False,
-                }
-                status = "failed"
                 await progress_callback(f"❌ 任务失败: {error_msg}")
 
         except Exception as analysis_error:

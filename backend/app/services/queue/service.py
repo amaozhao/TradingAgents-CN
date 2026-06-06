@@ -53,6 +53,7 @@ class QueueService:
         symbol: str,
         params: Dict[str, Any],
         batch_id: Optional[str] = None,
+        task_id: Optional[str] = None,
     ) -> str:
         """任务入队，支持并发控制（开源版FIFO队列）"""
 
@@ -66,7 +67,7 @@ class QueueService:
         if not await self._check_global_concurrent_limit():
             raise ValueError(f"系统达到全局并发限制 ({self.global_concurrent_limit})")
 
-        task_id = str(uuid.uuid4())
+        task_id = task_id or str(uuid.uuid4())
         key = TASK_PREFIX + task_id
         now = int(time.time())
 

@@ -4,7 +4,6 @@
 """
 
 import asyncio
-import importlib
 import json
 import logging
 import signal
@@ -15,10 +14,9 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from app.core.config import settings
-from app.core.database import close_database, init_database
-from app.core.redis import close_redis, init_redis
-from app.schemas.analysis import AnalysisParameters, AnalysisTask
-from app.services.analysis.service import get_analysis_service
+from app.core.database import close_database, get_redis_client, init_database
+from app.schemas.analysis import AnalysisParameters, SingleAnalysisRequest
+from app.services.analysis.simple import get_simple_analysis_service
 from app.services.provider import provider as config_provider
 from app.services.queue import (
     DEFAULT_USER_CONCURRENT_LIMIT,
@@ -67,7 +65,6 @@ class AnalysisWorker:
 
             # 初始化数据库连接
             await init_database()
-            await init_redis()
 
             # 读取系统设置（ENV 优先 → DB）
             try:
@@ -188,24 +185,20 @@ class AnalysisWorker:
             if isinstance(parameters_dict, str):
                 parameters_dict = json.loads(parameters_dict)
 
-            parameters = AnalysisParameters(**parameters_dict)
-
-            task = AnalysisTask(
-                task_id=task_id,
-                user_id=user_id,
+            parameters = AnalysisParameters.model_validate(parameters_dict)
+            request = SingleAnalysisRequest(
                 symbol=stock_code,
                 stock_code=stock_code,
-                batch_id=task_data.get("batch_id"),
                 parameters=parameters,
             )
 
-            # 执行分析
-            result = await get_analysis_service().execute_analysis_task(
-                task, progress_callback=self._progress_callback
-            )
+            service = get_simple_analysis_service()
+            await service.execute_analysis_background(task_id, str(user_id), request)
+            task_status = await service.get_task_status(task_id)
+            status_value = str((task_status or {}).get("status", "completed"))
+            success = status_value == "completed"
 
-            success = True
-            logger.info(f"✅ 任务完成: {task_id} - 耗时: {result.execution_time:.2f}秒")
+            logger.info(f"✅ 任务完成: {task_id} - status={status_value}")
 
         except Exception as e:
             logger.error(f"❌ 任务执行失败: {task_id} - {e}")
@@ -240,11 +233,6 @@ class AnalysisWorker:
     async def _send_heartbeat(self):
         """发送心跳"""
         try:
-            get_redis_service = getattr(
-                importlib.import_module("app.core.redis"), "get_redis_service"
-            )
-            redis_service = get_redis_service()
-
             heartbeat_data = {
                 "worker_id": self.worker_id,
                 "timestamp": datetime.utcnow().isoformat(),
@@ -253,8 +241,10 @@ class AnalysisWorker:
             }
 
             heartbeat_key = f"worker:{self.worker_id}:heartbeat"
-            await redis_service.set_json(
-                heartbeat_key, heartbeat_data, ttl=self.heartbeat_interval * 2
+            await get_redis_client().set(
+                heartbeat_key,
+                json.dumps(heartbeat_data, ensure_ascii=False),
+                ex=self.heartbeat_interval * 2,
             )
 
         except Exception as e:
@@ -278,19 +268,14 @@ class AnalysisWorker:
 
         try:
             # 清理心跳记录
-            get_redis_service = getattr(
-                importlib.import_module("app.core.redis"), "get_redis_service"
-            )
-            redis_service = get_redis_service()
             heartbeat_key = f"worker:{self.worker_id}:heartbeat"
-            await redis_service.redis.delete(heartbeat_key)
+            await get_redis_client().delete(heartbeat_key)
         except Exception as e:
             logger.error(f"清理心跳记录失败: {e}")
 
         try:
             # 关闭数据库连接
             await close_database()
-            await close_redis()
         except Exception as e:
             logger.error(f"关闭数据库连接失败: {e}")
 
