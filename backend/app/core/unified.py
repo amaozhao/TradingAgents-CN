@@ -343,6 +343,17 @@ class UnifiedConfigManager:
         )
         data_sources.append(akshare_config)
 
+        # BaoStock (免费 A 股补充源，无需密钥)
+        baostock_config = DataSourceConfig(
+            name="BaoStock",
+            type=DataSourceType.BAOSTOCK,
+            endpoint="http://baostock.com",
+            enabled=True,
+            priority=0,
+            description="BaoStock免费A股数据接口",
+        )
+        data_sources.append(baostock_config)
+
         # Tushare (如果有配置)
         if settings.get("tushare_token"):
             tushare_config = DataSourceConfig(
@@ -415,6 +426,17 @@ class UnifiedConfigManager:
             description="AKShare开源金融数据接口",
         )
         data_sources.append(akshare_config)
+
+        # BaoStock (免费 A 股补充源，无需密钥)
+        baostock_config = DataSourceConfig(
+            name="BaoStock",
+            type=DataSourceType.BAOSTOCK,
+            endpoint="http://baostock.com",
+            enabled=True,
+            priority=0,
+            description="BaoStock免费A股数据接口",
+        )
+        data_sources.append(baostock_config)
 
         # Tushare (如果有配置)
         if settings.get("tushare_token"):

@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 
 from app.core.config import get_settings
 from app.db.dual import dual_write_hot_document
+from app.worker.baostock.sync import BAOSTOCK_SOURCE_QUERY
 
 logger = logging.getLogger(__name__)
 
@@ -92,24 +93,24 @@ class BaoStockInitService:
         try:
             # 检查基础信息
             basic_info_count = await self.db.stock_basic_info.count_documents(
-                {"data_source": "baostock"}
+                BAOSTOCK_SOURCE_QUERY
             )
             basic_info_latest = None
             if basic_info_count > 0:
                 latest_doc = await self.db.stock_basic_info.find_one(
-                    {"data_source": "baostock"}, sort=[("last_sync", -1)]
+                    BAOSTOCK_SOURCE_QUERY, sort=[("last_sync", -1)]
                 )
                 if latest_doc:
                     basic_info_latest = latest_doc.get("last_sync")
 
             # 检查行情数据
             quotes_count = await self.db.market_quotes.count_documents(
-                {"data_source": "baostock"}
+                BAOSTOCK_SOURCE_QUERY
             )
             quotes_latest = None
             if quotes_count > 0:
                 latest_doc = await self.db.market_quotes.find_one(
-                    {"data_source": "baostock"}, sort=[("last_sync", -1)]
+                    BAOSTOCK_SOURCE_QUERY, sort=[("last_sync", -1)]
                 )
                 if latest_doc:
                     quotes_latest = latest_doc.get("last_sync")
@@ -257,7 +258,7 @@ class BaoStockInitService:
         try:
             # 获取股票列表
             collection = self.db.stock_basic_info
-            cursor = collection.find({"data_source": "baostock"}, {"code": 1})
+            cursor = collection.find(BAOSTOCK_SOURCE_QUERY, {"code": 1})
             stock_codes = [doc["code"] async for doc in cursor]
 
             if not stock_codes:
@@ -316,7 +317,7 @@ class BaoStockInitService:
         try:
             # 检查基础信息
             basic_count = await self.db.stock_basic_info.count_documents(
-                {"data_source": "baostock"}
+                BAOSTOCK_SOURCE_QUERY
             )
             if basic_count != stats.basic_info_count:
                 logger.warning(
@@ -325,7 +326,7 @@ class BaoStockInitService:
 
             # 检查行情数据
             quotes_count = await self.db.market_quotes.count_documents(
-                {"data_source": "baostock"}
+                BAOSTOCK_SOURCE_QUERY
             )
             if quotes_count != stats.quotes_count:
                 logger.warning(

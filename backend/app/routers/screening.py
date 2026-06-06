@@ -1,5 +1,6 @@
 import importlib
 import logging
+from collections import Counter
 from typing import Any, Dict, List, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -82,6 +83,107 @@ class ScreeningResponse(BaseModel):
 
 def _get_enhanced_svc():
     return get_enhanced_screening_service()
+
+
+SUPPORTED_A_SHARE_INDUSTRY_SOURCES = ("tushare", "akshare", "baostock")
+EMPTY_INDUSTRY_VALUES = {"", "-", "未知", "nan", "none", "null", "NaN", "None", "NULL"}
+
+
+def _normalize_industry(value: Any) -> str:
+    try:
+        if value is None:
+            return ""
+        if isinstance(value, float) and (
+            value != value or value in (float("inf"), float("-inf"))
+        ):
+            return ""
+        text = str(value).strip()
+        return "" if text in EMPTY_INDUSTRY_VALUES else text
+    except Exception:
+        return ""
+
+
+def _normalize_source_order(sources: List[str]) -> List[str]:
+    normalized: List[str] = []
+    for source in sources:
+        source_name = str(source or "").lower()
+        if (
+            source_name in SUPPORTED_A_SHARE_INDUSTRY_SOURCES
+            and source_name not in normalized
+        ):
+            normalized.append(source_name)
+    for source_name in SUPPORTED_A_SHARE_INDUSTRY_SOURCES:
+        if source_name not in normalized:
+            normalized.append(source_name)
+    return normalized
+
+
+def _build_industry_options_from_documents(
+    documents: List[Dict[str, Any]], source_order: List[str]
+) -> tuple[List[Dict[str, Any]], str]:
+    for source in _normalize_source_order(source_order):
+        counts: Counter[str] = Counter()
+        for document in documents:
+            if str(document.get("source") or "").lower() != source:
+                continue
+            industry = _normalize_industry(document.get("industry"))
+            if industry:
+                counts[industry] += 1
+
+        if counts:
+            industries = [
+                {"value": industry, "label": industry, "count": count}
+                for industry, count in sorted(
+                    counts.items(), key=lambda item: (-item[1], item[0])
+                )
+            ]
+            return industries, source
+
+    return [], _normalize_source_order(source_order)[0]
+
+
+async def _query_industry_options_by_source(
+    source_order: List[str],
+) -> tuple[List[Dict[str, Any]], str]:
+    init_postgres = getattr(importlib.import_module("app.core.session"), "init_postgres")
+    get_session_factory = getattr(
+        importlib.import_module("app.core.session"), "get_session_factory"
+    )
+    text = getattr(importlib.import_module("sqlalchemy"), "text")
+
+    await init_postgres()
+    async with get_session_factory()() as session:
+        for source in _normalize_source_order(source_order):
+            result = await session.execute(
+                text(
+                    """
+                    select trim(industry) as industry, count(*) as count
+                    from stock_basic_info
+                    where source = :source
+                      and industry is not null
+                      and trim(industry) <> ''
+                      and lower(trim(industry)) not in ('-', '未知', 'nan', 'none', 'null')
+                    group by trim(industry)
+                    order by count(*) desc, trim(industry) asc
+                    """
+                ),
+                {"source": source},
+            )
+            rows = result.mappings().all()
+            if rows:
+                return (
+                    [
+                        {
+                            "value": str(row["industry"]),
+                            "label": str(row["industry"]),
+                            "count": int(row["count"] or 0),
+                        }
+                        for row in rows
+                    ],
+                    source,
+                )
+
+    return [], _normalize_source_order(source_order)[0]
 
 
 @router.get("/fields", response_model=FieldConfigResponse)
@@ -355,15 +457,9 @@ async def get_industries(user: dict = Depends(get_current_user)):
     返回按股票数量排序的行业列表
     """
     try:
-        get_postgres_db = getattr(
-            importlib.import_module("app.core.database"), "get_postgres_db"
-        )
         UnifiedConfigManager = getattr(
             importlib.import_module("app.core.unified"), "UnifiedConfigManager"
         )
-
-        db = get_postgres_db()
-        collection = db["stock_basic_info"]
 
         # 🔥 获取数据源优先级配置（使用统一配置管理器的异步方法）
         config = UnifiedConfigManager()
@@ -376,72 +472,13 @@ async def get_industries(user: dict = Depends(get_current_user)):
             if ds.enabled and ds.type.lower() in ["tushare", "akshare", "baostock"]
         ]
 
-        if not enabled_sources:
-            # 如果没有配置，使用默认顺序
-            enabled_sources = ["tushare", "akshare", "baostock"]
+        enabled_sources = _normalize_source_order(enabled_sources)
 
         logger.info(f"[get_industries] 数据源优先级: {enabled_sources}")
 
-        # 🔥 按优先级查询：优先使用优先级最高的数据源
-        preferred_source = enabled_sources[0] if enabled_sources else "tushare"
-
-        # 聚合查询：按行业分组并统计股票数量（只查询指定数据源）
-        pipeline = [
-            {
-                "$match": {
-                    "source": preferred_source,  # 🔥 只查询优先级最高的数据源
-                    "industry": {"$nin": [None, ""]},  # 过滤空行业
-                }
-            },
-            {"$group": {"_id": "$industry", "count": {"$sum": 1}}},
-            {"$sort": {"count": -1}},  # 按股票数量降序排序
-            {"$project": {"industry": "$_id", "count": 1, "_id": 0}},
-        ]
-
-        industries = []
-        async for doc in collection.aggregate(pipeline):
-            # 清洗字段，避免 NaN/Inf 导致 JSON 序列化失败
-            raw_industry = doc.get("industry")
-            safe_industry = ""
-            try:
-                if raw_industry is None:
-                    safe_industry = ""
-                elif isinstance(raw_industry, float):
-                    if raw_industry != raw_industry or raw_industry in (
-                        float("inf"),
-                        float("-inf"),
-                    ):
-                        safe_industry = ""
-                    else:
-                        safe_industry = str(raw_industry)
-                else:
-                    safe_industry = str(raw_industry)
-            except Exception:
-                safe_industry = ""
-
-            raw_count = doc.get("count", 0)
-            safe_count = 0
-            try:
-                if isinstance(raw_count, float):
-                    if raw_count != raw_count or raw_count in (
-                        float("inf"),
-                        float("-inf"),
-                    ):
-                        safe_count = 0
-                    else:
-                        safe_count = int(raw_count)
-                else:
-                    safe_count = int(raw_count)
-            except Exception:
-                safe_count = 0
-
-            industries.append(
-                {
-                    "value": safe_industry,
-                    "label": safe_industry,
-                    "count": safe_count,
-                }
-            )
+        industries, preferred_source = await _query_industry_options_by_source(
+            enabled_sources
+        )
 
         logger.info(
             f"[get_industries] 从数据源 {preferred_source} 返回 {len(industries)} 个行业"

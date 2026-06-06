@@ -88,6 +88,16 @@ class SystemConfigMixin:
                     description="AKShare开源金融数据接口",
                 ),
                 DataSourceConfig(
+                    name="BaoStock",
+                    type=DataSourceType.BAOSTOCK,
+                    endpoint="http://baostock.com",
+                    timeout=30,
+                    rate_limit=60,
+                    enabled=True,
+                    priority=0,
+                    description="BaoStock免费A股数据接口",
+                ),
+                DataSourceConfig(
                     name="Tushare",
                     type=DataSourceType.TUSHARE,
                     api_key="your-tushare-token",

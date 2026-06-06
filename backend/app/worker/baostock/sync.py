@@ -18,6 +18,10 @@ from trader.flows.providers.china.baostock import BaoStockProvider
 
 logger = logging.getLogger(__name__)
 
+BAOSTOCK_SOURCE_QUERY = {
+    "$or": [{"source": "baostock"}, {"data_source": "baostock"}]
+}
+
 
 @dataclass
 class BaoStockSyncStats:
@@ -251,6 +255,8 @@ class BaoStockSyncService:
             # 🔥 确保 source 字段存在
             if "source" not in basic_info:
                 basic_info["source"] = "baostock"
+            if "data_source" not in basic_info:
+                basic_info["data_source"] = "baostock"
 
             # 🔥 使用 (code, source) 联合查询条件
             await collection.update_one(
@@ -286,7 +292,7 @@ class BaoStockSyncService:
 
             # 从数据库获取股票列表
             collection = self.db.stock_basic_info
-            cursor = collection.find({"data_source": "baostock"}, {"code": 1})
+            cursor = collection.find(BAOSTOCK_SOURCE_QUERY, {"code": 1})
             stock_codes = [doc["code"] async for doc in cursor]
 
             if not stock_codes:
@@ -352,6 +358,8 @@ class BaoStockSyncService:
                 quotes["symbol"] = code
             if "source" not in quotes:
                 quotes["source"] = "baostock"
+            if "data_source" not in quotes:
+                quotes["data_source"] = "baostock"
 
             # 使用upsert更新或插入
             await collection.update_one(
@@ -397,7 +405,7 @@ class BaoStockSyncService:
 
             # 从数据库获取股票列表
             collection = self.db.stock_basic_info
-            cursor = collection.find({"data_source": "baostock"}, {"code": 1})
+            cursor = collection.find(BAOSTOCK_SOURCE_QUERY, {"code": 1})
             stock_codes = [doc["code"] async for doc in cursor]
 
             if not stock_codes:
@@ -524,6 +532,7 @@ class BaoStockSyncService:
                     "code": code,
                     "symbol": code,
                     "source": "baostock",
+                    "data_source": "baostock",
                     "historical_data_updated": updated_at,
                     "latest_historical_date": latest_record.get("date")
                     if latest_record is not None
@@ -594,10 +603,10 @@ class BaoStockSyncService:
 
             # 统计数据
             basic_info_count = await self.db.stock_basic_info.count_documents(
-                {"data_source": "baostock"}
+                BAOSTOCK_SOURCE_QUERY
             )
             quotes_count = await self.db.market_quotes.count_documents(
-                {"data_source": "baostock"}
+                BAOSTOCK_SOURCE_QUERY
             )
 
             return {

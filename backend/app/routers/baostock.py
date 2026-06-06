@@ -57,6 +57,7 @@ async def get_database_status():
     """获取数据库状态"""
     try:
         service = BaoStockInitService()
+        await service.initialize()
         status = await service.check_database_status()
 
         return {"success": True, "data": status, "message": "数据库状态获取成功"}
@@ -264,6 +265,7 @@ async def _run_full_initialization_task(
         logger.info(f"🚀 开始BaoStock完整初始化任务: {task_id}")
 
         service = BaoStockInitService()
+        await service.initialize()
         stats = await service.full_initialization(
             historical_days=historical_days, force=force
         )
@@ -293,6 +295,7 @@ async def _run_basic_initialization_task(task_id: str):
         logger.info(f"🚀 开始BaoStock基础初始化任务: {task_id}")
 
         service = BaoStockInitService()
+        await service.initialize()
         stats = await service.basic_initialization()
 
         # 更新状态
@@ -321,6 +324,7 @@ async def get_service_status():
         )
 
         service = BaoStockSyncService()
+        await service.initialize()
         status = await service.check_service_status()
 
         return {"success": True, "data": status, "message": "服务状态获取成功"}
