@@ -420,6 +420,39 @@ DEFAULT_MODEL_CAPABILITIES: Dict[str, Dict[str, Any]] = {
         "performance_metrics": {"speed": 2, "cost": 2, "quality": 5},
         "description": "Moonshot V1 128K，超长上下文旗舰",
     },
+    # ==================== MiniMax Token Plan ====================
+    "MiniMax-M3": {
+        "capability_level": 3,
+        "suitable_roles": [ModelRole.BOTH],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.LONG_CONTEXT,
+            ModelFeature.REASONING,
+        ],
+        "recommended_depths": ["快速", "基础", "标准", "深度"],
+        "performance_metrics": {"speed": 4, "cost": 4, "quality": 4},
+        "description": "MiniMax M3，支持工具调用，适合标准分析",
+    },
+    "MiniMax-M2.7": {
+        "capability_level": 2,
+        "suitable_roles": [ModelRole.BOTH],
+        "features": [ModelFeature.TOOL_CALLING, ModelFeature.LONG_CONTEXT],
+        "recommended_depths": ["快速", "基础", "标准"],
+        "performance_metrics": {"speed": 4, "cost": 4, "quality": 3},
+        "description": "MiniMax M2.7，支持工具调用，适合日常分析",
+    },
+    "MiniMax-M2.7-highspeed": {
+        "capability_level": 2,
+        "suitable_roles": [ModelRole.QUICK_ANALYSIS],
+        "features": [
+            ModelFeature.TOOL_CALLING,
+            ModelFeature.FAST_RESPONSE,
+            ModelFeature.COST_EFFECTIVE,
+        ],
+        "recommended_depths": ["快速", "基础"],
+        "performance_metrics": {"speed": 5, "cost": 4, "quality": 3},
+        "description": "MiniMax M2.7 高速版，适合快速数据收集",
+    },
 }
 
 

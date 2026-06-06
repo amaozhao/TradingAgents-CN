@@ -1,5 +1,7 @@
 import time
 
+from trader.agents.risk.management.common import invoke_risk_llm_with_timeout
+
 # 导入统一日志系统
 from trader.utils.logging.init import get_logger
 
@@ -61,7 +63,17 @@ def create_safe_debator(llm):
         logger.info("⏱️ [Safe Analyst] 开始调用LLM...")
         llm_start_time = time.time()
 
-        response = llm.invoke(prompt)
+        fallback = (
+            "保守视角兜底：当前模型响应超时。基于风险控制原则，应降低单次交易风险，"
+            "等待价格和基本面信号进一步确认；如已持仓，优先设置止损、控制仓位，"
+            "避免在不确定性较高时扩大敞口。"
+        )
+        response = invoke_risk_llm_with_timeout(
+            llm,
+            prompt,
+            analyst_name="Safe Analyst",
+            fallback_content=fallback,
+        )
 
         llm_elapsed = time.time() - llm_start_time
         logger.info(f"⏱️ [Safe Analyst] LLM调用完成，耗时: {llm_elapsed:.2f}秒")

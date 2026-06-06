@@ -158,24 +158,13 @@ class _GraphMixin2:
                 logger.info("⏱️ 使用 invoke 模式执行分析（无进度回调）")
                 final_state = None
                 for chunk in cast(Any, self.graph).stream(init_agent_state, **args):
-                    for node_name in chunk.keys():
-                        if not node_name.startswith("__"):
-                            if current_node_name and current_node_start:
-                                elapsed = time.time() - current_node_start
-                                node_timings[current_node_name] = elapsed
-                                logger.info(
-                                    f"⏱️ [{current_node_name}] 耗时: {elapsed:.2f}秒"
-                                )
-
-                            current_node_name = node_name
-                            current_node_start = time.time()
-                            break
-
-                    if final_state is None:
-                        final_state = init_agent_state.copy()
-                    for node_name, node_update in chunk.items():
-                        if not node_name.startswith("__"):
-                            final_state.update(node_update)
+                    if isinstance(chunk, dict):
+                        final_state = chunk
+                    else:
+                        logger.warning(
+                            "⚠️ LangGraph values stream 返回非字典状态: %s",
+                            type(chunk),
+                        )
         finally:
             if self._checkpointer_ctx is not None:
                 self._checkpointer_ctx.__exit__(None, None, None)
@@ -221,11 +210,6 @@ class _GraphMixin2:
             trade_date=str(trade_date),
             final_trade_decision=final_state["final_trade_decision"],
         )
-
-        if self.config.get("checkpoint_enabled"):
-            clear_checkpoint(
-                self.config["data_cache_dir"], company_name, str(trade_date)
-            )
 
         # 获取模型信息
         model_info = ""

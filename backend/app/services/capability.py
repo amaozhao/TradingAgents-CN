@@ -177,20 +177,40 @@ class ModelCapabilityService:
                         if not roles_enum:
                             roles_enum = [ModelRole.BOTH]
 
+                        default_config = DEFAULT_MODEL_CAPABILITIES.get(model_name, {})
+                        if not features_enum and default_config:
+                            features_enum = list(default_config.get("features", []))
+                            logger.info(
+                                "🔧 [模型能力] %s 数据库未配置 features，使用默认能力表: %s",
+                                model_name,
+                                features_enum,
+                            )
+                        if roles_enum == [ModelRole.BOTH] and default_config.get(
+                            "suitable_roles"
+                        ):
+                            roles_enum = list(default_config["suitable_roles"])
+
                         logger.info(
                             f"📊 [PostgreSQL配置] {model_name}: features={features_enum}, roles={roles_enum}"
                         )
 
                         return {
                             "model_name": config_dict.get("model_name"),
-                            "capability_level": config_dict.get("capability_level", 2),
+                            "capability_level": config_dict.get(
+                                "capability_level",
+                                default_config.get("capability_level", 2),
+                            ),
                             "suitable_roles": roles_enum,
                             "features": features_enum,
                             "recommended_depths": config_dict.get(
-                                "recommended_depths", ["快速", "基础", "标准"]
+                                "recommended_depths",
+                                default_config.get(
+                                    "recommended_depths", ["快速", "基础", "标准"]
+                                ),
                             ),
                             "performance_metrics": config_dict.get(
-                                "performance_metrics", None
+                                "performance_metrics",
+                                default_config.get("performance_metrics"),
                             ),
                         }
 

@@ -1,4 +1,6 @@
 # ruff: noqa: F403,F405
+from datetime import UTC
+
 from .common import *
 
 
@@ -317,6 +319,12 @@ class AnalysisStatusMixin:
             "tokens_used": doc.get("tokens_used"),
             "result_data": doc.get("result"),
         }
+        error_message = (
+            doc.get("error_message") or doc.get("last_error") or doc.get("error")
+        )
+        if error_message:
+            item["error_message"] = error_message
+            item["last_error"] = error_message
         for key in ("start_time", "end_time"):
             if item.get(key) and hasattr(item[key], "isoformat"):
                 dt = item[key]
@@ -636,16 +644,20 @@ class AnalysisStatusMixin:
             update_data = {
                 "status": status,
                 "progress": progress,
-                "updated_at": datetime.utcnow(),
+                "updated_at": datetime.now(UTC),
             }
 
             if status == AnalysisStatus.PROCESSING and progress == 10:
-                update_data["started_at"] = datetime.utcnow()
+                update_data["started_at"] = datetime.now(UTC)
             elif status == AnalysisStatus.COMPLETED:
-                update_data["completed_at"] = datetime.utcnow()
+                update_data["completed_at"] = datetime.now(UTC)
+                update_data["current_step"] = "completed"
+                update_data["message"] = "分析完成"
             elif status == AnalysisStatus.FAILED:
                 update_data["last_error"] = error_message
-                update_data["completed_at"] = datetime.utcnow()
+                update_data["completed_at"] = datetime.now(UTC)
+                update_data["current_step"] = "failed"
+                update_data["message"] = error_message or "分析失败"
 
             await db.analysis_tasks.update_one(
                 {"task_id": task_id}, {"$set": update_data}

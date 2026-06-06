@@ -6,9 +6,11 @@
 - 路径前缀在 main.py 中挂载为 /api，当前路由自身前缀为 /stocks
 """
 
+import asyncio
 import importlib
 import logging
 import re
+from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -20,6 +22,7 @@ from app.schemas.response import ApiResponse
 from app.routers.account import get_current_user
 from app.services.market.financial import FinancialDataService
 from app.services.stocks.service import StockDataService
+from app.services.stocks.unified import UnifiedStockService
 
 logger = logging.getLogger(__name__)
 

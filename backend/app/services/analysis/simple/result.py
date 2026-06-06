@@ -8,6 +8,7 @@ def build_analysis_result(
     state: Any,
     decision: Any,
     execution_time: float,
+    task_id: str | None = None,
 ) -> Dict[str, Any]:
     # 从state中提取reports字段
     reports = {}
@@ -355,7 +356,8 @@ def build_analysis_result(
         else {},
     }
 
-    logger.info(f"✅ [线程池] 分析完成: {task_id} - 耗时{execution_time:.2f}秒")
+    task_label = task_id or result["analysis_id"]
+    logger.info(f"✅ [线程池] 分析完成: {task_label} - 耗时{execution_time:.2f}秒")
 
     # 🔍 调试：检查返回的result结构
     logger.info(f"🔍 [DEBUG] 返回result的键: {list(result.keys())}")

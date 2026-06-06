@@ -7,6 +7,7 @@
 
 import importlib
 import re
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict, Optional
 
@@ -14,3 +15,19 @@ from typing import Dict, Optional
 from trader.utils.logging.manager import get_logger
 
 logger = get_logger("stock_validator")
+
+
+@dataclass
+class StockDataPreparationResult:
+    """股票数据预检查结果。"""
+
+    is_valid: bool
+    stock_code: str
+    market_type: Optional[str] = None
+    stock_name: Optional[str] = None
+    has_historical_data: bool = False
+    has_basic_info: bool = False
+    data_period_days: Optional[int] = None
+    cache_status: str = ""
+    error_message: Optional[str] = None
+    suggestion: Optional[str] = None

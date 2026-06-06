@@ -262,3 +262,17 @@ class BatchStockSyncRequest(BaseModel):
         "tushare", description="同步数据源"
     )
     days: int = Field(30, ge=1, le=3650, description="历史数据同步天数")
+
+
+class SingleStockSyncRequest(BaseModel):
+    """单只股票数据同步请求。"""
+
+    symbol: str = Field(..., min_length=1, description="股票代码")
+    sync_realtime: bool = Field(True, description="是否同步实时行情")
+    sync_historical: bool = Field(False, description="是否同步历史行情数据")
+    sync_financial: bool = Field(False, description="是否同步财务数据")
+    sync_basic: bool = Field(False, description="是否同步股票基础数据")
+    data_source: Literal["tushare", "akshare"] = Field(
+        "tushare", description="同步数据源"
+    )
+    days: int = Field(30, ge=1, le=3650, description="历史数据同步天数")

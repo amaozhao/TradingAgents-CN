@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -54,6 +54,7 @@ vi.mock("@/libs/api/config", () => ({
     saveModelCatalog: vi.fn(),
     deleteModelCatalog: vi.fn(),
     initModelCatalog: vi.fn(),
+    fetchProviderModels: vi.fn(),
     validateSystemConfig: vi.fn(),
     exportConfig: vi.fn(),
     importConfig: vi.fn(),
@@ -124,6 +125,23 @@ describe("ConfigManagementPage", () => {
     vi.mocked(configApi.reloadConfig).mockResolvedValue({ success: true, message: "ok" })
     vi.mocked(configApi.testConfig).mockResolvedValue({ success: true, message: "ok" })
     vi.mocked(configApi.updateSystemSettings).mockResolvedValue({ message: "ok" })
+    vi.mocked(configApi.updateLLMProvider).mockResolvedValue({ message: "ok" })
+    vi.mocked(configApi.addDataSourceConfig).mockResolvedValue({ message: "ok", name: "baostock" })
+    vi.mocked(configApi.updateDataSourceConfig).mockResolvedValue({ message: "ok" })
+    vi.mocked(configApi.saveModelCatalog).mockResolvedValue({ success: true, message: "ok" })
+    vi.mocked(configApi.fetchProviderModels).mockResolvedValue({
+      success: true,
+      message: "ok",
+      models: [
+        {
+          id: "qwen-max",
+          name: "qwen-max",
+          context_length: 32768,
+          max_tokens: 8192,
+          capabilities: ["chat"]
+        }
+      ]
+    })
     vi.mocked(configApi.exportConfig).mockResolvedValue({ message: "ok", data: { foo: "bar" }, exported_at: "2026-06-05T00:00:00Z" })
     vi.mocked(configApi.importConfig).mockResolvedValue({ message: "ok" })
     vi.mocked(configApi.migrateLegacyConfig).mockResolvedValue({ message: "ok" })
@@ -189,5 +207,92 @@ describe("ConfigManagementPage", () => {
 
     expect(await screen.findByText("通义千问 Turbo")).toBeInTheDocument()
     expect(screen.getByRole("tab", { name: "大模型配置" })).toHaveAttribute("data-state", "active")
+  })
+
+  it("submits a trimmed provider API key when editing a provider", async () => {
+    const user = userEvent.setup()
+    renderWithQueryClient(<ConfigManagementPage />)
+
+    await user.click(await screen.findByRole("tab", { name: "厂家管理" }))
+    await user.click(await screen.findByRole("button", { name: "编辑 dashscope" }))
+
+    const dialog = screen.getByRole("dialog", { name: "编辑厂家" })
+    await user.type(within(dialog).getByLabelText("API 密钥"), "  test-provider-key-1234567890  ")
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+
+    await waitFor(() =>
+      expect(configApi.updateLLMProvider).toHaveBeenCalledWith(
+        "dashscope",
+        expect.objectContaining({ api_key: "test-provider-key-1234567890" })
+      )
+    )
+  })
+
+  it("imports selected model catalog entries fetched from a provider API", async () => {
+    const user = userEvent.setup()
+    renderWithQueryClient(<ConfigManagementPage />)
+
+    await user.click(await screen.findByRole("tab", { name: "模型目录" }))
+    await user.click(screen.getByRole("button", { name: "从 API 获取模型列表" }))
+
+    const fetchDialog = screen.getByRole("dialog", { name: "从 API 获取模型列表" })
+    await user.click(within(fetchDialog).getByRole("button", { name: "拉取模型" }))
+
+    expect(await within(fetchDialog).findByText("qwen-max")).toBeInTheDocument()
+    await user.click(within(fetchDialog).getByLabelText("选择模型 qwen-max"))
+    await user.click(within(fetchDialog).getByRole("button", { name: "导入选中模型" }))
+
+    await waitFor(() =>
+      expect(configApi.saveModelCatalog).toHaveBeenCalledWith(expect.objectContaining({
+        provider: "dashscope",
+        provider_name: "通义千问",
+        models: [expect.objectContaining({ name: "qwen-max", display_name: "qwen-max" })]
+      }))
+    )
+  })
+
+  it("creates a model catalog from a preset template", async () => {
+    const user = userEvent.setup()
+    renderWithQueryClient(<ConfigManagementPage />)
+
+    await user.click(await screen.findByRole("tab", { name: "模型目录" }))
+    await user.click(screen.getByRole("button", { name: "使用预设模板" }))
+    const dialog = screen.getByRole("dialog", { name: "使用预设模板" })
+    await user.click(within(dialog).getByRole("button", { name: "导入 DeepSeek 模板" }))
+
+    await waitFor(() =>
+      expect(configApi.saveModelCatalog).toHaveBeenCalledWith(expect.objectContaining({
+        provider: "deepseek",
+        provider_name: "DeepSeek",
+        models: expect.arrayContaining([expect.objectContaining({ name: "deepseek-chat" })])
+      }))
+    )
+  })
+
+  it("saves data source API key and custom config parameters", async () => {
+    const user = userEvent.setup()
+    renderWithQueryClient(<ConfigManagementPage />)
+
+    await user.click(await screen.findByRole("tab", { name: "数据源配置" }))
+    await user.click(screen.getByRole("button", { name: "新增数据源" }))
+
+    const dialog = screen.getByRole("dialog", { name: "新增数据源" })
+    await user.type(within(dialog).getByLabelText("数据源 ID"), "baostock")
+    await user.type(within(dialog).getByLabelText("显示名称"), "BaoStock")
+    await user.type(within(dialog).getByLabelText("API Key"), " no-key-required ")
+    await user.click(within(dialog).getByRole("button", { name: "添加参数" }))
+    await user.clear(within(dialog).getByLabelText("参数名 1"))
+    await user.type(within(dialog).getByLabelText("参数名 1"), "adjustflag")
+    await user.type(within(dialog).getByLabelText("参数值 adjustflag"), "3")
+    await user.click(within(dialog).getByRole("button", { name: "保存" }))
+
+    await waitFor(() =>
+      expect(configApi.addDataSourceConfig).toHaveBeenCalledWith(expect.objectContaining({
+        name: "baostock",
+        display_name: "BaoStock",
+        api_key: "no-key-required",
+        config_params: { adjustflag: "3" }
+      }))
+    )
   })
 })

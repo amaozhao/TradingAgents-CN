@@ -32,7 +32,6 @@ class _AKShareProviderMixin1:
             # 修复AKShare的bug：设置requests的默认headers，并添加请求延迟
             # AKShare的stock_news_em()函数没有设置必要的headers，导致API返回空响应
             if not hasattr(requests, "_akshare_headers_patched"):
-                original_get = requests.get
                 last_request_time: Dict[str, float] = {
                     "time": 0.0
                 }  # 使用字典以便在闭包中修改
@@ -43,9 +42,10 @@ class _AKShareProviderMixin1:
                     修复AKShare stock_news_em()函数缺少headers的问题
                     如果可用，使用 curl_cffi 模拟真实浏览器 TLS 指纹
                     """
+                    is_eastmoney_request = "eastmoney.com" in url
                     # 添加请求延迟，避免被反爬虫封禁
                     # 只对东方财富网的请求添加延迟
-                    if "eastmoney.com" in url:
+                    if is_eastmoney_request:
                         current_time = time.time()
                         time_since_last_request = (
                             current_time - last_request_time["time"]
@@ -55,13 +55,14 @@ class _AKShareProviderMixin1:
                         last_request_time["time"] = time.time()
 
                     # 如果是东方财富网的请求，且 curl_cffi 可用，使用它来绕过反爬虫
-                    if use_curl_cffi and "eastmoney.com" in url:
+                    if use_curl_cffi and is_eastmoney_request:
                         try:
                             # 使用 curl_cffi 模拟 Chrome 120 的 TLS 指纹
                             # 注意：使用 impersonate 时，不要传递自定义 headers，让 curl_cffi 自动设置
                             curl_kwargs = {
                                 "timeout": kwargs.get("timeout", 10),
                                 "impersonate": "chrome120",  # 模拟 Chrome 120
+                                "proxies": {},
                             }
 
                             # 只传递非 headers 的参数
@@ -89,6 +90,8 @@ class _AKShareProviderMixin1:
                                 )
 
                     # 标准 requests 请求（非东方财富网，或 curl_cffi 不可用/失败）
+                    # 本地 A 股数据请求不要继承终端/系统代理，避免 7897 等代理影响国内数据源。
+                    kwargs["proxies"] = {}
                     # 设置浏览器请求头
                     if "headers" not in kwargs or kwargs["headers"] is None:
                         kwargs["headers"] = {
@@ -120,7 +123,9 @@ class _AKShareProviderMixin1:
                     max_retries = 3
                     for attempt in range(max_retries):
                         try:
-                            return original_get(url, **kwargs)
+                            with requests.Session() as session:
+                                session.trust_env = False
+                                return session.get(url, **kwargs)
                         except Exception as e:
                             # 检查是否是SSL错误
                             error_str = str(e)
@@ -218,7 +223,11 @@ class _AKShareProviderMixin1:
 
             # 使用 curl_cffi 发送请求
             response = curl_requests.get(
-                url, params=params, timeout=10, impersonate="chrome120"
+                url,
+                params=params,
+                timeout=10,
+                impersonate="chrome120",
+                proxies={},
             )
 
             if response.status_code != 200:

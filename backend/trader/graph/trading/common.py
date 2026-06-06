@@ -684,10 +684,6 @@ class _GraphMixin1:
             trade_date=str(trade_date),
             final_trade_decision=final_state["final_trade_decision"],
         )
-        if self.config.get("checkpoint_enabled"):
-            clear_checkpoint(
-                self.config["data_cache_dir"], company_name, str(trade_date)
-            )
         return final_state, self.process_signal(
             final_state["final_trade_decision"], company_name
         )

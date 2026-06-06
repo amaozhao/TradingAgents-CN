@@ -145,9 +145,7 @@
 本地后端开发启动：
 
 ```bash
-cd backend
-mkdir -p ../runtime/logs ../runtime/data
-TRADING_AGENTS_LOG_DIR=../runtime/logs PYTHONPATH=. python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+./backend/scripts/dev/start_backend.sh
 ```
 
 本地前端开发启动：

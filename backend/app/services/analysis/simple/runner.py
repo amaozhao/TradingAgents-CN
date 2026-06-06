@@ -519,9 +519,15 @@ class AnalysisRunnerMixin:
                 state=state,
                 decision=decision,
                 execution_time=execution_time,
+                task_id=task_id,
             )
         except Exception as e:
-            logger.error(f"❌ [线程池] 分析执行失败: {task_id} - {e}")
+            logger.error(f"❌ [线程池] 分析执行失败: {task_id} - {e}", exc_info=True)
+            logger.error(
+                "❌ [线程池] 分析执行完整 traceback: task_id=%s\n%s",
+                task_id,
+                "".join(traceback.format_exception(type(e), e, e.__traceback__)),
+            )
 
             # 格式化错误信息为用户友好的提示
             ErrorFormatter = getattr(
@@ -537,12 +543,29 @@ class AnalysisRunnerMixin:
                     error_context["model"] = quick_model
                 if deep_model:
                     error_context["model"] = deep_model
+                try:
+                    if quick_model:
+                        provider_info = get_provider_and_url_by_model_sync(quick_model)
+                        error_context["llm_provider"] = provider_info.get("provider")
+                        error_context["backend_url"] = provider_info.get(
+                            "backend_url"
+                        )
+                except Exception as context_error:
+                    logger.warning(
+                        "⚠️ [错误上下文] 获取模型供应商失败: %s", context_error
+                    )
 
             # 格式化错误
             formatted_error = ErrorFormatter.format_error(str(e), error_context)
 
-            # 构建用户友好的错误消息
-            user_friendly_error = f"{formatted_error['title']}\n\n{formatted_error['message']}\n\n💡 {formatted_error['suggestion']}"
+            # 构建用户友好的错误消息，并保留原始技术细节用于排查。
+            technical_detail = formatted_error.get("technical_detail") or str(e)
+            user_friendly_error = (
+                f"{formatted_error['title']}\n\n"
+                f"{formatted_error['message']}\n\n"
+                f"💡 {formatted_error['suggestion']}\n\n"
+                f"技术细节：{technical_detail}"
+            )
 
             # 抛出包含友好错误信息的异常
             raise Exception(user_friendly_error) from e

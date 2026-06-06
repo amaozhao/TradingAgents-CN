@@ -95,7 +95,9 @@ import {
   type JobExecution
 } from "@/libs/api/scheduler"
 import { deleteOldRecords, getUsageRecords, getUsageStatistics, type UsageRecord } from "@/libs/api/usage"
+import { authApi } from "@/libs/api/auth"
 import { formatDateTime } from "@/libs/utils/datetime"
+import { downloadBlob } from "@/libs/utils/download"
 import { useAppStore, type AppLanguage, type AppTheme } from "@/stores/app-store"
 import { useAuthStore } from "@/stores/auth-store"
 type PersonalSettingsTab = "general" | "appearance" | "analysis" | "notifications" | "security"
@@ -167,6 +169,98 @@ type ConfirmState = {
   confirmText?: string
   onConfirm: () => void
 } | null
+
+type DataSourceParamRow = {
+  id: string
+  key: string
+  value: string
+}
+
+type DataSourceFormState = {
+  name: string
+  type: string
+  display_name: string
+  api_key: string
+  endpoint: string
+  timeout: number
+  rate_limit: number
+  priority: number
+  enabled: boolean
+  description: string
+  config_params: DataSourceParamRow[]
+}
+
+type ProviderFetchedModel = {
+  id: string
+  name: string
+  context_length?: number
+  max_tokens?: number
+  description?: string
+  capabilities?: string[]
+  input_price_per_1k?: number
+  output_price_per_1k?: number
+  currency?: string
+}
+
+const modelCatalogPresets = [
+  {
+    provider: "deepseek",
+    provider_name: "DeepSeek",
+    label: "导入 DeepSeek 模板",
+    models: [
+      { name: "deepseek-chat", display_name: "DeepSeek Chat", description: "通用对话和分析模型" },
+      { name: "deepseek-reasoner", display_name: "DeepSeek Reasoner", description: "推理增强模型" }
+    ]
+  },
+  {
+    provider: "dashscope",
+    provider_name: "阿里云百炼",
+    label: "导入通义千问模板",
+    models: [
+      { name: "qwen-turbo", display_name: "通义千问 Turbo", description: "快速分析模型" },
+      { name: "qwen-max", display_name: "通义千问 Max", description: "深度分析模型" }
+    ]
+  },
+  {
+    provider: "minimax-token-plan",
+    provider_name: "MiniMax Token Plan",
+    label: "导入 MiniMax 模板",
+    models: [
+      { name: "MiniMax-M1", display_name: "MiniMax M1", description: "MiniMax 推理模型" },
+      { name: "MiniMax-Text-01", display_name: "MiniMax Text 01", description: "MiniMax 通用文本模型" }
+    ]
+  }
+] as const
+
+function createDataSourceForm(source?: DataSourceConfig): DataSourceFormState {
+  const params = Object.entries(source?.config_params || {}).map(([key, value], index) => ({
+    id: `param-${index + 1}`,
+    key,
+    value: String(value ?? "")
+  }))
+
+  return {
+    name: source?.name || "",
+    type: source?.type || "stock",
+    display_name: source?.display_name || "",
+    api_key: "",
+    endpoint: source?.endpoint || "",
+    timeout: source?.timeout || 30,
+    rate_limit: source?.rate_limit || 100,
+    priority: source?.priority || 1,
+    enabled: source?.enabled ?? true,
+    description: source?.description || "",
+    config_params: params.length ? params : []
+  }
+}
+
+function buildConfigParams(rows: DataSourceParamRow[]) {
+  return rows.reduce<Record<string, string>>((params, row) => {
+    const key = row.key.trim()
+    if (key) params[key] = row.value
+    return params
+  }, {})
+}
 
 function boolBadge(value: boolean, trueText = "启用", falseText = "停用") {
   return <Badge variant={value ? "default" : "secondary"}>{value ? trueText : falseText}</Badge>
@@ -245,17 +339,6 @@ function LoadingButton({ loading, children, ...props }: React.ComponentProps<typ
       {children}
     </Button>
   )
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement("a")
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
 }
 
 function getResponseData<T>(response: { data: T }) {
@@ -404,14 +487,18 @@ function ValidationSummary({ validation }: { validation?: SystemConfigValidation
 function ConfigValidationPanel({
   validation,
   validating,
-  onValidate
+  onValidate,
+  onConfigureProviders
 }: {
   validation?: SystemConfigValidation
   validating: boolean
   onValidate: () => void
+  onConfigureProviders: () => void
 }) {
   const envValidation: EnvConfigValidation | undefined = validation?.env_validation
   const postgresValidation: PostgresConfigValidation | undefined = validation?.postgres_validation
+  const missingLlmProviders = postgresValidation?.llm_providers?.filter((provider) => provider.is_active && !provider.has_api_key) || []
+  const configuredLlmProviders = postgresValidation?.llm_providers?.filter((provider) => provider.is_active && provider.has_api_key).length || 0
 
   const requiredRows = requiredConfigItems.map((item) => {
     const missing = envValidation?.missing_required?.find((config) => config.key === item.key)
@@ -431,6 +518,27 @@ function ConfigValidationPanel({
       </CardHeader>
       <CardContent className="space-y-6">
         <ValidationSummary validation={validation} />
+
+        {missingLlmProviders.length ? (
+          <section className="rounded-md border border-destructive/30 bg-destructive/10 p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <div className="flex items-center gap-2 font-medium text-destructive">
+                  <Key className="size-5" />
+                  大模型 API Key 未配置
+                </div>
+                <p className="mt-2 text-sm text-destructive/90">
+                  当前启用的大模型厂家里有 {missingLlmProviders.length} 个没有 API Key；已配置可用厂家数为 {configuredLlmProviders}。
+                  分析任务需要至少一个已配置 API Key 的厂家，否则会直接失败。
+                </p>
+                <p className="mt-1 text-sm text-destructive/90">
+                  配置位置：配置管理 / 厂家管理 / 编辑对应厂家 / API密钥。
+                </p>
+              </div>
+              <Button size="sm" onClick={onConfigureProviders}>去填写 API Key</Button>
+            </div>
+          </section>
+        ) : null}
 
         <section className="space-y-3">
           <h3 className="flex items-center gap-2 text-sm font-semibold"><Star className="size-4" />必需配置</h3>
@@ -456,9 +564,20 @@ function ConfigValidationPanel({
             {postgresValidation.llm_providers?.length ? (
               <div className="space-y-3">
                 <div className="text-sm font-medium">大模型厂家</div>
-                {postgresValidation.llm_providers.map((item) => (
-                  <ConfigStatusItem key={item.name} title={item.display_name} description={item.name} configured={item.status.includes("已配置")} status={item.status} />
-                ))}
+                {postgresValidation.llm_providers.map((item) => {
+                  const Icon = item.has_api_key ? CheckCircle2 : AlertTriangle
+                  return (
+                    <div key={item.name} className="flex items-center gap-3 rounded-md border p-3">
+                      <Icon className={item.has_api_key ? "size-5 text-emerald-600" : "size-5 text-amber-600"} />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium">{item.display_name}</div>
+                        <div className="mt-1 text-sm text-muted-foreground">{item.name}</div>
+                      </div>
+                      <StatusBadge configured={item.status.includes("已配置")} warningText={item.status} />
+                      {!item.has_api_key ? <Button variant="outline" size="sm" onClick={onConfigureProviders}>填写 API Key</Button> : null}
+                    </div>
+                  )
+                })}
               </div>
             ) : null}
             {postgresValidation.data_source_configs?.length ? (
@@ -492,7 +611,8 @@ function ConfigValidationPanel({
           <h3 className="text-sm font-semibold">如何修复配置问题？</h3>
           <div className="mt-3 space-y-2 text-sm text-muted-foreground">
             <p>必需配置需要在 .env 文件中设置，保存后重启后端服务才能生效。</p>
-            <p>推荐配置可以在 .env 中设置，也可以在厂家管理、大模型配置或数据源配置中维护。</p>
+            <p>大模型 API Key 在“厂家管理”中维护：编辑对应厂家，填入 API密钥并保存。</p>
+            <p>推荐环境变量也可以在 .env 中设置；环境变量修改后需要重启后端服务。</p>
           </div>
         </section>
       </CardContent>
@@ -594,8 +714,32 @@ export function SettingsIndexPage() {
   const user = useAuthStore((state) => state.user)
   const userDisplayName = useAuthStore((state) => state.userDisplayName())
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({
+    old_password: "",
+    new_password: "",
+    confirm_password: ""
+  })
 
   const activeTab = getPersonalSettingsTab(searchParams.get("tab"))
+
+  const changePasswordMutation = useMutation({
+    mutationFn: () => {
+      if (passwordForm.new_password !== passwordForm.confirm_password) {
+        throw new Error("两次输入的新密码不一致")
+      }
+      if (passwordForm.new_password.length < 8) {
+        throw new Error("新密码至少需要 8 位")
+      }
+      return authApi.changePassword(passwordForm)
+    },
+    onSuccess: () => {
+      toast.success("密码已修改")
+      setPasswordDialogOpen(false)
+      setPasswordForm({ old_password: "", new_password: "", confirm_password: "" })
+    },
+    onError: (error) => toast.error(error.message)
+  })
 
   const handleTabChange = (value: string) => {
     router.replace(getPersonalSettingsHref(getPersonalSettingsTab(value)))
@@ -801,12 +945,56 @@ export function SettingsIndexPage() {
             <CardContent className="grid max-w-2xl gap-5">
               <div className="space-y-2">
                 <Label>修改密码</Label>
-                <Button type="button" onClick={() => toast.info("修改密码功能将使用账户接口处理")}>修改密码</Button>
+                <Button type="button" onClick={() => setPasswordDialogOpen(true)}>修改密码</Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>修改密码</DialogTitle>
+            <DialogDescription>修改当前账号密码，保存后请使用新密码登录。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="old-password">当前密码</Label>
+              <Input
+                id="old-password"
+                type="password"
+                value={passwordForm.old_password}
+                onChange={(event) => setPasswordForm((value) => ({ ...value, old_password: event.target.value }))}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="new-password">新密码</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={passwordForm.new_password}
+                onChange={(event) => setPasswordForm((value) => ({ ...value, new_password: event.target.value }))}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="confirm-password">确认新密码</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={passwordForm.confirm_password}
+                onChange={(event) => setPasswordForm((value) => ({ ...value, confirm_password: event.target.value }))}
+              />
+            </div>
+            <LoadingButton
+              loading={changePasswordMutation.isPending}
+              onClick={() => changePasswordMutation.mutate()}
+              disabled={!passwordForm.old_password || !passwordForm.new_password || !passwordForm.confirm_password}
+            >
+              保存
+            </LoadingButton>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -821,6 +1009,11 @@ export function ConfigManagementPage() {
   const [activeTab, setActiveTab] = useState<ConfigTabValue>(() => getConfigTab(requestedTab))
   const [editingProvider, setEditingProvider] = useState<LLMProvider | null>(null)
   const [modelDialogOpen, setModelDialogOpen] = useState(false)
+  const [fetchModelsOpen, setFetchModelsOpen] = useState(false)
+  const [presetDialogOpen, setPresetDialogOpen] = useState(false)
+  const [fetchProvider, setFetchProvider] = useState("")
+  const [fetchedModels, setFetchedModels] = useState<ProviderFetchedModel[]>([])
+  const [selectedFetchedModels, setSelectedFetchedModels] = useState<string[]>([])
   const [llmDialogOpen, setLlmDialogOpen] = useState(false)
   const [dataSourceDialogOpen, setDataSourceDialogOpen] = useState(false)
   const [editingDataSourceName, setEditingDataSourceName] = useState<string | null>(null)
@@ -839,7 +1032,7 @@ export function ConfigManagementPage() {
     max_tokens: 4000,
     temperature: 0.7
   })
-  const [dataSourceForm, setDataSourceForm] = useState({ name: "", type: "stock", display_name: "", priority: 1 })
+  const [dataSourceForm, setDataSourceForm] = useState<DataSourceFormState>(() => createDataSourceForm())
   const [marketForm, setMarketForm] = useState({ id: "", name: "", display_name: "", sort_order: 1 })
   const [groupingForm, setGroupingForm] = useState({ data_source_name: "", market_category_id: "", priority: 1 })
   const [databaseForm, setDatabaseForm] = useState({
@@ -867,11 +1060,6 @@ export function ConfigManagementPage() {
   const groupingsQuery = useQuery({ queryKey: ["config", "datasource-groupings"], queryFn: () => configApi.getDataSourceGroupings(), retry: false })
   const validationQuery = useQuery({ queryKey: ["config", "validation"], queryFn: () => configApi.validateSystemConfig(), retry: false })
 
-  useEffect(() => {
-    const nextTab = getConfigTab(requestedTab)
-    setActiveTab((current) => (current === nextTab ? current : nextTab))
-  }, [requestedTab])
-
   const form = useForm<ProviderFormValues>({
     resolver: zodResolver(providerSchema),
     defaultValues: {
@@ -891,6 +1079,14 @@ export function ConfigManagementPage() {
   const saveProviderMutation = useMutation({
     mutationFn: (values: ProviderFormValues) => {
       const payload = values as Partial<LLMProvider> & { api_key?: string }
+      if (typeof payload.api_key === "string") {
+        const apiKey = payload.api_key.trim()
+        if (apiKey) {
+          payload.api_key = apiKey
+        } else {
+          delete payload.api_key
+        }
+      }
       return editingProvider ? configApi.updateLLMProvider(editingProvider.id, payload) : configApi.addLLMProvider(payload)
     },
     onSuccess: () => {
@@ -911,6 +1107,80 @@ export function ConfigManagementPage() {
     },
     onError: (error) => toast.error(error.message)
   })
+
+  const openFetchModelsDialog = () => {
+    const provider = providers.find((item) => item.is_active) || providers[0]
+    setFetchProvider(provider?.name || "")
+    setFetchedModels([])
+    setSelectedFetchedModels([])
+    setFetchModelsOpen(true)
+  }
+
+  const fetchProviderModels = async () => {
+    if (!fetchProvider) {
+      toast.error("请选择厂家")
+      return
+    }
+    try {
+      const result = await configApi.fetchProviderModels(fetchProvider)
+      const models = result.models || []
+      setFetchedModels(models)
+      setSelectedFetchedModels([])
+      toast.success(result.message || `已获取 ${models.length} 个模型`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "获取模型列表失败")
+    }
+  }
+
+  const importSelectedFetchedModels = async () => {
+    const provider = providers.find((item) => item.name === fetchProvider || item.id === fetchProvider)
+    const models = fetchedModels
+      .filter((model) => selectedFetchedModels.includes(model.id || model.name))
+      .map((model) => ({
+        name: model.id || model.name,
+        display_name: model.name || model.id,
+        description: model.description,
+        context_length: model.context_length,
+        max_tokens: model.max_tokens,
+        input_price_per_1k: model.input_price_per_1k,
+        output_price_per_1k: model.output_price_per_1k,
+        currency: model.currency,
+        capabilities: model.capabilities
+      }))
+
+    if (!fetchProvider || !models.length) {
+      toast.error("请选择要导入的模型")
+      return
+    }
+
+    try {
+      await configApi.saveModelCatalog({
+        provider: fetchProvider,
+        provider_name: provider?.display_name || provider?.name || fetchProvider,
+        models
+      })
+      toast.success("模型目录已导入")
+      setFetchModelsOpen(false)
+      refreshConfig()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "导入模型目录失败")
+    }
+  }
+
+  const importPresetCatalog = async (preset: (typeof modelCatalogPresets)[number]) => {
+    try {
+      await configApi.saveModelCatalog({
+        provider: preset.provider,
+        provider_name: preset.provider_name,
+        models: [...preset.models]
+      })
+      toast.success("预设模板已导入")
+      setPresetDialogOpen(false)
+      refreshConfig()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "导入预设模板失败")
+    }
+  }
 
   const providers = providersQuery.data || []
   const llmConfigs = useMemo(() => llmQuery.data || [], [llmQuery.data])
@@ -964,18 +1234,13 @@ export function ConfigManagementPage() {
 
   const openAddDataSourceDialog = () => {
     setEditingDataSourceName(null)
-    setDataSourceForm({ name: "", type: "stock", display_name: "", priority: 1 })
+    setDataSourceForm(createDataSourceForm())
     setDataSourceDialogOpen(true)
   }
 
   const openEditDataSourceDialog = (source: DataSourceConfig) => {
     setEditingDataSourceName(source.name)
-    setDataSourceForm({
-      name: source.name,
-      type: source.type,
-      display_name: source.display_name || "",
-      priority: source.priority
-    })
+    setDataSourceForm(createDataSourceForm(source))
     setDataSourceDialogOpen(true)
   }
 
@@ -1061,6 +1326,10 @@ export function ConfigManagementPage() {
             validation={validationQuery.data}
             validating={validationQuery.isFetching}
             onValidate={() => void validationQuery.refetch()}
+            onConfigureProviders={() => {
+              setActiveTab("providers")
+              router.replace("/settings/config?tab=providers")
+            }}
           />
         </TabsContent>
 
@@ -1150,6 +1419,8 @@ export function ConfigManagementPage() {
               <CardTitle>模型目录</CardTitle>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setModelDialogOpen(true)}>新增模型目录</Button>
+                <Button variant="outline" size="sm" onClick={openFetchModelsDialog}>从 API 获取模型列表</Button>
+                <Button variant="outline" size="sm" onClick={() => setPresetDialogOpen(true)}>使用预设模板</Button>
                 <Button variant="outline" size="sm" onClick={() => actionMutation.mutate(() => configApi.initModelCatalog())}>初始化模型目录</Button>
               </div>
             </CardHeader>
@@ -1777,6 +2048,81 @@ export function ConfigManagementPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={fetchModelsOpen} onOpenChange={setFetchModelsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>从 API 获取模型列表</DialogTitle>
+            <DialogDescription>从已配置厂家拉取模型列表，并导入为模型目录。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="fetch-model-provider">厂家</Label>
+              <select
+                id="fetch-model-provider"
+                className="h-9 rounded-md border bg-background px-3 text-sm"
+                value={fetchProvider}
+                onChange={(event) => {
+                  setFetchProvider(event.target.value)
+                  setFetchedModels([])
+                  setSelectedFetchedModels([])
+                }}
+              >
+                {providers.map((provider) => (
+                  <option key={provider.id} value={provider.name}>{provider.display_name || provider.name}</option>
+                ))}
+              </select>
+            </div>
+            <Button type="button" size="sm" onClick={fetchProviderModels}>拉取模型</Button>
+            {fetchedModels.length ? (
+              <div className="max-h-72 space-y-2 overflow-y-auto rounded-md border p-3">
+                {fetchedModels.map((model) => {
+                  const id = model.id || model.name
+                  return (
+                    <label key={id} className="flex items-start gap-2 rounded-md border p-2 text-sm">
+                      <input
+                        aria-label={`选择模型 ${id}`}
+                        type="checkbox"
+                        checked={selectedFetchedModels.includes(id)}
+                        onChange={(event) => setSelectedFetchedModels((current) => (
+                          event.target.checked ? [...new Set([...current, id])] : current.filter((item) => item !== id)
+                        ))}
+                      />
+                      <span>
+                        <span className="block font-medium">{model.name || id}</span>
+                        <span className="text-xs text-muted-foreground">{id}{model.context_length ? ` / ${model.context_length} tokens` : ""}</span>
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            ) : null}
+            <LoadingButton loading={actionMutation.isPending} onClick={importSelectedFetchedModels} disabled={!selectedFetchedModels.length}>
+              导入选中模型
+            </LoadingButton>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={presetDialogOpen} onOpenChange={setPresetDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>使用预设模板</DialogTitle>
+            <DialogDescription>快速导入常用模型目录，后续仍可手动调整。</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            {modelCatalogPresets.map((preset) => (
+              <div key={preset.provider} className="rounded-md border p-3">
+                <div className="font-medium">{preset.provider_name}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{preset.models.map((model) => model.display_name).join("、")}</div>
+                <Button className="mt-3" size="sm" variant="outline" onClick={() => void importPresetCatalog(preset)}>
+                  {preset.label}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={dataSourceDialogOpen} onOpenChange={setDataSourceDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -1786,15 +2132,82 @@ export function ConfigManagementPage() {
           <div className="space-y-4">
             <div className="grid gap-2">
               <Label htmlFor="datasource-name">数据源 ID</Label>
-              <Input id="datasource-name" value={dataSourceForm.name} onChange={(event) => setDataSourceForm((value) => ({ ...value, name: event.target.value }))} />
+              <Input id="datasource-name" aria-label="数据源 ID" value={dataSourceForm.name} disabled={Boolean(editingDataSourceName)} onChange={(event) => setDataSourceForm((value) => ({ ...value, name: event.target.value }))} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="datasource-display-name">显示名称</Label>
-              <Input id="datasource-display-name" value={dataSourceForm.display_name} onChange={(event) => setDataSourceForm((value) => ({ ...value, display_name: event.target.value }))} />
+              <Input id="datasource-display-name" aria-label="显示名称" value={dataSourceForm.display_name} onChange={(event) => setDataSourceForm((value) => ({ ...value, display_name: event.target.value }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="datasource-api-key">API Key</Label>
+              <Input id="datasource-api-key" aria-label="API Key" type="password" placeholder={editingDataSourceName ? "留空则保持原密钥" : undefined} value={dataSourceForm.api_key} onChange={(event) => setDataSourceForm((value) => ({ ...value, api_key: event.target.value }))} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="datasource-endpoint">Endpoint</Label>
+              <Input id="datasource-endpoint" value={dataSourceForm.endpoint} onChange={(event) => setDataSourceForm((value) => ({ ...value, endpoint: event.target.value }))} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="datasource-priority">优先级</Label>
               <Input id="datasource-priority" type="number" value={dataSourceForm.priority} onChange={(event) => setDataSourceForm((value) => ({ ...value, priority: Number(event.target.value) || 1 }))} />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="datasource-timeout">超时时间</Label>
+                <Input id="datasource-timeout" type="number" value={dataSourceForm.timeout} onChange={(event) => setDataSourceForm((value) => ({ ...value, timeout: Number(event.target.value) || 30 }))} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="datasource-rate-limit">速率限制</Label>
+                <Input id="datasource-rate-limit" type="number" value={dataSourceForm.rate_limit} onChange={(event) => setDataSourceForm((value) => ({ ...value, rate_limit: Number(event.target.value) || 100 }))} />
+              </div>
+            </div>
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <Label>配置参数</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDataSourceForm((value) => ({
+                    ...value,
+                    config_params: [...value.config_params, { id: `param-${Date.now()}`, key: "", value: "" }]
+                  }))}
+                >
+                  添加参数
+                </Button>
+              </div>
+              {dataSourceForm.config_params.length ? dataSourceForm.config_params.map((param, index) => (
+                <div key={param.id} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                  <Input
+                    aria-label={`参数名 ${index + 1}`}
+                    placeholder="参数名"
+                    value={param.key}
+                    onChange={(event) => setDataSourceForm((value) => ({
+                      ...value,
+                      config_params: value.config_params.map((item) => item.id === param.id ? { ...item, key: event.target.value } : item)
+                    }))}
+                  />
+                  <Input
+                    aria-label={`参数值 ${param.key || index + 1}`}
+                    placeholder="参数值"
+                    value={param.value}
+                    onChange={(event) => setDataSourceForm((value) => ({
+                      ...value,
+                      config_params: value.config_params.map((item) => item.id === param.id ? { ...item, value: event.target.value } : item)
+                    }))}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setDataSourceForm((value) => ({
+                      ...value,
+                      config_params: value.config_params.filter((item) => item.id !== param.id)
+                    }))}
+                  >
+                    删除
+                  </Button>
+                </div>
+              )) : <p className="text-sm text-muted-foreground">暂无自定义参数。</p>}
             </div>
             <LoadingButton
               loading={actionMutation.isPending}
@@ -1804,16 +2217,20 @@ export function ConfigManagementPage() {
                   return
                 }
                 actionMutation.mutate(async () => {
-                  const payload = {
+                  const payload: Partial<DataSourceConfig> = {
                     name: dataSourceForm.name,
                     type: dataSourceForm.type,
                     display_name: dataSourceForm.display_name || dataSourceForm.name,
                     priority: dataSourceForm.priority,
-                    timeout: 30,
-                    rate_limit: 100,
-                    enabled: true,
-                    config_params: {}
+                    timeout: dataSourceForm.timeout,
+                    rate_limit: dataSourceForm.rate_limit,
+                    enabled: dataSourceForm.enabled,
+                    endpoint: dataSourceForm.endpoint || undefined,
+                    description: dataSourceForm.description || undefined,
+                    config_params: buildConfigParams(dataSourceForm.config_params)
                   }
+                  const apiKey = dataSourceForm.api_key.trim()
+                  if (apiKey) payload.api_key = apiKey
                   if (editingDataSourceName) {
                     await configApi.updateDataSourceConfig(editingDataSourceName, payload)
                   } else {
@@ -1821,7 +2238,7 @@ export function ConfigManagementPage() {
                   }
                   setDataSourceDialogOpen(false)
                   setEditingDataSourceName(null)
-                  setDataSourceForm({ name: "", type: "stock", display_name: "", priority: 1 })
+                  setDataSourceForm(createDataSourceForm())
                 })
               }}
             >

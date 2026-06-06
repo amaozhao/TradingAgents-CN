@@ -1,4 +1,94 @@
 # ruff: noqa: F401,F403,F405,F821
+def _get_company_name_for_fundamentals(ticker: str, market_info: dict) -> str:
+    """根据股票代码获取基本面分析展示用公司名称。"""
+    try:
+        if market_info["is_china"]:
+            get_china_stock_info_unified = getattr(
+                importlib.import_module("trader.flows.interface"),
+                "get_china_stock_info_unified",
+            )
+            stock_info = get_china_stock_info_unified(ticker)
+
+            logger.debug(
+                f"📊 [基本面分析师] 获取股票信息返回: {stock_info[:200] if stock_info else 'None'}..."
+            )
+
+            if stock_info and "股票名称:" in stock_info:
+                company_name = stock_info.split("股票名称:")[1].split("\n")[0].strip()
+                logger.info(
+                    f"✅ [基本面分析师] 成功获取中国股票名称: {ticker} -> {company_name}"
+                )
+                return company_name
+
+            logger.warning(
+                f"⚠️ [基本面分析师] 无法从统一接口解析股票名称: {ticker}，尝试降级方案"
+            )
+            try:
+                get_info_dict = getattr(
+                    importlib.import_module("trader.flows.sources"),
+                    "get_china_stock_info_unified",
+                )
+                info_dict = get_info_dict(ticker)
+                if info_dict and info_dict.get("name"):
+                    company_name = info_dict["name"]
+                    logger.info(
+                        f"✅ [基本面分析师] 降级方案成功获取股票名称: {ticker} -> {company_name}"
+                    )
+                    return company_name
+            except Exception as e:
+                logger.error(f"❌ [基本面分析师] 降级方案也失败: {e}")
+
+            logger.error(f"❌ [基本面分析师] 所有方案都无法获取股票名称: {ticker}")
+            return f"股票代码{ticker}"
+
+        if market_info["is_hk"]:
+            try:
+                get_hk_company_name_improved = getattr(
+                    importlib.import_module("trader.flows.providers.hk.improved"),
+                    "get_hk_company_name_improved",
+                )
+                company_name = get_hk_company_name_improved(ticker)
+                logger.debug(
+                    f"📊 [基本面分析师] 使用改进港股工具获取名称: {ticker} -> {company_name}"
+                )
+                return company_name
+            except Exception as e:
+                logger.debug(f"📊 [基本面分析师] 改进港股工具获取名称失败: {e}")
+                clean_ticker = ticker.replace(".HK", "").replace(".hk", "")
+                return f"港股{clean_ticker}"
+
+        if market_info["is_us"]:
+            us_stock_names = {
+                "AAPL": "苹果公司",
+                "TSLA": "特斯拉",
+                "NVDA": "英伟达",
+                "MSFT": "微软",
+                "GOOGL": "谷歌",
+                "AMZN": "亚马逊",
+                "META": "Meta",
+                "NFLX": "奈飞",
+            }
+            company_name = us_stock_names.get(ticker.upper(), f"美股{ticker}")
+            logger.debug(f"📊 [基本面分析师] 美股名称映射: {ticker} -> {company_name}")
+            return company_name
+
+        return f"股票{ticker}"
+    except Exception as e:
+        logger.error(f"❌ [基本面分析师] 获取公司名称失败: {e}")
+        return f"股票{ticker}"
+
+
+def _fallback_fundamentals_message(ticker: str, company_name: str) -> AIMessage:
+    return AIMessage(
+        content=(
+            f"## {company_name}（{ticker}）基本面分析\n\n"
+            "基本面分析阶段的大模型调用超时，系统已使用兜底报告继续后续分析。"
+            "当前报告未包含完整实时财务细节，建议结合行情、估值和风险管理报告综合判断。\n\n"
+            "投资建议：持有。风险提示：请等待数据源和模型响应恢复后重新生成完整基本面报告。"
+        )
+    )
+
+
 def create_fundamentals_analyst(llm, toolkit):
     @log_analyst_module("fundamentals")
     def fundamentals_analyst_node(state):
@@ -308,7 +398,12 @@ def create_fundamentals_analyst(llm, toolkit):
         logger.info("=" * 80)
 
         # 修复：传递字典而不是直接传递消息列表，以便 ChatPromptTemplate 能正确处理所有变量
-        result = chain.invoke({"messages": state["messages"]})
+        result = invoke_with_timeout(
+            lambda: chain.invoke({"messages": state["messages"]}),
+            timeout_seconds=get_risk_llm_timeout_seconds(fresh_llm),
+            operation_name="Fundamentals Analyst",
+            fallback_value=_fallback_fundamentals_message(ticker, company_name),
+        )
         logger.info("📊 [基本面分析师] LLM调用完成")
 
         # 🔍 [调试日志] 打印AIMessage的详细内容
@@ -435,7 +530,14 @@ def create_fundamentals_analyst(llm, toolkit):
                     force_chain = force_prompt | fresh_llm
 
                     logger.info("🔧 [强制生成报告] 使用专门的提示词重新调用LLM...")
-                    force_result = force_chain.invoke({"messages": messages})
+                    force_result = invoke_with_timeout(
+                        lambda: force_chain.invoke({"messages": messages}),
+                        timeout_seconds=get_risk_llm_timeout_seconds(fresh_llm),
+                        operation_name="Fundamentals Forced Report",
+                        fallback_value=_fallback_fundamentals_message(
+                            ticker, company_name
+                        ),
+                    )
 
                     report = (
                         str(force_result.content)
@@ -598,13 +700,18 @@ def create_fundamentals_analyst(llm, toolkit):
                             f"🔍 [工具调用] 传入参数 - ticker: '{ticker}', start_date: {start_date}, end_date: {current_date}"
                         )
 
-                        combined_data = unified_tool.invoke(
-                            {
-                                "ticker": ticker,
-                                "start_date": start_date,
-                                "end_date": current_date,
-                                "curr_date": current_date,
-                            }
+                        combined_data = invoke_with_timeout(
+                            lambda: unified_tool.invoke(
+                                {
+                                    "ticker": ticker,
+                                    "start_date": start_date,
+                                    "end_date": current_date,
+                                    "curr_date": current_date,
+                                }
+                            ),
+                            timeout_seconds=get_risk_llm_timeout_seconds(fresh_llm),
+                            operation_name="Fundamentals Data Tool",
+                            fallback_value="基本面数据工具调用超时，使用兜底基本面分析继续。",
                         )
 
                         logger.info("✅ [工具调用] 统一工具调用成功")
@@ -682,8 +789,15 @@ def create_fundamentals_analyst(llm, toolkit):
                     )
 
                     analysis_chain = analysis_prompt_template | fresh_llm
-                    analysis_result = analysis_chain.invoke(
-                        {"analysis_request": analysis_prompt}
+                    analysis_result = invoke_with_timeout(
+                        lambda: analysis_chain.invoke(
+                            {"analysis_request": analysis_prompt}
+                        ),
+                        timeout_seconds=get_risk_llm_timeout_seconds(fresh_llm),
+                        operation_name="Fundamentals Data Analysis",
+                        fallback_value=_fallback_fundamentals_message(
+                            ticker, company_name
+                        ),
                     )
 
                     if hasattr(analysis_result, "content"):

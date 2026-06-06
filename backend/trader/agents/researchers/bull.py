@@ -1,5 +1,7 @@
 import importlib
 
+from trader.agents.risk.management.common import invoke_risk_llm_with_timeout
+
 # 导入统一日志系统
 from trader.utils.logging.init import get_logger
 
@@ -152,7 +154,17 @@ def create_bull_researcher(llm, memory):
 请确保所有回答都使用中文。
 """
 
-        response = llm.invoke(prompt)
+        fallback = (
+            f"看涨研究员兜底：模型响应超时。基于已有市场、情绪、新闻和基本面报告，"
+            f"{company_name}仍可关注其增长潜力、估值修复和市场趋势改善机会；"
+            "但建议以分批和风控约束方式表达看涨观点，避免单次重仓。"
+        )
+        response = invoke_risk_llm_with_timeout(
+            llm,
+            prompt,
+            analyst_name="Bull Researcher",
+            fallback_content=fallback,
+        )
 
         argument = f"Bull Analyst: {response.content}"
 

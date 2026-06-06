@@ -1,5 +1,7 @@
 import time
 
+from trader.agents.risk.management.common import invoke_risk_llm_with_timeout
+
 # 导入统一日志系统
 from trader.utils.logging.init import get_logger
 
@@ -81,7 +83,17 @@ def create_neutral_debator(llm):
         logger.info("⏱️ [Neutral Analyst] 开始调用LLM...")
         llm_start_time = time.time()
 
-        response = llm.invoke(prompt)
+        fallback = (
+            "中性视角兜底：当前模型响应超时。综合激进与保守观点，建议采取平衡策略："
+            "确认趋势前维持谨慎仓位，若后续价格、成交量和基本面继续改善，可分批加仓；"
+            "若关键支撑或基本面假设被破坏，应及时降低风险敞口。"
+        )
+        response = invoke_risk_llm_with_timeout(
+            llm,
+            prompt,
+            analyst_name="Neutral Analyst",
+            fallback_content=fallback,
+        )
 
         llm_elapsed = time.time() - llm_start_time
         logger.info(f"⏱️ [Neutral Analyst] LLM调用完成，耗时: {llm_elapsed:.2f}秒")

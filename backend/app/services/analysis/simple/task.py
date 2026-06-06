@@ -287,6 +287,7 @@ class AnalysisTaskMixin:
 
             # 同步更新PostgreSQL状态为完成
             await self._update_task_status(task_id, AnalysisStatus.COMPLETED, 100)
+            self._clear_analysis_checkpoint_after_completion(request, result)
 
             # 创建通知：分析完成（方案B：REST+SSE）
             try:
@@ -312,7 +313,7 @@ class AnalysisTaskMixin:
             logger.info(f"✅ 后台分析任务完成: {task_id}")
 
         except Exception as e:
-            logger.error(f"❌ 后台分析任务失败: {task_id} - {e}")
+            logger.error(f"❌ 后台分析任务失败: {task_id} - {e}", exc_info=True)
 
             # 格式化错误信息为用户友好的提示
             ErrorFormatter = getattr(
@@ -332,8 +333,14 @@ class AnalysisTaskMixin:
             # 格式化错误
             formatted_error = ErrorFormatter.format_error(str(e), error_context)
 
-            # 构建用户友好的错误消息
-            user_friendly_error = f"{formatted_error['title']}\n\n{formatted_error['message']}\n\n💡 {formatted_error['suggestion']}"
+            # 构建用户友好的错误消息，并保留原始异常，避免状态页只显示“未知错误”。
+            technical_detail = formatted_error.get("technical_detail") or str(e)
+            user_friendly_error = (
+                f"{formatted_error['title']}\n\n"
+                f"{formatted_error['message']}\n\n"
+                f"💡 {formatted_error['suggestion']}\n\n"
+                f"技术细节：{type(e).__name__}: {technical_detail}"
+            )
 
             # 标记进度跟踪器失败
             if tracker:
@@ -360,6 +367,32 @@ class AnalysisTaskMixin:
 
             # 从日志监控中注销
             unregister_analysis_tracker(task_id)
+
+    def _clear_analysis_checkpoint_after_completion(
+        self, request: SingleAnalysisRequest, result: Dict[str, Any]
+    ) -> None:
+        """Clear graph checkpoints only after the whole task is completed."""
+        try:
+            DEFAULT_CONFIG = getattr(
+                importlib.import_module("trader.default"), "DEFAULT_CONFIG"
+            )
+            clear_checkpoint = getattr(
+                importlib.import_module("trader.graph.checkpointer"),
+                "clear_checkpoint",
+            )
+            stock_code = result.get("stock_code") or request.get_symbol()
+            analysis_date = result.get("analysis_date")
+            if not stock_code or not analysis_date:
+                logger.warning("⚠️ 无法清理 checkpoint：缺少股票代码或分析日期")
+                return
+            clear_checkpoint(DEFAULT_CONFIG["data_cache_dir"], stock_code, analysis_date)
+            logger.info(
+                "🧹 [Checkpoint] 任务完成后已清理 checkpoint: %s %s",
+                stock_code,
+                analysis_date,
+            )
+        except Exception as checkpoint_error:
+            logger.warning("⚠️ 清理 checkpoint 失败: %s", checkpoint_error)
 
     async def _execute_analysis_sync(
         self,

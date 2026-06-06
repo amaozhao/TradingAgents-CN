@@ -81,6 +81,20 @@ export interface FetchProviderModelsRequest {
   exclude_preview?: boolean
 }
 
+export interface ModelCatalogItem {
+  name: string
+  display_name: string
+  description?: string
+  context_length?: number
+  max_tokens?: number
+  input_price_per_1k?: number
+  output_price_per_1k?: number
+  currency?: string
+  is_deprecated?: boolean
+  release_date?: string
+  capabilities?: string[]
+}
+
 export interface DataSourceConfig {
   name: string
   type: string
@@ -279,36 +293,12 @@ export const configApi = {
   getModelCatalog(): Promise<Array<{
     provider: string
     provider_name: string
-    models: Array<{
-      name: string
-      display_name: string
-      description?: string
-      context_length?: number
-      max_tokens?: number
-      input_price_per_1k?: number
-      output_price_per_1k?: number
-      currency?: string
-      is_deprecated?: boolean
-      release_date?: string
-      capabilities?: string[]
-    }>
+    models: ModelCatalogItem[]
   }>> {
     return unwrapResponse(ApiClient.get<Array<{
       provider: string
       provider_name: string
-      models: Array<{
-        name: string
-        display_name: string
-        description?: string
-        context_length?: number
-        max_tokens?: number
-        input_price_per_1k?: number
-        output_price_per_1k?: number
-        currency?: string
-        is_deprecated?: boolean
-        release_date?: string
-        capabilities?: string[]
-      }>
+      models: ModelCatalogItem[]
     }>>('/api/config/model-catalog'))
   },
 
@@ -316,36 +306,12 @@ export const configApi = {
   getProviderModelCatalog(provider: string): Promise<{
     provider: string
     provider_name: string
-    models: Array<{
-      name: string
-      display_name: string
-      description?: string
-      context_length?: number
-      max_tokens?: number
-      input_price_per_1k?: number
-      output_price_per_1k?: number
-      currency?: string
-      is_deprecated?: boolean
-      release_date?: string
-      capabilities?: string[]
-    }>
+    models: ModelCatalogItem[]
   }> {
     return unwrapResponse(ApiClient.get<{
       provider: string
       provider_name: string
-      models: Array<{
-        name: string
-        display_name: string
-        description?: string
-        context_length?: number
-        max_tokens?: number
-        input_price_per_1k?: number
-        output_price_per_1k?: number
-        currency?: string
-        is_deprecated?: boolean
-        release_date?: string
-        capabilities?: string[]
-      }>
+      models: ModelCatalogItem[]
     }>(`/api/config/model-catalog/${provider}`))
   },
 
@@ -353,7 +319,7 @@ export const configApi = {
   saveModelCatalog(catalog: {
     provider: string
     provider_name: string
-    models: Array<{ name: string; display_name: string; description?: string }>
+    models: ModelCatalogItem[]
   }): Promise<{ success: boolean; message: string }> {
     return unwrapResponse(ApiClient.post<{ success: boolean; message: string }>('/api/config/model-catalog', catalog))
   },

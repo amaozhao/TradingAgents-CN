@@ -12,7 +12,7 @@ from app.core.response import ok
 from app.db.dual import dual_write_hot_document
 from app.routers.account import get_current_user
 from app.schemas.response import ApiResponse
-from app.schemas.stocks import BatchStockSyncRequest
+from app.schemas.stocks import BatchStockSyncRequest, SingleStockSyncRequest
 
 logger = logging.getLogger("webapi")
 
@@ -36,6 +36,116 @@ async def _dual_write_stock_basic_info(document: dict[str, Any]) -> None:
     await dual_write_hot_document(
         "stock_basic_info", document, enabled=True, fail_open=True
     )
+
+
+def _sync_result_from_stats(stats: dict[str, Any], source: str) -> dict[str, Any]:
+    errors = stats.get("errors") or []
+    first_error = errors[0] if errors else {}
+    error_message = (
+        first_error.get("error")
+        if isinstance(first_error, dict)
+        else str(first_error) if first_error else None
+    )
+    success = int(stats.get("success_count") or 0) > 0
+    return {
+        "success": success,
+        "records": stats.get("success_count", 0),
+        "message": f"成功 {stats.get('success_count', 0)}/{stats.get('total_processed', 0)}",
+        "error": None if success else error_message or "同步失败",
+        "data_source_used": "akshare"
+        if stats.get("switched_to_akshare")
+        else source,
+        "attempted_sources": ["tushare", "akshare"]
+        if stats.get("switched_to_akshare")
+        else [source],
+        "market_quote_available": success,
+    }
+
+
+@router.post("/single", response_model=ApiResponse)
+async def sync_single_stock(
+    request: SingleStockSyncRequest,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+):
+    """同步单只股票的实时、历史、财务和基础数据。"""
+    raw_symbol = str(request.symbol).strip().upper()
+    symbol = raw_symbol.zfill(6) if raw_symbol.isdigit() else raw_symbol
+    result: dict[str, Any] = {
+        "symbol": symbol,
+        "realtime_sync": None,
+        "historical_sync": None,
+        "financial_sync": None,
+        "basic_sync": None,
+        "overall_success": False,
+    }
+
+    try:
+        if request.sync_realtime:
+            try:
+                if request.data_source == "tushare":
+                    service = await get_tushare_sync_service()
+                elif request.data_source == "akshare":
+                    service = await get_akshare_sync_service()
+                else:
+                    raise ValueError(f"不支持的数据源: {request.data_source}")
+                stats = await service.sync_realtime_quotes(symbols=[symbol], force=True)
+                result["realtime_sync"] = _sync_result_from_stats(
+                    stats, request.data_source
+                )
+            except Exception as e:
+                logger.error(f"❌ 单股实时行情同步失败 {symbol}: {e}")
+                result["realtime_sync"] = {
+                    "success": False,
+                    "records": 0,
+                    "error": str(e),
+                    "message": "实时行情同步失败",
+                    "data_source_used": request.data_source,
+                    "attempted_sources": [request.data_source],
+                    "market_quote_available": False,
+                }
+
+        if request.sync_historical or request.sync_financial or request.sync_basic:
+            batch_response = await sync_batch_stocks(
+                BatchStockSyncRequest(
+                    symbols=[symbol],
+                    sync_historical=request.sync_historical,
+                    sync_financial=request.sync_financial,
+                    sync_basic=request.sync_basic,
+                    data_source=request.data_source,
+                    days=request.days,
+                ),
+                background_tasks,
+                current_user,
+            )
+            batch_data = batch_response.get("data", {})
+            result["historical_sync"] = batch_data.get("historical_sync")
+            result["financial_sync"] = batch_data.get("financial_sync")
+            result["basic_sync"] = batch_data.get("basic_sync")
+
+        selected_results = [
+            result.get("realtime_sync") if request.sync_realtime else None,
+            result.get("historical_sync") if request.sync_historical else None,
+            result.get("financial_sync") if request.sync_financial else None,
+            result.get("basic_sync") if request.sync_basic else None,
+        ]
+        result["overall_success"] = any(
+            item
+            and (
+                item.get("success")
+                or item.get("success_count", 0) > 0
+            )
+            for item in selected_results
+            if isinstance(item, dict)
+        )
+
+        return ok(
+            data=result,
+            message="单股同步完成" if result["overall_success"] else "单股同步完成，部分或全部数据未成功",
+        )
+    except Exception as e:
+        logger.error(f"❌ 单股同步失败 {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=f"单股同步失败: {str(e)}")
 
 
 @router.post("/batch", response_model=ApiResponse)

@@ -1,5 +1,7 @@
 import importlib
 
+from trader.agents.risk.management.common import invoke_risk_llm_with_timeout
+
 # 导入统一日志系统
 from trader.utils.logging.init import get_logger
 
@@ -62,7 +64,17 @@ def create_risky_debator(llm):
         time = importlib.import_module("time")
         llm_start_time = time.time()
 
-        response = llm.invoke(prompt)
+        fallback = (
+            "激进视角兜底：当前模型响应超时。基于已有交易员计划和前序报告，"
+            "若市场趋势、成交量和基本面仍支持上行，应保留适度进攻仓位；"
+            "但必须配合止损和分批执行，避免单次重仓。"
+        )
+        response = invoke_risk_llm_with_timeout(
+            llm,
+            prompt,
+            analyst_name="Risky Analyst",
+            fallback_content=fallback,
+        )
 
         llm_elapsed = time.time() - llm_start_time
         logger.info(f"⏱️ [Risky Analyst] LLM调用完成，耗时: {llm_elapsed:.2f}秒")

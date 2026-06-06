@@ -30,20 +30,11 @@ class _DataSourceManagerMixin3:
                 # 获取股票基本信息
                 provider = self._get_tushare_adapter()
                 if provider:
-                    asyncio = importlib.import_module("asyncio")
-                    try:
-                        loop = asyncio.get_event_loop()
-                        if loop.is_closed():
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
-                    except RuntimeError:
-                        # 在线程池中没有事件循环，创建新的
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-
                     stock_info = cast(
                         Dict[str, Any],
-                        loop.run_until_complete(provider.get_stock_basic_info(symbol))
+                        run_async_provider_call(
+                            lambda: provider.get_stock_basic_info(symbol)
+                        )
                         or {},
                     )
                     stock_name = (
@@ -69,20 +60,8 @@ class _DataSourceManagerMixin3:
             if not provider:
                 return "❌ Tushare提供器不可用"
 
-            # 使用异步方法获取历史数据
-            asyncio = importlib.import_module("asyncio")
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_closed():
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-            except RuntimeError:
-                # 在线程池中没有事件循环，创建新的
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-
-            data = loop.run_until_complete(
-                provider.get_historical_data(symbol, start_date, end_date)
+            data = run_async_provider_call(
+                lambda: provider.get_historical_data(symbol, start_date, end_date)
             )
 
             if data is not None and not data.empty:
@@ -92,7 +71,9 @@ class _DataSourceManagerMixin3:
                 # 获取股票基本信息（异步）
                 stock_info = cast(
                     Dict[str, Any],
-                    loop.run_until_complete(provider.get_stock_basic_info(symbol))
+                    run_async_provider_call(
+                        lambda: provider.get_stock_basic_info(symbol)
+                    )
                     or {},
                 )
                 stock_name = (
@@ -153,20 +134,10 @@ class _DataSourceManagerMixin3:
             )
             provider = get_akshare_provider()
 
-            # 使用异步方法获取历史数据
-            asyncio = importlib.import_module("asyncio")
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_closed():
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-            except RuntimeError:
-                # 在线程池中没有事件循环，创建新的
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-
-            data = loop.run_until_complete(
-                provider.get_historical_data(symbol, start_date, end_date, period)
+            data = run_async_provider_call(
+                lambda: provider.get_historical_data(
+                    symbol, start_date, end_date, period
+                )
             )
 
             duration = time.time() - start_time
@@ -174,8 +145,8 @@ class _DataSourceManagerMixin3:
             if data is not None and not data.empty:
                 # 🔧 修复：使用统一的格式化方法，包含技术指标计算
                 # 获取股票基本信息
-                stock_info = loop.run_until_complete(
-                    provider.get_stock_basic_info(symbol)
+                stock_info = run_async_provider_call(
+                    lambda: provider.get_stock_basic_info(symbol)
                 )
                 stock_name = (
                     stock_info.get("name", f"股票{symbol}")
@@ -218,26 +189,16 @@ class _DataSourceManagerMixin3:
         )
         provider = get_baostock_provider()
 
-        # 使用异步方法获取历史数据
-        asyncio = importlib.import_module("asyncio")
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_closed():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-        except RuntimeError:
-            # 在线程池中没有事件循环，创建新的
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        data = loop.run_until_complete(
-            provider.get_historical_data(symbol, start_date, end_date, period)
+        data = run_async_provider_call(
+            lambda: provider.get_historical_data(symbol, start_date, end_date, period)
         )
 
         if data is not None and not data.empty:
             # 🔧 修复：使用统一的格式化方法，包含技术指标计算
             # 获取股票基本信息
-            stock_info = loop.run_until_complete(provider.get_stock_basic_info(symbol))
+            stock_info = run_async_provider_call(
+                lambda: provider.get_stock_basic_info(symbol)
+            )
             stock_name = (
                 stock_info.get("name", f"股票{symbol}")
                 if stock_info

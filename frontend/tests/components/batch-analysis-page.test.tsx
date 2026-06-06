@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { BatchAnalysisPage } from "@/features/analysis/batch-analysis-page"
 import { analysisApi } from "@/libs/api/analysis"
+import { configApi } from "@/libs/api/config"
 
 const push = vi.fn()
 
@@ -28,9 +29,12 @@ vi.mock("@/libs/api/analysis", () => ({
 
 vi.mock("@/libs/api/config", () => ({
   configApi: {
+    getLLMConfigs: vi.fn().mockResolvedValue([
+      { provider: "minimax-token-plan", model_name: "MiniMax-M1", model_display_name: "MiniMax M1", enabled: true, max_tokens: 8192, temperature: 0.7, timeout: 300, retry_times: 2 }
+    ]),
     getDefaultModels: vi.fn().mockResolvedValue({
-      quick_analysis_model: "qwen-plus",
-      deep_analysis_model: "qwen-max"
+      quick_analysis_model: "MiniMax-M1",
+      deep_analysis_model: "MiniMax-M1"
     })
   }
 }))
@@ -45,6 +49,12 @@ describe("BatchAnalysisPage", () => {
     })
 
     render(<BatchAnalysisPage />)
+
+    expect(await screen.findByRole("combobox", { name: "快速分析模型" })).toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "深度分析模型" })).toBeInTheDocument()
+    expect(screen.queryByRole("textbox", { name: "快速分析模型" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("textbox", { name: "深度分析模型" })).not.toBeInTheDocument()
+    expect(configApi.getLLMConfigs).toHaveBeenCalled()
 
     await user.clear(screen.getByLabelText("批次标题"))
     await user.type(screen.getByLabelText("批次标题"), "银行板块分析")
@@ -70,8 +80,8 @@ describe("BatchAnalysisPage", () => {
         include_sentiment: true,
         include_risk: true,
         language: "zh-CN",
-        quick_analysis_model: "qwen-plus",
-        deep_analysis_model: "qwen-max"
+        quick_analysis_model: "MiniMax-M1",
+        deep_analysis_model: "MiniMax-M1"
       }
     })
     expect(push).toHaveBeenCalledWith("/tasks?batch_id=batch-1")

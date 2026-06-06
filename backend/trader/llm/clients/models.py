@@ -55,11 +55,13 @@ _MINIMAX_TOKEN_PLAN_MODELS = {
     "quick": [
         ("MiniMax-M3", "MiniMax-M3"),
         ("MiniMax-M2.7-highspeed", "MiniMax-M2.7-highspeed"),
+        ("MiniMax-M2", "MiniMax-M2"),
         ("Custom model ID", "custom"),
     ],
     "deep": [
         ("MiniMax-M3", "MiniMax-M3"),
         ("MiniMax-M2.7", "MiniMax-M2.7"),
+        ("MiniMax-M2", "MiniMax-M2"),
         ("Custom model ID", "custom"),
     ],
 }

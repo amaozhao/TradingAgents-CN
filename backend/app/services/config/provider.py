@@ -352,13 +352,23 @@ class LLMProviderMixin:
                     {"_id": provider_id}, {"$set": update_data}
                 )
 
-            # 修复：matched_count > 0 表示找到了记录（即使没有修改）
-            # modified_count > 0 只有在实际修改了字段时才为真
-            # 如果记录存在但值相同，modified_count 为 0，但这不应该返回 404
             if result.matched_count > 0:
+                updated_provider = None
+                try:
+                    updated_provider = await providers_collection.find_one(
+                        {"_id": DocumentId(provider_id)}
+                    )
+                except Exception:
+                    updated_provider = None
+
+                if updated_provider is None:
+                    updated_provider = await providers_collection.find_one(
+                        {"_id": provider_id}
+                    )
+
                 await self._dual_write_config_document(
                     "llm_providers",
-                    {"_id": provider_id, **update_data},
+                    updated_provider or {"_id": provider_id, **update_data},
                 )
             return result.matched_count > 0
         except Exception as e:

@@ -103,6 +103,40 @@ def _build_report_query(report_id: str) -> Dict[str, Any]:
     return {"$or": ors}
 
 
+def _to_report_datetime(value: Any) -> Any:
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return value
+    if isinstance(value, datetime):
+        return to_config_tz(value)
+    return value
+
+
+def _to_report_iso(value: Any) -> str:
+    converted = _to_report_datetime(value)
+    if hasattr(converted, "isoformat"):
+        return converted.isoformat()
+    return str(converted or "")
+
+
+def _dedupe_report_documents(documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    deduped: List[Dict[str, Any]] = []
+    seen: set[str] = set()
+    for document in documents:
+        key = (
+            document.get("analysis_id")
+            or document.get("task_id")
+            or str(document.get("_id"))
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(document)
+    return deduped
+
+
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
 
@@ -131,7 +165,9 @@ async def get_reports_list(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     search_keyword: Optional[str] = Query(None, description="搜索关键词"),
+    keyword: Optional[str] = Query(None, description="搜索关键词（兼容前端keyword）"),
     market_filter: Optional[str] = Query(None, description="市场筛选（A股/港股/美股）"),
+    market: Optional[str] = Query(None, description="市场筛选（兼容前端market）"),
     start_date: Optional[str] = Query(None, description="开始日期"),
     end_date: Optional[str] = Query(None, description="结束日期"),
     stock_code: Optional[str] = Query(None, description="股票代码"),
@@ -139,8 +175,11 @@ async def get_reports_list(
 ):
     """获取分析报告列表"""
     try:
+        effective_search_keyword = search_keyword or keyword
+        effective_market_filter = market_filter or market
+
         logger.info(
-            f"🔍 获取报告列表: 用户={user['id']}, 页码={page}, 每页={page_size}, 市场={market_filter}"
+            f"🔍 获取报告列表: 用户={user['id']}, 页码={page}, 每页={page_size}, 市场={effective_market_filter}"
         )
 
         db = get_postgres_db()
@@ -149,16 +188,16 @@ async def get_reports_list(
         query = {}
 
         # 搜索关键词
-        if search_keyword:
+        if effective_search_keyword:
             query["$or"] = [
-                {"stock_symbol": {"$regex": search_keyword, "$options": "i"}},
-                {"analysis_id": {"$regex": search_keyword, "$options": "i"}},
-                {"summary": {"$regex": search_keyword, "$options": "i"}},
+                {"stock_symbol": {"$regex": effective_search_keyword, "$options": "i"}},
+                {"analysis_id": {"$regex": effective_search_keyword, "$options": "i"}},
+                {"summary": {"$regex": effective_search_keyword, "$options": "i"}},
             ]
 
         # 市场筛选
-        if market_filter:
-            query["market_type"] = market_filter
+        if effective_market_filter:
+            query["market_type"] = effective_market_filter
 
         # 股票代码筛选
         if stock_code:
@@ -175,25 +214,20 @@ async def get_reports_list(
 
         logger.info(f"📊 查询条件: {query}")
 
-        # 计算总数
-        total = await db.analysis_reports.count_documents(query)
+        all_reports = await db.analysis_reports.find(query).sort("created_at", -1).to_list(None)
+        deduped_reports = _dedupe_report_documents(all_reports)
+        total = len(deduped_reports)
 
-        # 分页查询
         skip = (page - 1) * page_size
-        cursor = (
-            db.analysis_reports.find(query)
-            .sort("created_at", -1)
-            .skip(skip)
-            .limit(page_size)
-        )
+        page_reports = deduped_reports[skip : skip + page_size]
 
         reports = []
-        async for doc in cursor:
+        for doc in page_reports:
             # 转换为前端需要的格式
             stock_code = str(doc.get("stock_symbol") or "")
             # 🔥 优先使用PostgreSQL中保存的股票名称，如果没有则查询
             stock_name = doc.get("stock_name")
-            if not stock_name:
+            if not stock_name or stock_name in {stock_code, f"股票{stock_code}"}:
                 stock_name = get_stock_name(stock_code)
 
             # 🔥 获取市场类型，如果没有则根据股票代码推断
@@ -210,9 +244,7 @@ async def get_reports_list(
                     market_info.get("market", "unknown"), "A股"
                 )
 
-            # 获取创建时间（数据库中是 UTC 时间，需要转换为 UTC+8）
             created_at = doc.get("created_at", datetime.utcnow())
-            created_at_tz = to_config_tz(created_at)  # 转换为 UTC+8 并添加时区信息
 
             report = {
                 "id": str(doc["_id"]),
@@ -225,9 +257,7 @@ async def get_reports_list(
                 "type": "single",  # 目前主要是单股分析
                 "format": "markdown",  # 主要格式
                 "status": doc.get("status", "completed"),
-                "created_at": created_at_tz.isoformat()
-                if created_at_tz
-                else str(created_at),
+                "created_at": _to_report_iso(created_at),
                 "analysis_date": doc.get("analysis_date", ""),
                 "analysts": doc.get("analysts", []),
                 "research_depth": doc.get("research_depth", 1),
@@ -290,20 +320,11 @@ async def get_report_detail(report_id: str, user: dict = Depends(get_current_use
             created_at = tasks_doc.get("created_at")
             updated_at = tasks_doc.get("completed_at") or created_at
 
-            # 转换时区：数据库中是 UTC 时间，转换为 UTC+8
-            created_at_tz = to_config_tz(created_at)
-            updated_at_tz = to_config_tz(updated_at)
-
-            def to_iso(x):
-                if hasattr(x, "isoformat"):
-                    return x.isoformat()
-                return x or ""
-
             stock_symbol = r.get(
                 "stock_symbol", r.get("stock_code", tasks_doc.get("stock_code", ""))
             )
             stock_name = r.get("stock_name")
-            if not stock_name:
+            if not stock_name or stock_name in {stock_symbol, f"股票{stock_symbol}"}:
                 stock_name = get_stock_name(stock_symbol)
 
             report = {
@@ -314,8 +335,8 @@ async def get_report_detail(report_id: str, user: dict = Depends(get_current_use
                 "model_info": r.get("model_info", "Unknown"),  # 🔥 添加模型信息字段
                 "analysis_date": r.get("analysis_date", ""),
                 "status": r.get("status", "completed"),
-                "created_at": to_iso(created_at_tz),
-                "updated_at": to_iso(updated_at_tz),
+                "created_at": _to_report_iso(created_at),
+                "updated_at": _to_report_iso(updated_at),
                 "analysts": r.get("analysts", []),
                 "research_depth": r.get("research_depth", 1),
                 "summary": r.get("summary", ""),
@@ -333,16 +354,12 @@ async def get_report_detail(report_id: str, user: dict = Depends(get_current_use
             # 转换为详细格式（analysis_reports 命中）
             stock_symbol = doc.get("stock_symbol", "")
             stock_name = doc.get("stock_name")
-            if not stock_name:
+            if not stock_name or stock_name in {stock_symbol, f"股票{stock_symbol}"}:
                 stock_name = get_stock_name(stock_symbol)
 
             # 获取时间（数据库中是 UTC 时间，需要转换为 UTC+8）
             created_at = doc.get("created_at", datetime.utcnow())
             updated_at = doc.get("updated_at", datetime.utcnow())
-
-            # 转换时区：数据库中是 UTC 时间，转换为 UTC+8
-            created_at_tz = to_config_tz(created_at)
-            updated_at_tz = to_config_tz(updated_at)
 
             report = {
                 "id": str(doc["_id"]),
@@ -352,12 +369,8 @@ async def get_report_detail(report_id: str, user: dict = Depends(get_current_use
                 "model_info": doc.get("model_info", "Unknown"),  # 🔥 添加模型信息字段
                 "analysis_date": doc.get("analysis_date", ""),
                 "status": doc.get("status", "completed"),
-                "created_at": created_at_tz.isoformat()
-                if created_at_tz
-                else str(created_at),
-                "updated_at": updated_at_tz.isoformat()
-                if updated_at_tz
-                else str(updated_at),
+                "created_at": _to_report_iso(created_at),
+                "updated_at": _to_report_iso(updated_at),
                 "analysts": doc.get("analysts", []),
                 "research_depth": doc.get("research_depth", 1),
                 "summary": doc.get("summary", ""),

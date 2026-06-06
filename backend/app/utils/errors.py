@@ -41,6 +41,8 @@ class ErrorFormatter:
         "openai": "OpenAI",
         "openrouter": "OpenRouter",
         "aihubmix": "AiHubMix",
+        "minimax-token-plan": "MiniMax Token Plan",
+        "minimax": "MiniMax",
         "anthropic": "Anthropic Claude",
         "glm": "智谱AI",
         "zhipu": "智谱AI",

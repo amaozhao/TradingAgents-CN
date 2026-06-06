@@ -523,13 +523,38 @@ class _AKShareProviderMixin2:
 
             # 获取历史数据
             def fetch_historical_data():
-                return self.ak.stock_zh_a_hist(
-                    symbol=code,
-                    period=ak_period,
-                    start_date=start_date_formatted,
-                    end_date=end_date_formatted,
-                    adjust="qfq",  # 前复权
-                )
+                try:
+                    return self.ak.stock_zh_a_hist(
+                        symbol=code,
+                        period=ak_period,
+                        start_date=start_date_formatted,
+                        end_date=end_date_formatted,
+                        adjust="qfq",  # 前复权
+                    )
+                except Exception as hist_error:
+                    logger.warning(
+                        "⚠️ AKShare stock_zh_a_hist 获取%s失败，尝试直连备用接口: %s",
+                        code,
+                        hist_error,
+                    )
+                    if ak_period != "daily":
+                        raise
+
+                    full_symbol = self._get_full_symbol(code)
+                    if full_symbol.endswith(".SS"):
+                        fallback_symbol = f"sh{code}"
+                    elif full_symbol.endswith(".SZ"):
+                        fallback_symbol = f"sz{code}"
+                    elif full_symbol.endswith(".BJ"):
+                        fallback_symbol = f"bj{code}"
+                    else:
+                        fallback_symbol = code
+                    return self.ak.stock_zh_a_daily(
+                        symbol=fallback_symbol,
+                        start_date=start_date_formatted,
+                        end_date=end_date_formatted,
+                        adjust="qfq",
+                    )
 
             hist_df = await asyncio.to_thread(fetch_historical_data)
 

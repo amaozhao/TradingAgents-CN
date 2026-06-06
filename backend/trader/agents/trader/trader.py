@@ -3,6 +3,10 @@ import importlib
 
 from langchain_core.messages import AIMessage
 
+from trader.agents.risk.management.common import (
+    DEFAULT_RISK_LLM_TIMEOUT_SECONDS,
+    invoke_with_timeout,
+)
 from trader.agents.schemas import TraderProposal, render_trader_proposal
 from trader.agents.utils.structured import (
     bind_structured,
@@ -119,12 +123,22 @@ def create_trader(llm, memory=None):
         logger.debug(f"💰 [DEBUG] 准备调用LLM，系统提示包含货币: {currency}")
         logger.debug(f"💰 [DEBUG] 系统提示中的关键部分: 目标价格({currency})")
 
-        trader_plan = invoke_structured_or_freetext(
-            structured_llm,
-            llm,
-            messages,
-            render_trader_proposal,
-            "Trader",
+        trader_plan = invoke_with_timeout(
+            lambda: invoke_structured_or_freetext(
+                structured_llm,
+                llm,
+                messages,
+                render_trader_proposal,
+                "Trader",
+            ),
+            timeout_seconds=DEFAULT_RISK_LLM_TIMEOUT_SECONDS,
+            operation_name="Trader",
+            fallback_value=(
+                f"交易员兜底建议：模型响应超时。基于当前投资计划和风险控制原则，"
+                f"对 {company_name} 暂采取持有策略，等待更明确的趋势、成交量和基本面确认。"
+                "如后续信号改善，可分批执行；如跌破关键支撑或基本面恶化，应降低仓位。"
+                "最终交易建议: **持有**"
+            ),
         )
 
         logger.debug("💰 [DEBUG] LLM调用完成")

@@ -1,21 +1,52 @@
 # ruff: noqa: F401,F403,F405,F821
+def _normalize_provider_secret_fields(
+    data: Dict[str, Any], *, preserve_existing_on_blank: bool
+) -> Dict[str, Any]:
+    """Validate provider secrets without logging or echoing their values."""
+    keys_module = importlib.import_module("app.utils.keys")
+    is_valid_api_key = getattr(keys_module, "is_valid_api_key")
+    should_skip_api_key_update = getattr(keys_module, "should_skip_api_key_update")
+
+    for field, label in (("api_key", "API Key"), ("api_secret", "API Secret")):
+        if field not in data:
+            continue
+
+        raw_value = data[field]
+        if raw_value is None:
+            if preserve_existing_on_blank:
+                data.pop(field, None)
+            else:
+                data[field] = ""
+            continue
+
+        value = str(raw_value).strip()
+        if value == "" or should_skip_api_key_update(value):
+            if preserve_existing_on_blank:
+                data.pop(field, None)
+            else:
+                data[field] = ""
+            continue
+
+        if not is_valid_api_key(value):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{label} 无效：长度必须大于 10 个字符，且不能是占位符或缩略值",
+            )
+
+        data[field] = value
+
+    return data
+
+
 @router.post("/llm/providers", response_model=ConfigApiResponse)
 async def add_llm_provider(
     request: LLMProviderRequest, current_user: User = Depends(get_current_user)
 ):
     """添加大模型厂家"""
     try:
-        getattr(importlib.import_module("app.utils.keys"), "should_skip_api_key_update")
-
-        provider_data = request.model_dump()
-
-        # Provider catalog endpoints must not persist secrets directly. Secret
-        # values are managed through dedicated config paths/env bridges.
-        if "api_key" in provider_data:
-            provider_data["api_key"] = ""
-
-        if "api_secret" in provider_data:
-            provider_data["api_secret"] = ""
+        provider_data = _normalize_provider_secret_fields(
+            request.model_dump(exclude_unset=True), preserve_existing_on_blank=False
+        )
 
         provider = LLMProvider(**provider_data)
         provider_id = await config_service.add_llm_provider(provider)
@@ -52,17 +83,9 @@ async def update_llm_provider(
 ):
     """更新大模型厂家"""
     try:
-        getattr(importlib.import_module("app.utils.keys"), "should_skip_api_key_update")
-
-        update_data = request.model_dump(exclude_unset=True)
-
-        # Provider catalog endpoints must not persist secrets directly. Secret
-        # values are managed through dedicated config paths/env bridges.
-        if "api_key" in update_data:
-            update_data["api_key"] = ""
-
-        if "api_secret" in update_data:
-            update_data["api_secret"] = ""
+        update_data = _normalize_provider_secret_fields(
+            request.model_dump(exclude_unset=True), preserve_existing_on_blank=True
+        )
 
         success = await config_service.update_llm_provider(provider_id, update_data)
 
@@ -76,7 +99,7 @@ async def update_llm_provider(
                     action="update_llm_provider",
                     details={
                         "provider_id": provider_id,
-                        "changed_keys": list(request.model_dump().keys()),
+                        "changed_keys": list(update_data.keys()),
                     },
                     success=True,
                 )

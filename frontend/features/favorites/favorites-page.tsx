@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { favoritesApi, type FavoriteItem } from "@/libs/api/favorites"
 import { stockSyncApi } from "@/libs/api/stock-sync"
+import { tagsApi } from "@/libs/api/tags"
 import { formatDateTime } from "@/libs/utils/datetime"
 
 function unwrap<T>(response: { data: T }) {
@@ -33,8 +34,10 @@ export function FavoritesPage() {
   const [keyword, setKeyword] = useState("")
   const [open, setOpen] = useState(false)
   const [batchSyncOpen, setBatchSyncOpen] = useState(false)
+  const [tagDialogOpen, setTagDialogOpen] = useState(false)
   const [removeTarget, setRemoveTarget] = useState<FavoriteItem | null>(null)
   const [form, setForm] = useState({ symbol: "", stock_name: "", market: "A股", tags: "", notes: "" })
+  const [newTagName, setNewTagName] = useState("")
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([])
   const [batchSyncForm, setBatchSyncForm] = useState({
     syncHistorical: true,
@@ -45,6 +48,7 @@ export function FavoritesPage() {
   })
   const listQuery = useQuery({ queryKey: ["favorites", "list"], queryFn: () => favoritesApi.list().then(unwrap), retry: false })
   const tagsQuery = useQuery({ queryKey: ["favorites", "tags"], queryFn: () => favoritesApi.tags().then(unwrap), retry: false })
+  const tagItemsQuery = useQuery({ queryKey: ["tags", "list"], queryFn: () => tagsApi.list().then(unwrap), retry: false })
 
   const addMutation = useMutation({
     mutationFn: () => favoritesApi.add({ ...form, tags: form.tags.split(",").map((item) => item.trim()).filter(Boolean) }),
@@ -90,6 +94,25 @@ export function FavoritesPage() {
     },
     onError: (error) => toast.error(error.message)
   })
+  const createTagMutation = useMutation({
+    mutationFn: (name: string) => tagsApi.create({ name }),
+    onSuccess: () => {
+      toast.success("标签已添加")
+      setNewTagName("")
+      void queryClient.invalidateQueries({ queryKey: ["tags"] })
+      void queryClient.invalidateQueries({ queryKey: ["favorites", "tags"] })
+    },
+    onError: (error) => toast.error(error.message)
+  })
+  const removeTagMutation = useMutation({
+    mutationFn: (id: string) => tagsApi.remove(id),
+    onSuccess: () => {
+      toast.success("标签已删除")
+      void queryClient.invalidateQueries({ queryKey: ["tags"] })
+      void queryClient.invalidateQueries({ queryKey: ["favorites"] })
+    },
+    onError: (error) => toast.error(error.message)
+  })
 
   const favorites = (listQuery.data || []).filter((item) => {
     const text = `${symbolOf(item)} ${item.stock_name} ${(item.tags || []).join(" ")}`.toLowerCase()
@@ -116,6 +139,7 @@ export function FavoritesPage() {
               <Database className="mr-2 size-4" />
               批量同步数据 ({selectedSymbols.length})
             </Button>
+            <Button variant="outline" onClick={() => setTagDialogOpen(true)}>标签管理</Button>
             <Button variant="outline" onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending}><RefreshCw className="mr-2 size-4" />同步实时行情</Button>
             <Button onClick={() => setOpen(true)}><Plus className="mr-2 size-4" />添加自选股</Button>
           </div>
@@ -250,6 +274,36 @@ export function FavoritesPage() {
             >
               开始同步
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={tagDialogOpen} onOpenChange={setTagDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>标签管理</DialogTitle>
+            <DialogDescription>维护自选股可用标签。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <div className="grid flex-1 gap-2">
+                <Label htmlFor="new-tag-name">新标签名称</Label>
+                <Input id="new-tag-name" value={newTagName} onChange={(event) => setNewTagName(event.target.value)} />
+              </div>
+              <Button className="self-end" onClick={() => createTagMutation.mutate(newTagName.trim())} disabled={!newTagName.trim() || createTagMutation.isPending}>
+                添加标签
+              </Button>
+            </div>
+            <div className="space-y-2 rounded-md border p-3">
+              {(tagItemsQuery.data || []).length ? (tagItemsQuery.data || []).map((tag) => (
+                <div key={tag.id} className="flex items-center justify-between gap-3 rounded-md border p-2">
+                  <div>
+                    <div className="font-medium">{tag.name}</div>
+                    <div className="text-xs text-muted-foreground">排序 {tag.sort_order}</div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => removeTagMutation.mutate(tag.id)}>删除</Button>
+                </div>
+              )) : <EmptyState title="暂无标签" />}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

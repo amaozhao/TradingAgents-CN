@@ -174,6 +174,16 @@ def get_provider_and_url_by_model_sync(model_name: str) -> dict:
                         else:
                             logger.warning(f"⚠️ [同步查询] 未找到 {provider} 的 API Key")
 
+                    normalize_provider_key = getattr(
+                        importlib.import_module("trader.llm.clients.providers"),
+                        "normalize_provider_key",
+                    )
+                    default_backend_url = getattr(
+                        importlib.import_module("trader.llm.clients.providers"),
+                        "default_backend_url",
+                    )
+                    provider_key = normalize_provider_key(provider)
+
                     # 确定 backend_url
                     backend_url = None
                     if api_base:
@@ -192,21 +202,25 @@ def get_provider_and_url_by_model_sync(model_name: str) -> dict:
                             f"⚠️ [同步查询] 厂家 {provider} 没有配置 default_base_url，使用硬编码默认值"
                         )
 
-                    normalize_provider_key = getattr(
-                        importlib.import_module("trader.llm.clients.providers"),
-                        "normalize_provider_key",
-                    )
-                    default_backend_url = getattr(
-                        importlib.import_module("trader.llm.clients.providers"),
-                        "default_backend_url",
-                    )
-
-                    provider_key = normalize_provider_key(provider)
                     if (
                         provider_key == "qwen"
                         and backend_url == "https://dashscope.aliyuncs.com/api/v1"
                     ):
                         backend_url = default_backend_url(provider_key)
+                    elif (
+                        provider_key == "minimax-token-plan"
+                        and "api.minimaxi.com/anthropic"
+                        not in str(backend_url).rstrip("/")
+                    ):
+                        backend_url = (
+                            provider_doc.get("default_base_url")
+                            if provider_doc and provider_doc.get("default_base_url")
+                            else default_backend_url(provider_key)
+                        )
+                        logger.info(
+                            "✅ [同步查询] MiniMax Token Plan 使用 Anthropic 兼容 API: %s",
+                            backend_url,
+                        )
 
                     return {
                         "provider": provider_key,
@@ -520,6 +534,7 @@ def create_analysis_config(
     config["llm_provider"] = llm_provider
     config["deep_think_llm"] = deep_model
     config["quick_think_llm"] = quick_model
+    config["checkpoint_enabled"] = True
 
     # 根据研究深度调整配置 - 支持5个级别（与Web界面保持一致）
     if research_depth == "快速":

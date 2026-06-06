@@ -5,5 +5,12 @@
     "input_price_per_1k": 0.0,
     "output_price_per_1k": 0.0,
     "currency": "CNY"
+  },
+  {
+    "provider": "minimax-token-plan",
+    "model_name": "MiniMax-M3",
+    "input_price_per_1k": 0.0,
+    "output_price_per_1k": 0.0,
+    "currency": "CNY"
   }
 ]

@@ -6,8 +6,10 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table/data-table"
 import { EChartPanel } from "@/components/charts/e-chart-panel"
 import { PageHeader } from "@/components/feedback/page-header"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { getUsageRecords, getUsageStatistics, type UsageRecord } from "@/libs/api/usage"
+import { downloadJson } from "@/libs/utils/download"
 
 function unwrap<T>(value: T | { data: T }): T {
   return value && typeof value === "object" && "data" in value ? (value as { data: T }).data : (value as T)
@@ -43,7 +45,22 @@ export function TokenStatisticsPage() {
 
   return (
     <div>
-      <PageHeader title="Token使用统计" description="Token使用情况、成本分析和统计图表。" />
+      <PageHeader
+        title="Token使用统计"
+        description="Token使用情况、成本分析和统计图表。"
+        actions={
+          <Button
+            variant="outline"
+            onClick={() => downloadJson({
+              exported_at: new Date().toISOString(),
+              statistics: stats || null,
+              records
+            }, `token-statistics-${new Date().toISOString().slice(0, 10)}.json`)}
+          >
+            导出统计
+          </Button>
+        }
+      />
       <section className="mb-6 grid gap-4 md:grid-cols-4">
         <Metric title="总请求数" value={stats?.total_requests || 0} />
         <Metric title="总Token数" value={(stats?.total_input_tokens || 0) + (stats?.total_output_tokens || 0)} />

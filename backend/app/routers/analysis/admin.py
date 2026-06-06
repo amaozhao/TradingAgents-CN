@@ -15,6 +15,33 @@ async def get_task_details(
 # ==================== 僵尸任务管理 ====================
 
 
+async def _delete_analysis_task_structured_rows(task_id: str) -> int:
+    init_postgres = getattr(importlib.import_module("app.core.session"), "init_postgres")
+    get_session_factory = getattr(
+        importlib.import_module("app.core.session"), "get_session_factory"
+    )
+    text = getattr(importlib.import_module("sqlalchemy"), "text")
+
+    await init_postgres()
+    async with get_session_factory()() as session:
+        structured_result = await session.execute(
+            text("delete from analysis_tasks where task_id = :task_id"),
+            {"task_id": task_id},
+        )
+        document_result = await session.execute(
+            text(
+                "delete from postgres_documents "
+                "where collection = 'analysis_tasks' "
+                "and payload->>'task_id' = :task_id"
+            ),
+            {"task_id": task_id},
+        )
+        await session.commit()
+        return int(structured_result.rowcount or 0) + int(
+            document_result.rowcount or 0
+        )
+
+
 @router.get("/admin/zombie-tasks", response_model=ZombieTasksResponse)
 async def get_zombie_tasks(
     max_running_hours: int = Query(
@@ -136,22 +163,17 @@ async def delete_task(task_id: str, user: dict = Depends(get_current_user)):
 
         # 从 PostgreSQL 中删除任务
         db = get_postgres_db()
-        task_document = await db.analysis_tasks.find_one({"task_id": task_id})
-
         result = await db.analysis_tasks.delete_one({"task_id": task_id})
-        if result.deleted_count > 0:
-            await dual_write_hot_document(
-                "analysis_tasks",
-                {
-                    **(task_document or {"task_id": task_id}),
-                    "task_id": task_id,
-                    "deleted": True,
-                    "updated_at": datetime.now(timezone.utc).replace(tzinfo=None),
-                },
-            )
 
-        if result.deleted_count > 0:
-            logger.info(f"✅ 任务 {task_id} 已删除")
+        structured_deleted = await _delete_analysis_task_structured_rows(task_id)
+
+        if result.deleted_count > 0 or structured_deleted > 0:
+            logger.info(
+                "✅ 任务 %s 已删除: document_store=%s structured=%s",
+                task_id,
+                result.deleted_count,
+                structured_deleted,
+            )
             return {"success": True, "message": "任务已删除"}
         else:
             logger.warning(f"⚠️ 任务 {task_id} 未找到")

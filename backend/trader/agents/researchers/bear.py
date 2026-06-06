@@ -1,5 +1,7 @@
 import importlib
 
+from trader.agents.risk.management.common import invoke_risk_llm_with_timeout
+
 # 导入统一日志系统
 from trader.utils.logging.init import get_logger
 
@@ -137,7 +139,17 @@ def create_bear_researcher(llm, memory):
 请确保所有回答都使用中文。
 """
 
-        response = llm.invoke(prompt)
+        fallback = (
+            f"看跌研究员兜底：模型响应超时。基于已有市场、情绪、新闻和基本面报告，"
+            f"{company_name}仍需关注估值回落、增长不及预期、市场波动和情绪转弱风险；"
+            "在信号不充分时，应反驳过度乐观判断并强调仓位控制。"
+        )
+        response = invoke_risk_llm_with_timeout(
+            llm,
+            prompt,
+            analyst_name="Bear Researcher",
+            fallback_content=fallback,
+        )
 
         argument = f"Bear Analyst: {response.content}"
 

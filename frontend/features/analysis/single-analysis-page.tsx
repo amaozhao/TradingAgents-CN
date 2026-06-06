@@ -5,7 +5,7 @@ import { AlertCircle, BarChart3, Check, Cpu, ExternalLink, FileText, Info, Messa
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
 
@@ -97,10 +97,10 @@ export function SingleAnalysisPage() {
     }
   })
 
-  const market = form.watch("market_type")
-  const stockSymbol = form.watch("stock_symbol")
-  const researchDepth = form.watch("research_depth")
-  const selectedAnalysts = form.watch("analysts")
+  const market = useWatch({ control: form.control, name: "market_type" })
+  const stockSymbol = useWatch({ control: form.control, name: "stock_symbol" })
+  const researchDepth = useWatch({ control: form.control, name: "research_depth" })
+  const selectedAnalysts = useWatch({ control: form.control, name: "analysts" })
   const validation = stockSymbol.trim() ? validateStockCode(stockSymbol, market) : null
   const selectedDepth = depthOptions.find((depth) => depth.value === researchDepth) || depthOptions[2]
 

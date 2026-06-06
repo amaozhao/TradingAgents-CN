@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { FavoritesPage } from "@/features/favorites/favorites-page"
 import { stockSyncApi } from "@/libs/api/stock-sync"
+import { tagsApi } from "@/libs/api/tags"
 
 vi.mock("@/libs/api/favorites", () => ({
   favoritesApi: {
@@ -26,6 +27,21 @@ vi.mock("@/libs/api/favorites", () => ({
 vi.mock("@/libs/api/stock-sync", () => ({
   stockSyncApi: {
     syncBatch: vi.fn()
+  }
+}))
+
+vi.mock("@/libs/api/tags", () => ({
+  tagsApi: {
+    list: vi.fn(async () => ({
+      success: true,
+      data: [
+        { id: "tag-1", name: "银行", color: "#2563eb", sort_order: 1, created_at: "2026-06-01T00:00:00Z", updated_at: "2026-06-01T00:00:00Z" }
+      ],
+      message: "ok"
+    })),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn()
   }
 }))
 
@@ -71,5 +87,26 @@ describe("FavoritesPage", () => {
       data_source: "tushare",
       days: 365
     })
+  })
+
+  it("manages favorite tags from the Vue-compatible tag dialog", async () => {
+    const user = userEvent.setup()
+    vi.mocked(tagsApi.create).mockResolvedValue({
+      success: true,
+      data: { id: "tag-2", name: "白酒", color: "#16a34a", sort_order: 2, created_at: "2026-06-01T00:00:00Z", updated_at: "2026-06-01T00:00:00Z" },
+      message: "ok"
+    })
+
+    renderWithQueryClient(<FavoritesPage />)
+
+    await user.click(await screen.findByRole("button", { name: "标签管理" }))
+    expect(screen.getByRole("dialog", { name: "标签管理" })).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText("新标签名称"), "白酒")
+    await user.click(screen.getByRole("button", { name: "添加标签" }))
+
+    await waitFor(() =>
+      expect(tagsApi.create).toHaveBeenCalledWith({ name: "白酒" })
+    )
   })
 })

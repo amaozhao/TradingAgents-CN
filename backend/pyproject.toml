@@ -107,5 +107,5 @@ trading_agents = "cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["app*", "cli*", "trader*"]
+include = ["app*", "cli*", "support*", "trader*"]
 exclude = ["tests*", "docs*", "scripts*", "data*", "logs*", "reports*", "results*", "eval_results*", "upstream_contribution*"]

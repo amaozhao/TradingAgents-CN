@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { analysisApi } from "@/libs/api/analysis"
-import { configApi } from "@/libs/api/config"
+import { configApi, type LLMConfig } from "@/libs/api/config"
 import { cn } from "@/libs/utils"
 
 const analysts = [
@@ -31,6 +31,12 @@ const depthOptions = [
   { value: "4", label: "4级 - 深度分析", hint: "10-15分钟/只" },
   { value: "5", label: "5级 - 全面分析", hint: "15-25分钟/只" }
 ]
+
+const fallbackModels = [
+  { provider: "dashscope", model_name: "qwen-turbo", model_display_name: "通义千问 Turbo", enabled: true, max_tokens: 2000, temperature: 0.7, timeout: 60, retry_times: 2 },
+  { provider: "dashscope", model_name: "qwen-plus", model_display_name: "通义千问 Plus", enabled: true, max_tokens: 4000, temperature: 0.7, timeout: 60, retry_times: 2 },
+  { provider: "dashscope", model_name: "qwen-max", model_display_name: "通义千问 Max", enabled: true, max_tokens: 8000, temperature: 0.7, timeout: 60, retry_times: 2 }
+] satisfies LLMConfig[]
 
 type Market = "A股" | "港股" | "美股"
 
@@ -88,6 +94,16 @@ function getSharedMarket(symbols: ParsedSymbol[]) {
   return markets.size === 1 ? Array.from(markets)[0] : undefined
 }
 
+function getModelLabel(model: LLMConfig) {
+  return `${model.model_display_name || model.model_name} · ${model.provider}`
+}
+
+function pickConfiguredModel(models: LLMConfig[], preferred: string | undefined, fallback: string) {
+  if (preferred && models.some((model) => model.model_name === preferred)) return preferred
+  if (models.some((model) => model.model_name === fallback)) return fallback
+  return models[0]?.model_name || fallback
+}
+
 export function BatchAnalysisPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -100,20 +116,38 @@ export function BatchAnalysisPage() {
   const [includeSentiment, setIncludeSentiment] = useState(true)
   const [includeRisk, setIncludeRisk] = useState(true)
   const [language, setLanguage] = useState("zh-CN")
+  const [modelOptions, setModelOptions] = useState<LLMConfig[]>(fallbackModels)
   const [quickAnalysisModel, setQuickAnalysisModel] = useState("qwen-turbo")
   const [deepAnalysisModel, setDeepAnalysisModel] = useState("qwen-max")
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    configApi.getDefaultModels()
-      .then((models) => {
-        setQuickAnalysisModel(models.quick_analysis_model)
-        setDeepAnalysisModel(models.deep_analysis_model)
-      })
-      .catch(() => {
-        setQuickAnalysisModel("qwen-plus")
-        setDeepAnalysisModel("qwen-max")
-      })
+    let mounted = true
+
+    async function loadModelConfig() {
+      const [modelsResult, defaultsResult] = await Promise.allSettled([
+        configApi.getLLMConfigs(),
+        configApi.getDefaultModels()
+      ])
+
+      if (!mounted) return
+
+      const enabledModels = modelsResult.status === "fulfilled"
+        ? modelsResult.value.filter((model) => model.enabled)
+        : []
+      const options = enabledModels.length ? enabledModels : fallbackModels
+      const defaults = defaultsResult.status === "fulfilled" ? defaultsResult.value : undefined
+
+      setModelOptions(options)
+      setQuickAnalysisModel(pickConfiguredModel(options, defaults?.quick_analysis_model, "qwen-turbo"))
+      setDeepAnalysisModel(pickConfiguredModel(options, defaults?.deep_analysis_model, "qwen-max"))
+    }
+
+    void loadModelConfig()
+
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const { parsed, invalid } = useMemo(() => parseStockInput(stockInput), [stockInput])
@@ -151,6 +185,9 @@ export function BatchAnalysisPage() {
       return
     }
 
+    const effectiveQuickAnalysisModel = quickAnalysisModel || modelOptions[0]?.model_name || "qwen-turbo"
+    const effectiveDeepAnalysisModel = deepAnalysisModel || modelOptions[0]?.model_name || "qwen-max"
+
     setSubmitting(true)
     try {
       const response = await analysisApi.startBatchAnalysis({
@@ -165,8 +202,8 @@ export function BatchAnalysisPage() {
           include_sentiment: includeSentiment,
           include_risk: includeRisk,
           language,
-          quick_analysis_model: quickAnalysisModel,
-          deep_analysis_model: deepAnalysisModel
+          quick_analysis_model: effectiveQuickAnalysisModel,
+          deep_analysis_model: effectiveDeepAnalysisModel
         }
       })
 
@@ -327,11 +364,25 @@ export function BatchAnalysisPage() {
             <CardContent className="space-y-5">
               <div className="grid gap-2">
                 <Label htmlFor="quick-model">快速分析模型</Label>
-                <Input id="quick-model" value={quickAnalysisModel} onChange={(event) => setQuickAnalysisModel(event.target.value)} />
+                <Select value={quickAnalysisModel || modelOptions[0]?.model_name} onValueChange={(value) => value && setQuickAnalysisModel(value)}>
+                  <SelectTrigger id="quick-model"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {modelOptions.map((model) => (
+                      <SelectItem key={`quick-${model.provider}-${model.model_name}`} value={model.model_name}>{getModelLabel(model)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="deep-model">深度分析模型</Label>
-                <Input id="deep-model" value={deepAnalysisModel} onChange={(event) => setDeepAnalysisModel(event.target.value)} />
+                <Select value={deepAnalysisModel || modelOptions[0]?.model_name} onValueChange={(value) => value && setDeepAnalysisModel(value)}>
+                  <SelectTrigger id="deep-model"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {modelOptions.map((model) => (
+                      <SelectItem key={`deep-${model.provider}-${model.model_name}`} value={model.model_name}>{getModelLabel(model)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-3">
                 <label className="flex items-start gap-3 text-sm">

@@ -1,5 +1,9 @@
 import time
 
+from trader.agents.risk.management.common import (
+    DEFAULT_RISK_LLM_TIMEOUT_SECONDS,
+    invoke_with_timeout,
+)
 from trader.agents.schemas import ResearchPlan, render_research_plan
 from trader.agents.utils.structured import (
     bind_structured,
@@ -94,12 +98,21 @@ def create_research_manager(llm, memory=None):
         # ⏱️ 记录开始时间
         start_time = time.time()
 
-        investment_plan = invoke_structured_or_freetext(
-            structured_llm,
-            llm,
-            prompt,
-            render_research_plan,
-            "Research Manager",
+        investment_plan = invoke_with_timeout(
+            lambda: invoke_structured_or_freetext(
+                structured_llm,
+                llm,
+                prompt,
+                render_research_plan,
+                "Research Manager",
+            ),
+            timeout_seconds=DEFAULT_RISK_LLM_TIMEOUT_SECONDS,
+            operation_name="Research Manager",
+            fallback_value=(
+                "研究经理兜底计划：模型响应超时。综合当前市场、情绪、新闻、基本面和多空辩论，"
+                "建议暂以持有为主，等待价格趋势和基本面数据进一步确认。若后续趋势改善且风险可控，"
+                "可分批加仓；若关键支撑跌破或基本面恶化，应降低仓位。评级：Hold。"
+            ),
         )
 
         # ⏱️ 记录结束时间

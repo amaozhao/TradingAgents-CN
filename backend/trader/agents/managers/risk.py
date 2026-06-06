@@ -1,5 +1,6 @@
 import time
 
+from trader.agents.risk.management.common import invoke_risk_llm_with_timeout
 from trader.agents.utils.instruments import build_instrument_context
 
 # 导入统一日志系统
@@ -85,7 +86,22 @@ def create_risk_manager(llm, memory):
                 # ⏱️ 记录开始时间
                 start_time = time.time()
 
-                response = llm.invoke(prompt)
+                fallback = f"""**建议：持有**
+
+风险经理模型响应超时。基于风险控制原则，当前先对{company_name}采取持有策略，等待更明确的市场信号后再调整。
+
+**风险控制要点：**
+1. 不在模型响应不完整时扩大仓位
+2. 关注价格趋势、成交量和基本面变化是否继续验证交易计划
+3. 如跌破关键支撑或基本面恶化，应降低风险敞口
+4. 如趋势和基本面继续改善，可考虑分批执行而非一次性重仓
+"""
+                response = invoke_risk_llm_with_timeout(
+                    llm,
+                    prompt,
+                    analyst_name="Risk Manager",
+                    fallback_content=fallback,
+                )
 
                 # ⏱️ 记录结束时间
                 elapsed_time = time.time() - start_time
