@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import os
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
+from app.core.config import settings
 from app.services.config import config_service
 
 
@@ -58,8 +58,9 @@ class ConfigProvider:
             ]
             found = None
             for ek in candidates:
-                if ek in os.environ:
-                    found = os.environ.get(ek)
+                value = settings.value(ek, None)
+                if value is not None:
+                    found = value
                     break
             if found is not None:
                 merged[k] = found
@@ -98,8 +99,9 @@ class ConfigProvider:
                 str(key).replace(".", "_").replace(" ", "_").upper(),
             ]
             for ek in candidates:
-                if ek in os.environ:
-                    return os.environ.get(ek)
+                value = settings.value(ek, None)
+                if value is not None:
+                    return value
             return None
 
         sens_patterns = ("key", "secret", "password", "token", "client_secret")

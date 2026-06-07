@@ -11,9 +11,14 @@
     python scripts/pe/pb/fix/test.py 600036
 """
 
+import argparse
+import asyncio
 import importlib
 import logging
 import sys
+import traceback
+
+from app.core.config import settings
 
 # 配置日志
 logging.basicConfig(
@@ -24,7 +29,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def test_parse_postgres_financial_data(code: str):
+def check_parse_postgres_financial_data(
+    code: str, public_metrics: dict[str, object] | None = None
+):
     """测试 PostgreSQL 财务数据解析（三层降级逻辑）"""
     logger.info("=" * 80)
     logger.info("🧪 测试 1: _parse_postgres_financial_data 三层降级逻辑")
@@ -62,8 +69,24 @@ def test_parse_postgres_financial_data(code: str):
     logger.info("\n🔧 调用 _parse_postgres_financial_data...")
 
     try:
-        # 模拟 financial_data（使用 basic_info 作为输入）
-        metrics = provider._parse_postgres_financial_data(basic_info, 41.86)
+        financial_input = dict(basic_info)
+        price = 41.86
+        if public_metrics:
+            market_cap = public_metrics.get("market_cap") or 0
+            price = public_metrics.get("price") or price
+            financial_input.update(
+                {
+                    "pe": public_metrics.get("pe"),
+                    "pb": public_metrics.get("pb"),
+                    "pe_ttm": public_metrics.get("pe_ttm"),
+                    "pb_mrq": public_metrics.get("pb_mrq"),
+                    "total_mv": market_cap,
+                    "money_cap": market_cap * 10000,
+                }
+            )
+
+        # 模拟 financial_data（使用基础信息，并注入真实免费公开接口返回的估值）
+        metrics = provider._parse_postgres_financial_data(financial_input, price)
 
         logger.info("\n✅ 解析成功！")
         logger.info(f"   PE: {metrics.get('pe', 'N/A')}")
@@ -81,7 +104,6 @@ def test_parse_postgres_financial_data(code: str):
 
     except Exception as e:
         logger.error(f"❌ 解析失败: {e}")
-        traceback = importlib.import_module("traceback")
         logger.error(traceback.format_exc())
         return False
 
@@ -89,14 +111,14 @@ def test_parse_postgres_financial_data(code: str):
         client.close()
 
 
-def test_realtime_metrics(code: str):
+async def check_realtime_metrics(code: str):
     """测试 realtime_metrics 的异步客户端兼容性"""
     logger.info("\n" + "=" * 80)
     logger.info("🧪 测试 2: realtime_metrics 异步客户端兼容性")
     logger.info("=" * 80)
 
-    get_pe_pb_with_fallback = getattr(
-        importlib.import_module("trader.flows.metrics"), "get_pe_pb_with_fallback"
+    async_get_pe_pb_with_fallback = getattr(
+        importlib.import_module("trader.flows.metrics"), "async_get_pe_pb_with_fallback"
     )
     create_sync_client = getattr(
         importlib.import_module("app.db.store"), "create_sync_client"
@@ -108,7 +130,7 @@ def test_realtime_metrics(code: str):
     logger.info("\n🔧 测试 1: 使用同步客户端")
     try:
         sync_client = create_sync_client()
-        metrics = get_pe_pb_with_fallback(code6, sync_client)
+        metrics = await async_get_pe_pb_with_fallback(code6, sync_client)
 
         if metrics:
             logger.info("✅ 同步客户端测试成功")
@@ -121,7 +143,6 @@ def test_realtime_metrics(code: str):
         sync_client.close()
     except Exception as e:
         logger.error(f"❌ 同步客户端测试异常: {e}")
-        traceback = importlib.import_module("traceback")
         logger.error(traceback.format_exc())
 
     # 测试 2: 使用异步客户端（模拟诊断脚本的场景）
@@ -132,26 +153,25 @@ def test_realtime_metrics(code: str):
         )
         async_client = create_client()
 
-        metrics = get_pe_pb_with_fallback(code6, async_client)
+        metrics = await async_get_pe_pb_with_fallback(code6, async_client)
 
         if metrics:
             logger.info("✅ 异步客户端测试成功（已自动转换为同步）")
             logger.info(f"   PE: {metrics.get('pe', 'N/A')}")
             logger.info(f"   PB: {metrics.get('pb', 'N/A')}")
             logger.info(f"   数据来源: {metrics.get('source', 'N/A')}")
-            return True
+            return True, metrics
         else:
             logger.error("❌ 异步客户端测试失败：返回空")
-            return False
+            return False, {}
 
     except Exception as e:
         logger.error(f"❌ 异步客户端测试异常: {e}")
-        traceback = importlib.import_module("traceback")
         logger.error(traceback.format_exc())
-        return False
+        return False, {}
 
 
-def test_fundamentals_report(code: str):
+def check_fundamentals_report(code: str):
     """测试基本面分析报告生成"""
     logger.info("\n" + "=" * 80)
     logger.info("🧪 测试 3: 基本面分析报告生成")
@@ -209,12 +229,11 @@ def test_fundamentals_report(code: str):
 
     except Exception as e:
         logger.error(f"❌ 报告生成失败: {e}")
-        traceback = importlib.import_module("traceback")
         logger.error(traceback.format_exc())
         return False
 
 
-def main(code: str):
+async def main(code: str):
     """主函数"""
     logger.info("=" * 80)
     logger.info(f"🚀 测试 PE/PB 修复 - 股票代码: {code}")
@@ -222,16 +241,18 @@ def main(code: str):
 
     results = []
 
+    # 测试 2 先执行，确保用异步网络请求拿到真实免费公开估值数据。
+    result2, public_metrics = await check_realtime_metrics(code)
+
     # 测试 1
-    result1 = test_parse_postgres_financial_data(code)
+    result1 = check_parse_postgres_financial_data(code, public_metrics)
     results.append(("PostgreSQL 财务数据解析", result1))
 
     # 测试 2
-    result2 = test_realtime_metrics(code)
     results.append(("实时指标计算", result2))
 
     # 测试 3
-    result3 = test_fundamentals_report(code)
+    result3 = check_fundamentals_report(code)
     results.append(("基本面分析报告", result3))
 
     # 输出总结
@@ -255,9 +276,11 @@ def main(code: str):
     return all_passed
 
 
-if __name__ == "__main__":
-    import argparse
+def test_pe_pb_fix_flow():
+    assert asyncio.run(main(settings.TRADING_AGENTS_SMOKE_STOCK_CODE))
 
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="测试 PE/PB 修复",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -267,5 +290,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    success = main(args.code)
+    success = asyncio.run(main(args.code))
     sys.exit(0 if success else 1)

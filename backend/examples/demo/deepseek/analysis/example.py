@@ -8,26 +8,23 @@ import importlib
 
 # 导入日志模块
 import logging
-import os
 import sys
 
-from dotenv import load_dotenv
 
-from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 logger = logging.getLogger(__name__)
 
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def check_deepseek_config():
     """检查DeepSeek配置"""
     logger.debug("🔍 检查DeepSeek V3配置...")
 
-    api_key = os.getenv("DEEPSEEK_API_KEY")
-    base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    api_key = app_settings.text_value("DEEPSEEK_API_KEY")
+    base_url = app_settings.text_value("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
     if not api_key:
         logger.error("❌ 错误：未找到DeepSeek API密钥")

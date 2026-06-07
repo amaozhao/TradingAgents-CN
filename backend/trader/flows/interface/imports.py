@@ -10,6 +10,7 @@ from dateutil.relativedelta import relativedelta
 from openai import OpenAI
 from tqdm import tqdm
 
+from app.core.config import settings
 from trader.config.manager import config_manager
 from trader.utils.logging.init import setup_dataflow_logging
 from trader.utils.logging.manager import get_logger

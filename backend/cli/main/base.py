@@ -42,7 +42,7 @@ def run_analysis():
     config["llm_provider"] = selected_llm_provider_name
 
     if selected_llm_provider_name == "custom_openai":
-        custom_url = os.getenv("CUSTOM_OPENAI_BASE_URL", selections["backend_url"])
+        custom_url = settings.CUSTOM_OPENAI_BASE_URL or selections["backend_url"]
         config["custom_openai_base_url"] = custom_url
         config["backend_url"] = custom_url
 

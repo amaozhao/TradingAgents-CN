@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import importlib
-import os
 from unittest.mock import patch
 
 import pytest
 
+from app.core.runtime import runtime_env_snapshot
 from trader.llm.clients.keys import PROVIDER_API_KEY_ENV, get_api_key_env
 
 # ---- Mapping coverage -----------------------------------------------------
@@ -81,13 +81,24 @@ def test_case_insensitive_lookup():
 def cli_utils(monkeypatch):
     """Import cli.utils with a fresh environment so module-level state is consistent."""
     cli_utils_module = importlib.import_module("cli.utils")
-    return importlib.reload(cli_utils_module)
+    reloaded = importlib.reload(cli_utils_module)
+    reloaded._SESSION_CONFIG_OVERRIDES.clear()
+    yield reloaded
+    reloaded._SESSION_CONFIG_OVERRIDES.clear()
 
 
 def test_ensure_api_key_returns_existing(monkeypatch, cli_utils):
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-already-set")
+    cli_utils._SESSION_CONFIG_OVERRIDES["OPENAI_API_KEY"] = "sk-already-set"
     result = cli_utils.ensure_api_key("openai")
     assert result == "sk-already-set"
+
+
+def _redirect_backend_env(monkeypatch, tmp_path, cli_utils):
+    fake_utils_file = tmp_path / "backend" / "cli" / "utils.py"
+    fake_utils_file.parent.mkdir(parents=True, exist_ok=True)
+    fake_utils_file.write_text("", encoding="utf-8")
+    monkeypatch.setattr(cli_utils, "__file__", str(fake_utils_file))
+    return tmp_path / "backend" / ".env"
 
 
 def test_ensure_api_key_no_op_for_ollama(monkeypatch, cli_utils):
@@ -107,17 +118,17 @@ def test_ensure_api_key_unknown_provider_no_prompt(monkeypatch, cli_utils):
 
 
 def test_ensure_api_key_prompts_and_writes_to_env(monkeypatch, tmp_path, cli_utils):
-    """When key is missing, user-pasted value must be written to .env AND os.environ."""
+    """When key is missing, user-pasted value must be written to .env and runtime env."""
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
-    monkeypatch.chdir(tmp_path)
+    env_file = _redirect_backend_env(monkeypatch, tmp_path, cli_utils)
 
     fake_prompt = type("P", (), {"ask": staticmethod(lambda: "sk-deepseek-test")})()
     with patch.object(cli_utils.questionary, "password", return_value=fake_prompt):
         result = cli_utils.ensure_api_key("deepseek")
 
     assert result == "sk-deepseek-test"
-    assert os.environ["DEEPSEEK_API_KEY"] == "sk-deepseek-test"
-    env_file = tmp_path / ".env"
+    assert cli_utils._SESSION_CONFIG_OVERRIDES["DEEPSEEK_API_KEY"] == "sk-deepseek-test"
+    assert runtime_env_snapshot().get("DEEPSEEK_API_KEY") == "sk-deepseek-test"
     assert env_file.exists()
     assert "DEEPSEEK_API_KEY" in env_file.read_text()
     assert "sk-deepseek-test" in env_file.read_text()
@@ -126,17 +137,14 @@ def test_ensure_api_key_prompts_and_writes_to_env(monkeypatch, tmp_path, cli_uti
 def test_ensure_api_key_user_cancels_returns_none(monkeypatch, tmp_path, cli_utils):
     """Empty prompt response (user cancelled) must not write to .env."""
     monkeypatch.delenv("XAI_API_KEY", raising=False)
-    monkeypatch.chdir(tmp_path)
+    env_file = _redirect_backend_env(monkeypatch, tmp_path, cli_utils)
 
     fake_prompt = type("P", (), {"ask": staticmethod(lambda: None)})()
     with patch.object(cli_utils.questionary, "password", return_value=fake_prompt):
         result = cli_utils.ensure_api_key("xai")
 
     assert result is None
-    assert "XAI_API_KEY" not in os.environ
-    # .env may or may not exist depending on find_dotenv's walk, but if it
-    # does it must not contain the key.
-    env_file = tmp_path / ".env"
+    assert "XAI_API_KEY" not in runtime_env_snapshot()
     if env_file.exists():
         assert "XAI_API_KEY" not in env_file.read_text()
 
@@ -144,8 +152,7 @@ def test_ensure_api_key_user_cancels_returns_none(monkeypatch, tmp_path, cli_uti
 def test_ensure_api_key_updates_existing_env_file(monkeypatch, tmp_path, cli_utils):
     """An existing .env with other keys must be preserved on writeback."""
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-    monkeypatch.chdir(tmp_path)
-    env_file = tmp_path / ".env"
+    env_file = _redirect_backend_env(monkeypatch, tmp_path, cli_utils)
     env_file.write_text("OPENAI_API_KEY=sk-existing\nOTHER=value\n")
 
     fake_prompt = type("P", (), {"ask": staticmethod(lambda: "sk-openrouter-new")})()

@@ -6,11 +6,20 @@
 from typing import Dict
 
 import requests
+from app.core.config import settings
 
 # 配置
-BASE_URL = "http://localhost:8000"
-USERNAME = "admin"
-PASSWORD = "admin123"
+BASE_URL = settings.TRADING_AGENTS_API_BASE_URL.rstrip("/")
+USERNAME = (
+    settings.TRADING_AGENTS_API_USERNAME
+    or settings.TRADING_AGENTS_TEST_USERNAME
+    or "admin"
+)
+PASSWORD = (
+    settings.TRADING_AGENTS_API_PASSWORD
+    or settings.TRADING_AGENTS_TEST_PASSWORD
+    or "admin123"
+)
 
 # 全局变量
 token = None
@@ -18,6 +27,9 @@ token = None
 
 def login() -> str:
     """登录并获取 token"""
+    if settings.TRADING_AGENTS_API_TOKEN:
+        return settings.TRADING_AGENTS_API_TOKEN
+
     print("🔐 正在登录...")
     response = requests.post(
         f"{BASE_URL}/api/auth/login", json={"username": USERNAME, "password": PASSWORD}
@@ -42,7 +54,7 @@ def get_headers() -> Dict[str, str]:
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 
-def test_get_jobs():
+def check_get_jobs():
     """测试获取任务列表"""
     print("\n📋 测试获取任务列表...")
     response = requests.get(f"{BASE_URL}/api/scheduler/jobs", headers=get_headers())
@@ -69,7 +81,7 @@ def test_get_jobs():
         return None
 
 
-def test_get_stats():
+def check_get_stats():
     """测试获取统计信息"""
     print("\n📊 测试获取统计信息...")
     response = requests.get(f"{BASE_URL}/api/scheduler/stats", headers=get_headers())
@@ -94,7 +106,7 @@ def test_get_stats():
         return None
 
 
-def test_get_job_detail(job_id: str):
+def check_get_job_detail(job_id: str):
     """测试获取任务详情"""
     print(f"\n🔍 测试获取任务详情: {job_id}")
     response = requests.get(
@@ -119,7 +131,7 @@ def test_get_job_detail(job_id: str):
         return None
 
 
-def test_pause_job(job_id: str):
+def check_pause_job(job_id: str):
     """测试暂停任务"""
     print(f"\n⏸️  测试暂停任务: {job_id}")
     response = requests.post(
@@ -140,7 +152,7 @@ def test_pause_job(job_id: str):
         return False
 
 
-def test_resume_job(job_id: str):
+def check_resume_job(job_id: str):
     """测试恢复任务"""
     print(f"\n▶️  测试恢复任务: {job_id}")
     response = requests.post(
@@ -160,7 +172,7 @@ def test_resume_job(job_id: str):
         return False
 
 
-def test_get_history(job_id: str = None):
+def check_get_history(job_id: str = None):
     """测试获取执行历史"""
     if job_id:
         print(f"\n📜 测试获取任务执行历史: {job_id}")
@@ -193,7 +205,7 @@ def test_get_history(job_id: str = None):
         return None
 
 
-def test_health():
+def check_health():
     """测试健康检查"""
     print("\n💚 测试健康检查...")
     response = requests.get(f"{BASE_URL}/api/scheduler/health", headers=get_headers())
@@ -227,44 +239,55 @@ def main():
     token = login()
     if not token:
         print("\n❌ 登录失败，无法继续测试")
-        return
+        return False
 
     # 2. 测试健康检查
-    test_health()
+    health = check_health()
 
     # 3. 测试获取统计信息
-    test_get_stats()
+    stats = check_get_stats()
 
     # 4. 测试获取任务列表
-    jobs = test_get_jobs()
+    jobs = check_get_jobs()
     if not jobs:
         print("\n❌ 无法获取任务列表，停止测试")
-        return
+        return False
 
     # 5. 测试获取任务详情（使用第一个任务）
+    detail = None
     if jobs:
         first_job = jobs[0]
-        test_get_job_detail(first_job["id"])
+        detail = check_get_job_detail(first_job["id"])
 
     # 6. 测试暂停和恢复任务（使用第一个运行中的任务）
     running_jobs = [job for job in jobs if not job["paused"]]
+    pause_resume = True
     if running_jobs:
         test_job = running_jobs[0]
         print(f"\n🎯 选择任务进行暂停/恢复测试: {test_job['name']}")
 
         # 暂停任务
-        if test_pause_job(test_job["id"]):
+        if check_pause_job(test_job["id"]):
             # 恢复任务
-            test_resume_job(test_job["id"])
+            pause_resume = check_resume_job(test_job["id"])
+        else:
+            pause_resume = False
 
     # 7. 测试获取执行历史
-    test_get_history()
+    history = check_get_history()
     if jobs:
-        test_get_history(jobs[0]["id"])
+        check_get_history(jobs[0]["id"])
 
     print("\n" + "=" * 60)
     print("✅ 测试完成！")
     print("=" * 60)
+    return bool(
+        health and stats and jobs and detail and history is not None and pause_resume
+    )
+
+
+def test_scheduler_frontend_flow():
+    assert main()
 
 
 if __name__ == "__main__":

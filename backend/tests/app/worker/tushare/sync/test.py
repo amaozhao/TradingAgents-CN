@@ -30,6 +30,7 @@ class TestTushareSyncService:
             # 模拟初始化
             service.provider = Mock()
             service.provider.is_available.return_value = True
+            service.provider_available = True
 
             return service
 
@@ -70,11 +71,12 @@ class TestTushareSyncService:
 
     @pytest.mark.asyncio
     async def test_initialize_failure(self, sync_service):
-        """测试初始化失败"""
+        """测试初始化失败后进入降级状态"""
         sync_service.provider.connect = AsyncMock(return_value=False)
 
-        with pytest.raises(RuntimeError, match="Tushare连接失败"):
-            await sync_service.initialize()
+        await sync_service.initialize()
+
+        assert sync_service.provider_available is False
 
     @pytest.mark.asyncio
     async def test_sync_stock_basic_info_success(self, sync_service, mock_stock_list):

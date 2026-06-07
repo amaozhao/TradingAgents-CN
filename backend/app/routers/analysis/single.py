@@ -149,9 +149,7 @@ async def get_task_status_new(task_id: str, user: dict = Depends(get_current_use
                 status_message = _status_message_from_task_result(
                     task_result, status, error_message
                 )
-                current_step = _status_step_from_task_result(
-                    task_result, status
-                )
+                current_step = _status_step_from_task_result(task_result, status)
 
                 status_data = {
                     "task_id": task_id,

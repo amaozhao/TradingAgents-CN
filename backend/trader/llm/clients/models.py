@@ -11,11 +11,13 @@ _QWEN_MODELS = {
     "quick": [
         ("Qwen Turbo - Fast", "qwen-turbo"),
         ("Qwen Plus - Balanced", "qwen-plus"),
+        ("Qwen 3 Max", "qwen3-max"),
         ("Qwen 3.5 Flash", "qwen3.5-flash"),
         ("Custom model ID", "custom"),
     ],
     "deep": [
         ("Qwen Max - High capability", "qwen-max"),
+        ("Qwen 3 Max", "qwen3-max"),
         ("Qwen 3.7 Max", "qwen3.7-max"),
         ("Qwen Plus - Balanced", "qwen-plus"),
         ("Custom model ID", "custom"),

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from app.core.config import settings as app_settings
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_ROOT.parent
@@ -269,43 +269,58 @@ def _build_target_manifest(
     return {
         "schema_version": "1",
         "created_at": datetime.now(UTC).isoformat(),
-        "target_env": target_env or os.getenv("TRADING_AGENTS_TARGET_ENV"),
-        "target_phase": target_phase or os.getenv("TRADING_AGENTS_CUTOVER_PHASE"),
+        "target_env": target_env
+        or app_settings.text_value("TRADING_AGENTS_TARGET_ENV"),
+        "target_phase": target_phase
+        or app_settings.text_value("TRADING_AGENTS_CUTOVER_PHASE"),
         "output_dir": str(output_dir),
         "include_api_smoke": include_api_smoke,
         "runtime_log_included": runtime_log is not None,
         "require_explicit_env": require_explicit_env,
-        "postgres_read_enabled": os.getenv("POSTGRES_READ_ENABLED"),
-        "postgres_dual_write_enabled": os.getenv("POSTGRES_DUAL_WRITE_ENABLED"),
-        "expected_postgres_read_enabled": os.getenv(
+        "postgres_read_enabled": app_settings.text_value("POSTGRES_READ_ENABLED"),
+        "postgres_dual_write_enabled": app_settings.text_value(
+            "POSTGRES_DUAL_WRITE_ENABLED"
+        ),
+        "expected_postgres_read_enabled": app_settings.text_value(
             "TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED"
         ),
-        "expected_postgres_dual_write_enabled": os.getenv(
+        "expected_postgres_dual_write_enabled": app_settings.text_value(
             "TRADING_AGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED"
         ),
-        "sync_stock_basics_enabled": os.getenv("SYNC_STOCK_BASICS_ENABLED"),
-        "git_commit": os.getenv("GIT_COMMIT") or os.getenv("SOURCE_VERSION"),
+        "sync_stock_basics_enabled": app_settings.text_value(
+            "SYNC_STOCK_BASICS_ENABLED"
+        ),
+        "git_commit": app_settings.text_value("GIT_COMMIT")
+        or app_settings.text_value("SOURCE_VERSION"),
     }
 
 
 def _safe_environment_snapshot() -> dict[str, str | bool | None]:
     return {
-        "DATABASE_URL_SET": bool(os.getenv("DATABASE_URL")),
-        "POSTGRES_DUAL_WRITE_ENABLED": os.getenv("POSTGRES_DUAL_WRITE_ENABLED"),
-        "POSTGRES_READ_ENABLED": os.getenv("POSTGRES_READ_ENABLED"),
-        "POSTGRES_DUAL_WRITE_FAIL_OPEN": os.getenv("POSTGRES_DUAL_WRITE_FAIL_OPEN"),
-        "SYNC_STOCK_BASICS_ENABLED": os.getenv("SYNC_STOCK_BASICS_ENABLED"),
-        "POSTGRES_HOST_SET": bool(os.getenv("POSTGRES_HOST")),
-        "POSTGRES_DB": os.getenv("POSTGRES_DB"),
-        "TRADING_AGENTS_API_BASE_URL_SET": bool(
-            os.getenv("TRADING_AGENTS_API_BASE_URL")
+        "DATABASE_URL_SET": bool(app_settings.text_value("DATABASE_URL")),
+        "POSTGRES_DUAL_WRITE_ENABLED": app_settings.text_value(
+            "POSTGRES_DUAL_WRITE_ENABLED"
         ),
-        "TRADING_AGENTS_API_TOKEN_SET": bool(os.getenv("TRADING_AGENTS_API_TOKEN")),
+        "POSTGRES_READ_ENABLED": app_settings.text_value("POSTGRES_READ_ENABLED"),
+        "POSTGRES_DUAL_WRITE_FAIL_OPEN": app_settings.text_value(
+            "POSTGRES_DUAL_WRITE_FAIL_OPEN"
+        ),
+        "SYNC_STOCK_BASICS_ENABLED": app_settings.text_value(
+            "SYNC_STOCK_BASICS_ENABLED"
+        ),
+        "POSTGRES_HOST_SET": bool(app_settings.text_value("POSTGRES_HOST")),
+        "POSTGRES_DB": app_settings.text_value("POSTGRES_DB"),
+        "TRADING_AGENTS_API_BASE_URL_SET": bool(
+            app_settings.text_value("TRADING_AGENTS_API_BASE_URL")
+        ),
+        "TRADING_AGENTS_API_TOKEN_SET": bool(
+            app_settings.text_value("TRADING_AGENTS_API_TOKEN")
+        ),
         "TRADING_AGENTS_API_USERNAME_SET": bool(
-            os.getenv("TRADING_AGENTS_API_USERNAME")
+            app_settings.text_value("TRADING_AGENTS_API_USERNAME")
         ),
         "TRADING_AGENTS_API_PASSWORD_SET": bool(
-            os.getenv("TRADING_AGENTS_API_PASSWORD")
+            app_settings.text_value("TRADING_AGENTS_API_PASSWORD")
         ),
     }
 
@@ -317,9 +332,11 @@ def _validate_explicit_target_environment(
     target_phase: str | None,
 ) -> tuple[str, str]:
     missing: list[str] = []
-    if not (target_env or os.getenv("TRADING_AGENTS_TARGET_ENV")):
+    if not (target_env or app_settings.text_value("TRADING_AGENTS_TARGET_ENV")):
         missing.append("TRADING_AGENTS_TARGET_ENV or --target-env")
-    effective_phase = target_phase or os.getenv("TRADING_AGENTS_CUTOVER_PHASE")
+    effective_phase = target_phase or app_settings.text_value(
+        "TRADING_AGENTS_CUTOVER_PHASE"
+    )
     if not effective_phase:
         missing.append("TRADING_AGENTS_CUTOVER_PHASE or --target-phase")
     elif effective_phase not in {"pre-read", "post-read", "rollback"}:
@@ -338,7 +355,7 @@ def _validate_explicit_target_environment(
     _require_env(missing, "POSTGRES_HOST")
     _require_env(missing, "POSTGRES_DB")
 
-    if not os.getenv("DATABASE_URL"):
+    if not app_settings.text_value("DATABASE_URL"):
         _require_env(missing, "POSTGRES_HOST")
         _require_env(missing, "POSTGRES_DB")
         _require_env(missing, "POSTGRES_USER")
@@ -346,10 +363,10 @@ def _validate_explicit_target_environment(
 
     if include_api_smoke:
         _require_env(missing, "TRADING_AGENTS_API_BASE_URL")
-        has_token = bool(os.getenv("TRADING_AGENTS_API_TOKEN"))
-        has_login = bool(os.getenv("TRADING_AGENTS_API_USERNAME")) and bool(
-            os.getenv("TRADING_AGENTS_API_PASSWORD")
-        )
+        has_token = bool(app_settings.text_value("TRADING_AGENTS_API_TOKEN"))
+        has_login = bool(
+            app_settings.text_value("TRADING_AGENTS_API_USERNAME")
+        ) and bool(app_settings.text_value("TRADING_AGENTS_API_PASSWORD"))
         if not has_token and not has_login:
             missing.append(
                 "TRADING_AGENTS_API_TOKEN or TRADING_AGENTS_API_USERNAME+TRADING_AGENTS_API_PASSWORD"
@@ -366,7 +383,7 @@ def _validate_explicit_target_environment(
 
 
 def _require_env(missing: list[str], name: str) -> None:
-    if not os.getenv(name):
+    if not app_settings.text_value(name):
         missing.append(name)
 
 

@@ -3,15 +3,48 @@
 验证东方财富接口的最佳请求间隔
 """
 
+import asyncio
 import importlib
 import sys
 import time
 from datetime import datetime
 
 import akshare as ak
+from app.core.config import settings as app_settings
+from app.core.runtime import apply_runtime_env
+from trader.flows.providers.china.akshare import AKShareProvider
 
 
-def test_single_request():
+async def check_provider_quote_request():
+    """通过后端真实 AKShare provider 验证免费行情兜底链路。"""
+    code = app_settings.text_value("TRADING_AGENTS_SMOKE_STOCK_CODE", "000001")
+    start_time = time.time()
+    provider = AKShareProvider()
+
+    try:
+        await provider.connect()
+        quote = await provider.get_stock_quotes(code)
+        elapsed = time.time() - start_time
+
+        if quote:
+            print("✅ Provider 免费数据源兜底请求成功")
+            print(f"   股票代码: {code}")
+            print(f"   数据来源: {quote.get('quote_source', 'unknown')}")
+            print(f"   最新价: {quote.get('price')}")
+            print(f"   耗时: {elapsed:.2f} 秒")
+            return True, elapsed
+
+        print("❌ Provider 免费数据源兜底请求失败: 返回空数据")
+        return False, elapsed
+    except Exception as e:
+        elapsed = time.time() - start_time
+        print(f"❌ Provider 免费数据源兜底请求失败: {e}")
+        return False, elapsed
+    finally:
+        await provider.disconnect()
+
+
+def check_single_request():
     """测试单次请求"""
     print("=" * 70)
     print("📊 测试单次请求")
@@ -28,15 +61,20 @@ def test_single_request():
             print(f"   耗时: {elapsed:.2f} 秒")
             return True, elapsed
         else:
-            print("❌ 请求失败: 返回空数据")
-            return False, elapsed
+            print("⚠️ 东方财富快照请求返回空数据，尝试后端免费数据源兜底链路")
+            fallback_success, fallback_elapsed = asyncio.run(
+                check_provider_quote_request()
+            )
+            return fallback_success, elapsed + fallback_elapsed
     except Exception as e:
         elapsed = time.time() - start_time
-        print(f"❌ 请求失败: {e}")
-        return False, elapsed
+        print(f"⚠️ 东方财富快照请求失败: {e}")
+        print("🔄 尝试后端免费数据源兜底链路")
+        fallback_success, fallback_elapsed = asyncio.run(check_provider_quote_request())
+        return fallback_success, elapsed + fallback_elapsed
 
 
-def test_continuous_requests(count=10, interval=0):
+def check_continuous_requests(count=10, interval=0):
     """测试连续请求"""
     print("\n" + "=" * 70)
     print(f"📊 测试连续请求 (次数: {count}, 间隔: {interval}秒)")
@@ -127,7 +165,7 @@ def test_continuous_requests(count=10, interval=0):
     return success_count, fail_count
 
 
-def test_different_intervals():
+def check_different_intervals():
     """测试不同的请求间隔"""
     print("\n" + "=" * 70)
     print("🧪 测试不同的请求间隔")
@@ -141,7 +179,7 @@ def test_different_intervals():
         print(f"测试间隔: {interval} 秒")
         print(f"{'=' * 70}")
 
-        success, fail = test_continuous_requests(count=5, interval=interval)
+        success, fail = check_continuous_requests(count=5, interval=interval)
         results[interval] = (success, fail)
 
         # 等待一段时间再测试下一个间隔
@@ -211,10 +249,9 @@ def main():
     print("=" * 70)
 
     # 检查代理配置
-    os = importlib.import_module("os")
-    http_proxy = os.environ.get("HTTP_PROXY", "")
-    https_proxy = os.environ.get("HTTPS_PROXY", "")
-    no_proxy = os.environ.get("NO_PROXY", "")
+    http_proxy = app_settings.text_value("HTTP_PROXY", "")
+    https_proxy = app_settings.text_value("HTTPS_PROXY", "")
+    no_proxy = app_settings.text_value("NO_PROXY", "")
 
     print("\n📋 当前环境变量代理配置:")
     print(f"   HTTP_PROXY: {http_proxy or '(未设置)'}")
@@ -251,11 +288,9 @@ def main():
                         or "y"
                     )
                     if choice == "y":
-                        os.environ["NO_PROXY"] = (
-                            "localhost,127.0.0.1,eastmoney.com,push2.eastmoney.com,82.push2.eastmoney.com,82.push2delay.eastmoney.com,gtimg.cn,sinaimg.cn,api.tushare.pro,baostock.com"
-                        )
+                        no_proxy = "localhost,127.0.0.1,eastmoney.com,push2.eastmoney.com,82.push2.eastmoney.com,82.push2delay.eastmoney.com,gtimg.cn,sinaimg.cn,api.tushare.pro,baostock.com"
+                        apply_runtime_env({"NO_PROXY": no_proxy})
                         print("✅ 已设置 NO_PROXY 环境变量")
-                        no_proxy = os.environ["NO_PROXY"]
                 except Exception:
                     pass
         winreg.CloseKey(internet_settings)
@@ -288,11 +323,11 @@ def main():
         choice = input("请输入选项 (1/2/3，默认3): ").strip() or "3"
 
         if choice == "1":
-            test_single_request()
+            check_single_request()
         elif choice == "2":
-            test_continuous_requests(count=10, interval=0)
+            check_continuous_requests(count=10, interval=0)
         elif choice == "3":
-            test_different_intervals()
+            check_different_intervals()
         else:
             print("❌ 无效选项")
             sys.exit(1)
@@ -313,3 +348,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def test_akshare_single_request():
+    success, _ = check_single_request()
+    assert success

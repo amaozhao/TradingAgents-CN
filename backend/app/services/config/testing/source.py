@@ -10,7 +10,6 @@ class DataSourceConfigTestMixin:
         start_time = time.time()
         try:
             requests = importlib.import_module("requests")
-            os = importlib.import_module("os")
 
             ds_type = (
                 ds_config.type.value
@@ -84,7 +83,7 @@ class DataSourceConfigTestMixin:
                         logger.info(
                             "⚠️  [TEST] No valid API Key in database, trying environment variable"
                         )
-                        env_token = os.getenv("TUSHARE_TOKEN")
+                        env_token = settings.TUSHARE_TOKEN
                         if env_token:
                             api_key = env_token.strip().strip('"').strip("'")
                             used_env_credentials = True
@@ -132,7 +131,7 @@ class DataSourceConfigTestMixin:
                         logger.info(
                             "⚠️  [TEST] No valid API Key in database, trying environment variable"
                         )
-                        env_token = os.getenv("TUSHARE_TOKEN")
+                        env_token = settings.TUSHARE_TOKEN
                         if env_token:
                             api_key = env_token.strip().strip('"').strip("'")
                             used_env_credentials = True
@@ -415,7 +414,7 @@ class DataSourceConfigTestMixin:
                         logger.info(
                             "⚠️  [TEST] No valid API Key in database, trying environment variable"
                         )
-                        env_key = os.getenv("ALPHA_VANTAGE_API_KEY")
+                        env_key = settings.ALPHA_VANTAGE_API_KEY
                         if env_key:
                             api_key = env_key.strip().strip('"').strip("'")
                             used_env_credentials = True
@@ -463,7 +462,7 @@ class DataSourceConfigTestMixin:
                         logger.info(
                             "⚠️  [TEST] No valid API Key in database, trying environment variable"
                         )
-                        env_key = os.getenv("ALPHA_VANTAGE_API_KEY")
+                        env_key = settings.ALPHA_VANTAGE_API_KEY
                         if env_key:
                             api_key = env_key.strip().strip('"').strip("'")
                             used_env_credentials = True
@@ -572,7 +571,7 @@ class DataSourceConfigTestMixin:
                 # 如果配置中没有 API Key，尝试从环境变量获取
                 if ds_type in env_key_map and (not api_key or "..." in api_key):
                     env_var_name = env_key_map[ds_type]
-                    env_key = os.getenv(env_var_name)
+                    env_key = settings.text_value(env_var_name)
                     if env_key:
                         api_key = env_key.strip()
                         used_env_credentials = True

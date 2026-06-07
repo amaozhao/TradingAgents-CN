@@ -12,7 +12,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from trader.config.runtime import get_float
+from trader.config.runtime import get_float, get_int
 
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
@@ -23,7 +23,30 @@ SLEEP_MIN = get_float(
     "TA_GOOGLE_NEWS_SLEEP_MIN_SECONDS", "ta_google_news_sleep_min_seconds", 2.0
 )
 SLEEP_MAX = get_float(
-    "TA_GOOGLE_NEWS_SLEEP_MAX_SECONDS", "ta_google_news_sleep_max_seconds", 6.0
+    "TA_GOOGLE_NEWS_SLEEP_MAX_SECONDS", "ta_google_news_sleep_max_seconds", 1.0
+)
+CONNECT_TIMEOUT = get_float(
+    "TA_GOOGLE_NEWS_CONNECT_TIMEOUT_SECONDS",
+    "ta_google_news_connect_timeout_seconds",
+    3.0,
+)
+READ_TIMEOUT = get_float(
+    "TA_GOOGLE_NEWS_READ_TIMEOUT_SECONDS",
+    "ta_google_news_read_timeout_seconds",
+    5.0,
+)
+RETRY_ATTEMPTS = get_int(
+    "TA_GOOGLE_NEWS_RETRY_ATTEMPTS", "ta_google_news_retry_attempts", 2
+)
+RETRY_WAIT_MIN = get_float(
+    "TA_GOOGLE_NEWS_RETRY_WAIT_MIN_SECONDS",
+    "ta_google_news_retry_wait_min_seconds",
+    1.0,
+)
+RETRY_WAIT_MAX = get_float(
+    "TA_GOOGLE_NEWS_RETRY_WAIT_MAX_SECONDS",
+    "ta_google_news_retry_wait_max_seconds",
+    3.0,
 )
 
 
@@ -38,8 +61,8 @@ def is_rate_limited(response):
         | retry_if_exception_type(requests.exceptions.ConnectionError)
         | retry_if_exception_type(requests.exceptions.Timeout)
     ),
-    wait=wait_exponential(multiplier=1, min=4, max=60),
-    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=1, min=RETRY_WAIT_MIN, max=RETRY_WAIT_MAX),
+    stop=stop_after_attempt(RETRY_ATTEMPTS),
 )
 def make_request(url, headers):
     """Make a request with retry logic for rate limiting and connection issues"""
@@ -47,8 +70,10 @@ def make_request(url, headers):
     time.sleep(random.uniform(SLEEP_MIN, SLEEP_MAX))
     # 添加超时参数，设置连接超时和读取超时
     response = requests.get(
-        url, headers=headers, timeout=(10, 30)
-    )  # 连接超时10秒，读取超时30秒
+        url,
+        headers=headers,
+        timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
+    )
     return response
 
 

@@ -5,8 +5,8 @@
 """
 
 import importlib
-import os
 import sys
+from app.core.config import settings as app_settings
 
 
 def test_unified_tool_directly():
@@ -97,7 +97,7 @@ def test_fundamentals_analyst_with_unified_tool():
         )
 
         # 检查API密钥
-        api_key = os.getenv("DASHSCOPE_API_KEY")
+        api_key = app_settings.text_value("DASHSCOPE_API_KEY")
         if not api_key:
             print("⚠️ 未找到DASHSCOPE_API_KEY，跳过LLM测试")
             return True

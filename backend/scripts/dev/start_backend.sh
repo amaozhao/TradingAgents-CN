@@ -9,31 +9,48 @@ COMPOSE_FILE="${REPO_ROOT}/deploy/docker/compose/docker-compose.yml"
 cd "${REPO_ROOT}"
 mkdir -p runtime/logs runtime/data
 
-if [[ -f "${BACKEND_DIR}/.env" ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "${BACKEND_DIR}/.env"
-  set +a
+if [[ ! -f "${BACKEND_DIR}/.env" ]]; then
+  echo "backend/.env is required. Copy backend/.env.example to backend/.env and configure it first." >&2
+  exit 1
 fi
 
-REDIS_HOST="${REDIS_HOST:-localhost}"
-REDIS_PORT="${REDIS_PORT:-6379}"
-REDIS_PASSWORD="${REDIS_PASSWORD:-}"
-REDIS_DB="${REDIS_DB:-0}"
+echo "Using backend environment from ${BACKEND_DIR}/.env."
 
 redis_ping() {
   if command -v redis-cli >/dev/null 2>&1; then
-    if [[ -n "${REDIS_PASSWORD}" ]]; then
-      redis-cli -h "${REDIS_HOST}" -p "${REDIS_PORT}" -a "${REDIS_PASSWORD}" --no-auth-warning ping >/dev/null 2>&1
-    else
-      redis-cli -h "${REDIS_HOST}" -p "${REDIS_PORT}" ping >/dev/null 2>&1
-    fi
-    return $?
+    local redis_args
+    redis_args="$(
+      env PYTHONPATH="${BACKEND_DIR}" conda run -n trader python -c '
+import shlex
+
+from app.core.config import settings
+
+parts = ["-h", settings.REDIS_HOST, "-p", str(settings.REDIS_PORT)]
+if settings.REDIS_PASSWORD:
+    parts.extend(["-a", settings.REDIS_PASSWORD, "--no-auth-warning"])
+print(" ".join(shlex.quote(part) for part in parts))
+'
+    )" || return 1
+    # shellcheck disable=SC2086
+    redis-cli ${redis_args} ping >/dev/null 2>&1
+    return
   fi
 
-  conda run -n trader python -c \
-    'import sys, redis; host, port, password, db = sys.argv[1], int(sys.argv[2]), sys.argv[3] or None, int(sys.argv[4]); client = redis.Redis(host=host, port=port, password=password, db=db, socket_connect_timeout=2, socket_timeout=2); raise SystemExit(0 if client.ping() else 1)' \
-    "${REDIS_HOST}" "${REDIS_PORT}" "${REDIS_PASSWORD}" "${REDIS_DB}" >/dev/null 2>&1
+  env PYTHONPATH="${BACKEND_DIR}" conda run -n trader python -c '
+import redis
+
+from app.core.config import settings
+
+client = redis.Redis(
+    host=settings.REDIS_HOST,
+    port=settings.REDIS_PORT,
+    password=settings.REDIS_PASSWORD or None,
+    db=settings.REDIS_DB,
+    socket_connect_timeout=2,
+    socket_timeout=2,
+)
+raise SystemExit(0 if client.ping() else 1)
+' >/dev/null 2>&1
 }
 
 wait_for_redis() {
@@ -50,7 +67,7 @@ wait_for_redis() {
 }
 
 if ! redis_ping; then
-  echo "Redis is not reachable at ${REDIS_HOST}:${REDIS_PORT}; starting the local Docker Compose redis service..."
+  echo "Redis configured in backend/.env is not reachable; starting the local Docker Compose redis service..."
 
   if ! command -v docker >/dev/null 2>&1; then
     echo "docker is not installed or not on PATH. Start Redis manually, then rerun this script." >&2
@@ -60,12 +77,12 @@ if ! redis_ping; then
   docker compose -f "${COMPOSE_FILE}" up -d redis
 
   if ! wait_for_redis 60; then
-    echo "Redis did not become ready at ${REDIS_HOST}:${REDIS_PORT}. Check: docker compose -f ${COMPOSE_FILE} logs redis" >&2
+    echo "Redis configured in backend/.env did not become ready. Check: docker compose -f ${COMPOSE_FILE} logs redis" >&2
     exit 1
   fi
 fi
 
-echo "Redis is ready at ${REDIS_HOST}:${REDIS_PORT}."
+echo "Redis configured in backend/.env is ready."
 
 cd "${BACKEND_DIR}"
 exec env TRADING_AGENTS_LOG_DIR=../runtime/logs PYTHONPATH=. \

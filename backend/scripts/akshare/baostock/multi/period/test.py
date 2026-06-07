@@ -7,7 +7,9 @@ import importlib
 import logging
 from datetime import datetime, timedelta
 
-from app.core.database import init_database
+import pytest
+
+from app.core.database import close_database, init_database
 from app.services.market.historical import get_historical_data_service
 from trader.config.databases import get_postgres_client
 from trader.flows.providers.china.akshare import AKShareProvider
@@ -17,7 +19,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-async def test_provider_multi_period(provider_name: str, provider, symbol: str):
+async def run_provider_multi_period(provider_name: str, provider, symbol: str):
     """测试单个Provider的多周期功能"""
     print(f"\n{'=' * 60}")
     print(f"📊 测试{provider_name}多周期数据同步")
@@ -147,7 +149,7 @@ async def main():
         print("📊 测试AKShare Provider")
         print("=" * 60)
         akshare_provider = AKShareProvider()
-        await test_provider_multi_period("AKShare", akshare_provider, test_symbol)
+        await run_provider_multi_period("AKShare", akshare_provider, test_symbol)
     except Exception as e:
         print(f"❌ AKShare测试失败: {e}")
         traceback = importlib.import_module("traceback")
@@ -159,7 +161,7 @@ async def main():
         print("📊 测试BaoStock Provider")
         print("=" * 60)
         baostock_provider = BaoStockProvider()
-        await test_provider_multi_period("BaoStock", baostock_provider, test_symbol)
+        await run_provider_multi_period("BaoStock", baostock_provider, test_symbol)
     except Exception as e:
         print(f"❌ BaoStock测试失败: {e}")
         traceback = importlib.import_module("traceback")
@@ -186,6 +188,21 @@ async def main():
     print("\n" + "=" * 60)
     print("🎯 测试完成！")
     print("=" * 60)
+
+
+@pytest.mark.parametrize(
+    ("provider_name", "provider_factory", "symbol"),
+    [
+        ("AKShare", AKShareProvider, "000001"),
+        ("BaoStock", BaoStockProvider, "000001"),
+    ],
+)
+async def test_provider_multi_period(provider_name, provider_factory, symbol):
+    await init_database()
+    try:
+        await run_provider_multi_period(provider_name, provider_factory(), symbol)
+    finally:
+        await close_database()
 
 
 if __name__ == "__main__":

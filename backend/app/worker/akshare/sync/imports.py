@@ -7,7 +7,7 @@ AKShare数据同步服务
 import asyncio
 import importlib
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, cast
 
 from app.core.database import get_postgres_db
@@ -17,3 +17,8 @@ from app.services.market.news import get_news_data_service
 from trader.flows.providers.china.akshare import get_akshare_provider
 
 logger = logging.getLogger(__name__)
+
+
+def utcnow_naive() -> datetime:
+    """Return a naive UTC datetime for legacy document fields."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)

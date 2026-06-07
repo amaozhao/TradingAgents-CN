@@ -138,6 +138,11 @@ class AKShareAdapter(DataSourceAdapter):
 
             max_stocks = 10
             stock_list = stock_df.head(max_stocks)
+            quote_map = (
+                self.get_realtime_quotes("sina")
+                or self.get_realtime_quotes("eastmoney")
+                or {}
+            )
 
             basic_data = []
             processed_count = 0
@@ -157,6 +162,7 @@ class AKShareAdapter(DataSourceAdapter):
                     ts_code = stock.get("ts_code", "")
                     if not symbol:
                         continue
+                    quote = quote_map.get(str(symbol).zfill(6), {})
                     info_data = ak.stock_individual_info_em(symbol=symbol)
                     if info_data is not None and not info_data.empty:
                         info_dict = {}
@@ -169,19 +175,20 @@ class AKShareAdapter(DataSourceAdapter):
                         total_mv_wan = self._safe_float(
                             info_dict.get("总市值", 0)
                         )  # 万元
-                        total_mv_yi = (
-                            total_mv_wan / 10000 if total_mv_wan else None
-                        )  # 转换为亿元
+                        pe = quote.get("pe") or quote.get("pe_ttm")
+                        pb = quote.get("pb") or quote.get("pb_mrq")
                         basic_data.append(
                             {
                                 "ts_code": ts_code,
                                 "trade_date": trade_date,
                                 "name": name,
                                 "close": latest_price,
-                                "total_mv": total_mv_yi,  # 亿元（与 Tushare 一致）
+                                "total_mv": total_mv_wan,
                                 "turnover_rate": None,
-                                "pe": None,
-                                "pb": None,
+                                "pe": pe,
+                                "pb": pb,
+                                "pe_ttm": pe,
+                                "pb_mrq": pb,
                             }
                         )
                         processed_count += 1
@@ -299,6 +306,18 @@ class AKShareAdapter(DataSourceAdapter):
                 ),
                 None,
             )
+            pe_col = next(
+                (
+                    c
+                    for c in ["市盈率-动态", "市盈率", "pe", "PE", "动态市盈率"]
+                    if c in df.columns
+                ),
+                None,
+            )
+            pb_col = next(
+                (c for c in ["市净率", "pb", "PB"] if c in df.columns),
+                None,
+            )
 
             if not code_col or not price_col:
                 logger.error(
@@ -344,6 +363,8 @@ class AKShareAdapter(DataSourceAdapter):
                     self._safe_float(row.get(pre_close_col)) if pre_close_col else None
                 )
                 vol = self._safe_float(row.get(volume_col)) if volume_col else None
+                pe = self._safe_float(row.get(pe_col)) if pe_col else None
+                pb = self._safe_float(row.get(pb_col)) if pb_col else None
 
                 # 🔥 日志：记录AKShare返回的成交量
                 if code in ["300750", "000001", "600000"]:  # 只记录几个示例股票
@@ -360,6 +381,10 @@ class AKShareAdapter(DataSourceAdapter):
                     "high": hi,
                     "low": lo,
                     "pre_close": pre,
+                    "pe": pe,
+                    "pb": pb,
+                    "pe_ttm": pe,
+                    "pb_mrq": pb,
                 }
 
             logger.info(f"✅ AKShare {source} 获取到 {len(result)} 只股票的实时行情")

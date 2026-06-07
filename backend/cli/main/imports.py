@@ -14,7 +14,6 @@ from typing import Any, Optional, cast
 
 # 第三方库导入
 import typer
-from dotenv import load_dotenv
 from rich import box
 from rich.align import Align
 from rich.columns import Columns
@@ -28,6 +27,7 @@ from rich.table import Table
 from rich.text import Text
 
 # 项目内部导入
+from app.core.config import settings
 from cli.utils import (
     ensure_api_key,
     normalize_ticker_symbol,
@@ -41,9 +41,6 @@ from cli.utils import (
 from trader.default import DEFAULT_CONFIG
 from trader.graph.trading import TradingAgentsGraph
 from trader.utils.logging.manager import get_logger
-
-# 加载环境变量
-load_dotenv()
 
 # 常量定义
 DEFAULT_MESSAGE_BUFFER_SIZE = 100

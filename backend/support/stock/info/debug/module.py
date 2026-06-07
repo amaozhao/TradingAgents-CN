@@ -5,6 +5,7 @@
 """
 
 import importlib
+from app.core.config import settings as app_settings
 
 
 def test_stock_code_normalization():
@@ -39,9 +40,8 @@ def test_tushare_api_direct():
 
     try:
         ts = importlib.import_module("tushare")
-        os = importlib.import_module("os")
 
-        token = os.getenv("TUSHARE_TOKEN")
+        token = app_settings.text_value("TUSHARE_TOKEN")
         if not token:
             print("❌ TUSHARE_TOKEN未设置")
             return False

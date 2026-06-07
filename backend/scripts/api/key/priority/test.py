@@ -14,10 +14,8 @@ import asyncio
 import importlib
 import sys
 
-from dotenv import load_dotenv
 
 # 加载环境变量
-load_dotenv()
 
 
 async def test_api_key_validation():

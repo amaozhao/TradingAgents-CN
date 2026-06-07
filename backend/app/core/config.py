@@ -1,35 +1,20 @@
 import getpass
 import os
 import re
-import warnings
+import socket
 from pathlib import Path
-from typing import List
+from typing import Any, List
 from urllib.parse import quote
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings.sources import PydanticBaseSettingsSource
 
-from app.core.runtime import apply_runtime_env
+from app.core.runtime import apply_runtime_env, clear_runtime_env
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _BACKEND_ROOT = Path(__file__).resolve().parents[2]
-_PROJECT_ENV_FILE = _PROJECT_ROOT / ".env"
 _BACKEND_ENV_FILE = _BACKEND_ROOT / ".env"
-
-# Legacy env var aliases (deprecated): map API_HOST/PORT/DEBUG -> HOST/PORT/DEBUG
-_LEGACY_ENV_ALIASES = {
-    "API_HOST": "HOST",
-    "API_PORT": "PORT",
-    "API_DEBUG": "DEBUG",
-}
-for _legacy, _new in _LEGACY_ENV_ALIASES.items():
-    if _new not in os.environ and _legacy in os.environ:
-        os.environ[_new] = os.environ[_legacy]
-        warnings.warn(
-            f"Environment variable {_legacy} is deprecated; use {_new} instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
 
 
 class Settings(BaseSettings):
@@ -37,6 +22,9 @@ class Settings(BaseSettings):
     DEBUG: bool = Field(default=True)
     HOST: str = Field(default="0.0.0.0")
     PORT: int = Field(default=8000)
+    API_HOST: str = Field(default="0.0.0.0")
+    API_PORT: int = Field(default=8000)
+    API_DEBUG: bool = Field(default=True)
     ALLOWED_ORIGINS: List[str] = Field(default_factory=lambda: ["*"])
     ALLOWED_HOSTS: List[str] = Field(default_factory=lambda: ["*"])
 
@@ -55,6 +43,11 @@ class Settings(BaseSettings):
     POSTGRES_READ_ENABLED: bool = Field(default=False)
     POSTGRES_DUAL_WRITE_ENABLED: bool = Field(default=False)
     POSTGRES_DUAL_WRITE_FAIL_OPEN: bool = Field(default=True)
+    POSTGRES_ENABLED: bool = Field(default=True)
+    POSTGRES_DOCUMENT_STORE: str = Field(default="")
+    POSTGRES_SOURCE_DB: str = Field(default="")
+    POSTGRES_TARGET_DB: str = Field(default="")
+    USE_POSTGRES_STORAGE: bool = Field(default=True)
 
     @property
     def postgres_url(self) -> str:
@@ -71,6 +64,9 @@ class Settings(BaseSettings):
     REDIS_PORT: int = Field(default=6379)
     REDIS_PASSWORD: str = Field(default="")
     REDIS_DB: int = Field(default=0)
+    REDIS_DATABASE: int = Field(default=0)
+    REDIS_ENABLED: bool = Field(default=True)
+    REDIS_CONNECTION_STRING: str = Field(default="")
     REDIS_MAX_CONNECTIONS: int = Field(default=20)
     REDIS_RETRY_ON_TIMEOUT: bool = Field(default=True)
 
@@ -113,6 +109,15 @@ class Settings(BaseSettings):
         default="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     LOG_FILE: str = Field(default="logs/trader.log")
+    LOGGING_PROFILE: str = Field(default="")
+    DOCKER: str = Field(default="")
+    DOCKER_CONTAINER: bool = Field(default=False)
+
+    # 版本/实例标识
+    TRADING_AGENTS_VERSION: str = Field(default="")
+    APP_VERSION: str = Field(default="")
+    TRADING_AGENTS_DB_USER: str = Field(default="")
+    TRADING_AGENTS_DB_HOST: str = Field(default="")
 
     # 代理配置
     # 用于配置需要绕过代理的域名（国内数据源）
@@ -121,6 +126,7 @@ class Settings(BaseSettings):
     # 详细说明: docs/proxy_configuration.md
     HTTP_PROXY: str = Field(default="")
     HTTPS_PROXY: str = Field(default="")
+    ALL_PROXY: str = Field(default="")
     NO_PROXY: str = Field(
         default="localhost,127.0.0.1,eastmoney.com,push2.eastmoney.com,82.push2.eastmoney.com,82.push2delay.eastmoney.com,gtimg.cn,sinaimg.cn,api.tushare.pro,baostock.com"
     )
@@ -141,6 +147,43 @@ class Settings(BaseSettings):
     # 外部服务配置
     STOCK_DATA_API_URL: str = Field(default="")
     STOCK_DATA_API_KEY: str = Field(default="")
+    DEFAULT_CHINA_DATA_SOURCE: str = Field(default="")
+
+    # 模型与外部服务 API Key
+    DASHSCOPE_API_KEY: str = Field(default="")
+    DASHSCOPE_ENABLED: bool = Field(default=False)
+    DEEPSEEK_API_KEY: str = Field(default="")
+    DEEPSEEK_BASE_URL: str = Field(default="https://api.deepseek.com")
+    DEEPSEEK_ENABLED: bool = Field(default=False)
+    OPENAI_API_KEY: str = Field(default="")
+    OPENAI_ENABLED: bool = Field(default=False)
+    OPENAI_BASE_URL: str = Field(default="")
+    CUSTOM_OPENAI_API_KEY: str = Field(default="")
+    CUSTOM_OPENAI_BASE_URL: str = Field(default="")
+    OPENROUTER_API_KEY: str = Field(default="")
+    OPENROUTER_ENABLED: bool = Field(default=False)
+    ZHIPU_API_KEY: str = Field(default="")
+    ZHIPU_BASE_URL: str = Field(default="")
+    ANTHROPIC_API_KEY: str = Field(default="")
+    GOOGLE_API_KEY: str = Field(default="")
+    QIANFAN_API_KEY: str = Field(default="")
+    QIANFAN_ACCESS_KEY: str = Field(default="")
+    QIANFAN_SECRET_KEY: str = Field(default="")
+    SILICONFLOW_API_KEY: str = Field(default="")
+    AIHUBMIX_API_KEY: str = Field(default="")
+    OLLAMA_BASE_URL: str = Field(default="")
+    AZURE_OPENAI_ENDPOINT: str = Field(default="")
+    AZURE_OPENAI_API_KEY: str = Field(default="")
+    AZURE_OPENAI_API_VERSION: str = Field(default="")
+    AZURE_OPENAI_DEPLOYMENT: str = Field(default="")
+
+    # 数据源 API Key
+    FINNHUB_API_KEY: str = Field(default="")
+    ALPHA_VANTAGE_API_KEY: str = Field(default="")
+    NEWSAPI_KEY: str = Field(default="")
+    REDDIT_CLIENT_ID: str = Field(default="")
+    REDDIT_CLIENT_SECRET: str = Field(default="")
+    REDDIT_USER_AGENT: str = Field(default="")
 
     # SSE 配置
     SSE_POLL_TIMEOUT_SECONDS: float = Field(default=1.0)
@@ -323,6 +366,60 @@ class Settings(BaseSettings):
 
     # 数据目录配置
     TRADING_AGENTS_DATA_DIR: str = Field(default="./data")
+    TRADING_AGENTS_CACHE_DIR: str = Field(default="./data/cache")
+    TRADING_AGENTS_RESULTS_DIR: str = Field(default="./results")
+    DATA_DIR: str = Field(default="")
+
+    # AGENTrader 核心运行时配置
+    TA_CACHE_STRATEGY: str = Field(default="integrated")
+    TA_USE_APP_CACHE: bool = Field(default=True)
+    TRADING_AGENTS_DEFAULT_MODEL: str = Field(default="")
+    TRADING_AGENTS_QUICK_MODEL: str = Field(default="")
+    TRADING_AGENTS_DEEP_MODEL: str = Field(default="")
+    APP_TIMEZONE: str = Field(default="")
+    CURRENCY_PREFERENCE: str = Field(default="")
+    ONLINE_TOOLS_ENABLED: bool = Field(default=False)
+    ONLINE_NEWS_ENABLED: bool = Field(default=True)
+    REALTIME_DATA_ENABLED: bool = Field(default=False)
+    QUICK_THINK_LLM: str = Field(default="")
+    TRADING_AGENTS_LOG_LEVEL: str = Field(default="INFO")
+    TRADING_AGENTS_LOG_DIR: str = Field(default="./logs")
+    BACKEND_URL: str = Field(default="")
+    TEST_CONFIG: str = Field(default="")
+    TRADING_AGENTS_RUN_LIVE_TESTS: bool = Field(default=False)
+    TRADING_AGENTS_TEST_USERNAME: str = Field(default="")
+    TRADING_AGENTS_TEST_PASSWORD: str = Field(default="")
+    TRADING_AGENTS_API_BASE_URL: str = Field(default="http://127.0.0.1:8000")
+    TRADING_AGENTS_API_TOKEN: str = Field(default="")
+    TRADING_AGENTS_API_USERNAME: str = Field(default="")
+    TRADING_AGENTS_API_PASSWORD: str = Field(default="")
+    TRADING_AGENTS_API_TIMEOUT: int = Field(default=30)
+    TRADING_AGENTS_SMOKE_STOCK_CODE: str = Field(default="000001")
+    TRADING_AGENTS_SMOKE_SYMBOL: str = Field(default="")
+    TRADING_AGENTS_SMOKE_SEARCH_QUERY: str = Field(default="")
+    TRADING_AGENTS_SMOKE_TASK_ID: str = Field(default="")
+    TRADING_AGENTS_TARGET_ENV: str = Field(default="")
+    TRADING_AGENTS_CUTOVER_PHASE: str = Field(default="")
+    TRADING_AGENTS_EXPECT_POSTGRES_READ_ENABLED: str = Field(default="")
+    TRADING_AGENTS_EXPECT_POSTGRES_DUAL_WRITE_ENABLED: str = Field(default="")
+    GIT_COMMIT: str = Field(default="")
+    SOURCE_VERSION: str = Field(default="")
+    VIRTUAL_ENV: str = Field(default="")
+    DEBUG_MODE: bool = Field(default=False)
+    WEBAPI_BASE_URL: str = Field(default="http://localhost:8000")
+    SKIP_CACHE_CLEAN: bool = Field(default=False)
+    MAX_CACHE_CONTENT_LENGTH: int = Field(default=50000)
+    ENABLE_CACHE_LENGTH_CHECK: bool = Field(default=True)
+    MAX_EMBEDDING_CONTENT_LENGTH: int = Field(default=50000)
+    ENABLE_EMBEDDING_LENGTH_CHECK: bool = Field(default=True)
+    FORCE_OPENAI_EMBEDDING: bool = Field(default=False)
+    EXAMPLE_SDK_API_KEY: str = Field(default="")
+    EXAMPLE_SDK_BASE_URL: str = Field(default="https://api.example.com/v1")
+    EXAMPLE_SDK_TIMEOUT: int = Field(default=30)
+    EXAMPLE_SDK_ENABLED: bool = Field(default=False)
+    EXAMPLE_SDK_BATCH_SIZE: int = Field(default=100)
+    EXAMPLE_SDK_RETRY_TIMES: int = Field(default=3)
+    EXAMPLE_SDK_RETRY_DELAY: int = Field(default=5)
 
     @property
     def log_dir(self) -> str:
@@ -354,17 +451,64 @@ class Settings(BaseSettings):
     NEWS_SYNC_CRON: str = Field(default="0 */2 * * *")  # 每2小时
     NEWS_SYNC_HOURS_BACK: int = Field(default=24)
     NEWS_SYNC_MAX_PER_SOURCE: int = Field(default=50)
+    TA_GOOGLE_NEWS_SLEEP_MIN_SECONDS: float = Field(default=0.2)
+    TA_GOOGLE_NEWS_SLEEP_MAX_SECONDS: float = Field(default=1.0)
+    TA_GOOGLE_NEWS_CONNECT_TIMEOUT_SECONDS: float = Field(default=3.0)
+    TA_GOOGLE_NEWS_READ_TIMEOUT_SECONDS: float = Field(default=5.0)
+    TA_GOOGLE_NEWS_RETRY_ATTEMPTS: int = Field(default=2)
+    TA_GOOGLE_NEWS_RETRY_WAIT_MIN_SECONDS: float = Field(default=1.0)
+    TA_GOOGLE_NEWS_RETRY_WAIT_MAX_SECONDS: float = Field(default=3.0)
 
     @property
     def is_production(self) -> bool:
         """是否为生产环境"""
         return not self.DEBUG
 
-    # Ignore any extra environment variables present in .env or process env
+    def value(self, key: str, default: Any = "") -> Any:
+        """Return a Settings field by environment-style key name."""
+        value = getattr(self, key, None)
+        if value is None and self.model_extra:
+            value = self.model_extra.get(key)
+        return default if value is None else value
+
+    def text_value(self, key: str, default: str = "") -> str:
+        value = self.value(key, default)
+        return default if value is None else str(value)
+
+    def bool_value(self, key: str, default: bool = False) -> bool:
+        value = self.value(key, default)
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() in {"true", "1", "yes", "on"}
+
+    def int_value(self, key: str, default: int = 0) -> int:
+        value = self.value(key, default)
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            dotenv_settings,
+            init_settings,
+            file_secret_settings,
+        )
+
+    # Allow legacy/dynamic keys from backend/.env while keeping Settings as the
+    # only runtime configuration reader.
     model_config = SettingsConfigDict(
-        env_file=(str(_PROJECT_ENV_FILE), str(_BACKEND_ENV_FILE)),
+        env_file=str(_BACKEND_ENV_FILE),
         env_file_encoding="utf-8",
-        extra="ignore",
+        extra="allow",
     )
 
 
@@ -384,10 +528,7 @@ settings = Settings()
 
 
 def _read_major_version() -> str:
-    v = (
-        os.getenv("TRADING_AGENTS_VERSION", "").strip()
-        or os.getenv("APP_VERSION", "").strip()
-    )
+    v = settings.TRADING_AGENTS_VERSION.strip() or settings.APP_VERSION.strip()
     if not v:
         try:
             v = (
@@ -406,12 +547,8 @@ def _read_major_version() -> str:
 
 
 def _default_instance_tag() -> str:
-    user = os.getenv("TRADING_AGENTS_DB_USER", "").strip() or getpass.getuser()
-    host = (
-        os.getenv("TRADING_AGENTS_DB_HOST", "").strip()
-        or os.getenv("COMPUTERNAME", "").strip()
-        or os.getenv("HOSTNAME", "").strip()
-    )
+    user = settings.TRADING_AGENTS_DB_USER.strip() or getpass.getuser()
+    host = settings.TRADING_AGENTS_DB_HOST.strip() or socket.gethostname()
     tag = f"{user}-{host}" if host else user
     return _sanitize_postgres_db_name(tag).strip("_-").lower() or "local"
 
@@ -429,13 +566,28 @@ def _sanitize_postgres_db_name(name: str) -> str:
     return f"{cleaned[: max_len - 9]}_{suffix}"
 
 
-# 自动将代理配置设置到环境变量
-# 这样 requests 库可以直接读取 os.environ['NO_PROXY']
+# 自动将代理配置同步到运行时环境，供 requests 等第三方库读取。
+_PROXY_ENV_KEYS = (
+    "HTTP_PROXY",
+    "http_proxy",
+    "HTTPS_PROXY",
+    "https_proxy",
+    "ALL_PROXY",
+    "all_proxy",
+    "NO_PROXY",
+    "no_proxy",
+)
+clear_runtime_env(_PROXY_ENV_KEYS)
 apply_runtime_env(
     {
         "HTTP_PROXY": settings.HTTP_PROXY,
+        "http_proxy": settings.HTTP_PROXY,
         "HTTPS_PROXY": settings.HTTPS_PROXY,
+        "https_proxy": settings.HTTPS_PROXY,
+        "ALL_PROXY": settings.ALL_PROXY,
+        "all_proxy": settings.ALL_PROXY,
         "NO_PROXY": settings.NO_PROXY,
+        "no_proxy": settings.NO_PROXY,
     }
 )
 

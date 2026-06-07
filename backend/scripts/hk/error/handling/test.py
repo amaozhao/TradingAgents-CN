@@ -83,13 +83,11 @@ def test_hk_network_limitation_handling():
                 print("⏳ 等待2秒避免频繁请求...")
                 time.sleep(2)
 
-        return True
-
     except Exception as e:
         print(f"❌ 测试过程中发生异常: {e}")
         traceback = importlib.import_module("traceback")
         traceback.print_exc()
-        return False
+        raise
 
 
 def test_error_message_formatting():
@@ -129,14 +127,13 @@ def test_error_message_formatting():
 
         if not missing_elements:
             print("✅ 建议内容完整，包含所有必要信息")
-            return True
         else:
             print(f"❌ 建议内容缺少: {missing_elements}")
-            return False
+            assert False, f"建议内容缺少: {missing_elements}"
 
     except Exception as e:
         print(f"❌ 错误消息格式化测试异常: {e}")
-        return False
+        raise
 
 
 def test_web_cli_integration():
@@ -178,11 +175,9 @@ def test_web_cli_integration():
         else:
             print("✅ 股票验证成功，无需错误处理")
 
-        return True
-
     except Exception as e:
         print(f"❌ Web和CLI集成测试异常: {e}")
-        return False
+        raise
 
 
 if __name__ == "__main__":

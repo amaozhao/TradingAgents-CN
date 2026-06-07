@@ -91,7 +91,7 @@ def test_node_mapping():
     else:
         print("\n⚠️  存在未映射的节点！")
 
-    return all_mapped
+    assert all_mapped
 
 
 def test_progress_calculation():
@@ -167,7 +167,7 @@ def test_progress_calculation():
     else:
         print("  ⚠️  进度存在回退！")
 
-    return is_monotonic
+    assert is_monotonic
 
 
 def test_step_coverage():
@@ -239,10 +239,10 @@ def main():
     print("=" * 80)
 
     # 测试节点映射
-    mapping_ok = test_node_mapping()
+    test_node_mapping()
 
     # 测试进度计算
-    progress_ok = test_progress_calculation()
+    test_progress_calculation()
 
     # 测试步骤覆盖率
     test_step_coverage()
@@ -252,12 +252,8 @@ def main():
     print("📊 测试总结")
     print("=" * 80)
 
-    if mapping_ok and progress_ok:
-        print("\n✅ 所有测试通过！进度跟踪系统已正确配置。")
-        return 0
-    else:
-        print("\n⚠️  部分测试失败，请检查配置。")
-        return 1
+    print("\n✅ 所有测试通过！进度跟踪系统已正确配置。")
+    return 0
 
 
 if __name__ == "__main__":

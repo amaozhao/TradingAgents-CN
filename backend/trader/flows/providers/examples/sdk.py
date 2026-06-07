@@ -9,10 +9,10 @@
 """
 
 import asyncio
-import os
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Union
 
+from app.core.config import settings
 import aiohttp
 import pandas as pd
 
@@ -45,12 +45,10 @@ class ExampleSDKProvider(BaseStockDataProvider):
         super().__init__("ExampleSDK")
 
         # 配置参数
-        self.api_key = api_key or os.getenv("EXAMPLE_SDK_API_KEY")
-        self.base_url = base_url or os.getenv(
-            "EXAMPLE_SDK_BASE_URL", "https://api.example-sdk.com"
-        )
-        self.timeout = int(os.getenv("EXAMPLE_SDK_TIMEOUT", "30"))
-        self.enabled = os.getenv("EXAMPLE_SDK_ENABLED", "false").lower() == "true"
+        self.api_key = api_key or settings.EXAMPLE_SDK_API_KEY
+        self.base_url = base_url or settings.EXAMPLE_SDK_BASE_URL
+        self.timeout = settings.EXAMPLE_SDK_TIMEOUT
+        self.enabled = settings.EXAMPLE_SDK_ENABLED
 
         # HTTP会话
         self.session: Any = None

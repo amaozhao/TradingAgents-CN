@@ -4,14 +4,11 @@
 """
 
 import importlib
-import os
 
-from dotenv import load_dotenv
 
-from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def test_web_interface_config():
@@ -106,7 +103,7 @@ def test_api_requirements():
     all_configured = True
 
     for key, description in api_keys.items():
-        value = os.getenv(key)
+        value = app_settings.text_value(key)
         if value:
             print(f"✅ {description}: 已配置")
         else:

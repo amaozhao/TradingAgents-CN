@@ -29,7 +29,7 @@ TradingAgents-CN v0.1.2新增了对Google AI的完整支持，包括：
 
 ### 3. 配置API密钥
 
-在项目根目录的 `.env` 文件中添加：
+在 `backend/.env` 文件中添加：
 
 ```env
 # Google AI API密钥

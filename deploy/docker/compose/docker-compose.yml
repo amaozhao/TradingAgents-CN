@@ -102,14 +102,15 @@ services:
 
   # Redis 缓存服务
   redis:
-    image: redis:latest
+    image: redis:alpine
     container_name: trading-agents-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
+    env_file:
+      - ../../../backend/.env
     environment:
       TZ: "Asia/Shanghai"
-      REDIS_PASSWORD: "trading_agents123"
     command: sh -c 'redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"'
     volumes:
       - redis_data:/data
@@ -129,18 +130,17 @@ services:
 
   # PostgreSQL 数据库服务
   postgres:
-    image: postgres:16-alpine
+    image: postgres:alpine
     container_name: trading-agents-postgres
     restart: unless-stopped
     ports:
       - "5432:5432"
+    env_file:
+      - ../../../backend/.env
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: trading_agents_pg123
-      POSTGRES_DB: trading_agents_cn
       TZ: "Asia/Shanghai"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     networks:
       - trading-agents-network
     healthcheck:

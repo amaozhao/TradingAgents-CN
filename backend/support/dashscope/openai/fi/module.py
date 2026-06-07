@@ -5,7 +5,7 @@
 """
 
 import importlib
-import os
+from app.core.config import settings as app_settings
 
 
 def test_openai_adapter_import():
@@ -256,7 +256,7 @@ def main():
     print("=" * 70)
 
     # 检查环境变量
-    if not os.getenv("DASHSCOPE_API_KEY"):
+    if not app_settings.text_value("DASHSCOPE_API_KEY"):
         print("❌ 未找到 DASHSCOPE_API_KEY 环境变量")
         print("请设置环境变量后重试")
         return

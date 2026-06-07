@@ -4,15 +4,12 @@
 """
 
 import importlib
-import os
 from pathlib import Path
 
-from dotenv import load_dotenv
 
-from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def test_google_news_tool():
@@ -188,8 +185,8 @@ def main():
     print("=" * 60)
 
     # 检查API密钥
-    google_key = os.getenv("GOOGLE_API_KEY")
-    reddit_id = os.getenv("REDDIT_CLIENT_ID")
+    google_key = app_settings.text_value("GOOGLE_API_KEY")
+    reddit_id = app_settings.text_value("REDDIT_CLIENT_ID")
 
     print("🔑 API密钥状态:")
     print(f"   Google API: {'✅ 已配置' if google_key else '❌ 未配置'}")

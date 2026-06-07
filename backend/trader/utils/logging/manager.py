@@ -7,13 +7,14 @@
 import json
 import logging
 import logging.handlers
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import toml
+
+from app.core.config import settings
 
 # 注意：这里不能导入自己，会造成循环导入
 # 在日志系统初始化前，使用标准库自举日志器，避免未定义引用
@@ -79,9 +80,8 @@ class TradingAgentsLogger:
         if config:
             return config
 
-        # 从环境变量获取配置
-        log_level = os.getenv("TRADING_AGENTS_LOG_LEVEL", "INFO").upper()
-        log_dir = os.getenv("TRADING_AGENTS_LOG_DIR", "./logs")
+        log_level = settings.TRADING_AGENTS_LOG_LEVEL.upper()
+        log_dir = settings.TRADING_AGENTS_LOG_DIR
 
         return {
             "level": log_level,
@@ -122,7 +122,7 @@ class TradingAgentsLogger:
                 "matplotlib": {"level": "WARNING"},
             },
             "docker": {
-                "enabled": os.getenv("DOCKER_CONTAINER", "false").lower() == "true",
+                "enabled": settings.DOCKER_CONTAINER,
                 "stdout_only": True,  # Docker环境只输出到stdout
             },
         }
@@ -131,9 +131,7 @@ class TradingAgentsLogger:
         """从配置文件加载日志配置"""
         # 确定配置文件路径
         config_paths = [
-            "config/logging_docker.toml"
-            if os.getenv("DOCKER_CONTAINER") == "true"
-            else None,
+            "config/logging_docker.toml" if settings.DOCKER_CONTAINER else None,
             "config/logging.toml",
             "./logging.toml",
         ]
@@ -159,9 +157,9 @@ class TradingAgentsLogger:
         logging_config = toml_config.get("logging", {})
 
         # 检查Docker环境
-        is_docker = os.getenv("DOCKER_CONTAINER") == "true" or logging_config.get(
-            "docker", {}
-        ).get("enabled", False)
+        is_docker = settings.DOCKER_CONTAINER or logging_config.get("docker", {}).get(
+            "enabled", False
+        )
 
         return {
             "level": logging_config.get("level", "INFO"),

@@ -15,7 +15,15 @@ class LLMProviderMixin:
                 "website": "https://openai.com",
                 "api_doc_url": "https://platform.openai.com/docs",
                 "default_base_url": "https://api.openai.com/v1",
-                "supported_features": ["chat", "completion", "embedding", "image", "vision", "function_calling", "streaming"],
+                "supported_features": [
+                    "chat",
+                    "completion",
+                    "embedding",
+                    "image",
+                    "vision",
+                    "function_calling",
+                    "streaming",
+                ],
             },
             {
                 "name": "anthropic",
@@ -24,7 +32,12 @@ class LLMProviderMixin:
                 "website": "https://anthropic.com",
                 "api_doc_url": "https://docs.anthropic.com",
                 "default_base_url": "https://api.anthropic.com",
-                "supported_features": ["chat", "completion", "function_calling", "streaming"],
+                "supported_features": [
+                    "chat",
+                    "completion",
+                    "function_calling",
+                    "streaming",
+                ],
             },
             {
                 "name": "minimax-token-plan",
@@ -33,7 +46,12 @@ class LLMProviderMixin:
                 "website": "https://platform.minimaxi.com",
                 "api_doc_url": "https://platform.minimaxi.com/docs/token-plan/quickstart",
                 "default_base_url": "https://api.minimaxi.com/anthropic",
-                "supported_features": ["chat", "completion", "function_calling", "streaming"],
+                "supported_features": [
+                    "chat",
+                    "completion",
+                    "function_calling",
+                    "streaming",
+                ],
             },
             {
                 "name": "google",
@@ -42,7 +60,14 @@ class LLMProviderMixin:
                 "website": "https://ai.google.dev",
                 "api_doc_url": "https://ai.google.dev/docs",
                 "default_base_url": "https://generativelanguage.googleapis.com/v1beta",
-                "supported_features": ["chat", "completion", "embedding", "vision", "function_calling", "streaming"],
+                "supported_features": [
+                    "chat",
+                    "completion",
+                    "embedding",
+                    "vision",
+                    "function_calling",
+                    "streaming",
+                ],
             },
             {
                 "name": "glm",
@@ -52,7 +77,13 @@ class LLMProviderMixin:
                 "api_doc_url": "https://open.bigmodel.cn/doc",
                 "default_base_url": "https://open.bigmodel.cn/api/paas/v4",
                 "aliases": canonical_aliases("glm"),
-                "supported_features": ["chat", "completion", "embedding", "function_calling", "streaming"],
+                "supported_features": [
+                    "chat",
+                    "completion",
+                    "embedding",
+                    "function_calling",
+                    "streaming",
+                ],
             },
             {
                 "name": "deepseek",
@@ -61,7 +92,12 @@ class LLMProviderMixin:
                 "website": "https://www.deepseek.com",
                 "api_doc_url": "https://platform.deepseek.com/api-docs",
                 "default_base_url": "https://api.deepseek.com",
-                "supported_features": ["chat", "completion", "function_calling", "streaming"],
+                "supported_features": [
+                    "chat",
+                    "completion",
+                    "function_calling",
+                    "streaming",
+                ],
             },
             {
                 "name": "qwen",
@@ -71,7 +107,13 @@ class LLMProviderMixin:
                 "api_doc_url": "https://help.aliyun.com/zh/dashscope/",
                 "default_base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
                 "aliases": canonical_aliases("qwen"),
-                "supported_features": ["chat", "completion", "embedding", "function_calling", "streaming"],
+                "supported_features": [
+                    "chat",
+                    "completion",
+                    "embedding",
+                    "function_calling",
+                    "streaming",
+                ],
             },
             {
                 "name": "siliconflow",
@@ -80,7 +122,13 @@ class LLMProviderMixin:
                 "website": "https://siliconflow.cn",
                 "api_doc_url": "https://docs.siliconflow.cn",
                 "default_base_url": "https://api.siliconflow.cn/v1",
-                "supported_features": ["chat", "completion", "embedding", "function_calling", "streaming"],
+                "supported_features": [
+                    "chat",
+                    "completion",
+                    "embedding",
+                    "function_calling",
+                    "streaming",
+                ],
             },
             {
                 "name": "302ai",
@@ -89,7 +137,15 @@ class LLMProviderMixin:
                 "website": "https://302.ai",
                 "api_doc_url": "https://doc.302.ai",
                 "default_base_url": "https://api.302.ai/v1",
-                "supported_features": ["chat", "completion", "embedding", "image", "vision", "function_calling", "streaming"],
+                "supported_features": [
+                    "chat",
+                    "completion",
+                    "embedding",
+                    "image",
+                    "vision",
+                    "function_calling",
+                    "streaming",
+                ],
                 "is_aggregator": True,
                 "aggregator_type": "openai_compatible",
                 "model_name_format": "{provider}/{model}",
@@ -101,14 +157,23 @@ class LLMProviderMixin:
                 "website": "https://aihubmix.com/?aff=2rIi",
                 "api_doc_url": "https://docs.aihubmix.com/cn/quick-start",
                 "default_base_url": "https://aihubmix.com/v1",
-                "supported_features": ["chat", "completion", "embedding", "vision", "function_calling", "streaming"],
+                "supported_features": [
+                    "chat",
+                    "completion",
+                    "embedding",
+                    "vision",
+                    "function_calling",
+                    "streaming",
+                ],
                 "is_aggregator": True,
                 "aggregator_type": "openai_compatible",
                 "model_name_format": "{provider}/{model}",
             },
         ]
 
-    async def _seed_default_llm_providers_if_empty(self, providers_collection: Any) -> None:
+    async def _seed_default_llm_providers_if_empty(
+        self, providers_collection: Any
+    ) -> None:
         existing_count = await providers_collection.count_documents({})
         if existing_count > 0:
             return
@@ -247,7 +312,6 @@ class LLMProviderMixin:
 
     def _get_env_api_key(self, provider_name: str) -> Optional[str]:
         """从环境变量获取API密钥"""
-        os = importlib.import_module("os")
         env_key_for_provider = getattr(
             importlib.import_module("trader.llm.clients.providers"),
             "env_key_for_provider",
@@ -287,7 +351,7 @@ class LLMProviderMixin:
             or env_key_mapping.get(provider_name)
         )
         if env_var:
-            api_key = os.getenv(env_var)
+            api_key = settings.text_value(env_var)
             # 使用统一的验证方法
             if self._is_valid_api_key(api_key):
                 return api_key

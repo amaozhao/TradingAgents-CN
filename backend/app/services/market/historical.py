@@ -7,7 +7,7 @@
 import asyncio
 import importlib
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -312,7 +312,7 @@ class HistoricalDataService:
         date_index=None,
     ) -> Dict[str, Any]:
         """标准化单条记录"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # 获取日期 - 优先从列中获取，如果索引是日期类型才使用索引
         trade_date = None

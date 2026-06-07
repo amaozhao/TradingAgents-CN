@@ -7,6 +7,7 @@ class _TushareSyncServiceMixin1:
         self.news_service: Any = None  # 延迟初始化
         self.db: Any = get_postgres_db()
         self.settings = settings
+        self.provider_available = False
 
         # 同步配置
         self.batch_size = 100  # 批量处理大小
@@ -35,8 +36,12 @@ class _TushareSyncServiceMixin1:
     async def initialize(self):
         """初始化同步服务"""
         success = await self.provider.connect()
-        if not success:
-            raise RuntimeError("❌ Tushare连接失败，无法启动同步服务")
+        self.provider_available = bool(success)
+        if not self.provider_available:
+            logger.warning(
+                "⚠️ Tushare连接失败，Tushare实时批量同步将跳过；"
+                "少量股票仍可使用 AKShare 免费源路径"
+            )
 
         # 初始化历史数据服务
         try:
@@ -243,6 +248,7 @@ class _TushareSyncServiceMixin1:
             "stopped_by_rate_limit": False,
             "skipped_non_trading_time": False,
             "switched_to_akshare": False,  # 是否切换到 AKShare
+            "skipped_tushare_unavailable": False,
         }
 
         try:
@@ -310,6 +316,15 @@ class _TushareSyncServiceMixin1:
                     )
                     return stats
             else:
+                if not self.provider_available:
+                    logger.warning("⚠️ Tushare不可用，跳过需要 rt_k 的实时行情同步")
+                    stats["skipped_tushare_unavailable"] = True
+                    stats["end_time"] = datetime.now(timezone.utc).replace(tzinfo=None)
+                    stats["duration"] = (
+                        stats["end_time"] - stats["start_time"]
+                    ).total_seconds()
+                    return stats
+
                 # 使用 Tushare 批量接口一次性获取全市场行情
                 if symbols:
                     logger.info(

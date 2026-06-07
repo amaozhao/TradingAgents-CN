@@ -34,4 +34,3 @@ def test_minimax_empty_database_features_fall_back_to_default_capabilities(
 
     assert ModelFeature.TOOL_CALLING in model_config["features"]
     assert validation["valid"] is True
-

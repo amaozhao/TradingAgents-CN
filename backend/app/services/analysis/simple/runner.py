@@ -547,9 +547,7 @@ class AnalysisRunnerMixin:
                     if quick_model:
                         provider_info = get_provider_and_url_by_model_sync(quick_model)
                         error_context["llm_provider"] = provider_info.get("provider")
-                        error_context["backend_url"] = provider_info.get(
-                            "backend_url"
-                        )
+                        error_context["backend_url"] = provider_info.get("backend_url")
                 except Exception as context_error:
                     logger.warning(
                         "⚠️ [错误上下文] 获取模型供应商失败: %s", context_error

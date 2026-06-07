@@ -112,10 +112,7 @@ class _AKShareProviderMixin3:
                 symbol_6 = symbol.zfill(6)
 
                 # 检测是否在 Docker 环境中
-                is_docker = (
-                    os.path.exists("/.dockerenv")
-                    or os.environ.get("DOCKER_CONTAINER") == "true"
-                )
+                is_docker = os.path.exists("/.dockerenv") or settings.DOCKER_CONTAINER
 
                 # 获取东方财富个股新闻，添加重试机制
                 max_retries = 3

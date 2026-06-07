@@ -457,7 +457,7 @@ class AnalysisReportMixin:
             project_root = Path(__file__).resolve().parents[3]
 
             # 确定results目录路径 - 与web目录保持一致
-            results_dir_env = os.getenv("TRADING_AGENTS_RESULTS_DIR")
+            results_dir_env = settings.TRADING_AGENTS_RESULTS_DIR
             if results_dir_env:
                 if not os.path.isabs(results_dir_env):
                     results_dir = project_root / results_dir_env

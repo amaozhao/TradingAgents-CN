@@ -81,8 +81,8 @@ docker ps
 CONTAINER ID   IMAGE                                  STATUS         PORTS                      NAMES
 xxxxxxxxxx     hsliup/trading-agents-frontend:latest   Up 2 minutes   0.0.0.0:3000->80/tcp       trading-agents-frontend-test
 xxxxxxxxxx     hsliup/trading-agents-backend:latest    Up 2 minutes   0.0.0.0:8000->8000/tcp     trading-agents-backend-test
-xxxxxxxxxx     redis:7-alpine                         Up 2 minutes   0.0.0.0:6379->6379/tcp     trading-agents-redis-test
-xxxxxxxxxx     postgres:16-alpine                        Up 2 minutes   0.0.0.0:5432->5432/tcp     trading-agents-postgres-test
+xxxxxxxxxx     redis:alpine                         Up 2 minutes   0.0.0.0:6379->6379/tcp     trading-agents-redis-test
+xxxxxxxxxx     postgres:alpine                        Up 2 minutes   0.0.0.0:5432->5432/tcp     trading-agents-postgres-test
 ```
 
 #### 检查数据卷

@@ -19,7 +19,7 @@ docker run -d \
   -e POSTGRES_PASSWORD="${password}" \
   -e POSTGRES_DB="${database_name}" \
   -p "${port}:5432" \
-  postgres:16-alpine >/dev/null
+  postgres:alpine >/dev/null
 
 cleanup() {
   docker rm -f "${container_name}" >/dev/null 2>&1 || true

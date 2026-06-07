@@ -4,16 +4,13 @@ DeepSeek Token统计功能测试
 """
 
 import importlib
-import os
 import sys
 from datetime import datetime
 
-from dotenv import load_dotenv
 
-from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def test_deepseek_adapter():
@@ -21,7 +18,7 @@ def test_deepseek_adapter():
     print("🧪 测试DeepSeek适配器Token统计...")
 
     # 检查DeepSeek配置
-    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+    deepseek_key = app_settings.text_value("DEEPSEEK_API_KEY")
     if not deepseek_key:
         print("⚠️ 未找到DEEPSEEK_API_KEY，跳过测试")
         return True  # 跳过而不是失败
@@ -86,7 +83,7 @@ def test_trading_graph_integration():
     """测试TradingGraph中的DeepSeek集成"""
     print("\n🧪 测试TradingGraph DeepSeek集成...")
 
-    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+    deepseek_key = app_settings.text_value("DEEPSEEK_API_KEY")
     if not deepseek_key:
         print("⚠️ 未找到DEEPSEEK_API_KEY，跳过测试")
         return True

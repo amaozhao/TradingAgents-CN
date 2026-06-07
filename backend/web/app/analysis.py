@@ -20,8 +20,8 @@ def ensure_api_keys(api_status):
 
             ### ⚙️ 配置方法
 
-            1. 复制项目根目录的 `.env.example` 为 `.env`
-            2. 编辑 `.env` 文件，填入您的真实API密钥
+            1. 复制 `backend/.env.example` 为 `backend/.env`
+            2. 编辑 `backend/.env` 文件，填入您的真实API密钥
             3. 重启Web应用
 
             ```bash
@@ -66,7 +66,7 @@ def render_analysis_workspace(col1, config):
         # 避免显示调试信息
         if form_data and form_data != {"submitted": False}:
             # 只在调试模式下显示表单数据
-            if os.getenv("DEBUG_MODE") == "true":
+            if settings.DEBUG_MODE:
                 st.write("Debug - Form data:", form_data)
 
         # 添加接收日志

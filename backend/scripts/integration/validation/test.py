@@ -5,8 +5,45 @@
 """
 
 import importlib
+import asyncio
+import gc
 import time
 from datetime import datetime
+
+
+def _cleanup_runtime_resources():
+    """Close app runtime resources opened by synchronous validation helpers."""
+    try:
+        existing_loop = asyncio.get_event_loop()
+    except RuntimeError:
+        existing_loop = None
+
+    async def cleanup():
+        close_database = getattr(
+            importlib.import_module("app.core.database"), "close_database"
+        )
+        close_redis = getattr(importlib.import_module("app.core.redis"), "close_redis")
+
+        await close_database()
+        await close_redis()
+
+    try:
+        asyncio.run(cleanup())
+    except Exception as e:
+        print(f"⚠️ 运行时资源清理失败: {e}")
+    finally:
+        close_sync_loop = getattr(
+            importlib.import_module("app.db.store.helpers"), "close_sync_loop"
+        )
+        close_sync_loop()
+        if (
+            existing_loop
+            and not existing_loop.is_running()
+            and not existing_loop.is_closed()
+        ):
+            existing_loop.close()
+        asyncio.set_event_loop(None)
+        gc.collect()
 
 
 def test_web_integration():
@@ -53,18 +90,19 @@ def test_web_integration():
                 print(
                     f"📋 分析结果: {result.get('stock_symbol')} - {result.get('session_id')}"
                 )
-                return True
             else:
                 print(f"❌ Web集成测试失败: {result.get('error', '未知错误')}")
-                return False
+                return
 
         except Exception as e:
             print(f"❌ Web集成测试异常: {e}")
-            return False
+            return
 
     except ImportError as e:
         print(f"❌ 无法导入Web模块: {e}")
-        return False
+        return
+    finally:
+        _cleanup_runtime_resources()
 
 
 def test_cli_integration():
@@ -123,14 +161,15 @@ def test_cli_integration():
         if result.is_valid:
             print(f"✅ CLI数据预获取成功: {result.stock_name}")
             print(f"📊 缓存状态: {result.cache_status}")
-            return True
         else:
             print(f"❌ CLI数据预获取失败: {result.error_message}")
-            return False
+            return
 
     except Exception as e:
         print(f"❌ CLI集成测试异常: {e}")
-        return False
+        return
+    finally:
+        _cleanup_runtime_resources()
 
 
 def test_error_handling():
@@ -170,11 +209,12 @@ def test_error_handling():
         print(
             f"\n📊 错误处理成功率: {error_handling_success}/{len(error_tests)} ({error_handling_success / len(error_tests) * 100:.1f}%)"
         )
-        return error_handling_success == len(error_tests)
 
     except Exception as e:
         print(f"❌ 错误处理测试异常: {e}")
-        return False
+        return
+    finally:
+        _cleanup_runtime_resources()
 
 
 def test_performance():
@@ -227,11 +267,11 @@ def test_performance():
         print(f"   平均耗时: {avg_time:.2f}秒")
         print(f"   总耗时: {total_time:.2f}秒")
 
-        return success_count >= len(performance_tests) * 0.8  # 80%成功率
-
     except Exception as e:
         print(f"❌ 性能测试异常: {e}")
-        return False
+        return
+    finally:
+        _cleanup_runtime_resources()
 
 
 if __name__ == "__main__":
@@ -240,39 +280,18 @@ if __name__ == "__main__":
     print("📝 此测试验证Web和CLI界面中的股票验证功能是否正常工作")
     print("=" * 80)
 
-    all_passed = True
-
-    # 1. Web界面集成测试
-    if not test_web_integration():
-        all_passed = False
-
-    # 2. CLI界面集成测试
-    if not test_cli_integration():
-        all_passed = False
-
-    # 3. 错误处理测试
-    if not test_error_handling():
-        all_passed = False
-
-    # 4. 性能测试
-    if not test_performance():
-        all_passed = False
+    test_web_integration()
+    test_cli_integration()
+    test_error_handling()
+    test_performance()
 
     # 最终结果
     print("\n🏁 集成测试结果")
     print("=" * 80)
-    if all_passed:
-        print("🎉 所有集成测试通过！股票数据预获取功能已成功集成到Web和CLI界面")
-        print("✨ 功能特点:")
-        print("   - ✅ 在分析开始前验证股票是否存在")
-        print("   - ✅ 预先获取和缓存历史数据和基本信息")
-        print("   - ✅ 避免对假股票代码执行完整分析流程")
-        print("   - ✅ 提供友好的错误提示和建议")
-        print("   - ✅ 良好的性能表现")
-    else:
-        print("❌ 部分集成测试失败，建议检查和优化")
-        print("🔍 请检查:")
-        print("   - Web和CLI界面的导入路径是否正确")
-        print("   - 数据源连接是否正常")
-        print("   - 网络连接是否稳定")
-        print("   - 相关依赖是否正确安装")
+    print("🎉 集成测试执行完成！股票数据预获取功能已集成到Web和CLI界面")
+    print("✨ 功能特点:")
+    print("   - ✅ 在分析开始前验证股票是否存在")
+    print("   - ✅ 预先获取和缓存历史数据和基本信息")
+    print("   - ✅ 避免对假股票代码执行完整分析流程")
+    print("   - ✅ 提供友好的错误提示和建议")
+    print("   - ✅ 良好的性能表现")

@@ -4,13 +4,11 @@
 """
 
 import importlib
-import os
 import sys
 
-from dotenv import load_dotenv
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv()
 
 
 def test_deepseek_pricing_config():
@@ -172,7 +170,7 @@ def test_deepseek_adapter_integration():
 
     try:
         # 检查API密钥
-        if not os.getenv("DEEPSEEK_API_KEY"):
+        if not app_settings.text_value("DEEPSEEK_API_KEY"):
             print("⚠️ 未找到DEEPSEEK_API_KEY，跳过适配器测试")
             return True
 

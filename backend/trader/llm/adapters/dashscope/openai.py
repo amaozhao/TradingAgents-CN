@@ -5,9 +5,9 @@
 """
 
 import importlib
-import os
 from typing import Any, Dict, Optional
 
+from app.core.config import settings
 from langchain_openai import ChatOpenAI
 
 from trader.config.manager import token_tracker
@@ -55,10 +55,10 @@ class ChatDashScopeOpenAI(ChatOpenAI):
 
         # 如果 kwargs 中没有 API Key 或者是 None，尝试从环境变量读取
         if not api_key_from_kwargs:
-            # 尝试从环境变量读取 API Key
-            env_api_key = os.getenv("DASHSCOPE_API_KEY")
+            # 尝试从 Settings 读取 API Key
+            env_api_key = settings.DASHSCOPE_API_KEY
             logger.info(
-                f"🔍 [DashScope初始化] 从环境变量读取 DASHSCOPE_API_KEY: {'有值' if env_api_key else '空'}"
+                f"🔍 [DashScope初始化] 从 Settings 读取 DASHSCOPE_API_KEY: {'有值' if env_api_key else '空'}"
             )
 
             # 验证环境变量中的 API Key 是否有效（排除占位符）

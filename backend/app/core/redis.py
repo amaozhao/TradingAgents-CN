@@ -2,9 +2,12 @@
 Redis客户端配置和连接管理
 """
 
+import asyncio
 import importlib
 import json
 import logging
+import socket
+import sys
 from typing import Optional
 
 import redis.asyncio as redis
@@ -16,27 +19,42 @@ logger = logging.getLogger(__name__)
 # 全局Redis连接池
 redis_pool: Optional[redis.ConnectionPool] = None
 redis_client: Optional[redis.Redis] = None
+redis_loop: Optional[asyncio.AbstractEventLoop] = None
 
 
 async def init_redis():
     """初始化Redis连接"""
-    global redis_pool, redis_client
+    global redis_pool, redis_client, redis_loop
 
     try:
+        current_loop = asyncio.get_running_loop()
+        if redis_client and redis_pool:
+            if redis_loop is current_loop:
+                try:
+                    await redis_client.ping()
+                    logger.info("✅ Redis连接已存在，复用当前事件循环连接")
+                    return
+                except Exception as e:
+                    logger.warning(f"⚠️ Redis现有连接不可用，准备重建: {e}")
+
+            await close_redis()
+
+        connection_options = {
+            "max_connections": settings.REDIS_MAX_CONNECTIONS,
+            "retry_on_timeout": settings.REDIS_RETRY_ON_TIMEOUT,
+            "decode_responses": True,
+            "protocol": 2,
+            "socket_keepalive": True,
+            "health_check_interval": 30,
+        }
+        keepalive_options = _socket_keepalive_options()
+        if keepalive_options:
+            connection_options["socket_keepalive_options"] = keepalive_options
+
         # 创建连接池
         redis_pool = redis.ConnectionPool.from_url(
             settings.redis_url,
-            max_connections=settings.REDIS_MAX_CONNECTIONS,  # 使用配置文件中的值
-            retry_on_timeout=settings.REDIS_RETRY_ON_TIMEOUT,
-            decode_responses=True,
-            protocol=2,
-            socket_keepalive=True,  # 启用 TCP keepalive
-            socket_keepalive_options={
-                1: 60,  # TCP_KEEPIDLE: 60秒后开始发送keepalive探测
-                2: 10,  # TCP_KEEPINTVL: 每10秒发送一次探测
-                3: 3,  # TCP_KEEPCNT: 最多发送3次探测
-            },
-            health_check_interval=30,  # 每30秒检查一次连接健康状态
+            **connection_options,
         )
 
         # 创建Redis客户端
@@ -44,6 +62,7 @@ async def init_redis():
 
         # 测试连接
         await redis_client.ping()
+        redis_loop = current_loop
         logger.info(
             f"✅ Redis连接成功建立 (max_connections={settings.REDIS_MAX_CONNECTIONS})"
         )
@@ -53,15 +72,38 @@ async def init_redis():
         raise
 
 
+def _socket_keepalive_options() -> dict[int, int]:
+    """Return platform-safe TCP keepalive options for redis-py."""
+    if sys.platform != "linux":
+        return {}
+
+    options: dict[int, int] = {}
+    for name, value in (
+        ("TCP_KEEPIDLE", 60),
+        ("TCP_KEEPINTVL", 10),
+        ("TCP_KEEPCNT", 3),
+    ):
+        option = getattr(socket, name, None)
+        if option is not None:
+            options[int(option)] = value
+    return options
+
+
 async def close_redis():
     """关闭Redis连接"""
-    global redis_pool, redis_client
+    global redis_pool, redis_client, redis_loop, redis_service
 
     try:
         if redis_client:
-            await redis_client.close()
+            await redis_client.aclose(close_connection_pool=True)
         if redis_pool:
             await redis_pool.disconnect()
+        await asyncio.sleep(0)
+        await asyncio.sleep(0.01)
+        redis_client = None
+        redis_pool = None
+        redis_loop = None
+        redis_service = None
         logger.info("✅ Redis连接已关闭")
     except Exception as e:
         logger.error(f"❌ 关闭Redis连接时出错: {e}")
@@ -116,7 +158,7 @@ class RedisService:
 
     async def set_with_ttl(self, key: str, value: str, ttl: int = 3600):
         """设置带TTL的键值"""
-        await self.redis.setex(key, ttl, value)
+        await self.redis.set(key, value, ex=ttl)
 
     async def get_json(self, key: str):
         """获取JSON格式的值"""
@@ -129,7 +171,7 @@ class RedisService:
         """设置JSON格式的值"""
         json_str = json.dumps(value, ensure_ascii=False)
         if ttl:
-            await self.redis.setex(key, ttl, json_str)
+            await self.redis.set(key, json_str, ex=ttl)
         else:
             await self.redis.set(key, json_str)
 

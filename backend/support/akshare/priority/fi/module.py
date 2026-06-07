@@ -7,6 +7,7 @@
 import importlib
 import os
 import sys
+from app.core.config import settings as app_settings
 
 
 def test_default_data_source():
@@ -94,7 +95,7 @@ def test_environment_variable_override():
 
     try:
         # 保存原始环境变量
-        original_env = os.getenv("DEFAULT_CHINA_DATA_SOURCE")
+        original_env = app_settings.text_value("DEFAULT_CHINA_DATA_SOURCE")
 
         # 测试设置为tushare
         os.environ["DEFAULT_CHINA_DATA_SOURCE"] = "tushare"

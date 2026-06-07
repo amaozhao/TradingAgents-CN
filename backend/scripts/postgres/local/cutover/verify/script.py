@@ -4,7 +4,6 @@ import argparse
 import asyncio
 import importlib
 import json
-import os
 import socket
 import subprocess
 import sys
@@ -14,6 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from app.core.runtime import runtime_env_snapshot
 from app.core.migrate import HOT_COLLECTIONS
 from scripts.postgres.log.check.script import check_runtime_log
 
@@ -30,7 +30,7 @@ LOCAL_TARGET_ENV = "local-seeded"
 class LocalServices:
     postgres_host: str = "127.0.0.1"
     postgres_port: int = 55432
-    postgres_image: str = "postgres:16-alpine"
+    postgres_image: str = "postgres:alpine"
     postgres_user: str = "postgres"
     postgres_password: str = "postgres"
     postgres_db: str = LOCAL_DB
@@ -427,7 +427,7 @@ def run_verification_steps(
 ) -> list[StepResult]:
     results: list[StepResult] = []
     output_dir.mkdir(parents=True, exist_ok=True)
-    merged_env = {**os.environ, **env}
+    merged_env = {**runtime_env_snapshot(), **env}
 
     for step in steps:
         output_file = output_dir / step.output_file if step.output_file else None
@@ -586,7 +586,7 @@ def main() -> None:
     )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--postgres-port", type=int, default=55432)
-    parser.add_argument("--postgres-image", default="postgres:16-alpine")
+    parser.add_argument("--postgres-image", default="postgres:alpine")
     parser.add_argument("--batch-size", type=int, default=5)
     parser.add_argument("--sample-limit", type=int, default=500)
     parser.add_argument(

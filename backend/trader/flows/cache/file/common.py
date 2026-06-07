@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 
 # 导入日志模块
+from app.core.config import settings
 from trader.utils.logging.manager import get_logger
 
 logger = get_logger("agents")

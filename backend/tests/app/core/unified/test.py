@@ -7,13 +7,11 @@ import importlib
 import sys
 
 import pytest
-from dotenv import load_dotenv
 
 pytestmark = pytest.mark.integration
 
 
 # 加载环境变量
-load_dotenv()
 
 
 def test_config_unification():

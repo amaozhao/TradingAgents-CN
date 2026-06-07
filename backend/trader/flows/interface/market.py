@@ -233,7 +233,6 @@ def get_fundamentals_finnhub(ticker, curr_date):
     """
     try:
         finnhub = importlib.import_module("finnhub")
-        os = importlib.import_module("os")
         # 导入缓存管理器（统一入口）
         get_cache = getattr(importlib.import_module("trader.flows.cache"), "get_cache")
         cache = get_cache()
@@ -245,9 +244,9 @@ def get_fundamentals_finnhub(ticker, curr_date):
                 return cached_data
 
         # 获取Finnhub API密钥
-        api_key = os.getenv("FINNHUB_API_KEY")
+        api_key = settings.FINNHUB_API_KEY
         if not api_key:
-            return "错误：未配置FINNHUB_API_KEY环境变量"
+            return "错误：未配置FINNHUB_API_KEY"
 
         # 初始化Finnhub客户端
         finnhub_client = finnhub.Client(api_key=api_key)

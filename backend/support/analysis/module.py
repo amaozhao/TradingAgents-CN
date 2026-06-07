@@ -7,12 +7,11 @@
 import importlib
 import os
 
-from dotenv import load_dotenv
 
 from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def test_basic_imports():
@@ -29,8 +28,8 @@ def test_basic_imports():
 
 def test_environment_variables():
     """测试环境变量"""
-    dashscope_key = os.getenv("DASHSCOPE_API_KEY")
-    finnhub_key = os.getenv("FINNHUB_API_KEY")
+    dashscope_key = app_settings.text_value("DASHSCOPE_API_KEY")
+    finnhub_key = app_settings.text_value("FINNHUB_API_KEY")
 
     print(f"DASHSCOPE_API_KEY: {'已设置' if dashscope_key else '未设置'}")
     print(f"FINNHUB_API_KEY: {'已设置' if finnhub_key else '未设置'}")

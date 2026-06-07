@@ -214,7 +214,9 @@ async def get_reports_list(
 
         logger.info(f"📊 查询条件: {query}")
 
-        all_reports = await db.analysis_reports.find(query).sort("created_at", -1).to_list(None)
+        all_reports = (
+            await db.analysis_reports.find(query).sort("created_at", -1).to_list(None)
+        )
         deduped_reports = _dedupe_report_documents(all_reports)
         total = len(deduped_reports)
 

@@ -25,9 +25,6 @@ class PostgresReportManager:
     def _connect(self):
         """连接到 PostgreSQL document store"""
         try:
-            load_dotenv = getattr(importlib.import_module("dotenv"), "load_dotenv")
-            load_dotenv()
-
             self.client = create_sync_client()
             self.client.admin.command("ping")
 

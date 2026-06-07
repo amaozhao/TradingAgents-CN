@@ -24,12 +24,12 @@
 
 1. **复制环境变量模板**
    ```bash
-   cp .env.example .env
+   cp backend/.env.example backend/.env
    ```
 
 2. **添加您的 API 密钥**
    ```bash
-   # 在 .env 文件中添加
+   # 在 backend/.env 文件中添加
    YOUR_PROVIDER_API_KEY=your_actual_api_key_here
    ```
 

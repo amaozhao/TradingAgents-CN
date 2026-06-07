@@ -7,13 +7,13 @@ PostgreSQL + Redis 数据库缓存管理器
 import hashlib
 import importlib
 import json
-import os
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Union
 from zoneinfo import ZoneInfo
 
 import pandas as pd
 
+from app.core.config import settings
 from app.db.store import create_sync_client
 from trader.config.runtime import get_timezone_name
 
@@ -53,18 +53,11 @@ class DatabaseCacheManager:
             postgres_db: PostgreSQL数据库名
             redis_db: Redis数据库编号
         """
-        # 从配置文件获取正确的端口
-        postgres_port = os.getenv("POSTGRES_PORT", "27018")
-        redis_port = os.getenv("REDIS_PORT", "6380")
-        postgres_password = os.getenv("POSTGRES_PASSWORD", "trading_agents123")
-        redis_password = os.getenv("REDIS_PASSWORD", "trading_agents123")
-
-        self.postgres_url = postgres_url or os.getenv(
-            "POSTGRES_URL",
-            f"postgres://admin:{postgres_password}@localhost:{postgres_port}",
+        self.postgres_url = postgres_url or settings.text_value(
+            "POSTGRES_URL", settings.postgres_url
         )
-        self.redis_url = redis_url or os.getenv(
-            "REDIS_URL", f"redis://:{redis_password}@localhost:{redis_port}"
+        self.redis_url = redis_url or settings.text_value(
+            "REDIS_URL", settings.redis_url
         )
         self.postgres_db_name = postgres_db
         self.redis_db = redis_db

@@ -1,5 +1,6 @@
 # ruff: noqa: F403,F405
 from .common import *
+from app.core.config import settings as app_settings
 
 
 class ConfigManagerSettingsMixin:
@@ -42,18 +43,18 @@ class ConfigManagerSettingsMixin:
 
         # 合并.env中的其他配置
         env_settings: Dict[str, Any] = {
-            "finnhub_api_key": os.getenv("FINNHUB_API_KEY", ""),
-            "reddit_client_id": os.getenv("REDDIT_CLIENT_ID", ""),
-            "reddit_client_secret": os.getenv("REDDIT_CLIENT_SECRET", ""),
-            "reddit_user_agent": os.getenv("REDDIT_USER_AGENT", ""),
-            "results_dir": os.getenv("TRADING_AGENTS_RESULTS_DIR", ""),
-            "log_level": os.getenv("TRADING_AGENTS_LOG_LEVEL", "INFO"),
-            "data_dir": os.getenv("TRADING_AGENTS_DATA_DIR", ""),  # 数据目录环境变量
-            "cache_dir": os.getenv("TRADING_AGENTS_CACHE_DIR", ""),  # 缓存目录环境变量
+            "finnhub_api_key": app_settings.FINNHUB_API_KEY,
+            "reddit_client_id": app_settings.REDDIT_CLIENT_ID,
+            "reddit_client_secret": app_settings.REDDIT_CLIENT_SECRET,
+            "reddit_user_agent": app_settings.REDDIT_USER_AGENT,
+            "results_dir": app_settings.TRADING_AGENTS_RESULTS_DIR,
+            "log_level": app_settings.TRADING_AGENTS_LOG_LEVEL,
+            "data_dir": app_settings.TRADING_AGENTS_DATA_DIR,
+            "cache_dir": app_settings.TRADING_AGENTS_CACHE_DIR,
         }
 
         # 添加OpenAI相关配置
-        openai_enabled_env = os.getenv("OPENAI_ENABLED", "").lower()
+        openai_enabled_env = app_settings.text_value("OPENAI_ENABLED").lower()
         if openai_enabled_env in ["true", "false"]:
             env_settings["openai_enabled"] = openai_enabled_env == "true"
 
@@ -73,18 +74,18 @@ class ConfigManagerSettingsMixin:
         return {
             "env_file_exists": (Path(__file__).resolve().parents[3] / ".env").exists(),
             "api_keys": {
-                "dashscope": bool(os.getenv("DASHSCOPE_API_KEY")),
-                "openai": bool(os.getenv("OPENAI_API_KEY")),
-                "google": bool(os.getenv("GOOGLE_API_KEY")),
-                "anthropic": bool(os.getenv("ANTHROPIC_API_KEY")),
-                "finnhub": bool(os.getenv("FINNHUB_API_KEY")),
+                "dashscope": bool(app_settings.DASHSCOPE_API_KEY),
+                "openai": bool(app_settings.OPENAI_API_KEY),
+                "google": bool(app_settings.GOOGLE_API_KEY),
+                "anthropic": bool(app_settings.ANTHROPIC_API_KEY),
+                "finnhub": bool(app_settings.FINNHUB_API_KEY),
             },
             "other_configs": {
                 "reddit_configured": bool(
-                    os.getenv("REDDIT_CLIENT_ID") and os.getenv("REDDIT_CLIENT_SECRET")
+                    app_settings.REDDIT_CLIENT_ID and app_settings.REDDIT_CLIENT_SECRET
                 ),
-                "results_dir": os.getenv("TRADING_AGENTS_RESULTS_DIR", "./results"),
-                "log_level": os.getenv("TRADING_AGENTS_LOG_LEVEL", "INFO"),
+                "results_dir": app_settings.TRADING_AGENTS_RESULTS_DIR or "./results",
+                "log_level": app_settings.TRADING_AGENTS_LOG_LEVEL,
             },
         }
 
@@ -244,7 +245,7 @@ class ConfigManagerSettingsMixin:
 
     def get_openai_config_status(self) -> Dict[str, Any]:
         """获取OpenAI配置状态"""
-        openai_key = os.getenv("OPENAI_API_KEY", "")
+        openai_key = app_settings.OPENAI_API_KEY
         key_valid = (
             self.validate_openai_api_key_format(openai_key) if openai_key else False
         )

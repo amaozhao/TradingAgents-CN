@@ -3,15 +3,27 @@
 """
 
 import requests
+from app.core.config import settings
 
 # 配置
-BASE_URL = "http://localhost:8000"
-USERNAME = "admin"
-PASSWORD = "admin123"
+BASE_URL = settings.TRADING_AGENTS_API_BASE_URL.rstrip("/")
+USERNAME = (
+    settings.TRADING_AGENTS_API_USERNAME
+    or settings.TRADING_AGENTS_TEST_USERNAME
+    or "admin"
+)
+PASSWORD = (
+    settings.TRADING_AGENTS_API_PASSWORD
+    or settings.TRADING_AGENTS_TEST_PASSWORD
+    or "admin123"
+)
 
 
 def login() -> str:
     """登录并获取 token"""
+    if settings.TRADING_AGENTS_API_TOKEN:
+        return settings.TRADING_AGENTS_API_TOKEN
+
     print("🔐 正在登录...")
     response = requests.post(
         f"{BASE_URL}/api/auth/login", json={"username": USERNAME, "password": PASSWORD}
@@ -28,7 +40,7 @@ def login() -> str:
     return None
 
 
-def test_list_jobs(token: str):
+def check_list_jobs(token: str):
     """测试获取任务列表"""
     print("\n📋 测试获取任务列表...")
 
@@ -55,7 +67,7 @@ def test_list_jobs(token: str):
     return None
 
 
-def test_update_metadata(token: str, job_id: str):
+def check_update_metadata(token: str, job_id: str):
     """测试更新任务元数据"""
     print(f"\n✏️ 测试更新任务元数据: {job_id}")
 
@@ -80,7 +92,7 @@ def test_update_metadata(token: str, job_id: str):
         return False
 
 
-def test_get_job_detail(token: str, job_id: str):
+def check_get_job_detail(token: str, job_id: str):
     """测试获取任务详情"""
     print(f"\n🔍 测试获取任务详情: {job_id}")
 
@@ -98,11 +110,13 @@ def test_get_job_detail(token: str, job_id: str):
         print(f"  - 备注: {job.get('description', '(未设置)')}")
         print(f"  - 触发器: {job['trigger']}")
         print(f"  - 下次执行: {job.get('next_run_time', '(已暂停)')}")
+        return True
     else:
         print(f"❌ 获取失败: {response.text}")
+        return False
 
 
-def test_clear_metadata(token: str, job_id: str):
+def check_clear_metadata(token: str, job_id: str):
     """测试清除任务元数据"""
     print(f"\n🧹 测试清除任务元数据: {job_id}")
 
@@ -134,27 +148,37 @@ def main():
     token = login()
     if not token:
         print("\n❌ 登录失败，无法继续测试")
-        return
+        return False
 
     # 2. 获取任务列表
-    job_id = test_list_jobs(token)
+    job_id = check_list_jobs(token)
     if not job_id:
         print("\n❌ 没有可用的任务，无法继续测试")
-        return
+        return False
 
     # 3. 更新任务元数据
-    if test_update_metadata(token, job_id):
+    if check_update_metadata(token, job_id):
         # 4. 获取任务详情（验证更新）
-        test_get_job_detail(token, job_id)
+        detail_updated = check_get_job_detail(token, job_id)
 
         # 5. 清除任务元数据
-        if test_clear_metadata(token, job_id):
+        if check_clear_metadata(token, job_id):
             # 6. 再次获取任务详情（验证清除）
-            test_get_job_detail(token, job_id)
+            detail_cleared = check_get_job_detail(token, job_id)
+        else:
+            detail_cleared = False
+    else:
+        detail_updated = False
+        detail_cleared = False
 
     print("\n" + "=" * 60)
     print("✅ 测试完成！")
     print("=" * 60)
+    return bool(detail_updated and detail_cleared)
+
+
+def test_scheduler_metadata_flow():
+    assert main()
 
 
 if __name__ == "__main__":

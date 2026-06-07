@@ -612,7 +612,7 @@ def render_env_status():
             st.success("✅ .env 文件已存在")
         else:
             st.error("❌ .env 文件不存在")
-            st.info("💡 请复制 .env.example 为 .env 并配置API密钥")
+            st.info("💡 请复制 backend/.env.example 为 backend/.env 并配置API密钥")
 
     with col2:
         # 统计已配置的API密钥数量

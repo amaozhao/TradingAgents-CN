@@ -18,9 +18,7 @@ from trader.flows.providers.china.baostock import BaoStockProvider
 
 logger = logging.getLogger(__name__)
 
-BAOSTOCK_SOURCE_QUERY = {
-    "$or": [{"source": "baostock"}, {"data_source": "baostock"}]
-}
+BAOSTOCK_SOURCE_QUERY = {"$or": [{"source": "baostock"}, {"data_source": "baostock"}]}
 
 
 @dataclass

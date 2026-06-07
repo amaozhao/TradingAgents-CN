@@ -4,8 +4,6 @@
 验证占位符检测是否正常工作
 """
 
-import sys
-
 from app.core.startup import StartupValidator
 
 
@@ -71,9 +69,8 @@ def test_api_key_validation():
     print(f"📊 测试结果: {passed} 通过, {failed} 失败")
     print("=" * 80)
 
-    return failed == 0
+    assert failed == 0
 
 
 if __name__ == "__main__":
-    success = test_api_key_validation()
-    sys.exit(0 if success else 1)
+    test_api_key_validation()

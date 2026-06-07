@@ -111,8 +111,8 @@ class USDataSourceManager:
         if self.use_postgres_cache:
             return USDataSource.POSTGRES
 
-        # 从环境变量获取，默认使用 yfinance
-        env_source = os.getenv(
+        # 从 Settings 获取，默认使用 yfinance
+        env_source = settings.text_value(
             "DEFAULT_US_DATA_SOURCE", DataSourceCode.YFINANCE.value
         ).lower()
 
@@ -156,10 +156,11 @@ class USDataSourceManager:
         # 检查 Alpha Vantage
         if "alpha_vantage" in enabled_sources_in_db:
             try:
-                # 优先从数据库配置读取 API Key，其次从环境变量读取
-                api_key = datasource_configs.get("alpha_vantage", {}).get(
-                    "api_key"
-                ) or os.getenv("ALPHA_VANTAGE_API_KEY")
+                # 优先从数据库配置读取 API Key，其次从 Settings 读取
+                api_key = (
+                    datasource_configs.get("alpha_vantage", {}).get("api_key")
+                    or settings.ALPHA_VANTAGE_API_KEY
+                )
                 if api_key:
                     available.append(USDataSource.ALPHA_VANTAGE)
                     source = (
@@ -182,10 +183,11 @@ class USDataSourceManager:
         # 检查 Finnhub
         if "finnhub" in enabled_sources_in_db:
             try:
-                # 优先从数据库配置读取 API Key，其次从环境变量读取
-                api_key = datasource_configs.get("finnhub", {}).get(
-                    "api_key"
-                ) or os.getenv("FINNHUB_API_KEY")
+                # 优先从数据库配置读取 API Key，其次从 Settings 读取
+                api_key = (
+                    datasource_configs.get("finnhub", {}).get("api_key")
+                    or settings.FINNHUB_API_KEY
+                )
                 if api_key:
                     available.append(USDataSource.FINNHUB)
                     source = (

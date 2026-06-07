@@ -7,8 +7,29 @@
     "currency": "CNY"
   },
   {
-    "provider": "minimax-token-plan",
-    "model_name": "MiniMax-M3",
+    "provider": "dashscope",
+    "model_name": "qwen-turbo",
+    "input_price_per_1k": 0.0,
+    "output_price_per_1k": 0.0,
+    "currency": "CNY"
+  },
+  {
+    "provider": "dashscope",
+    "model_name": "qwen-plus-latest",
+    "input_price_per_1k": 0.0,
+    "output_price_per_1k": 0.0,
+    "currency": "CNY"
+  },
+  {
+    "provider": "google",
+    "model_name": "gemini-2.5-pro",
+    "input_price_per_1k": 0.0,
+    "output_price_per_1k": 0.0,
+    "currency": "CNY"
+  },
+  {
+    "provider": "deepseek",
+    "model_name": "deepseek-chat",
     "input_price_per_1k": 0.0,
     "output_price_per_1k": 0.0,
     "currency": "CNY"

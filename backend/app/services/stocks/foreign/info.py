@@ -272,10 +272,9 @@ class ForeignStockInfoMixin:
 
     def _get_us_info_from_finnhub(self, code: str) -> Dict:
         """从Finnhub获取美股基础信息"""
-        os = importlib.import_module("os")
 
         # 获取 API Key
-        api_key = os.getenv("FINNHUB_API_KEY")
+        api_key = settings.FINNHUB_API_KEY
         if not api_key:
             raise Exception("Finnhub API Key 未配置")
 
@@ -365,10 +364,9 @@ class ForeignStockInfoMixin:
     def _get_hk_info_from_finnhub(self, code: str) -> Dict:
         """从Finnhub获取港股基础信息"""
         finnhub = importlib.import_module("finnhub")
-        os = importlib.import_module("os")
 
         # 获取 API Key
-        api_key = os.getenv("FINNHUB_API_KEY")
+        api_key = settings.FINNHUB_API_KEY
         if not api_key:
             raise Exception("Finnhub API Key 未配置")
 

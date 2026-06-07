@@ -11,27 +11,32 @@
 """
 
 import asyncio
-import importlib
 import sys
+import traceback
 
-from dotenv import load_dotenv
+from app.core.database import init_db
+from app.schemas.config import LLMProvider
+from app.services.config import ConfigService
 
 # 加载环境变量
-load_dotenv()
+TEST_PROVIDER_NAME = "test_provider"
 
 
-async def test_add_provider_with_key():
+async def cleanup_existing_test_provider(config_service) -> None:
+    """删除上一次测试遗留的同名厂家，保证测试幂等。"""
+    providers = await config_service.get_llm_providers()
+    for provider in providers:
+        if provider.name == TEST_PROVIDER_NAME and provider.id:
+            await config_service.delete_llm_provider(str(provider.id))
+
+
+async def add_provider_with_key():
     """测试添加厂家并配置 API Key"""
-    ConfigService = getattr(
-        importlib.import_module("app.services.config"), "ConfigService"
-    )
-    LLMProvider = getattr(importlib.import_module("app.schemas.config"), "LLMProvider")
-    init_db = getattr(importlib.import_module("app.core.database"), "init_db")
-
     # 初始化数据库
     await init_db()
 
     config_service = ConfigService()
+    await cleanup_existing_test_provider(config_service)
 
     print("=" * 80)
     print("🧪 测试 1: 添加新厂家并配置 API Key")
@@ -39,7 +44,7 @@ async def test_add_provider_with_key():
 
     # 创建测试厂家
     test_provider = LLMProvider(
-        name="test_provider",
+        name=TEST_PROVIDER_NAME,
         display_name="测试厂家",
         description="用于测试 API Key 配置的厂家",
         website="https://test.com",
@@ -57,7 +62,7 @@ async def test_add_provider_with_key():
 
         # 获取厂家列表，验证 API Key
         providers = await config_service.get_llm_providers()
-        test_prov = next((p for p in providers if p.name == "test_provider"), None)
+        test_prov = next((p for p in providers if p.name == TEST_PROVIDER_NAME), None)
 
         if test_prov:
             print("✅ 找到测试厂家")
@@ -71,18 +76,12 @@ async def test_add_provider_with_key():
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         return None
 
 
-async def test_update_provider_key(provider_id: str):
+async def update_provider_key(provider_id: str):
     """测试更新厂家的 API Key"""
-    ConfigService = getattr(
-        importlib.import_module("app.services.config"), "ConfigService"
-    )
-    init_db = getattr(importlib.import_module("app.core.database"), "init_db")
-
     # 初始化数据库
     await init_db()
 
@@ -104,27 +103,25 @@ async def test_update_provider_key(provider_id: str):
 
             # 验证更新
             providers = await config_service.get_llm_providers()
-            test_prov = next((p for p in providers if p.name == "test_provider"), None)
+            test_prov = next(
+                (p for p in providers if p.name == TEST_PROVIDER_NAME), None
+            )
 
             if test_prov:
                 print(f"   API Key: {_mask_key(test_prov.api_key)}")
                 print(f"   来源: {test_prov.extra_config.get('source', 'unknown')}")
         else:
             print("❌ API Key 更新失败")
+        return success
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+        return False
 
 
-async def test_clear_provider_key(provider_id: str):
+async def clear_provider_key(provider_id: str):
     """测试清空厂家的 API Key（使用环境变量）"""
-    ConfigService = getattr(
-        importlib.import_module("app.services.config"), "ConfigService"
-    )
-    init_db = getattr(importlib.import_module("app.core.database"), "init_db")
-
     # 初始化数据库
     await init_db()
 
@@ -145,7 +142,9 @@ async def test_clear_provider_key(provider_id: str):
 
             # 验证更新
             providers = await config_service.get_llm_providers()
-            test_prov = next((p for p in providers if p.name == "test_provider"), None)
+            test_prov = next(
+                (p for p in providers if p.name == TEST_PROVIDER_NAME), None
+            )
 
             if test_prov:
                 print(f"   API Key: {_mask_key(test_prov.api_key)}")
@@ -153,20 +152,16 @@ async def test_clear_provider_key(provider_id: str):
                 print(f"   已配置: {test_prov.extra_config.get('has_api_key', False)}")
         else:
             print("❌ API Key 清空失败")
+        return success
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+        return False
 
 
-async def test_cleanup(provider_id: str):
+async def cleanup_provider(provider_id: str):
     """清理测试数据"""
-    ConfigService = getattr(
-        importlib.import_module("app.services.config"), "ConfigService"
-    )
-    init_db = getattr(importlib.import_module("app.core.database"), "init_db")
-
     # 初始化数据库
     await init_db()
 
@@ -182,8 +177,10 @@ async def test_cleanup(provider_id: str):
             print("✅ 测试厂家删除成功")
         else:
             print("❌ 测试厂家删除失败")
+        return success
     except Exception as e:
         print(f"❌ 清理失败: {e}")
+        return False
 
 
 def _mask_key(key: str) -> str:
@@ -199,20 +196,20 @@ async def main():
     """主函数"""
     try:
         # 测试 1: 添加新厂家并配置 API Key
-        provider_id = await test_add_provider_with_key()
+        provider_id = await add_provider_with_key()
 
         if not provider_id:
             print("\n❌ 测试 1 失败，终止后续测试")
             return
 
         # 测试 2: 更新厂家的 API Key
-        await test_update_provider_key(provider_id)
+        await update_provider_key(provider_id)
 
         # 测试 3: 清空厂家的 API Key
-        await test_clear_provider_key(provider_id)
+        await clear_provider_key(provider_id)
 
         # 清理测试数据
-        await test_cleanup(provider_id)
+        await cleanup_provider(provider_id)
 
         print("\n" + "=" * 80)
         print("✅ 所有测试完成！")
@@ -220,9 +217,19 @@ async def main():
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        traceback = importlib.import_module("traceback")
         traceback.print_exc()
         sys.exit(1)
+
+
+async def test_api_key_edit_flow():
+    provider_id = await add_provider_with_key()
+    assert provider_id, "测试厂家创建失败"
+
+    try:
+        assert await update_provider_key(provider_id), "API Key 更新失败"
+        assert await clear_provider_key(provider_id), "API Key 清空失败"
+    finally:
+        assert await cleanup_provider(provider_id), "测试厂家清理失败"
 
 
 if __name__ == "__main__":

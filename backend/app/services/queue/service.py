@@ -54,6 +54,7 @@ class QueueService:
         params: Dict[str, Any],
         batch_id: Optional[str] = None,
         task_id: Optional[str] = None,
+        priority: Optional[int] = None,
     ) -> str:
         """任务入队，支持并发控制（开源版FIFO队列）"""
 
@@ -83,6 +84,8 @@ class QueueService:
 
         if batch_id:
             mapping["batch_id"] = batch_id
+        if priority is not None:
+            mapping["priority"] = str(priority)
 
         # 保存任务数据
         await self.r.hset(key, mapping=mapping)

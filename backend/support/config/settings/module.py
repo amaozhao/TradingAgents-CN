@@ -28,12 +28,12 @@ def test_redis_url_builds(monkeypatch):
     # Ensure no password from .env leaks into this test
     monkeypatch.setenv("REDIS_PASSWORD", "")
 
-    s = Settings()
+    s = Settings(_env_file=None)
     assert s.redis_url == "redis://127.0.0.1:6379/2"
 
     # With password
     monkeypatch.setenv("REDIS_PASSWORD", "p@ss")
-    s = Settings()
+    s = Settings(_env_file=None)
     assert s.redis_url == "redis://:p@ss@127.0.0.1:6379/2"
 
 
@@ -75,7 +75,7 @@ def test_postgres_url_uses_safe_default_parts(monkeypatch):
     monkeypatch.delenv("POSTGRES_PASSWORD", raising=False)
     monkeypatch.delenv("POSTGRES_DB", raising=False)
 
-    s = Settings()
+    s = Settings(_env_file=None)
 
     assert (
         s.postgres_url

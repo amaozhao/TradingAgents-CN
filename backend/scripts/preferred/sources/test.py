@@ -3,10 +3,11 @@
 """
 
 import asyncio
-import importlib
+import traceback
 
 from app.core.database import init_db
 from app.services.sources.manager import DataSourceManager
+from app.services.sync.source import get_multi_source_sync_service
 
 
 async def test_default_order():
@@ -141,25 +142,15 @@ async def test_api_integration():
     print("测试6: API集成测试")
     print("=" * 80)
 
-    get_multi_source_sync_service = getattr(
-        importlib.import_module("app.services.sync.source"),
-        "get_multi_source_sync_service",
-    )
-
     service = get_multi_source_sync_service()
 
     print("\n测试场景: 使用 preferred_sources=['akshare', 'baostock']")
-    print("注意: 这是一个完整的同步测试，可能需要较长时间...")
-
-    user_input = input("\n是否继续？(y/N): ").strip().lower()
-    if user_input not in ["y", "yes"]:
-        print("⏭️  跳过API集成测试")
-        return
+    print("注意: 测试限定 max_stocks=5，仍然真实请求免费数据源并写入数据库。")
 
     print("\n开始同步...")
     try:
         result = await service.run_full_sync(
-            force=False, preferred_sources=["akshare", "baostock"]
+            force=True, preferred_sources=["akshare", "baostock"], max_stocks=5
         )
 
         print("\n同步结果:")
@@ -174,15 +165,16 @@ async def test_api_integration():
 
             # 验证是否使用了指定的优先数据源
             sources_str = str(result["data_sources_used"])
-            if "akshare" in sources_str or "baostock" in sources_str:
-                print("✅ 验证通过：使用了指定的优先数据源")
-            else:
-                print("⚠️  警告：没有使用指定的优先数据源")
+            assert "akshare" in sources_str or "baostock" in sources_str
+            print("✅ 验证通过：使用了指定的优先数据源")
+
+        assert result.get("status") in {"success", "success_with_errors"}
+        assert result.get("total", 0) <= 5
 
     except Exception as e:
         print(f"❌ 同步失败: {e}")
-        traceback = importlib.import_module("traceback")
         traceback.print_exc()
+        raise
 
     print()
 
@@ -222,6 +214,5 @@ if __name__ == "__main__":
         print("\n\n⚠️  测试被用户中断")
     except Exception as e:
         print(f"\n\n❌ 测试出错: {e}")
-        import traceback
 
         traceback.print_exc()

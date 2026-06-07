@@ -5,13 +5,11 @@
 """
 
 import importlib
-import os
 import sys
 
-from dotenv import load_dotenv
+from app.core.config import settings as app_settings
 
 # 加载 .env 文件
-load_dotenv()
 
 
 def test_import():
@@ -34,8 +32,8 @@ def test_api_key():
     """测试API密钥配置"""
     print("\n🔍 测试2: 检查API密钥配置...")
 
-    dashscope_key = os.getenv("DASHSCOPE_API_KEY")
-    finnhub_key = os.getenv("FINNHUB_API_KEY")
+    dashscope_key = app_settings.text_value("DASHSCOPE_API_KEY")
+    finnhub_key = app_settings.text_value("FINNHUB_API_KEY")
 
     if not dashscope_key:
         print("❌ 未找到 DASHSCOPE_API_KEY 环境变量")
@@ -63,7 +61,7 @@ def test_dashscope_connection():
         Generation = getattr(importlib.import_module("dashscope"), "Generation")
 
         # 设置API密钥
-        dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
+        dashscope.api_key = app_settings.text_value("DASHSCOPE_API_KEY")
 
         # 测试简单调用
         response = Generation.call(

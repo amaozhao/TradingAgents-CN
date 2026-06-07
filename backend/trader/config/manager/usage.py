@@ -1,9 +1,14 @@
 # ruff: noqa: F403,F405
 from .common import *
 from .models import CostResult
+from app.core.config import settings as app_settings
 
 
 class ConfigManagerUsageMixin:
+    def load_usage(self):
+        """兼容旧脚本入口，返回 token 使用记录。"""
+        return self.load_usage_records()
+
     def add_usage_record(
         self,
         provider: str,
@@ -58,7 +63,7 @@ class ConfigManagerUsageMixin:
                     "⚠️ [Token记录] PostgreSQL token 存储未初始化 (postgres_storage=None)"
                 )
                 logger.warning(
-                    f"   💡 请检查环境变量: USE_POSTGRES_STORAGE={os.getenv('USE_POSTGRES_STORAGE', '未设置')}"
+                    f"   💡 请检查 Settings: USE_POSTGRES_STORAGE={app_settings.USE_POSTGRES_STORAGE}"
                 )
             elif not self.postgres_storage.is_connected():
                 logger.warning(

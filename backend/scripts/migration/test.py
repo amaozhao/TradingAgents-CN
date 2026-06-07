@@ -6,12 +6,12 @@
 
 import asyncio
 import importlib
-import os
 import sys
 
 from scripts.migrate.config.to.web.api.script import ConfigMigrator
 from support.path import BACKEND_ROOT
 from trader.config.manager import ConfigManager
+from app.core.config import settings as app_settings
 
 
 async def test_migration():
@@ -126,7 +126,7 @@ def test_env_file():
         ]
 
         for var in key_vars:
-            value = os.getenv(var)
+            value = app_settings.text_value(var)
             if value:
                 # 隐藏敏感信息
                 display_value = value[:8] + "..." if len(value) > 8 else "***"

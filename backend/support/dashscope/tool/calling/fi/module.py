@@ -5,7 +5,7 @@
 """
 
 import importlib
-import os
+from app.core.config import settings as app_settings
 
 
 def test_basic_tool_calling():
@@ -280,7 +280,7 @@ def main():
     print("=" * 70)
 
     # 检查API密钥
-    if not os.getenv("DASHSCOPE_API_KEY"):
+    if not app_settings.text_value("DASHSCOPE_API_KEY"):
         print("❌ 未找到DASHSCOPE_API_KEY环境变量")
         return
 

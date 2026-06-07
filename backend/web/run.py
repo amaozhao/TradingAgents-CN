@@ -13,9 +13,12 @@ from pathlib import Path
 import psutil
 
 # 导入日志模块
+from app.core.config import settings
+from app.core.runtime import apply_runtime_env
 from trader.utils.logging.manager import get_logger
 
 logger = get_logger("web")
+_SKIP_CACHE_CLEAN_OVERRIDE = False
 
 
 def check_dependencies():
@@ -82,15 +85,7 @@ def clean_cache_files(force_clean=False):
         logger.info("✅ 无需清理缓存文件")
         return
 
-    # 检查环境变量是否禁用清理（使用强健的布尔值解析）
-    try:
-        parse_bool_env = getattr(
-            importlib.import_module("trader.config.env"), "parse_bool_env"
-        )
-        skip_clean = parse_bool_env("SKIP_CACHE_CLEAN", False)
-    except ImportError:
-        # 回退到原始方法
-        skip_clean = os.getenv("SKIP_CACHE_CLEAN", "false").lower() == "true"
+    skip_clean = _SKIP_CACHE_CLEAN_OVERRIDE or settings.SKIP_CACHE_CLEAN
 
     if skip_clean and not force_clean:
         logger.info("⏭️ 跳过缓存清理（SKIP_CACHE_CLEAN=true）")
@@ -171,25 +166,19 @@ def clean_cache_files(force_clean=False):
 def check_api_keys():
     """检查API密钥配置"""
 
-    load_dotenv = getattr(importlib.import_module("dotenv"), "load_dotenv")
-
-    # 加载环境变量
-    project_root = Path(__file__).resolve().parent.parent.parent
-    load_dotenv(project_root / ".env")
-
-    dashscope_key = os.getenv("DASHSCOPE_API_KEY")
-    finnhub_key = os.getenv("FINNHUB_API_KEY")
+    dashscope_key = settings.DASHSCOPE_API_KEY
+    finnhub_key = settings.FINNHUB_API_KEY
 
     if not dashscope_key or not finnhub_key:
         logger.warning("⚠️ API密钥配置不完整")
-        logger.info("请确保在.env文件中配置以下密钥:")
+        logger.info("请确保在 backend/.env 文件中配置以下密钥:")
         if not dashscope_key:
             logger.info("  - DASHSCOPE_API_KEY (阿里百炼)")
         if not finnhub_key:
             logger.info("  - FINNHUB_API_KEY (金融数据)")
         logger.info("\n配置方法:")
-        logger.info("1. 复制 .env.example 为 .env")
-        logger.info("2. 编辑 .env 文件，填入真实API密钥")
+        logger.info("1. 复制 backend/.env.example 为 backend/.env")
+        logger.info("2. 编辑 backend/.env 文件，填入真实API密钥")
         return False
 
     logger.info("✅ API密钥配置完成")
@@ -298,15 +287,12 @@ def main():
 
 
 if __name__ == "__main__":
-    import sys
-
     # 检查命令行参数
     if len(sys.argv) > 1:
         if sys.argv[1] == "--no-clean":
+            _SKIP_CACHE_CLEAN_OVERRIDE = True
             # 设置环境变量跳过清理
-            import os
-
-            os.environ["SKIP_CACHE_CLEAN"] = "true"
+            apply_runtime_env({"SKIP_CACHE_CLEAN": "true"})
             logger.info("🚀 启动模式: 跳过缓存清理")
         elif sys.argv[1] == "--force-clean":
             # 强制清理所有缓存

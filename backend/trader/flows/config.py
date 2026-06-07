@@ -3,6 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Optional
 
+from app.core.config import settings
 import trader.default as default_config
 
 # Use default config but allow it to be overridden
@@ -15,7 +16,7 @@ def initialize_config(force: bool = True):
     if _config is not None and not force:
         return
     _config = deepcopy(default_config.DEFAULT_CONFIG)
-    env_data_dir = os.getenv("TRADING_AGENTS_DATA_DIR")
+    env_data_dir = settings.TRADING_AGENTS_DATA_DIR
     if env_data_dir:
         _config["data_dir"] = env_data_dir
     _ensure_data_dir_structure(_config.get("data_dir"))
@@ -68,7 +69,7 @@ def _ensure_data_dir_structure(data_dir: Optional[str]) -> None:
 def get_data_dir() -> str:
     """Return the configured data directory, honoring env overrides."""
     cfg = get_config()
-    data_dir = os.getenv("TRADING_AGENTS_DATA_DIR") or cfg.get("data_dir")
+    data_dir = settings.TRADING_AGENTS_DATA_DIR or cfg.get("data_dir")
     if not data_dir:
         project_dir = cfg.get("project_dir") or os.getcwd()
         data_dir = str(Path(project_dir) / "data")

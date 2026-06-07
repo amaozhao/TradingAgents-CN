@@ -4,24 +4,21 @@ DeepSeek V3集成测试
 """
 
 import importlib
-import os
 import sys
 
-from dotenv import load_dotenv
 
-from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def test_deepseek_availability():
     """测试DeepSeek可用性"""
     print("🔍 测试DeepSeek V3可用性...")
 
-    api_key = os.getenv("DEEPSEEK_API_KEY")
-    enabled = os.getenv("DEEPSEEK_ENABLED", "false").lower() == "true"
-    base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    api_key = app_settings.text_value("DEEPSEEK_API_KEY")
+    enabled = app_settings.text_value("DEEPSEEK_ENABLED", "false").lower() == "true"
+    base_url = app_settings.text_value("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
     print(f"API Key: {'✅ 已设置' if api_key else '❌ 未设置'}")
     print(f"Base URL: {base_url}")

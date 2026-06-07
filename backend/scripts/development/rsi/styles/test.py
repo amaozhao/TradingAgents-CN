@@ -8,6 +8,7 @@
 """
 
 import sys
+import traceback
 
 import numpy as np
 import pandas as pd
@@ -97,7 +98,8 @@ def test_rsi_methods():
         f"China RSI12 vs RSI24 差异: {abs(df['rsi12_china'].iloc[-1] - df['rsi24_china'].iloc[-1]):.2f}"
     )
 
-    return True
+    assert "rsi" in df_int.columns
+    assert "rsi" in df_china.columns
 
 
 def test_a_stock_compatibility():
@@ -170,7 +172,6 @@ def test_a_stock_compatibility():
 
     if rsi6_match and rsi12_match and rsi24_match:
         print(f"\n✅ 所有RSI计算结果一致！（误差 < {tolerance}）")
-        return True
     else:
         print("\n❌ RSI计算结果不一致！")
         if not rsi6_match:
@@ -179,7 +180,8 @@ def test_a_stock_compatibility():
             print("   RSI12 不匹配")
         if not rsi24_match:
             print("   RSI24 不匹配")
-        return False
+
+    assert rsi6_match and rsi12_match and rsi24_match
 
 
 if __name__ == "__main__":
@@ -209,7 +211,5 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"\n❌ 测试失败: {e}")
-        import traceback
-
         traceback.print_exc()
         sys.exit(1)

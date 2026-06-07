@@ -88,7 +88,7 @@ def get_fundamentals_openai(ticker, curr_date):
 
         # 🔥 特殊处理：OpenAI（如果配置了）
         config = get_config()
-        openai_api_key = os.getenv("OPENAI_API_KEY")
+        openai_api_key = settings.OPENAI_API_KEY
         if (
             openai_api_key
             and config.get("backend_url")

@@ -5,9 +5,9 @@
 """
 
 import importlib
-import os
 import time
 from datetime import datetime
+from app.core.config import settings as app_settings
 
 
 def test_china_data_source():
@@ -132,10 +132,10 @@ def test_api_keys():
     print("-" * 40)
 
     api_keys = {
-        "TUSHARE_TOKEN": os.getenv("TUSHARE_TOKEN"),
-        "FINNHUB_API_KEY": os.getenv("FINNHUB_API_KEY"),
-        "DASHSCOPE_API_KEY": os.getenv("DASHSCOPE_API_KEY"),
-        "DEEPSEEK_API_KEY": os.getenv("DEEPSEEK_API_KEY"),
+        "TUSHARE_TOKEN": app_settings.text_value("TUSHARE_TOKEN"),
+        "FINNHUB_API_KEY": app_settings.text_value("FINNHUB_API_KEY"),
+        "DASHSCOPE_API_KEY": app_settings.text_value("DASHSCOPE_API_KEY"),
+        "DEEPSEEK_API_KEY": app_settings.text_value("DEEPSEEK_API_KEY"),
     }
 
     configured_count = 0

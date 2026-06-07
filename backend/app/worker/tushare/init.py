@@ -69,6 +69,8 @@ class TushareInitService:
         batch_size: int = 100,
         enable_multi_period: bool = False,
         sync_items: Optional[List[str]] = None,
+        symbols: Optional[List[str]] = None,
+        force_quotes: bool = False,
     ) -> Dict[str, Any]:
         """
         运行完整的数据初始化
@@ -87,6 +89,8 @@ class TushareInitService:
                 - 'quotes': 最新行情
                 - 'news': 新闻数据
                 - None: 同步所有数据（默认）
+            symbols: 指定股票代码列表；为空时同步全市场
+            force_quotes: 是否强制同步行情，跳过交易时间检查
 
         Returns:
             初始化结果统计
@@ -99,6 +103,8 @@ class TushareInitService:
 
         logger.info("🚀 开始Tushare数据初始化...")
         logger.info(f"📋 同步项目: {', '.join(sync_items)}")
+        if self.sync_service is not None:
+            self.sync_service.batch_size = batch_size
 
         # 计算总步骤数（检查状态 + 同步项目数 + 验证）
         total_steps = 1 + len(sync_items) + 1
@@ -119,37 +125,37 @@ class TushareInitService:
 
             # 步骤3: 同步历史数据（日线）
             if "historical" in sync_items:
-                await self._step_initialize_historical_data(historical_days)
+                await self._step_initialize_historical_data(historical_days, symbols)
             else:
                 logger.info("⏭️ 跳过历史数据（日线）同步")
 
             # 步骤4: 同步周线数据
             if "weekly" in sync_items:
-                await self._step_initialize_weekly_data(historical_days)
+                await self._step_initialize_weekly_data(historical_days, symbols)
             else:
                 logger.info("⏭️ 跳过周线数据同步")
 
             # 步骤5: 同步月线数据
             if "monthly" in sync_items:
-                await self._step_initialize_monthly_data(historical_days)
+                await self._step_initialize_monthly_data(historical_days, symbols)
             else:
                 logger.info("⏭️ 跳过月线数据同步")
 
             # 步骤6: 同步财务数据
             if "financial" in sync_items:
-                await self._step_initialize_financial_data()
+                await self._step_initialize_financial_data(symbols)
             else:
                 logger.info("⏭️ 跳过财务数据同步")
 
             # 步骤7: 同步最新行情
             if "quotes" in sync_items:
-                await self._step_initialize_quotes()
+                await self._step_initialize_quotes(symbols, force=force_quotes)
             else:
                 logger.info("⏭️ 跳过最新行情同步")
 
             # 步骤8: 同步新闻数据
             if "news" in sync_items:
-                await self._step_initialize_news_data(historical_days)
+                await self._step_initialize_news_data(historical_days, symbols)
             else:
                 logger.info("⏭️ 跳过新闻数据同步")
 
@@ -212,7 +218,9 @@ class TushareInitService:
 
         self.stats.completed_steps += 1
 
-    async def _step_initialize_historical_data(self, historical_days: int):
+    async def _step_initialize_historical_data(
+        self, historical_days: int, symbols: Optional[List[str]] = None
+    ):
         """步骤3: 同步历史数据"""
         self.stats.current_step = f"同步历史数据({historical_days}天)"
         logger.info(f"📊 {self.stats.current_step}...")
@@ -232,6 +240,7 @@ class TushareInitService:
 
         # 同步历史数据
         result = await self.sync_service.sync_historical_data(
+            symbols=symbols,
             start_date=start_date,
             end_date=end_date,
             incremental=False,  # 全量同步
@@ -245,7 +254,9 @@ class TushareInitService:
 
         self.stats.completed_steps += 1
 
-    async def _step_initialize_weekly_data(self, historical_days: int):
+    async def _step_initialize_weekly_data(
+        self, historical_days: int, symbols: Optional[List[str]] = None
+    ):
         """步骤4a: 同步周线数据"""
         self.stats.current_step = f"同步周线数据({historical_days}天)"
         logger.info(f"📊 {self.stats.current_step}...")
@@ -266,6 +277,7 @@ class TushareInitService:
         try:
             # 同步周线数据
             result = await self.sync_service.sync_historical_data(
+                symbols=symbols,
                 start_date=start_date,
                 end_date=end_date,
                 incremental=False,
@@ -283,7 +295,9 @@ class TushareInitService:
 
         self.stats.completed_steps += 1
 
-    async def _step_initialize_monthly_data(self, historical_days: int):
+    async def _step_initialize_monthly_data(
+        self, historical_days: int, symbols: Optional[List[str]] = None
+    ):
         """步骤4b: 同步月线数据"""
         self.stats.current_step = f"同步月线数据({historical_days}天)"
         logger.info(f"📊 {self.stats.current_step}...")
@@ -304,6 +318,7 @@ class TushareInitService:
         try:
             # 同步月线数据
             result = await self.sync_service.sync_historical_data(
+                symbols=symbols,
                 start_date=start_date,
                 end_date=end_date,
                 incremental=False,
@@ -321,13 +336,15 @@ class TushareInitService:
 
         self.stats.completed_steps += 1
 
-    async def _step_initialize_financial_data(self):
+    async def _step_initialize_financial_data(
+        self, symbols: Optional[List[str]] = None
+    ):
         """步骤4: 同步财务数据"""
         self.stats.current_step = "同步财务数据"
         logger.info(f"💰 {self.stats.current_step}...")
 
         try:
-            result = await self.sync_service.sync_financial_data()
+            result = await self.sync_service.sync_financial_data(symbols=symbols)
 
             if result:
                 self.stats.financial_records = result.get("success_count", 0)
@@ -341,13 +358,17 @@ class TushareInitService:
 
         self.stats.completed_steps += 1
 
-    async def _step_initialize_quotes(self):
+    async def _step_initialize_quotes(
+        self, symbols: Optional[List[str]] = None, force: bool = False
+    ):
         """步骤5: 同步最新行情"""
         self.stats.current_step = "同步最新行情"
         logger.info(f"📈 {self.stats.current_step}...")
 
         try:
-            result = await self.sync_service.sync_realtime_quotes()
+            result = await self.sync_service.sync_realtime_quotes(
+                symbols=symbols, force=force
+            )
 
             if result:
                 self.stats.quotes_count = result.get("success_count", 0)
@@ -359,7 +380,9 @@ class TushareInitService:
 
         self.stats.completed_steps += 1
 
-    async def _step_initialize_news_data(self, historical_days: int):
+    async def _step_initialize_news_data(
+        self, historical_days: int, symbols: Optional[List[str]] = None
+    ):
         """步骤6: 同步新闻数据"""
         self.stats.current_step = "同步新闻数据"
         logger.info(f"📰 {self.stats.current_step}...")
@@ -369,7 +392,7 @@ class TushareInitService:
             hours_back = min(historical_days * 24, 24 * 7)  # 最多回溯7天新闻
 
             result = await self.sync_service.sync_news_data(
-                hours_back=hours_back, max_news_per_stock=20
+                symbols=symbols, hours_back=hours_back, max_news_per_stock=20
             )
 
             if result:

@@ -16,7 +16,9 @@ async def get_task_details(
 
 
 async def _delete_analysis_task_structured_rows(task_id: str) -> int:
-    init_postgres = getattr(importlib.import_module("app.core.session"), "init_postgres")
+    init_postgres = getattr(
+        importlib.import_module("app.core.session"), "init_postgres"
+    )
     get_session_factory = getattr(
         importlib.import_module("app.core.session"), "get_session_factory"
     )
@@ -37,9 +39,7 @@ async def _delete_analysis_task_structured_rows(task_id: str) -> int:
             {"task_id": task_id},
         )
         await session.commit()
-        return int(structured_result.rowcount or 0) + int(
-            document_result.rowcount or 0
-        )
+        return int(structured_result.rowcount or 0) + int(document_result.rowcount or 0)
 
 
 @router.get("/admin/zombie-tasks", response_model=ZombieTasksResponse)

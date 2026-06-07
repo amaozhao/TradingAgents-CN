@@ -10,10 +10,10 @@
 
 import asyncio
 import logging
-import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from app.core.config import settings
 from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document
 from app.services.stocks.service import get_stock_data_service
@@ -46,9 +46,9 @@ class ExampleSDKSyncService:
         self.stock_service = get_stock_data_service()
 
         # 同步配置
-        self.batch_size = int(os.getenv("EXAMPLE_SDK_BATCH_SIZE", "100"))
-        self.retry_times = int(os.getenv("EXAMPLE_SDK_RETRY_TIMES", "3"))
-        self.retry_delay = int(os.getenv("EXAMPLE_SDK_RETRY_DELAY", "5"))
+        self.batch_size = settings.EXAMPLE_SDK_BATCH_SIZE
+        self.retry_times = settings.EXAMPLE_SDK_RETRY_TIMES
+        self.retry_delay = settings.EXAMPLE_SDK_RETRY_DELAY
 
         # 统计信息
         self.sync_stats = {

@@ -8,11 +8,12 @@
 """
 
 import importlib
-import os
 import sys
 
-# 设置环境变量
-os.environ["TA_USE_APP_CACHE"] = "true"
+from app.core.config import settings
+from app.core.runtime import apply_runtime_env
+
+apply_runtime_env({"TA_USE_APP_CACHE": str(settings.TA_USE_APP_CACHE).lower()})
 
 
 def print_section(title: str):

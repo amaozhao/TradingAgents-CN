@@ -151,7 +151,7 @@ class _AKShareSyncServiceMixin2:
             "total_processed": 0,
             "success_count": 0,
             "error_count": 0,
-            "start_time": datetime.utcnow(),
+            "start_time": utcnow_naive(),
             "end_time": None,
             "duration": 0,
             "errors": [],
@@ -206,7 +206,7 @@ class _AKShareSyncServiceMixin2:
                     await asyncio.sleep(self.rate_limit_delay)
 
             # 3. 完成统计
-            stats["end_time"] = datetime.utcnow()
+            stats["end_time"] = utcnow_naive()
             stats["duration"] = (
                 stats["end_time"] - stats["start_time"]
             ).total_seconds()
@@ -338,7 +338,7 @@ class _AKShareSyncServiceMixin2:
             status_result = {
                 "provider_connected": provider_connected,
                 "collections": collections_status,
-                "status_time": datetime.utcnow(),
+                "status_time": utcnow_naive(),
             }
 
             logger.info(f"✅ AKShare状态检查完成: {status_result}")
@@ -349,7 +349,7 @@ class _AKShareSyncServiceMixin2:
             return {
                 "provider_connected": False,
                 "error": str(e),
-                "status_time": datetime.utcnow(),
+                "status_time": utcnow_naive(),
             }
 
     async def _get_favorite_stocks(self) -> List[str]:
@@ -424,7 +424,7 @@ class _AKShareSyncServiceMixin2:
             "success_count": 0,
             "error_count": 0,
             "news_count": 0,
-            "start_time": datetime.utcnow(),
+            "start_time": utcnow_naive(),
             "favorites_only": favorites_only,
             "errors": [],
         }
@@ -476,7 +476,7 @@ class _AKShareSyncServiceMixin2:
                     await asyncio.sleep(self.rate_limit_delay)
 
             # 3. 完成统计
-            stats["end_time"] = datetime.utcnow()
+            stats["end_time"] = utcnow_naive()
             stats["duration"] = (
                 stats["end_time"] - stats["start_time"]
             ).total_seconds()

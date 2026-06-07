@@ -48,7 +48,7 @@ def get_test_token():
     return None
 
 
-def test_config_reload():
+def run_config_reload():
     """测试配置重载"""
     global TOKEN
 
@@ -105,6 +105,11 @@ def test_config_reload():
         return False
 
 
+def test_config_reload():
+    """测试配置重载"""
+    run_config_reload()
+
+
 def check_backend_logs():
     """提示检查后端日志"""
     print()
@@ -140,7 +145,7 @@ def main():
     print()
 
     # 测试配置重载
-    success = test_config_reload()
+    success = run_config_reload()
 
     # 提示检查日志
     if success:

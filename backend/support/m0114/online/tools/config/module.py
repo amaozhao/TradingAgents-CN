@@ -5,7 +5,7 @@
 """
 
 import importlib
-import os
+from app.core.config import settings as app_settings
 
 
 def test_online_tools_config():
@@ -16,10 +16,14 @@ def test_online_tools_config():
     # 1. 检查环境变量
     print("\n📋 环境变量检查:")
     env_vars = {
-        "ONLINE_TOOLS_ENABLED": os.getenv("ONLINE_TOOLS_ENABLED", "未设置"),
-        "ONLINE_NEWS_ENABLED": os.getenv("ONLINE_NEWS_ENABLED", "未设置"),
-        "REALTIME_DATA_ENABLED": os.getenv("REALTIME_DATA_ENABLED", "未设置"),
-        "OPENAI_ENABLED": os.getenv("OPENAI_ENABLED", "未设置"),
+        "ONLINE_TOOLS_ENABLED": app_settings.text_value(
+            "ONLINE_TOOLS_ENABLED", "未设置"
+        ),
+        "ONLINE_NEWS_ENABLED": app_settings.text_value("ONLINE_NEWS_ENABLED", "未设置"),
+        "REALTIME_DATA_ENABLED": app_settings.text_value(
+            "REALTIME_DATA_ENABLED", "未设置"
+        ),
+        "OPENAI_ENABLED": app_settings.text_value("OPENAI_ENABLED", "未设置"),
     }
 
     for var, value in env_vars.items():

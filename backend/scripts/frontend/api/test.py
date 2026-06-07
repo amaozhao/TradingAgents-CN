@@ -8,9 +8,10 @@ import json
 import time
 
 import requests
+from app.core.config import settings
 
 
-def test_api_endpoint(url, method="GET", data=None):
+def call_api_endpoint(url, method="GET", data=None):
     """测试API端点"""
     try:
         if method.upper() == "GET":
@@ -58,7 +59,7 @@ def print_result(test_name, result):
 
 def main():
     """主测试函数"""
-    base_url = "http://localhost:8000"
+    base_url = settings.TRADING_AGENTS_API_BASE_URL.rstrip("/")
 
     print("🚀 前端API接口测试")
     print(f"测试服务器: {base_url}")
@@ -96,7 +97,7 @@ def main():
     results = {}
     for test_case in test_cases:
         print(f"\n🔄 正在测试: {test_case['name']}...")
-        result = test_api_endpoint(
+        result = call_api_endpoint(
             test_case["url"], test_case["method"], test_case.get("data")
         )
         results[test_case["name"]] = result
@@ -114,7 +115,7 @@ def main():
         print("\n🔄 测试同步操作...")
 
         # 测试运行同步
-        sync_result = test_api_endpoint(
+        sync_result = call_api_endpoint(
             f"{base_url}/api/sync/multi-source/stock_basics/run", "POST"
         )
         print_result("运行多数据源同步", sync_result)
@@ -124,7 +125,7 @@ def main():
             print("\n📊 监控同步状态...")
             for i in range(10):  # 最多监控10次
                 time.sleep(3)
-                status_result = test_api_endpoint(
+                status_result = call_api_endpoint(
                     f"{base_url}/api/sync/multi-source/status", "GET"
                 )
 
@@ -169,6 +170,20 @@ def main():
     print("   4. 检查浏览器控制台是否有CORS或其他错误")
 
     print("\n🎉 测试完成！")
+
+
+def test_frontend_api_endpoints_flow():
+    base_url = settings.TRADING_AGENTS_API_BASE_URL.rstrip("/")
+    test_cases = [
+        (f"{base_url}/api/sync/multi-source/sources/status", "GET", None),
+        (f"{base_url}/api/sync/multi-source/status", "GET", None),
+        (f"{base_url}/api/sync/multi-source/recommendations", "GET", None),
+        (f"{base_url}/api/sync/multi-source/test-sources", "POST", None),
+        (f"{base_url}/api/sync/multi-source/cache", "DELETE", None),
+    ]
+
+    results = [call_api_endpoint(url, method, data) for url, method, data in test_cases]
+    assert all(result["success"] for result in results), results
 
 
 if __name__ == "__main__":

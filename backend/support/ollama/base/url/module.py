@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 
 import pytest
+from app.core.config import settings as app_settings
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -95,7 +96,7 @@ def test_cli_dropdown_uses_env(monkeypatch):
     importlib.reload(cli_utils)
     # Reach inside the function via the same env-read it does at call time
     ollama_url = (
-        __import__("os").environ.get("OLLAMA_BASE_URL") or "http://localhost:11434/v1"
+        app_settings.text_value("OLLAMA_BASE_URL") or "http://localhost:11434/v1"
     )
     assert ollama_url == "http://cli-remote:11434/v1"
 
@@ -105,7 +106,7 @@ def test_cli_dropdown_default_when_unset(monkeypatch):
     cli_utils = importlib.import_module("cli.utils")
     importlib.reload(cli_utils)
     ollama_url = (
-        __import__("os").environ.get("OLLAMA_BASE_URL") or "http://localhost:11434/v1"
+        app_settings.text_value("OLLAMA_BASE_URL") or "http://localhost:11434/v1"
     )
     assert ollama_url == "http://localhost:11434/v1"
 

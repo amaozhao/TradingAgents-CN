@@ -4,10 +4,10 @@ OpenAI兼容适配器基类
 """
 
 import importlib
-import os
 import time
 from typing import Any, Dict, List, Optional
 
+from app.core.config import settings
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs import ChatResult
@@ -93,8 +93,8 @@ class OpenAICompatibleBase(ChatOpenAI):
 
         # 获取API密钥
         if api_key is None:
-            # 从环境变量读取 API Key
-            env_api_key = os.getenv(api_key_env_var)
+            # 从 Settings 读取 API Key
+            env_api_key = settings.text_value(api_key_env_var)
             logger.info(
                 f"🔍 [{provider_name}初始化] 从环境变量读取 {api_key_env_var}: {'有值' if env_api_key else '空'}"
             )
@@ -270,7 +270,7 @@ class ChatQianfanOpenAI(OpenAICompatibleBase):
 
         # 如果没有传入 API Key，尝试从环境变量读取
         if not api_key:
-            env_api_key = os.getenv("QIANFAN_API_KEY")
+            env_api_key = settings.QIANFAN_API_KEY
             if env_api_key and is_valid_api_key(env_api_key):
                 qianfan_api_key = env_api_key
             else:
@@ -372,7 +372,7 @@ class ChatZhipuOpenAI(OpenAICompatibleBase):
         **kwargs,
     ):
         if base_url is None:
-            env_base_url = os.getenv("ZHIPU_BASE_URL")
+            env_base_url = settings.ZHIPU_BASE_URL
             # 只使用有效的环境变量值（不是占位符）
             if (
                 env_base_url
@@ -415,7 +415,7 @@ class ChatCustomOpenAI(OpenAICompatibleBase):
     ):
         # 如果没有传入 base_url，尝试从环境变量读取
         if base_url is None:
-            env_base_url = os.getenv("CUSTOM_OPENAI_BASE_URL")
+            env_base_url = settings.CUSTOM_OPENAI_BASE_URL
             # 只使用有效的环境变量值（不是占位符）
             if (
                 env_base_url

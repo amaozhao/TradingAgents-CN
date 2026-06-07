@@ -73,7 +73,7 @@ if (Test-Path $portableDir) {
         }
     }
     
-    $requiredFiles = @(".env.example", "runtime\nginx.conf")
+    $requiredFiles = @("backend\.env.example", "runtime\nginx.conf")
     foreach ($file in $requiredFiles) {
         $fullPath = Join-Path $portableDir $file
         if (Test-Path $fullPath) {

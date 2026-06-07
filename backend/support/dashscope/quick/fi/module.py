@@ -5,7 +5,7 @@
 """
 
 import importlib
-import os
+from app.core.config import settings as app_settings
 
 
 def test_adapter_creation():
@@ -130,7 +130,7 @@ def test_api_key_detection():
     print("\n🔧 测试API密钥检测")
     print("=" * 40)
 
-    api_key = os.getenv("DASHSCOPE_API_KEY")
+    api_key = app_settings.text_value("DASHSCOPE_API_KEY")
     if api_key:
         print(f"✅ DASHSCOPE_API_KEY: {api_key[:10]}...")
 

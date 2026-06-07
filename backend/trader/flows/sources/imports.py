@@ -16,6 +16,7 @@ from typing import Any, Callable, Dict, List, Optional, TypeVar, cast
 import numpy as np
 import pandas as pd
 
+from app.core.config import settings
 from trader.config.databases import get_database_manager
 from trader.constants import DataSourceCode
 from trader.utils.logging.init import setup_dataflow_logging

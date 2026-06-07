@@ -17,12 +17,12 @@ class ForeignStockBaseMixin:
         },
     }
 
-    def __init__(self, db=None):
+    def __init__(self, db=None, cache=None, hk_provider=None):
         # 使用统一缓存系统（自动选择 PostgreSQL/Redis/File）
-        self.cache = get_cache()
+        self.cache = cache if cache is not None else get_cache()
 
         # 初始化港股数据源提供者
-        self.hk_provider = HKStockProvider()
+        self.hk_provider = hk_provider if hk_provider is not None else HKStockProvider()
 
         # 保存数据库连接（用于查询数据源优先级）
         self.db: Any = db

@@ -8,15 +8,28 @@
 import time
 from datetime import datetime
 
+import pytest
+
 # 导入需要测试的模块
 from trader.flows.real.time import get_realtime_stock_news
 from trader.utils.logging import get_logger
 
 # 获取日志记录器
 logger = get_logger("test")
+TEST_TICKERS = ["600036.SH"]
+MANUAL_TEST_TICKERS = [
+    "600036.SH",
+    "000001.SZ",
+    "601318.SH",
+    "00700.HK",
+    "09988.HK",
+    "AAPL.US",
+    "MSFT.US",
+    "GOOGL.US",
+]
 
 
-def test_news_for_stock(ticker):
+def fetch_news_for_stock(ticker: str) -> str:
     """
     测试获取指定股票的新闻
 
@@ -40,35 +53,29 @@ def test_news_for_stock(ticker):
         print(news)
         print("=" * 80 + "\n")
 
-        return True
+        return news
     except Exception as e:
         logger.error(f"获取{ticker}的新闻失败: {e}")
-        return False
+        return ""
+
+
+@pytest.mark.parametrize("ticker", TEST_TICKERS)
+def test_news_for_stock(ticker: str) -> None:
+    news = fetch_news_for_stock(ticker)
+    assert news.strip()
 
 
 def main():
     """
     主函数
     """
-    # 测试A股
-    a_shares = ["600036.SH", "000001.SZ", "601318.SH"]
-
-    # 测试港股
-    hk_shares = ["00700.HK", "09988.HK"]
-
-    # 测试美股
-    us_shares = ["AAPL.US", "MSFT.US", "GOOGL.US"]
-
-    # 所有股票
-    all_stocks = a_shares + hk_shares + us_shares
-
     # 测试结果统计
     success_count = 0
     fail_count = 0
 
     # 逐个测试
-    for ticker in all_stocks:
-        if test_news_for_stock(ticker):
+    for ticker in MANUAL_TEST_TICKERS:
+        if fetch_news_for_stock(ticker):
             success_count += 1
         else:
             fail_count += 1

@@ -4,8 +4,9 @@
 提供兼容Python 3.13+的强健环境变量解析功能
 """
 
-import os
 from typing import Optional
+
+from app.core.config import settings
 
 
 def parse_bool_env(env_var: str, default: bool = False) -> bool:
@@ -28,7 +29,7 @@ def parse_bool_env(env_var: str, default: bool = False) -> bool:
     Returns:
         bool: 解析后的布尔值
     """
-    value = os.getenv(env_var)
+    value = settings.value(env_var, None)
 
     if value is None:
         return default
@@ -92,7 +93,7 @@ def parse_int_env(env_var: str, default: int = 0) -> int:
     Returns:
         int: 解析后的整数值
     """
-    value = os.getenv(env_var)
+    value = settings.value(env_var, None)
 
     if value is None:
         return default
@@ -115,7 +116,7 @@ def parse_float_env(env_var: str, default: float = 0.0) -> float:
     Returns:
         float: 解析后的浮点数值
     """
-    value = os.getenv(env_var)
+    value = settings.value(env_var, None)
 
     if value is None:
         return default
@@ -138,7 +139,7 @@ def parse_str_env(env_var: str, default: str = "") -> str:
     Returns:
         str: 解析后的字符串值
     """
-    value = os.getenv(env_var)
+    value = settings.value(env_var, None)
 
     if value is None:
         return default
@@ -163,7 +164,7 @@ def parse_list_env(
     if default is None:
         default = []
 
-    value = os.getenv(env_var)
+    value = settings.value(env_var, None)
 
     if value is None:
         return default
@@ -188,7 +189,7 @@ def get_env_info(env_var: str) -> dict:
     Returns:
         dict: 环境变量信息
     """
-    value = os.getenv(env_var)
+    value = settings.value(env_var, None)
 
     return {
         "name": env_var,

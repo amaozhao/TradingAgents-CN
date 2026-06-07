@@ -75,18 +75,13 @@ class StockDataCacheBaseMixin:
 
         # 内容长度限制配置（文件缓存默认不限制）
         self.content_length_config = {
-            "max_content_length": int(
-                os.getenv("MAX_CACHE_CONTENT_LENGTH", "50000")
-            ),  # 50K字符
+            "max_content_length": settings.MAX_CACHE_CONTENT_LENGTH,  # 50K字符
             "long_text_providers": [
                 "dashscope",
                 "openai",
                 "google",
             ],  # 支持长文本的提供商
-            "enable_length_check": os.getenv(
-                "ENABLE_CACHE_LENGTH_CHECK", "false"
-            ).lower()
-            == "true",  # 文件缓存默认不限制
+            "enable_length_check": settings.ENABLE_CACHE_LENGTH_CHECK,
         }
 
         logger.info(f"📁 缓存管理器初始化完成，缓存目录: {self.cache_dir}")
@@ -109,24 +104,24 @@ class StockDataCacheBaseMixin:
         available_providers = []
 
         # 检查DashScope
-        dashscope_key = os.getenv("DASHSCOPE_API_KEY")
+        dashscope_key = settings.DASHSCOPE_API_KEY
         if dashscope_key and dashscope_key.strip():
             available_providers.append("dashscope")
 
         # 检查OpenAI
-        openai_key = os.getenv("OPENAI_API_KEY")
+        openai_key = settings.OPENAI_API_KEY
         if openai_key and openai_key.strip():
             # 简单的格式检查
             if openai_key.startswith("sk-") and len(openai_key) >= 40:
                 available_providers.append("openai")
 
         # 检查Google AI
-        google_key = os.getenv("GOOGLE_API_KEY")
+        google_key = settings.GOOGLE_API_KEY
         if google_key and google_key.strip():
             available_providers.append("google")
 
         # 检查Anthropic
-        anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+        anthropic_key = settings.ANTHROPIC_API_KEY
         if anthropic_key and anthropic_key.strip():
             available_providers.append("anthropic")
 

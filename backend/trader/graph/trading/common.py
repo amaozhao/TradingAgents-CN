@@ -130,21 +130,19 @@ class _GraphMixin1:
 
             api_key = None
             if provider == "siliconflow":
-                api_key = os.getenv("SILICONFLOW_API_KEY")
+                api_key = settings.SILICONFLOW_API_KEY
                 if not api_key:
-                    raise ValueError(
-                        "使用SiliconFlow需要设置SILICONFLOW_API_KEY环境变量"
-                    )
+                    raise ValueError("使用SiliconFlow需要配置SILICONFLOW_API_KEY")
             elif provider == "openrouter":
-                api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")
+                api_key = settings.OPENROUTER_API_KEY or settings.OPENAI_API_KEY
                 if not api_key:
                     raise ValueError(
-                        "使用OpenRouter需要设置OPENROUTER_API_KEY或OPENAI_API_KEY环境变量"
+                        "使用OpenRouter需要配置OPENROUTER_API_KEY或OPENAI_API_KEY"
                     )
             elif provider == "aihubmix":
-                api_key = os.getenv("AIHUBMIX_API_KEY")
+                api_key = settings.AIHUBMIX_API_KEY
                 if not api_key:
-                    raise ValueError("使用AiHubMix需要设置AIHUBMIX_API_KEY环境变量")
+                    raise ValueError("使用AiHubMix需要配置AIHUBMIX_API_KEY")
 
             self.deep_thinking_llm, self.quick_thinking_llm = _create_provider_pair(
                 provider=provider,
@@ -169,8 +167,8 @@ class _GraphMixin1:
             anthropic_api_key = (
                 self.config.get("quick_api_key")
                 or self.config.get("deep_api_key")
-                or os.getenv(env_key_for_provider(normalized_provider))
-                or os.getenv("ANTHROPIC_API_KEY")
+                or settings.text_value(env_key_for_provider(normalized_provider) or "")
+                or settings.ANTHROPIC_API_KEY
             )
             self.deep_thinking_llm, self.quick_thinking_llm = _create_provider_pair(
                 provider=normalized_provider,
@@ -194,7 +192,7 @@ class _GraphMixin1:
             google_api_key = (
                 self.config.get("quick_api_key")
                 or self.config.get("deep_api_key")
-                or os.getenv("GOOGLE_API_KEY")
+                or settings.GOOGLE_API_KEY
             )
             if not google_api_key:
                 raise ValueError(
@@ -256,13 +254,13 @@ class _GraphMixin1:
             deepseek_api_key = (
                 self.config.get("quick_api_key")
                 or self.config.get("deep_api_key")
-                or os.getenv("DEEPSEEK_API_KEY")
+                or settings.DEEPSEEK_API_KEY
             )
             if not deepseek_api_key:
-                raise ValueError("使用DeepSeek需要设置DEEPSEEK_API_KEY环境变量")
+                raise ValueError("使用DeepSeek需要配置DEEPSEEK_API_KEY")
 
-            deepseek_base_url = self.config.get("backend_url") or os.getenv(
-                "DEEPSEEK_BASE_URL", "https://api.deepseek.com"
+            deepseek_base_url = (
+                self.config.get("backend_url") or settings.DEEPSEEK_BASE_URL
             )
             self.deep_thinking_llm, self.quick_thinking_llm = _create_provider_pair(
                 provider="deepseek",
@@ -280,11 +278,9 @@ class _GraphMixin1:
                 "✅ [DeepSeek] 已通过 llm_clients 初始化成功并应用用户配置的模型参数"
             )
         elif normalized_provider == "custom_openai":
-            custom_api_key = os.getenv("CUSTOM_OPENAI_API_KEY")
+            custom_api_key = settings.CUSTOM_OPENAI_API_KEY
             if not custom_api_key:
-                raise ValueError(
-                    "使用自定义OpenAI端点需要设置CUSTOM_OPENAI_API_KEY环境变量"
-                )
+                raise ValueError("使用自定义OpenAI端点需要配置CUSTOM_OPENAI_API_KEY")
 
             custom_base_url = self.config.get(
                 "custom_openai_base_url", "https://api.openai.com/v1"
@@ -329,7 +325,7 @@ class _GraphMixin1:
             zhipu_api_key = (
                 self.config.get("quick_api_key")
                 or self.config.get("deep_api_key")
-                or os.getenv("ZHIPU_API_KEY")
+                or settings.ZHIPU_API_KEY
             )
             logger.info(
                 f"🔑 [智谱AI] API Key 来源: {'数据库配置' if self.config.get('quick_api_key') or self.config.get('deep_api_key') else '环境变量'}"
@@ -392,9 +388,9 @@ class _GraphMixin1:
 
             custom_api_key = None
             for env_var in api_key_candidates:
-                custom_api_key = os.getenv(env_var)
+                custom_api_key = settings.text_value(env_var)
                 if custom_api_key:
-                    logger.info(f"✅ 从环境变量 {env_var} 获取到 API Key")
+                    logger.info(f"✅ 从 Settings {env_var} 获取到 API Key")
                     break
 
             if not custom_api_key:

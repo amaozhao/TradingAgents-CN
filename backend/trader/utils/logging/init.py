@@ -10,6 +10,7 @@ import platform
 import sys
 from typing import Any, Optional
 
+from app.core.config import settings
 from trader.utils.logging.manager import get_logger, setup_logging
 
 
@@ -40,9 +41,7 @@ def init_logging(config_override: Optional[dict] = None) -> None:
     # 记录环境信息
     logger.debug(f"🔧 Python版本: {sys.version}")
     logger.debug(f"📂 工作目录: {os.getcwd()}")
-    logger.debug(
-        f"🌍 环境变量: DOCKER_CONTAINER={os.getenv('DOCKER_CONTAINER', 'false')}"
-    )
+    logger.debug(f"🌍 Settings: DOCKER_CONTAINER={settings.DOCKER_CONTAINER}")
 
 
 def get_session_logger(
@@ -77,9 +76,9 @@ def log_startup_info():
 
     # 环境信息
     env_info = {
-        "DOCKER_CONTAINER": os.getenv("DOCKER_CONTAINER", "false"),
-        "TRADING_AGENTS_LOG_LEVEL": os.getenv("TRADING_AGENTS_LOG_LEVEL", "INFO"),
-        "TRADING_AGENTS_LOG_DIR": os.getenv("TRADING_AGENTS_LOG_DIR", "./logs"),
+        "DOCKER_CONTAINER": settings.DOCKER_CONTAINER,
+        "TRADING_AGENTS_LOG_LEVEL": settings.TRADING_AGENTS_LOG_LEVEL,
+        "TRADING_AGENTS_LOG_DIR": settings.TRADING_AGENTS_LOG_DIR,
     }
 
     for key, value in env_info.items():

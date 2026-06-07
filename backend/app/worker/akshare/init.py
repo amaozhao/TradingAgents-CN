@@ -6,12 +6,17 @@ AKShare数据初始化服务
 import importlib
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from app.core.database import get_postgres_db
 
 logger = logging.getLogger(__name__)
+
+
+def utcnow_naive() -> datetime:
+    """Return a naive UTC datetime for legacy document fields."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 @dataclass
@@ -69,6 +74,8 @@ class AKShareInitService:
         batch_size: int = 100,
         enable_multi_period: bool = False,
         sync_items: Optional[List[str]] = None,
+        symbols: Optional[List[str]] = None,
+        force_quotes: bool = False,
     ) -> Dict[str, Any]:
         """
         运行完整的数据初始化
@@ -87,6 +94,8 @@ class AKShareInitService:
                 - 'quotes': 最新行情
                 - 'news': 新闻数据
                 - None: 同步所有数据（默认）
+            symbols: 指定股票代码列表；为空时同步全市场
+            force_quotes: 是否强制同步行情，跳过交易时间检查
 
         Returns:
             初始化结果统计
@@ -99,12 +108,14 @@ class AKShareInitService:
 
         logger.info("🚀 开始AKShare数据完整初始化...")
         logger.info(f"📋 同步项目: {', '.join(sync_items)}")
+        if self.sync_service is not None:
+            self.sync_service.batch_size = batch_size
 
         # 计算总步骤数（检查状态 + 同步项目数 + 验证）
         total_steps = 1 + len(sync_items) + 1
 
         self.stats = AKShareInitializationStats(
-            started_at=datetime.utcnow(), total_steps=total_steps
+            started_at=utcnow_naive(), total_steps=total_steps
         )
 
         try:
@@ -118,6 +129,7 @@ class AKShareInitService:
                 logger.info(f"  当前股票基础信息: {basic_count}条")
                 if basic_count == 0:
                     logger.warning("⚠️ 数据库中没有股票基础信息，建议先同步 basic_info")
+                self.stats.completed_steps += 1
 
             # 步骤2: 初始化股票基础信息
             if "basic_info" in sync_items:
@@ -127,44 +139,44 @@ class AKShareInitService:
 
             # 步骤3: 同步历史数据（日线）
             if "historical" in sync_items:
-                await self._step_initialize_historical_data(historical_days)
+                await self._step_initialize_historical_data(historical_days, symbols)
             else:
                 logger.info("⏭️ 跳过历史数据（日线）同步")
 
             # 步骤4: 同步周线数据
             if "weekly" in sync_items:
-                await self._step_initialize_weekly_data(historical_days)
+                await self._step_initialize_weekly_data(historical_days, symbols)
             else:
                 logger.info("⏭️ 跳过周线数据同步")
 
             # 步骤5: 同步月线数据
             if "monthly" in sync_items:
-                await self._step_initialize_monthly_data(historical_days)
+                await self._step_initialize_monthly_data(historical_days, symbols)
             else:
                 logger.info("⏭️ 跳过月线数据同步")
 
             # 步骤6: 同步财务数据
             if "financial" in sync_items:
-                await self._step_initialize_financial_data()
+                await self._step_initialize_financial_data(symbols)
             else:
                 logger.info("⏭️ 跳过财务数据同步")
 
             # 步骤7: 同步最新行情
             if "quotes" in sync_items:
-                await self._step_initialize_quotes()
+                await self._step_initialize_quotes(symbols, force=force_quotes)
             else:
                 logger.info("⏭️ 跳过最新行情同步")
 
             # 步骤8: 同步新闻数据
             if "news" in sync_items:
-                await self._step_initialize_news_data()
+                await self._step_initialize_news_data(symbols)
             else:
                 logger.info("⏭️ 跳过新闻数据同步")
 
             # 最后: 验证数据完整性
             await self._step_verify_data_integrity()
 
-            self.stats.finished_at = datetime.utcnow()
+            self.stats.finished_at = utcnow_naive()
             duration = (self.stats.finished_at - self.stats.started_at).total_seconds()
 
             logger.info(f"🎉 AKShare数据初始化完成！耗时: {duration:.2f}秒")
@@ -177,7 +189,7 @@ class AKShareInitService:
                 {
                     "step": self.stats.current_step,
                     "error": str(e),
-                    "timestamp": datetime.utcnow(),
+                    "timestamp": utcnow_naive(),
                 }
             )
             return self._get_initialization_summary()
@@ -220,7 +232,9 @@ class AKShareInitService:
 
         self.stats.completed_steps += 1
 
-    async def _step_initialize_historical_data(self, historical_days: int):
+    async def _step_initialize_historical_data(
+        self, historical_days: int, symbols: Optional[List[str]] = None
+    ):
         """步骤3: 同步历史数据"""
         self.stats.current_step = f"同步历史数据({historical_days}天)"
         logger.info(f"📊 {self.stats.current_step}...")
@@ -242,6 +256,7 @@ class AKShareInitService:
         result = await self.sync_service.sync_historical_data(
             start_date=start_date,
             end_date=end_date,
+            symbols=symbols,
             incremental=False,  # 全量同步
         )
 
@@ -253,7 +268,9 @@ class AKShareInitService:
 
         self.stats.completed_steps += 1
 
-    async def _step_initialize_weekly_data(self, historical_days: int):
+    async def _step_initialize_weekly_data(
+        self, historical_days: int, symbols: Optional[List[str]] = None
+    ):
         """步骤4a: 同步周线数据"""
         self.stats.current_step = f"同步周线数据({historical_days}天)"
         logger.info(f"📊 {self.stats.current_step}...")
@@ -276,6 +293,7 @@ class AKShareInitService:
             result = await self.sync_service.sync_historical_data(
                 start_date=start_date,
                 end_date=end_date,
+                symbols=symbols,
                 incremental=False,
                 period="weekly",  # 指定周线
             )
@@ -291,7 +309,9 @@ class AKShareInitService:
 
         self.stats.completed_steps += 1
 
-    async def _step_initialize_monthly_data(self, historical_days: int):
+    async def _step_initialize_monthly_data(
+        self, historical_days: int, symbols: Optional[List[str]] = None
+    ):
         """步骤4b: 同步月线数据"""
         self.stats.current_step = f"同步月线数据({historical_days}天)"
         logger.info(f"📊 {self.stats.current_step}...")
@@ -314,6 +334,7 @@ class AKShareInitService:
             result = await self.sync_service.sync_historical_data(
                 start_date=start_date,
                 end_date=end_date,
+                symbols=symbols,
                 incremental=False,
                 period="monthly",  # 指定月线
             )
@@ -329,13 +350,15 @@ class AKShareInitService:
 
         self.stats.completed_steps += 1
 
-    async def _step_initialize_financial_data(self):
+    async def _step_initialize_financial_data(
+        self, symbols: Optional[List[str]] = None
+    ):
         """步骤4: 同步财务数据"""
         self.stats.current_step = "同步财务数据"
         logger.info(f"💰 {self.stats.current_step}...")
 
         try:
-            result = await self.sync_service.sync_financial_data()
+            result = await self.sync_service.sync_financial_data(symbols=symbols)
 
             if result:
                 self.stats.financial_records = result.get("success_count", 0)
@@ -349,13 +372,17 @@ class AKShareInitService:
 
         self.stats.completed_steps += 1
 
-    async def _step_initialize_quotes(self):
+    async def _step_initialize_quotes(
+        self, symbols: Optional[List[str]] = None, force: bool = False
+    ):
         """步骤5: 同步最新行情"""
         self.stats.current_step = "同步最新行情"
         logger.info(f"📈 {self.stats.current_step}...")
 
         try:
-            result = await self.sync_service.sync_realtime_quotes()
+            result = await self.sync_service.sync_realtime_quotes(
+                symbols=symbols, force=force
+            )
 
             if result:
                 self.stats.quotes_count = result.get("success_count", 0)
@@ -367,13 +394,15 @@ class AKShareInitService:
 
         self.stats.completed_steps += 1
 
-    async def _step_initialize_news_data(self):
+    async def _step_initialize_news_data(self, symbols: Optional[List[str]] = None):
         """步骤6: 同步新闻数据"""
         self.stats.current_step = "同步新闻数据"
         logger.info(f"📰 {self.stats.current_step}...")
 
         try:
-            result = await self.sync_service.sync_news_data(max_news_per_stock=20)
+            result = await self.sync_service.sync_news_data(
+                symbols=symbols, max_news_per_stock=20
+            )
 
             if result:
                 self.stats.news_count = result.get("news_count", 0)

@@ -6,9 +6,9 @@ Data Directory Configuration Utilities
 """
 
 import importlib
-import os
 from pathlib import Path
 from typing import Optional
+from app.core.config import settings as app_settings
 
 try:
     data_manager_module = importlib.import_module("scripts.unified_data_manager")
@@ -226,7 +226,7 @@ def check_data_directory_config() -> dict:
 
     config_status = {}
     for var in env_vars:
-        value = os.getenv(var)
+        value = app_settings.text_value(var)
         config_status[var] = {
             "set": value is not None,
             "value": value,

@@ -2,19 +2,19 @@
 API密钥检查工具
 """
 
-import os
+from app.core.config import settings
 
 
 def check_api_keys():
     """检查所有必要的API密钥是否已配置"""
 
     # 检查各个API密钥
-    dashscope_key = os.getenv("DASHSCOPE_API_KEY")
-    finnhub_key = os.getenv("FINNHUB_API_KEY")
-    openai_key = os.getenv("OPENAI_API_KEY")
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-    google_key = os.getenv("GOOGLE_API_KEY")
-    qianfan_key = os.getenv("QIANFAN_API_KEY")
+    dashscope_key = settings.DASHSCOPE_API_KEY
+    finnhub_key = settings.FINNHUB_API_KEY
+    openai_key = settings.OPENAI_API_KEY
+    anthropic_key = settings.ANTHROPIC_API_KEY
+    google_key = settings.GOOGLE_API_KEY
+    qianfan_key = settings.QIANFAN_API_KEY
 
     # 构建详细状态
     details = {

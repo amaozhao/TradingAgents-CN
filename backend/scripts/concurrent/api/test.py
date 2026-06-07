@@ -4,17 +4,77 @@
 
 import asyncio
 import time
+import traceback
 from datetime import datetime
 
 import aiohttp
+from app.core.config import settings
+from app.services.user import UserService
+
+BASE_URL = settings.TRADING_AGENTS_API_BASE_URL.rstrip("/")
+API_USERNAME = (
+    settings.TRADING_AGENTS_API_USERNAME
+    or settings.TRADING_AGENTS_TEST_USERNAME
+    or "admin"
+)
+API_PASSWORD = (
+    settings.TRADING_AGENTS_API_PASSWORD
+    or settings.TRADING_AGENTS_TEST_PASSWORD
+    or "admin123"
+)
+CONCURRENT_NOTIFICATION_INTERVAL_SECONDS = 0.5
+MAX_CONCURRENT_NOTIFICATION_PROBES = 10
+MIN_CONCURRENT_NOTIFICATION_PROBES = 2
 
 
-async def test_notifications_api(session: aiohttp.ClientSession, test_id: int):
+async def ensure_api_user() -> None:
+    """确保真实登录接口使用的测试管理员存在且密码匹配。"""
+    user_service = UserService()
+    existing_user = await user_service.get_user_by_username(API_USERNAME)
+
+    if existing_user is None:
+        created_user = await user_service.create_admin_user(
+            username=API_USERNAME,
+            password=API_PASSWORD,
+            email=f"{API_USERNAME}@trader.local",
+        )
+        assert created_user, f"无法创建测试用户: {API_USERNAME}"
+        return
+
+    user_service.users_collection.update_one(
+        {"username": API_USERNAME},
+        {
+            "$set": {
+                "is_active": True,
+                "is_admin": True,
+                "hashed_password": user_service.hash_password(API_PASSWORD),
+            }
+        },
+    )
+
+
+async def get_auth_headers(session: aiohttp.ClientSession) -> dict[str, str]:
+    if settings.TRADING_AGENTS_API_TOKEN:
+        return {"Authorization": f"Bearer {settings.TRADING_AGENTS_API_TOKEN}"}
+
+    await ensure_api_user()
+    async with session.post(
+        f"{BASE_URL}/api/auth/login",
+        json={"username": API_USERNAME, "password": API_PASSWORD},
+        timeout=aiohttp.ClientTimeout(total=settings.TRADING_AGENTS_API_TIMEOUT),
+    ) as response:
+        response.raise_for_status()
+        data = await response.json()
+        token = data.get("data", {}).get("access_token")
+        assert token, "登录接口没有返回 access_token"
+        return {"Authorization": f"Bearer {token}"}
+
+
+async def check_notifications_api(
+    session: aiohttp.ClientSession, test_id: int, headers: dict[str, str]
+):
     """测试通知接口"""
-    url = "http://localhost:8000/api/notifications/unread_count"
-    headers = {
-        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTc2MzIwMzIwMH0.Zr8vY_4xQKqZ5xZ5xZ5xZ5xZ5xZ5xZ5xZ5xZ5xZ5xZ5"
-    }
+    url = f"{BASE_URL}/api/notifications/unread_count"
 
     start = time.time()
     try:
@@ -41,9 +101,9 @@ async def test_notifications_api(session: aiohttp.ClientSession, test_id: int):
         return False
 
 
-async def test_data_sources_api(session: aiohttp.ClientSession):
+async def check_data_sources_api(session: aiohttp.ClientSession):
     """测试数据源测试接口"""
-    url = "http://localhost:8000/api/sync/multi-source/test-sources"
+    url = f"{BASE_URL}/api/sync/multi-source/test-sources"
 
     start = time.time()
     try:
@@ -86,22 +146,27 @@ async def concurrent_test():
     print()
 
     async with aiohttp.ClientSession() as session:
+        headers = await get_auth_headers(session)
+
         # 启动数据源测试
         print("📊 启动数据源测试...")
-        data_source_task = asyncio.create_task(test_data_sources_api(session))
+        data_source_task = asyncio.create_task(check_data_sources_api(session))
 
-        # 等待1秒，确保数据源测试已经开始
-        await asyncio.sleep(1)
-
-        # 在数据源测试期间，每秒发送一次通知接口请求
-        print("\n📬 开始并发测试通知接口（每秒1次）...")
+        # 数据源探测通常很快，通知探针必须覆盖数据源运行窗口，而不是在
+        # 数据源结束后继续固定打满 10 秒，避免把无关的后续服务抖动算作并发失败。
+        print("\n📬 开始并发测试通知接口（数据源运行窗口采样）...")
         print()
 
         notification_tasks = []
-        for i in range(10):  # 测试10次
-            task = asyncio.create_task(test_notifications_api(session, i + 1))
+        for i in range(MAX_CONCURRENT_NOTIFICATION_PROBES):
+            task = asyncio.create_task(check_notifications_api(session, i + 1, headers))
             notification_tasks.append(task)
-            await asyncio.sleep(1)  # 每秒一次
+            await asyncio.sleep(CONCURRENT_NOTIFICATION_INTERVAL_SECONDS)
+            if (
+                data_source_task.done()
+                and len(notification_tasks) >= MIN_CONCURRENT_NOTIFICATION_PROBES
+            ):
+                break
 
         # 等待所有任务完成
         print("\n⏳ 等待所有任务完成...")
@@ -141,6 +206,10 @@ async def concurrent_test():
             print("❌ 所有通知接口请求都失败了！")
 
         print("=" * 80)
+        return (
+            bool(data_source_success)
+            and notification_success_count == notification_total
+        )
 
 
 async def sequential_test():
@@ -151,22 +220,25 @@ async def sequential_test():
     print()
 
     async with aiohttp.ClientSession() as session:
+        headers = await get_auth_headers(session)
+
         # 先测试通知接口
         print("📬 测试通知接口（数据源测试前）...")
-        success = await test_notifications_api(session, 0)
+        success = await check_notifications_api(session, 0, headers)
         print(f"   结果: {'✅ 成功' if success else '❌ 失败'}")
         print()
 
         # 再测试数据源
         print("🧪 测试数据源...")
-        await test_data_sources_api(session)
+        data_source_success = await check_data_sources_api(session)
         print()
 
         # 最后再测试通知接口
         print("📬 测试通知接口（数据源测试后）...")
-        success = await test_notifications_api(session, 0)
-        print(f"   结果: {'✅ 成功' if success else '❌ 失败'}")
+        final_success = await check_notifications_api(session, 0, headers)
+        print(f"   结果: {'✅ 成功' if final_success else '❌ 失败'}")
         print()
+        return bool(success and data_source_success and final_success)
 
 
 async def main():
@@ -182,14 +254,19 @@ async def main():
     print()
 
     # 顺序测试
-    await sequential_test()
+    sequential_success = await sequential_test()
 
     # 等待3秒
     print("⏳ 等待3秒后开始并发测试...")
     await asyncio.sleep(3)
 
     # 并发测试
-    await concurrent_test()
+    concurrent_success = await concurrent_test()
+    return bool(sequential_success and concurrent_success)
+
+
+async def test_concurrent_api_flow():
+    assert await main()
 
 
 if __name__ == "__main__":
@@ -199,6 +276,4 @@ if __name__ == "__main__":
         print("\n\n⚠️  测试被用户中断")
     except Exception as e:
         print(f"\n\n❌ 测试出错: {e}")
-        import traceback
-
         traceback.print_exc()

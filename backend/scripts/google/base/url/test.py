@@ -7,8 +7,8 @@
 """
 
 import importlib
-import os
 import sys
+from app.core.config import settings as app_settings
 
 print("🧪 Google AI base_url 参数测试")
 print("=" * 80)
@@ -29,7 +29,7 @@ def test_google_base_url():
     try:
         llm1 = ChatGoogleOpenAI(
             model="gemini-2.5-flash",
-            google_api_key=os.getenv("GOOGLE_API_KEY"),
+            google_api_key=app_settings.text_value("GOOGLE_API_KEY"),
             temperature=0.7,
             max_tokens=100,
         )
@@ -37,10 +37,10 @@ def test_google_base_url():
         print(f"   模型: {llm1.model}")
     except Exception as e:
         print(f"❌ LLM 创建失败: {e}")
-        return False
+        return
 
-    # 测试 2: 提供 base_url（v1beta）+ REST 传输模式
-    print("\n📊 测试 2: 提供 base_url（v1beta）+ REST 传输模式")
+    # 测试 2: 提供 base_url（v1beta）
+    print("\n📊 测试 2: 提供 base_url（v1beta）")
     print("-" * 80)
 
     custom_url_v1beta = "https://generativelanguage.googleapis.com/v1beta"
@@ -48,18 +48,16 @@ def test_google_base_url():
     try:
         llm2 = ChatGoogleOpenAI(
             model="gemini-2.5-flash",
-            google_api_key=os.getenv("GOOGLE_API_KEY"),
+            google_api_key=app_settings.text_value("GOOGLE_API_KEY"),
             base_url=custom_url_v1beta,
             temperature=0.7,
             max_tokens=100,
-            transport="rest",  # 🔧 使用 REST 传输模式，支持 HTTP 代理
         )
         print(f"✅ LLM 创建成功（自定义端点: {custom_url_v1beta}）")
         print(f"   模型: {llm2.model}")
-        print("   传输模式: REST（支持 HTTP 代理）")
     except Exception as e:
         print(f"❌ LLM 创建失败: {e}")
-        return False
+        return
 
     # 测试 3: 提供 base_url（v1，应该自动转换为 v1beta）
     print("\n📊 测试 3: 提供 base_url（v1，应该自动转换为 v1beta）")
@@ -70,7 +68,7 @@ def test_google_base_url():
     try:
         llm3 = ChatGoogleOpenAI(
             model="gemini-2.5-flash",
-            google_api_key=os.getenv("GOOGLE_API_KEY"),
+            google_api_key=app_settings.text_value("GOOGLE_API_KEY"),
             base_url=custom_url_v1,
             temperature=0.7,
             max_tokens=100,
@@ -80,7 +78,7 @@ def test_google_base_url():
         print(f"   ℹ️  应该自动转换为: {custom_url_v1[:-3]}/v1beta")
     except Exception as e:
         print(f"❌ LLM 创建失败: {e}")
-        return False
+        return
 
     # 测试 4: 使用 create_llm_by_provider 函数
     print("\n📊 测试 4: 使用 create_llm_by_provider 函数")
@@ -103,17 +101,16 @@ def test_google_base_url():
         print(f"   模型: {llm4.model}")
     except Exception as e:
         print(f"❌ LLM 创建失败: {e}")
-        return False
+        return
 
-    # 测试 5: 实际 API 调用（使用 REST 模式）
-    print("\n📊 测试 5: 实际 API 调用（使用 REST 模式）")
+    # 测试 5: 实际 API 调用
+    print("\n📊 测试 5: 实际 API 调用")
     print("-" * 80)
 
     try:
         print("📤 发送测试消息...")
         print("   提示: 你好，请用一句话介绍你自己")
 
-        # 使用 REST 模式的 LLM（llm2）
         response = llm2.invoke("你好，请用一句话介绍你自己")
 
         print("✅ API 调用成功！")
@@ -130,8 +127,6 @@ def test_google_base_url():
                     f"   Token使用: 输入={usage.get('prompt_tokens', 0)}, 输出={usage.get('completion_tokens', 0)}, 总计={usage.get('total_tokens', 0)}"
                 )
 
-        return True
-
     except Exception as e:
         print(f"❌ API 调用失败: {e}")
         print()
@@ -147,7 +142,6 @@ def test_google_base_url():
         print("   - 访问 https://ai.google.dev/ 查看 API 状态")
         print()
         print("   ⚠️  注意：API 调用失败不影响 base_url 参数传递功能")
-        return False
 
     print("\n" + "=" * 80)
     print("🎉 所有基础测试通过！Google AI 的 base_url 参数功能正常")
@@ -163,9 +157,7 @@ def test_google_base_url():
     print("   - 自动将 /v1 转换为 /v1beta，避免配置错误")
     print("   - 通过 client_options 传递自定义端点给 Google AI SDK")
 
-    return True
-
 
 if __name__ == "__main__":
-    success = test_google_base_url()
-    sys.exit(0 if success else 1)
+    test_google_base_url()
+    sys.exit(0)

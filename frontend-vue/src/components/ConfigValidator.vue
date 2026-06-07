@@ -244,9 +244,9 @@
             <el-collapse-item title="如何修复配置问题？" name="1">
               <div class="help-content">
                 <h5>必需配置</h5>
-                <p>必需配置需要在 <code>.env</code> 文件中设置：</p>
+                <p>必需配置需要在 <code>backend/.env</code> 文件中设置：</p>
                 <ol>
-                  <li>在项目根目录找到 <code>.env</code> 文件（如果没有，复制 <code>.env.example</code>）</li>
+                  <li>在 <code>backend</code> 目录找到 <code>.env</code> 文件（如果没有，复制 <code>backend/.env.example</code>）</li>
                   <li>按照提示填写缺少的配置项</li>
                   <li>保存文件并重启后端服务</li>
                 </ol>

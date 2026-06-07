@@ -4,8 +4,9 @@ API Key 处理工具函数
 提供统一的 API Key 验证、缩略、环境变量读取等功能
 """
 
-import os
 from typing import Optional
+
+from app.core.config import settings
 
 
 def is_valid_api_key(api_key: Optional[str]) -> bool:
@@ -86,7 +87,7 @@ def get_env_api_key_for_provider(provider_name: str) -> Optional[str]:
         str: 环境变量中的 API Key，如果不存在或无效则返回 None
     """
     env_key_name = f"{provider_name.upper()}_API_KEY"
-    env_key = os.getenv(env_key_name)
+    env_key = settings.text_value(env_key_name)
 
     if env_key and is_valid_api_key(env_key):
         return env_key
@@ -126,7 +127,7 @@ def get_env_api_key_for_datasource(ds_type: str) -> Optional[str]:
     if not env_key_name:
         return None
 
-    env_key = os.getenv(env_key_name)
+    env_key = settings.text_value(env_key_name)
 
     if env_key and is_valid_api_key(env_key):
         return env_key

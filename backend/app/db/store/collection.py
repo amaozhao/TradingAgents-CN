@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 
 from app.core.session import get_session_factory
 from app.db.document import normalize_payload
@@ -291,6 +291,9 @@ class PostgresCollection:
                 .all()
             )
             documents = [_row_to_document(row) for row in generic_rows]
+            documents = [
+                document for document in documents if not _is_deleted(document)
+            ]
 
             model = _model_for_collection(self.name)
             if model is not None:
@@ -302,6 +305,8 @@ class PostgresCollection:
                 seen = {str(document.get("_id")) for document in documents}
                 for row in rows:
                     document = _row_to_document(row)
+                    if _is_deleted(document):
+                        continue
                     if self.name in CONFIG_COLLECTIONS and document.get(
                         "collection"
                     ) not in (self.name, None):
@@ -310,9 +315,7 @@ class PostgresCollection:
                         documents.append(document)
             return documents
 
-    async def _count_documents_in_database(
-        self, query: dict[str, Any]
-    ) -> int | None:
+    async def _count_documents_in_database(self, query: dict[str, Any]) -> int | None:
         if not _can_count_in_database(query):
             return None
 
@@ -328,8 +331,10 @@ class PostgresCollection:
                     )
                     return int(result.scalar_one())
 
-            statement = select(func.count()).select_from(PostgresDocument).where(
-                PostgresDocument.collection == self.name
+            statement = (
+                select(func.count())
+                .select_from(PostgresDocument)
+                .where(PostgresDocument.collection == self.name)
             )
             if query:
                 statement = statement.where(PostgresDocument.payload.contains(query))
@@ -359,7 +364,37 @@ class PostgresCollection:
                     PostgresDocument.document_id.in_(document_ids),
                 )
             )
+            await self._delete_specialized_documents(session, documents, document_ids)
             await session.commit()
+
+    async def _delete_specialized_documents(
+        self,
+        session: Any,
+        documents: list[dict[str, Any]],
+        document_ids: list[str],
+    ) -> None:
+        model = _model_for_collection(self.name)
+        if model is None:
+            return
+
+        legacy_column = getattr(model, "legacy_id", None)
+        if legacy_column is None:
+            return
+
+        if self.name in CONFIG_COLLECTIONS:
+            config_keys = _config_keys_for_documents(self.name, documents)
+            config_key_column = getattr(model, "config_key", None)
+            conditions = [legacy_column.in_(document_ids)]
+            if config_key_column is not None and config_keys:
+                conditions.append(config_key_column.in_(config_keys))
+
+            statement = delete(model).where(or_(*conditions))
+            if config_type_column := getattr(model, "config_type", None):
+                statement = statement.where(config_type_column == self.name)
+            await session.execute(statement)
+            return
+
+        await session.execute(delete(model).where(legacy_column.in_(document_ids)))
 
 
 def _can_count_in_database(query: dict[str, Any]) -> bool:
@@ -369,7 +404,37 @@ def _can_count_in_database(query: dict[str, Any]) -> bool:
     return True
 
 
-def _specialized_count_conditions(model: Any, query: dict[str, Any]) -> list[Any] | None:
+def _is_deleted(document: dict[str, Any]) -> bool:
+    return bool(document.get("deleted"))
+
+
+def _config_keys_for_documents(
+    collection: str, documents: list[dict[str, Any]]
+) -> list[str]:
+    config_keys: list[str] = []
+    for document in documents:
+        key = (
+            document.get("config_key")
+            or document.get("key")
+            or document.get("id")
+            or document.get("name")
+            or document.get("provider")
+            or document.get("_id")
+        )
+        if key is None:
+            continue
+        key_text = str(key)
+        if not key_text:
+            continue
+        if not key_text.startswith(f"{collection}:"):
+            key_text = f"{collection}:{key_text}"
+        config_keys.append(key_text)
+    return config_keys
+
+
+def _specialized_count_conditions(
+    model: Any, query: dict[str, Any]
+) -> list[Any] | None:
     conditions: list[Any] = []
     for key, value in query.items():
         column = getattr(model, key, None)

@@ -11,6 +11,7 @@ import time
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
+from app.core.config import settings
 from app.core.database import get_postgres_db
 from app.core.unified import unified_config
 from app.db.dual import dual_write_hot_document

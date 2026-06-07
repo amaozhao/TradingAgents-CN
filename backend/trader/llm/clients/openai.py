@@ -1,6 +1,6 @@
-import os
 from typing import Any, Optional
 
+from app.core.config import settings
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
 
@@ -117,7 +117,7 @@ def _resolve_provider_base_url(
     if default_base_url is None and provider in _PROVIDER_CONFIG:
         default_base_url = _PROVIDER_CONFIG[provider][0]
     if provider == "ollama":
-        return os.environ.get("OLLAMA_BASE_URL") or default_base_url
+        return settings.OLLAMA_BASE_URL or default_base_url
     return default_base_url
 
 
@@ -146,8 +146,8 @@ class OpenAIClient(BaseLLMClient):
             if api_key_env:
                 api_key = (
                     self.kwargs.get("api_key")
-                    or os.environ.get(api_key_env)
-                    or os.environ.get(get_api_key_env(self.provider) or "")
+                    or settings.text_value(api_key_env)
+                    or settings.text_value(get_api_key_env(self.provider) or "")
                 )
                 if api_key:
                     llm_kwargs["api_key"] = api_key
@@ -155,7 +155,7 @@ class OpenAIClient(BaseLLMClient):
                 llm_kwargs["api_key"] = "ollama"
         elif self.base_url:
             llm_kwargs["base_url"] = self.base_url
-            api_key = self.kwargs.get("api_key") or os.environ.get("OPENAI_API_KEY")
+            api_key = self.kwargs.get("api_key") or settings.OPENAI_API_KEY
             if api_key:
                 llm_kwargs["api_key"] = api_key
 

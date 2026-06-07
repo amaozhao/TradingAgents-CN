@@ -7,8 +7,9 @@
 
 import importlib
 import logging
-import os
 from typing import Any, Dict, Tuple
+
+from app.core.config import settings
 
 
 class DatabaseManager:
@@ -37,14 +38,7 @@ class DatabaseManager:
         )
 
     def _load_env_config(self):
-        """从.env文件加载配置"""
-        # 尝试加载python-dotenv
-        try:
-            load_dotenv = getattr(importlib.import_module("dotenv"), "load_dotenv")
-            load_dotenv()
-        except ImportError:
-            self.logger.info("python-dotenv未安装，直接读取环境变量")
-
+        """从 Settings 加载配置"""
         # 使用强健的布尔值解析（兼容Python 3.13+）
         parse_bool_env = getattr(
             importlib.import_module("trader.config.env"), "parse_bool_env"
@@ -55,21 +49,21 @@ class DatabaseManager:
         # 从环境变量读取 PostgreSQL 配置
         self.postgres_config = {
             "enabled": self.postgres_enabled,
-            "host": os.getenv("POSTGRES_HOST", "localhost"),
-            "port": int(os.getenv("POSTGRES_PORT", "5432")),
-            "username": os.getenv("POSTGRES_USER"),
-            "password": os.getenv("POSTGRES_PASSWORD"),
-            "database": os.getenv("POSTGRES_DB", "trading_agents"),
+            "host": settings.POSTGRES_HOST,
+            "port": settings.POSTGRES_PORT,
+            "username": settings.POSTGRES_USER,
+            "password": settings.POSTGRES_PASSWORD,
+            "database": settings.POSTGRES_DB,
             "timeout": 2000,
         }
 
         # 从环境变量读取Redis配置
         self.redis_config = {
             "enabled": self.redis_enabled,
-            "host": os.getenv("REDIS_HOST", "localhost"),
-            "port": int(os.getenv("REDIS_PORT", "6379")),
-            "password": os.getenv("REDIS_PASSWORD"),
-            "db": int(os.getenv("REDIS_DB", "0")),
+            "host": settings.REDIS_HOST,
+            "port": settings.REDIS_PORT,
+            "password": settings.REDIS_PASSWORD or None,
+            "db": settings.REDIS_DB,
             "timeout": 2,
         }
 
@@ -317,6 +311,17 @@ class DatabaseManager:
 
         return cleared_count
 
+    def close(self) -> None:
+        """关闭数据库管理器持有的连接"""
+        if self.postgres_client:
+            self.postgres_client.close()
+            self.postgres_client = None
+        if self.redis_client:
+            self.redis_client.close()
+            self.redis_client = None
+        self.postgres_available = False
+        self.redis_available = False
+
 
 # 全局数据库管理器实例
 _database_manager = None
@@ -328,6 +333,14 @@ def get_database_manager() -> DatabaseManager:
     if _database_manager is None:
         _database_manager = DatabaseManager()
     return _database_manager
+
+
+def close_database_manager() -> None:
+    """关闭并清空全局数据库管理器实例"""
+    global _database_manager
+    if _database_manager is not None:
+        _database_manager.close()
+        _database_manager = None
 
 
 def is_postgres_available() -> bool:

@@ -150,14 +150,12 @@ pip install -e backend
 import os
 import sys
 from pathlib import Path
-from dotenv import load_dotenv
+
+from app.core.config import settings
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-# 加载环境变量
-load_dotenv(project_root / ".env", override=True)
 
 def test_new_feature():
     """测试新功能"""

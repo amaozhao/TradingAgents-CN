@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from app.core.config import settings
+
 logger = logging.getLogger("webapi")
 
 
@@ -405,16 +407,19 @@ def _get_log_directory() -> str:
     2. 从settings配置读取
     3. 使用默认值 ./logs
     """
-    os = importlib.import_module("os")
     Path = getattr(importlib.import_module("pathlib"), "Path")
 
     try:
         logger.info("🔍 [_get_log_directory] 开始获取日志目录")
 
         # 检查是否是Docker环境
-        docker_env = os.environ.get("DOCKER", "")
+        docker_env = settings.DOCKER
         dockerenv_exists = Path("/.dockerenv").exists()
-        is_docker = docker_env.lower() in {"1", "true", "yes"} or dockerenv_exists
+        is_docker = (
+            docker_env.lower() in {"1", "true", "yes"}
+            or settings.DOCKER_CONTAINER
+            or dockerenv_exists
+        )
 
         logger.info(f"🔍 [_get_log_directory] DOCKER环境变量: {docker_env}")
         logger.info(f"🔍 [_get_log_directory] /.dockerenv存在: {dockerenv_exists}")
@@ -434,7 +439,7 @@ def _get_log_directory() -> str:
 
         if toml_loader:
             # 根据环境选择配置文件
-            profile = os.environ.get("LOGGING_PROFILE", "")
+            profile = settings.LOGGING_PROFILE
             logger.info(f"🔍 [_get_log_directory] LOGGING_PROFILE: {profile}")
 
             cfg_path = (
@@ -474,7 +479,6 @@ def _get_log_directory() -> str:
 
         # 回退到settings配置
         try:
-            settings = getattr(importlib.import_module("app.core.config"), "settings")
             log_dir = settings.log_dir
             logger.info(f"🔍 [_get_log_directory] settings.log_dir: {log_dir}")
             if log_dir:

@@ -44,7 +44,7 @@ def test_hk_indicators():
     else:
         print("\n⚠️ 港股数据缺少部分技术指标！")
 
-    return all_present
+    assert all_present
 
 
 def test_us_indicators():
@@ -95,12 +95,11 @@ def test_us_indicators():
         else:
             print("\n⚠️ 美股数据缺少部分技术指标！")
 
-        return all_present
+        assert all_present
 
     except Exception as e:
         print(f"\n❌ 美股数据获取失败: {e}")
         print("   （可能是API限制或网络问题，这是正常的）")
-        return None
 
 
 def test_indicator_library():
@@ -386,7 +385,7 @@ def test_indicator_library():
     else:
         print("\n⚠️ 技术指标计算库存在问题！")
 
-    return all_present
+    assert all_present
 
 
 if __name__ == "__main__":

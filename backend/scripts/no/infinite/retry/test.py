@@ -5,28 +5,13 @@
 """
 
 import importlib
-import threading
 import time
-
-
-class TimeoutException(Exception):
-    pass
-
-
-def timeout_handler():
-    """超时处理器"""
-    time.sleep(30)  # 30秒超时
-    raise TimeoutException("测试超时，可能存在无限重试")
 
 
 def test_no_infinite_retry_stock_data():
     """测试股票历史数据获取不会无限重试"""
     print("🔍 测试股票历史数据获取不会无限重试")
     print("=" * 50)
-
-    # 启动超时监控
-    timeout_thread = threading.Thread(target=timeout_handler, daemon=True)
-    timeout_thread.start()
 
     # 测试不存在的股票代码
     fake_codes = ["999999", "888888"]
@@ -55,16 +40,13 @@ def test_no_infinite_retry_stock_data():
             else:
                 print("✅ 耗时正常，没有无限重试")
 
-        except TimeoutException:
-            print("❌ 测试超时！存在无限重试问题")
-            return False
         except Exception as e:
             end_time = time.time()
             elapsed = end_time - start_time
             print(f"❌ 测试失败: {e}")
             print(f"⏱️ 失败前耗时: {elapsed:.2f}秒")
 
-    return True
+        assert elapsed <= 30, "测试超时，可能存在无限重试"
 
 
 def test_no_infinite_retry_stock_info():
@@ -105,7 +87,7 @@ def test_no_infinite_retry_stock_info():
             print(f"❌ 测试失败: {e}")
             print(f"⏱️ 失败前耗时: {elapsed:.2f}秒")
 
-    return True
+        assert elapsed <= 15, "股票基本信息获取耗时过长，可能存在重试问题"
 
 
 def test_fallback_mechanism_logic():
@@ -124,13 +106,13 @@ def test_fallback_mechanism_logic():
             print("✅ _try_fallback_sources方法存在")
         else:
             print("❌ _try_fallback_sources方法不存在")
-            return False
+            assert False, "_try_fallback_sources方法不存在"
 
         if hasattr(manager, "_try_fallback_stock_info"):
             print("✅ _try_fallback_stock_info方法存在")
         else:
             print("❌ _try_fallback_stock_info方法不存在")
-            return False
+            assert False, "_try_fallback_stock_info方法不存在"
 
         # 检查可用数据源
         available_sources = manager.available_sources
@@ -141,11 +123,9 @@ def test_fallback_mechanism_logic():
         else:
             print("⚠️ 只有一个数据源，降级机制可能无效")
 
-        return True
-
     except Exception as e:
         print(f"❌ 测试失败: {e}")
-        return False
+        raise
 
 
 def test_real_stock_performance():

@@ -24,7 +24,9 @@ def _dump_model(value: Any) -> Dict[str, Any]:
     return dict(value) if isinstance(value, dict) else {}
 
 
-def _build_quote_payload(code: str, data: Dict[str, Any], source: str) -> Dict[str, Any]:
+def _build_quote_payload(
+    code: str, data: Dict[str, Any], source: str
+) -> Dict[str, Any]:
     price = data.get("price") or data.get("current_price") or data.get("close")
     prev_close = data.get("prev_close") or data.get("pre_close")
     return {
@@ -243,9 +245,7 @@ async def get_kline(
         try:
             db = get_postgres_db()
             service = UnifiedStockService(db)
-            rows = await service.get_daily_quotes(
-                "CN", normalized_code, limit=limit
-            )
+            rows = await service.get_daily_quotes("CN", normalized_code, limit=limit)
             items = [_format_kline_item(row) for row in reversed(rows)]
         except Exception as e:
             logger.warning("数据库K线查询失败，尝试AKShare兜底: %s", e)
@@ -253,9 +253,9 @@ async def get_kline(
         if not items:
             provider = await _get_akshare_provider()
             end_date = datetime.now().strftime("%Y-%m-%d")
-            start_date = (datetime.now() - timedelta(days=max(limit * 2, 180))).strftime(
-                "%Y-%m-%d"
-            )
+            start_date = (
+                datetime.now() - timedelta(days=max(limit * 2, 180))
+            ).strftime("%Y-%m-%d")
             df = await provider.get_historical_data(
                 code=normalized_code,
                 start_date=start_date,

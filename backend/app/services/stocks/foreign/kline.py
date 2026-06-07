@@ -271,12 +271,11 @@ class ForeignStockKlineMixin:
     ) -> List[Dict]:
         """从Finnhub获取美股K线数据"""
         finnhub = importlib.import_module("finnhub")
-        os = importlib.import_module("os")
         datetime = getattr(importlib.import_module("datetime"), "datetime")
         timedelta = getattr(importlib.import_module("datetime"), "timedelta")
 
         # 获取 API Key
-        api_key = os.getenv("FINNHUB_API_KEY")
+        api_key = settings.FINNHUB_API_KEY
         if not api_key:
             raise Exception("Finnhub API Key 未配置")
 
@@ -442,12 +441,11 @@ class ForeignStockKlineMixin:
     ) -> List[Dict]:
         """从Finnhub获取港股K线数据"""
         finnhub = importlib.import_module("finnhub")
-        os = importlib.import_module("os")
         datetime = getattr(importlib.import_module("datetime"), "datetime")
         timedelta = getattr(importlib.import_module("datetime"), "timedelta")
 
         # 获取 API Key
-        api_key = os.getenv("FINNHUB_API_KEY")
+        api_key = settings.FINNHUB_API_KEY
         if not api_key:
             raise Exception("Finnhub API Key 未配置")
 

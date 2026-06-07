@@ -5,10 +5,10 @@
 """
 
 import importlib
-import os
 import sys
 
 import pandas as pd
+from app.core.config import settings as app_settings
 
 
 def test_tushare_adapter_volume_mapping():
@@ -143,7 +143,7 @@ def test_real_tushare_data():
         )
 
         # 检查Tushare是否可用
-        tushare_token = os.getenv("TUSHARE_TOKEN")
+        tushare_token = app_settings.text_value("TUSHARE_TOKEN")
         if not tushare_token:
             print("⚠️ TUSHARE_TOKEN未设置，跳过真实数据测试")
             return True

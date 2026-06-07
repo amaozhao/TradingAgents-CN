@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Mapping
+
+from app.core.runtime import runtime_env_snapshot
 
 FALSE_VALUES = {"0", "false", "no", "off"}
 TRUE_VALUES = {"1", "true", "yes", "on"}
@@ -28,7 +29,7 @@ def check_rollback_evidence(
     allow_inconsistent_consistency: bool = False,
     require_runtime_state_smoke: bool = True,
 ) -> dict[str, Any]:
-    environment = env if env is not None else os.environ
+    environment = env if env is not None else runtime_env_snapshot()
     checks: list[RollbackCheck] = []
 
     read_value = environment.get("POSTGRES_READ_ENABLED")
@@ -101,7 +102,7 @@ def write_rollback_target_manifest(
     api_smoke_json: Path | None = None,
     consistency_json: Path | None = None,
 ) -> Path:
-    environment = env if env is not None else os.environ
+    environment = env if env is not None else runtime_env_snapshot()
     effective_target_env = target_env or environment.get("TRADING_AGENTS_TARGET_ENV")
     if not effective_target_env:
         raise ValueError(

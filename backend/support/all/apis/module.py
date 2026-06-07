@@ -5,14 +5,11 @@
 """
 
 import importlib
-import os
 
-from dotenv import load_dotenv
 
-from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def check_all_api_keys():
@@ -33,7 +30,7 @@ def check_all_api_keys():
     missing_apis = []
 
     for key, name in api_keys.items():
-        value = os.getenv(key)
+        value = app_settings.text_value(key)
         if value:
             print(f"✅ {name}: 已配置 ({value[:10]}...)")
             configured_apis.append(name)
@@ -54,7 +51,7 @@ def test_google_api():
         print("\n🧪 测试Google API")
         print("=" * 50)
 
-        google_key = os.getenv("GOOGLE_API_KEY")
+        google_key = app_settings.text_value("GOOGLE_API_KEY")
         if not google_key:
             print("❌ Google API密钥未配置")
             return False
@@ -77,9 +74,9 @@ def test_reddit_api():
         print("\n🧪 测试Reddit API")
         print("=" * 50)
 
-        client_id = os.getenv("REDDIT_CLIENT_ID")
-        client_secret = os.getenv("REDDIT_CLIENT_SECRET")
-        user_agent = os.getenv("REDDIT_USER_AGENT")
+        client_id = app_settings.text_value("REDDIT_CLIENT_ID")
+        client_secret = app_settings.text_value("REDDIT_CLIENT_SECRET")
+        user_agent = app_settings.text_value("REDDIT_USER_AGENT")
 
         if not all([client_id, client_secret, user_agent]):
             print("❌ Reddit API配置不完整")

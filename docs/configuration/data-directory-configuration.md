@@ -69,9 +69,9 @@ export TRADING_AGENTS_CACHE_DIR="/home/user/trading-data/cache"
 export TRADING_AGENTS_RESULTS_DIR="/home/user/trading-data/results"
 ```
 
-#### .env文件配置 | .env File Configuration
+#### backend/.env 文件配置 | .env File Configuration
 ```env
-# 在项目根目录创建.env文件
+# 在 backend 目录创建 .env 文件
 TRADING_AGENTS_DATA_DIR=/path/to/your/data
 TRADING_AGENTS_CACHE_DIR=/path/to/your/cache
 TRADING_AGENTS_RESULTS_DIR=/path/to/your/results

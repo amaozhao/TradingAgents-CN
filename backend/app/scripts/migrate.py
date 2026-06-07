@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Set
@@ -160,13 +159,13 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="migrate_postgres_db")
     parser.add_argument(
         "--document-store",
-        default=os.getenv("POSTGRES_DOCUMENT_STORE") or settings.POSTGRES_DB,
+        default=settings.POSTGRES_DOCUMENT_STORE or settings.POSTGRES_DB,
     )
     parser.add_argument(
-        "--source-db", default=os.getenv("POSTGRES_SOURCE_DB") or settings.POSTGRES_DB
+        "--source-db", default=settings.POSTGRES_SOURCE_DB or settings.POSTGRES_DB
     )
     parser.add_argument(
-        "--target-db", default=os.getenv("POSTGRES_TARGET_DB") or settings.POSTGRES_DB
+        "--target-db", default=settings.POSTGRES_TARGET_DB or settings.POSTGRES_DB
     )
     parser.add_argument(
         "--include", default="", help="Comma-separated collection names to include"

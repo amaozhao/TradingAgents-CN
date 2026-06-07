@@ -228,7 +228,9 @@ class OperationLogService:
                 timestamp = doc.get("timestamp")
                 if isinstance(timestamp, str):
                     try:
-                        timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                        timestamp = datetime.fromisoformat(
+                            timestamp.replace("Z", "+00:00")
+                        )
                     except ValueError:
                         timestamp = None
                 if isinstance(timestamp, datetime):

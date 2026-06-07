@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 from dataclasses import asdict, dataclass
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+from app.core.config import settings as app_settings
 
 DEFAULT_TIMEOUT_SECONDS = 15
 
@@ -136,10 +136,12 @@ def run_api_smoke(
 
 
 def _build_checks(*, auth_available: bool, allow_missing_auth: bool) -> list[ApiCheck]:
-    stock_code = os.getenv("TRADING_AGENTS_SMOKE_STOCK_CODE", "000001")
-    symbol = os.getenv("TRADING_AGENTS_SMOKE_SYMBOL", stock_code)
-    search_query = os.getenv("TRADING_AGENTS_SMOKE_SEARCH_QUERY", stock_code)
-    task_id = os.getenv("TRADING_AGENTS_SMOKE_TASK_ID")
+    stock_code = app_settings.text_value("TRADING_AGENTS_SMOKE_STOCK_CODE", "000001")
+    symbol = app_settings.text_value("TRADING_AGENTS_SMOKE_SYMBOL", stock_code)
+    search_query = app_settings.text_value(
+        "TRADING_AGENTS_SMOKE_SEARCH_QUERY", stock_code
+    )
+    task_id = app_settings.text_value("TRADING_AGENTS_SMOKE_TASK_ID")
     expected_migration_settings = _expected_migration_settings()
 
     auth_skip = None
@@ -445,7 +447,7 @@ def _expected_migration_settings() -> dict[str, bool]:
             "POSTGRES_DUAL_WRITE_ENABLED",
         ),
     ):
-        raw = os.getenv(env_name)
+        raw = app_settings.text_value(env_name)
         if raw is not None:
             expected[setting_name] = _parse_bool(raw)
     return expected
@@ -518,15 +520,27 @@ def main() -> None:
     )
     parser.add_argument(
         "--base-url",
-        default=os.getenv("TRADING_AGENTS_API_BASE_URL", "http://127.0.0.1:8000"),
+        default=app_settings.text_value(
+            "TRADING_AGENTS_API_BASE_URL", "http://127.0.0.1:8000"
+        ),
     )
-    parser.add_argument("--token", default=os.getenv("TRADING_AGENTS_API_TOKEN"))
-    parser.add_argument("--username", default=os.getenv("TRADING_AGENTS_API_USERNAME"))
-    parser.add_argument("--password", default=os.getenv("TRADING_AGENTS_API_PASSWORD"))
+    parser.add_argument(
+        "--token", default=app_settings.text_value("TRADING_AGENTS_API_TOKEN")
+    )
+    parser.add_argument(
+        "--username", default=app_settings.text_value("TRADING_AGENTS_API_USERNAME")
+    )
+    parser.add_argument(
+        "--password", default=app_settings.text_value("TRADING_AGENTS_API_PASSWORD")
+    )
     parser.add_argument(
         "--timeout",
         type=int,
-        default=int(os.getenv("TRADING_AGENTS_API_TIMEOUT", DEFAULT_TIMEOUT_SECONDS)),
+        default=int(
+            app_settings.text_value(
+                "TRADING_AGENTS_API_TIMEOUT", DEFAULT_TIMEOUT_SECONDS
+            )
+        ),
     )
     parser.add_argument("--allow-missing-auth", action="store_true")
     parser.add_argument("--pretty", action="store_true")

@@ -1,5 +1,7 @@
 import os
 
+from app.core.config import settings
+
 _TRADING_AGENTS_HOME = os.path.join(os.path.expanduser("~"), ".trading_agents")
 
 _ENV_OVERRIDES = {
@@ -28,7 +30,7 @@ def _coerce_env_value(value: str, reference):
 
 def _apply_env_overrides(config: dict) -> dict:
     for env_var, key in _ENV_OVERRIDES.items():
-        raw = os.environ.get(env_var)
+        raw = settings.value(env_var, None)
         if raw is None or raw == "":
             continue
         config[key] = _coerce_env_value(raw, config.get(key))
@@ -38,7 +40,7 @@ def _apply_env_overrides(config: dict) -> dict:
 DEFAULT_CONFIG = _apply_env_overrides(
     {
         "project_dir": os.path.abspath(os.path.join(os.path.dirname(__file__), ".")),
-        "results_dir": os.getenv("TRADING_AGENTS_RESULTS_DIR", "./results"),
+        "results_dir": settings.TRADING_AGENTS_RESULTS_DIR or "./results",
         "data_dir": os.path.join(
             os.path.expanduser("~"), "Documents", "TradingAgents", "data"
         ),
@@ -46,7 +48,7 @@ DEFAULT_CONFIG = _apply_env_overrides(
             os.path.abspath(os.path.join(os.path.dirname(__file__), ".")),
             "dataflows/data_cache",
         ),
-        "memory_log_path": os.getenv(
+        "memory_log_path": settings.text_value(
             "TRADING_AGENTS_MEMORY_LOG_PATH",
             os.path.join(_TRADING_AGENTS_HOME, "memory", "trading_memory.md"),
         ),
@@ -96,9 +98,9 @@ DEFAULT_CONFIG = _apply_env_overrides(
             "": "SPY",
         },
         # Tool settings - 从环境变量读取，提供默认值
-        "online_tools": os.getenv("ONLINE_TOOLS_ENABLED", "false").lower() == "true",
-        "online_news": os.getenv("ONLINE_NEWS_ENABLED", "true").lower() == "true",
-        "realtime_data": os.getenv("REALTIME_DATA_ENABLED", "false").lower() == "true",
+        "online_tools": settings.ONLINE_TOOLS_ENABLED,
+        "online_news": settings.ONLINE_NEWS_ENABLED,
+        "realtime_data": settings.REALTIME_DATA_ENABLED,
         # Note: Database and cache configuration is now managed by .env file and config.database_manager
         # No database/cache settings in default config to avoid configuration conflicts
     }

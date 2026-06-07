@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 # 导入日志模块
+from app.core.config import settings
 from trader.config.runtime import get_timezone_name
 from trader.utils.logging.manager import get_logger
 

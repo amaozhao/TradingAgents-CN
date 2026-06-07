@@ -4,13 +4,13 @@
 """
 
 import importlib
-import os
 import time
 
 from langchain_core.messages import HumanMessage
 
 from trader.config.manager import config_manager, token_tracker
 from trader.llm.adapters.dashscope.native import ChatDashScope
+from app.core.config import settings as app_settings
 
 
 def test_dashscope_token_tracking():
@@ -18,7 +18,7 @@ def test_dashscope_token_tracking():
     print("🧪 开始测试DashScope Token统计功能...")
 
     # 检查API密钥
-    api_key = os.getenv("DASHSCOPE_API_KEY")
+    api_key = app_settings.text_value("DASHSCOPE_API_KEY")
     if not api_key:
         print("❌ 未找到DASHSCOPE_API_KEY环境变量")
         print("请在.env文件中设置DASHSCOPE_API_KEY")
@@ -109,7 +109,9 @@ def test_postgres_storage():
     print("\n🧪 测试PostgreSQL token 存储功能...")
 
     # 检查是否启用了 PostgreSQL token 存储
-    use_postgres = os.getenv("USE_POSTGRES_STORAGE", "false").lower() == "true"
+    use_postgres = (
+        app_settings.text_value("USE_POSTGRES_STORAGE", "false").lower() == "true"
+    )
 
     if not use_postgres:
         print("ℹ️ PostgreSQL token 存储未启用，跳过 PostgreSQL token 存储测试")
@@ -152,15 +154,12 @@ def main():
 
     # 检查 PostgreSQL token 存储配置
     use_postgres = (
-        os.getenv(
-            "USE_POSTGRES_STORAGE", os.getenv("USE_POSTGRES_STORAGE", "false")
-        ).lower()
-        == "true"
+        app_settings.text_value("USE_POSTGRES_STORAGE", "false").lower() == "true"
     )
     print(f"   - PostgreSQL token存储: {use_postgres}")
 
     if use_postgres:
-        postgres_db = os.getenv("POSTGRES_DB", "trading_agents")
+        postgres_db = app_settings.text_value("POSTGRES_DB", "trading_agents")
         print(f"   - PostgreSQL数据库: {postgres_db}")
 
     print("\n" + "=" * 50)

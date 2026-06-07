@@ -5,14 +5,14 @@
 """
 
 import importlib
-import os
 from datetime import datetime, timedelta
 
-# 设置环境变量
-os.environ["TA_USE_APP_CACHE"] = "true"  # 启用PostgreSQL优先模式
-
+from app.core.config import settings
+from app.core.runtime import apply_runtime_env
 from trader.flows.cache.postgres import get_enhanced_data_adapter
 from trader.flows.china import get_optimized_china_data_provider
+
+apply_runtime_env({"TA_USE_APP_CACHE": str(settings.TA_USE_APP_CACHE).lower()})
 
 
 def test_enhanced_data_adapter():
@@ -119,7 +119,7 @@ def test_cache_mode_comparison():
 
     # 测试启用PostgreSQL模式
     print("\n📊 PostgreSQL优先模式:")
-    os.environ["TA_USE_APP_CACHE"] = "true"
+    apply_runtime_env({"TA_USE_APP_CACHE": "true"})
     provider1 = get_optimized_china_data_provider()
 
     start_time = datetime.now()
@@ -133,7 +133,7 @@ def test_cache_mode_comparison():
 
     # 测试禁用PostgreSQL模式
     print("\n📁 传统缓存模式:")
-    os.environ["TA_USE_APP_CACHE"] = "false"
+    apply_runtime_env({"TA_USE_APP_CACHE": "false"})
     # 注意：需要重新创建实例以应用新配置
     reload = getattr(importlib.import_module("importlib"), "reload")
     importlib.import_module("trader.flows.cache.postgres")

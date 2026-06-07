@@ -10,13 +10,6 @@ from typing import Any
 
 from app.db.store import create_sync_client
 
-try:
-    from dotenv import load_dotenv
-
-    load_dotenv()
-except ImportError:
-    print("⚠️ python-dotenv未安装，将使用系统环境变量")
-
 
 def connect_postgres():
     """连接 PostgreSQL document store"""

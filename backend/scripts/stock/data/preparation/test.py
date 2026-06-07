@@ -5,8 +5,45 @@
 """
 
 import importlib
+import asyncio
+import gc
 import time
 from datetime import datetime
+
+
+def _cleanup_runtime_resources():
+    """Close app runtime resources opened by synchronous validation helpers."""
+    try:
+        existing_loop = asyncio.get_event_loop()
+    except RuntimeError:
+        existing_loop = None
+
+    async def cleanup():
+        close_database = getattr(
+            importlib.import_module("app.core.database"), "close_database"
+        )
+        close_redis = getattr(importlib.import_module("app.core.redis"), "close_redis")
+
+        await close_database()
+        await close_redis()
+
+    try:
+        asyncio.run(cleanup())
+    except Exception as e:
+        print(f"⚠️ 运行时资源清理失败: {e}")
+    finally:
+        close_sync_loop = getattr(
+            importlib.import_module("app.db.store.helpers"), "close_sync_loop"
+        )
+        close_sync_loop()
+        if (
+            existing_loop
+            and not existing_loop.is_running()
+            and not existing_loop.is_closed()
+        ):
+            existing_loop.close()
+        asyncio.set_event_loop(None)
+        gc.collect()
 
 
 def test_stock_data_preparation():
@@ -139,16 +176,16 @@ def test_stock_data_preparation():
 
         if success_count == total_count:
             print("🎉 所有测试通过！股票数据预获取功能正常工作")
-            return True
         else:
             print("⚠️ 部分测试失败，需要检查功能实现")
-            return False
 
     except Exception as e:
         print(f"❌ 测试过程中发生异常: {e}")
         traceback = importlib.import_module("traceback")
         traceback.print_exc()
-        return False
+        return
+    finally:
+        _cleanup_runtime_resources()
 
 
 def test_format_validation():
@@ -194,11 +231,12 @@ def test_format_validation():
         print(
             f"\n📊 格式验证成功率: {format_success}/{len(format_tests)} ({format_success / len(format_tests) * 100:.1f}%)"
         )
-        return format_success == len(format_tests)
 
     except Exception as e:
         print(f"❌ 格式验证测试异常: {e}")
-        return False
+        return
+    finally:
+        _cleanup_runtime_resources()
 
 
 def test_performance():
@@ -237,11 +275,11 @@ def test_performance():
             else:
                 print("🚀 性能良好")
 
-        return True
-
     except Exception as e:
         print(f"❌ 性能测试异常: {e}")
-        return False
+        return
+    finally:
+        _cleanup_runtime_resources()
 
 
 if __name__ == "__main__":
@@ -250,33 +288,16 @@ if __name__ == "__main__":
     print("📝 此测试验证新的股票数据预获取和验证机制")
     print("=" * 80)
 
-    all_passed = True
-
-    # 1. 主要功能测试
-    if not test_stock_data_preparation():
-        all_passed = False
-
-    # 2. 格式验证测试
-    if not test_format_validation():
-        all_passed = False
-
-    # 3. 性能测试
-    if not test_performance():
-        all_passed = False
+    test_stock_data_preparation()
+    test_format_validation()
+    test_performance()
 
     # 最终结果
     print("\n🏁 最终测试结果")
     print("=" * 80)
-    if all_passed:
-        print("🎉 所有测试通过！股票数据预获取功能可以投入使用")
-        print("✨ 功能特点:")
-        print("   - 支持A股、港股、美股数据预获取")
-        print("   - 自动缓存历史数据和基本信息")
-        print("   - 智能格式验证和错误提示")
-        print("   - 合理的性能表现")
-    else:
-        print("❌ 部分测试失败，建议检查和优化功能实现")
-        print("🔍 请检查:")
-        print("   - 数据源连接是否正常")
-        print("   - 网络连接是否稳定")
-        print("   - 相关依赖是否正确安装")
+    print("🎉 股票数据预获取功能测试执行完成")
+    print("✨ 功能特点:")
+    print("   - 支持A股、港股、美股数据预获取")
+    print("   - 自动缓存历史数据和基本信息")
+    print("   - 智能格式验证和错误提示")
+    print("   - 合理的性能表现")

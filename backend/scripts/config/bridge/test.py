@@ -6,8 +6,8 @@
 
 import asyncio
 import importlib
-import os
 import sys
+from app.core.config import settings as app_settings
 
 
 async def test_config_bridge():
@@ -80,7 +80,7 @@ async def test_config_bridge():
     print("\n📋 环境变量验证结果：")
     for db_key, env_key in env_mapping.items():
         db_value = system_settings.get(db_key)
-        env_value = os.getenv(env_key)
+        env_value = app_settings.text_value(env_key)
 
         if db_value is None:
             print(f"  ⚠️  {env_key}: 数据库中未设置")

@@ -2,8 +2,8 @@
 # 使用Docker Hub镜像 + Nginx 反向代理
 #
 # 使用方法：
-# 1. 复制.env.example为.env并配置环境变量
-# 2. 运行: docker compose -f deploy/docker/compose/docker-compose.hub.nginx.yml up -d
+# 1. 复制 backend/.env.example 为 backend/.env 并配置环境变量
+# 2. 运行: docker compose --env-file backend/.env -f deploy/docker/compose/docker-compose.hub.nginx.yml up -d
 # 3. 访问: http://your-server (前端和后端API都通过80端口访问)
 #
 # 优势：
@@ -14,7 +14,7 @@
 services:
   # Redis缓存
   redis:
-    image: redis:7-alpine
+    image: redis:alpine
     container_name: trading-agents-redis
     restart: unless-stopped
     ports:
@@ -35,13 +35,13 @@ services:
 
   # PostgreSQL数据库
   postgres:
-    image: postgres:16-alpine
+    image: postgres:alpine
     container_name: trading-agents-postgres
     restart: unless-stopped
     ports:
       - "5432:5432"
     volumes:
-      - trading_agents_postgres_data:/var/lib/postgresql/data
+      - trading_agents_postgres_data:/var/lib/postgresql
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: trading_agents_pg123
@@ -106,7 +106,7 @@ services:
       BCRYPT_ROUNDS: "12"
       # CORS配置（允许 Nginx 代理）
       CORS_ORIGINS: "*"
-      # AI模型API密钥（从.env文件读取，environment部分需要显式声明才能覆盖镜像内的占位符）
+      # AI模型API密钥（通过 docker compose --env-file backend/.env 或 shell 环境变量注入）
       DASHSCOPE_API_KEY: "${DASHSCOPE_API_KEY:-your_dashscope_api_key_here}"
       DASHSCOPE_ENABLED: "${DASHSCOPE_ENABLED:-false}"
       DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-your_deepseek_api_key_here}"

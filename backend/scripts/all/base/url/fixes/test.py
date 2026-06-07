@@ -33,14 +33,14 @@ def test_create_llm_by_provider():
     print(f"   模型: {llm.model_name}")
     print(f"   base_url: {llm.openai_api_base}")
 
-    if llm.openai_api_base == custom_url:
-        print("🎯 ✅ base_url 正确")
-        return True
-    else:
+    if llm.openai_api_base != custom_url:
         print("❌ base_url 不正确")
         print(f"   期望: {custom_url}")
         print(f"   实际: {llm.openai_api_base}")
-        return False
+    else:
+        print("🎯 ✅ base_url 正确")
+
+    assert llm.openai_api_base == custom_url
 
 
 def test_trading_graph_init():
@@ -66,12 +66,12 @@ def test_trading_graph_init():
     config["quick_think_llm"] = "qwen-turbo"
     config["backend_url"] = custom_url  # 添加自定义 URL
     config["online_tools"] = False  # 关闭在线工具以加快测试
-    config["selected_analysts"] = {
-        0: "fundamentals_analyst",
-        1: "market_analyst",
-    }  # 修复配置格式
+    config["memory_enabled"] = False  # 关闭记忆以加快测试
 
-    graph = TradingAgentsGraph(config)
+    graph = TradingAgentsGraph(
+        selected_analysts=["fundamentals", "market"],
+        config=config,
+    )
 
     print("✅ TradingGraph 创建成功")
     print(f"   Deep thinking LLM: {graph.deep_thinking_llm.model_name}")
@@ -97,7 +97,7 @@ def test_trading_graph_init():
         print(f"   实际: {graph.quick_thinking_llm.openai_api_base}")
         success = False
 
-    return success
+    assert success
 
 
 def test_fundamentals_analyst():
@@ -123,7 +123,11 @@ def test_fundamentals_analyst():
     print(f"\n创建 LLM，使用自定义 URL: {custom_url}")
 
     llm = ChatDashScopeOpenAI(
-        model="qwen-turbo", base_url=custom_url, temperature=0.1, max_tokens=2000
+        model="qwen-turbo",
+        api_key="sk-test-dashscope-base-url-only",
+        base_url=custom_url,
+        temperature=0.1,
+        max_tokens=2000,
     )
 
     print("✅ LLM 创建成功")
@@ -154,6 +158,7 @@ def test_fundamentals_analyst():
         # 创建新实例
         fresh_llm = ChatDashScopeOpenAI(
             model=llm.model_name,
+            api_key="sk-test-dashscope-base-url-only",
             base_url=original_base_url if original_base_url else None,
             temperature=llm.temperature,
             max_tokens=getattr(llm, "max_tokens", 2000),
@@ -163,17 +168,17 @@ def test_fundamentals_analyst():
         print(f"   模型: {fresh_llm.model_name}")
         print(f"   base_url: {fresh_llm.openai_api_base}")
 
-        if fresh_llm.openai_api_base == custom_url:
-            print("\n🎯 ✅ 完美！新实例的 base_url 正确")
-            return True
-        else:
+        if fresh_llm.openai_api_base != custom_url:
             print("\n❌ 错误！新实例的 base_url 不正确")
             print(f"   期望: {custom_url}")
             print(f"   实际: {fresh_llm.openai_api_base}")
-            return False
+        else:
+            print("\n🎯 ✅ 完美！新实例的 base_url 正确")
+
+        assert fresh_llm.openai_api_base == custom_url
     else:
         print("⚠️ 未检测到阿里百炼模型")
-        return False
+        raise AssertionError("未检测到阿里百炼模型")
 
 
 def main():
@@ -185,25 +190,28 @@ def main():
 
     # 测试 1
     try:
-        result = test_create_llm_by_provider()
-        results.append(("create_llm_by_provider", result))
+        test_create_llm_by_provider()
+        results.append(("create_llm_by_provider", True))
     except Exception as e:
         print(f"\n❌ 测试 1 失败: {e}")
         traceback = importlib.import_module("traceback")
         traceback.print_exc()
         results.append(("create_llm_by_provider", False))
 
-    # 测试 2 - 跳过（配置格式问题，与 base_url 无关）
-    print("\n" + "=" * 80)
-    print("🧪 测试 2: TradingAgentsGraph 初始化 - 跳过")
-    print("=" * 80)
-    print("⏭️ 跳过此测试（配置格式问题，与 base_url 修复无关）")
-    results.append(("TradingAgentsGraph 初始化", True))  # 标记为通过
+    # 测试 2
+    try:
+        test_trading_graph_init()
+        results.append(("TradingAgentsGraph 初始化", True))
+    except Exception as e:
+        print(f"\n❌ 测试 2 失败: {e}")
+        traceback = importlib.import_module("traceback")
+        traceback.print_exc()
+        results.append(("TradingAgentsGraph 初始化", False))
 
     # 测试 3
     try:
-        result = test_fundamentals_analyst()
-        results.append(("基本面分析师", result))
+        test_fundamentals_analyst()
+        results.append(("基本面分析师", True))
     except Exception as e:
         print(f"\n❌ 测试 3 失败: {e}")
         traceback = importlib.import_module("traceback")

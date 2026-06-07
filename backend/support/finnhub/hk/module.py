@@ -3,7 +3,7 @@
 """
 
 import importlib
-import os
+from app.core.config import settings as app_settings
 
 
 def test_finnhub_connection():
@@ -13,7 +13,7 @@ def test_finnhub_connection():
     try:
         finnhub = importlib.import_module("finnhub")
 
-        api_key = os.getenv("FINNHUB_API_KEY")
+        api_key = app_settings.text_value("FINNHUB_API_KEY")
         if not api_key:
             print("❌ 未配置FINNHUB_API_KEY环境变量")
             return False
@@ -44,7 +44,7 @@ def test_finnhub_hk_symbols():
     try:
         finnhub = importlib.import_module("finnhub")
 
-        api_key = os.getenv("FINNHUB_API_KEY")
+        api_key = app_settings.text_value("FINNHUB_API_KEY")
         if not api_key:
             print("❌ 未配置FINNHUB_API_KEY环境变量")
             return False
@@ -96,7 +96,7 @@ def test_finnhub_hk_company_info():
     try:
         finnhub = importlib.import_module("finnhub")
 
-        api_key = os.getenv("FINNHUB_API_KEY")
+        api_key = app_settings.text_value("FINNHUB_API_KEY")
         if not api_key:
             print("❌ 未配置FINNHUB_API_KEY环境变量")
             return False

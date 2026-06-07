@@ -11,9 +11,11 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from app.core.runtime import apply_runtime_env, clear_runtime_env
 from trader.config.manager import config_manager
 from trader.flows.config import get_config, get_data_dir, set_data_dir
 from trader.utils.logging import get_logger
+from app.core.config import settings as app_settings
 
 logger = get_logger("default")
 console = Console()
@@ -54,9 +56,15 @@ def show_current_config():
     env_table.add_column("值", style="green")
 
     env_vars = {
-        "TRADING_AGENTS_DATA_DIR": os.getenv("TRADING_AGENTS_DATA_DIR", "未设置"),
-        "TRADING_AGENTS_CACHE_DIR": os.getenv("TRADING_AGENTS_CACHE_DIR", "未设置"),
-        "TRADING_AGENTS_RESULTS_DIR": os.getenv("TRADING_AGENTS_RESULTS_DIR", "未设置"),
+        "TRADING_AGENTS_DATA_DIR": app_settings.text_value(
+            "TRADING_AGENTS_DATA_DIR", "未设置"
+        ),
+        "TRADING_AGENTS_CACHE_DIR": app_settings.text_value(
+            "TRADING_AGENTS_CACHE_DIR", "未设置"
+        ),
+        "TRADING_AGENTS_RESULTS_DIR": app_settings.text_value(
+            "TRADING_AGENTS_RESULTS_DIR", "未设置"
+        ),
     }
 
     for var, value in env_vars.items():
@@ -125,7 +133,7 @@ def demo_environment_variable_override():
     test_env_dir = os.path.join(
         os.path.expanduser("~"), "Documents", "TradingAgents_ENV", "data"
     )
-    os.environ["TRADING_AGENTS_DATA_DIR"] = test_env_dir
+    apply_runtime_env({"TRADING_AGENTS_DATA_DIR": test_env_dir})
 
     logger.info(f"设置环境变量 TRADING_AGENTS_DATA_DIR = {test_env_dir}")
 
@@ -134,7 +142,7 @@ def demo_environment_variable_override():
     logger.info(f"重新加载后的数据目录: {settings.get('data_dir')}")
 
     # 清理环境变量
-    del os.environ["TRADING_AGENTS_DATA_DIR"]
+    clear_runtime_env(("TRADING_AGENTS_DATA_DIR",))
     logger.info("清理环境变量")
 
 

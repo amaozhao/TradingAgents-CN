@@ -4,7 +4,7 @@
 """
 
 import importlib
-import os
+from app.core.config import settings as app_settings
 
 
 def test_002027_specifically():
@@ -51,7 +51,7 @@ def test_002027_specifically():
 
         # 测试3: LLM处理
         print("\n🤖 测试3: LLM处理")
-        api_key = os.getenv("DASHSCOPE_API_KEY")
+        api_key = app_settings.text_value("DASHSCOPE_API_KEY")
         if api_key:
             ChatDashScopeOpenAI = getattr(
                 importlib.import_module("trader.llm.adapters"), "ChatDashScopeOpenAI"

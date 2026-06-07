@@ -25,3 +25,25 @@ def apply_runtime_env(
         applied[key] = string_value
 
     return applied
+
+
+def clear_runtime_env(
+    keys: list[str] | tuple[str, ...],
+    *,
+    environ: MutableMapping[str, str] | None = None,
+) -> None:
+    """Remove runtime env values through the same auditable boundary."""
+
+    target = os.environ if environ is None else environ
+    for key in keys:
+        target.pop(key, None)
+
+
+def runtime_env_snapshot(
+    *,
+    environ: MutableMapping[str, str] | None = None,
+) -> dict[str, str]:
+    """Return a copy of the runtime environment through the audited boundary."""
+
+    target = os.environ if environ is None else environ
+    return dict(target)

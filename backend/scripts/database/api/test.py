@@ -8,8 +8,19 @@ import importlib
 import json
 
 import httpx
+from app.core.config import settings
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = settings.TRADING_AGENTS_API_BASE_URL.rstrip("/")
+API_USERNAME = (
+    settings.TRADING_AGENTS_API_USERNAME
+    or settings.TRADING_AGENTS_TEST_USERNAME
+    or "admin"
+)
+API_PASSWORD = (
+    settings.TRADING_AGENTS_API_PASSWORD
+    or settings.TRADING_AGENTS_TEST_PASSWORD
+    or "admin123"
+)
 TOKEN = None  # 将在登录后设置
 
 
@@ -18,7 +29,7 @@ async def login() -> str:
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{BASE_URL}/api/auth/login",
-            json={"username": "admin", "password": "admin123"},
+            json={"username": API_USERNAME, "password": API_PASSWORD},
         )
 
         print(f"登录响应状态码: {response.status_code}")
@@ -31,7 +42,7 @@ async def login() -> str:
             raise Exception(f"登录失败: {response.text}")
 
 
-async def test_database_status(token: str):
+async def check_database_status(token: str):
     """测试数据库状态接口"""
     print("=" * 80)
     print("测试: GET /api/system/database/status")
@@ -48,9 +59,10 @@ async def test_database_status(token: str):
         print("响应内容:")
         print(json.dumps(response.json(), indent=2, ensure_ascii=False))
         print()
+        return response.status_code == 200
 
 
-async def test_database_stats(token: str):
+async def check_database_stats(token: str):
     """测试数据库统计接口"""
     print("=" * 80)
     print("测试: GET /api/system/database/stats")
@@ -122,9 +134,10 @@ async def test_database_stats(token: str):
             print(response.text)
 
         print()
+        return response.status_code == 200
 
 
-async def test_database_test_connection(token: str):
+async def check_database_test_connection(token: str):
     """测试数据库连接测试接口"""
     print("=" * 80)
     print("测试: POST /api/system/database/test")
@@ -141,6 +154,7 @@ async def test_database_test_connection(token: str):
         print("响应内容:")
         print(json.dumps(response.json(), indent=2, ensure_ascii=False))
         print()
+        return response.status_code == 200
 
 
 async def main():
@@ -152,22 +166,28 @@ async def main():
         print(f"✅ 登录成功，Token: {token[:20]}...\n")
 
         # 2. 测试数据库状态接口
-        await test_database_status(token)
+        status_ok = await check_database_status(token)
 
         # 3. 测试数据库统计接口
-        await test_database_stats(token)
+        stats_ok = await check_database_stats(token)
 
         # 4. 测试数据库连接测试接口
-        await test_database_test_connection(token)
+        connection_ok = await check_database_test_connection(token)
 
         print("=" * 80)
         print("✅ 所有测试完成")
         print("=" * 80)
+        return bool(status_ok and stats_ok and connection_ok)
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
         traceback = importlib.import_module("traceback")
         traceback.print_exc()
+        return False
+
+
+async def test_database_api_flow():
+    assert await main()
 
 
 if __name__ == "__main__":

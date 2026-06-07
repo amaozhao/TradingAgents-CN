@@ -7,12 +7,10 @@
 import importlib
 import sys
 
-from dotenv import load_dotenv
 
 from app.core.startup import ConfigurationError, validate_startup_config
 
 # 加载 .env 文件
-load_dotenv()
 
 
 def main():

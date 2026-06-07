@@ -385,7 +385,9 @@ class AnalysisTaskMixin:
             if not stock_code or not analysis_date:
                 logger.warning("⚠️ 无法清理 checkpoint：缺少股票代码或分析日期")
                 return
-            clear_checkpoint(DEFAULT_CONFIG["data_cache_dir"], stock_code, analysis_date)
+            clear_checkpoint(
+                DEFAULT_CONFIG["data_cache_dir"], stock_code, analysis_date
+            )
             logger.info(
                 "🧹 [Checkpoint] 任务完成后已清理 checkpoint: %s %s",
                 stock_code,

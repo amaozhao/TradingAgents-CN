@@ -4,9 +4,10 @@
 """
 
 import importlib
-import os
 import sys
 from pathlib import Path
+
+from app.core.runtime import apply_runtime_env
 
 
 def test_logging():
@@ -16,8 +17,9 @@ def test_logging():
 
     try:
         # 设置Docker环境变量
-        os.environ["DOCKER_CONTAINER"] = "true"
-        os.environ["TRADING_AGENTS_LOG_DIR"] = "/app/logs"
+        apply_runtime_env(
+            {"DOCKER_CONTAINER": "true", "TRADING_AGENTS_LOG_DIR": "/app/logs"}
+        )
 
         # 导入日志模块
         init_logging = getattr(
@@ -53,15 +55,14 @@ def test_logging():
             print("❌ 日志目录不存在")
 
         print("✅ 日志测试完成")
-        return True
 
     except Exception as e:
         print(f"❌ 日志测试失败: {e}")
         traceback = importlib.import_module("traceback")
         traceback.print_exc()
-        return False
+        raise
 
 
 if __name__ == "__main__":
-    success = test_logging()
-    sys.exit(0 if success else 1)
+    test_logging()
+    sys.exit(0)

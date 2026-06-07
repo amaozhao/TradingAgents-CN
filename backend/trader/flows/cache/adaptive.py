@@ -130,7 +130,7 @@ class AdaptiveCacheSystem:
             }
 
             serialized_data = pickle.dumps(cache_data)
-            redis_client.setex(cache_key, ttl_seconds, serialized_data)
+            redis_client.set(cache_key, serialized_data, ex=ttl_seconds)
 
             self.logger.debug(f"Redis缓存保存成功: {cache_key}")
             return True

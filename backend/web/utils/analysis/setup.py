@@ -198,12 +198,12 @@ def run_stock_analysis(
 
         update_progress(f"💰 预估分析成本: ¥{estimated_cost:.4f}")
 
-    # 验证环境变量
-    update_progress("检查环境变量配置...")
-    dashscope_key = os.getenv("DASHSCOPE_API_KEY")
-    finnhub_key = os.getenv("FINNHUB_API_KEY")
+    # 验证 Settings 配置
+    update_progress("检查 Settings 配置...")
+    dashscope_key = settings.DASHSCOPE_API_KEY
+    finnhub_key = settings.FINNHUB_API_KEY
 
-    logger.info("环境变量检查:")
+    logger.info("Settings 配置检查:")
     logger.info(f"  DASHSCOPE_API_KEY: {'已设置' if dashscope_key else '未设置'}")
     logger.info(f"  FINNHUB_API_KEY: {'已设置' if finnhub_key else '未设置'}")
 
@@ -377,10 +377,10 @@ def run_stock_analysis(
             logger.info(f"🔧 [自定义OpenAI] 使用模型: {llm_model}")
             logger.info(f"🔧 [自定义OpenAI] API端点: {custom_base_url}")
 
-        # 修复路径问题 - 优先使用环境变量配置
-        # 数据目录：优先使用环境变量，否则使用默认路径
+        # 修复路径问题 - 优先使用 Settings 配置
+        # 数据目录：优先使用 Settings，否则使用默认路径
         if not config.get("data_dir") or config["data_dir"] == "./data":
-            env_data_dir = os.getenv("TRADING_AGENTS_DATA_DIR")
+            env_data_dir = settings.TRADING_AGENTS_DATA_DIR
             if env_data_dir:
                 # 如果环境变量是相对路径，相对于项目根目录解析
                 if not os.path.isabs(env_data_dir):
@@ -390,9 +390,9 @@ def run_stock_analysis(
             else:
                 config["data_dir"] = str(PROJECT_ROOT / "data")
 
-        # 结果目录：优先使用环境变量，否则使用默认路径
+        # 结果目录：优先使用 Settings，否则使用默认路径
         if not config.get("results_dir") or config["results_dir"] == "./results":
-            env_results_dir = os.getenv("TRADING_AGENTS_RESULTS_DIR")
+            env_results_dir = settings.TRADING_AGENTS_RESULTS_DIR
             if env_results_dir:
                 # 如果环境变量是相对路径，相对于项目根目录解析
                 if not os.path.isabs(env_results_dir):
@@ -402,9 +402,9 @@ def run_stock_analysis(
             else:
                 config["results_dir"] = str(PROJECT_ROOT / "results")
 
-        # 缓存目录：优先使用环境变量，否则使用默认路径
+        # 缓存目录：优先使用 Settings，否则使用默认路径
         if not config.get("data_cache_dir"):
-            env_cache_dir = os.getenv("TRADING_AGENTS_CACHE_DIR")
+            env_cache_dir = settings.TRADING_AGENTS_CACHE_DIR
             if env_cache_dir:
                 # 如果环境变量是相对路径，相对于项目根目录解析
                 if not os.path.isabs(env_cache_dir):
@@ -427,7 +427,7 @@ def run_stock_analysis(
         logger.info(f"  - 结果目录: {config['results_dir']}")
         logger.info(f"  - 缓存目录: {config['data_cache_dir']}")
         logger.info(
-            f"  - 环境变量 TRADING_AGENTS_RESULTS_DIR: {os.getenv('TRADING_AGENTS_RESULTS_DIR', '未设置')}"
+            f"  - Settings TRADING_AGENTS_RESULTS_DIR: {settings.TRADING_AGENTS_RESULTS_DIR or '未设置'}"
         )
 
         logger.info(f"使用配置: {config}")

@@ -145,7 +145,9 @@ def _build_industry_options_from_documents(
 async def _query_industry_options_by_source(
     source_order: List[str],
 ) -> tuple[List[Dict[str, Any]], str]:
-    init_postgres = getattr(importlib.import_module("app.core.session"), "init_postgres")
+    init_postgres = getattr(
+        importlib.import_module("app.core.session"), "init_postgres"
+    )
     get_session_factory = getattr(
         importlib.import_module("app.core.session"), "get_session_factory"
     )

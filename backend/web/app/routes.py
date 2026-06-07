@@ -73,7 +73,7 @@ def route_page(page):
 
         # 展示股票基础信息同步状态
         requests = importlib.import_module("requests")
-        backend_url = os.getenv("WEBAPI_BASE_URL", "http://localhost:8000")
+        backend_url = settings.WEBAPI_BASE_URL
         try:
             resp = requests.get(
                 f"{backend_url}/api/sync/stock_basics/status", timeout=5

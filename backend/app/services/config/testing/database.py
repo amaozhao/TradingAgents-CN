@@ -1,4 +1,6 @@
 # ruff: noqa: F403,F405
+from pathlib import Path
+
 from ..common import *
 
 
@@ -31,7 +33,6 @@ class DatabaseConfigTestMixin:
             elif db_type == "redis":
                 try:
                     aioredis = importlib.import_module("redis.asyncio")
-                    os = importlib.import_module("os")
 
                     # 🔥 优先使用环境变量中的完整 Redis 配置（包括host、密码）
                     host = db_config.host
@@ -42,15 +43,14 @@ class DatabaseConfigTestMixin:
 
                     # 检测是否在 Docker 环境中
                     is_docker = (
-                        os.path.exists("/.dockerenv")
-                        or os.getenv("DOCKER_CONTAINER") == "true"
+                        Path("/.dockerenv").exists() or settings.DOCKER_CONTAINER
                     )
 
                     # 如果配置中没有密码，尝试从环境变量获取完整配置
                     if not password:
-                        env_host = os.getenv("REDIS_HOST")
-                        env_port = os.getenv("REDIS_PORT")
-                        env_password = os.getenv("REDIS_PASSWORD")
+                        env_host = settings.REDIS_HOST
+                        env_port = settings.REDIS_PORT
+                        env_password = settings.REDIS_PASSWORD
 
                         if env_password:
                             password = env_password
@@ -75,8 +75,8 @@ class DatabaseConfigTestMixin:
 
                     # 如果配置中没有数据库编号，尝试从环境变量获取
                     if database is None:
-                        env_db = os.getenv("REDIS_DB")
-                        if env_db:
+                        env_db = settings.REDIS_DB
+                        if env_db is not None:
                             database = int(env_db)
                             logger.info(
                                 f"📦 使用环境变量中的 Redis 数据库编号: {database}"
@@ -110,7 +110,7 @@ class DatabaseConfigTestMixin:
                     response_time = time.time() - start_time
 
                     # 关闭连接
-                    await redis_client.close()
+                    await redis_client.aclose(close_connection_pool=True)
 
                     return {
                         "success": True,

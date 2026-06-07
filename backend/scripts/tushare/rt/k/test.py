@@ -6,6 +6,7 @@
 import asyncio
 import logging
 
+from app.core.database import close_database, init_database
 from app.worker.tushare.sync import TushareSyncService
 from trader.flows.providers.china.tushare import TushareProvider
 
@@ -58,6 +59,8 @@ async def test_rt_k_interface():
     except Exception as e:
         logger.error(f"❌ 批量获取实时行情失败: {e}")
         return False
+    finally:
+        await provider.disconnect()
 
 
 async def test_single_stock():
@@ -69,22 +72,25 @@ async def test_single_stock():
     provider = TushareProvider()
     await provider.connect()
 
-    test_symbols = ["000001", "600000", "300001"]
+    try:
+        test_symbols = ["000001", "600000", "300001"]
 
-    for symbol in test_symbols:
-        logger.info(f"\n📊 获取 {symbol} 实时行情...")
-        try:
-            quote = await provider.get_stock_quotes(symbol)
-            if quote:
-                logger.info(f"✅ {symbol} - {quote.get('name', 'N/A')}")
-                logger.info(
-                    f"   当前价: {quote.get('close', 'N/A')}, "
-                    f"涨跌幅: {quote.get('pct_chg', 'N/A')}%"
-                )
-            else:
-                logger.warning(f"⚠️ {symbol} 未获取到数据")
-        except Exception as e:
-            logger.error(f"❌ {symbol} 获取失败: {e}")
+        for symbol in test_symbols:
+            logger.info(f"\n📊 获取 {symbol} 实时行情...")
+            try:
+                quote = await provider.get_stock_quotes(symbol)
+                if quote:
+                    logger.info(f"✅ {symbol} - {quote.get('name', 'N/A')}")
+                    logger.info(
+                        f"   当前价: {quote.get('close', 'N/A')}, "
+                        f"涨跌幅: {quote.get('pct_chg', 'N/A')}%"
+                    )
+                else:
+                    logger.warning(f"⚠️ {symbol} 未获取到数据")
+            except Exception as e:
+                logger.error(f"❌ {symbol} 获取失败: {e}")
+    finally:
+        await provider.disconnect()
 
 
 async def test_trading_time_check():
@@ -93,14 +99,21 @@ async def test_trading_time_check():
     logger.info("测试 3: 交易时间判断")
     logger.info("=" * 80)
 
-    service = TushareSyncService()
-    await service.initialize()
+    await init_database()
+    service = None
+    try:
+        service = TushareSyncService()
+        await service.initialize()
 
-    is_trading = service._is_trading_time()
-    logger.info(f"📅 当前是否在交易时间: {'✅ 是' if is_trading else '❌ 否'}")
+        is_trading = service._is_trading_time()
+        logger.info(f"📅 当前是否在交易时间: {'✅ 是' if is_trading else '❌ 否'}")
 
-    if not is_trading:
-        logger.info("ℹ️ 不在交易时间，实时行情同步任务会自动跳过")
+        if not is_trading:
+            logger.info("ℹ️ 不在交易时间，实时行情同步任务会自动跳过")
+    finally:
+        if service is not None:
+            await service.provider.disconnect()
+        await close_database()
 
 
 async def test_sync_service():
@@ -109,31 +122,38 @@ async def test_sync_service():
     logger.info("测试 4: 实时行情同步服务")
     logger.info("=" * 80)
 
-    service = TushareSyncService()
-    await service.initialize()
+    await init_database()
+    service = None
+    try:
+        service = TushareSyncService()
+        await service.initialize()
 
-    logger.info("🔄 执行实时行情同步...")
-    result = await service.sync_realtime_quotes()
+        logger.info("🔄 执行实时行情同步...")
+        result = await service.sync_realtime_quotes()
 
-    logger.info("\n📊 同步结果：")
-    logger.info(f"  总处理: {result.get('total_processed', 0)} 只")
-    logger.info(f"  成功: {result.get('success_count', 0)} 只")
-    logger.info(f"  失败: {result.get('error_count', 0)} 只")
-    logger.info(f"  耗时: {result.get('duration', 0):.2f} 秒")
+        logger.info("\n📊 同步结果：")
+        logger.info(f"  总处理: {result.get('total_processed', 0)} 只")
+        logger.info(f"  成功: {result.get('success_count', 0)} 只")
+        logger.info(f"  失败: {result.get('error_count', 0)} 只")
+        logger.info(f"  耗时: {result.get('duration', 0):.2f} 秒")
 
-    if result.get("skipped_non_trading_time"):
-        logger.info("  ⏸️ 因非交易时间而跳过")
+        if result.get("skipped_non_trading_time"):
+            logger.info("  ⏸️ 因非交易时间而跳过")
 
-    if result.get("stopped_by_rate_limit"):
-        logger.warning("  ⚠️ 因API限流而停止")
+        if result.get("stopped_by_rate_limit"):
+            logger.warning("  ⚠️ 因API限流而停止")
 
-    if result.get("errors"):
-        logger.warning(f"  ⚠️ 错误数量: {len(result['errors'])}")
-        # 显示前3个错误
-        for i, error in enumerate(result["errors"][:3]):
-            logger.warning(
-                f"    {i + 1}. {error.get('code', 'N/A')}: {error.get('error', 'N/A')}"
-            )
+        if result.get("errors"):
+            logger.warning(f"  ⚠️ 错误数量: {len(result['errors'])}")
+            # 显示前3个错误
+            for i, error in enumerate(result["errors"][:3]):
+                logger.warning(
+                    f"    {i + 1}. {error.get('code', 'N/A')}: {error.get('error', 'N/A')}"
+                )
+    finally:
+        if service is not None:
+            await service.provider.disconnect()
+        await close_database()
 
 
 async def main():

@@ -5,19 +5,26 @@ import sys
 import types
 
 import pytest
+from app.core.config import settings as app_settings
+from app.core.runtime import apply_runtime_env
 
 BACKEND_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-os.environ.setdefault("GOOGLE_API_KEY", "test-google-api-key")
-os.environ.setdefault("OPENAI_API_KEY", "test-openai-api-key")
-os.environ.setdefault("POSTGRES_HOST", "localhost")
-os.environ.setdefault("POSTGRES_PORT", "5432")
-os.environ.setdefault("POSTGRES_DB", "trading_agents_cn")
-os.environ.setdefault("POSTGRES_USER", "postgres")
-os.environ.setdefault("POSTGRES_PASSWORD", "trading_agents123")
-os.environ.setdefault("REDIS_HOST", "localhost")
-os.environ.setdefault("REDIS_PORT", "6379")
-os.environ.setdefault("JWT_SECRET", "change-me-in-production")
+apply_runtime_env(
+    {
+        "GOOGLE_API_KEY": app_settings.GOOGLE_API_KEY or "test-google-api-key",
+        "OPENAI_API_KEY": app_settings.OPENAI_API_KEY or "test-openai-api-key",
+        "POSTGRES_HOST": app_settings.POSTGRES_HOST,
+        "POSTGRES_PORT": app_settings.POSTGRES_PORT,
+        "POSTGRES_DB": app_settings.POSTGRES_DB,
+        "POSTGRES_USER": app_settings.POSTGRES_USER,
+        "POSTGRES_PASSWORD": app_settings.POSTGRES_PASSWORD,
+        "REDIS_HOST": app_settings.REDIS_HOST,
+        "REDIS_PORT": app_settings.REDIS_PORT,
+        "JWT_SECRET": app_settings.JWT_SECRET,
+    },
+    overwrite=False,
+)
 
 # LangChain 1.x removed the old ``langchain.schema`` import path. Several
 # legacy tests/scripts still import message classes there, so provide the
@@ -55,22 +62,6 @@ def pytest_pyfunc_call(pyfuncitem):
 
 
 def pytest_collection_modifyitems(config, items):
-    if os.getenv("TRADING_AGENTS_RUN_LIVE_TESTS"):
-        return
-
-    live_files = {
-        "test_analysis_result.py",
-        "test_async_analysis.py",
-        "test_decision_data.py",
-        "test_existing_results.py",
-        "test_fundamentals_no_duplicate.py",
-        "test_industries_api.py",
-        "test_industry_screening_fix.py",
-        "test_non_blocking.py",
-        "test_real_estate_api.py",
-        "test_reports_api.py",
-        "test_summary_recommendation.py",
-    }
     helper_files = {
         "test_conversion.py",
         "test_market_analyst_lookback.py",
@@ -78,9 +69,6 @@ def pytest_collection_modifyitems(config, items):
         "test_sanitize_real_data.py",
         "test_simple_depth_check.py",
     }
-    skip_live = pytest.mark.skip(
-        reason="requires a running local backend; set TRADING_AGENTS_RUN_LIVE_TESTS=1 to run"
-    )
     skip_helper = pytest.mark.skip(reason="script helper, not a standalone pytest test")
 
     for item in items:
@@ -90,14 +78,7 @@ def pytest_collection_modifyitems(config, items):
             if path is not None
             else os.path.basename(str(getattr(item, "fspath", "")))
         )
-        if filename in live_files:
-            item.add_marker(skip_live)
-        elif filename in helper_files:
+        if filename in helper_files:
             item.add_marker(skip_helper)
-        elif filename == "test_quotes_ingestion.py" and item.name in {
-            "test_market_quotes_status",
-            "test_historical_data_import",
-        }:
-            item.add_marker(skip_live)
         elif filename == "test_akshare_hk_apis.py" and item.name == "test_api":
             item.add_marker(skip_helper)

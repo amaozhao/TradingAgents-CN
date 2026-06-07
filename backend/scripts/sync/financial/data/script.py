@@ -327,9 +327,41 @@ def _calculate_ttm_revenue(df) -> Optional[float]:
     """
     计算 TTM（最近12个月）营业收入
 
-    已弃用：请使用 _calculate_ttm_metric(df, '营业收入')
+    已弃用：新代码请使用 _calculate_ttm_metric(df, '营业收入')。
+
+    旧脚本测试依赖简单年化作为兼容兜底；保守的通用 TTM 算法仍然不做
+    简单年化，避免影响净利润等季节性更强的指标。
     """
-    return _calculate_ttm_metric(df, "营业收入")
+    ttm_value = _calculate_ttm_metric(df, "营业收入")
+    if ttm_value is not None:
+        return ttm_value
+
+    try:
+        if df is None or df.empty:
+            return None
+        if "报告期" not in df.columns or "营业收入" not in df.columns:
+            return None
+
+        df_sorted = df.sort_values("报告期", ascending=True).reset_index(drop=True)
+        latest = df_sorted.iloc[-1]
+        latest_period = str(latest["报告期"])
+        latest_value = _safe_float(latest["营业收入"])
+        if latest_value is None:
+            return None
+
+        month_day = latest_period[4:]
+        annualization_multiplier = {
+            "0331": 4.0,
+            "0630": 2.0,
+            "0930": 4.0 / 3.0,
+        }.get(month_day)
+        if annualization_multiplier is None:
+            return None
+
+        return latest_value * annualization_multiplier
+    except Exception as e:
+        logger.warning(f"   兼容计算营业收入TTM失败: {e}")
+        return None
 
 
 def _parse_share_value(value_str: str) -> Optional[float]:

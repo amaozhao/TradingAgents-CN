@@ -47,7 +47,7 @@ def test_estimated_total_time():
         print(f"✅ 预估总时长正确: {actual_time} 秒 (预期: {expected_time} 秒)")
     else:
         print(f"❌ 预估总时长错误: {actual_time} 秒 (预期: {expected_time} 秒)")
-        return False
+        assert False, "场景1预估总时长错误"
 
     # 测试场景2: 1级快速 + 1个分析师 + deepseek
     print("\n📊 测试场景2: 1级快速 + 1个分析师 + deepseek")
@@ -81,7 +81,7 @@ def test_estimated_total_time():
         print(f"✅ 预估总时长正确: {actual_time2} 秒 (预期: {expected_time2} 秒)")
     else:
         print(f"❌ 预估总时长错误: {actual_time2} 秒 (预期: {expected_time2} 秒)")
-        return False
+        assert False, "场景2预估总时长错误"
 
     # 测试场景3: 5级全面 + 4个分析师 + google
     print("\n📊 测试场景3: 5级全面 + 4个分析师 + google")
@@ -115,14 +115,13 @@ def test_estimated_total_time():
         print(f"✅ 预估总时长正确: {actual_time3} 秒 (预期: {expected_time3} 秒)")
     else:
         print(f"❌ 预估总时长错误: {actual_time3} 秒 (预期: {expected_time3} 秒)")
-        return False
+        assert False, "场景3预估总时长错误"
 
     print("\n" + "=" * 70)
     print("✅ 所有测试通过！")
     print("=" * 70)
-    return True
 
 
 if __name__ == "__main__":
-    success = test_estimated_total_time()
-    sys.exit(0 if success else 1)
+    test_estimated_total_time()
+    sys.exit(0)

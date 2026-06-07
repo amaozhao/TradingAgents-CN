@@ -15,74 +15,68 @@
     export TA_CACHE_STRATEGY=file        # 使用文件缓存（默认）
 """
 
-import os
+import importlib
 from typing import Any
+
+from app.core.config import settings
 
 # 导入日志模块
 from trader.utils.logging.manager import get_logger
 
 logger = get_logger("agents")
 
-# 导入文件缓存
-try:
-    from .file import StockDataCache
 
-    FILE_CACHE_AVAILABLE = True
-except ImportError:
-    StockDataCache = None
-    FILE_CACHE_AVAILABLE = False
+def _optional_attr(module_name: str, attr_name: str) -> Any:
+    try:
+        return getattr(importlib.import_module(module_name), attr_name)
+    except (AttributeError, ImportError):
+        return None
+
+
+# 导入文件缓存
+StockDataCache = _optional_attr("trader.flows.cache.file", "StockDataCache")
+FILE_CACHE_AVAILABLE = StockDataCache is not None
 
 # 导入数据库缓存
-try:
-    from .database import DatabaseCacheManager
-
-    DB_CACHE_AVAILABLE = True
-except ImportError:
-    DatabaseCacheManager = None
-    DB_CACHE_AVAILABLE = False
+DatabaseCacheManager = _optional_attr(
+    "trader.flows.cache.database", "DatabaseCacheManager"
+)
+DB_CACHE_AVAILABLE = DatabaseCacheManager is not None
 
 # 导入自适应缓存
-try:
-    from .adaptive import AdaptiveCacheSystem
-
-    ADAPTIVE_CACHE_AVAILABLE = True
-except ImportError:
-    AdaptiveCacheSystem = None
-    ADAPTIVE_CACHE_AVAILABLE = False
+AdaptiveCacheSystem = _optional_attr(
+    "trader.flows.cache.adaptive", "AdaptiveCacheSystem"
+)
+ADAPTIVE_CACHE_AVAILABLE = AdaptiveCacheSystem is not None
 
 # 导入集成缓存
-try:
-    from .integrated import IntegratedCacheManager
-
-    INTEGRATED_CACHE_AVAILABLE = True
-except ImportError:
-    IntegratedCacheManager = None
-    INTEGRATED_CACHE_AVAILABLE = False
+IntegratedCacheManager = _optional_attr(
+    "trader.flows.cache.integrated", "IntegratedCacheManager"
+)
+INTEGRATED_CACHE_AVAILABLE = IntegratedCacheManager is not None
 
 # 导入应用缓存适配器（函数，非类）
-try:
-    from .app import get_basics_from_cache, get_market_quote_dataframe
-
-    APP_CACHE_AVAILABLE = True
-except ImportError:
-    get_basics_from_cache = None
-    get_market_quote_dataframe = None
-    APP_CACHE_AVAILABLE = False
+get_basics_from_cache = _optional_attr(
+    "trader.flows.cache.app", "get_basics_from_cache"
+)
+get_market_quote_dataframe = _optional_attr(
+    "trader.flows.cache.app", "get_market_quote_dataframe"
+)
+APP_CACHE_AVAILABLE = (
+    get_basics_from_cache is not None and get_market_quote_dataframe is not None
+)
 
 # 导入 PostgreSQL 缓存适配器
-try:
-    from .postgres import PostgresCacheAdapter
-
-    POSTGRES_CACHE_ADAPTER_AVAILABLE = True
-except ImportError:
-    PostgresCacheAdapter = None
-    POSTGRES_CACHE_ADAPTER_AVAILABLE = False
+PostgresCacheAdapter = _optional_attr(
+    "trader.flows.cache.postgres", "PostgresCacheAdapter"
+)
+POSTGRES_CACHE_ADAPTER_AVAILABLE = PostgresCacheAdapter is not None
 
 # 全局缓存实例
 _cache_instance = None
 
 # 默认缓存策略（改为 integrated，优先使用 PostgreSQL/Redis 缓存）
-DEFAULT_CACHE_STRATEGY = os.getenv("TA_CACHE_STRATEGY", "integrated")
+DEFAULT_CACHE_STRATEGY = settings.TA_CACHE_STRATEGY
 
 
 def get_cache() -> Any:
@@ -128,8 +122,27 @@ def get_cache() -> Any:
     return _cache_instance
 
 
+def close_cache() -> None:
+    """关闭并清空全局缓存实例。"""
+    global _cache_instance
+
+    if _cache_instance is not None:
+        close = getattr(_cache_instance, "close", None)
+        if close is not None:
+            close()
+        _cache_instance = None
+
+    if DB_CACHE_AVAILABLE:
+        close_database_manager = getattr(
+            importlib.import_module("trader.config.databases"),
+            "close_database_manager",
+        )
+        close_database_manager()
+
+
 __all__ = [
     # 统一入口（推荐使用）
+    "close_cache",
     "get_cache",
     # 缓存类（供高级用户直接使用）
     "StockDataCache",

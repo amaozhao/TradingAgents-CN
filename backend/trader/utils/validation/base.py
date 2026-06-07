@@ -124,23 +124,35 @@ class _StockDataPreparerMixin2:
                         self._trigger_data_sync_async(stock_code, start_date, end_date)
                     )
                 finally:
+                    loop.run_until_complete(loop.shutdown_asyncgens())
+                    loop.run_until_complete(loop.shutdown_default_executor())
                     loop.close()
                     asyncio.set_event_loop(None)
             except RuntimeError:
                 # 没有正在运行的循环，可以安全地获取或创建事件循环
+                created_loop = False
                 try:
                     loop = asyncio.get_event_loop()
                     if loop.is_closed():
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
+                        created_loop = True
                 except RuntimeError:
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
+                    created_loop = True
 
                 # 调用异步方法
-                return loop.run_until_complete(
-                    self._trigger_data_sync_async(stock_code, start_date, end_date)
-                )
+                try:
+                    return loop.run_until_complete(
+                        self._trigger_data_sync_async(stock_code, start_date, end_date)
+                    )
+                finally:
+                    if created_loop:
+                        loop.run_until_complete(loop.shutdown_asyncgens())
+                        loop.run_until_complete(loop.shutdown_default_executor())
+                        loop.close()
+                        asyncio.set_event_loop(None)
         except Exception as e:
             logger.error(f"❌ [数据同步] 同步包装器失败: {e}", exc_info=True)
             return {

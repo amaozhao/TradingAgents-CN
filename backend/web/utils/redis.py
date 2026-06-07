@@ -11,6 +11,8 @@ from typing import Any, Dict, Optional
 
 import streamlit as st
 
+from app.core.config import settings
+
 
 class RedisSessionManager:
     """基于Redis的会话管理器"""
@@ -25,24 +27,17 @@ class RedisSessionManager:
         """初始化Redis连接"""
         try:
             # 首先检查REDIS_ENABLED环境变量
-            redis_enabled = os.getenv("REDIS_ENABLED", "false").lower()
-            if redis_enabled != "true":
+            if not settings.REDIS_ENABLED:
                 return False
 
             redis = importlib.import_module("redis")
 
-            # 从环境变量获取Redis配置
-            redis_host = os.getenv("REDIS_HOST", "localhost")
-            redis_port = int(os.getenv("REDIS_PORT", 6379))
-            redis_password = os.getenv("REDIS_PASSWORD", None)
-            redis_db = int(os.getenv("REDIS_DB", 0))
-
             # 创建Redis连接
             self.redis_client = redis.Redis(
-                host=redis_host,
-                port=redis_port,
-                password=redis_password,
-                db=redis_db,
+                host=settings.REDIS_HOST,
+                port=settings.REDIS_PORT,
+                password=settings.REDIS_PASSWORD or None,
+                db=settings.REDIS_DB,
                 decode_responses=True,
                 socket_timeout=5,
                 socket_connect_timeout=5,
@@ -54,8 +49,7 @@ class RedisSessionManager:
 
         except Exception as e:
             # 只有在Redis启用时才显示连接失败警告
-            redis_enabled = os.getenv("REDIS_ENABLED", "false").lower()
-            if redis_enabled == "true":
+            if settings.REDIS_ENABLED:
                 st.warning(f"⚠️ Redis连接失败，使用文件存储: {e}")
             return False
 
@@ -248,9 +242,9 @@ class RedisSessionManager:
                     self.redis_client.ping()
                     debug_info["redis_connected"] = True
                     debug_info["redis_info"] = {
-                        "host": os.getenv("REDIS_HOST", "localhost"),
-                        "port": os.getenv("REDIS_PORT", 6379),
-                        "db": os.getenv("REDIS_DB", 0),
+                        "host": settings.REDIS_HOST,
+                        "port": settings.REDIS_PORT,
+                        "db": settings.REDIS_DB,
                     }
 
                     # 检查会话数据

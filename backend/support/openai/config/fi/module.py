@@ -5,8 +5,8 @@
 """
 
 import importlib
-import os
 import sys
+from app.core.config import settings as app_settings
 
 
 def test_openai_config_detection():
@@ -16,9 +16,9 @@ def test_openai_config_detection():
 
     try:
         # 检查当前环境变量
-        openai_key = os.getenv("OPENAI_API_KEY")
-        dashscope_key = os.getenv("DASHSCOPE_API_KEY")
-        finnhub_key = os.getenv("FINNHUB_API_KEY")
+        openai_key = app_settings.text_value("OPENAI_API_KEY")
+        dashscope_key = app_settings.text_value("DASHSCOPE_API_KEY")
+        finnhub_key = app_settings.text_value("FINNHUB_API_KEY")
 
         print("📊 当前环境变量状态:")
         print(f"   OPENAI_API_KEY: {'✅ 已配置' if openai_key else '❌ 未配置'}")

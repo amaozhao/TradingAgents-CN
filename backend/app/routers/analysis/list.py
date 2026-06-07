@@ -113,7 +113,9 @@ async def submit_batch_analysis(
                 await queue_service.enqueue_task(
                     user_id=user["id"],
                     symbol=symbol,
-                    params=_analysis_request_queue_params(single_req, task_id, user["id"]),
+                    params=_analysis_request_queue_params(
+                        single_req, task_id, user["id"]
+                    ),
                     batch_id=batch_id,
                     task_id=task_id,
                 )

@@ -9,6 +9,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from app.core.config import settings as app_settings
 
 
 def test_python_environment():
@@ -21,7 +22,7 @@ def test_python_environment():
     print(f"Python路径: {sys.executable}")
 
     # 检查虚拟环境
-    venv_path = os.environ.get("VIRTUAL_ENV")
+    venv_path = app_settings.text_value("VIRTUAL_ENV")
     if venv_path:
         print(f"✅ 虚拟环境: {venv_path}")
     else:
@@ -199,7 +200,7 @@ def test_environment_variables():
     ]
 
     for var in key_vars:
-        value = os.getenv(var)
+        value = app_settings.text_value(var)
         if value:
             print(f"✅ {var}: {'*' * 10}{value[-4:] if len(value) > 4 else '****'}")
         else:

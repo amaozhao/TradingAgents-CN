@@ -2,34 +2,25 @@
 def get_progress_by_id(analysis_id: str) -> Optional[Dict[str, Any]]:
     """根据分析ID获取进度"""
     try:
-        # 检查REDIS_ENABLED环境变量
-        redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() == "true"
-
         # 如果Redis启用，先尝试Redis
-        if redis_enabled:
+        if settings.REDIS_ENABLED:
             try:
                 redis = importlib.import_module("redis")
 
-                # 从环境变量获取Redis配置
-                redis_host = os.getenv("REDIS_HOST", "localhost")
-                redis_port = int(os.getenv("REDIS_PORT", 6379))
-                redis_password = os.getenv("REDIS_PASSWORD", None)
-                redis_db = int(os.getenv("REDIS_DB", 0))
-
                 # 创建Redis连接
-                if redis_password:
+                if settings.REDIS_PASSWORD:
                     redis_client = redis.Redis(
-                        host=redis_host,
-                        port=redis_port,
-                        password=redis_password,
-                        db=redis_db,
+                        host=settings.REDIS_HOST,
+                        port=settings.REDIS_PORT,
+                        password=settings.REDIS_PASSWORD,
+                        db=settings.REDIS_DB,
                         decode_responses=True,
                     )
                 else:
                     redis_client = redis.Redis(
-                        host=redis_host,
-                        port=redis_port,
-                        db=redis_db,
+                        host=settings.REDIS_HOST,
+                        port=settings.REDIS_PORT,
+                        db=settings.REDIS_DB,
                         decode_responses=True,
                     )
 
@@ -67,34 +58,25 @@ def format_time(seconds: float) -> str:
 def get_latest_analysis_id() -> Optional[str]:
     """获取最新的分析ID"""
     try:
-        # 检查REDIS_ENABLED环境变量
-        redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() == "true"
-
         # 如果Redis启用，先尝试从Redis获取
-        if redis_enabled:
+        if settings.REDIS_ENABLED:
             try:
                 redis = importlib.import_module("redis")
 
-                # 从环境变量获取Redis配置
-                redis_host = os.getenv("REDIS_HOST", "localhost")
-                redis_port = int(os.getenv("REDIS_PORT", 6379))
-                redis_password = os.getenv("REDIS_PASSWORD", None)
-                redis_db = int(os.getenv("REDIS_DB", 0))
-
                 # 创建Redis连接
-                if redis_password:
+                if settings.REDIS_PASSWORD:
                     redis_client = redis.Redis(
-                        host=redis_host,
-                        port=redis_port,
-                        password=redis_password,
-                        db=redis_db,
+                        host=settings.REDIS_HOST,
+                        port=settings.REDIS_PORT,
+                        password=settings.REDIS_PASSWORD,
+                        db=settings.REDIS_DB,
                         decode_responses=True,
                     )
                 else:
                     redis_client = redis.Redis(
-                        host=redis_host,
-                        port=redis_port,
-                        db=redis_db,
+                        host=settings.REDIS_HOST,
+                        port=settings.REDIS_PORT,
+                        db=settings.REDIS_DB,
                         decode_responses=True,
                     )
 

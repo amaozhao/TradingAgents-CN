@@ -17,7 +17,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.core.database import get_postgres_db
+from app.core.database import get_postgres_db, init_postgres_document_store_only
 from app.db.store import UpdateOne
 from app.db.dual import dual_write_hot_document, dual_write_hot_documents
 from app.services.basics import add_financial_metrics as _add_financial_metrics_util
@@ -28,6 +28,19 @@ logger = logging.getLogger(__name__)
 COLLECTION_NAME = "stock_basic_info"
 STATUS_COLLECTION = "sync_status"
 JOB_KEY = "stock_basics_multi_source"
+
+
+async def _get_initialized_postgres_db():
+    """Return the document DB, initializing it for direct service callers."""
+
+    try:
+        return get_postgres_db()
+    except RuntimeError as exc:
+        if "未初始化" not in str(exc) and "not initialized" not in str(exc):
+            raise
+        logger.info("PostgreSQL文档数据库未初始化，正在为多源同步服务初始化")
+        await init_postgres_document_store_only()
+        return get_postgres_db()
 
 
 class DataSourcePriority(Enum):
@@ -70,7 +83,7 @@ class MultiSourceBasicsSyncService:
         if self._last_status:
             return self._last_status
 
-        db = get_postgres_db()
+        db = await _get_initialized_postgres_db()
         doc = await db[STATUS_COLLECTION].find_one({"job": JOB_KEY})
         if doc:
             # 移除PostgreSQL的_id字段以避免序列化问题
@@ -166,7 +179,10 @@ class MultiSourceBasicsSyncService:
         return inserted, updated
 
     async def run_full_sync(
-        self, force: bool = False, preferred_sources: Optional[List[str]] = None
+        self,
+        force: bool = False,
+        preferred_sources: Optional[List[str]] = None,
+        max_stocks: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         运行完整同步
@@ -174,6 +190,7 @@ class MultiSourceBasicsSyncService:
         Args:
             force: 是否强制运行（即使已在运行中）
             preferred_sources: 优先使用的数据源列表
+            max_stocks: 最多处理的股票数量；为空时处理全部
         """
         preferred_sources = preferred_sources or []
         async with self._lock:
@@ -184,7 +201,7 @@ class MultiSourceBasicsSyncService:
                 return await self.get_status()
             self._running = True
 
-        db = get_postgres_db()
+        db = await _get_initialized_postgres_db()
         stats = SyncStats()
         stats.started_at = datetime.now().isoformat()
         stats.status = "running"
@@ -216,6 +233,8 @@ class MultiSourceBasicsSyncService:
             )
             if stock_df is None or getattr(stock_df, "empty", True):
                 raise RuntimeError("All data sources failed to provide stock list")
+            if max_stocks is not None and max_stocks > 0:
+                stock_df = stock_df.head(max_stocks)
 
             total_stocks = len(stock_df)
             stats.total = total_stocks
@@ -238,7 +257,7 @@ class MultiSourceBasicsSyncService:
 
             daily_data_map = {}
             daily_source = ""
-            if latest_trade_date:
+            if latest_trade_date and max_stocks is None:
                 stats.message = f"正在获取 {latest_trade_date} 日基础数据"
                 await self._persist_status(db, stats.__dict__.copy())
                 daily_df, daily_source = await asyncio.to_thread(
@@ -255,6 +274,9 @@ class MultiSourceBasicsSyncService:
                     stats.message = f"已获取日基础数据，数据源: {daily_source}"
                 else:
                     stats.message = "未获取到日基础数据，继续同步基础信息"
+                await self._persist_status(db, stats.__dict__.copy())
+            elif latest_trade_date:
+                stats.message = "小范围同步跳过全市场日基础数据"
                 await self._persist_status(db, stats.__dict__.copy())
 
             # Step 5: 处理和更新数据（分批处理）

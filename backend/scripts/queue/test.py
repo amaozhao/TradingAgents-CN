@@ -9,7 +9,57 @@ import json
 
 from app.core.database import close_database, init_database
 from app.core.redis import close_redis, init_redis
+from app.services.queue import (
+    READY_LIST,
+    SET_PROCESSING,
+    TASK_PREFIX,
+    USER_PROCESSING_PREFIX,
+    VISIBILITY_TIMEOUT_PREFIX,
+)
 from app.services.queue.service import get_queue_service
+
+
+async def cleanup_test_queue_state(queue_service, *user_ids: str) -> None:
+    """清理本脚本测试用户产生的 Redis 队列状态。"""
+
+    redis = queue_service.r
+    target_users = set(user_ids)
+
+    for user_id in target_users:
+        user_key = USER_PROCESSING_PREFIX + user_id
+        task_ids = await redis.smembers(user_key)
+        for task_id in task_ids:
+            if isinstance(task_id, bytes):
+                task_id = task_id.decode()
+            await redis.srem(SET_PROCESSING, task_id)
+            await redis.delete(VISIBILITY_TIMEOUT_PREFIX + str(task_id))
+            await redis.delete(TASK_PREFIX + str(task_id))
+        await redis.delete(user_key)
+
+    processing_task_ids = await redis.smembers(SET_PROCESSING)
+    for task_id in processing_task_ids:
+        if isinstance(task_id, bytes):
+            task_id = task_id.decode()
+        task_key = TASK_PREFIX + str(task_id)
+        user_id = await redis.hget(task_key, "user")
+        if isinstance(user_id, bytes):
+            user_id = user_id.decode()
+        if user_id in target_users or not await redis.exists(task_key):
+            await redis.srem(SET_PROCESSING, task_id)
+            await redis.delete(VISIBILITY_TIMEOUT_PREFIX + str(task_id))
+            await redis.delete(task_key)
+
+    queued_task_ids = await redis.lrange(READY_LIST, 0, -1)
+    for task_id in queued_task_ids:
+        if isinstance(task_id, bytes):
+            task_id = task_id.decode()
+        task_key = TASK_PREFIX + str(task_id)
+        user_id = await redis.hget(task_key, "user")
+        if isinstance(user_id, bytes):
+            user_id = user_id.decode()
+        if user_id in target_users:
+            await redis.lrem(READY_LIST, 0, task_id)
+            await redis.delete(task_key)
 
 
 async def test_queue_operations():
@@ -21,6 +71,7 @@ async def test_queue_operations():
     await init_redis()
 
     queue_service = get_queue_service()
+    await cleanup_test_queue_state(queue_service, "test_user_1", "test_user_concurrent")
 
     try:
         # 测试入队
@@ -89,8 +140,10 @@ async def test_queue_operations():
         print(f"❌ 测试失败: {e}")
         traceback = importlib.import_module("traceback")
         traceback.print_exc()
+        raise
 
     finally:
+        await cleanup_test_queue_state(queue_service, "test_user_1")
         # 清理连接
         await close_database()
         await close_redis()
@@ -104,6 +157,7 @@ async def test_concurrent_limits():
     await init_redis()
 
     queue_service = get_queue_service()
+    await cleanup_test_queue_state(queue_service, "test_user_concurrent")
 
     try:
         # 尝试超过用户并发限制
@@ -139,8 +193,10 @@ async def test_concurrent_limits():
         print(f"❌ 并发测试失败: {e}")
         traceback = importlib.import_module("traceback")
         traceback.print_exc()
+        raise
 
     finally:
+        await cleanup_test_queue_state(queue_service, "test_user_concurrent")
         await close_database()
         await close_redis()
 

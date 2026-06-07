@@ -56,9 +56,11 @@ Compose 文件位于 `deploy/docker/compose/`，其中 `build.context` 明确指
 - `README.md`
 - `LICENSE`
 - `VERSION`
-- `.env.example`
 - `.dockerignore`
 - `.gitignore`
 - `.github/`
 
 新增部署配置时优先放入 `deploy/`，新增运行输出时优先写入 `runtime/`。
+
+后端本地环境变量模板位于 `backend/.env.example`，实际本地配置文件为
+`backend/.env`，该文件由 `.gitignore` 忽略，不应提交。

@@ -1,4 +1,11 @@
-# ruff: noqa: F401,F403,F405,F821
+import importlib
+from pathlib import Path
+
+from pydantic import BaseModel
+
+from app.core.config import settings
+
+
 class TestLogResponse(BaseModel):
     message: str
     timestamp: float
@@ -152,20 +159,19 @@ async def _print_config_summary(logger):
         logger.info("📋 AGENTrader Configuration Summary")
         logger.info("=" * 70)
 
-        # .env 文件路径信息
-        os = importlib.import_module("os")
-        Path = getattr(importlib.import_module("pathlib"), "Path")
-
+        backend_dir = Path(__file__).resolve().parents[2]
         current_dir = Path.cwd()
         logger.info(f"📁 Current working directory: {current_dir}")
+        logger.info(f"📁 Backend directory: {backend_dir}")
 
-        # 检查可能的 .env 文件位置
-        env_files_to_check = [
-            current_dir / ".env",
-            current_dir / "backend" / ".env",
-            Path(__file__).resolve().parents[2] / ".env",  # 项目根目录
-            Path(__file__).resolve().parent.parent / ".env",  # backend 目录
-        ]
+        configured_env = settings.model_config.get("env_file")
+        env_files_to_check = []
+        if configured_env:
+            env_files_to_check.append(Path(str(configured_env)).expanduser())
+        env_files_to_check.append(backend_dir / ".env")
+        if current_dir.name != "backend":
+            env_files_to_check.append(current_dir / "backend" / ".env")
+        env_files_to_check = list(dict.fromkeys(env_files_to_check))
 
         logger.info("🔍 Checking .env file locations:")
         env_file_found = False
@@ -200,28 +206,17 @@ async def _print_config_summary(logger):
         # Pydantic Settings 配置加载状态
         logger.info("⚙️  Pydantic Settings Configuration:")
         logger.info(f"  • Settings class: {settings.__class__.__name__}")
+        logger.info(f"  • Config source: {configured_env or 'Not specified'}")
         logger.info(
-            f"  • Config source: {getattr(settings.model_config, 'env_file', 'Not specified')}"
-        )
-        logger.info(
-            f"  • Encoding: {getattr(settings.model_config, 'env_file_encoding', 'Not specified')}"
+            f"  • Encoding: {settings.model_config.get('env_file_encoding', 'Not specified')}"
         )
 
         # 显示一些关键配置值的来源（环境变量 vs 默认值）
         key_settings = ["HOST", "PORT", "DEBUG", "POSTGRES_HOST", "REDIS_HOST"]
-        logger.info("  • Key settings sources:")
+        logger.info("  • Key settings values:")
         for setting_name in key_settings:
-            env_var_name = setting_name
-            env_value = os.getenv(env_var_name)
             config_value = getattr(settings, setting_name, None)
-            if env_value is not None:
-                logger.info(
-                    f"    - {setting_name}: from environment variable ({config_value})"
-                )
-            else:
-                logger.info(
-                    f"    - {setting_name}: using default value ({config_value})"
-                )
+            logger.info(f"    - {setting_name}: {config_value}")
 
         # 环境信息
         env = "Production" if settings.is_production else "Development"
@@ -236,7 +231,6 @@ async def _print_config_summary(logger):
         )
 
         # 代理配置
-        os = importlib.import_module("os")
         if settings.HTTP_PROXY or settings.HTTPS_PROXY:
             logger.info("Proxy Configuration:")
             if settings.HTTP_PROXY:

@@ -9,9 +9,10 @@
 
 import asyncio
 import importlib
-import os
 import warnings
 from typing import Any, Dict, List, Optional
+
+from app.core.config import settings
 
 
 class ConfigManagerCompat:
@@ -45,13 +46,7 @@ class ConfigManagerCompat:
         Returns:
             str: 数据目录路径
         """
-        # 优先从环境变量读取
-        data_dir = os.getenv("DATA_DIR")
-        if data_dir:
-            return data_dir
-
-        # 默认值
-        return "./data"
+        return settings.DATA_DIR or settings.TRADING_AGENTS_DATA_DIR
 
     def load_settings(self) -> Dict[str, Any]:
         """

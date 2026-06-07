@@ -18,8 +18,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 from zoneinfo import ZoneInfo
 
-from dotenv import load_dotenv
-
+from app.core.config import settings as app_settings
 from trader.config.runtime import get_timezone_name
 from trader.utils.logging.manager import get_logger
 

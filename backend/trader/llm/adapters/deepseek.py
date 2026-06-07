@@ -2,10 +2,10 @@
 DeepSeek LLM适配器，支持Token使用统计
 """
 
-import os
 import time
 from typing import Any, Dict, List, Optional, Union
 
+from app.core.config import settings
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.outputs import ChatResult
@@ -78,8 +78,8 @@ class ChatDeepSeek(ChatOpenAI):
 
         # 获取API密钥
         if api_key is None:
-            # 从环境变量读取 API Key
-            env_api_key = os.getenv("DEEPSEEK_API_KEY")
+            # 从 Settings 读取 API Key
+            env_api_key = settings.DEEPSEEK_API_KEY
 
             # 验证环境变量中的 API Key 是否有效（排除占位符）
             if env_api_key and is_valid_api_key(env_api_key):

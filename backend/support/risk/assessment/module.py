@@ -6,12 +6,11 @@
 import importlib
 import os
 
-from dotenv import load_dotenv
 
 from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def test_risk_assessment_extraction():
@@ -161,8 +160,8 @@ def test_risk_assessment_integration():
 
     try:
         # 检查API密钥
-        dashscope_key = os.getenv("DASHSCOPE_API_KEY")
-        google_key = os.getenv("GOOGLE_API_KEY")
+        dashscope_key = app_settings.text_value("DASHSCOPE_API_KEY")
+        google_key = app_settings.text_value("GOOGLE_API_KEY")
 
         if not dashscope_key and not google_key:
             print("⚠️ 未配置API密钥，跳过实际分析测试")

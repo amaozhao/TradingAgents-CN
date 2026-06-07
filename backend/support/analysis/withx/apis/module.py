@@ -4,14 +4,11 @@
 """
 
 import importlib
-import os
 
-from dotenv import load_dotenv
 
-from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def test_news_analyst_with_google():
@@ -167,9 +164,9 @@ def main():
     print("=" * 70)
 
     # 检查环境变量
-    dashscope_key = os.getenv("DASHSCOPE_API_KEY")
-    google_key = os.getenv("GOOGLE_API_KEY")
-    reddit_id = os.getenv("REDDIT_CLIENT_ID")
+    dashscope_key = app_settings.text_value("DASHSCOPE_API_KEY")
+    google_key = app_settings.text_value("GOOGLE_API_KEY")
+    reddit_id = app_settings.text_value("REDDIT_CLIENT_ID")
 
     if not dashscope_key:
         print("❌ DASHSCOPE_API_KEY 未配置，无法进行测试")

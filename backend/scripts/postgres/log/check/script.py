@@ -30,7 +30,9 @@ def check_runtime_log(
             RuntimeLogCheck(
                 "startup_sync_disabled",
                 startup_seen,
-                "found startup sync disabled log" if startup_seen else "missing SYNC_STOCK_BASICS_ENABLED=false log",
+                "found startup sync disabled log"
+                if startup_seen
+                else "missing SYNC_STOCK_BASICS_ENABLED=false log",
             )
         )
 
@@ -67,7 +69,9 @@ def _dual_write_detail(*, written: bool, failed: bool, allow_failures: bool) -> 
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Validate PostgreSQL migration runtime log evidence.")
+    parser = argparse.ArgumentParser(
+        description="Validate PostgreSQL migration runtime log evidence."
+    )
     parser.add_argument("runtime_log", type=Path)
     parser.add_argument("--no-require-startup-gate", action="store_true")
     parser.add_argument("--no-require-dual-write", action="store_true")

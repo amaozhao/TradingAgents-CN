@@ -4,15 +4,12 @@
 """
 
 import importlib
-import os
 from pathlib import Path
 
-from dotenv import load_dotenv
 
-from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def test_toolkit_tools():
@@ -167,7 +164,7 @@ def check_data_requirements():
         print("   3. 使用在线Reddit API（如果支持）")
 
     # 检查Google API要求
-    google_key = os.getenv("GOOGLE_API_KEY")
+    google_key = app_settings.text_value("GOOGLE_API_KEY")
     if google_key:
         print("✅ Google API密钥已配置")
         print("💡 Google新闻工具使用网页抓取，不需要API密钥")
@@ -183,8 +180,8 @@ def main():
 
     # 检查API密钥状态
     print("🔑 API密钥状态:")
-    google_key = os.getenv("GOOGLE_API_KEY")
-    reddit_id = os.getenv("REDDIT_CLIENT_ID")
+    google_key = app_settings.text_value("GOOGLE_API_KEY")
+    reddit_id = app_settings.text_value("REDDIT_CLIENT_ID")
     print(f"   Google API: {'✅ 已配置' if google_key else '❌ 未配置'}")
     print(f"   Reddit API: {'✅ 已配置' if reddit_id else '❌ 未配置'}")
 

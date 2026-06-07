@@ -372,32 +372,32 @@ def check_api_keys(llm_provider: str) -> bool:
 
     # 检查LLM提供商对应的API密钥
     if provider in {"qwen", "dashscope"}:
-        if not os.getenv("DASHSCOPE_API_KEY"):
+        if not settings.DASHSCOPE_API_KEY:
             missing_keys.append("DASHSCOPE_API_KEY (阿里百炼)")
     elif provider == "deepseek":
-        if not os.getenv("DEEPSEEK_API_KEY"):
+        if not settings.DEEPSEEK_API_KEY:
             missing_keys.append("DEEPSEEK_API_KEY")
     elif provider == "openai":
-        if not os.getenv("OPENAI_API_KEY"):
+        if not settings.OPENAI_API_KEY:
             missing_keys.append("OPENAI_API_KEY")
     elif provider == "custom_openai":
-        if not os.getenv("CUSTOM_OPENAI_API_KEY") and not os.getenv("OPENAI_API_KEY"):
+        if not settings.CUSTOM_OPENAI_API_KEY and not settings.OPENAI_API_KEY:
             missing_keys.append("CUSTOM_OPENAI_API_KEY / OPENAI_API_KEY")
     elif provider == "openrouter":
-        if not os.getenv("OPENROUTER_API_KEY"):
+        if not settings.OPENROUTER_API_KEY:
             missing_keys.append("OPENROUTER_API_KEY")
     elif provider == "glm":
-        if not os.getenv("ZHIPU_API_KEY"):
+        if not settings.ZHIPU_API_KEY:
             missing_keys.append("ZHIPU_API_KEY")
     elif provider == "anthropic":
-        if not os.getenv("ANTHROPIC_API_KEY"):
+        if not settings.ANTHROPIC_API_KEY:
             missing_keys.append("ANTHROPIC_API_KEY")
     elif provider == "google":
-        if not os.getenv("GOOGLE_API_KEY"):
+        if not settings.GOOGLE_API_KEY:
             missing_keys.append("GOOGLE_API_KEY")
 
     # 检查金融数据API密钥
-    if not os.getenv("FINNHUB_API_KEY"):
+    if not settings.FINNHUB_API_KEY:
         missing_keys.append("FINNHUB_API_KEY (金融数据)")
 
     if missing_keys:
@@ -406,7 +406,7 @@ def check_api_keys(llm_provider: str) -> bool:
             logger.info(f"   • {key}")
 
         logger.info("\n[yellow]💡 解决方案 | Solutions:[/yellow]")
-        logger.info("1. 在项目根目录创建 .env 文件 | Create .env file in project root:")
+        logger.info("1. 在 backend/.env 创建配置文件 | Create backend/.env:")
         logger.info("   DASHSCOPE_API_KEY=your_dashscope_key")
         logger.info("   FINNHUB_API_KEY=your_finnhub_key")
         logger.info("\n2. 或设置环境变量 | Or set environment variables")

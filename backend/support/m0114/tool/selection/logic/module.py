@@ -6,6 +6,7 @@
 
 import importlib
 import os
+from app.core.config import settings as app_settings
 
 
 def test_tool_selection_scenarios():
@@ -226,7 +227,7 @@ def test_us_stock_data_independence():
         # 临时设置环境变量
         original_env = {}
         for key, value in openai_config.items():
-            original_env[key] = os.environ.get(key)
+            original_env[key] = app_settings.text_value(key)
             if value is None:
                 os.environ.pop(key, None)
             else:

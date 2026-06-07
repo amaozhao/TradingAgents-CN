@@ -7,7 +7,7 @@
 import importlib
 
 
-def test_data_source_availability():
+def check_data_source_availability():
     """测试数据源可用性"""
     print("🔍 检查数据源可用性...")
     print("=" * 60)
@@ -33,7 +33,7 @@ def test_data_source_availability():
         return None
 
 
-def test_fallback_mechanism(manager):
+def check_fallback_mechanism(manager):
     """测试降级机制"""
     print("\n🔄 测试降级机制...")
     print("=" * 60)
@@ -69,7 +69,7 @@ def test_fallback_mechanism(manager):
         return False
 
 
-def test_specific_sources(manager):
+def check_specific_sources(manager):
     """测试特定数据源"""
     print("\n🎯 测试特定数据源...")
     print("=" * 60)
@@ -79,6 +79,7 @@ def test_specific_sources(manager):
     end_date = "2025-01-17"
 
     # 测试每个可用的数据源
+    success_count = 0
     for source in manager.available_sources:
         print(f"\n📊 测试数据源: {source.value}")
 
@@ -94,12 +95,14 @@ def test_specific_sources(manager):
 
             if result and "❌" not in result and "错误" not in result:
                 print(f"   ✅ {source.value} 获取成功")
+                success_count += 1
             else:
                 print(f"   ❌ {source.value} 获取失败")
                 print(f"   错误信息: {result[:100] if result else 'None'}")
 
         except Exception as e:
             print(f"   ❌ {source.value} 异常: {e}")
+    return success_count > 0
 
 
 def main():
@@ -108,16 +111,16 @@ def main():
     print("=" * 80)
 
     # 1. 检查数据源可用性
-    manager = test_data_source_availability()
+    manager = check_data_source_availability()
     if not manager:
         print("❌ 无法初始化数据源管理器，测试终止")
-        return
+        return False
 
     # 2. 测试降级机制
-    success = test_fallback_mechanism(manager)
+    success = check_fallback_mechanism(manager)
 
     # 3. 测试特定数据源
-    test_specific_sources(manager)
+    specific_success = check_specific_sources(manager)
 
     # 4. 总结
     print("\n📋 测试总结")
@@ -129,6 +132,11 @@ def main():
 
     print(f"📊 可用数据源数量: {len(manager.available_sources)}")
     print("📊 建议: 确保至少有2个数据源可用以支持降级")
+    return bool(success and specific_success)
+
+
+def test_data_source_fallback_flow():
+    assert main()
 
 
 if __name__ == "__main__":

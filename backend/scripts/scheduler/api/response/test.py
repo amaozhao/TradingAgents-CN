@@ -6,15 +6,27 @@
 import json
 
 import requests
+from app.core.config import settings
 
 # 配置
-BASE_URL = "http://localhost:8000"
-USERNAME = "admin"
-PASSWORD = "admin123"
+BASE_URL = settings.TRADING_AGENTS_API_BASE_URL.rstrip("/")
+USERNAME = (
+    settings.TRADING_AGENTS_API_USERNAME
+    or settings.TRADING_AGENTS_TEST_USERNAME
+    or "admin"
+)
+PASSWORD = (
+    settings.TRADING_AGENTS_API_PASSWORD
+    or settings.TRADING_AGENTS_TEST_PASSWORD
+    or "admin123"
+)
 
 
 def login() -> str:
     """登录并获取 token"""
+    if settings.TRADING_AGENTS_API_TOKEN:
+        return settings.TRADING_AGENTS_API_TOKEN
+
     print("🔐 正在登录...")
     response = requests.post(
         f"{BASE_URL}/api/auth/login", json={"username": USERNAME, "password": PASSWORD}
@@ -31,7 +43,7 @@ def login() -> str:
     return None
 
 
-def test_jobs_response(token: str):
+def check_jobs_response(token: str):
     """测试任务列表响应格式"""
     print("\n📋 测试任务列表响应格式...")
 
@@ -63,9 +75,10 @@ def test_jobs_response(token: str):
             print(f"  实际内容: {data.get('data')}")
     else:
         print(f"❌ 请求失败: {response.text}")
+    return response.status_code == 200
 
 
-def test_stats_response(token: str):
+def check_stats_response(token: str):
     """测试统计信息响应格式"""
     print("\n📊 测试统计信息响应格式...")
 
@@ -95,6 +108,7 @@ def test_stats_response(token: str):
             print(f"  ⚠️ data 不是对象！实际类型: {type(data.get('data'))}")
     else:
         print(f"❌ 请求失败: {response.text}")
+    return response.status_code == 200
 
 
 def main():
@@ -107,17 +121,22 @@ def main():
     token = login()
     if not token:
         print("\n❌ 登录失败，无法继续测试")
-        return
+        return False
 
     # 2. 测试任务列表响应
-    test_jobs_response(token)
+    jobs_ok = check_jobs_response(token)
 
     # 3. 测试统计信息响应
-    test_stats_response(token)
+    stats_ok = check_stats_response(token)
 
     print("\n" + "=" * 60)
     print("✅ 测试完成！")
     print("=" * 60)
+    return bool(jobs_ok and stats_ok)
+
+
+def test_scheduler_api_response_flow():
+    assert main()
 
 
 if __name__ == "__main__":

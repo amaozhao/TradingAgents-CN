@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import sys
 from pathlib import Path
 
@@ -14,13 +15,19 @@ loaded_app_file = str(getattr(loaded_app, "__file__", "") or "")
 loaded_app_paths = [
     str(path) for path in getattr(loaded_app, "__path__", []) if path is not None
 ]
-if "/tests/app" in loaded_app_file or any("/tests/app" in path for path in loaded_app_paths):
+if "/tests/app" in loaded_app_file or any(
+    "/tests/app" in path for path in loaded_app_paths
+):
     for module_name in list(sys.modules):
         if module_name == "app" or module_name.startswith("app."):
             del sys.modules[module_name]
 
-from app.db.store.collection import _can_count_in_database
-from app.services.notification import NotificationsService
+_can_count_in_database = getattr(
+    importlib.import_module("app.db.store.collection"), "_can_count_in_database"
+)
+NotificationsService = getattr(
+    importlib.import_module("app.services.notification"), "NotificationsService"
+)
 
 
 def test_simple_equality_query_can_count_in_database() -> None:
@@ -60,7 +67,9 @@ async def test_unread_count_uses_fast_sql_path(monkeypatch: pytest.MonkeyPatch) 
     def fail_get_postgres_db():
         raise AssertionError("document-store fallback should not be used")
 
-    monkeypatch.setattr("app.services.notification.get_postgres_db", fail_get_postgres_db)
+    monkeypatch.setattr(
+        "app.services.notification.get_postgres_db", fail_get_postgres_db
+    )
 
     assert await service.unread_count("admin") == 7
 
@@ -84,7 +93,9 @@ async def test_unread_count_falls_back_to_document_store(
             assert name == "notifications"
             return Collection()
 
-    monkeypatch.setattr("app.services.notification.get_session_factory", fail_session_factory)
+    monkeypatch.setattr(
+        "app.services.notification.get_session_factory", fail_session_factory
+    )
     monkeypatch.setattr("app.services.notification.get_postgres_db", lambda: Database())
 
     assert await service.unread_count("admin") == 3

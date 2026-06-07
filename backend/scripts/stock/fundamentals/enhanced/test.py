@@ -11,12 +11,125 @@
 """
 
 import asyncio
-import os
+import importlib
+from datetime import datetime
 
+from app.core.config import settings
 from app.core.database import get_postgres_db, init_database
+from trader.flows.providers.china.baostock import BaoStockProvider
 
 
-async def test_stock_fundamentals(stock_code: str = "000001"):
+def _first_present(data: dict, keys: tuple[str, ...]):
+    for key in keys:
+        value = data.get(key)
+        if value not in (None, "", "--"):
+            return value
+    return None
+
+
+def _safe_float(value):
+    if value in (None, "", "--"):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+async def fetch_public_stock_profile(code6: str) -> dict:
+    """Fetch minimal public stock profile when the local database is incomplete."""
+    ak = importlib.import_module("akshare")
+
+    def fetch():
+        return ak.stock_individual_info_em(symbol=code6)
+
+    try:
+        df = await asyncio.to_thread(fetch)
+    except Exception as e:
+        print(f"⚠️ 公开基础信息获取失败: {e}")
+        return {}
+
+    if df is None or df.empty:
+        return {}
+
+    rows = df.to_dict("records")
+    profile = {
+        str(row.get("item")): row.get("value")
+        for row in rows
+        if row.get("item") is not None
+    }
+    return {
+        "code": code6,
+        "name": _first_present(profile, ("股票简称", "简称", "名称")),
+        "industry": _first_present(profile, ("行业", "所属行业")),
+        "market": _first_present(profile, ("市场", "行业", "所属行业")),
+        "total_mv": _safe_float(_first_present(profile, ("总市值",))),
+    }
+
+
+async def fetch_public_financial_indicators(code6: str) -> dict:
+    """Fetch public financial indicators through AKShare's sync SDK in a worker thread."""
+    ak = importlib.import_module("akshare")
+
+    def fetch():
+        return ak.stock_financial_analysis_indicator(symbol=code6)
+
+    try:
+        df = await asyncio.to_thread(fetch)
+    except Exception as e:
+        print(f"⚠️ 公开财务指标获取失败: {e}")
+        return await fetch_baostock_financial_indicators(code6)
+
+    if df is None or df.empty:
+        return await fetch_baostock_financial_indicators(code6)
+
+    latest = df.iloc[-1].to_dict()
+    return {
+        "roe": _safe_float(
+            _first_present(
+                latest, ("净资产收益率", "摊薄净资产收益率", "加权净资产收益率")
+            )
+        ),
+        "debt_ratio": _safe_float(
+            _first_present(latest, ("资产负债率", "负债合计/资产总计"))
+        ),
+    }
+
+
+async def fetch_baostock_financial_indicators(code6: str) -> dict:
+    """Fetch recent public financial indicators from BaoStock."""
+    provider = BaoStockProvider()
+    if not await provider.connect():
+        return {}
+
+    now = datetime.now()
+    current_quarter = (now.month - 1) // 3 + 1
+    periods = []
+    for year in range(now.year, now.year - 3, -1):
+        start_quarter = current_quarter if year == now.year else 4
+        periods.extend((year, quarter) for quarter in range(start_quarter, 0, -1))
+
+    for year, quarter in periods:
+        financial_data = await provider.get_financial_data(
+            code6, year=year, quarter=quarter
+        )
+        if not financial_data:
+            continue
+
+        profit_data = financial_data.get("profit_data", {})
+        balance_data = financial_data.get("balance_data", {})
+        roe = _safe_float(profit_data.get("roeAvg"))
+        debt_ratio = _safe_float(balance_data.get("liabilityToAsset"))
+        if roe is not None:
+            roe *= 100
+        if debt_ratio is not None:
+            debt_ratio *= 100
+        return {"roe": roe, "debt_ratio": debt_ratio}
+
+    return {}
+
+
+async def check_stock_fundamentals(stock_code: str = "000001"):
     """测试股票基本面数据获取"""
 
     print(f"\n{'=' * 80}")
@@ -45,8 +158,11 @@ async def test_stock_fundamentals(stock_code: str = "000001"):
         print(f"   市净率(PB): {basic_info.get('pb')}")
         print(f"   ROE(基础): {basic_info.get('roe')}")
     else:
-        print("❌ 未找到基础信息")
-        return
+        print("⚠️ 未找到基础信息，尝试从 AKShare 公开源获取最小基础信息")
+        basic_info = await fetch_public_stock_profile(code6)
+        if not basic_info:
+            print("❌ 未找到基础信息")
+            return False
 
     # 2. 测试从 stock_financial_data 获取财务数据
     print(f"\n📊 [测试2] 从 stock_financial_data 获取最新财务数据: {code6}")
@@ -93,8 +209,13 @@ async def test_stock_fundamentals(stock_code: str = "000001"):
         "name": basic_info.get("name"),
         "industry": basic_info.get("industry"),
         "market": basic_info.get("market"),
-        # 板块信息：使用 market 字段（主板/创业板/科创板等）
-        "sector": basic_info.get("market"),
+        # 板块信息：优先使用 market 字段，不完整时退回行业/板块字段
+        "sector": (
+            basic_info.get("market")
+            or basic_info.get("industry")
+            or basic_info.get("sse")
+            or basic_info.get("sec")
+        ),
         # 估值指标
         "pe": basic_info.get("pe"),
         "pb": basic_info.get("pb"),
@@ -128,6 +249,13 @@ async def test_stock_fundamentals(stock_code: str = "000001"):
     # 如果财务数据中没有 ROE，使用 stock_basic_info 中的
     if data["roe"] is None:
         data["roe"] = basic_info.get("roe")
+
+    if data["roe"] is None or data["debt_ratio"] is None:
+        public_indicators = await fetch_public_financial_indicators(code6)
+        if data["roe"] is None:
+            data["roe"] = public_indicators.get("roe")
+        if data["debt_ratio"] is None:
+            data["debt_ratio"] = public_indicators.get("debt_ratio")
 
     print("✅ 接口返回数据:")
     print(f"   股票代码: {data['code']}")
@@ -174,9 +302,10 @@ async def test_stock_fundamentals(stock_code: str = "000001"):
     print(f"\n{'=' * 80}")
     print(f"测试完成: {success_count}/{total_count} 项通过")
     print(f"{'=' * 80}\n")
+    return success_count >= 2
 
 
-async def test_multiple_stocks():
+async def check_multiple_stocks():
     """测试多个股票"""
 
     test_stocks = [
@@ -191,15 +320,12 @@ async def test_multiple_stocks():
     print(f"{'=' * 80}\n")
 
     for stock_code in test_stocks:
-        await test_stock_fundamentals(stock_code)
+        await check_stock_fundamentals(stock_code)
         print("\n")
 
 
 async def main():
     """主函数"""
-
-    # 设置环境变量
-    os.environ["TA_USE_APP_CACHE"] = "true"
 
     # 初始化 PostgreSQL 连接
     print("🔧 初始化 PostgreSQL 连接...")
@@ -207,7 +333,7 @@ async def main():
     print("✅ PostgreSQL 连接成功\n")
 
     # 测试单个股票
-    await test_stock_fundamentals("000001")
+    return await check_stock_fundamentals(settings.TRADING_AGENTS_SMOKE_STOCK_CODE)
 
     # 可选：测试多个股票
     # await test_multiple_stocks()
@@ -215,3 +341,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+async def test_stock_fundamentals_smoke():
+    assert await main()

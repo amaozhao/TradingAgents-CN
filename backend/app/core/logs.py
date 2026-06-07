@@ -2,11 +2,12 @@ import importlib
 import importlib.util
 import logging
 import logging.config
-import os
 import platform
 import sys
 import tomllib as toml_loader
 from pathlib import Path
+
+from app.core.config import settings
 
 # 🔥 在 Windows 上使用 concurrent-log-handler 避免文件占用问题
 _IS_WINDOWS = platform.system() == "Windows"
@@ -26,9 +27,10 @@ def resolve_logging_cfg_path() -> Path:
     """根据环境选择日志配置文件路径（可能不存在）
     优先 docker 配置，其次默认配置。
     """
-    profile = os.environ.get("LOGGING_PROFILE", "").lower()
+    profile = settings.LOGGING_PROFILE.lower()
     is_docker_env = (
-        os.environ.get("DOCKER", "").lower() in {"1", "true", "yes"}
+        settings.DOCKER.lower() in {"1", "true", "yes"}
+        or settings.DOCKER_CONTAINER
         or Path("/.dockerenv").exists()
     )
     cfg_candidate = (

@@ -44,9 +44,7 @@ def test_build_gate_steps_can_include_runtime_log_check(tmp_path):
     ]
     runtime_step = steps[-1]
     assert runtime_step.output_file == "runtime_log_check.json"
-    assert (
-        "backend/scripts/postgres/log/check/script.py" in runtime_step.command
-    )
+    assert "backend/scripts/postgres/log/check/script.py" in runtime_step.command
     assert str(log_path) in runtime_step.command
     assert "--no-require-startup-gate" in runtime_step.command
     assert "--no-require-dual-write" in runtime_step.command

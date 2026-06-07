@@ -4,13 +4,11 @@
 """
 
 import importlib
-import os
 import sys
 
-from dotenv import load_dotenv
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv()
 
 
 def test_deepseek_market_analyst():
@@ -100,7 +98,7 @@ def test_dashscope_market_analyst():
 
     try:
         # 检查API密钥
-        if not os.getenv("DASHSCOPE_API_KEY"):
+        if not app_settings.text_value("DASHSCOPE_API_KEY"):
             print("⚠️ 未找到DASHSCOPE_API_KEY，跳过百炼测试")
             return True  # 跳过不算失败
 
@@ -185,7 +183,7 @@ def main():
     print("=" * 80)
 
     # 检查API密钥
-    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+    deepseek_key = app_settings.text_value("DEEPSEEK_API_KEY")
 
     if not deepseek_key:
         print("⚠️ 未找到DEEPSEEK_API_KEY，无法测试")

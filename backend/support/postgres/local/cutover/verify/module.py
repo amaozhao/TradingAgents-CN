@@ -1,5 +1,4 @@
 import asyncio
-from pathlib import Path
 from types import SimpleNamespace
 
 from app.core.migrate import HOT_COLLECTIONS
@@ -108,8 +107,8 @@ def test_local_cutover_env_snapshot_redacts_password_and_token():
 def test_local_services_use_lightweight_postgres_image_by_default():
     services = LocalServices()
 
-    assert services.postgres_image == "postgres:16-alpine"
-    assert services.postgres_image == "postgres:16-alpine"
+    assert services.postgres_image == "postgres:alpine"
+    assert services.postgres_image == "postgres:alpine"
 
 
 def test_write_runtime_log_check_writes_gate_artifact(tmp_path):
@@ -207,7 +206,7 @@ def test_local_verifier_summary_points_to_gate_runtime_log_artifact(
             SimpleNamespace(
                 output_dir=tmp_path,
                 postgres_port=55432,
-                postgres_image="postgres:16-alpine",
+                postgres_image="postgres:alpine",
                 api_base_url=None,
                 api_token=None,
                 batch_size=5,
@@ -270,7 +269,7 @@ def test_local_verifier_cleans_up_when_container_start_fails(tmp_path, monkeypat
                 SimpleNamespace(
                     output_dir=tmp_path,
                     postgres_port=55432,
-                    postgres_image="postgres:16-alpine",
+                    postgres_image="postgres:alpine",
                     api_base_url=None,
                     api_token=None,
                     batch_size=5,

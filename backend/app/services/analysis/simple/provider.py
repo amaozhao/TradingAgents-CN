@@ -361,8 +361,6 @@ def _get_env_api_key_for_provider(provider: str) -> Optional[str]:
     Returns:
         str: API Key，如果未找到则返回 None
     """
-    os = importlib.import_module("os")
-
     env_key_for_provider = getattr(
         importlib.import_module("trader.llm.clients.providers"), "env_key_for_provider"
     )
@@ -378,7 +376,7 @@ def _get_env_api_key_for_provider(provider: str) -> Optional[str]:
     if not env_key_name and provider_key == "aihubmix":
         env_key_name = "AIHUBMIX_API_KEY"
     if env_key_name:
-        api_key = os.getenv(env_key_name)
+        api_key = settings.text_value(env_key_name)
         if api_key and api_key.strip() and api_key != "your-api-key":
             return api_key
 

@@ -6,7 +6,11 @@ import pytest
 
 from app.worker import analysis as analysis_worker
 from app.routers import analysis
-from app.schemas.analysis import AnalysisParameters, BatchAnalysisRequest, SingleAnalysisRequest
+from app.schemas.analysis import (
+    AnalysisParameters,
+    BatchAnalysisRequest,
+    SingleAnalysisRequest,
+)
 
 
 class _SimpleService:
@@ -58,9 +62,7 @@ def queue_submission_fakes(monkeypatch):
     simple_service = _SimpleService()
     queue_service = _QueueService()
 
-    monkeypatch.setattr(
-        analysis, "get_simple_analysis_service", lambda: simple_service
-    )
+    monkeypatch.setattr(analysis, "get_simple_analysis_service", lambda: simple_service)
     monkeypatch.setattr(analysis, "get_queue_service", lambda: queue_service)
 
     def fail_in_process_task_creation(coro):

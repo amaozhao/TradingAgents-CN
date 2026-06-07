@@ -6,12 +6,11 @@
 import importlib
 import os
 
-from dotenv import load_dotenv
 
 from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def test_gemini_trading_agents():
@@ -28,7 +27,7 @@ def test_gemini_trading_agents():
         )
 
         # 检查API密钥
-        google_api_key = os.getenv("GOOGLE_API_KEY")
+        google_api_key = app_settings.text_value("GOOGLE_API_KEY")
         if not google_api_key:
             print("❌ Google API密钥未配置")
             return False
@@ -124,7 +123,7 @@ def test_gemini_basic():
             model="gemini-2.5-flash-lite-preview-06-17",
             temperature=0.1,
             max_tokens=500,
-            google_api_key=os.getenv("GOOGLE_API_KEY"),
+            google_api_key=app_settings.text_value("GOOGLE_API_KEY"),
         )
 
         print("✅ Gemini实例创建成功")
@@ -153,7 +152,7 @@ def main():
     print("=" * 70)
 
     # 检查环境变量
-    google_api_key = os.getenv("GOOGLE_API_KEY")
+    google_api_key = app_settings.text_value("GOOGLE_API_KEY")
     if not google_api_key:
         print("❌ Google API密钥未配置")
         print("💡 请在.env文件中设置 GOOGLE_API_KEY")

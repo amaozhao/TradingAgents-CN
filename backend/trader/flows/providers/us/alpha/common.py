@@ -12,7 +12,6 @@ Alpha Vantage API 公共模块
 
 import importlib
 import json
-import os
 import time
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -20,6 +19,7 @@ from typing import Any, Dict, Optional
 import requests
 
 # 导入日志模块
+from app.core.config import settings
 from trader.utils.logging.manager import get_logger
 
 logger = get_logger("agents")
@@ -122,7 +122,7 @@ def get_api_key() -> str:
 
     # 2. 从环境变量获取
     logger.debug("🔍 [步骤2] 读取 .env 中的 API Key...")
-    api_key = os.getenv("ALPHA_VANTAGE_API_KEY")
+    api_key = settings.ALPHA_VANTAGE_API_KEY
     if api_key:
         logger.debug(f"✅ [步骤2] .env 中找到 API Key (长度: {len(api_key)})")
         return api_key

@@ -12,6 +12,8 @@ import time
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional
 
+from app.core.config import settings
+
 logger = logging.getLogger("app.services.progress.tracker")
 
 
@@ -100,37 +102,34 @@ class RedisProgressTracker:
     def _init_redis(self) -> bool:
         """初始化Redis连接"""
         try:
-            # 检查REDIS_ENABLED环境变量
-            redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() == "true"
-            if not redis_enabled:
+            if not settings.REDIS_ENABLED:
                 logger.info("📊 [Redis进度] Redis未启用，使用文件存储")
                 return False
 
             redis = importlib.import_module("redis")
 
-            # 从环境变量获取Redis配置
-            redis_host = os.getenv("REDIS_HOST", "localhost")
-            redis_port = int(os.getenv("REDIS_PORT", 6379))
-            redis_password = os.getenv("REDIS_PASSWORD", None)
-            redis_db = int(os.getenv("REDIS_DB", 0))
-
             # 创建Redis连接
-            if redis_password:
+            if settings.REDIS_PASSWORD:
                 self.redis_client = redis.Redis(
-                    host=redis_host,
-                    port=redis_port,
-                    password=redis_password,
-                    db=redis_db,
+                    host=settings.REDIS_HOST,
+                    port=settings.REDIS_PORT,
+                    password=settings.REDIS_PASSWORD,
+                    db=settings.REDIS_DB,
                     decode_responses=True,
                 )
             else:
                 self.redis_client = redis.Redis(
-                    host=redis_host, port=redis_port, db=redis_db, decode_responses=True
+                    host=settings.REDIS_HOST,
+                    port=settings.REDIS_PORT,
+                    db=settings.REDIS_DB,
+                    decode_responses=True,
                 )
 
             # 测试连接
             self.redis_client.ping()
-            logger.info(f"📊 [Redis进度] Redis连接成功: {redis_host}:{redis_port}")
+            logger.info(
+                f"📊 [Redis进度] Redis连接成功: {settings.REDIS_HOST}:{settings.REDIS_PORT}"
+            )
             return True
         except Exception as e:
             logger.warning(f"📊 [Redis进度] Redis连接失败，使用文件存储: {e}")
@@ -566,34 +565,25 @@ class RedisProgressTracker:
 def get_progress_by_id(task_id: str) -> Optional[Dict[str, Any]]:
     """根据任务ID获取进度（与旧实现一致，修正 cls 引用）"""
     try:
-        # 检查REDIS_ENABLED环境变量
-        redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() == "true"
-
         # 如果Redis启用，先尝试Redis
-        if redis_enabled:
+        if settings.REDIS_ENABLED:
             try:
                 redis = importlib.import_module("redis")
 
-                # 从环境变量获取Redis配置
-                redis_host = os.getenv("REDIS_HOST", "localhost")
-                redis_port = int(os.getenv("REDIS_PORT", 6379))
-                redis_password = os.getenv("REDIS_PASSWORD", None)
-                redis_db = int(os.getenv("REDIS_DB", 0))
-
                 # 创建Redis连接
-                if redis_password:
+                if settings.REDIS_PASSWORD:
                     redis_client = redis.Redis(
-                        host=redis_host,
-                        port=redis_port,
-                        password=redis_password,
-                        db=redis_db,
+                        host=settings.REDIS_HOST,
+                        port=settings.REDIS_PORT,
+                        password=settings.REDIS_PASSWORD,
+                        db=settings.REDIS_DB,
                         decode_responses=True,
                     )
                 else:
                     redis_client = redis.Redis(
-                        host=redis_host,
-                        port=redis_port,
-                        db=redis_db,
+                        host=settings.REDIS_HOST,
+                        port=settings.REDIS_PORT,
+                        db=settings.REDIS_DB,
                         decode_responses=True,
                     )
 

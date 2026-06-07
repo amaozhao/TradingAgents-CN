@@ -3,11 +3,13 @@
 基于实时行情和财务数据计算PE/PB等指标
 """
 
+import asyncio
 import importlib
 import logging
 from typing import Any, Dict, Optional
 
 from app.db.store import create_sync_client
+from app.services.sources.eastmoney import fetch_eastmoney_metrics
 from trader.config.databases import get_database_manager
 
 logger = logging.getLogger(__name__)
@@ -451,6 +453,33 @@ def validate_pe_pb(pe: Optional[float], pb: Optional[float]) -> bool:
         return False
 
     return True
+
+
+async def _get_eastmoney_static_metrics(symbol: str) -> Dict[str, Any]:
+    """Fetch PE/PB from Eastmoney's free public async snapshot."""
+
+    try:
+        result = await fetch_eastmoney_metrics(symbol)
+        if result and validate_pe_pb(result.get("pe"), result.get("pb")):
+            logger.info(
+                "✅ [PE智能策略-成功] 使用东方财富免费异步快照: "
+                f"PE={result.get('pe')}, PB={result.get('pb')}"
+            )
+            return result
+    except Exception as e:
+        logger.warning(f"⚠️ [PE智能策略-东方财富异步降级失败] {e}")
+
+    return {}
+
+
+async def async_get_pe_pb_with_fallback(symbol: str, db_client=None) -> Dict[str, Any]:
+    """Async PE/PB lookup: local DB first, then free public async data."""
+
+    local_metrics = await asyncio.to_thread(get_pe_pb_with_fallback, symbol, db_client)
+    if local_metrics:
+        return local_metrics
+
+    return await _get_eastmoney_static_metrics(symbol)
 
 
 def get_pe_pb_with_fallback(symbol: str, db_client=None) -> Dict[str, Any]:

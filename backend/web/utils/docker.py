@@ -10,6 +10,8 @@ import subprocess
 import tempfile
 
 # 导入日志模块
+from app.core.config import settings
+from app.core.runtime import apply_runtime_env
 from trader.utils.logging.manager import get_logger
 
 logger = get_logger("web")
@@ -31,7 +33,7 @@ def is_docker_environment() -> bool:
         pass
 
     # 检查环境变量
-    return os.environ.get("DOCKER_CONTAINER", "").lower() == "true"
+    return settings.DOCKER_CONTAINER
 
 
 def setup_xvfb_display():
@@ -45,7 +47,7 @@ def setup_xvfb_display():
             result = subprocess.run(["pgrep", "Xvfb"], capture_output=True, timeout=2)
             if result.returncode == 0:
                 logger.info("✅ Xvfb已在运行")
-                os.environ["DISPLAY"] = ":99"
+                apply_runtime_env({"DISPLAY": ":99"})
                 return True
         except Exception:
             pass
@@ -62,7 +64,7 @@ def setup_xvfb_display():
         time.sleep(2)
 
         # 设置DISPLAY环境变量
-        os.environ["DISPLAY"] = ":99"
+        apply_runtime_env({"DISPLAY": ":99"})
         logger.info("✅ Docker虚拟显示器设置成功")
         return True
     except Exception as e:

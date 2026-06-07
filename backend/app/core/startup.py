@@ -5,7 +5,6 @@
 """
 
 import logging
-import os
 from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, List, Optional
@@ -192,7 +191,7 @@ class StartupValidator:
     def _validate_required_configs(self):
         """验证必需配置"""
         for config in self.REQUIRED_CONFIGS:
-            value = os.getenv(config.key)
+            value = settings.text_value(config.key)
 
             if not value:
                 self.result.missing_required.append(config)
@@ -206,7 +205,7 @@ class StartupValidator:
     def _validate_recommended_configs(self):
         """验证推荐配置"""
         for config in self.RECOMMENDED_CONFIGS:
-            value = os.getenv(config.key)
+            value = settings.text_value(config.key)
 
             if not value:
                 self.result.missing_recommended.append(config)
@@ -221,7 +220,7 @@ class StartupValidator:
     def _check_security_configs(self):
         """检查安全配置"""
         # 检查JWT密钥是否使用默认值
-        jwt_secret = os.getenv("JWT_SECRET", "")
+        jwt_secret = settings.JWT_SECRET
         if jwt_secret in [
             "change-me-in-production",
             "your-super-secret-jwt-key-change-in-production",
@@ -231,7 +230,7 @@ class StartupValidator:
             )
 
         # 检查CSRF密钥是否使用默认值
-        csrf_secret = os.getenv("CSRF_SECRET", "")
+        csrf_secret = settings.CSRF_SECRET
         if csrf_secret in [
             "change-me-csrf-secret",
             "your-csrf-secret-key-change-in-production",
@@ -241,8 +240,7 @@ class StartupValidator:
             )
 
         # 检查是否在生产环境使用DEBUG模式
-        debug = os.getenv("DEBUG", "true").lower() in ("true", "1", "yes", "on")
-        if not debug:
+        if not settings.DEBUG:
             logger.info("ℹ️  生产环境模式")
         else:
             logger.info("ℹ️  开发环境模式（DEBUG=true）")

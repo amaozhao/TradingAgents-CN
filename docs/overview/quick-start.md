@@ -91,9 +91,9 @@ pip install -e backend
 创建 `.env` 文件（推荐方式）：
 ```bash
 # 复制配置模板
-cp .env.example .env
+cp backend/.env.example backend/.env
 
-# 编辑 .env 文件，配置以下API密钥：
+# 编辑 backend/.env 文件，配置以下API密钥：
 
 # 🇨🇳 阿里百炼 (推荐)
 DASHSCOPE_API_KEY=your_dashscope_api_key_here

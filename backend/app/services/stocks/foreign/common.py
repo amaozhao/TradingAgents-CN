@@ -15,6 +15,8 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional, cast
 
+from app.core.config import settings
+
 # 复用现有缓存系统
 from trader.flows.cache import get_cache
 

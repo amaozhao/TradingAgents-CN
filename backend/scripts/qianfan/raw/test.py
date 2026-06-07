@@ -6,23 +6,22 @@
 """
 
 import importlib
-import os
 
-from dotenv import load_dotenv
+from app.core.config import settings as app_settings
+from app.core.runtime import apply_runtime_env
 
 # 加载环境变量
-load_dotenv()
 
 
-def test_qianfan_with_sdk():
+def check_qianfan_with_sdk():
     """使用千帆官方SDK测试"""
     try:
         qianfan = importlib.import_module("qianfan")
 
         # 优先使用新的API Key
-        api_key = os.getenv("QIANFAN_API_KEY")
-        access_key = os.getenv("QIANFAN_ACCESS_KEY")
-        secret_key = os.getenv("QIANFAN_SECRET_KEY")
+        api_key = app_settings.text_value("QIANFAN_API_KEY")
+        access_key = app_settings.text_value("QIANFAN_ACCESS_KEY")
+        secret_key = app_settings.text_value("QIANFAN_SECRET_KEY")
 
         print("==== 千帆SDK测试 ====")
         print(f"API_KEY: {'已设置' if api_key else '未设置'}")
@@ -32,12 +31,16 @@ def test_qianfan_with_sdk():
         if api_key:
             # 使用新的API Key方式
             print("使用新的API Key认证方式")
-            os.environ["QIANFAN_API_KEY"] = api_key
+            apply_runtime_env({"QIANFAN_API_KEY": api_key})
         elif access_key and secret_key:
             # 使用旧的AK/SK方式
             print("使用传统的AK/SK认证方式")
-            os.environ["QIANFAN_ACCESS_KEY"] = access_key
-            os.environ["QIANFAN_SECRET_KEY"] = secret_key
+            apply_runtime_env(
+                {
+                    "QIANFAN_ACCESS_KEY": access_key,
+                    "QIANFAN_SECRET_KEY": secret_key,
+                }
+            )
         else:
             print(
                 "❌ 请在.env文件中设置QIANFAN_API_KEY或QIANFAN_ACCESS_KEY+QIANFAN_SECRET_KEY"
@@ -66,15 +69,15 @@ def test_qianfan_with_sdk():
         return False
 
 
-def test_qianfan_with_requests():
+def check_qianfan_with_requests():
     """使用requests直接调用千帆API"""
     try:
         requests = importlib.import_module("requests")
         importlib.import_module("json")
 
-        api_key = os.getenv("QIANFAN_API_KEY")
-        access_key = os.getenv("QIANFAN_ACCESS_KEY")
-        secret_key = os.getenv("QIANFAN_SECRET_KEY")
+        api_key = app_settings.text_value("QIANFAN_API_KEY")
+        access_key = app_settings.text_value("QIANFAN_ACCESS_KEY")
+        secret_key = app_settings.text_value("QIANFAN_SECRET_KEY")
 
         print("\n==== 千帆HTTP API测试 ====")
 
@@ -209,9 +212,9 @@ def main():
     print("=" * 50)
 
     # 检查环境变量
-    api_key = os.getenv("QIANFAN_API_KEY")
-    access_key = os.getenv("QIANFAN_ACCESS_KEY")
-    secret_key = os.getenv("QIANFAN_SECRET_KEY")
+    api_key = app_settings.text_value("QIANFAN_API_KEY")
+    access_key = app_settings.text_value("QIANFAN_ACCESS_KEY")
+    secret_key = app_settings.text_value("QIANFAN_SECRET_KEY")
 
     if not api_key and (not access_key or not secret_key):
         print("❌ 请确保在.env文件中设置了以下环境变量之一:")
@@ -222,10 +225,10 @@ def main():
         return
 
     # 测试方法1: 使用千帆官方SDK
-    sdk_success = test_qianfan_with_sdk()
+    sdk_success = check_qianfan_with_sdk()
 
     # 测试方法2: 使用HTTP请求
-    http_success = test_qianfan_with_requests()
+    http_success = check_qianfan_with_requests()
 
     print("\n=== 测试结果汇总 ===")
     print(f"千帆SDK测试: {'✅ 成功' if sdk_success else '❌ 失败'}")

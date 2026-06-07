@@ -12,9 +12,10 @@ from __future__ import annotations
 import asyncio
 import importlib
 import logging
-import os
 from typing import Any, Callable, Optional
 from zoneinfo import ZoneInfo as _ZoneInfo
+
+from app.core.config import settings
 
 _logger = logging.getLogger("trader.config")
 
@@ -98,8 +99,8 @@ def get_number(
         if isinstance(eff, dict) and system_key in eff:
             return _coerce(eff.get(system_key), caster, default)
 
-    # 2) 环境变量
-    env_val = os.getenv(env_var)
+    # 2) Settings
+    env_val = settings.value(env_var, None)
     if env_val is not None and str(env_val).strip() != "":
         return _coerce(env_val, caster, default)
 
@@ -131,8 +132,8 @@ def get_bool(env_var: str, system_key: Optional[str], default: bool) -> bool:
                 return bool(v)
             if isinstance(v, str):
                 return str(v).strip().lower() in ("1", "true", "yes", "on")
-    # 2) 环境变量
-    env_val = os.getenv(env_var)
+    # 2) Settings
+    env_val = settings.value(env_var, None)
     if env_val is not None and str(env_val).strip() != "":
         return str(env_val).strip().lower() in ("1", "true", "yes", "on")
     # 3) 代码默认
@@ -145,7 +146,7 @@ def use_app_cache_enabled(default: bool = False) -> bool:
     """
     # 推断来源（DB/ENV/DEFAULT）
     src = "default"
-    env_val = os.getenv("TA_USE_APP_CACHE")
+    env_val = settings.value("TA_USE_APP_CACHE", None)
     try:
         eff = _get_system_settings_sync()
     except Exception:
@@ -182,7 +183,7 @@ def get_timezone_name(default: str = "Asia/Shanghai") -> str:
         pass
 
     for env_key in ("APP_TIMEZONE", "TIMEZONE", "TA_TIMEZONE"):
-        val = os.getenv(env_key)
+        val = settings.value(env_key, None)
         if isinstance(val, str) and val.strip():
             return val.strip()
 

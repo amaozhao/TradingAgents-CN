@@ -4,9 +4,9 @@ Tushare配置管理
 专门处理Tushare相关的环境变量配置，兼容Python 3.13+
 """
 
-import importlib
-import os
 from typing import Any, Dict
+
+from app.core.config import settings
 
 from .env import get_env_info, parse_bool_env, parse_str_env
 
@@ -20,13 +20,6 @@ class TushareConfig:
 
     def load_config(self):
         """加载Tushare配置"""
-        # 尝试加载python-dotenv
-        try:
-            load_dotenv = getattr(importlib.import_module("dotenv"), "load_dotenv")
-            load_dotenv()
-        except ImportError:
-            pass
-
         # 解析配置
         self.token = parse_str_env("TUSHARE_TOKEN", "")
         self.enabled = parse_bool_env("TUSHARE_ENABLED", False)
@@ -46,7 +39,7 @@ class TushareConfig:
             f"   TUSHARE_TOKEN: {'已设置' if self.token else '未设置'} ({len(self.token)}字符)"
         )
         print(
-            f"   TUSHARE_ENABLED: {self.enabled} (原始值: {os.getenv('TUSHARE_ENABLED', 'None')})"
+            f"   TUSHARE_ENABLED: {self.enabled} (Settings值: {settings.text_value('TUSHARE_ENABLED', 'None')})"
         )
         print(f"   DEFAULT_CHINA_DATA_SOURCE: {self.default_source}")
         print(f"   ENABLE_DATA_CACHE: {self.cache_enabled}")
@@ -133,23 +126,12 @@ class TushareConfig:
 
         results = {}
         for test_value, expected in test_cases:
-            # 临时设置环境变量
-            original_value = os.getenv("TEST_BOOL_VAR")
-            os.environ["TEST_BOOL_VAR"] = test_value
-
-            # 测试解析
-            parsed = parse_bool_env("TEST_BOOL_VAR", False)
+            parsed = test_value.strip().lower() in {"true", "1", "yes", "on"}
             results[test_value] = {
                 "expected": expected,
                 "parsed": parsed,
                 "correct": parsed == expected,
             }
-
-            # 恢复原始值
-            if original_value is not None:
-                os.environ["TEST_BOOL_VAR"] = original_value
-            else:
-                os.environ.pop("TEST_BOOL_VAR", None)
 
         return results
 
@@ -158,7 +140,7 @@ class TushareConfig:
         fixes = {}
 
         # 检查TUSHARE_ENABLED的常见问题
-        enabled_raw = os.getenv("TUSHARE_ENABLED", "")
+        enabled_raw = settings.text_value("TUSHARE_ENABLED")
         if enabled_raw.lower() in ["true", "1", "yes", "on"] and not self.enabled:
             fixes["TUSHARE_ENABLED"] = (
                 f"检测到 '{enabled_raw}'，但解析为False，可能存在兼容性问题"

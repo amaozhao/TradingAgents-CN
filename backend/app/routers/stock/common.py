@@ -44,7 +44,9 @@ def _sync_result_from_stats(stats: dict[str, Any], source: str) -> dict[str, Any
     error_message = (
         first_error.get("error")
         if isinstance(first_error, dict)
-        else str(first_error) if first_error else None
+        else str(first_error)
+        if first_error
+        else None
     )
     success = int(stats.get("success_count") or 0) > 0
     return {
@@ -52,9 +54,7 @@ def _sync_result_from_stats(stats: dict[str, Any], source: str) -> dict[str, Any
         "records": stats.get("success_count", 0),
         "message": f"成功 {stats.get('success_count', 0)}/{stats.get('total_processed', 0)}",
         "error": None if success else error_message or "同步失败",
-        "data_source_used": "akshare"
-        if stats.get("switched_to_akshare")
-        else source,
+        "data_source_used": "akshare" if stats.get("switched_to_akshare") else source,
         "attempted_sources": ["tushare", "akshare"]
         if stats.get("switched_to_akshare")
         else [source],
@@ -130,18 +130,16 @@ async def sync_single_stock(
             result.get("basic_sync") if request.sync_basic else None,
         ]
         result["overall_success"] = any(
-            item
-            and (
-                item.get("success")
-                or item.get("success_count", 0) > 0
-            )
+            item and (item.get("success") or item.get("success_count", 0) > 0)
             for item in selected_results
             if isinstance(item, dict)
         )
 
         return ok(
             data=result,
-            message="单股同步完成" if result["overall_success"] else "单股同步完成，部分或全部数据未成功",
+            message="单股同步完成"
+            if result["overall_success"]
+            else "单股同步完成，部分或全部数据未成功",
         )
     except Exception as e:
         logger.error(f"❌ 单股同步失败 {symbol}: {e}")

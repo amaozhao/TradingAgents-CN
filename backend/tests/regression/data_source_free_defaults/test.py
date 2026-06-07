@@ -4,7 +4,10 @@ import pytest
 
 
 def _type_values(configs):
-    return [str(config.type.value if hasattr(config.type, "value") else config.type) for config in configs]
+    return [
+        str(config.type.value if hasattr(config.type, "value") else config.type)
+        for config in configs
+    ]
 
 
 def test_sync_fallback_includes_free_a_share_sources(monkeypatch):
@@ -26,7 +29,11 @@ def test_sync_fallback_includes_free_a_share_sources(monkeypatch):
     source_types = _type_values(configs)
     assert "akshare" in source_types
     assert "baostock" in source_types
-    assert all(config.enabled for config in configs if str(config.type.value) in {"akshare", "baostock"})
+    assert all(
+        config.enabled
+        for config in configs
+        if str(config.type.value) in {"akshare", "baostock"}
+    )
 
 
 @pytest.mark.asyncio
@@ -49,4 +56,8 @@ async def test_async_fallback_includes_free_a_share_sources(monkeypatch):
     source_types = _type_values(configs)
     assert "akshare" in source_types
     assert "baostock" in source_types
-    assert all(config.enabled for config in configs if str(config.type.value) in {"akshare", "baostock"})
+    assert all(
+        config.enabled
+        for config in configs
+        if str(config.type.value) in {"akshare", "baostock"}
+    )

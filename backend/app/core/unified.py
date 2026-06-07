@@ -5,11 +5,11 @@
 
 import importlib
 import json
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from app.core.config import settings as app_settings
 from app.schemas.config import (
     DatabaseConfig,
     DatabaseType,
@@ -472,14 +472,12 @@ class UnifiedConfigManager:
         """获取数据库配置"""
         configs = []
 
-        settings = getattr(importlib.import_module("app.core.config"), "settings")
-
         postgres_config = DatabaseConfig(
             name="PostgreSQL主库",
             type=DatabaseType.POSTGRESQL,
-            host=settings.POSTGRES_HOST,
-            port=settings.POSTGRES_PORT,
-            database=settings.POSTGRES_DB,
+            host=app_settings.POSTGRES_HOST,
+            port=app_settings.POSTGRES_PORT,
+            database=app_settings.POSTGRES_DB,
             enabled=True,
             description="PostgreSQL主数据库和文档存储",
         )
@@ -489,9 +487,9 @@ class UnifiedConfigManager:
         redis_config = DatabaseConfig(
             name="Redis缓存",
             type=DatabaseType.REDIS,
-            host=os.getenv("REDIS_HOST", "localhost"),
-            port=int(os.getenv("REDIS_PORT", "6379")),
-            database=os.getenv("REDIS_DB", "0"),
+            host=app_settings.REDIS_HOST,
+            port=app_settings.REDIS_PORT,
+            database=str(app_settings.REDIS_DB),
             enabled=True,
             description="Redis缓存数据库",
         )

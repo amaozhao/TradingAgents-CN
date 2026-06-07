@@ -21,6 +21,7 @@ from app.core.startup import (
     StartupValidator,
     ValidationResult,
 )
+from app.core.config import settings as app_settings
 
 
 class TestStartupValidator:
@@ -302,7 +303,7 @@ class TestConfigPriority:
     def test_env_priority(self):
         """测试环境变量优先级"""
         # 环境变量应该有最高优先级
-        assert os.getenv("TEST_CONFIG") == "from_env"
+        assert app_settings.text_value("TEST_CONFIG") == "from_env"
 
     def test_default_values(self):
         """测试默认值"""

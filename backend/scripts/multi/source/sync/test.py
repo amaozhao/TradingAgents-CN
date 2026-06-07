@@ -8,9 +8,10 @@ import time
 from typing import Any, Dict
 
 import requests
+from app.core.config import settings
 
 
-def test_api_endpoint(
+def call_api_endpoint(
     url: str, method: str = "GET", data: Dict = None
 ) -> Dict[str, Any]:
     """测试API端点"""
@@ -61,7 +62,7 @@ def print_result(test_name: str, result: Dict[str, Any]):
 
 def main():
     """主测试函数"""
-    base_url = "http://localhost:8000"
+    base_url = settings.TRADING_AGENTS_API_BASE_URL.rstrip("/")
 
     print("🚀 多数据源同步功能测试")
     print(f"测试服务器: {base_url}")
@@ -69,7 +70,7 @@ def main():
     # 1. 测试数据源状态
     print_section("数据源状态检查")
 
-    result = test_api_endpoint(f"{base_url}/api/sync/multi-source/sources/status")
+    result = call_api_endpoint(f"{base_url}/api/sync/multi-source/sources/status")
     print_result("获取数据源状态", result)
 
     if result["success"]:
@@ -83,7 +84,7 @@ def main():
     # 2. 测试数据源连接
     print_section("数据源连接测试")
 
-    result = test_api_endpoint(f"{base_url}/api/sync/multi-source/test-sources", "POST")
+    result = call_api_endpoint(f"{base_url}/api/sync/multi-source/test-sources", "POST")
     print_result("测试数据源连接", result)
 
     if result["success"] and "data" in result and "test_results" in result["data"]:
@@ -98,7 +99,7 @@ def main():
     # 3. 获取同步建议
     print_section("同步建议")
 
-    result = test_api_endpoint(f"{base_url}/api/sync/multi-source/recommendations")
+    result = call_api_endpoint(f"{base_url}/api/sync/multi-source/recommendations")
     print_result("获取同步建议", result)
 
     if result["success"] and "data" in result:
@@ -129,7 +130,7 @@ def main():
     # 4. 检查当前同步状态
     print_section("当前同步状态")
 
-    result = test_api_endpoint(f"{base_url}/api/sync/multi-source/status")
+    result = call_api_endpoint(f"{base_url}/api/sync/multi-source/status")
     print_result("获取同步状态", result)
 
     if result["success"] and "data" in result:
@@ -155,7 +156,7 @@ def main():
         print("🔄 开始多数据源同步...")
         start_time = time.time()
 
-        result = test_api_endpoint(
+        result = call_api_endpoint(
             f"{base_url}/api/sync/multi-source/stock_basics/run", "POST"
         )
         print_result("运行多数据源同步", result)
@@ -191,7 +192,7 @@ def main():
             print(f"🎯 使用指定数据源优先级: {preferred_sources}")
 
             url = f"{base_url}/api/sync/multi-source/stock_basics/run?preferred_sources={preferred_sources}"
-            result = test_api_endpoint(url, "POST")
+            result = call_api_endpoint(url, "POST")
             print_result("指定数据源同步", result)
 
             if result["success"] and "data" in result:
@@ -210,6 +211,19 @@ def main():
     print("   2. 配置多个数据源以提供冗余")
     print("   3. 定期检查数据源状态")
     print("   4. 根据需要调整数据源优先级")
+
+
+def test_multi_source_sync_api_flow():
+    base_url = settings.TRADING_AGENTS_API_BASE_URL.rstrip("/")
+    test_cases = [
+        (f"{base_url}/api/sync/multi-source/sources/status", "GET", None),
+        (f"{base_url}/api/sync/multi-source/test-sources", "POST", None),
+        (f"{base_url}/api/sync/multi-source/recommendations", "GET", None),
+        (f"{base_url}/api/sync/multi-source/status", "GET", None),
+    ]
+
+    results = [call_api_endpoint(url, method, data) for url, method, data in test_cases]
+    assert all(result["success"] for result in results), results
 
 
 if __name__ == "__main__":

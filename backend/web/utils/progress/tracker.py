@@ -138,42 +138,36 @@ class AsyncProgressTracker:
     def _init_redis(self) -> bool:
         """初始化Redis连接"""
         try:
-            # 首先检查REDIS_ENABLED环境变量
-            redis_enabled_raw = os.getenv("REDIS_ENABLED", "false")
-            redis_enabled = redis_enabled_raw.lower()
-            logger.info(
-                f"🔍 [Redis检查] REDIS_ENABLED原值='{redis_enabled_raw}' -> 处理后='{redis_enabled}'"
-            )
+            logger.info(f"🔍 [Redis检查] REDIS_ENABLED='{settings.REDIS_ENABLED}'")
 
-            if redis_enabled != "true":
+            if not settings.REDIS_ENABLED:
                 logger.info("📊 [异步进度] Redis已禁用，使用文件存储")
                 return False
 
             redis = importlib.import_module("redis")
 
-            # 从环境变量获取Redis配置
-            redis_host = os.getenv("REDIS_HOST", "localhost")
-            redis_port = int(os.getenv("REDIS_PORT", 6379))
-            redis_password = os.getenv("REDIS_PASSWORD", None)
-            redis_db = int(os.getenv("REDIS_DB", 0))
-
             # 创建Redis连接
-            if redis_password:
+            if settings.REDIS_PASSWORD:
                 self.redis_client = redis.Redis(
-                    host=redis_host,
-                    port=redis_port,
-                    password=redis_password,
-                    db=redis_db,
+                    host=settings.REDIS_HOST,
+                    port=settings.REDIS_PORT,
+                    password=settings.REDIS_PASSWORD,
+                    db=settings.REDIS_DB,
                     decode_responses=True,
                 )
             else:
                 self.redis_client = redis.Redis(
-                    host=redis_host, port=redis_port, db=redis_db, decode_responses=True
+                    host=settings.REDIS_HOST,
+                    port=settings.REDIS_PORT,
+                    db=settings.REDIS_DB,
+                    decode_responses=True,
                 )
 
             # 测试连接
             self.redis_client.ping()
-            logger.info(f"📊 [异步进度] Redis连接成功: {redis_host}:{redis_port}")
+            logger.info(
+                f"📊 [异步进度] Redis连接成功: {settings.REDIS_HOST}:{settings.REDIS_PORT}"
+            )
             return True
         except Exception as e:
             logger.warning(f"📊 [异步进度] Redis连接失败，使用文件存储: {e}")
@@ -590,7 +584,7 @@ class AsyncProgressTracker:
                 key = f"progress:{self.analysis_id}"
                 safe_data = safe_serialize(self.progress_data)
                 data_json = json.dumps(safe_data, ensure_ascii=False)
-                self.redis_client.setex(key, 3600, data_json)  # 1小时过期
+                self.redis_client.set(key, data_json, ex=3600)  # 1小时过期
 
                 logger.info(
                     f"📊 [Redis写入] {self.analysis_id} -> {status} | {current_step_name} | {progress_pct:.1f}%"

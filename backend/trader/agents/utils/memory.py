@@ -1,10 +1,10 @@
-import os
 import platform
 import threading
 from typing import Any, Dict
 
 import chromadb
 import dashscope
+from app.core.config import settings as app_settings
 from chromadb.config import Settings
 from dashscope import TextEmbedding
 from openai import OpenAI
@@ -109,12 +109,8 @@ class FinancialSituationMemory:
         self.situation_collection: Any = None
 
         # 配置向量缓存的长度限制（向量缓存默认启用长度检查）
-        self.max_embedding_length = int(
-            os.getenv("MAX_EMBEDDING_CONTENT_LENGTH", "50000")
-        )  # 默认50K字符
-        self.enable_embedding_length_check = (
-            os.getenv("ENABLE_EMBEDDING_LENGTH_CHECK", "true").lower() == "true"
-        )  # 向量缓存默认启用
+        self.max_embedding_length = app_settings.MAX_EMBEDDING_CONTENT_LENGTH
+        self.enable_embedding_length_check = app_settings.ENABLE_EMBEDDING_LENGTH_CHECK
 
         # 根据LLM提供商选择嵌入模型和客户端
         # 初始化降级选项标志
@@ -125,7 +121,7 @@ class FinancialSituationMemory:
             self.client = None  # DashScope不需要OpenAI客户端
 
             # 设置DashScope API密钥
-            dashscope_key = os.getenv("DASHSCOPE_API_KEY")
+            dashscope_key = app_settings.DASHSCOPE_API_KEY
             if dashscope_key:
                 try:
                     # 尝试导入和初始化DashScope
@@ -154,7 +150,7 @@ class FinancialSituationMemory:
         elif self.llm_provider == "qianfan":
             # 千帆（文心一言）embedding配置
             # 千帆目前没有独立的embedding API，使用阿里百炼作为降级选项
-            dashscope_key = os.getenv("DASHSCOPE_API_KEY")
+            dashscope_key = app_settings.DASHSCOPE_API_KEY
             if dashscope_key:
                 try:
                     # 使用阿里百炼嵌入服务作为千帆的embedding解决方案
@@ -177,13 +173,11 @@ class FinancialSituationMemory:
                 logger.info("💡 系统将继续运行，但不会保存或检索历史记忆")
         elif self.llm_provider == "deepseek":
             # 检查是否强制使用OpenAI嵌入
-            force_openai = (
-                os.getenv("FORCE_OPENAI_EMBEDDING", "false").lower() == "true"
-            )
+            force_openai = app_settings.FORCE_OPENAI_EMBEDDING
 
             if not force_openai:
                 # 尝试使用阿里百炼嵌入
-                dashscope_key = os.getenv("DASHSCOPE_API_KEY")
+                dashscope_key = app_settings.DASHSCOPE_API_KEY
                 if dashscope_key:
                     try:
                         # 测试阿里百炼是否可用
@@ -204,7 +198,7 @@ class FinancialSituationMemory:
             if not dashscope_key or force_openai:
                 # 降级到OpenAI嵌入
                 self.embedding = "text-embedding-3-small"
-                openai_key = os.getenv("OPENAI_API_KEY")
+                openai_key = app_settings.OPENAI_API_KEY
                 if openai_key:
                     self.client = OpenAI(
                         api_key=openai_key,
@@ -213,7 +207,7 @@ class FinancialSituationMemory:
                     logger.warning("⚠️ DeepSeek回退到OpenAI嵌入服务")
                 else:
                     # 最后尝试DeepSeek自己的嵌入
-                    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+                    deepseek_key = app_settings.DEEPSEEK_API_KEY
                     if deepseek_key:
                         try:
                             self.client = OpenAI(
@@ -234,8 +228,8 @@ class FinancialSituationMemory:
                         logger.info("🚨 未找到可用的嵌入服务，内存功能已禁用")
         elif self.llm_provider == "google":
             # Google AI使用阿里百炼嵌入（如果可用），否则禁用记忆功能
-            dashscope_key = os.getenv("DASHSCOPE_API_KEY")
-            openai_key = os.getenv("OPENAI_API_KEY")
+            dashscope_key = app_settings.DASHSCOPE_API_KEY
+            openai_key = app_settings.OPENAI_API_KEY
 
             if dashscope_key:
                 try:
@@ -274,7 +268,7 @@ class FinancialSituationMemory:
                 logger.info("💡 系统将继续运行，但不会保存或检索历史记忆")
         elif self.llm_provider == "openrouter":
             # OpenRouter支持：优先使用阿里百炼嵌入，否则禁用记忆功能
-            dashscope_key = os.getenv("DASHSCOPE_API_KEY")
+            dashscope_key = app_settings.DASHSCOPE_API_KEY
             if dashscope_key:
                 try:
                     # 尝试使用阿里百炼嵌入
@@ -300,7 +294,7 @@ class FinancialSituationMemory:
             self.client = OpenAI(base_url=config["backend_url"])
         else:
             self.embedding = "text-embedding-3-small"
-            openai_key = os.getenv("OPENAI_API_KEY")
+            openai_key = app_settings.OPENAI_API_KEY
             if openai_key:
                 self.client = OpenAI(api_key=openai_key, base_url=config["backend_url"])
             else:

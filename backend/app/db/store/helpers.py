@@ -364,7 +364,20 @@ def _get_sync_loop() -> asyncio.AbstractEventLoop:
         def runner() -> None:
             asyncio.set_event_loop(loop)
             ready.set()
-            loop.run_forever()
+            try:
+                loop.run_forever()
+            finally:
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                if pending:
+                    loop.run_until_complete(
+                        asyncio.gather(*pending, return_exceptions=True)
+                    )
+                loop.run_until_complete(loop.shutdown_asyncgens())
+                loop.run_until_complete(loop.shutdown_default_executor())
+                asyncio.set_event_loop(None)
+                loop.close()
 
         thread = threading.Thread(
             target=runner, name="postgres-document-sync-loop", daemon=True

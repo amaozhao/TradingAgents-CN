@@ -3,14 +3,14 @@
 验证配置是否正确
 """
 
-import os
+from app.core.config import settings as app_settings
 
 print("🔧 验证.env配置")
 print("=" * 30)
 
 # 检查启用开关
-postgres_enabled = os.getenv("POSTGRES_ENABLED", "false")
-redis_enabled = os.getenv("REDIS_ENABLED", "false")
+postgres_enabled = app_settings.text_value("POSTGRES_ENABLED", "false")
+redis_enabled = app_settings.text_value("REDIS_ENABLED", "false")
 
 print(f"POSTGRES_ENABLED: {postgres_enabled}")
 print(f"REDIS_ENABLED: {redis_enabled}")

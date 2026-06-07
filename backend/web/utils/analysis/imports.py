@@ -9,17 +9,15 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from dotenv import load_dotenv
 import streamlit as st
 
+from app.core.config import settings
 from trader.utils.logging.init import setup_web_logging
 from trader.utils.logging.manager import get_logger, get_logger_manager
 
 logger = get_logger("web")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-
-load_dotenv(PROJECT_ROOT / ".env", override=True)
 logger = setup_web_logging()
 
 # 添加配置管理器

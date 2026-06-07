@@ -56,4 +56,3 @@ def test_akshare_requests_ignore_environment_proxy(monkeypatch):
     assert calls
     assert calls[0]["trust_env"] is False
     assert calls[0]["kwargs"]["proxies"] == {}
-

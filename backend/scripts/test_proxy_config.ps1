@@ -54,17 +54,11 @@ Write-Host ""
 
 $testScript = @"
 from app.core.config import settings
-import os
 
 print('Settings 配置:')
 print(f'  HTTP_PROXY: {settings.HTTP_PROXY}')
 print(f'  HTTPS_PROXY: {settings.HTTPS_PROXY}')
 print(f'  NO_PROXY: {settings.NO_PROXY}')
-print()
-print('环境变量:')
-print(f'  HTTP_PROXY: {os.environ.get("HTTP_PROXY", "(未设置)")}')
-print(f'  HTTPS_PROXY: {os.environ.get("HTTPS_PROXY", "(未设置)")}')
-print(f'  NO_PROXY: {os.environ.get("NO_PROXY", "(未设置)")}')
 "@
 
 python -c $testScript

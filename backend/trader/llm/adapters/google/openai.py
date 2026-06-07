@@ -6,9 +6,9 @@ Google AI OpenAI兼容适配器
 
 import datetime
 import importlib
-import os
 from typing import Any, Dict, List, Optional
 
+from app.core.config import settings
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -75,9 +75,9 @@ class ChatGoogleOpenAI(ChatGoogleGenerativeAI):
         # 如果 kwargs 中没有 API Key，尝试从环境变量读取
         if not google_api_key:
             # 检查环境变量中的 API Key
-            env_api_key = os.getenv("GOOGLE_API_KEY")
+            env_api_key = settings.GOOGLE_API_KEY
             logger.info(
-                f"🔍 [Google初始化] 从环境变量读取 GOOGLE_API_KEY: {'有值' if env_api_key else '空'}"
+                f"🔍 [Google初始化] 从 Settings 读取 GOOGLE_API_KEY: {'有值' if env_api_key else '空'}"
             )
 
             # 验证环境变量中的 API Key 是否有效（排除占位符）

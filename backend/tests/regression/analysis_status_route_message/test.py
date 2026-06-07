@@ -10,11 +10,15 @@ def test_completed_postgres_task_uses_stored_message_and_step():
         analysis._status_message_from_task_result(task_result, "completed", None)
         == "分析完成"
     )
-    assert analysis._status_step_from_task_result(task_result, "completed") == "completed"
+    assert (
+        analysis._status_step_from_task_result(task_result, "completed") == "completed"
+    )
 
 
 def test_completed_postgres_task_defaults_to_completion_message():
-    assert analysis._status_message_from_task_result({}, "completed", None) == "分析完成"
+    assert (
+        analysis._status_message_from_task_result({}, "completed", None) == "分析完成"
+    )
     assert analysis._status_step_from_task_result({}, "completed") == "completed"
 
 

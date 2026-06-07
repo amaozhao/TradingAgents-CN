@@ -12,7 +12,7 @@ def save_modular_reports_to_results_dir(
         project_root = current_file.parent.parent.parent
 
         # 获取results目录配置
-        results_dir_env = os.getenv("TRADING_AGENTS_RESULTS_DIR")
+        results_dir_env = settings.TRADING_AGENTS_RESULTS_DIR
         if results_dir_env:
             if not os.path.isabs(results_dir_env):
                 results_dir = project_root / results_dir_env
@@ -253,7 +253,7 @@ def save_report_to_results_dir(content: bytes, filename: str, stock_symbol: str)
         )  # web/utils/reports.py -> 项目根目录
 
         # 获取results目录配置
-        results_dir_env = os.getenv("TRADING_AGENTS_RESULTS_DIR")
+        results_dir_env = settings.TRADING_AGENTS_RESULTS_DIR
         if results_dir_env:
             # 如果环境变量是相对路径，相对于项目根目录解析
             if not os.path.isabs(results_dir_env):

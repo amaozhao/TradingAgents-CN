@@ -4,6 +4,8 @@
 测试 Alpha Vantage 和 Finnhub 数据源
 """
 
+from app.core.config import settings as app_settings
+
 print("=" * 80)
 print("🧪 测试 Alpha Vantage 和 Finnhub 数据源")
 print("=" * 80)
@@ -52,12 +54,10 @@ print("📊 测试 Finnhub Quote API")
 print("-" * 80)
 
 try:
-    import os
-
     import finnhub
 
     # 检查 API Key
-    api_key = os.getenv("FINNHUB_API_KEY")
+    api_key = app_settings.text_value("FINNHUB_API_KEY")
     if api_key:
         print(f"✅ Finnhub API Key: {api_key[:8]}...")
 

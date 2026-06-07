@@ -3,6 +3,7 @@
 增强版本，支持连接池、健康检查和错误恢复
 """
 
+import asyncio
 import atexit
 import importlib
 import logging
@@ -59,6 +60,7 @@ class DatabaseManager:
         self.postgres_db: Optional[PostgresDocumentDatabase] = None
         self.redis_client: Optional[Redis] = None
         self.redis_pool: Optional[ConnectionPool] = None
+        self._redis_loop: Optional[asyncio.AbstractEventLoop] = None
         self._postgres_healthy = False
         self._redis_healthy = False
 
@@ -85,6 +87,19 @@ class DatabaseManager:
         """初始化Redis连接"""
         try:
             logger.info("🔄 正在初始化Redis连接...")
+            current_loop = asyncio.get_running_loop()
+
+            if self.redis_client and self.redis_pool:
+                if self._redis_loop is current_loop:
+                    try:
+                        await self.redis_client.ping()
+                        self._redis_healthy = True
+                        logger.info("✅ Redis连接已存在，复用当前事件循环连接")
+                        return
+                    except Exception as e:
+                        logger.warning(f"⚠️ Redis现有连接不可用，准备重建: {e}")
+
+                await self.close_redis_connections()
 
             # 创建Redis连接池
             self.redis_pool = ConnectionPool.from_url(
@@ -103,6 +118,7 @@ class DatabaseManager:
             # 测试连接
             await self.redis_client.ping()
             self._redis_healthy = True
+            self._redis_loop = current_loop
 
             logger.info("✅ Redis连接成功建立")
             logger.info(f"🔗 连接池大小: {settings.REDIS_MAX_CONNECTIONS}")
@@ -120,15 +136,21 @@ class DatabaseManager:
         if self.postgres_client:
             try:
                 self.postgres_client.close()
+                self.postgres_client = None
+                self.postgres_db = None
                 self._postgres_healthy = False
                 logger.info("✅ PostgreSQL文档存储客户端已关闭")
             except Exception as e:
                 logger.error(f"❌ 关闭PostgreSQL文档存储客户端时出错: {e}")
 
-        # 关闭Redis连接
+        await self.close_redis_connections()
+
+    async def close_redis_connections(self):
+        """关闭Redis连接和连接池"""
         if self.redis_client:
             try:
-                await self.redis_client.close()
+                await self.redis_client.aclose(close_connection_pool=True)
+                self.redis_client = None
                 self._redis_healthy = False
                 logger.info("✅ Redis连接已关闭")
             except Exception as e:
@@ -138,9 +160,14 @@ class DatabaseManager:
         if self.redis_pool:
             try:
                 await self.redis_pool.disconnect()
+                self.redis_pool = None
                 logger.info("✅ Redis连接池已关闭")
             except Exception as e:
                 logger.error(f"❌ 关闭Redis连接池时出错: {e}")
+
+        self._redis_loop = None
+        await asyncio.sleep(0)
+        await asyncio.sleep(0.01)
 
     async def health_check(self) -> dict:
         """数据库健康检查"""
@@ -395,6 +422,10 @@ async def close_database():
 
     await db_manager.close_connections()
     await close_postgres_if_enabled()
+    close_sync_loop = getattr(
+        importlib.import_module("app.db.store.helpers"), "close_sync_loop"
+    )
+    close_sync_loop()
 
     # 清空全局变量
     postgres_client = None

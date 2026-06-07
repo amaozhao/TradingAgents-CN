@@ -5,7 +5,7 @@
 """
 
 import importlib
-import os
+from app.core.config import settings as app_settings
 
 
 def test_basic_functionality():
@@ -15,7 +15,7 @@ def test_basic_functionality():
 
     try:
         # 检查API密钥
-        api_key = os.getenv("DASHSCOPE_API_KEY")
+        api_key = app_settings.text_value("DASHSCOPE_API_KEY")
         if not api_key:
             print("⚠️ 未找到DASHSCOPE_API_KEY，使用测试模式")
             return True
@@ -55,7 +55,7 @@ def test_tool_binding():
 
     try:
         # 检查API密钥
-        api_key = os.getenv("DASHSCOPE_API_KEY")
+        api_key = app_settings.text_value("DASHSCOPE_API_KEY")
         if not api_key:
             print("⚠️ 未找到DASHSCOPE_API_KEY，跳过工具绑定测试")
             return True
@@ -110,7 +110,7 @@ def test_vs_old_adapter():
 
     try:
         # 检查API密钥
-        api_key = os.getenv("DASHSCOPE_API_KEY")
+        api_key = app_settings.text_value("DASHSCOPE_API_KEY")
         if not api_key:
             print("⚠️ 未找到DASHSCOPE_API_KEY，跳过对比测试")
             return True

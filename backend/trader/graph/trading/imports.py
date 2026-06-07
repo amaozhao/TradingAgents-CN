@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import ToolNode
 
+from app.core.config import settings
 from trader.agents import Toolkit
 from trader.agents.utils.log import TradingMemoryLog
 from trader.agents.utils.memory import FinancialSituationMemory
@@ -42,7 +43,9 @@ from ..signals import SignalProcessor
 logger = get_logger("agents")
 
 
-def _configured_provider_kwargs(config: Dict[str, Any], provider: str) -> Dict[str, Any]:
+def _configured_provider_kwargs(
+    config: Dict[str, Any], provider: str
+) -> Dict[str, Any]:
     provider_key = normalize_provider_key(provider)
     kwargs: Dict[str, Any] = {}
 

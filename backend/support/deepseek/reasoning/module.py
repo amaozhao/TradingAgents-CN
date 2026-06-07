@@ -23,6 +23,7 @@ from trader.llm.clients.openai import (
     NormalizedChatOpenAI,
     _input_to_messages,
 )
+from app.core.config import settings as app_settings
 
 # ---------------------------------------------------------------------------
 # _input_to_messages — the helper that handles list / ChatPromptValue / other
@@ -207,7 +208,7 @@ class TestStructuredOutputCapabilityDispatch:
 
 
 def _has_real_deepseek_key():
-    key = os.environ.get("DEEPSEEK_API_KEY", "")
+    key = app_settings.text_value("DEEPSEEK_API_KEY", "")
     return bool(key) and key != "placeholder"
 
 
@@ -231,7 +232,7 @@ class TestDeepSeekLiveStructuredOutput:
     def test_v4_flash_returns_structured_output(self):
         client = DeepSeekChatOpenAI(
             model="deepseek-v4-flash",
-            api_key=os.environ["DEEPSEEK_API_KEY"],
+            api_key=app_settings.text_value("DEEPSEEK_API_KEY"),
             base_url="https://api.deepseek.com",
             timeout=60,
         )

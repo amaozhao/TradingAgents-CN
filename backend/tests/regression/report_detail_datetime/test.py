@@ -16,7 +16,10 @@ def test_report_datetime_helper_keeps_unparseable_string():
 def test_report_list_dedupes_dual_written_reports():
     documents = [
         {"_id": "generic", "analysis_id": "600519_20260606_103724"},
-        {"_id": "analysis_reports:600519_20260606_103724", "analysis_id": "600519_20260606_103724"},
+        {
+            "_id": "analysis_reports:600519_20260606_103724",
+            "analysis_id": "600519_20260606_103724",
+        },
         {"_id": "other", "analysis_id": "000001_20260606_103724"},
     ]
 

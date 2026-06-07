@@ -165,7 +165,7 @@ async def get_task_result(  # pyright: ignore[reportGeneralTypeIssues]
             loaded_reports = {}
             try:
                 # 1) 尝试从环境变量 TRADING_AGENTS_RESULTS_DIR 指定的位置读取
-                base_env = os.getenv("TRADING_AGENTS_RESULTS_DIR")
+                base_env = settings.TRADING_AGENTS_RESULTS_DIR
                 project_root = Path.cwd()
                 if base_env:
                     base_path = Path(base_env)

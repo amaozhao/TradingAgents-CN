@@ -1,4 +1,6 @@
 # ruff: noqa: F403,F405
+from app.core.config import settings
+
 from .common import *
 
 
@@ -54,7 +56,7 @@ def render_api_key_status():
     st.markdown("**🔧 系统配置**")
     st.markdown("**🔑 API密钥状态**")
     st.markdown("*必需配置:*")
-    dashscope_key = os.getenv("DASHSCOPE_API_KEY")
+    dashscope_key = settings.DASHSCOPE_API_KEY
     status, level = validate_api_key(dashscope_key, "dashscope")
     if level == "success":
         st.success(f"✅ 阿里百炼: {status}")
@@ -62,7 +64,7 @@ def render_api_key_status():
         st.warning(f"⚠️ 阿里百炼: {status}")
     else:
         st.error("❌ 阿里百炼: 未配置")
-    finnhub_key = os.getenv("FINNHUB_API_KEY")
+    finnhub_key = settings.FINNHUB_API_KEY
     status, level = validate_api_key(finnhub_key, "finnhub")
     if level == "success":
         st.success(f"✅ FinnHub: {status}")
@@ -71,7 +73,7 @@ def render_api_key_status():
     else:
         st.error("❌ FinnHub: 未配置")
     st.markdown("*可选配置:*")
-    deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+    deepseek_key = settings.DEEPSEEK_API_KEY
     status, level = validate_api_key(deepseek_key, "deepseek")
     if level == "success":
         st.success(f"✅ DeepSeek: {status}")
@@ -79,7 +81,7 @@ def render_api_key_status():
         st.warning(f"⚠️ DeepSeek: {status}")
     else:
         st.info("ℹ️ DeepSeek: 未配置")
-    tushare_key = os.getenv("TUSHARE_TOKEN")
+    tushare_key = settings.TUSHARE_TOKEN
     status, level = validate_api_key(tushare_key, "tushare")
     if level == "success":
         st.success(f"✅ Tushare: {status}")
@@ -87,7 +89,7 @@ def render_api_key_status():
         st.warning(f"⚠️ Tushare: {status}")
     else:
         st.info("ℹ️ Tushare: 未配置")
-    google_key = os.getenv("GOOGLE_API_KEY")
+    google_key = settings.GOOGLE_API_KEY
     status, level = validate_api_key(google_key, "google")
     if level == "success":
         st.success(f"✅ Google AI: {status}")
@@ -95,14 +97,14 @@ def render_api_key_status():
         st.warning(f"⚠️ Google AI: {status}")
     else:
         st.info("ℹ️ Google AI: 未配置")
-    openai_key = os.getenv("OPENAI_API_KEY")
+    openai_key = settings.OPENAI_API_KEY
     if openai_key and openai_key != "your_openai_api_key_here":
         status, level = validate_api_key(openai_key, "openai")
         if level == "success":
             st.success(f"✅ OpenAI: {status}")
         elif level == "warning":
             st.warning(f"⚠️ OpenAI: {status}")
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    anthropic_key = settings.ANTHROPIC_API_KEY
     if anthropic_key and anthropic_key != "your_anthropic_api_key_here":
         status, level = validate_api_key(anthropic_key, "anthropic")
         if level == "success":

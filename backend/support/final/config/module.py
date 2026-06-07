@@ -6,6 +6,7 @@
 
 import importlib
 import os
+from app.core.config import settings as app_settings
 
 
 def test_final_config():
@@ -23,30 +24,34 @@ def test_final_config():
 
     # 2. 读取启用开关
     print("\n🔧 检查启用开关...")
-    postgres_enabled = os.getenv("POSTGRES_ENABLED", "false").lower() == "true"
-    redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() == "true"
+    postgres_enabled = (
+        app_settings.text_value("POSTGRES_ENABLED", "false").lower() == "true"
+    )
+    redis_enabled = app_settings.text_value("REDIS_ENABLED", "false").lower() == "true"
 
     print(
-        f"POSTGRES_ENABLED: {os.getenv('POSTGRES_ENABLED', 'false')} -> {postgres_enabled}"
+        f"POSTGRES_ENABLED: {app_settings.text_value('POSTGRES_ENABLED', 'false')} -> {postgres_enabled}"
     )
-    print(f"REDIS_ENABLED: {os.getenv('REDIS_ENABLED', 'false')} -> {redis_enabled}")
+    print(
+        f"REDIS_ENABLED: {app_settings.text_value('REDIS_ENABLED', 'false')} -> {redis_enabled}"
+    )
 
     # 3. 显示配置信息
     print("\n📊 数据库配置:")
 
     if postgres_enabled:
         print("PostgreSQL: ✅ 启用")
-        print(f"  Host: {os.getenv('POSTGRES_HOST', 'localhost')}")
-        print(f"  Port: {os.getenv('POSTGRES_PORT', '5432')}")
-        print(f"  Database: {os.getenv('POSTGRES_DB', 'trading_agents')}")
+        print(f"  Host: {app_settings.text_value('POSTGRES_HOST', 'localhost')}")
+        print(f"  Port: {app_settings.text_value('POSTGRES_PORT', '5432')}")
+        print(f"  Database: {app_settings.text_value('POSTGRES_DB', 'trading_agents')}")
     else:
         print("PostgreSQL: ❌ 禁用")
 
     if redis_enabled:
         print("Redis: ✅ 启用")
-        print(f"  Host: {os.getenv('REDIS_HOST', 'localhost')}")
-        print(f"  Port: {os.getenv('REDIS_PORT', '6379')}")
-        print(f"  DB: {os.getenv('REDIS_DB', '0')}")
+        print(f"  Host: {app_settings.text_value('REDIS_HOST', 'localhost')}")
+        print(f"  Port: {app_settings.text_value('REDIS_PORT', '6379')}")
+        print(f"  DB: {app_settings.text_value('REDIS_DB', '0')}")
     else:
         print("Redis: ❌ 禁用")
 

@@ -58,7 +58,7 @@ class _AKShareSyncServiceMixin1:
             "success_count": 0,
             "error_count": 0,
             "skipped_count": 0,
-            "start_time": datetime.utcnow(),
+            "start_time": utcnow_naive(),
             "end_time": None,
             "duration": 0,
             "errors": [],
@@ -97,7 +97,7 @@ class _AKShareSyncServiceMixin1:
                     await asyncio.sleep(self.rate_limit_delay)
 
             # 3. 完成统计
-            stats["end_time"] = datetime.utcnow()
+            stats["end_time"] = utcnow_naive()
             stats["duration"] = (
                 stats["end_time"] - stats["start_time"]
             ).total_seconds()
@@ -221,7 +221,7 @@ class _AKShareSyncServiceMixin1:
             else:
                 updated_at = updated_at.replace(tzinfo=None)
 
-            now = datetime.utcnow()
+            now = utcnow_naive()
             time_diff = now - updated_at
 
             return time_diff.total_seconds() < (hours * 3600)
@@ -255,7 +255,7 @@ class _AKShareSyncServiceMixin1:
             "total_processed": 0,
             "success_count": 0,
             "error_count": 0,
-            "start_time": datetime.utcnow(),
+            "start_time": utcnow_naive(),
             "end_time": None,
             "duration": 0,
             "errors": [],
@@ -387,7 +387,7 @@ class _AKShareSyncServiceMixin1:
                         )
 
             # 4. 完成统计
-            stats["end_time"] = datetime.utcnow()
+            stats["end_time"] = utcnow_naive()
             stats["duration"] = (
                 stats["end_time"] - stats["start_time"]
             ).total_seconds()
@@ -579,7 +579,7 @@ class _AKShareSyncServiceMixin1:
             "success_count": 0,
             "error_count": 0,
             "total_records": 0,
-            "start_time": datetime.utcnow(),
+            "start_time": utcnow_naive(),
             "end_time": None,
             "duration": 0,
             "errors": [],
@@ -640,7 +640,7 @@ class _AKShareSyncServiceMixin1:
                     await asyncio.sleep(self.rate_limit_delay)
 
             # 4. 完成统计
-            stats["end_time"] = datetime.utcnow()
+            stats["end_time"] = utcnow_naive()
             stats["duration"] = (
                 stats["end_time"] - stats["start_time"]
             ).total_seconds()

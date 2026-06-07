@@ -8,13 +8,14 @@ import os
 import sys
 import time
 from datetime import datetime
+from app.core.config import settings as app_settings
 
 
 def test_finnhub_api_key():
     """测试Finnhub API密钥配置"""
     print("🔑 检查Finnhub API密钥...")
 
-    api_key = os.getenv("FINNHUB_API_KEY")
+    api_key = app_settings.text_value("FINNHUB_API_KEY")
     if api_key:
         print(f"✅ Finnhub API密钥已配置: {api_key[:8]}...")
         return True
@@ -88,8 +89,8 @@ def test_openai_fallback_with_cache():
         )
 
         # 临时移除OpenAI配置来测试fallback
-        original_backend_url = os.environ.get("BACKEND_URL")
-        original_quick_think_llm = os.environ.get("QUICK_THINK_LLM")
+        original_backend_url = app_settings.text_value("BACKEND_URL")
+        original_quick_think_llm = app_settings.text_value("QUICK_THINK_LLM")
 
         # 清除OpenAI配置
         if "BACKEND_URL" in os.environ:

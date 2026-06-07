@@ -5,9 +5,9 @@ DashScope OpenAI 适配器修复测试脚本
 """
 
 import importlib
-import os
 
 from trader.utils.logging.manager import get_logger
+from app.core.config import settings as app_settings
 
 logger = get_logger("test")
 
@@ -293,7 +293,7 @@ def main():
     print("=" * 80)
 
     # 检查环境变量
-    if not os.getenv("DASHSCOPE_API_KEY"):
+    if not app_settings.text_value("DASHSCOPE_API_KEY"):
         print("❌ 错误: 未找到 DASHSCOPE_API_KEY 环境变量")
         print("请设置您的 DashScope API 密钥:")
         print("  Windows: set DASHSCOPE_API_KEY=your_api_key")

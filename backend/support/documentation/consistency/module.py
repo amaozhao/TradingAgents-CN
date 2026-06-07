@@ -23,17 +23,23 @@ def test_redis_commander_port_consistency():
     """
     print("🔍 测试 Redis Commander 端口配置一致性...")
 
-    # 检查 .env.example 文件
-    env_example_path = project_root / ".env.example"
+    # 检查 backend/.env.example 文件
+    env_example_path = project_root / "backend" / ".env.example"
     if env_example_path.exists():
         with open(env_example_path, "r", encoding="utf-8") as f:
             env_content = f.read()
-            # 应该包含 8082 端口
-            if "localhost:8082" in env_content and "Redis Commander" in env_content:
-                print("✅ .env.example 中 Redis Commander 端口配置正确 (8082)")
-            else:
-                print("❌ .env.example 中 Redis Commander 端口配置不正确")
-                return False
+            assert "Redis管理: http://localhost:8081" in env_content
+            print(
+                "✅ backend/.env.example 中 Redis Commander 主环境端口配置正确 (8081)"
+            )
+
+    compose_path = project_root / "deploy" / "docker" / "compose" / "docker-compose.yml"
+    if compose_path.exists():
+        with open(compose_path, "r", encoding="utf-8") as f:
+            compose_content = f.read()
+            assert '"8081:8081"' in compose_content
+            assert "trading-agents-redis-commander" in compose_content
+            print("✅ docker-compose.yml 中 Redis Commander 主环境端口配置正确 (8081)")
 
     # 检查 database_setup.md 文件
     db_setup_path = project_root / "docs" / "database_setup.md"
@@ -41,13 +47,9 @@ def test_redis_commander_port_consistency():
         with open(db_setup_path, "r", encoding="utf-8") as f:
             db_content = f.read()
             # 应该包含 8082 端口
-            if "8082" in db_content and "Redis Commander" in db_content:
-                print("✅ database_setup.md 中 Redis Commander 端口配置正确 (8082)")
-            else:
-                print("❌ database_setup.md 中 Redis Commander 端口配置不正确")
-                return False
-
-    return True
+            assert "http://localhost:8082" in db_content
+            assert "Redis Commander" in db_content
+            print("✅ database_setup.md 中 Redis Commander 测试环境端口配置正确 (8082)")
 
 
 def test_cli_command_format_consistency():
@@ -70,13 +72,8 @@ def test_cli_command_format_consistency():
                 old_format_count = len(re.findall(r"python cli/main\.py", content))
                 len(re.findall(r"python -m cli\.main", content))
 
-                if old_format_count == 0:
-                    print(f"✅ {doc_file} 中 CLI 命令格式正确")
-                else:
-                    print(f"❌ {doc_file} 中仍有 {old_format_count} 处使用旧格式")
-                    return False
-
-    return True
+                assert old_format_count == 0
+                print(f"✅ {doc_file} 中 CLI 命令格式正确")
 
 
 def test_cli_smart_suggestions():
@@ -86,24 +83,16 @@ def test_cli_smart_suggestions():
     """
     print("\n🔍 测试 CLI 智能建议功能...")
 
-    # 检查 cli/climain.py 是否包含智能建议代码
-    cli_main_path = project_root / "cli" / "main.py"
-    if cli_main_path.exists():
-        with open(cli_main_path, "r", encoding="utf-8") as f:
-            content = f.read()
+    cli_imports_path = project_root / "backend" / "cli" / "main" / "imports.py"
+    cli_models_path = project_root / "backend" / "cli" / "main" / "models.py"
 
-            # 检查是否包含智能建议相关代码
-            if (
-                "get_close_matches" in content
-                and "您是否想要使用以下命令之一" in content
-            ):
-                print("✅ CLI 智能建议功能已实现")
-                return True
-            else:
-                print("❌ CLI 智能建议功能未找到")
-                return False
+    imports_content = cli_imports_path.read_text(encoding="utf-8")
+    models_content = cli_models_path.read_text(encoding="utf-8")
 
-    return False
+    assert "get_close_matches" in imports_content
+    assert "get_close_matches" in models_content
+    assert "您是否想要使用以下命令之一" in models_content
+    print("✅ CLI 智能建议功能已实现")
 
 
 def test_documentation_structure():
@@ -128,12 +117,8 @@ def test_documentation_structure():
         if not doc_path.exists():
             missing_docs.append(doc)
 
-    if not missing_docs:
-        print("✅ 所有关键文档都存在")
-        return True
-    else:
-        print(f"❌ 缺少文档: {', '.join(missing_docs)}")
-        return False
+    assert not missing_docs, f"缺少文档: {', '.join(missing_docs)}"
+    print("✅ 所有关键文档都存在")
 
 
 def main():
@@ -156,8 +141,8 @@ def main():
 
     for test_func in tests:
         try:
-            if test_func():
-                passed += 1
+            test_func()
+            passed += 1
         except Exception as e:
             print(f"❌ 测试 {test_func.__name__} 执行失败: {e}")
 

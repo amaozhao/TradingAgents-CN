@@ -108,7 +108,7 @@ class InstallationTester:
 
         config_files = [
             ("VERSION", "版本文件"),
-            (".env.example", "环境变量模板"),
+            ("backend/.env.example", "环境变量模板"),
             ("config/settings.json", "设置配置"),
             ("config/models.json", "模型配置"),
             ("config/pricing.json", "价格配置"),
@@ -130,10 +130,10 @@ class InstallationTester:
         """测试环境变量"""
         print("🔑 检查环境变量...")
 
-        # 检查.env文件
-        env_file = project_root / ".env"
+        # 检查 backend/.env 文件
+        env_file = project_root / "backend" / ".env"
         if env_file.exists():
-            self.results.append("✅ 环境变量文件: .env 存在")
+            self.results.append("✅ 环境变量文件: backend/.env 存在")
 
             # 读取并检查关键配置
             try:
@@ -163,7 +163,9 @@ class InstallationTester:
                 self.errors.append(f"❌ 读取.env文件失败: {e}")
                 return False
         else:
-            self.errors.append("⚠️ 环境变量文件: .env 不存在 (请复制.env.example)")
+            self.errors.append(
+                "⚠️ 环境变量文件: backend/.env 不存在 (请复制 backend/.env.example)"
+            )
             return False
 
         return True

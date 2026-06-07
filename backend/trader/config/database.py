@@ -4,8 +4,9 @@
 统一管理 PostgreSQL 和 Redis 的连接配置
 """
 
-import os
 from typing import Any, Dict
+
+from app.core.config import settings
 
 
 class DatabaseConfig:
@@ -22,14 +23,14 @@ class DatabaseConfig:
         Raises:
             ValueError: 当必要的配置未设置时
         """
-        database = os.getenv("POSTGRES_DB")
+        database = settings.POSTGRES_DB
         if not database:
             raise ValueError("PostgreSQL数据库未配置。请设置环境变量 POSTGRES_DB")
 
         return {
             "database": database,
-            "host": os.getenv("POSTGRES_HOST", "localhost"),
-            "port": int(os.getenv("POSTGRES_PORT", 5432)),
+            "host": settings.POSTGRES_HOST,
+            "port": settings.POSTGRES_PORT,
         }
 
     @staticmethod
@@ -44,16 +45,16 @@ class DatabaseConfig:
             ValueError: 当必要的配置未设置时
         """
         # 优先使用连接字符串
-        connection_string = os.getenv("REDIS_CONNECTION_STRING")
+        connection_string = settings.REDIS_CONNECTION_STRING
         if connection_string:
             return {
                 "connection_string": connection_string,
-                "database": int(os.getenv("REDIS_DATABASE", 0)),
+                "database": settings.REDIS_DATABASE,
             }
 
         # 使用分离的配置参数
-        host = os.getenv("REDIS_HOST")
-        port = os.getenv("REDIS_PORT")
+        host = settings.REDIS_HOST
+        port = settings.REDIS_PORT
 
         if not host or not port:
             raise ValueError(
@@ -65,8 +66,8 @@ class DatabaseConfig:
         return {
             "host": host,
             "port": int(port),
-            "password": os.getenv("REDIS_PASSWORD"),
-            "database": int(os.getenv("REDIS_DATABASE", 0)),
+            "password": settings.REDIS_PASSWORD or None,
+            "database": settings.REDIS_DATABASE,
         }
 
     @staticmethod

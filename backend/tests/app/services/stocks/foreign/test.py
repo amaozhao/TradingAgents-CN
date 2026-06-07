@@ -8,7 +8,7 @@ def test_foreign_stock_service_import_facade_exports_public_api() -> None:
 
     assert hasattr(module, "ForeignStockService")
 
-    service = module.ForeignStockService(db=None)
+    service = module.ForeignStockService(db=None, cache=object(), hk_provider=object())
     for method_name in (
         "get_quote",
         "get_basic_info",

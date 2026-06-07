@@ -9,9 +9,9 @@
 """
 
 import importlib
-import os
 import sys
 from pathlib import Path
+from app.core.config import settings as app_settings
 
 
 def test_config_manager():
@@ -86,7 +86,7 @@ def test_llm_adapter():
     print("📋 测试 DashScope 适配器:")
     print()
 
-    dashscope_key = os.getenv("DASHSCOPE_API_KEY")
+    dashscope_key = app_settings.text_value("DASHSCOPE_API_KEY")
     if dashscope_key:
         print(
             f"  ✅ DASHSCOPE_API_KEY 环境变量: {dashscope_key[:20]}... (长度: {len(dashscope_key)})"
@@ -145,7 +145,7 @@ def test_env_variables():
     ]
 
     for key in api_keys:
-        value = os.getenv(key)
+        value = app_settings.text_value(key)
         if value:
             print(f"  ✅ {key}: {value[:20]}... (长度: {len(value)})")
         else:
@@ -164,7 +164,7 @@ def test_env_variables():
     ]
 
     for var in model_vars:
-        value = os.getenv(var)
+        value = app_settings.text_value(var)
         if value:
             print(f"  ✅ {var}: {value}")
         else:
@@ -182,7 +182,7 @@ def test_env_variables():
     ]
 
     for var in data_source_vars:
-        value = os.getenv(var)
+        value = app_settings.text_value(var)
         if value:
             print(f"  ✅ {var}: {value[:20]}... (长度: {len(value)})")
         else:

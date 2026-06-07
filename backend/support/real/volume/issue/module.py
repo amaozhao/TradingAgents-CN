@@ -5,21 +5,9 @@
 """
 
 import importlib
-import os
 import sys
 
-from support.path import BACKEND_ROOT
-
-# 加载.env文件
-try:
-    from dotenv import load_dotenv
-
-    load_dotenv(BACKEND_ROOT / ".env")
-    print("✅ 已加载.env文件")
-except ImportError:
-    print("⚠️ python-dotenv未安装，尝试手动加载环境变量")
-except Exception as e:
-    print(f"⚠️ 加载.env文件失败: {e}")
+from app.core.config import settings as app_settings
 
 
 def test_real_tushare_volume_access():
@@ -36,7 +24,7 @@ def test_real_tushare_volume_access():
         )
 
         # 检查Tushare是否可用
-        tushare_token = os.getenv("TUSHARE_TOKEN")
+        tushare_token = app_settings.text_value("TUSHARE_TOKEN")
         if not tushare_token:
             print("⚠️ TUSHARE_TOKEN未设置，无法测试真实数据")
             return True
@@ -109,7 +97,7 @@ def test_tushare_adapter_direct():
         )
 
         # 检查Tushare是否可用
-        tushare_token = os.getenv("TUSHARE_TOKEN")
+        tushare_token = app_settings.text_value("TUSHARE_TOKEN")
         if not tushare_token:
             print("⚠️ TUSHARE_TOKEN未设置，无法测试真实数据")
             return True
@@ -179,7 +167,7 @@ def test_column_mapping_in_real_data():
         ts = importlib.import_module("tushare")
 
         # 检查Tushare是否可用
-        tushare_token = os.getenv("TUSHARE_TOKEN")
+        tushare_token = app_settings.text_value("TUSHARE_TOKEN")
         if not tushare_token:
             print("⚠️ TUSHARE_TOKEN未设置，无法测试真实数据")
             return True

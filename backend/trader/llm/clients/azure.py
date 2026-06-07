@@ -1,6 +1,6 @@
-import os
 from typing import Any, Optional
 
+from app.core.config import settings
 from langchain_openai import AzureChatOpenAI
 
 from .base import BaseLLMClient, normalize_content
@@ -43,7 +43,7 @@ class AzureOpenAIClient(BaseLLMClient):
 
         llm_kwargs: dict[str, Any] = {
             "model": self.model,
-            "azure_deployment": os.environ.get(
+            "azure_deployment": settings.text_value(
                 "AZURE_OPENAI_DEPLOYMENT_NAME", self.model
             ),
         }

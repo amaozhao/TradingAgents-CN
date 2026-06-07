@@ -6,7 +6,7 @@
 import asyncio
 import importlib
 import logging
-import os
+from app.core.config import settings as app_settings
 
 # 设置日志级别为 DEBUG
 logging.basicConfig(
@@ -48,7 +48,7 @@ async def main():
     ]
 
     for key in ta_env_keys:
-        value = os.getenv(key)
+        value = app_settings.text_value(key)
         if value:
             print(f"  ✅ {key}: {value}")
         else:

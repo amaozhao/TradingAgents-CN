@@ -19,12 +19,10 @@ import sys
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from dotenv import load_dotenv
 
 from app.db.store import create_client
 
 # 加载环境变量
-load_dotenv()
 
 
 class PSCalculationVerifier:

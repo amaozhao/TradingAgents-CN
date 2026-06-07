@@ -267,7 +267,7 @@ def render_global_styles():
 
 
 def render_debug_tools():
-    if os.getenv("DEBUG_MODE") == "true":
+    if settings.DEBUG_MODE:
         if st.button("🔄 清除会话状态"):
             st.session_state.clear()
             st.experimental_rerun()

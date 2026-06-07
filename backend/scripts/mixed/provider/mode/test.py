@@ -3,12 +3,9 @@
 验证快速模型和深度模型可以来自不同厂家
 """
 
-from dotenv import load_dotenv
-
 from app.services.analysis.simple import get_provider_and_url_by_model_sync
 from support.path import BACKEND_ROOT
 
-load_dotenv()
 
 print("=" * 80)
 print("测试混合供应商模式")

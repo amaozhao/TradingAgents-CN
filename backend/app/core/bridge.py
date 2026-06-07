@@ -6,11 +6,29 @@
 import importlib
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Optional
 
+from app.core.config import settings
+from app.core.runtime import apply_runtime_env, clear_runtime_env
+
 logger = logging.getLogger("app.config_bridge")
+_BRIDGED_VALUES: dict[str, str] = {}
+
+
+def _set_bridged_env(key: str, value) -> None:
+    text = str(value)
+    _BRIDGED_VALUES[key] = text
+    apply_runtime_env({key: text})
+
+
+def _delete_bridged_env(key: str) -> None:
+    _BRIDGED_VALUES.pop(key, None)
+    clear_runtime_env((key,))
+
+
+def _configured_text(key: str, default: str = "") -> str:
+    return _BRIDGED_VALUES.get(key) or settings.text_value(key, default)
 
 
 def bridge_config_to_env():
@@ -37,19 +55,14 @@ def bridge_config_to_env():
 
         # 强制启用 PostgreSQL 存储（用于 Token 使用统计）
         # 兼容旧 USE_POSTGRES_STORAGE=true 输入，但不再需要 PostgreSQL 文档存储连接。
-        use_postgres_storage = os.getenv(
-            "USE_POSTGRES_STORAGE",
-            os.getenv("USE_POSTGRES_STORAGE", "true"),
-        )
-        os.environ["USE_POSTGRES_STORAGE"] = use_postgres_storage
+        use_postgres_storage = str(settings.USE_POSTGRES_STORAGE).lower()
+        _set_bridged_env("USE_POSTGRES_STORAGE", use_postgres_storage)
         logger.info(f"  ✓ 桥接 USE_POSTGRES_STORAGE: {use_postgres_storage}")
         bridged_count += 1
 
         # 桥接 PostgreSQL 数据库名称
-        settings = getattr(importlib.import_module("app.core.config"), "settings")
-
-        postgres_db_name = os.getenv("POSTGRES_DB", "").strip() or settings.POSTGRES_DB
-        os.environ["POSTGRES_DB"] = postgres_db_name
+        postgres_db_name = settings.POSTGRES_DB.strip()
+        _set_bridged_env("POSTGRES_DB", postgres_db_name)
         logger.info(f"  ✓ 桥接 POSTGRES_DB: {postgres_db_name}")
         bridged_count += 1
 
@@ -81,7 +94,7 @@ def bridge_config_to_env():
                     continue
 
                 env_key = f"{provider.name.upper()}_API_KEY"
-                existing_env_value = os.getenv(env_key)
+                existing_env_value = settings.text_value(env_key)
 
                 # 检查环境变量是否已存在且有效（不是占位符）
                 if existing_env_value and not existing_env_value.startswith("your_"):
@@ -91,7 +104,7 @@ def bridge_config_to_env():
                     bridged_count += 1
                 elif provider.api_key and not provider.api_key.startswith("your_"):
                     # 只有当环境变量不存在或为占位符时，才使用数据库配置
-                    os.environ[env_key] = provider.api_key
+                    _set_bridged_env(env_key, provider.api_key)
                     logger.info(
                         f"  ✓ 使用数据库厂家配置的 {env_key} (长度: {len(provider.api_key)})"
                     )
@@ -108,7 +121,7 @@ def bridge_config_to_env():
             for llm_config in llm_configs:
                 # provider 现在是字符串类型，不再是枚举
                 env_key = f"{llm_config.provider.upper()}_API_KEY"
-                existing_env_value = os.getenv(env_key)
+                existing_env_value = settings.text_value(env_key)
 
                 # 检查环境变量是否已存在且有效（不是占位符）
                 if existing_env_value and not existing_env_value.startswith("your_"):
@@ -119,7 +132,7 @@ def bridge_config_to_env():
                 elif llm_config.enabled and llm_config.api_key:
                     # 只有当环境变量不存在或为占位符时，才使用数据库配置
                     if not llm_config.api_key.startswith("your_"):
-                        os.environ[env_key] = llm_config.api_key
+                        _set_bridged_env(env_key, llm_config.api_key)
                         logger.info(
                             f"  ✓ 使用 JSON 文件中的 {env_key} (长度: {len(llm_config.api_key)})"
                         )
@@ -134,19 +147,19 @@ def bridge_config_to_env():
         # 2. 桥接默认模型配置
         default_model = unified_config.get_default_model()
         if default_model:
-            os.environ["TRADING_AGENTS_DEFAULT_MODEL"] = default_model
+            _set_bridged_env("TRADING_AGENTS_DEFAULT_MODEL", default_model)
             logger.info(f"  ✓ 桥接默认模型: {default_model}")
             bridged_count += 1
 
         quick_model = unified_config.get_quick_analysis_model()
         if quick_model:
-            os.environ["TRADING_AGENTS_QUICK_MODEL"] = quick_model
+            _set_bridged_env("TRADING_AGENTS_QUICK_MODEL", quick_model)
             logger.info(f"  ✓ 桥接快速分析模型: {quick_model}")
             bridged_count += 1
 
         deep_model = unified_config.get_deep_analysis_model()
         if deep_model:
-            os.environ["TRADING_AGENTS_DEEP_MODEL"] = deep_model
+            _set_bridged_env("TRADING_AGENTS_DEEP_MODEL", deep_model)
             logger.info(f"  ✓ 桥接深度分析模型: {deep_model}")
             bridged_count += 1
 
@@ -190,11 +203,11 @@ def bridge_config_to_env():
                 # Tushare Token
                 # 🔥 优先级：数据库配置 > .env 文件（用户在 Web 后台修改后立即生效）
                 if ds_config.type.value == "tushare":
-                    existing_token = os.getenv("TUSHARE_TOKEN")
+                    existing_token = settings.TUSHARE_TOKEN
 
                     # 优先使用数据库配置
                     if ds_config.api_key and not ds_config.api_key.startswith("your_"):
-                        os.environ["TUSHARE_TOKEN"] = ds_config.api_key
+                        _set_bridged_env("TUSHARE_TOKEN", ds_config.api_key)
                         logger.info(
                             f"  ✓ 使用数据库中的 TUSHARE_TOKEN (长度: {len(ds_config.api_key)})"
                         )
@@ -218,11 +231,11 @@ def bridge_config_to_env():
                 # FinnHub API Key
                 # 🔥 优先级：数据库配置 > .env 文件
                 elif ds_config.type.value == "finnhub":
-                    existing_key = os.getenv("FINNHUB_API_KEY")
+                    existing_key = settings.FINNHUB_API_KEY
 
                     # 优先使用数据库配置
                     if ds_config.api_key and not ds_config.api_key.startswith("your_"):
-                        os.environ["FINNHUB_API_KEY"] = ds_config.api_key
+                        _set_bridged_env("FINNHUB_API_KEY", ds_config.api_key)
                         logger.info(
                             f"  ✓ 使用数据库中的 FINNHUB_API_KEY (长度: {len(ds_config.api_key)})"
                         )
@@ -261,8 +274,8 @@ def bridge_config_to_env():
             logger.info("🔄 重新初始化 trading_agents PostgreSQL token 存储...")
 
             # 调试：检查环境变量
-            use_postgres = os.getenv("USE_POSTGRES_STORAGE", "false")
-            postgres_db = os.getenv("POSTGRES_DB", "trading_agents")
+            use_postgres = str(settings.USE_POSTGRES_STORAGE).lower()
+            postgres_db = settings.POSTGRES_DB
             logger.info(f"  📋 USE_POSTGRES_STORAGE: {use_postgres}")
             logger.info(f"  📋 POSTGRES_DB: {postgres_db}")
 
@@ -272,6 +285,11 @@ def bridge_config_to_env():
                 try:
                     logger.info(f"  🔍 实际传入的数据库名称: {postgres_db}")
 
+                    close_postgres_storage = getattr(
+                        config_manager, "close_postgres_storage", None
+                    )
+                    if close_postgres_storage is not None:
+                        close_postgres_storage()
                     config_manager.postgres_storage = PostgresStorage(
                         database_name=postgres_db
                     )
@@ -339,21 +357,21 @@ def _bridge_datasource_details(data_source_configs) -> int:
         # 超时时间
         if ds_config.timeout:
             env_key = f"{source_type}_TIMEOUT"
-            os.environ[env_key] = str(ds_config.timeout)
+            _set_bridged_env(env_key, ds_config.timeout)
             logger.debug(f"  ✓ 桥接 {env_key}: {ds_config.timeout}")
             bridged_count += 1
 
         # 速率限制
         if ds_config.rate_limit:
             env_key = f"{source_type}_RATE_LIMIT"
-            os.environ[env_key] = str(ds_config.rate_limit / 60.0)  # 转换为每秒请求数
+            _set_bridged_env(env_key, ds_config.rate_limit / 60.0)  # 转换为每秒请求数
             logger.debug(f"  ✓ 桥接 {env_key}: {ds_config.rate_limit / 60.0}")
             bridged_count += 1
 
         # 最大重试次数（从 config_params 中获取）
         if ds_config.config_params and "max_retries" in ds_config.config_params:
             env_key = f"{source_type}_MAX_RETRIES"
-            os.environ[env_key] = str(ds_config.config_params["max_retries"])
+            _set_bridged_env(env_key, ds_config.config_params["max_retries"])
             logger.debug(
                 f"  ✓ 桥接 {env_key}: {ds_config.config_params['max_retries']}"
             )
@@ -362,14 +380,16 @@ def _bridge_datasource_details(data_source_configs) -> int:
         # 缓存 TTL（从 config_params 中获取）
         if ds_config.config_params and "cache_ttl" in ds_config.config_params:
             env_key = f"{source_type}_CACHE_TTL"
-            os.environ[env_key] = str(ds_config.config_params["cache_ttl"])
+            _set_bridged_env(env_key, ds_config.config_params["cache_ttl"])
             logger.debug(f"  ✓ 桥接 {env_key}: {ds_config.config_params['cache_ttl']}")
             bridged_count += 1
 
         # 是否启用缓存（从 config_params 中获取）
         if ds_config.config_params and "cache_enabled" in ds_config.config_params:
             env_key = f"{source_type}_CACHE_ENABLED"
-            os.environ[env_key] = str(ds_config.config_params["cache_enabled"]).lower()
+            _set_bridged_env(
+                env_key, str(ds_config.config_params["cache_enabled"]).lower()
+            )
             logger.debug(
                 f"  ✓ 桥接 {env_key}: {ds_config.config_params['cache_enabled']}"
             )
@@ -434,7 +454,7 @@ def _bridge_system_settings() -> int:
 
         for setting_key, env_key in ta_settings.items():
             # 检查 .env 文件中是否已经设置了该环境变量
-            env_value = os.getenv(env_key)
+            env_value = settings.value(env_key, None)
             if env_value is not None:
                 # .env 文件中已设置，优先使用 .env 的值
                 logger.info(f"  ✓ 使用 .env 文件中的 {env_key}: {env_value}")
@@ -442,8 +462,8 @@ def _bridge_system_settings() -> int:
             elif setting_key in system_settings:
                 # .env 文件中未设置，使用数据库中的值
                 value = system_settings[setting_key]
-                os.environ[env_key] = (
-                    str(value).lower() if isinstance(value, bool) else str(value)
+                _set_bridged_env(
+                    env_key, str(value).lower() if isinstance(value, bool) else value
                 )
                 logger.info(f"  ✓ 桥接 {env_key}: {value}")
                 bridged_count += 1
@@ -454,8 +474,8 @@ def _bridge_system_settings() -> int:
         for setting_key, env_key in token_tracking_settings.items():
             if setting_key in system_settings:
                 value = system_settings[setting_key]
-                os.environ[env_key] = (
-                    str(value).lower() if isinstance(value, bool) else str(value)
+                _set_bridged_env(
+                    env_key, str(value).lower() if isinstance(value, bool) else value
                 )
                 logger.info(f"  ✓ 桥接 {env_key}: {value}")
                 bridged_count += 1
@@ -464,13 +484,15 @@ def _bridge_system_settings() -> int:
 
         # 时区配置
         if "app_timezone" in system_settings:
-            os.environ["APP_TIMEZONE"] = system_settings["app_timezone"]
+            _set_bridged_env("APP_TIMEZONE", system_settings["app_timezone"])
             logger.debug(f"  ✓ 桥接 APP_TIMEZONE: {system_settings['app_timezone']}")
             bridged_count += 1
 
         # 货币偏好
         if "currency_preference" in system_settings:
-            os.environ["CURRENCY_PREFERENCE"] = system_settings["currency_preference"]
+            _set_bridged_env(
+                "CURRENCY_PREFERENCE", system_settings["currency_preference"]
+            )
             logger.debug(
                 f"  ✓ 桥接 CURRENCY_PREFERENCE: {system_settings['currency_preference']}"
             )
@@ -534,7 +556,7 @@ def get_bridged_api_key(provider: str) -> Optional[str]:
         API 密钥，如果不存在返回 None
     """
     env_key = f"{provider.upper()}_API_KEY"
-    return os.environ.get(env_key)
+    return _configured_text(env_key) or None
 
 
 def get_bridged_model(model_type: str = "default") -> Optional[str]:
@@ -548,11 +570,11 @@ def get_bridged_model(model_type: str = "default") -> Optional[str]:
         模型名称，如果不存在返回 None
     """
     if model_type == "quick":
-        return os.environ.get("TRADING_AGENTS_QUICK_MODEL")
+        return _configured_text("TRADING_AGENTS_QUICK_MODEL") or None
     elif model_type == "deep":
-        return os.environ.get("TRADING_AGENTS_DEEP_MODEL")
+        return _configured_text("TRADING_AGENTS_DEEP_MODEL") or None
     else:
-        return os.environ.get("TRADING_AGENTS_DEFAULT_MODEL")
+        return _configured_text("TRADING_AGENTS_DEFAULT_MODEL") or None
 
 
 def clear_bridged_config():
@@ -604,9 +626,8 @@ def clear_bridged_config():
     keys_to_clear.extend(ta_runtime_keys)
 
     for key in keys_to_clear:
-        if key in os.environ:
-            del os.environ[key]
-            logger.debug(f"  清除环境变量: {key}")
+        _delete_bridged_env(key)
+        logger.debug(f"  清除环境变量: {key}")
 
     logger.info("✅ 已清除所有桥接的配置")
 

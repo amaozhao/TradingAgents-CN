@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 import streamlit as st
+from app.core.config import settings
 from ..components.form import render_form
 from ..components.header import render_header
 from ..components.login import (
@@ -23,7 +24,6 @@ from ..components.login import (
 from ..components.progress import display_unified_progress
 from ..components.result import render_results
 from ..components.sidebar import render_sidebar
-from dotenv import load_dotenv
 from ..utils.activity import activity
 from ..utils.analysis import run_stock_analysis, validate_analysis_params
 from ..utils.api import check_api_keys
@@ -42,7 +42,6 @@ except ImportError:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("web")
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-load_dotenv(PROJECT_ROOT / ".env", override=True)
 st.set_page_config(
     page_title="TradingAgents-CN 股票分析平台",
     page_icon="📈",

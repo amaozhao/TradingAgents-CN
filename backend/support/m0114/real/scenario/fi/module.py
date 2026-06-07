@@ -6,11 +6,11 @@
 
 import importlib
 import logging
-import os
 import sys
 
 from trader.agents.utils.google import GoogleToolCallHandler
 from trader.default import DEFAULT_CONFIG
+from app.core.config import settings as app_settings
 
 # 设置日志
 logging.basicConfig(
@@ -26,8 +26,8 @@ def test_configuration_status():
     print("=" * 60)
 
     # 检查环境变量
-    openai_enabled = os.getenv("OPENAI_ENABLED", "true").lower() == "true"
-    openai_api_key = os.getenv("OPENAI_API_KEY", "")
+    openai_enabled = app_settings.text_value("OPENAI_ENABLED", "true").lower() == "true"
+    openai_api_key = app_settings.text_value("OPENAI_API_KEY", "")
 
     print(f"🔑 OPENAI_API_KEY: {'已设置' if openai_api_key else '未设置'}")
     print(f"🔌 OPENAI_ENABLED: {openai_enabled}")

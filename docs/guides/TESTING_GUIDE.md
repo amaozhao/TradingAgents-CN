@@ -22,7 +22,7 @@ env\Scripts\activate  # Windows
 pip install -e backend
 
 # 4. 配置环境变量
-cp .env.example .env
+cp backend/.env.example backend/.env
 ```
 
 ### 第二步：获取DeepSeek API密钥
@@ -31,7 +31,7 @@ cp .env.example .env
 2. 注册账号（支持手机号注册）
 3. 进入控制台 → API Keys
 4. 创建新的API Key
-5. 复制API Key到.env文件：
+5. 复制API Key到 `backend/.env` 文件：
    ```bash
    DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    DEEPSEEK_ENABLED=true

@@ -50,11 +50,11 @@ def config():
     api_keys_table.add_column("说明 | Description")
 
     # 检查各个API密钥
-    dashscope_key = os.getenv("DASHSCOPE_API_KEY")
-    openai_key = os.getenv("OPENAI_API_KEY")
-    finnhub_key = os.getenv("FINNHUB_API_KEY")
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-    google_key = os.getenv("GOOGLE_API_KEY")
+    dashscope_key = settings.DASHSCOPE_API_KEY
+    openai_key = settings.OPENAI_API_KEY
+    finnhub_key = settings.FINNHUB_API_KEY
+    anthropic_key = settings.ANTHROPIC_API_KEY
+    google_key = settings.GOOGLE_API_KEY
 
     api_keys_table.add_row(
         "DASHSCOPE_API_KEY",
@@ -95,7 +95,7 @@ def config():
     console.print(api_keys_table)
 
     logger.info("\n[yellow]配置API密钥 | Configure API Keys:[/yellow]")
-    logger.info("1. 编辑项目根目录的 .env 文件 | Edit .env file in project root")
+    logger.info("1. 编辑 backend/.env 文件 | Edit backend/.env")
     logger.info("2. 或设置环境变量 | Or set environment variables:")
     logger.info("   - DASHSCOPE_API_KEY (阿里百炼)")
     logger.info("   - OPENAI_API_KEY (OpenAI)")
@@ -257,9 +257,9 @@ def data_config(
     env_table.add_column("值 | Value", style="green")
 
     env_vars = {
-        "TRADING_AGENTS_DATA_DIR": os.getenv("TRADING_AGENTS_DATA_DIR", "未设置"),
-        "TRADING_AGENTS_CACHE_DIR": os.getenv("TRADING_AGENTS_CACHE_DIR", "未设置"),
-        "TRADING_AGENTS_RESULTS_DIR": os.getenv("TRADING_AGENTS_RESULTS_DIR", "未设置"),
+        "TRADING_AGENTS_DATA_DIR": settings.TRADING_AGENTS_DATA_DIR or "未设置",
+        "TRADING_AGENTS_CACHE_DIR": settings.TRADING_AGENTS_CACHE_DIR or "未设置",
+        "TRADING_AGENTS_RESULTS_DIR": settings.TRADING_AGENTS_RESULTS_DIR or "未设置",
     }
 
     for var, value in env_vars.items():

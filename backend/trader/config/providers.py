@@ -6,8 +6,9 @@
 """
 
 import logging
-import os
 from typing import Any, Dict
+
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class DataSourceConfig:
         # Tushare配置
         self._configs["tushare"] = {
             "enabled": self._get_bool_env("TUSHARE_ENABLED", True),
-            "token": os.getenv("TUSHARE_TOKEN", ""),
+            "token": settings.TUSHARE_TOKEN,
             "timeout": self._get_int_env("TUSHARE_TIMEOUT", 30),
             "rate_limit": self._get_float_env("TUSHARE_RATE_LIMIT", 0.1),
             "max_retries": self._get_int_env("TUSHARE_MAX_RETRIES", 3),
@@ -65,7 +66,7 @@ class DataSourceConfig:
         # Finnhub配置
         self._configs["finnhub"] = {
             "enabled": self._get_bool_env("FINNHUB_ENABLED", False),
-            "api_key": os.getenv("FINNHUB_API_KEY", ""),
+            "api_key": settings.FINNHUB_API_KEY,
             "timeout": self._get_int_env("FINNHUB_TIMEOUT", 30),
             "rate_limit": self._get_float_env("FINNHUB_RATE_LIMIT", 1.0),
             "max_retries": self._get_int_env("FINNHUB_MAX_RETRIES", 3),
@@ -111,20 +112,19 @@ class DataSourceConfig:
 
     def _get_bool_env(self, key: str, default: bool) -> bool:
         """获取布尔型环境变量"""
-        value = os.getenv(key, str(default)).lower()
-        return value in ("true", "1", "yes", "on")
+        return settings.bool_value(key, default)
 
     def _get_int_env(self, key: str, default: int) -> int:
         """获取整型环境变量"""
         try:
-            return int(os.getenv(key, str(default)))
+            return int(settings.value(key, default))
         except ValueError:
             return default
 
     def _get_float_env(self, key: str, default: float) -> float:
         """获取浮点型环境变量"""
         try:
-            return float(os.getenv(key, str(default)))
+            return float(settings.value(key, default))
         except ValueError:
             return default
 

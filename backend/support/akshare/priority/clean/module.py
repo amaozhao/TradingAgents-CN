@@ -9,6 +9,7 @@ import os
 import sys
 
 from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 project_root = str(BACKEND_ROOT)
 
@@ -64,7 +65,7 @@ def test_env_variable_directly():
 
     try:
         # 检查环境变量
-        env_value = os.getenv("DEFAULT_CHINA_DATA_SOURCE")
+        env_value = app_settings.text_value("DEFAULT_CHINA_DATA_SOURCE")
         print(f"📊 环境变量 DEFAULT_CHINA_DATA_SOURCE: {env_value}")
 
         # 检查.env文件
@@ -84,14 +85,8 @@ def test_env_variable_directly():
         else:
             print("📄 .env文件不存在")
 
-        # 手动加载.env文件
-        try:
-            load_dotenv = getattr(importlib.import_module("dotenv"), "load_dotenv")
-            load_dotenv()
-            env_value_after_load = os.getenv("DEFAULT_CHINA_DATA_SOURCE")
-            print(f"📊 加载.env后的环境变量: {env_value_after_load}")
-        except ImportError:
-            print("⚠️ python-dotenv未安装，无法自动加载.env文件")
+        env_value_after_load = app_settings.text_value("DEFAULT_CHINA_DATA_SOURCE")
+        print(f"📊 Settings 中的配置值: {env_value_after_load}")
 
         return True
 

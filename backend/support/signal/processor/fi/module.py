@@ -4,14 +4,10 @@
 """
 
 import importlib
-import os
 import sys
 
-from dotenv import load_dotenv
 
-from support.path import BACKEND_ROOT
-
-load_dotenv(BACKEND_ROOT / ".env", override=True)
+from app.core.config import settings as app_settings
 
 
 def test_signal_processor_currency_fix():
@@ -29,7 +25,7 @@ def test_signal_processor_currency_fix():
         llm = ChatOpenAI(
             model="qwen-turbo",
             openai_api_base="https://dashscope.aliyuncs.com/compatible-mode/v1",
-            openai_api_key=os.getenv("DASHSCOPE_API_KEY"),
+            openai_api_key=app_settings.text_value("DASHSCOPE_API_KEY"),
             temperature=0.1,
         )
 
@@ -136,7 +132,7 @@ if __name__ == "__main__":
     print("=" * 50)
 
     # 检查环境变量
-    if not os.getenv("DASHSCOPE_API_KEY"):
+    if not app_settings.text_value("DASHSCOPE_API_KEY"):
         print("❌ DASHSCOPE_API_KEY 环境变量未设置")
         sys.exit(1)
 

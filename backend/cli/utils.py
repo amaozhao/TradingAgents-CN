@@ -1,13 +1,13 @@
-import os
 import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import questionary
-from dotenv import find_dotenv, set_key
 from rich.console import Console
 
+from app.core.config import settings
+from app.core.runtime import apply_runtime_env
 from cli.models import AnalystType, AssetType
 from trader.llm.clients.keys import get_api_key_env
 from trader.llm.clients.models import get_model_options
@@ -17,6 +17,20 @@ from trader.utils.stocks import StockUtils
 
 logger = get_logger("cli")
 console = Console()
+_SESSION_CONFIG_OVERRIDES: dict[str, str] = {}
+_ENV_ASSIGNMENT_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=")
+_API_KEY_PLACEHOLDERS = {
+    "your_api_key_here",
+    "your_openai_api_key_here",
+    "your_deepseek_api_key_here",
+    "your_dashscope_api_key_here",
+    "your_google_api_key_here",
+    "your_anthropic_api_key_here",
+    "your_xai_api_key_here",
+    "your_openrouter_api_key_here",
+    "your_zhipu_api_key_here",
+    "your_minimax_api_key_here",
+}
 
 ANALYST_ORDER = [
     ("市场分析师 | Market Analyst", AnalystType.MARKET),
@@ -104,6 +118,31 @@ PROVIDER_OPTIONS: List[Dict[str, str]] = [
         "base_url": "https://api.siliconflow.cn/v1",
     },
 ]
+
+
+def _set_env_file_key(env_path: Path, key: str, value: str) -> None:
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    new_line = f'{key}="{escaped}"\n'
+    lines = env_path.read_text(encoding="utf-8").splitlines(keepends=True)
+
+    for index, line in enumerate(lines):
+        match = _ENV_ASSIGNMENT_RE.match(line)
+        if match and match.group(1) == key:
+            lines[index] = new_line
+            break
+    else:
+        if lines and not lines[-1].endswith(("\n", "\r")):
+            lines[-1] += "\n"
+        lines.append(new_line)
+
+    env_path.write_text("".join(lines), encoding="utf-8")
+
+
+def _is_placeholder_api_key(value: str | None) -> bool:
+    if value is None:
+        return True
+    normalized = value.strip().strip('"').strip("'")
+    return not normalized or normalized.lower() in _API_KEY_PLACEHOLDERS
 
 
 def normalize_ticker_symbol(ticker: str) -> str:
@@ -339,7 +378,7 @@ def provider_default_url(provider_key: str) -> str | None:
     if key == "google":
         return None
     if key == "ollama":
-        return os.environ.get("OLLAMA_BASE_URL") or default_backend_url(key)
+        return settings.OLLAMA_BASE_URL or default_backend_url(key)
 
     url = default_backend_url(key)
     if key == "azure" and not url:
@@ -353,13 +392,13 @@ def ensure_api_key(provider: str) -> str | None:
     if not env_var:
         return None
 
-    existing = os.environ.get(env_var)
-    if existing:
+    existing = _SESSION_CONFIG_OVERRIDES.get(env_var) or settings.text_value(env_var)
+    if existing and not _is_placeholder_api_key(existing):
         return existing
 
     console.print(f"\n[yellow]{env_var} 未设置 | {env_var} is not set.[/yellow]")
     key = questionary.password(
-        f"请输入 {env_var}，将保存到 .env | Paste {env_var} (will be saved to .env):",
+        f"请输入 {env_var}，将保存到 backend/.env | Paste {env_var} (will be saved to backend/.env):",
         style=questionary.Style(
             [
                 ("text", "fg:green"),
@@ -371,17 +410,18 @@ def ensure_api_key(provider: str) -> str | None:
         console.print(f"[red]跳过。API 调用会在设置 {env_var} 前失败。[/red]")
         return None
 
-    env_path = find_dotenv(usecwd=True) or str(Path.cwd() / ".env")
-    Path(env_path).touch(exist_ok=True)
-    set_key(env_path, env_var, key)
-    os.environ[env_var] = key
+    env_path = Path(__file__).resolve().parents[1] / ".env"
+    env_path.touch(exist_ok=True)
+    _set_env_file_key(env_path, env_var, key)
+    _SESSION_CONFIG_OVERRIDES[env_var] = key
+    apply_runtime_env({env_var: key})
     console.print(f"[green]已保存 {env_var} 到 {env_path}[/green]")
     return key
 
 
 def confirm_ollama_endpoint(url: str) -> None:
     """Print a concise confirmation and soft validation for the Ollama endpoint."""
-    from_env = os.environ.get("OLLAMA_BASE_URL")
+    from_env = settings.OLLAMA_BASE_URL
     origin = " (from OLLAMA_BASE_URL)" if from_env and from_env == url else ""
     console.print(f"Using Ollama at {url}{origin}")
 
@@ -469,7 +509,8 @@ def select_llm_provider() -> tuple[str, str]:
             exit(1)
 
         url = custom_url.strip()
-        os.environ["CUSTOM_OPENAI_BASE_URL"] = url
+        _SESSION_CONFIG_OVERRIDES["CUSTOM_OPENAI_BASE_URL"] = url
+        apply_runtime_env({"CUSTOM_OPENAI_BASE_URL": url})
 
     logger.info(f"已选择LLM提供商 | Selected provider: {provider_key}\tURL: {url}")
     return provider_key, url

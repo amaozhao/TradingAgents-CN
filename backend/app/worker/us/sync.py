@@ -57,9 +57,8 @@ class USSyncService:
         if self._finnhub_client is None:
             try:
                 finnhub = importlib.import_module("finnhub")
-                os = importlib.import_module("os")
 
-                api_key = os.getenv("FINNHUB_API_KEY")
+                api_key = settings.FINNHUB_API_KEY
                 if not api_key:
                     logger.warning("⚠️ 未配置 FINNHUB_API_KEY，无法使用 Finnhub 数据源")
                     return None

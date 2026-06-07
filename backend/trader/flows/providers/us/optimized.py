@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import yfinance as yf
 
+from app.core.config import settings
 from trader.config.runtime import get_float, get_timezone_name
 from trader.utils.logging.manager import get_logger
 
@@ -434,12 +435,11 @@ class OptimizedUSDataProvider:
         """从FINNHUB API获取股票数据"""
         try:
             finnhub = importlib.import_module("finnhub")
-            os = importlib.import_module("os")
             datetime = getattr(importlib.import_module("datetime"), "datetime")
             getattr(importlib.import_module("datetime"), "timedelta")
 
             # 获取API密钥
-            api_key = os.getenv("FINNHUB_API_KEY")
+            api_key = settings.FINNHUB_API_KEY
             if not api_key:
                 return None
 

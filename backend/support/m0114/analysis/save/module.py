@@ -6,6 +6,7 @@
 
 import importlib
 from datetime import datetime
+from app.core.config import settings as app_settings
 
 
 def create_mock_analysis_results():
@@ -123,7 +124,7 @@ def test_save_analysis_result():
 
             # 获取项目根目录
             project_root = Path(__file__).parent
-            results_dir_env = os.getenv(
+            results_dir_env = app_settings.text_value(
                 "TRADING_AGENTS_RESULTS_DIR", "./data/analysis_results"
             )
 

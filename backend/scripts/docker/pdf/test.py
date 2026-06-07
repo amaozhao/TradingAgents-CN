@@ -17,10 +17,9 @@ def test_docker_environment():
         )
         is_docker = is_docker_environment()
         print(f"Docker环境: {'是' if is_docker else '否'}")
-        return is_docker
     except ImportError as e:
         print(f"❌ 导入Docker适配器失败: {e}")
-        return False
+        return
 
 
 def test_docker_dependencies():
@@ -33,10 +32,9 @@ def test_docker_dependencies():
         )
         deps_ok, message = check_docker_pdf_dependencies()
         print(f"依赖检查: {'✅' if deps_ok else '❌'} {message}")
-        return deps_ok
     except ImportError as e:
         print(f"❌ 导入Docker适配器失败: {e}")
-        return False
+        return
 
 
 def test_docker_pdf_generation():
@@ -49,10 +47,9 @@ def test_docker_pdf_generation():
         )
         pdf_ok = test_docker_pdf_generation()
         print(f"PDF生成: {'✅' if pdf_ok else '❌'}")
-        return pdf_ok
     except ImportError as e:
         print(f"❌ 导入Docker适配器失败: {e}")
-        return False
+        return
 
 
 def test_report_exporter():
@@ -100,17 +97,15 @@ def test_report_exporter():
             try:
                 pdf_content = exporter.generate_pdf_report(test_results)
                 print(f"Docker PDF生成: ✅ ({len(pdf_content)} 字节)")
-                return True
             except Exception as e:
                 print(f"Docker PDF生成: ❌ {e}")
-                return False
+                return
         else:
             print("跳过PDF测试 (非Docker环境或pandoc不可用)")
-            return True
 
     except Exception as e:
         print(f"❌ 报告导出器测试失败: {e}")
-        return False
+        return
 
 
 def main():

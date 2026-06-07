@@ -1,5 +1,6 @@
 # ruff: noqa: F403,F405
 from .common import *
+from app.core.config import settings as app_settings
 
 
 class ConfigManagerBaseMixin:
@@ -12,7 +13,7 @@ class ConfigManagerBaseMixin:
         self.usage_file = self.config_dir / "usage.json"
         self.settings_file = self.config_dir / "settings.json"
 
-        # 加载.env文件（保持向后兼容）
+        # Settings 在 app.core.config 中统一加载 backend/.env
         self._load_env_file()
 
         # 初始化PostgreSQL token 存储（如果可用）
@@ -22,23 +23,14 @@ class ConfigManagerBaseMixin:
         self._init_default_configs()
 
     def _load_env_file(self):
-        """加载.env文件（保持向后兼容）"""
-        # 尝试从项目根目录加载.env文件
-        project_root = Path(__file__).resolve().parents[3]
-        env_file = project_root / ".env"
+        """记录 Settings 配置文件状态。"""
+        backend_root = Path(__file__).resolve().parents[3]
+        env_file = backend_root / ".env"
 
         if env_file.exists():
-            # 🔧 [修复] override=False 确保环境变量优先级高于 .env 文件
-            # 这样 Docker 容器中的环境变量不会被 .env 文件中的占位符覆盖
-            logger.info(f"🔍 [ConfigManager] 加载 .env 文件: {env_file}")
+            logger.info(f"🔍 [ConfigManager] 使用 Settings 配置文件: {env_file}")
             logger.info(
-                f"🔍 [ConfigManager] 加载前 DASHSCOPE_API_KEY: {'有值' if os.getenv('DASHSCOPE_API_KEY') else '空'}"
-            )
-
-            load_dotenv(env_file, override=False)
-
-            logger.info(
-                f"🔍 [ConfigManager] 加载后 DASHSCOPE_API_KEY: {'有值' if os.getenv('DASHSCOPE_API_KEY') else '空'}"
+                f"🔍 [ConfigManager] DASHSCOPE_API_KEY: {'有值' if app_settings.DASHSCOPE_API_KEY else '空'}"
             )
 
     def _get_env_api_key(self, provider: str) -> str:
@@ -53,7 +45,7 @@ class ConfigManagerBaseMixin:
 
         env_key = env_key_map.get(provider.lower())
         if env_key:
-            api_key = os.getenv(env_key, "")
+            api_key = app_settings.text_value(env_key)
             # 对OpenAI密钥进行格式验证（始终启用）
             if provider.lower() == "openai" and api_key:
                 if not self.validate_openai_api_key_format(api_key):
@@ -100,6 +92,7 @@ class ConfigManagerBaseMixin:
     def _init_postgres_storage(self):
         """初始化PostgreSQL token 存储"""
         logger.info("🔧 [ConfigManager] 开始初始化 PostgreSQL token 存储...")
+        self.close_postgres_storage()
 
         if not POSTGRES_AVAILABLE:
             logger.warning(
@@ -108,8 +101,8 @@ class ConfigManagerBaseMixin:
             return
 
         # 检查是否启用 PostgreSQL token 存储。
-        use_postgres_env = os.getenv("USE_POSTGRES_STORAGE", "false")
-        use_postgres = use_postgres_env.lower() == "true"
+        use_postgres = app_settings.USE_POSTGRES_STORAGE
+        use_postgres_env = str(use_postgres).lower()
 
         logger.info(
             f"🔍 [ConfigManager] USE_POSTGRES_STORAGE={use_postgres_env} (解析为: {use_postgres})"
@@ -122,7 +115,7 @@ class ConfigManagerBaseMixin:
             return
 
         try:
-            database_name = os.getenv("POSTGRES_DB", "trading_agents")
+            database_name = app_settings.POSTGRES_DB
 
             logger.info(f"🔍 [ConfigManager] POSTGRES_DB={database_name}")
 
@@ -146,3 +139,14 @@ class ConfigManagerBaseMixin:
                 exc_info=True,
             )
             self.postgres_storage = None
+
+    def close_postgres_storage(self) -> None:
+        """关闭PostgreSQL token 存储连接"""
+        storage = getattr(self, "postgres_storage", None)
+        if storage is None:
+            return
+
+        close = getattr(storage, "close", None)
+        if close is not None:
+            close()
+        self.postgres_storage = None

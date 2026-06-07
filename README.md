@@ -167,7 +167,7 @@ docker compose -f deploy/docker/compose/docker-compose.yml up -d
 docker compose -f deploy/docker/compose/docker-compose.hub.nginx.yml up -d
 ```
 
-Docker 默认读取 `deploy/env/docker.env`。配置真实密钥时，可以先复制一份本地 `.env`，或在启动命令前通过环境变量覆盖对应值。
+Docker 默认读取 `deploy/env/docker.env`。本地后端开发配置请使用 `backend/.env`；容器部署如果需要使用同一份本地密钥，可以在命令中追加 `--env-file backend/.env` 或通过环境变量覆盖对应值。
 
 目录归属说明见：[仓库目录结构](./docs/repo-structure.md)。
 

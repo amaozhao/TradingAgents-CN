@@ -414,10 +414,9 @@ class ForeignStockQuoteMixin:
         """从Finnhub获取美股行情"""
         try:
             finnhub = importlib.import_module("finnhub")
-            os = importlib.import_module("os")
 
             # 获取 API Key
-            api_key = os.getenv("FINNHUB_API_KEY")
+            api_key = settings.FINNHUB_API_KEY
             if not api_key:
                 raise Exception("Finnhub API Key 未配置")
 

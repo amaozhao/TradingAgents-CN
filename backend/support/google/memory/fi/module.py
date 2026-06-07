@@ -6,12 +6,11 @@
 import importlib
 import os
 
-from dotenv import load_dotenv
 
 from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def test_google_memory_fixed():
@@ -29,8 +28,8 @@ def test_google_memory_fixed():
         )
 
         # 检查API密钥
-        google_key = os.getenv("GOOGLE_API_KEY")
-        dashscope_key = os.getenv("DASHSCOPE_API_KEY")
+        google_key = app_settings.text_value("GOOGLE_API_KEY")
+        dashscope_key = app_settings.text_value("DASHSCOPE_API_KEY")
 
         print("🔑 API密钥状态:")
         print(f"   Google API: {'✅ 已配置' if google_key else '❌ 未配置'}")
@@ -118,8 +117,8 @@ def test_google_trading_agents_with_memory():
         )
 
         # 检查API密钥
-        google_key = os.getenv("GOOGLE_API_KEY")
-        dashscope_key = os.getenv("DASHSCOPE_API_KEY")
+        google_key = app_settings.text_value("GOOGLE_API_KEY")
+        dashscope_key = app_settings.text_value("DASHSCOPE_API_KEY")
 
         if not google_key:
             print("❌ Google API密钥未配置")

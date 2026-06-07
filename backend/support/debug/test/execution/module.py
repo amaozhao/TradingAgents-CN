@@ -8,6 +8,7 @@ import importlib
 import os
 import sys
 import traceback
+from app.core.config import settings as app_settings
 
 
 def step1_basic_check():
@@ -19,7 +20,7 @@ def step1_basic_check():
         print(f"✅ Python版本: {sys.version}")
         print(f"✅ Python路径: {sys.executable}")
         print(f"✅ 工作目录: {os.getcwd()}")
-        print(f"✅ 虚拟环境: {os.environ.get('VIRTUAL_ENV', '未激活')}")
+        print(f"✅ 虚拟环境: {app_settings.text_value('VIRTUAL_ENV', '未激活')}")
         return True
     except Exception as e:
         print(f"❌ 基本检查失败: {e}")
@@ -91,7 +92,7 @@ def step4_env_check():
         env_vars = ["DASHSCOPE_API_KEY", "TUSHARE_TOKEN", "OPENAI_API_KEY"]
 
         for var in env_vars:
-            value = os.getenv(var)
+            value = app_settings.text_value(var)
             if value:
                 print(f"✅ {var}: 已设置 ({value[:10]}...)")
             else:
@@ -110,7 +111,7 @@ def step5_simple_llm_test():
 
     try:
         # 检查API密钥
-        api_key = os.getenv("DASHSCOPE_API_KEY")
+        api_key = app_settings.text_value("DASHSCOPE_API_KEY")
         if not api_key:
             print("⚠️ DASHSCOPE_API_KEY未设置，跳过LLM测试")
             return True
@@ -140,7 +141,7 @@ def step6_tool_binding_test():
 
     try:
         # 检查API密钥
-        api_key = os.getenv("DASHSCOPE_API_KEY")
+        api_key = app_settings.text_value("DASHSCOPE_API_KEY")
         if not api_key:
             print("⚠️ DASHSCOPE_API_KEY未设置，跳过工具绑定测试")
             return True
@@ -177,7 +178,7 @@ def step7_actual_call_test():
 
     try:
         # 检查API密钥
-        api_key = os.getenv("DASHSCOPE_API_KEY")
+        api_key = app_settings.text_value("DASHSCOPE_API_KEY")
         if not api_key:
             print("⚠️ DASHSCOPE_API_KEY未设置，跳过实际调用测试")
             return True

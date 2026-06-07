@@ -4,9 +4,9 @@ class _RealtimeNewsAggregatorMixin1:
         self.headers = {"User-Agent": "TradingAgents-CN/1.0"}
 
         # API密钥配置
-        self.finnhub_key = os.getenv("FINNHUB_API_KEY")
-        self.alpha_vantage_key = os.getenv("ALPHA_VANTAGE_API_KEY")
-        self.newsapi_key = os.getenv("NEWSAPI_KEY")
+        self.finnhub_key = settings.FINNHUB_API_KEY
+        self.alpha_vantage_key = settings.ALPHA_VANTAGE_API_KEY
+        self.newsapi_key = settings.NEWSAPI_KEY
 
     def get_realtime_stock_news(
         self, ticker: str, hours_back: int = 6, max_news: int = 10

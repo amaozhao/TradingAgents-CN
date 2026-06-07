@@ -7,10 +7,8 @@ import asyncio
 import importlib
 import time
 
-from dotenv import load_dotenv
 
 # 加载环境变量
-load_dotenv()
 
 
 async def test_enhanced_screening():

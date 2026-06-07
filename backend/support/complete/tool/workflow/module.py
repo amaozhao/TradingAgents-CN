@@ -4,12 +4,10 @@
 """
 
 import importlib
-import os
 
-from dotenv import load_dotenv
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv()
 
 
 def test_deepseek_complete_workflow():
@@ -157,7 +155,7 @@ def test_dashscope_react_agent():
         BaseTool = getattr(importlib.import_module("langchain_core.tools"), "BaseTool")
 
         # 检查是否有百炼API密钥
-        if not os.getenv("DASHSCOPE_API_KEY"):
+        if not app_settings.text_value("DASHSCOPE_API_KEY"):
             print("⚠️ 未找到DASHSCOPE_API_KEY，跳过百炼测试")
             return None
 

@@ -4,7 +4,7 @@
 """
 
 import importlib
-import os
+from app.core.config import settings as app_settings
 
 
 def test_finnhub_api():
@@ -12,7 +12,7 @@ def test_finnhub_api():
     print("🔍 测试FINNHUB API连接...")
 
     # 检查API密钥
-    finnhub_key = os.getenv("FINNHUB_API_KEY")
+    finnhub_key = app_settings.text_value("FINNHUB_API_KEY")
     if not finnhub_key:
         print("❌ 请设置 FINNHUB_API_KEY 环境变量")
         return False

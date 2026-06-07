@@ -87,10 +87,45 @@ def reset_postgres_state_for_tests() -> None:
 
 async def _dispose_state(state: PostgresSessionState) -> None:
     current_loop = asyncio.get_running_loop()
-    if state.loop is current_loop or not state.loop.is_running():
-        await state.engine.dispose()
+    if state.loop is current_loop:
+        await _dispose_engine_and_drain(state.engine)
         return
 
-    await asyncio.wrap_future(
-        asyncio.run_coroutine_threadsafe(state.engine.dispose(), state.loop)
-    )
+    if state.loop.is_closed():
+        await _dispose_engine(state.engine, close=False)
+        return
+
+    if state.loop.is_running():
+        await asyncio.wrap_future(
+            asyncio.run_coroutine_threadsafe(
+                _dispose_engine_and_drain(state.engine), state.loop
+            )
+        )
+        return
+
+    await asyncio.to_thread(_dispose_state_on_owner_loop, state)
+
+
+async def _dispose_engine_and_drain(engine: AsyncEngine, *, close: bool = True) -> None:
+    await _dispose_engine(engine, close=close)
+    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
+
+
+async def _dispose_engine(engine: AsyncEngine, *, close: bool = True) -> None:
+    if close:
+        await engine.dispose()
+        return
+
+    try:
+        await engine.dispose(close=False)
+    except TypeError:
+        await engine.dispose()
+
+
+def _dispose_state_on_owner_loop(state: PostgresSessionState) -> None:
+    asyncio.set_event_loop(state.loop)
+    try:
+        state.loop.run_until_complete(_dispose_engine_and_drain(state.engine))
+    finally:
+        asyncio.set_event_loop(None)

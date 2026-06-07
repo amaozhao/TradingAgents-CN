@@ -175,8 +175,8 @@ class _DataSourceManagerMixin1:
         if self.use_postgres_cache:
             return ChinaDataSource.POSTGRES
 
-        # 从环境变量获取，默认使用AKShare作为第一优先级数据源
-        env_source = os.getenv(
+        # 从 Settings 获取，默认使用AKShare作为第一优先级数据源
+        env_source = settings.text_value(
             "DEFAULT_CHINA_DATA_SOURCE", DataSourceCode.AKSHARE.value
         ).lower()
 
@@ -465,10 +465,11 @@ class _DataSourceManagerMixin1:
         if "tushare" in enabled_sources_in_db:
             try:
                 importlib.import_module("tushare")
-                # 优先从数据库配置读取 API Key，其次从环境变量读取
-                token = datasource_configs.get("tushare", {}).get(
-                    "api_key"
-                ) or os.getenv("TUSHARE_TOKEN")
+                # 优先从数据库配置读取 API Key，其次从 Settings 读取
+                token = (
+                    datasource_configs.get("tushare", {}).get("api_key")
+                    or settings.TUSHARE_TOKEN
+                )
                 if token:
                     available.append(ChinaDataSource.TUSHARE)
                     source = (

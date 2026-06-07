@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, cast
 
 import pandas as pd
 
+from app.core.config import settings
 from ...base import BaseStockDataProvider
 
 logger = logging.getLogger(__name__)

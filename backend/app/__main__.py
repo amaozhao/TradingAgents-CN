@@ -4,13 +4,18 @@ AGENTrader Backend Entry Point
 """
 
 import importlib
-import os
+import ctypes
+import io
+import logging
 import sys
+import traceback
 from pathlib import Path
 
 import uvicorn
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+from app.core.runtime import apply_runtime_env
+
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 # ============================================================================
 # 全局 UTF-8 编码设置（必须在最开始，支持 emoji 和中文）
@@ -18,11 +23,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if sys.platform == "win32":
     try:
         # 1. 设置环境变量，让 Python 全局使用 UTF-8
-        os.environ["PYTHONIOENCODING"] = "utf-8"
-        os.environ["PYTHONUTF8"] = "1"
-
-        # 2. 设置标准输出和错误输出为 UTF-8
-        import io
+        apply_runtime_env({"PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"})
 
         sys.stdout = io.TextIOWrapper(
             sys.stdout.buffer, encoding="utf-8", errors="replace"
@@ -33,8 +34,6 @@ if sys.platform == "win32":
 
         # 3. 尝试设置控制台代码页为 UTF-8 (65001)
         try:
-            import ctypes
-
             ctypes.windll.kernel32.SetConsoleCP(65001)
             ctypes.windll.kernel32.SetConsoleOutputCP(65001)
         except Exception:
@@ -48,7 +47,6 @@ if sys.platform == "win32":
 # 检查并打印.env文件加载信息
 def check_env_file():
     """检查并打印.env文件加载信息"""
-    logging = importlib.import_module("logging")
     logger = logging.getLogger("app.startup")
 
     logger.info("🔍 检查环境配置文件...")
@@ -57,13 +55,13 @@ def check_env_file():
     current_dir = Path.cwd()
     logger.info(f"📂 当前工作目录: {current_dir}")
 
-    # 检查项目根目录
-    logger.info(f"📂 项目根目录: {PROJECT_ROOT}")
+    # 检查后端目录
+    logger.info(f"📂 后端目录: {BACKEND_ROOT}")
 
     # 检查可能的.env文件位置（按优先级排序）
     env_locations = [
-        PROJECT_ROOT / ".env",  # 优先：项目根目录（标准位置）
-        current_dir / ".env",  # 次选：当前工作目录
+        BACKEND_ROOT / ".env",  # 优先：后端目录（标准位置）
+        current_dir / "backend" / ".env",  # 次选：从仓库根目录启动
         Path(__file__).parent / ".env",  # 最后：app目录下（不推荐）
     ]
 
@@ -103,7 +101,7 @@ def check_env_file():
 
     if not env_found:
         logger.warning("⚠️ 未找到.env文件，将使用默认配置")
-        logger.info(f"💡 提示: 请在项目根目录 ({PROJECT_ROOT}) 创建 .env 文件")
+        logger.info(f"💡 提示: 请在后端目录 ({BACKEND_ROOT}) 创建 .env 文件")
 
     logger.info("-" * 50)
 
@@ -112,8 +110,6 @@ try:
     from app.core.config import settings
     from app.core.dev import DEV_CONFIG
 except Exception as e:
-    import traceback
-
     print(f"❌ 导入配置模块失败: {e}")
     print("📋 详细错误信息:")
     print("-" * 50)
@@ -124,7 +120,6 @@ except Exception as e:
 
 def main():
     """主启动函数"""
-    logging = importlib.import_module("logging")
     logger = logging.getLogger("app.startup")
 
     logger.info("🚀 Starting AGENTrader Backend...")

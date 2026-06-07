@@ -1,8 +1,8 @@
 import json
-import os
 from datetime import datetime
 from io import StringIO
 
+from app.core.config import settings
 import pandas as pd
 import requests
 
@@ -21,12 +21,10 @@ class AlphaVantageNotConfiguredError(ValueError):
 
 
 def get_api_key() -> str:
-    """Retrieve the API key for Alpha Vantage from environment variables."""
-    api_key = os.getenv("ALPHA_VANTAGE_API_KEY")
+    """Retrieve the API key for Alpha Vantage from Settings."""
+    api_key = settings.ALPHA_VANTAGE_API_KEY
     if not api_key:
-        raise AlphaVantageNotConfiguredError(
-            "ALPHA_VANTAGE_API_KEY environment variable is not set."
-        )
+        raise AlphaVantageNotConfiguredError("ALPHA_VANTAGE_API_KEY is not configured.")
     return api_key
 
 

@@ -5,8 +5,8 @@ Tushare集成测试
 """
 
 import importlib
-import os
 from datetime import datetime, timedelta
+from app.core.config import settings as app_settings
 
 
 def test_tushare_provider():
@@ -266,7 +266,7 @@ def check_tushare_environment():
         return False
 
     # 检查API Token
-    token = os.getenv("TUSHARE_TOKEN")
+    token = app_settings.text_value("TUSHARE_TOKEN")
     if token:
         print("✅ TUSHARE_TOKEN环境变量已设置")
         print(f"🔑 Token长度: {len(token)}字符")

@@ -4,14 +4,11 @@
 """
 
 import importlib
-import os
 
-from dotenv import load_dotenv
 
-from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def test_dashscope_chinese():
@@ -119,7 +116,7 @@ def main():
     print("=" * 60)
 
     # 检查环境变量
-    if not os.getenv("DASHSCOPE_API_KEY"):
+    if not app_settings.text_value("DASHSCOPE_API_KEY"):
         print("❌ DASHSCOPE_API_KEY 环境变量未设置")
         return
 

@@ -6,12 +6,11 @@
 import importlib
 import os
 
-from dotenv import load_dotenv
 
 from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def test_recommended_model():
@@ -28,8 +27,8 @@ def test_recommended_model():
         )
 
         # 检查API密钥
-        google_key = os.getenv("GOOGLE_API_KEY")
-        dashscope_key = os.getenv("DASHSCOPE_API_KEY")
+        google_key = app_settings.text_value("GOOGLE_API_KEY")
+        dashscope_key = app_settings.text_value("DASHSCOPE_API_KEY")
 
         print("🔑 API密钥状态:")
         print(f"   Google API: {'✅ 已配置' if google_key else '❌ 未配置'}")

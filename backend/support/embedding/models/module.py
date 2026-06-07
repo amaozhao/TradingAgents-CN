@@ -4,14 +4,11 @@
 """
 
 import importlib
-import os
 
-from dotenv import load_dotenv
 
-from support.path import BACKEND_ROOT
+from app.core.config import settings as app_settings
 
 # 加载环境变量
-load_dotenv(BACKEND_ROOT / ".env", override=True)
 
 
 def test_embedding_selection():
@@ -106,7 +103,7 @@ def test_embedding_functionality():
     )
 
     # 测试阿里百炼嵌入
-    dashscope_key = os.getenv("DASHSCOPE_API_KEY")
+    dashscope_key = app_settings.text_value("DASHSCOPE_API_KEY")
     if dashscope_key:
         print("📊 测试阿里百炼嵌入功能")
         config = DEFAULT_CONFIG.copy()
@@ -126,7 +123,7 @@ def test_embedding_functionality():
     print()
 
     # 测试Google AI嵌入（会失败）
-    google_key = os.getenv("GOOGLE_API_KEY")
+    google_key = app_settings.text_value("GOOGLE_API_KEY")
     if google_key:
         print("📊 测试Google AI嵌入功能（预期失败）")
         config = DEFAULT_CONFIG.copy()

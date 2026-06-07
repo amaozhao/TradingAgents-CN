@@ -14,19 +14,11 @@ Usage:
 """
 
 import importlib
-import os
 import sys
 import time
 from typing import Optional
 
-# Try to load .env if python-dotenv is available
-try:
-    from dotenv import load_dotenv  # type: ignore
-
-    load_dotenv()
-except Exception:
-    pass
-
+from app.core.config import settings as app_settings
 from langchain_core.messages import HumanMessage
 
 from trader.llm.adapters.openai.base import (
@@ -35,7 +27,7 @@ from trader.llm.adapters.openai.base import (
 
 
 def getenv_stripped(key: str) -> Optional[str]:
-    val = os.getenv(key)
+    val = app_settings.text_value(key)
     return val.strip() if isinstance(val, str) else val
 
 
