@@ -104,23 +104,39 @@ FINNHUB_API_KEY=your_finnhub_api_key_here
 # Google AI (可选)
 GOOGLE_API_KEY=your_google_api_key_here
 
-# 数据库配置 (可选，默认禁用)
+# 数据库配置
 POSTGRES_ENABLED=true
-REDIS_ENABLED=false
+REDIS_ENABLED=true
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=trading_agents_cn
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=trading_agents123
 ```
 
 ## 第一次运行
 
-### 🌐 使用Web界面 (推荐)
+### 🌐 使用 Next.js Web 界面 (推荐)
 
-最简单的开始方式是使用Web管理界面：
+主 Web 界面由 FastAPI 后端和 Next.js 前端组成：
 
 ```bash
-# 启动Web界面
-streamlit run backend/web/app.py
+# 终端 1：启动 FastAPI 后端
+./backend/scripts/dev/start_backend.sh
+
+# 终端 2：启动 Next.js 前端
+cd frontend
+pnpm install
+pnpm dev --hostname 0.0.0.0 --port 3000
 ```
 
-然后在浏览器中访问 `http://localhost:8501`
+然后在浏览器中访问：
+
+- Web 界面：`http://localhost:3000`
+- API 文档：`http://localhost:8000/docs`
 
 Web界面提供：
 1. 🎛️ 直观的股票分析界面

@@ -68,7 +68,7 @@
 
 #### 🏗️ **全新技术架构**
 - **后端升级**: 从 Streamlit 迁移到 FastAPI，提供更强大的 RESTful API
-- **前端重构**: 采用 Vue 3 + Element Plus，打造现代化的单页应用
+- **前端重构**: 采用 Next.js App Router + React，Vue 3/Vite 版本保留在 `frontend-vue/` 作为回滚基线
 - **数据库优化**: PostgreSQL + Redis 双数据库架构，性能提升 10 倍
 - **容器化部署**: 完整的 Docker 多架构支持（amd64 + arm64）
 
@@ -114,7 +114,7 @@
 | 组件 | v0.1.x | v1.0.1 |
 |------|--------|----------------|
 | **后端框架** | Streamlit | FastAPI + Uvicorn |
-| **前端框架** | Streamlit | Vue 3 + Vite + Element Plus |
+| **前端框架** | Streamlit | Next.js 16 + React 19（旧 Vue 3/Vite 保留为回滚基线） |
 | **数据库** | 可选 PostgreSQL | PostgreSQL + Redis |
 | **API 架构** | 单体应用 | RESTful API + WebSocket |
 | **部署方式** | 本地/Docker | Docker 多架构 + GitHub Actions |
@@ -158,16 +158,16 @@ pnpm dev --hostname 0.0.0.0 --port 3000
 Docker 一体化启动：
 
 ```bash
-docker compose -f deploy/docker/compose/docker-compose.yml up -d
+docker compose --env-file backend/.env -f deploy/docker/compose/docker-compose.yml up -d
 ```
 
 带 Nginx 反向代理的部署：
 
 ```bash
-docker compose -f deploy/docker/compose/docker-compose.hub.nginx.yml up -d
+docker compose --env-file backend/.env -f deploy/docker/compose/docker-compose.hub.nginx.yml up -d
 ```
 
-Docker 默认读取 `deploy/env/docker.env`。本地后端开发配置请使用 `backend/.env`；容器部署如果需要使用同一份本地密钥，可以在命令中追加 `--env-file backend/.env` 或通过环境变量覆盖对应值。
+后端配置统一来自 `backend/.env`。Compose 会把该文件挂载到容器内的 `/app/backend/.env`，供 `app.core.config.Settings` 读取；容器部署时请确保其中的 `POSTGRES_HOST` 和 `REDIS_HOST` 使用 compose 服务名 `postgres` / `redis`。
 
 目录归属说明见：[仓库目录结构](./docs/repo-structure.md)。
 

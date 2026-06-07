@@ -1,217 +1,173 @@
-# TradingAgents 数据库配置指南
+# 数据库与缓存配置指南
 
-## 📋 概述
+本文档描述当前后端真实使用的 PostgreSQL、Redis、配置加载和迁移职责。
 
-TradingAgents现在支持PostgreSQL和Redis数据库，提供数据持久化存储和高性能缓存功能。
+## 当前架构
 
-## 🚀 快速启动
+后端以 PostgreSQL 作为主持久化存储，Redis 作为缓存、会话和实时通知辅助组件。
 
-### 1. 启动Docker服务
-
-```bash
-# Windows
-scripts\start_services_alt_ports.bat
-
-# Linux/Mac
-scripts/start_services_alt_ports.sh
+```text
+backend/app/
+  core/
+    config.py       pydantic-settings 配置入口，读取 backend/.env
+    session.py      SQLAlchemy async engine 和 session 生命周期
+    database.py     PostgreSQL 文档存储客户端和 Redis 连接生命周期
+    redis.py        Redis 客户端封装
+  models/           SQLAlchemy ORM 表模型
+  schemas/          Pydantic 请求/响应 DTO
+  db/               PostgreSQL 查询、写入和文档存储兼容层
+  db/store/         Mongo-like 文档接口，底层写入 PostgreSQL JSONB
+backend/alembic/    Alembic 迁移脚本
 ```
 
-### 2. 安装Python依赖
+职责边界：
+
+- `app.models` 只放 SQLAlchemy ORM 表模型。
+- `app.schemas` 只放 Pydantic 请求/响应 DTO。
+- `app.db` 是数据库访问层，不放迁移脚本。
+- 迁移属于 Alembic，统一放在 `backend/alembic/`。
+- 配置统一通过 `app.core.config.Settings` 加载，不在业务代码里新增分散的 `os.getenv` 读取。
+
+## 配置来源
+
+本地后端配置文件固定为 `backend/.env`：
 
 ```bash
-pip install asyncpg psycopg redis
+cp backend/.env.example backend/.env
 ```
 
-### 3. 初始化数据库
+后端启动时由 `app.core.config.Settings` 读取该文件。不要在仓库根目录新增 `.env`，也不要让业务代码绕过 `Settings` 手动解析环境变量。
 
-```bash
-python scripts/init_database.py
-```
+关键数据库配置示例：
 
-### 4. 启动Web应用
-
-```bash
-cd web
-python -m streamlit run app.py
-```
-
-## 🔧 服务配置
-
-### Docker服务端口
-
-由于本地环境端口冲突，使用了替代端口：
-
-| 服务 | 默认端口 | 实际端口 | 访问地址 |
-|------|----------|----------|----------|
-| PostgreSQL | 5432 | **5432** | localhost:5432 |
-| Redis | 6379 | **6380** | localhost:6380 |
-| Redis Commander | 8081 | **8082** | http://localhost:8082 |
-
-### 认证信息
-
-- **用户名**: postgres
-- **密码**: trading_agents123
-- **数据库**: trading_agents
-
-## 📊 数据库结构
-
-### PostgreSQL 表
-
-1. **stock_data** - 股票历史数据
-   - 索引: (symbol, market_type), created_at, updated_at
-
-2. **analysis_results** - 分析结果
-   - 索引: (symbol, analysis_type), created_at
-
-3. **user_sessions** - 用户会话
-   - 索引: session_id, created_at, last_activity
-
-4. **configurations** - 系统配置
-   - 索引: (config_type, config_name), updated_at
-
-### Redis缓存结构
-
-- **键前缀**: `trading_agents:`
-- **TTL配置**:
-  - 美股数据: 2小时
-  - A股数据: 1小时
-  - 新闻数据: 4-6小时
-  - 基本面数据: 12-24小时
-
-## 🛠️ 管理工具
-
-### Redis Commander
-- 访问地址: http://localhost:8082
-- 功能: Redis数据可视化管理
-
-### 缓存管理页面
-- 访问地址: http://localhost:8501 -> 缓存管理
-- 功能: 缓存统计、清理、测试
-
-## 📝 配置文件
-
-### 环境变量 (.env)
-
-```bash
-# PostgreSQL配置
+```env
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=trading_agents123
+POSTGRES_PASSWORD=postgres
 POSTGRES_DB=trading_agents_cn
+POSTGRES_POOL_SIZE=10
+POSTGRES_MAX_OVERFLOW=20
+POSTGRES_POOL_TIMEOUT=30
+POSTGRES_POOL_RECYCLE=1800
+POSTGRES_ECHO=false
+POSTGRES_DUAL_WRITE_ENABLED=true
+POSTGRES_READ_ENABLED=true
+POSTGRES_DUAL_WRITE_FAIL_OPEN=true
+SYNC_STOCK_BASICS_ENABLED=true
 
-# Redis配置
 REDIS_HOST=localhost
-REDIS_PORT=6380
+REDIS_PORT=6379
 REDIS_PASSWORD=trading_agents123
 REDIS_DB=0
 ```
 
-### 默认配置 (default_config.py)
+如果后端也运行在 Docker Compose 容器内，应把连接主机名改为服务名：
 
-数据库配置已集成到默认配置中，支持环境变量覆盖。
+```env
+POSTGRES_HOST=postgres
+REDIS_HOST=redis
+```
 
-## 🔍 故障排除
+Docker Compose 中：
 
-### 常见问题
+- `postgres`、`redis` 和 `backend` 服务都读取 `backend/.env`。
+- `backend` 服务会把宿主机 `backend/.env` 挂载到容器内 `/app/backend/.env`，供 `app.core.config.Settings` 读取。
+- 容器部署时，`backend/.env` 中的 `POSTGRES_HOST` 和 `REDIS_HOST` 应使用 compose 服务名 `postgres` / `redis`。
 
-1. **端口冲突**
-   ```bash
-   # 检查端口占用
-   netstat -an | findstr :5432
-   netstat -an | findstr :6380
-   ```
+## 启动本地依赖服务
 
-2. **连接失败**
-   ```bash
-   # 检查Docker容器状态
-   docker ps --filter "name=trading-agents-"
-
-   # 查看容器日志
-   docker logs trading-agents-postgres
-   docker logs trading-agents-redis
-   ```
-
-3. **权限问题**
-   ```bash
-   # 重启容器
-   docker restart trading-agents-postgres trading-agents-redis
-   ```
-
-### 重置数据库
+只启动 PostgreSQL 和 Redis：
 
 ```bash
-# 停止并删除容器
-docker stop trading-agents-postgres trading-agents-redis trading-agents-redis-commander
-docker rm trading-agents-postgres trading-agents-redis trading-agents-redis-commander
-
-# 删除数据卷（可选，会丢失所有数据）
-docker volume rm trading_agents_postgres_data trading_agents_redis_data
-
-# 重新启动
-scripts\start_services_alt_ports.bat
-python scripts/init_database.py
+docker compose --env-file backend/.env -f deploy/docker/compose/docker-compose.yml up -d postgres redis
 ```
 
-## 📈 性能优化
+启动完整容器栈：
 
-### 缓存策略
-
-1. **分层缓存**: Redis + 文件缓存
-2. **智能TTL**: 根据数据类型设置不同过期时间
-3. **压缩存储**: 大数据自动压缩（可配置）
-4. **批量操作**: 支持批量读写
-
-### 监控指标
-
-- 缓存命中率
-- 数据库连接数
-- 内存使用量
-- 响应时间
-
-## 🔐 安全配置
-
-### 生产环境建议
-
-1. **修改默认密码**
-2. **启用SSL/TLS**
-3. **配置防火墙规则**
-4. **定期备份数据**
-5. **监控异常访问**
-
-## 📚 API使用示例
-
-### Python代码示例
-
-```python
-from trader.config.database_manager import get_database_manager
-
-# 获取数据库管理器
-db_manager = get_database_manager()
-
-# 检查数据库可用性
-if db_manager.is_postgres_available():
-    print("PostgreSQL可用")
-
-if db_manager.is_redis_available():
-    print("Redis可用")
-
-# 获取数据库客户端
-postgres_client = db_manager.get_postgres_client()
-redis_client = db_manager.get_redis_client()
-
-# 获取缓存统计
-stats = db_manager.get_cache_stats()
+```bash
+docker compose --env-file backend/.env -f deploy/docker/compose/docker-compose.yml up -d
 ```
 
-## 🎯 下一步计划
+当前 compose 使用：
 
-1. **数据同步**: 实现多实例数据同步
-2. **备份策略**: 自动备份和恢复
-3. **性能监控**: 集成监控仪表板
-4. **集群支持**: PostgreSQL和Redis集群配置
-5. **数据分析**: 内置数据分析工具
+| 服务 | 镜像 | 端口 | 说明 |
+|------|------|------|------|
+| PostgreSQL | `postgres:alpine` | `5432` | 主数据库 |
+| Redis | `redis:alpine` | `6379` | 缓存和通知辅助组件 |
+| Backend | 本地构建 | `8000` | FastAPI |
+| Frontend | 本地构建 | `3000` | Next.js |
+| Redis Commander | `ghcr.io/joeferner/redis-commander:latest` | `8081` | 可选 management profile |
 
----
+启用 Redis Commander：
 
-**注意**: 本配置适用于开发和测试环境。生产环境请参考安全配置章节进行相应调整。
+```bash
+docker compose --env-file backend/.env -f deploy/docker/compose/docker-compose.yml --profile management up -d redis-commander
+```
+
+## 数据库迁移
+
+迁移由 Alembic 管理，从 `backend/` 目录执行：
+
+```bash
+cd backend
+conda run --no-capture-output -n trader alembic upgrade head
+```
+
+新增或修改 ORM 表模型后，再生成迁移：
+
+```bash
+cd backend
+conda run --no-capture-output -n trader alembic revision --autogenerate -m "describe_change"
+```
+
+生成迁移前需要确认：
+
+- 表模型在 `backend/app/models/`。
+- `backend/alembic/env.py` 能导入 `app.models.table` 和 `Base.metadata`。
+- `backend/.env` 指向正确的 PostgreSQL 实例。
+
+## 启动后端和前端
+
+本地开发推荐：
+
+```bash
+# 终端 1：后端
+./backend/scripts/dev/start_backend.sh
+
+# 终端 2：前端
+cd frontend
+pnpm install
+pnpm dev --hostname 0.0.0.0 --port 3000
+```
+
+访问地址：
+
+- Next.js Web：`http://localhost:3000`
+- FastAPI 文档：`http://localhost:8000/docs`
+- 健康检查：`http://localhost:8000/api/health`
+
+## 验证命令
+
+后端全量严格测试：
+
+```bash
+conda run --no-capture-output -n trader python -m pytest -c backend/pyproject.toml -W error backend -vv
+```
+
+后端 Ruff 检查：
+
+```bash
+conda run --no-capture-output -n trader ruff check backend
+conda run --no-capture-output -n trader ruff format --check backend
+```
+
+如果要声明“全量测试通过”，不要使用 `-k`、`--ignore`、自定义 deselect 或只跑某个子目录。
+
+## 排查要点
+
+- 后端导入错误：优先检查导入是否位于 module 顶部，以及 `backend/.env` 是否存在。
+- 数据库连接失败：检查 `POSTGRES_HOST`、`POSTGRES_PORT`、`POSTGRES_PASSWORD` 是否与当前运行方式一致。
+- Redis 认证失败：检查 `REDIS_PASSWORD` 是否与 compose 中 Redis 命令一致。
+- 迁移未生效：从 `backend/` 目录运行 Alembic，并确认连接的是目标数据库。
+- 接口 DTO 不清晰：请求和响应结构应在 `app.schemas` 中定义，不要放回 ORM 模型目录。

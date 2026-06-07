@@ -32,10 +32,26 @@ deploy/
       frontend.conf
       reverse-proxy.conf
   env/
-    docker.env
+    docker.env        旧 Docker 环境样例；现行 compose 入口统一读取 backend/.env
 ```
 
 Compose 文件位于 `deploy/docker/compose/`，其中 `build.context` 明确指向仓库根目录，保证镜像仍能复制 `backend/`、`frontend/`、`config/` 和 `docs/`。旧 Vue 前端保留在 `frontend-vue/` 作为回滚基线。
+
+## 后端应用结构
+
+后端内部按职责拆分，避免把配置、ORM、DTO 和数据库访问层混在一起：
+
+```text
+backend/app/
+  core/      全局配置、运行时资源、数据库/Redis 客户端和 SQLAlchemy session 生命周期
+  models/    SQLAlchemy ORM 表模型
+  schemas/   Pydantic 请求/响应 DTO
+  db/        PostgreSQL 查询、写入和文档存储兼容层
+```
+
+迁移文件属于 Alembic，位置为 `backend/alembic/`。`app/db/` 不承担迁移目录职责。
+
+后端配置统一通过 `app.core.config.Settings` 从 `backend/.env` 读取；不要在仓库根目录新增 `.env`，也不要在业务代码里新增分散的环境变量解析。
 
 ## 运行生成物
 

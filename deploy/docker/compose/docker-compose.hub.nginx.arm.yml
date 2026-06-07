@@ -22,13 +22,15 @@ services:
       - "6379:6379"
     volumes:
       - trading_agents_redis_data:/data
+    env_file:
+      - ../../../backend/.env
     environment:
       TZ: "Asia/Shanghai"
-    command: redis-server --appendonly yes --requirepass trading_agents123
+    command: sh -c 'redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"'
     networks:
       - trading-agents-network
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "trading_agents123", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" --no-auth-warning ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -44,15 +46,14 @@ services:
       - "5432:5432"
     volumes:
       - trading_agents_postgres_data:/var/lib/postgresql
+    env_file:
+      - ../../../backend/.env
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: trading_agents_pg123
-      POSTGRES_DB: trading_agents_cn
       TZ: "Asia/Shanghai"
     networks:
       - trading-agents-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d trading_agents_cn"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -70,57 +71,11 @@ services:
       - ../../../runtime/logs:/app/logs
       #- ../../../config:/app/config
       - ../../../runtime/data:/app/data
+      - ../../../backend/.env:/app/backend/.env:ro
     env_file:
-      - ../../../deploy/env/docker.env
+      - ../../../backend/.env
     environment:
       TZ: "Asia/Shanghai"
-      TRADING_AGENTS_LOG_LEVEL: "INFO"
-      TRADING_AGENTS_LOG_DIR: "/app/logs"
-      TRADING_AGENTS_LOG_FILE: "/app/logs/trading_agents.log"
-      # Redis配置
-      REDIS_HOST: "redis"
-      REDIS_PORT: "6379"
-      REDIS_PASSWORD: "trading_agents123"
-      REDIS_URL: "redis://:trading_agents123@redis:6379/0"
-      POSTGRES_HOST: "postgres"
-      POSTGRES_PORT: "5432"
-      POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "trading_agents_pg123"
-      POSTGRES_DB: "trading_agents_cn"
-      POSTGRES_DUAL_WRITE_ENABLED: "${POSTGRES_DUAL_WRITE_ENABLED:-true}"
-      POSTGRES_READ_ENABLED: "${POSTGRES_READ_ENABLED:-true}"
-      POSTGRES_DUAL_WRITE_FAIL_OPEN: "${POSTGRES_DUAL_WRITE_FAIL_OPEN:-true}"
-      SYNC_STOCK_BASICS_ENABLED: "${SYNC_STOCK_BASICS_ENABLED:-true}"
-      DOCKER_CONTAINER: "true"
-      # 安全配置
-      JWT_SECRET: "docker-jwt-secret-key-change-in-production-2024"
-      JWT_ALGORITHM: "HS256"
-      ACCESS_TOKEN_EXPIRE_MINUTES: "480"
-      REFRESH_TOKEN_EXPIRE_DAYS: "30"
-      CSRF_SECRET: "docker-csrf-secret-key-change-in-production-2024"
-      BCRYPT_ROUNDS: "12"
-      # CORS配置（允许 Nginx 代理）
-      CORS_ORIGINS: "*"
-      # AI模型API密钥（通过 docker compose --env-file backend/.env 或 shell 环境变量注入）
-      DASHSCOPE_API_KEY: "${DASHSCOPE_API_KEY:-your_dashscope_api_key_here}"
-      DASHSCOPE_ENABLED: "${DASHSCOPE_ENABLED:-false}"
-      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-your_deepseek_api_key_here}"
-      DEEPSEEK_ENABLED: "${DEEPSEEK_ENABLED:-false}"
-      OPENAI_API_KEY: "${OPENAI_API_KEY:-your_openai_api_key_here}"
-      OPENAI_ENABLED: "${OPENAI_ENABLED:-false}"
-      GOOGLE_API_KEY: "${GOOGLE_API_KEY:-your_google_api_key_here}"
-      GOOGLE_ENABLED: "${GOOGLE_ENABLED:-false}"
-      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-your_openrouter_api_key_here}"
-      OPENROUTER_ENABLED: "${OPENROUTER_ENABLED:-false}"
-      AIHUBMIX_API_KEY: "${AIHUBMIX_API_KEY:-your_aihubmix_api_key_here}"
-      AIHUBMIX_ENABLED: "${AIHUBMIX_ENABLED:-false}"
-      # 数据源API密钥
-      TUSHARE_TOKEN: "${TUSHARE_TOKEN:-your_tushare_token_here}"
-      TUSHARE_ENABLED: "${TUSHARE_ENABLED:-false}"
-      AKSHARE_ENABLED: "${AKSHARE_ENABLED:-true}"
-      BAOSTOCK_ENABLED: "${BAOSTOCK_ENABLED:-true}"
-      FINNHUB_API_KEY: "${FINNHUB_API_KEY:-your_finnhub_api_key_here}"
-      FINNHUB_ENABLED: "${FINNHUB_ENABLED:-false}"
     depends_on:
       postgres:
         condition: service_healthy

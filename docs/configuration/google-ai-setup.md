@@ -107,10 +107,16 @@ GOOGLE_API_KEY=your_google_api_key_here
 
 1. **启动Web界面**:
    ```bash
-   python -m streamlit run backend/web/app.py
+   # 终端 1：启动 FastAPI 后端
+   ./backend/scripts/dev/start_backend.sh
+
+   # 终端 2：启动 Next.js 前端
+   cd frontend
+   pnpm install
+   pnpm dev --hostname 0.0.0.0 --port 3000
    ```
 
-2. **在左侧边栏中**:
+2. **在 Next.js Web 界面中**:
    - 选择 **"Google AI - Gemini模型"** 作为LLM提供商
    - 选择具体的Gemini模型
    - 启用记忆功能获得更好效果
@@ -176,24 +182,24 @@ TradingAgents-CN的一个独特功能是智能混合嵌入服务：
 ### 1. 运行测试脚本
 
 ```bash
-# 测试Google AI连接
-python backend/tests/test_gemini_correct.py
-
-# 测试Web界面Google模型功能
-python backend/tests/test_web_interface.py
-
-# 完整的Gemini功能测试
-python backend/tests/final_gemini_test.py
+# 测试Google客户端、配置和Google新闻流相关用例
+conda run --no-capture-output -n trader python -m pytest -c backend/pyproject.toml \
+  backend/tests/trader/llm/clients/google \
+  backend/tests/trader/agents/utils/google \
+  backend/tests/trader/flows/news/google \
+  backend/tests/app/core/config \
+  -vv
 ```
 
 ### 2. 验证配置
 
 ```bash
-# 检查API密钥配置
-python backend/tests/test_all_apis.py
-
-# 测试中文输出功能
-python backend/tests/test_chinese_output.py
+# 检查模型客户端、密钥和provider配置
+conda run --no-capture-output -n trader python -m pytest -c backend/pyproject.toml \
+  backend/tests/trader/llm/clients/keys \
+  backend/tests/trader/llm/clients/providers \
+  backend/tests/trader/llm/clients/models \
+  -vv
 ```
 
 ## 💡 使用建议
@@ -259,7 +265,9 @@ python backend/tests/test_chinese_output.py
 echo $GOOGLE_API_KEY
 
 # 验证API密钥有效性
-python backend/tests/test_correct_apis.py
+conda run --no-capture-output -n trader python -m pytest -c backend/pyproject.toml \
+  backend/tests/trader/llm/clients/google \
+  -vv
 ```
 
 #### 2. 模型调用失败
@@ -286,7 +294,8 @@ python backend/tests/test_correct_apis.py
 
 ```bash
 # 启动Web界面
-python -m streamlit run backend/web/app.py
+./backend/scripts/dev/start_backend.sh
+cd frontend && pnpm dev --hostname 0.0.0.0 --port 3000
 
 # 或使用CLI
 python -m cli.main --llm-provider google --model gemini-2.0-flash --stock AAPL

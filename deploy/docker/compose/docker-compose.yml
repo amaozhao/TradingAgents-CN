@@ -18,35 +18,14 @@ services:
       - ../../../config:/app/config
       # 数据目录映射
       - ../../../runtime/data:/app/data
+      # 后端配置文件由 app.core.config.Settings 固定读取 /app/backend/.env
+      - ../../../backend/.env:/app/backend/.env:ro
     env_file:
-      - ../../../deploy/env/docker.env
+      - ../../../backend/.env
     environment:
       PYTHONUNBUFFERED: 1
       PYTHONDONTWRITEBYTECODE: 1
       TZ: "Asia/Shanghai"
-      # 日志配置
-      TRADING_AGENTS_LOG_LEVEL: "INFO"
-      TRADING_AGENTS_LOG_DIR: "/app/logs"
-      TRADING_AGENTS_LOG_FILE: "/app/logs/trading_agents.log"
-      # Docker专用数据库配置
-      TRADING_AGENTS_REDIS_URL: redis://:trading_agents123@redis:6379
-      TRADING_AGENTS_CACHE_TYPE: redis
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: "5432"
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: trading_agents_pg123
-      POSTGRES_DB: trading_agents_cn
-      POSTGRES_DUAL_WRITE_ENABLED: "${POSTGRES_DUAL_WRITE_ENABLED:-true}"
-      POSTGRES_READ_ENABLED: "${POSTGRES_READ_ENABLED:-true}"
-      POSTGRES_DUAL_WRITE_FAIL_OPEN: "${POSTGRES_DUAL_WRITE_FAIL_OPEN:-true}"
-      SYNC_STOCK_BASICS_ENABLED: "${SYNC_STOCK_BASICS_ENABLED:-true}"
-      # Docker环境标识
-      DOCKER_CONTAINER: "true"
-      # API配置
-      API_HOST: "0.0.0.0"
-      API_PORT: "8000"
-      # CORS配置
-      CORS_ORIGINS: "http://localhost:3000,http://localhost:8080,http://localhost:5173"
     depends_on:
       postgres:
         condition: service_healthy
@@ -144,7 +123,7 @@ services:
     networks:
       - trading-agents-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d trading_agents_cn"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -162,8 +141,10 @@ services:
     restart: unless-stopped
     ports:
       - "8081:8081"
+    env_file:
+      - ../../../backend/.env
     environment:
-      - REDIS_HOSTS=local:redis:6379:0:trading_agents123
+      - REDIS_HOSTS=local:redis:6379:0:${REDIS_PASSWORD:-trading_agents123}
     networks:
       - trading-agents-network
     depends_on:

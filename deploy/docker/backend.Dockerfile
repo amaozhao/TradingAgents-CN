@@ -74,9 +74,6 @@ RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
 COPY config ./config
 COPY docs ./docs
 
-# 复制Docker环境配置文件
-COPY deploy/env/docker.env ./.env
-
 # 暴露后端端口
 EXPOSE 8000
 

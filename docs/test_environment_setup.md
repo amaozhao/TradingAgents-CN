@@ -1,349 +1,137 @@
 # 测试环境搭建指南
 
-## 概述
+本文档描述如何用当前仓库中的 Docker Compose 文件验证部署环境。旧版 `docker-compose.hub.yml` / `docker-compose.hub.test.yml` 文件已经不在当前仓库中，现行入口是 `deploy/docker/compose/docker-compose.yml`。
 
-本文档介绍如何使用独立的测试环境来验证 TradingAgents-CN 的部署，而不影响现有的生产数据。
+## 当前状态
 
-## 方案说明
+当前仓库没有提交专用测试 compose 文件。现行可复用的部署栈是 `deploy/docker/compose/docker-compose.yml`，它保持与真实运行方式一致：PostgreSQL、Redis、FastAPI 后端和 Next.js 前端。
 
-### 为什么使用独立测试环境？
+需要注意：
 
-1. **保留现有数据**：生产数据卷不受影响
-2. **快速切换**：可以随时在生产和测试环境之间切换
-3. **安全测试**：测试失败不会影响生产环境
-4. **易于清理**：测试完成后可以一键清理
+- 提交版 compose 定义了固定 `container_name` 和固定 volume name。
+- 仅使用 `docker compose -p ...` 不能自动获得完全隔离的容器和数据卷。
+- 要与默认开发环境完全并行运行，需要本地不提交的 override 文件覆盖容器名、端口和 volume name。
 
-### 环境对比
+## 准备配置
 
-| 项目 | 生产环境 | 测试环境 |
-|------|---------|---------|
-| **Docker Compose 文件** | `docker-compose.hub.yml` | `docker-compose.hub.test.yml` |
-| **容器名称** | `trading-agents-*` | `trading-agents-*-test` |
-| **数据卷名称** | `trading_agents_postgres_data`<br>`trading_agents_redis_data` | `trading_agents_test_postgres_data`<br>`trading_agents_test_redis_data` |
-| **网络名称** | `trading-agents-network` | `trading-agents-test-network` |
-| **日志目录** | `logs/` | `logs-test/` |
-| **配置目录** | `config/` | `config-test/` |
-| **数据目录** | `data/` | `data-test/` |
-| **端口** | 3000, 8000, 5432, 6379 | 3000, 8000, 5432, 6379 |
+本地配置文件固定为 `backend/.env`：
 
-**注意**：测试环境和生产环境使用相同的端口，因此**不能同时运行**。
-
----
-
-## 快速开始
-
-### 1. 切换到测试环境
-
-```powershell
-# 停止生产环境，启动测试环境
-.\scripts\switch_to_test_env.ps1
+```bash
+cp backend/.env.example backend/.env
 ```
 
-**执行内容**：
-- 停止生产容器（`docker-compose.hub.yml down`）
-- 启动测试容器（`docker-compose.hub.test.yml up -d`）
-- 创建全新的测试数据卷
+根据测试需要修改其中的 API key、PostgreSQL 和 Redis 配置。后端业务配置由 `app.core.config.Settings` 读取，不使用仓库根目录 `.env`。容器内后端读取挂载后的 `/app/backend/.env`，因此 Docker 场景下 `POSTGRES_HOST` 和 `REDIS_HOST` 应使用 `postgres` / `redis`。
 
-**预期输出**：
-```
-======================================================================
-[OK] Test environment started!
-======================================================================
+## 启动当前测试栈
 
-[INFO] Test containers:
-  - trading-agents-postgres-test
-  - trading-agents-redis-test
-  - trading-agents-backend-test
-  - trading-agents-frontend-test
+确认没有其他同名容器运行后，启动完整栈：
 
-[INFO] Test data volumes:
-  - trading_agents_test_postgres_data
-  - trading_agents_test_redis_data
-
-[INFO] Access URLs:
-  - Frontend: http://localhost:3000
-  - Backend API: http://localhost:8000
-  - API Docs: http://localhost:8000/docs
+```bash
+docker compose \
+  --env-file backend/.env \
+  -f deploy/docker/compose/docker-compose.yml \
+  up -d \
+  --build
 ```
 
----
+如果默认端口已经被本地服务占用，需要使用本地 compose override 调整端口；不要修改提交版 compose 只为本地临时测试。
 
-### 2. 验证测试环境
+当前默认 compose 端口：
 
-#### 检查容器状态
+| 服务 | 默认端口 | 说明 |
+|------|----------|------|
+| Frontend | `3000` | Next.js |
+| Backend | `8000` | FastAPI |
+| PostgreSQL | `5432` | 主数据库 |
+| Redis | `6379` | 缓存和通知辅助组件 |
+| Redis Commander | `8081` | 可选 management profile |
 
-```powershell
-docker ps
+## 只启动依赖服务
+
+多数后端测试只需要数据库和缓存：
+
+```bash
+docker compose \
+  --env-file backend/.env \
+  -f deploy/docker/compose/docker-compose.yml \
+  up -d postgres redis
 ```
 
-**预期输出**：
-```
-CONTAINER ID   IMAGE                                  STATUS         PORTS                      NAMES
-xxxxxxxxxx     hsliup/trading-agents-frontend:latest   Up 2 minutes   0.0.0.0:3000->80/tcp       trading-agents-frontend-test
-xxxxxxxxxx     hsliup/trading-agents-backend:latest    Up 2 minutes   0.0.0.0:8000->8000/tcp     trading-agents-backend-test
-xxxxxxxxxx     redis:alpine                         Up 2 minutes   0.0.0.0:6379->6379/tcp     trading-agents-redis-test
-xxxxxxxxxx     postgres:alpine                        Up 2 minutes   0.0.0.0:5432->5432/tcp     trading-agents-postgres-test
+随后运行后端全量严格测试：
+
+```bash
+conda run --no-capture-output -n trader python -m pytest -c backend/pyproject.toml -W error backend -vv
 ```
 
-#### 检查数据卷
+## 验证环境
 
-```powershell
-docker volume ls | Select-String "trading_agents"
+查看容器状态：
+
+```bash
+docker compose --env-file backend/.env -f deploy/docker/compose/docker-compose.yml ps
 ```
 
-**预期输出**：
-```
-local     trading_agents_postgres_data           # 生产数据卷（保留）
-local     trading_agents_redis_data             # 生产数据卷（保留）
-local     trading_agents_test_postgres_data      # 测试数据卷（新建）
-local     trading_agents_test_redis_data        # 测试数据卷（新建）
+查看后端日志：
+
+```bash
+docker compose --env-file backend/.env -f deploy/docker/compose/docker-compose.yml logs -f backend
 ```
 
-#### 查看后端日志
+访问：
 
-```powershell
-docker logs -f trading-agents-backend-test
+- Web：`http://localhost:3000`
+- API 文档：`http://localhost:8000/docs`
+- 健康检查：`http://localhost:8000/api/health`
+
+## 清理测试环境
+
+停止并删除测试容器和测试数据卷：
+
+```bash
+docker compose \
+  --env-file backend/.env \
+  -f deploy/docker/compose/docker-compose.yml \
+  down -v
 ```
 
-**预期输出**：
-```
-INFO:     Started server process [1]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-```
+如果只想停止容器但保留数据卷：
 
-#### 访问前端
-
-打开浏览器访问：http://localhost:3000
-
-**预期结果**：
-- 前端页面正常加载
-- 可以注册新用户（测试环境是全新数据库）
-- 可以配置数据源（Tushare/AKShare/BaoStock）
-- 可以测试各项功能
-
----
-
-### 3. 测试场景
-
-#### 场景 1：从零部署测试
-
-**目的**：验证新用户首次部署的体验
-
-**步骤**：
-1. 切换到测试环境（全新数据库）
-2. 访问前端，注册新用户
-3. 配置 Tushare Token
-4. 启用数据同步任务
-5. 等待数据同步完成
-6. 测试股票查询、分析等功能
-
-**验证点**：
-- ✅ 用户注册流程是否顺畅
-- ✅ 数据源配置是否正确
-- ✅ 定时任务是否正常启动
-- ✅ 数据同步是否成功
-- ✅ 前端功能是否正常
-
-#### 场景 2：受限环境测试
-
-**目的**：验证在某些 API 不可用时的表现
-
-**步骤**：
-1. 切换到测试环境
-2. 不配置 Tushare Token（模拟无 Token 场景）
-3. 只启用 AKShare 数据源
-4. 测试系统是否能正常运行
-
-**验证点**：
-- ✅ 系统是否能在缺少 Tushare 的情况下运行
-- ✅ AKShare 数据同步是否正常
-- ✅ 错误提示是否友好
-- ✅ 日志是否清晰
-
-#### 场景 3：配置错误测试
-
-**目的**：验证错误配置的处理
-
-**步骤**：
-1. 切换到测试环境
-2. 故意配置错误的 Tushare Token
-3. 观察系统行为
-
-**验证点**：
-- ✅ 系统是否能检测到错误配置
-- ✅ 错误提示是否清晰
-- ✅ 系统是否能继续运行（不崩溃）
-
----
-
-### 4. 切换回生产环境
-
-测试完成后，切换回生产环境：
-
-```powershell
-# 停止测试环境，启动生产环境
-.\scripts\switch_to_prod_env.ps1
+```bash
+docker compose \
+  --env-file backend/.env \
+  -f deploy/docker/compose/docker-compose.yml \
+  down
 ```
 
-**执行内容**：
-- 停止测试容器（`docker-compose.hub.test.yml down`）
-- 启动生产容器（`docker-compose.hub.yml up -d`）
-- 恢复使用生产数据卷
+## 与默认开发环境的关系
 
-**预期输出**：
-```
-======================================================================
-[OK] Production environment started!
-======================================================================
+| 项目 | 当前提交版 compose | 完全隔离测试栈 |
+|------|-------------------|----------------|
+| Compose 文件 | `deploy/docker/compose/docker-compose.yml` | 同左 + 本地 override |
+| 容器名称 | 固定 `trading-agents-*` | override 中移除或改写 `container_name` |
+| 数据卷 | 固定 `trading_agents_postgres_data` / `trading_agents_redis_data` | override 中改写 volume name |
+| 端口 | 固定 `3000`、`8000`、`5432`、`6379` | override 中改写宿主机端口 |
+| 配置文件 | `backend/.env` | `backend/.env` 或本地 override env 文件 |
 
-[INFO] Production containers:
-  - trading-agents-postgres
-  - trading-agents-redis
-  - trading-agents-backend
-  - trading-agents-frontend
+当前 compose 文件定义了固定 `container_name` 和固定 volume name，因此默认开发栈和测试栈不能同时完整启动。需要完全并行时，应新增本地不提交的 override 文件，覆盖 `container_name`、宿主机端口和 volume name。
 
-[INFO] Production data volumes:
-  - trading_agents_postgres_data
-  - trading_agents_redis_data
-```
+## 推荐测试场景
 
----
-
-### 5. 清理测试环境
-
-如果测试完成，不再需要测试数据：
-
-```powershell
-# 清理测试容器、数据卷和目录
-.\scripts\cleanup_test_env.ps1
-```
-
-**执行内容**：
-- 停止并删除测试容器
-- 删除测试数据卷
-- 删除测试目录（`logs-test/`, `config-test/`, `data-test/`）
-
-**警告**：此操作会删除所有测试数据，无法恢复！
-
----
-
-## 手动操作
-
-如果您不想使用脚本，也可以手动操作：
-
-### 启动测试环境
-
-```powershell
-# 停止生产环境
-docker-compose -f docker-compose.hub.yml down
-
-# 启动测试环境
-docker-compose -f docker-compose.hub.test.yml up -d
-
-# 查看日志
-docker logs -f trading-agents-backend-test
-```
-
-### 切换回生产环境
-
-```powershell
-# 停止测试环境
-docker-compose -f docker-compose.hub.test.yml down
-
-# 启动生产环境
-docker-compose -f docker-compose.hub.yml up -d
-
-# 查看日志
-docker logs -f trading-agents-backend
-```
-
-### 清理测试环境
-
-```powershell
-# 停止并删除测试容器和数据卷
-docker-compose -f docker-compose.hub.test.yml down -v
-
-# 删除测试目录
-Remove-Item -Path logs-test -Recurse -Force
-Remove-Item -Path config-test -Recurse -Force
-Remove-Item -Path data-test -Recurse -Force
-```
-
----
+1. 从空数据库启动，验证注册、配置、股票查询和分析流程。
+2. 不配置付费数据源，仅使用免费数据源，验证降级行为。
+3. mock LLM 请求，验证分析接口和任务状态流转。
+4. 运行后端全量严格测试，确保没有 warning、导入错误或异步资源泄漏。
 
 ## 常见问题
 
-### Q1: 测试环境和生产环境可以同时运行吗？
+### 测试环境可以和默认环境同时运行吗？
 
-**A**: 不可以。因为它们使用相同的端口（3000, 8000, 5432, 6379），会发生端口冲突。
+当前提交版 compose 使用固定 `container_name`、固定端口和固定 volume name，不能直接同时运行完整栈。需要并行时，用本地 override 覆盖这些值。
 
-### Q2: 测试数据会影响生产数据吗？
+### 测试数据会影响默认数据吗？
 
-**A**: 不会。测试环境使用独立的数据卷（`trading_agents_test_*`），与生产数据卷（`trading_agents_*`）完全隔离。
+如果直接使用提交版 compose，volume name 仍是固定的默认值。要做到完全隔离，需要本地 override 覆盖 volume name，或在清理前确认当前 volume 不是要保留的数据。
 
-### Q3: 如何查看测试环境的日志？
+### 为什么不再使用 `docker-compose.hub.test.yml`？
 
-**A**: 使用以下命令：
-```powershell
-# 后端日志
-docker logs -f trading-agents-backend-test
-
-# 前端日志
-docker logs -f trading-agents-frontend-test
-
-# PostgreSQL 日志
-docker logs -f trading-agents-postgres-test
-
-# Redis 日志
-docker logs -f trading-agents-redis-test
-```
-
-### Q4: 测试环境的数据存储在哪里？
-
-**A**:
-- **数据卷**：Docker 管理的卷（`trading_agents_test_postgres_data`, `trading_agents_test_redis_data`）
-- **日志文件**：`logs-test/` 目录
-- **配置文件**：`config-test/` 目录
-- **数据文件**：`data-test/` 目录
-
-### Q5: 如何删除测试数据卷？
-
-**A**: 使用以下命令：
-```powershell
-# 停止测试容器
-docker-compose -f docker-compose.hub.test.yml down
-
-# 删除测试数据卷
-docker volume rm trading_agents_test_postgres_data
-docker volume rm trading_agents_test_redis_data
-```
-
-或者使用清理脚本：
-```powershell
-.\scripts\cleanup_test_env.ps1
-```
-
----
-
-## 总结
-
-使用独立测试环境的优势：
-
-✅ **安全**：不影响生产数据
-✅ **灵活**：可以随时切换
-✅ **完整**：完全模拟真实部署
-✅ **易用**：一键启动和清理
-
-推荐在以下场景使用测试环境：
-
-- 🧪 测试新功能
-- 🔧 验证配置更改
-- 📚 编写文档和教程
-- 🐛 复现和修复 Bug
-- 🎓 培训和演示
-
----
-
-**祝测试顺利！** 🎉
+这些文件已经不在当前仓库。现行 Docker Compose 入口统一在 `deploy/docker/compose/docker-compose.yml`。

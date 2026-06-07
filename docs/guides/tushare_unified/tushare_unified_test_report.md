@@ -4,6 +4,8 @@
 
 本报告详细记录了Tushare统一数据同步方案的测试结果，包括单元测试、集成测试和性能测试。
 
+> 历史记录说明：下方测试路径是当时报告输出的原始记录，不代表当前测试入口。当前后端测试采用 `backend/tests/` 下的分层 wrapper 结构，运行方式以 `backend/tests/README.md` 为准。
+
 **测试时间**: 2025-09-29
 **测试环境**: Windows 10, Python 3.10.8
 **测试范围**: TushareProvider + TushareSyncService + Celery任务

@@ -40,19 +40,11 @@ cp backend/.env.example backend/.env
 ### 第三步：基础功能测试
 
 ```bash
-# 测试DeepSeek连接
-python -c "
-import os
-from dotenv import load_dotenv
-load_dotenv()
-print('DeepSeek API Key:', '✅ 已配置' if os.getenv('DEEPSEEK_API_KEY') else '❌ 未配置')
-"
-
-# 测试基本面分析
-python backend/tests/test_fundamentals_analysis.py
-
-# 测试DeepSeek Token统计
-python backend/tests/test_deepseek_token_tracking.py
+# 测试DeepSeek适配器和基本面分析相关用例
+conda run --no-capture-output -n trader python -m pytest -c backend/pyproject.toml \
+  backend/tests/trader/llm/adapters/deepseek \
+  backend/tests/trader/agents/analysts/fundamentals \
+  -vv
 ```
 
 ## 📊 详细测试项目
@@ -149,11 +141,16 @@ print('苹果公司分析:', result)
 ### 3. Web界面测试
 
 ```bash
-# 启动Web界面
-streamlit run backend/web/app.py
+# 终端 1：启动 FastAPI 后端
+./backend/scripts/dev/start_backend.sh
+
+# 终端 2：启动 Next.js 前端
+cd frontend
+pnpm install
+pnpm dev --hostname 0.0.0.0 --port 3000
 ```
 
-访问 http://localhost:8501 进行测试：
+访问 http://localhost:3000 进行测试，API 文档位于 http://localhost:8000/docs：
 
 #### 3.1 配置页面测试
 - [ ] DeepSeek模型是否出现在选择列表中
@@ -210,7 +207,9 @@ python -m cli.main
 ```bash
 # 启用调试模式
 export TRADING_AGENTS_LOG_LEVEL=DEBUG
-python backend/tests/test_deepseek_token_tracking.py
+conda run --no-capture-output -n trader python -m pytest -c backend/pyproject.toml \
+  backend/tests/trader/llm/adapters/deepseek \
+  -vv
 ```
 
 ### 问题3：基本面分析显示模板内容

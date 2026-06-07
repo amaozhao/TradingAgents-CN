@@ -61,19 +61,13 @@ try:
     # 导入pypandoc（用于markdown转docx和pdf）
     import pypandoc
 
-    # 检查pandoc是否可用，如果不可用则尝试下载
+    # 检查pandoc是否可用。不要在模块导入阶段自动下载，避免启动和测试被外部网络阻塞。
     try:
         pypandoc.get_pandoc_version()
         PANDOC_AVAILABLE = True
     except OSError:
-        logger.warning("⚠️ 未找到pandoc，正在尝试自动下载...")
-        try:
-            pypandoc.download_pandoc()
-            PANDOC_AVAILABLE = True
-            logger.info("✅ pandoc下载成功！")
-        except Exception as download_error:
-            logger.error(f"❌ pandoc下载失败: {download_error}")
-            PANDOC_AVAILABLE = False
+        logger.warning("⚠️ 未找到pandoc，Word/PDF导出不可用；请按界面提示手动安装pandoc")
+        PANDOC_AVAILABLE = False
 
     EXPORT_AVAILABLE = True
 

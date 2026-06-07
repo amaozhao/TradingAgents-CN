@@ -20,7 +20,7 @@ def test_docker_compose_includes_postgres_service_and_backend_wiring(compose_pat
     assert postgres["image"] == "postgres:alpine"
     assert postgres["healthcheck"]["test"] == [
         "CMD-SHELL",
-        "pg_isready -U postgres -d trading_agents_cn",
+        'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"',
     ]
     assert any(
         volume.endswith(":/var/lib/postgresql") for volume in postgres["volumes"]
@@ -29,21 +29,14 @@ def test_docker_compose_includes_postgres_service_and_backend_wiring(compose_pat
         assert postgres["platform"] == "linux/arm64"
 
     backend = services["backend"]
-    backend_env = backend["environment"]
-    assert backend_env["POSTGRES_HOST"] == "postgres"
-    assert backend_env["POSTGRES_DB"] == "trading_agents_cn"
-    assert (
-        backend_env["POSTGRES_DUAL_WRITE_ENABLED"]
-        == "${POSTGRES_DUAL_WRITE_ENABLED:-true}"
-    )
-    assert backend_env["POSTGRES_READ_ENABLED"] == "${POSTGRES_READ_ENABLED:-true}"
-    assert (
-        backend_env["POSTGRES_DUAL_WRITE_FAIL_OPEN"]
-        == "${POSTGRES_DUAL_WRITE_FAIL_OPEN:-true}"
-    )
-    assert (
-        backend_env["SYNC_STOCK_BASICS_ENABLED"] == "${SYNC_STOCK_BASICS_ENABLED:-true}"
-    )
+    assert "../../../backend/.env" in backend["env_file"]
+    assert "../../../deploy/env/docker.env" not in backend["env_file"]
+    assert "../../../backend/.env:/app/backend/.env:ro" in backend["volumes"]
+    backend_env = backend.get("environment", {})
+    assert "POSTGRES_HOST" not in backend_env
+    assert "POSTGRES_DB" not in backend_env
+    assert "POSTGRES_PASSWORD" not in backend_env
+    assert "REDIS_PASSWORD" not in backend_env
     assert backend["depends_on"]["postgres"]["condition"] == "service_healthy"
 
     volumes = compose["volumes"]
@@ -52,11 +45,8 @@ def test_docker_compose_includes_postgres_service_and_backend_wiring(compose_pat
 
 def test_env_templates_include_postgres_cutover_switches():
     env_example = (REPO_ROOT / "backend" / ".env.example").read_text(encoding="utf-8")
-    docker_env = (REPO_ROOT / "deploy" / "env" / "docker.env").read_text(
-        encoding="utf-8"
-    )
 
-    for text in [env_example, docker_env]:
+    for text in [env_example]:
         assert "POSTGRES_HOST=" in text
         assert "POSTGRES_PORT=" in text
         assert "POSTGRES_USER=" in text
@@ -66,7 +56,6 @@ def test_env_templates_include_postgres_cutover_switches():
         assert "POSTGRES_READ_ENABLED=true" in text
         assert "POSTGRES_DUAL_WRITE_FAIL_OPEN=true" in text
         assert "SYNC_STOCK_BASICS_ENABLED=true" in text
-    assert docker_env.count("SYNC_STOCK_BASICS_ENABLED=") == 1
 
 
 def test_postgres_phase_env_templates_define_safe_switch_combinations():
