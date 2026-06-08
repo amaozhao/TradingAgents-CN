@@ -103,6 +103,33 @@ def _build_report_query(report_id: str) -> Dict[str, Any]:
     return {"$or": ors}
 
 
+def _current_user_id(user: dict) -> str:
+    return str(user.get("id") or "")
+
+
+def _is_admin_user(user: dict) -> bool:
+    return bool(user.get("is_admin")) or "admin" in set(user.get("roles") or [])
+
+
+def _scope_private_report_query(query: Dict[str, Any], user: dict) -> Dict[str, Any]:
+    if _is_admin_user(user):
+        return query
+    user_id = _current_user_id(user)
+    if not query:
+        return {"user_id": user_id}
+    return {"$and": [query, {"user_id": user_id}]}
+
+
+def _scope_private_task_query(query: Dict[str, Any], user: dict) -> Dict[str, Any]:
+    if _is_admin_user(user):
+        return query
+    user_id = _current_user_id(user)
+    owner_query = {"$or": [{"user_id": user_id}, {"user": user_id}]}
+    if not query:
+        return owner_query
+    return {"$and": [query, owner_query]}
+
+
 def _to_report_datetime(value: Any) -> Any:
     if isinstance(value, str):
         try:
@@ -214,8 +241,11 @@ async def get_reports_list(
 
         logger.info(f"📊 查询条件: {query}")
 
+        scoped_query = _scope_private_report_query(query, user)
         all_reports = (
-            await db.analysis_reports.find(query).sort("created_at", -1).to_list(None)
+            await db.analysis_reports.find(scoped_query)
+            .sort("created_at", -1)
+            .to_list(None)
         )
         deduped_reports = _dedupe_report_documents(all_reports)
         total = len(deduped_reports)
@@ -246,7 +276,7 @@ async def get_reports_list(
                     market_info.get("market", "unknown"), "A股"
                 )
 
-            created_at = doc.get("created_at", datetime.utcnow())
+            created_at = doc.get("created_at") or datetime.now(timezone.utc)
 
             report = {
                 "id": str(doc["_id"]),
@@ -297,7 +327,7 @@ async def get_report_detail(report_id: str, user: dict = Depends(get_current_use
         db = get_postgres_db()
 
         # 支持 DocumentId / analysis_id / task_id
-        query = _build_report_query(report_id)
+        query = _scope_private_report_query(_build_report_query(report_id), user)
         doc = await db.analysis_reports.find_one(query)
 
         if not doc:
@@ -306,10 +336,20 @@ async def get_report_detail(report_id: str, user: dict = Depends(get_current_use
                 f"⚠️ 未在analysis_reports找到，尝试从analysis_tasks还原: {report_id}"
             )
             tasks_doc = await db.analysis_tasks.find_one(
-                {"$or": [{"task_id": report_id}, {"result.analysis_id": report_id}]},
+                _scope_private_task_query(
+                    {
+                        "$or": [
+                            {"task_id": report_id},
+                            {"result.analysis_id": report_id},
+                        ]
+                    },
+                    user,
+                ),
                 {
                     "result": 1,
                     "task_id": 1,
+                    "user_id": 1,
+                    "user": 1,
                     "stock_code": 1,
                     "created_at": 1,
                     "completed_at": 1,
@@ -360,8 +400,8 @@ async def get_report_detail(report_id: str, user: dict = Depends(get_current_use
                 stock_name = get_stock_name(stock_symbol)
 
             # 获取时间（数据库中是 UTC 时间，需要转换为 UTC+8）
-            created_at = doc.get("created_at", datetime.utcnow())
-            updated_at = doc.get("updated_at", datetime.utcnow())
+            created_at = doc.get("created_at") or datetime.now(timezone.utc)
+            updated_at = doc.get("updated_at") or datetime.now(timezone.utc)
 
             report = {
                 "id": str(doc["_id"]),
@@ -407,7 +447,7 @@ async def get_report_module_content(
         db = get_postgres_db()
 
         # 查询报告（支持多种ID）
-        query = _build_report_query(report_id)
+        query = _scope_private_report_query(_build_report_query(report_id), user)
         doc = await db.analysis_reports.find_one(query)
 
         if not doc:
@@ -446,7 +486,7 @@ async def delete_report(report_id: str, user: dict = Depends(get_current_user)):
         db = get_postgres_db()
 
         # 查询报告（支持多种ID）
-        query = _build_report_query(report_id)
+        query = _scope_private_report_query(_build_report_query(report_id), user)
         report_document = await db.analysis_reports.find_one(query)
         result = await db.analysis_reports.delete_one(query)
 
@@ -493,7 +533,7 @@ async def download_report(
         db = get_postgres_db()
 
         # 查询报告（支持多种ID）
-        query = _build_report_query(report_id)
+        query = _scope_private_report_query(_build_report_query(report_id), user)
         doc = await db.analysis_reports.find_one(query)
 
         if not doc:

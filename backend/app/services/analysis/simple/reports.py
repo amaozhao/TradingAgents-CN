@@ -22,8 +22,10 @@ class AnalysisReportMixin:
             db = get_postgres_db()
 
             # 生成分析ID（与web目录保持一致）
-            datetime = getattr(importlib.import_module("datetime"), "datetime")
-            timestamp = datetime.utcnow()  # 存储 UTC 时间（标准做法）
+            datetime_module = importlib.import_module("datetime")
+            datetime = getattr(datetime_module, "datetime")
+            UTC = getattr(datetime_module, "UTC")
+            timestamp = datetime.now(UTC).replace(tzinfo=None)
             stock_symbol = result.get("stock_symbol") or result.get(
                 "stock_code", "UNKNOWN"
             )
@@ -224,6 +226,25 @@ class AnalysisReportMixin:
             )
             logger.info(f"📊 推断市场类型: {stock_symbol} -> {market_type}")
 
+            task_doc = None
+            try:
+                task_doc = await db.analysis_tasks.find_one(
+                    {"task_id": task_id}, {"user_id": 1, "user": 1}
+                )
+            except Exception as exc:
+                logger.warning(
+                    "无法从analysis_tasks解析报告归属 task_id=%s: %s",
+                    task_id,
+                    exc,
+                )
+
+            owner_id = (
+                result.get("user_id")
+                or result.get("user")
+                or (task_doc or {}).get("user_id")
+                or (task_doc or {}).get("user")
+            )
+
             # 🔥 获取股票名称
             stock_name = stock_symbol  # 默认使用股票代码
             try:
@@ -333,6 +354,14 @@ class AnalysisReportMixin:
                 # 🆕 性能指标数据
                 "performance_metrics": result.get("performance_metrics", {}),
             }
+            if owner_id:
+                document["user_id"] = str(owner_id)
+            else:
+                logger.warning(
+                    "分析报告未解析到归属用户，普通用户列表将不会显示 task_id=%s analysis_id=%s",
+                    task_id,
+                    analysis_id,
+                )
 
             # 保存到analysis_reports集合（与web目录保持一致）
             result_insert = await db.analysis_reports.insert_one(document)
@@ -363,6 +392,8 @@ class AnalysisReportMixin:
                         "decision": result.get("decision", {}),
                     }
                 }
+                if owner_id:
+                    task_result_update["result"]["user_id"] = str(owner_id)
                 await db.analysis_tasks.update_one(
                     {"task_id": task_id}, {"$set": task_result_update}
                 )
