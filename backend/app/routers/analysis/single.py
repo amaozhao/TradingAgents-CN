@@ -105,7 +105,8 @@ async def get_task_status_new(task_id: str, user: dict = Depends(get_current_use
         analysis_service = get_simple_analysis_service()
         logger.info(f"🔧 [NEW ROUTE] 获取分析服务实例: {id(analysis_service)}")
 
-        result = await analysis_service.get_task_status(task_id)
+        current_user_id = str(user["id"])
+        result = await analysis_service.get_task_status(task_id, user_id=current_user_id)
         logger.info(f"📊 [NEW ROUTE] 查询结果: {result is not None}")
 
         if result:
@@ -117,7 +118,9 @@ async def get_task_status_new(task_id: str, user: dict = Depends(get_current_use
             )
 
             # 首先从analysis_tasks集合中查找（正在进行的任务）
-            task_result = await _get_analysis_task_for_read(task_id)
+            task_result = await _get_analysis_task_for_read(
+                task_id, user_id=current_user_id
+            )
 
             if task_result:
                 logger.info(f"✅ [STATUS] 从analysis_tasks找到任务: {task_id}")
@@ -135,7 +138,9 @@ async def get_task_status_new(task_id: str, user: dict = Depends(get_current_use
                 )
                 is_terminal_status = status in {"completed", "failed", "cancelled"}
                 current_time = (
-                    end_time if is_terminal_status and end_time else datetime.utcnow()
+                    end_time
+                    if is_terminal_status and end_time
+                    else datetime.now(timezone.utc).replace(tzinfo=None)
                 )
                 elapsed_time = 0
                 if start_time:
@@ -181,7 +186,9 @@ async def get_task_status_new(task_id: str, user: dict = Depends(get_current_use
                 }
 
             # 如果analysis_tasks中没有找到，再从analysis_reports集合中查找（已完成的任务）
-            postgres_result = await _get_analysis_report_by_task_id_for_read(task_id)
+            postgres_result = await _get_analysis_report_by_task_id_for_read(
+                task_id, user_id=current_user_id
+            )
 
             if postgres_result:
                 logger.info(f"✅ [STATUS] 从analysis_reports找到任务: {task_id}")

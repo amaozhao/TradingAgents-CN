@@ -20,7 +20,42 @@ def _coerce_datetime(value: Any) -> Optional[datetime]:
     return parsed
 
 
-async def _get_analysis_task_for_read(task_id: str) -> Optional[Dict[str, Any]]:
+def _document_owner(document: Dict[str, Any]) -> Any:
+    return document.get("user_id") or document.get("user")
+
+
+def _document_belongs_to_user(
+    document: Optional[Dict[str, Any]], user_id: str | None
+) -> bool:
+    if document is None:
+        return False
+    if user_id is None:
+        return True
+    owner = _document_owner(document)
+    return owner is not None and str(owner) == str(user_id)
+
+
+def _with_user_owner_query(
+    query: Dict[str, Any], user_id: str | None
+) -> Dict[str, Any]:
+    if user_id is None:
+        return query
+    return {
+        "$and": [
+            query,
+            {
+                "$or": [
+                    {"user_id": str(user_id)},
+                    {"user": str(user_id)},
+                ]
+            },
+        ]
+    }
+
+
+async def _get_analysis_task_for_read(
+    task_id: str, user_id: str | None = None
+) -> Optional[Dict[str, Any]]:
     if settings.POSTGRES_READ_ENABLED:
         try:
             get_analysis_task_by_task_id = getattr(
@@ -33,7 +68,7 @@ async def _get_analysis_task_for_read(task_id: str) -> Optional[Dict[str, Any]]:
 
             async with get_session_factory()() as session:
                 document = await get_analysis_task_by_task_id(session, task_id)
-            if document:
+            if _document_belongs_to_user(document, user_id):
                 return document
         except Exception as e:
             logger.warning("PostgreSQL分析任务查询失败，回退PostgreSQL: %s", e)
@@ -42,11 +77,12 @@ async def _get_analysis_task_for_read(task_id: str) -> Optional[Dict[str, Any]]:
         importlib.import_module("app.core.database"), "get_postgres_db"
     )
     db = get_postgres_db()
-    return await db.analysis_tasks.find_one({"task_id": task_id})
+    query = _with_user_owner_query({"task_id": task_id}, user_id)
+    return await db.analysis_tasks.find_one(query)
 
 
 async def _get_analysis_report_by_task_id_for_read(
-    task_id: str,
+    task_id: str, user_id: str | None = None
 ) -> Optional[Dict[str, Any]]:
     if settings.POSTGRES_READ_ENABLED:
         try:
@@ -60,7 +96,7 @@ async def _get_analysis_report_by_task_id_for_read(
 
             async with get_session_factory()() as session:
                 document = await get_analysis_report_by_task_id(session, task_id)
-            if document:
+            if _document_belongs_to_user(document, user_id):
                 return document
         except Exception as e:
             logger.warning("PostgreSQL分析报告按task_id查询失败，回退PostgreSQL: %s", e)
@@ -69,11 +105,12 @@ async def _get_analysis_report_by_task_id_for_read(
         importlib.import_module("app.core.database"), "get_postgres_db"
     )
     db = get_postgres_db()
-    return await db.analysis_reports.find_one({"task_id": task_id})
+    query = _with_user_owner_query({"task_id": task_id}, user_id)
+    return await db.analysis_reports.find_one(query)
 
 
 async def _get_analysis_report_by_analysis_id_for_read(
-    analysis_id: str,
+    analysis_id: str, user_id: str | None = None
 ) -> Optional[Dict[str, Any]]:
     if settings.POSTGRES_READ_ENABLED:
         try:
@@ -89,7 +126,7 @@ async def _get_analysis_report_by_analysis_id_for_read(
                 document = await get_analysis_report_by_analysis_id(
                     session, analysis_id
                 )
-            if document:
+            if _document_belongs_to_user(document, user_id):
                 return document
         except Exception as e:
             logger.warning(
@@ -100,7 +137,8 @@ async def _get_analysis_report_by_analysis_id_for_read(
         importlib.import_module("app.core.database"), "get_postgres_db"
     )
     db = get_postgres_db()
-    return await db.analysis_reports.find_one({"analysis_id": analysis_id})
+    query = _with_user_owner_query({"analysis_id": analysis_id}, user_id)
+    return await db.analysis_reports.find_one(query)
 
 
 # 兼容性：保留原有的请求模型

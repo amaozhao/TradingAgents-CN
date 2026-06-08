@@ -5,7 +5,20 @@ from .common import *
 
 
 class AnalysisStatusMixin:
-    async def get_task_status(self, task_id: str) -> Optional[Dict[str, Any]]:
+    def _task_status_belongs_to_user(
+        self, result: Dict[str, Any], user_id: str | None
+    ) -> bool:
+        if user_id is None:
+            return True
+        owner = result.get("user_id") or result.get("user")
+        result_data = result.get("result_data")
+        if owner is None and isinstance(result_data, dict):
+            owner = result_data.get("user_id") or result_data.get("user")
+        return owner is not None and str(owner) == str(user_id)
+
+    async def get_task_status(
+        self, task_id: str, user_id: str | None = None
+    ) -> Optional[Dict[str, Any]]:
         """获取任务状态"""
         logger.info(f"🔍 查询任务状态: {task_id}")
         logger.info(f"🔍 当前服务实例ID: {id(self)}")
@@ -21,6 +34,14 @@ class AnalysisStatusMixin:
 
         result = await global_memory_manager.get_task_dict(task_id)
         if result:
+            if not self._task_status_belongs_to_user(result, user_id):
+                logger.warning(
+                    "❌ 任务归属不匹配，拒绝返回状态: task_id=%s user_id=%s",
+                    task_id,
+                    user_id,
+                )
+                return None
+
             logger.info(f"✅ 找到任务: {task_id} - 状态: {result.get('status')}")
 
             # 🔍 调试：检查从内存获取的result_data

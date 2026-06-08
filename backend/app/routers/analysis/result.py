@@ -9,7 +9,10 @@ async def get_task_result(  # pyright: ignore[reportGeneralTypeIssues]
         logger.info(f"👤 [RESULT] 用户: {user}")
 
         analysis_service = get_simple_analysis_service()
-        task_status = await analysis_service.get_task_status(task_id)
+        current_user_id = str(user["id"])
+        task_status = await analysis_service.get_task_status(
+            task_id, user_id=current_user_id
+        )
 
         result_data = None
 
@@ -45,11 +48,15 @@ async def get_task_result(  # pyright: ignore[reportGeneralTypeIssues]
             )
 
             # 从analysis_reports集合中查找（优先使用 task_id 匹配）
-            postgres_result = await _get_analysis_report_by_task_id_for_read(task_id)
+            postgres_result = await _get_analysis_report_by_task_id_for_read(
+                task_id, user_id=current_user_id
+            )
 
             if not postgres_result:
                 # 兼容旧数据：旧记录可能没有 task_id，但 analysis_id 存在于 analysis_tasks.result
-                tasks_doc_for_id = await _get_analysis_task_for_read(task_id)
+                tasks_doc_for_id = await _get_analysis_task_for_read(
+                    task_id, user_id=current_user_id
+                )
                 analysis_id = (
                     tasks_doc_for_id.get("result", {}).get("analysis_id")
                     if tasks_doc_for_id
@@ -60,7 +67,9 @@ async def get_task_result(  # pyright: ignore[reportGeneralTypeIssues]
                         f"🔎 [RESULT] 按analysis_id兜底查询 analysis_reports: {analysis_id}"
                     )
                     postgres_result = (
-                        await _get_analysis_report_by_analysis_id_for_read(analysis_id)
+                        await _get_analysis_report_by_analysis_id_for_read(
+                            analysis_id, user_id=current_user_id
+                        )
                     )
 
             if postgres_result:
@@ -111,7 +120,9 @@ async def get_task_result(  # pyright: ignore[reportGeneralTypeIssues]
                     )
             else:
                 # 兜底：analysis_tasks 集合中的 result 字段
-                tasks_doc = await _get_analysis_task_for_read(task_id)
+                tasks_doc = await _get_analysis_task_for_read(
+                    task_id, user_id=current_user_id
+                )
                 if tasks_doc and tasks_doc.get("result"):
                     r = tasks_doc["result"] or {}
                     logger.info("✅ [RESULT] 从analysis_tasks.result 找到结果")
