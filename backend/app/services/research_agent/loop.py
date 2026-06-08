@@ -123,11 +123,17 @@ class ResearchAgentLoop:
             content=json.dumps(result, ensure_ascii=False),
             metadata={"tool_name": tool_name},
         )
+        completed_payload: dict[str, Any] = {
+            "tool_name": tool_name,
+            "result": result,
+        }
+        if result.get("artifact_id"):
+            completed_payload["artifact_id"] = result["artifact_id"]
         await self._append_event(
             session_id=str(context.session_id),
             user_id=context.principal.user_id,
             event_type="tool_completed",
-            payload={"tool_name": tool_name, "result": result},
+            payload=completed_payload,
         )
         return result
 
@@ -153,6 +159,8 @@ class ResearchAgentLoop:
         )
 
         content_parts: list[str] = []
+        linked_artifact_ids: list[str] = []
+        linked_task_ids: list[str] = []
         continuation_count = 0
         finish_reason: str | None = None
 
@@ -174,10 +182,18 @@ class ResearchAgentLoop:
                             session_id=session_id,
                             user_id=principal.user_id,
                             event_type="assistant_delta",
-                            payload={"text": chunk.delta},
+                            payload={"text": chunk.delta, "content": chunk.delta},
                         )
                     if chunk.tool_call:
-                        await self._run_tool(tool_call=chunk.tool_call, context=context)
+                        tool_result = await self._run_tool(
+                            tool_call=chunk.tool_call, context=context
+                        )
+                        artifact_id = tool_result.get("artifact_id")
+                        if artifact_id and str(artifact_id) not in linked_artifact_ids:
+                            linked_artifact_ids.append(str(artifact_id))
+                        task_id = tool_result.get("task_id") or tool_result.get("job_id")
+                        if task_id and str(task_id) not in linked_task_ids:
+                            linked_task_ids.append(str(task_id))
                     if chunk.finish_reason:
                         finish_reason = chunk.finish_reason
 
@@ -198,19 +214,30 @@ class ResearchAgentLoop:
                 metadata={
                     "finish_reason": finish_reason,
                     "continuations": continuation_count,
+                    "artifact_ids": linked_artifact_ids,
+                    "task_ids": linked_task_ids,
                 },
             )
             await self._append_event(
                 session_id=session_id,
                 user_id=principal.user_id,
                 event_type="message_completed",
-                payload={"message_id": assistant_message["message_id"]},
+                payload={
+                    "message_id": assistant_message["message_id"],
+                    "content": final_content,
+                    "artifact_ids": linked_artifact_ids,
+                    "task_ids": linked_task_ids,
+                },
             )
             await self._append_event(
                 session_id=session_id,
                 user_id=principal.user_id,
                 event_type="task_completed",
-                payload={"finish_reason": finish_reason},
+                payload={
+                    "finish_reason": finish_reason,
+                    "artifact_ids": linked_artifact_ids,
+                    "task_ids": linked_task_ids,
+                },
             )
             return {
                 "content": final_content,

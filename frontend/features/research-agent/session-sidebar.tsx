@@ -1,12 +1,13 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import type { ResearchSession } from "@/libs/api/research-agent"
 
-const sessions = [
-  { id: "session-storage", title: "储能产业链研究", status: "active" },
-  { id: "session-baijiu", title: "白酒估值复盘", status: "archived" }
+const defaultSessions = [
+  { session_id: "session-storage", title: "储能产业链研究", status: "active" },
+  { session_id: "session-baijiu", title: "白酒估值复盘", status: "archived" }
 ]
 
-export function SessionSidebar() {
+export function SessionSidebar({ sessions = defaultSessions }: { sessions?: Array<ResearchSession & { status?: string }> }) {
   return (
     <section className="rounded-lg border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -15,12 +16,12 @@ export function SessionSidebar() {
       </div>
       <div className="space-y-2">
         {sessions.map((session) => (
-          <button key={session.id} className="w-full rounded-md border px-3 py-2 text-left text-sm hover:bg-muted">
+          <button key={session.session_id} className="w-full rounded-md border px-3 py-2 text-left text-sm hover:bg-muted">
             <div className="flex items-center justify-between gap-2">
               <span className="font-medium">{session.title}</span>
               <Badge variant={session.status === "active" ? "default" : "secondary"}>{session.status}</Badge>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{session.id}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{session.session_id}</p>
           </button>
         ))}
       </div>

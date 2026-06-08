@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
@@ -115,6 +115,7 @@ async def list_research_messages(
 
 @router.get("/sessions/{session_id}/events", response_model=ResearchAgentResponse)
 async def list_research_events(
+    request: Request,
     session_id: str,
     after_event_id: int = Query(0, ge=0),
     current_user: dict = Depends(get_current_user),
@@ -125,6 +126,10 @@ async def list_research_events(
     events = await event_service.list_after(
         session_id=session_id, user_id=user_id, after_event_id=after_event_id
     )
+    if "text/event-stream" in request.headers.get("accept", ""):
+        return StreamingResponse(
+            _format_research_events_as_sse(events), media_type="text/event-stream"
+        )
     return ok(data=events, message="研究事件列表获取成功")
 
 
@@ -142,11 +147,16 @@ async def stream_research_events(
         events = await event_service.list_after(
             session_id=session_id, user_id=user_id, after_event_id=after_event_id
         )
-        for event in events:
-            yield (
-                f"id: {event['event_id']}\n"
-                f"event: {event['event_type']}\n"
-                f"data: {json.dumps(event['payload'], ensure_ascii=False)}\n\n"
-            )
+        for chunk in _format_research_events_as_sse(events):
+            yield chunk
 
     return StreamingResponse(replay_existing_events(), media_type="text/event-stream")
+
+
+def _format_research_events_as_sse(events: list[dict[str, Any]]):
+    for event in events:
+        yield (
+            f"id: {event['event_id']}\n"
+            f"event: {event['event_type']}\n"
+            f"data: {json.dumps(event['payload'], ensure_ascii=False)}\n\n"
+        )
