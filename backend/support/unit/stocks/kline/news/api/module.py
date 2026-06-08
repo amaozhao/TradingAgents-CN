@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 # Build a minimal app that mounts only the stocks router to avoid triggering app.main lifespan
 from app.routers import stocks as stocks_router
@@ -24,6 +25,8 @@ def create_test_app():
 
 @pytest.fixture()
 def client():
+    from starlette.testclient import TestClient
+
     app = create_test_app()
     with TestClient(app) as c:
         yield c

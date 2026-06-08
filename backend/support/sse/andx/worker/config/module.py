@@ -11,7 +11,6 @@ import asyncio
 import importlib
 
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 # Import router and dependencies to override
 from app.routers import sse as sse_router_mod
@@ -71,6 +70,8 @@ def make_test_app(fake_queue_service: QueueService):
 
 
 def test_sse_task_connected_event(monkeypatch):
+    from starlette.testclient import TestClient
+
     # Monkeypatch Redis client inside module to our fake
     monkeypatch.setattr(sse_router_mod, "get_redis_client", lambda: FakeRedis())
 
@@ -88,6 +89,8 @@ def test_sse_task_connected_event(monkeypatch):
 
 
 def test_sse_batch_connected_event(monkeypatch):
+    from starlette.testclient import TestClient
+
     # Monkeypatch Redis client inside module to our fake
     monkeypatch.setattr(sse_router_mod, "get_redis_client", lambda: FakeRedis())
     # Also patch queue_service.get_redis_client because batch generator constructs

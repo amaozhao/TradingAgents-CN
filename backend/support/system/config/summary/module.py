@@ -1,5 +1,3 @@
-from fastapi.testclient import TestClient
-
 from app.main import app
 from app.services.auth import AuthService
 
@@ -10,12 +8,16 @@ def _auth_headers() -> dict:
 
 
 def test_config_summary_requires_auth():
+    from starlette.testclient import TestClient
+
     client = TestClient(app)
     resp = client.get("/api/system/config/summary")
     assert resp.status_code == 401
 
 
 def test_config_summary_masks_sensitive_fields_with_auth():
+    from starlette.testclient import TestClient
+
     client = TestClient(app)
 
     resp = client.get("/api/system/config/summary", headers=_auth_headers())

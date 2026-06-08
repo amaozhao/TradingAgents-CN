@@ -1,14 +1,22 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 # Import the router and its dependency to override
 from app.routers import system as system_cfg_router
 from app.routers.account import get_current_user
 
+if TYPE_CHECKING:
+    from starlette.testclient import TestClient
+
 
 @pytest.fixture()
 def app_client():
+    from starlette.testclient import TestClient
+
     app = FastAPI()
     app.include_router(system_cfg_router.router, prefix="/api/system")
 

@@ -3,7 +3,6 @@ import logging
 import re
 
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 from app.core.context import LoggingContextFilter
 from app.core.logs import setup_logging
@@ -25,6 +24,8 @@ def create_app():
 
 
 def test_trace_id_header_and_logging():
+    from starlette.testclient import TestClient
+
     # Arrange
     setup_logging("INFO")
     app = create_app()

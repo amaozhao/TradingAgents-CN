@@ -1,15 +1,23 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 from app.schemas.user import User
 from app.routers import config as config_router
 from app.routers.auth import get_current_user
 from app.services.config import config_service
 
+if TYPE_CHECKING:
+    from starlette.testclient import TestClient
+
 
 @pytest.fixture()
 def test_app():
+    from starlette.testclient import TestClient
+
     app = FastAPI()
     app.include_router(config_router.router, prefix="/api")
 

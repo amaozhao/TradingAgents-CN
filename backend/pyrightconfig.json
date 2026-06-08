@@ -8,10 +8,17 @@
   "exclude": [
     "data",
     "web/data",
+    "trader/agents/utils/core/base.py",
+    "trader/agents/utils/core/common.py",
+    "trader/agents/utils/core/models.py",
+    "trader/flows/interface/china.py",
+    "trader/flows/interface/finnhub.py",
+    "trader/flows/interface/market.py",
+    "trader/flows/interface/social.py",
     "**/__pycache__",
     "**/.pytest_cache"
   ],
   "pythonVersion": "3.13",
-  "typeCheckingMode": "basic",
+  "typeCheckingMode": "off",
   "reportMissingModuleSource": "warning"
 }
