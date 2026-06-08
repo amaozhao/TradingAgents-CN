@@ -10,7 +10,7 @@ import { ArtifactDrawer } from "@/features/research-agent/artifact-drawer"
 import { MessageTimeline, type ResearchTimelineMessage } from "@/features/research-agent/message-timeline"
 import { SessionSidebar } from "@/features/research-agent/session-sidebar"
 import { ToolTimeline, type ResearchToolTimelineItem } from "@/features/research-agent/tool-timeline"
-import { researchAgentApi, type ResearchSession } from "@/libs/api/research-agent"
+import { researchAgentApi, type ParsedResearchStreamEvent, type ResearchAgentEvent, type ResearchMessage, type ResearchSession } from "@/libs/api/research-agent"
 
 const FINAL_REPORT_STORAGE_KEY = "research-agent-final-report"
 
@@ -21,6 +21,44 @@ function readStoredFinalReport() {
 
 function eventContent(data: Record<string, unknown>) {
   return String(data.content || data.text || "")
+}
+
+function normalizePersistedEvent(event: ResearchAgentEvent): ParsedResearchStreamEvent {
+  return {
+    event: event.event_type,
+    data: event.payload || {}
+  }
+}
+
+function messagesFromApi(messages: ResearchMessage[]): ResearchTimelineMessage[] {
+  return messages
+    .filter((message) => message.role === "user" || message.role === "assistant")
+    .map((message) => ({
+      id: message.message_id,
+      role: message.role as "user" | "assistant",
+      content: message.content
+    }))
+}
+
+function toolsFromEvents(events: ParsedResearchStreamEvent[]): ResearchToolTimelineItem[] {
+  return events
+    .filter((event) => event.event === "tool_completed")
+    .map((event, index) => {
+      const toolName = String(event.data.tool_name || "tool")
+      const artifactId = event.data.artifact_id ? String(event.data.artifact_id) : undefined
+      return {
+        id: `${toolName}-${index}`,
+        name: toolName,
+        status: "completed",
+        artifactId
+      }
+    })
+}
+
+function finalReportFromEvents(events: ParsedResearchStreamEvent[]) {
+  const completedEvents = events.filter((event) => event.event === "message_completed")
+  const lastCompleted = completedEvents.at(-1)
+  return lastCompleted ? eventContent(lastCompleted.data) : ""
 }
 
 export function ResearchAgentPage() {
@@ -45,6 +83,34 @@ export function ResearchAgentPage() {
       setSessions([])
     })
   }, [])
+
+  useEffect(() => {
+    if (!activeSessionId || status === "running") return
+
+    void Promise.all([
+      researchAgentApi.listMessages(activeSessionId),
+      researchAgentApi.listEvents(activeSessionId)
+    ]).then(([messageResponse, eventResponse]) => {
+      const persistedEvents = (eventResponse.data || []).map(normalizePersistedEvent)
+      const restoredMessages = messagesFromApi(messageResponse.data || [])
+      const restoredTools = toolsFromEvents(persistedEvents)
+      const restoredFinalReport = finalReportFromEvents(persistedEvents)
+
+      if (restoredMessages.length) {
+        setMessages(restoredMessages)
+      }
+      if (restoredTools.length) {
+        setTools(restoredTools)
+      }
+      if (restoredFinalReport) {
+        setFinalReport(restoredFinalReport)
+        window.localStorage.setItem(FINAL_REPORT_STORAGE_KEY, restoredFinalReport)
+        setStatus("completed")
+      }
+    }).catch(() => {
+      // Keep any local draft state when replay is temporarily unavailable.
+    })
+  }, [activeSessionId, status])
 
   const artifacts = useMemo(
     () =>
