@@ -69,6 +69,7 @@ from app.routers import stocks as stocks_router
 from app.routers import sync as sync_router
 from app.routers import system as system_config_router
 from app.routers import tushare as tushare_init
+from app.routers import user_model_keys as user_model_keys_router
 from app.routers import usage as usage_statistics
 from app.services.quotes.ingestion import QuotesIngestionService
 from app.services.scheduler import set_scheduler_instance
