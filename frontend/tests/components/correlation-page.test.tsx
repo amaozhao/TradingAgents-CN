@@ -4,16 +4,14 @@ import { describe, expect, it } from "vitest"
 import { CorrelationPage } from "@/features/research-matrix/correlation-page"
 
 describe("CorrelationPage", () => {
-  it("renders universe controls, heatmap, and candidate lists", () => {
+  it("renders source-style controls and chart placeholder", () => {
     render(<CorrelationPage />)
 
     expect(screen.getByText("相关性矩阵")).toBeInTheDocument()
-    expect(screen.getByText("Universe Selector")).toBeInTheDocument()
-    expect(screen.getByText("日期范围")).toBeInTheDocument()
-    expect(screen.getByText("窗口")).toBeInTheDocument()
+    expect(screen.getByText("资产代码")).toBeInTheDocument()
+    expect(screen.getByText("窗口（天）")).toBeInTheDocument()
     expect(screen.getByText("方法")).toBeInTheDocument()
-    expect(screen.getByText("Heatmap")).toBeInTheDocument()
-    expect(screen.getByText("高相关组合")).toBeInTheDocument()
-    expect(screen.getByText("分散候选")).toBeInTheDocument()
+    expect(screen.getByText("计算")).toBeInTheDocument()
+    expect(screen.getByText("暂无相关性数据")).toBeInTheDocument()
   })
 })

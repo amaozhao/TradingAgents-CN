@@ -8,6 +8,7 @@ import { useState } from "react"
 import type { AppRoute } from "@/libs/routes/route-config"
 import { menuRoutes } from "@/libs/routes/route-config"
 import { cn } from "@/libs/utils"
+import { useAppStore } from "@/stores/app-store"
 
 interface SidebarMenuProps {
   collapsed: boolean
@@ -60,6 +61,7 @@ function SidebarMenuItem({
   onGroupToggle: (path: string) => void
   onNavigate?: (event: MouseEvent<HTMLAnchorElement>) => void
 }) {
+  const language = useAppStore((state) => state.language)
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const queryString = searchParams.toString()
@@ -75,7 +77,7 @@ function SidebarMenuItem({
       <div className="space-y-1">
         <Link
           href={groupHref}
-          aria-label={route.title}
+          aria-label={localizedRouteTitle(route, language)}
           onClick={(event) => {
             onGroupToggle(route.path)
             onNavigate?.(event)
@@ -86,7 +88,7 @@ function SidebarMenuItem({
           )}
         >
           {Icon ? <Icon className="size-4 shrink-0" /> : null}
-          {!collapsed ? <span>{route.title}</span> : null}
+          {!collapsed ? <span>{localizedRouteTitle(route, language)}</span> : null}
         </Link>
         {!collapsed && expanded ? (
           <div className="ml-6 space-y-1 border-l pl-2">
@@ -109,7 +111,7 @@ function SidebarMenuItem({
   return (
     <Link
       href={route.path}
-      aria-label={route.title}
+      aria-label={localizedRouteTitle(route, language)}
       onClick={onNavigate}
       className={cn(
         "flex h-9 items-center gap-2 rounded-md px-3 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
@@ -117,9 +119,13 @@ function SidebarMenuItem({
       )}
     >
       {Icon ? <Icon className="size-4 shrink-0" /> : null}
-      {!collapsed ? <span className="truncate">{route.title}</span> : null}
+      {!collapsed ? <span className="truncate">{localizedRouteTitle(route, language)}</span> : null}
     </Link>
   )
+}
+
+function localizedRouteTitle(route: AppRoute, language: "zh-CN" | "en-US") {
+  return route.titleI18n?.[language] || route.title
 }
 
 function isRouteActive(route: AppRoute, pathname: string, currentPath: string): boolean {

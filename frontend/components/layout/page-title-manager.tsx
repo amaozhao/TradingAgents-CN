@@ -4,15 +4,18 @@ import { useEffect } from "react"
 import { usePathname } from "next/navigation"
 
 import { getRouteByPathname } from "@/libs/routes/route-config"
+import { useAppStore } from "@/stores/app-store"
 
 const appTitle = "AGENTrader"
 
 export function PageTitleManager() {
   const pathname = usePathname()
+  const language = useAppStore((state) => state.language)
 
   useEffect(() => {
     const route = getRouteByPathname(pathname)
-    const title = route?.title ? `${route.title} - ${appTitle}` : appTitle
+    const routeTitle = route?.titleI18n?.[language] || route?.title
+    const title = routeTitle ? `${routeTitle} - ${appTitle}` : appTitle
     const applyTitle = () => {
       if (document.title !== title) {
         document.title = title
@@ -30,7 +33,7 @@ export function PageTitleManager() {
       window.clearTimeout(timer)
       observer.disconnect()
     }
-  }, [pathname])
+  }, [language, pathname])
 
   return null
 }

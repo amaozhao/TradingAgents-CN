@@ -23,6 +23,10 @@ import {
 export interface AppRoute {
   path: string
   title: string
+  titleI18n?: {
+    "zh-CN": string
+    "en-US": string
+  }
   icon?: LucideIcon
   requiresAuth: boolean
   href?: string
@@ -51,8 +55,10 @@ export const routeConfig: AppRoute[] = [
   { path: "/reports/view/[id]", title: "报告详情", requiresAuth: true, hideInMenu: true },
   { path: "/reports/token", title: "Token统计", requiresAuth: true, hideInMenu: true },
   { path: "/agent", title: "研究 Agent", icon: ClipboardList, requiresAuth: true },
-  { path: "/alpha-zoo", title: "Alpha Zoo", icon: BarChart3, requiresAuth: true },
-  { path: "/correlation", title: "相关性矩阵", icon: ChartNoAxesCombined, requiresAuth: true },
+  { path: "/alpha-zoo", title: "Alpha 因子库", titleI18n: { "zh-CN": "Alpha 因子库", "en-US": "Alpha Zoo" }, icon: BarChart3, requiresAuth: true },
+  { path: "/alpha-zoo/bench", title: "Alpha 基准测试", titleI18n: { "zh-CN": "Alpha 基准测试", "en-US": "Alpha benchmark" }, requiresAuth: true, hideInMenu: true },
+  { path: "/alpha-zoo/compare", title: "Alpha 因子对比", titleI18n: { "zh-CN": "Alpha 因子对比", "en-US": "Alpha compare" }, requiresAuth: true, hideInMenu: true },
+  { path: "/correlation", title: "相关性矩阵", titleI18n: { "zh-CN": "相关性矩阵", "en-US": "Correlation Matrix" }, icon: ChartNoAxesCombined, requiresAuth: true },
   { path: "/settings", title: "设置", icon: Settings, requiresAuth: true },
   { path: "/settings/config", title: "配置管理", icon: Settings, requiresAuth: true },
   { path: "/settings/database", title: "数据库管理", icon: Database, requiresAuth: true },

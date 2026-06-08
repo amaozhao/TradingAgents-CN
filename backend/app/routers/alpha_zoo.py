@@ -35,11 +35,22 @@ def _principal(current_user: dict[str, Any]) -> ResearchPrincipal:
 @router.get("/list", response_model=AlphaZooResponse)
 async def list_alpha_factors(
     family: str | None = None,
+    zoo: str | None = None,
+    theme: str | None = None,
+    universe: str | None = None,
     search: str | None = None,
+    limit: int | None = None,
     current_user: dict = Depends(get_current_user),
 ):
     _principal(current_user)
-    data = alpha_service.list_factors(family=family, search=search)
+    data = alpha_service.list_factors(
+        family=family,
+        zoo=zoo,
+        theme=theme,
+        universe=universe,
+        search=search,
+        limit=limit,
+    )
     return ok(data=data, message="Alpha因子列表获取成功")
 
 
