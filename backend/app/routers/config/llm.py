@@ -55,6 +55,7 @@ async def delete_llm_config(
     provider: str, model_name: str, current_user: User = Depends(get_current_user)
 ):
     """删除大模型配置"""
+    require_admin_user(current_user)
     try:
         logger.info(
             f"🗑️ 删除大模型配置请求 - provider: {provider}, model_name: {model_name}"
@@ -110,6 +111,7 @@ async def set_default_llm_legacy(
     request: SetDefaultRequest, current_user: User = Depends(get_current_user)
 ):
     """设置默认大模型"""
+    require_admin_user(current_user)
     try:
         success = await config_service.set_default_llm(request.name)
         if success:

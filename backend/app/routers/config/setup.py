@@ -192,6 +192,26 @@ class ToggleProviderRequest(BaseModel):
     is_active: bool = True
 
 
+def _current_user_field(current_user: dict | User, key: str, default: Any = None) -> Any:
+    if isinstance(current_user, dict):
+        return current_user.get(key, default)
+    return getattr(current_user, key, default)
+
+
+def require_admin_user(current_user: dict | User) -> None:
+    is_admin = bool(_current_user_field(current_user, "is_admin", False))
+    roles = _current_user_field(current_user, "roles", []) or []
+    username = str(_current_user_field(current_user, "username", "") or "")
+    user_id = str(_current_user_field(current_user, "id", "") or "")
+
+    if is_admin or "admin" in set(roles) or username == "admin" or user_id == "admin":
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN, detail="需要管理员权限"
+    )
+
+
 class MarketCategoryUpdateRequest(BaseModel):
     """市场分类局部更新请求，保留额外字段兼容旧前端。"""
 

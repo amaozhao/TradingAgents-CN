@@ -4,9 +4,8 @@ async def set_default_llm(
     request: SetDefaultRequest, current_user: User = Depends(get_current_user)
 ):
     """设置默认大模型"""
+    require_admin_user(current_user)
     try:
-        # 开源版本：所有用户都可以修改配置
-
         success = await config_service.set_default_llm(request.name)
         if success:
             # 审计日志（忽略异常）
@@ -152,6 +151,7 @@ async def save_model_catalog(
     request: ModelCatalogRequest, current_user: User = Depends(get_current_user)
 ):
     """保存或更新模型目录"""
+    require_admin_user(current_user)
     try:
         logger.info(
             f"📝 收到保存模型目录请求: provider={request.provider}, models数量={len(request.models)}"
@@ -214,6 +214,7 @@ async def delete_model_catalog(
     provider: str, current_user: User = Depends(get_current_user)
 ):
     """删除模型目录"""
+    require_admin_user(current_user)
     try:
         success = await config_service.delete_model_catalog(provider)
         if not success:
@@ -251,6 +252,7 @@ async def delete_model_catalog(
 @router.post("/model-catalog/init", response_model=ConfigApiResponse)
 async def init_model_catalog(current_user: User = Depends(get_current_user)):
     """初始化默认模型目录"""
+    require_admin_user(current_user)
     try:
         success = await config_service.init_default_model_catalog()
         if not success:

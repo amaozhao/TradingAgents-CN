@@ -43,6 +43,7 @@ async def add_llm_provider(
     request: LLMProviderRequest, current_user: User = Depends(get_current_user)
 ):
     """添加大模型厂家"""
+    require_admin_user(current_user)
     try:
         provider_data = _normalize_provider_secret_fields(
             request.model_dump(exclude_unset=True), preserve_existing_on_blank=False
@@ -82,6 +83,7 @@ async def update_llm_provider(
     current_user: User = Depends(get_current_user),
 ):
     """更新大模型厂家"""
+    require_admin_user(current_user)
     try:
         update_data = _normalize_provider_secret_fields(
             request.model_dump(exclude_unset=True), preserve_existing_on_blank=True
@@ -124,6 +126,7 @@ async def delete_llm_provider(
     provider_id: str, current_user: User = Depends(get_current_user)
 ):
     """删除大模型厂家"""
+    require_admin_user(current_user)
     try:
         success = await config_service.delete_llm_provider(provider_id)
 
@@ -161,6 +164,7 @@ async def toggle_llm_provider(
     current_user: User = Depends(get_current_user),
 ):
     """切换大模型厂家状态"""
+    require_admin_user(current_user)
     try:
         is_active = request.is_active
         success = await config_service.toggle_llm_provider(provider_id, is_active)
@@ -204,6 +208,7 @@ async def fetch_provider_models(
     current_user: User = Depends(get_current_user),
 ):
     """从厂家 API 获取模型列表"""
+    require_admin_user(current_user)
     try:
         filters = request.model_dump(exclude_none=True) if request else None
         logger.info(
@@ -236,6 +241,7 @@ async def fetch_provider_models(
 @router.post("/llm/providers/migrate-env", response_model=ConfigApiResponse)
 async def migrate_env_to_providers(current_user: User = Depends(get_current_user)):
     """将环境变量配置迁移到厂家管理"""
+    require_admin_user(current_user)
     try:
         result = await config_service.migrate_env_to_providers()
         # 审计日志（忽略异常）
@@ -274,6 +280,7 @@ async def migrate_env_to_providers(current_user: User = Depends(get_current_user
 @router.post("/llm/providers/init-aggregators", response_model=ConfigApiResponse)
 async def init_aggregator_providers(current_user: User = Depends(get_current_user)):
     """初始化聚合渠道厂家配置（302.AI、OpenRouter等）"""
+    require_admin_user(current_user)
     try:
         result = await config_service.init_aggregator_providers()
 

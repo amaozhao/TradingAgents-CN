@@ -4,6 +4,7 @@ async def add_llm_config(
     request: LLMConfigRequest, current_user: User = Depends(get_current_user)
 ):
     """添加或更新大模型配置"""
+    require_admin_user(current_user)
     try:
         logger.info("🔧 添加/更新大模型配置开始")
         logger.info(f"📊 请求数据: {request.model_dump()}")
