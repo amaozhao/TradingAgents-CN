@@ -120,15 +120,18 @@ class ResearchAgentLoop:
             session_id=str(context.session_id),
             user_id=context.principal.user_id,
             role="tool",
-            content=json.dumps(result, ensure_ascii=False),
+            content=json.dumps(result, ensure_ascii=False, default=str),
             metadata={"tool_name": tool_name},
         )
         completed_payload: dict[str, Any] = {
             "tool_name": tool_name,
             "result": result,
         }
-        if result.get("artifact_id"):
-            completed_payload["artifact_id"] = result["artifact_id"]
+        artifact_id = result.get("artifact_id")
+        if not artifact_id and isinstance(result.get("result"), dict):
+            artifact_id = result["result"].get("artifact_id")
+        if artifact_id:
+            completed_payload["artifact_id"] = artifact_id
         await self._append_event(
             session_id=str(context.session_id),
             user_id=context.principal.user_id,
@@ -189,6 +192,8 @@ class ResearchAgentLoop:
                             tool_call=chunk.tool_call, context=context
                         )
                         artifact_id = tool_result.get("artifact_id")
+                        if not artifact_id and isinstance(tool_result.get("result"), dict):
+                            artifact_id = tool_result["result"].get("artifact_id")
                         if artifact_id and str(artifact_id) not in linked_artifact_ids:
                             linked_artifact_ids.append(str(artifact_id))
                         task_id = tool_result.get("task_id") or tool_result.get("job_id")
@@ -244,6 +249,8 @@ class ResearchAgentLoop:
                 "message_id": assistant_message["message_id"],
                 "finish_reason": finish_reason,
                 "continuations": continuation_count,
+                "artifact_ids": linked_artifact_ids,
+                "task_ids": linked_task_ids,
             }
         except Exception as exc:
             await self._append_event(

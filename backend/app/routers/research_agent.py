@@ -13,6 +13,7 @@ from app.schemas.response import ApiResponse
 from app.services.research_agent.artifacts import ResearchArtifactService
 from app.services.research_agent.context import ResearchPrincipal
 from app.services.research_agent.events import ResearchEventService
+from app.services.research_agent.runtime import ResearchAgentRuntime
 from app.services.research_agent.sessions import ResearchSessionService
 
 
@@ -20,6 +21,7 @@ router = APIRouter()
 session_service = ResearchSessionService()
 event_service = ResearchEventService()
 artifact_service = ResearchArtifactService()
+runtime_service = ResearchAgentRuntime(event_service=event_service)
 
 
 class ResearchAgentResponse(ApiResponse):
@@ -85,6 +87,16 @@ async def append_research_message(
     current_user: dict = Depends(get_current_user),
 ):
     user_id = _current_user_id(current_user)
+    if request.role == "user":
+        if not await session_service.get_session(session_id, user_id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在")
+        result = await runtime_service.run_user_prompt(
+            principal=_principal(current_user, session_id=session_id),
+            session_id=session_id,
+            user_message=request.content,
+        )
+        return ok(data=result, message="研究任务执行完成")
+
     message = await session_service.append_message(
         session_id=session_id,
         user_id=user_id,

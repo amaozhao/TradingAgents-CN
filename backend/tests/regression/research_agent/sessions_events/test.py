@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from app.routers import research_agent as research_agent_router
 from app.services.research_agent import artifacts as artifacts_module
 from app.services.research_agent import events as events_module
+from app.services.research_agent import jobs as jobs_module
 from app.services.research_agent import sessions as sessions_module
 from app.services.research_agent.artifacts import ResearchArtifactService
 from app.services.research_agent.context import ResearchPrincipal
@@ -82,6 +83,13 @@ class FakeCollection:
     async def count_documents(self, query: dict[str, Any]):
         return len([doc for doc in self.documents if _matches_query(doc, query)])
 
+    async def update_one(self, query: dict[str, Any], update: dict[str, Any]):
+        for document in self.documents:
+            if _matches_query(document, query):
+                document.update(update.get("$set", {}))
+                return type("FakeUpdateResult", (), {"modified_count": 1})()
+        return type("FakeUpdateResult", (), {"modified_count": 0})()
+
 
 class FakeDb:
     def __init__(self):
@@ -89,12 +97,13 @@ class FakeDb:
         self.research_messages = FakeCollection()
         self.research_events = FakeCollection()
         self.research_artifacts = FakeCollection()
+        self.research_jobs = FakeCollection()
 
 
 @pytest.fixture()
 def fake_db(monkeypatch):
     db = FakeDb()
-    for module in (sessions_module, events_module, artifacts_module):
+    for module in (sessions_module, events_module, artifacts_module, jobs_module):
         monkeypatch.setattr(module, "get_postgres_db", lambda db=db: db)
     return db
 
@@ -191,3 +200,39 @@ async def test_research_agent_routes_enforce_session_ownership(fake_db):
         await research_agent_router.get_research_session(session_id, current_user=USER_B)
 
     assert exc.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_user_prompt_route_runs_agent_workflow_and_persists_artifacts(fake_db):
+    _ = fake_db
+    research_agent_router.session_service = ResearchSessionService()
+    research_agent_router.event_service = ResearchEventService()
+    research_agent_router.artifact_service = ResearchArtifactService()
+
+    created = await research_agent_router.create_research_session(
+        research_agent_router.ResearchSessionCreateRequest(title="储能分析"),
+        current_user=USER_A,
+    )
+    session_id = created["data"]["session_id"]
+
+    response = await research_agent_router.append_research_message(
+        session_id,
+        research_agent_router.ResearchMessageCreateRequest(
+            role="user", content="分析 A 股储能板块，给出推荐个股"
+        ),
+        current_user=USER_A,
+    )
+
+    events = await ResearchEventService().list_after(
+        session_id=session_id, user_id=USER_A["id"], after_event_id=0
+    )
+    event_types = [event["event_type"] for event in events]
+    artifacts = fake_db.research_artifacts.documents
+
+    assert response["success"] is True
+    assert response["data"]["status"] == "completed"
+    assert response["data"]["artifact_ids"]
+    assert "tool_completed" in event_types
+    assert "message_completed" in event_types
+    assert "task_completed" in event_types
+    assert any(artifact["artifact_type"] == "research_report" for artifact in artifacts)
