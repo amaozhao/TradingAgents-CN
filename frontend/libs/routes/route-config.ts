@@ -50,6 +50,9 @@ export const routeConfig: AppRoute[] = [
   { path: "/reports", title: "分析报告", icon: FileText, requiresAuth: true },
   { path: "/reports/view/[id]", title: "报告详情", requiresAuth: true, hideInMenu: true },
   { path: "/reports/token", title: "Token统计", requiresAuth: true, hideInMenu: true },
+  { path: "/agent", title: "研究 Agent", icon: ClipboardList, requiresAuth: true },
+  { path: "/alpha-zoo", title: "Alpha Zoo", icon: BarChart3, requiresAuth: true },
+  { path: "/correlation", title: "相关性矩阵", icon: ChartNoAxesCombined, requiresAuth: true },
   { path: "/settings", title: "设置", icon: Settings, requiresAuth: true },
   { path: "/settings/config", title: "配置管理", icon: Settings, requiresAuth: true },
   { path: "/settings/database", title: "数据库管理", icon: Database, requiresAuth: true },
@@ -79,6 +82,9 @@ export const menuRoutes: AppRoute[] = [
       getRequiredRoute("/reports")
     ]
   },
+  getRequiredRoute("/agent"),
+  getRequiredRoute("/alpha-zoo"),
+  getRequiredRoute("/correlation"),
   getRequiredRoute("/tasks"),
   getRequiredRoute("/screening"),
   getRequiredRoute("/favorites"),
