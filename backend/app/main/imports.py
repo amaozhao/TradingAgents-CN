@@ -43,6 +43,7 @@ from app.middleware.operations import OperationLogMiddleware
 from app.middleware.requests import RequestIDMiddleware
 from app.routers import account as auth
 from app.routers import akshare as akshare_init
+from app.routers import alpha_zoo as alpha_zoo
 from app.routers import analysis as analysis
 from app.routers import baostock as baostock_init
 from app.routers import cache, favorites, health, logs, queue, reports, sse, tags

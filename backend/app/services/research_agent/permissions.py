@@ -7,6 +7,8 @@ SINGLE_STOCK_ANALYSIS = "research.analysis.single"
 BATCH_STOCK_ANALYSIS = "research.analysis.batch"
 REPORT_READ = "research.report.read"
 REPORT_WRITE = "research.report.write"
+ALPHA_READ = "research.alpha.read"
+ALPHA_RUN = "research.alpha.run"
 ADMIN_CONFIG_WRITE = "admin.config.write"
 
 
@@ -19,6 +21,8 @@ def normal_user_permissions() -> frozenset[str]:
             BATCH_STOCK_ANALYSIS,
             REPORT_READ,
             REPORT_WRITE,
+            ALPHA_READ,
+            ALPHA_RUN,
         }
     )
 

@@ -42,6 +42,7 @@ class ResearchToolRegistry:
     @classmethod
     def default(cls) -> "ResearchToolRegistry":
         from .tools.analysis import analysis_tools
+        from .tools.alpha import alpha_tools
         from .tools.market_data import market_data_tools
         from .tools.reports import report_tools
         from .tools.screening import screening_tools
@@ -52,6 +53,7 @@ class ResearchToolRegistry:
                 *screening_tools(),
                 *analysis_tools(),
                 *report_tools(),
+                *alpha_tools(),
                 ResearchTool(
                     name="admin_config_write",
                     description="Mutate global admin-owned model configuration.",
