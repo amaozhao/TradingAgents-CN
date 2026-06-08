@@ -640,7 +640,14 @@ app.include_router(stock_data_router.router, tags=["stock-data"])
 app.include_router(stock_sync_router.router, tags=["stock-sync"])
 app.include_router(tags.router, prefix="/api", tags=["tags"])
 app.include_router(config.router, prefix="/api", tags=["config"])
-app.include_router(user_model_keys_router.router, prefix="/api", tags=["user-model-keys"])
+app.include_router(
+    user_model_keys_router.router, prefix="/api", tags=["user-model-keys"]
+)
+app.include_router(
+    research_agent_router.router,
+    prefix="/api/research-agent",
+    tags=["research-agent"],
+)
 app.include_router(model_capabilities.router, tags=["model-capabilities"])
 app.include_router(usage_statistics.router, tags=["usage-statistics"])
 app.include_router(database.router, prefix="/api/system", tags=["database"])
