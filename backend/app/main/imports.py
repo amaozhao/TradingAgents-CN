@@ -61,6 +61,7 @@ from app.routers import operations as operations
 from app.routers import paper as paper_router
 from app.routers import periods as multi_period_sync
 from app.routers import research_agent as research_agent_router
+from app.routers import research_matrix as research_matrix
 from app.routers import scheduler as scheduler_router
 from app.routers import screening as screening
 from app.routers import social as social_media

@@ -649,6 +649,11 @@ app.include_router(
     tags=["research-agent"],
 )
 app.include_router(alpha_zoo.router, prefix="/api/alpha-zoo", tags=["alpha-zoo"])
+app.include_router(
+    research_matrix.router,
+    prefix="/api/research-matrix",
+    tags=["research-matrix"],
+)
 app.include_router(model_capabilities.router, tags=["model-capabilities"])
 app.include_router(usage_statistics.router, tags=["usage-statistics"])
 app.include_router(database.router, prefix="/api/system", tags=["database"])
