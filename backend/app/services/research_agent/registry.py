@@ -1,0 +1,79 @@
+from __future__ import annotations
+
+from collections.abc import Awaitable, Callable, Iterable
+from dataclasses import dataclass, field
+from typing import Any
+
+from .context import ResearchPrincipal, ToolExecutionContext
+from .permissions import ADMIN_CONFIG_WRITE
+
+
+ToolHandler = Callable[[ToolExecutionContext, dict[str, Any]], Awaitable[dict[str, Any]]]
+
+
+@dataclass(frozen=True)
+class ResearchTool:
+    name: str
+    description: str
+    permission: str
+    schema: dict[str, Any] = field(default_factory=dict)
+    handler: ToolHandler | None = None
+
+    async def run(
+        self, context: ToolExecutionContext, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        if self.permission not in context.principal.permissions:
+            raise PermissionError(f"missing permission: {self.permission}")
+        if self.handler is None:
+            return {"tool": self.name, "accepted": True, "payload": payload}
+        return await self.handler(context, payload)
+
+
+async def _admin_config_write_handler(
+    _context: ToolExecutionContext, payload: dict[str, Any]
+) -> dict[str, Any]:
+    return {"tool": "admin_config_write", "accepted": True, "payload": payload}
+
+
+class ResearchToolRegistry:
+    def __init__(self, tools: Iterable[ResearchTool]):
+        self._tools = {tool.name: tool for tool in tools}
+
+    @classmethod
+    def default(cls) -> "ResearchToolRegistry":
+        from .tools.analysis import analysis_tools
+        from .tools.market_data import market_data_tools
+        from .tools.reports import report_tools
+        from .tools.screening import screening_tools
+
+        return cls(
+            [
+                *market_data_tools(),
+                *screening_tools(),
+                *analysis_tools(),
+                *report_tools(),
+                ResearchTool(
+                    name="admin_config_write",
+                    description="Mutate global admin-owned model configuration.",
+                    permission=ADMIN_CONFIG_WRITE,
+                    schema={"type": "object", "additionalProperties": True},
+                    handler=_admin_config_write_handler,
+                ),
+            ]
+        )
+
+    def all(self) -> list[ResearchTool]:
+        return list(self._tools.values())
+
+    def get(self, name: str) -> ResearchTool:
+        try:
+            return self._tools[name]
+        except KeyError as exc:
+            raise KeyError(f"unknown research tool: {name}") from exc
+
+    def for_principal(self, principal: ResearchPrincipal) -> list[ResearchTool]:
+        return [
+            tool
+            for tool in self._tools.values()
+            if tool.permission in principal.permissions
+        ]
