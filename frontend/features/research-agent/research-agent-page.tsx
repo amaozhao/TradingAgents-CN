@@ -227,8 +227,8 @@ function parseJsonPreview(value: string): Record<string, unknown> | null {
   }
 }
 
-function compactPreviewText(value: unknown) {
-  return formatEventValue(value)
+function compactPreviewText(value: unknown, maxLength: number | null = 220) {
+  const lines = formatEventValue(value)
     .replace(/<skill\b[^>]*>/g, "")
     .replace(/<\/skill>/g, "")
     .replace(/```[\s\S]*?```/g, "")
@@ -236,9 +236,10 @@ function compactPreviewText(value: unknown) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .slice(0, 220)
+  const text = maxLength == null
+    ? lines.join("\n").replace(/[ \t]+/g, " ")
+    : lines.join(" ").replace(/\s+/g, " ")
+  return maxLength == null ? text : text.slice(0, maxLength)
 }
 
 function decodeJsonFragment(value: string) {
@@ -262,7 +263,7 @@ function jsonFragmentNumberField(raw: string, key: string) {
   return match ? Number(match[1]) : undefined
 }
 
-function jsonFragmentPreview(toolName: string, raw: string) {
+function jsonFragmentPreview(toolName: string, raw: string, maxLength: number | null = 220) {
   const result = {
     status: jsonFragmentStringField(raw, "status"),
     error: jsonFragmentStringField(raw, "error"),
@@ -272,28 +273,28 @@ function jsonFragmentPreview(toolName: string, raw: string) {
     exit_code: jsonFragmentNumberField(raw, "exit_code") ?? jsonFragmentNumberField(raw, "exitcode")
   }
 
-  if (toolName === "load_skill" && result.content) return skillPreview(result.content)
-  if (toolName === "bash") return bashPreview(result)
-  if (result.error) return `工具失败：${compactPreviewText(result.error)}`
-  if (result.content) return compactPreviewText(result.content)
-  if (result.stdout || result.stderr) return bashPreview(result)
-  return compactPreviewText(raw.replace(/^\{+/, ""))
+  if (toolName === "load_skill" && result.content) return skillPreview(result.content, maxLength)
+  if (toolName === "bash") return bashPreview(result, maxLength)
+  if (result.error) return `工具失败：${compactPreviewText(result.error, maxLength)}`
+  if (result.content) return compactPreviewText(result.content, maxLength)
+  if (result.stdout || result.stderr) return bashPreview(result, maxLength)
+  return compactPreviewText(raw.replace(/^\{+/, ""), maxLength)
 }
 
-function skillPreview(content: string) {
+function skillPreview(content: string, maxLength: number | null = 220) {
   const name = content.match(/<skill\s+name=["']([^"']+)["']/)?.[1]
   const heading = content.match(/^#{1,6}\s+(.+)$/m)?.[1]
-  const body = compactPreviewText(content)
+  const body = compactPreviewText(content, maxLength)
   const prefix = name ? `已加载技能 ${name}` : "技能已加载"
   if (heading && body) return `${prefix}: ${heading} - ${body}`
   if (heading) return `${prefix}: ${heading}`
   return body ? `${prefix}: ${body}` : prefix
 }
 
-function bashPreview(result: Record<string, unknown>) {
+function bashPreview(result: Record<string, unknown>, maxLength: number | null = 220) {
   const exitCode = result.exit_code ?? result.code
-  const stdout = compactPreviewText(result.stdout)
-  const stderr = compactPreviewText(result.stderr || result.error)
+  const stdout = compactPreviewText(result.stdout, maxLength)
+  const stderr = compactPreviewText(result.stderr || result.error, maxLength)
   const failed = String(result.status || "") === "error" || (typeof exitCode === "number" && exitCode !== 0)
   const prefix = failed
     ? `命令失败${exitCode != null ? `（exit ${exitCode}）` : ""}`
@@ -304,50 +305,50 @@ function bashPreview(result: Record<string, unknown>) {
   return prefix
 }
 
-function evidencePreview(result: Record<string, unknown>) {
+function evidencePreview(result: Record<string, unknown>, maxLength: number | null = 220) {
   const evidence = result.evidence
   if (evidence && typeof evidence === "object") {
-    const text = compactPreviewText((evidence as Record<string, unknown>).text)
+    const text = compactPreviewText((evidence as Record<string, unknown>).text, maxLength)
     if (text) return `证据已写入：${text}`
   }
-  return result.status === "ok" ? "证据已写入 goal ledger" : compactPreviewText(result.error || result)
+  return result.status === "ok" ? "证据已写入 goal ledger" : compactPreviewText(result.error || result, maxLength)
 }
 
-function goalStatusPreview(result: Record<string, unknown>) {
+function goalStatusPreview(result: Record<string, unknown>, maxLength: number | null = 220) {
   const snapshot = result.snapshot
   if (snapshot && typeof snapshot === "object") {
     const goal = (snapshot as Record<string, unknown>).goal
     if (goal && typeof goal === "object") {
-      const status = compactPreviewText((goal as Record<string, unknown>).status)
-      const objective = compactPreviewText((goal as Record<string, unknown>).objective)
+      const status = compactPreviewText((goal as Record<string, unknown>).status, maxLength)
+      const objective = compactPreviewText((goal as Record<string, unknown>).objective, maxLength)
       if (status && objective) return `目标状态已更新为 ${status}：${objective}`
       if (status) return `目标状态已更新为 ${status}`
     }
   }
-  return result.status === "ok" ? "目标状态已更新" : compactPreviewText(result.error || result)
+  return result.status === "ok" ? "目标状态已更新" : compactPreviewText(result.error || result, maxLength)
 }
 
-function readableToolPreview(tool: ToolState) {
+function readableToolPreview(tool: ToolState, maxLength: number | null = 220) {
   if (!tool.preview) return ""
   const parsed = parseJsonPreview(tool.preview)
   if (!parsed) {
     const trimmed = tool.preview.trim()
     return trimmed.startsWith("{")
-      ? jsonFragmentPreview(tool.name, trimmed)
-      : compactPreviewText(tool.preview)
+      ? jsonFragmentPreview(tool.name, trimmed, maxLength)
+      : compactPreviewText(tool.preview, maxLength)
   }
 
   if (tool.name === "load_skill") {
-    return skillPreview(formatEventValue(parsed.content || parsed.text || parsed.preview))
+    return skillPreview(formatEventValue(parsed.content || parsed.text || parsed.preview), maxLength)
   }
-  if (tool.name === "bash") return bashPreview(parsed)
-  if (tool.name === "add_goal_evidence") return evidencePreview(parsed)
-  if (tool.name === "update_research_goal_status") return goalStatusPreview(parsed)
+  if (tool.name === "bash") return bashPreview(parsed, maxLength)
+  if (tool.name === "add_goal_evidence") return evidencePreview(parsed, maxLength)
+  if (tool.name === "update_research_goal_status") return goalStatusPreview(parsed, maxLength)
 
   const content = parsed.content || parsed.text || parsed.summary || parsed.stdout || parsed.error || parsed.preview
-  if (content) return compactPreviewText(content)
+  if (content) return compactPreviewText(content, maxLength)
   if (parsed.status === "ok") return "工具执行完成"
-  return compactPreviewText(parsed)
+  return compactPreviewText(parsed, maxLength)
 }
 
 function normalizePersistedEvent(event: ResearchAgentEvent): ParsedResearchStreamEvent {
@@ -642,6 +643,28 @@ function ToolRail({
   onRefreshLiveStatus: () => void
   onHaltLive: () => void
 }) {
+  const [expandedTools, setExpandedTools] = useState<Set<string>>(() => new Set())
+
+  useEffect(() => {
+    setExpandedTools((current) => {
+      const visibleIds = new Set(tools.map((tool) => tool.id))
+      const next = new Set(Array.from(current).filter((id) => visibleIds.has(id)))
+      return next.size === current.size ? current : next
+    })
+  }, [tools])
+
+  function toggleTool(toolId: string) {
+    setExpandedTools((current) => {
+      const next = new Set(current)
+      if (next.has(toolId)) {
+        next.delete(toolId)
+      } else {
+        next.add(toolId)
+      }
+      return next
+    })
+  }
+
   return (
     <aside className="hidden h-full w-[360px] shrink-0 overflow-y-auto border-l bg-muted/10 xl:block">
       <div className="grid min-w-0 gap-4 p-4">
@@ -674,7 +697,8 @@ function ToolRail({
             ) : (
               tools.map((tool) => {
                 const label = TOOL_LABELS[tool.name]
-                const preview = readableToolPreview(tool)
+                const preview = readableToolPreview(tool, null)
+                const expanded = expandedTools.has(tool.id)
                 const statusClass = tool.status === "error"
                   ? "bg-destructive/10 text-destructive"
                   : tool.status === "running"
@@ -682,14 +706,28 @@ function ToolRail({
                     : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
                 return (
                   <div key={tool.id} className="min-w-0 rounded-md border bg-background px-3 py-2 shadow-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="min-w-0 truncate text-xs font-medium">{label?.title || tool.name}</span>
-                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${statusClass}`}>
-                        {tool.status === "running" ? "运行中" : tool.status === "error" ? "失败" : "完成"}
-                      </span>
-                    </div>
-                    <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground [overflow-wrap:anywhere]">{label?.desc || tool.name}</p>
-                    {preview && <p className="mt-1 line-clamp-3 break-words text-[11px] leading-4 text-foreground/75 [overflow-wrap:anywhere]">{preview}</p>}
+                    <button
+                      type="button"
+                      className="block w-full text-left"
+                      aria-expanded={expanded}
+                      onClick={() => toggleTool(tool.id)}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 truncate text-xs font-medium">{label?.title || tool.name}</span>
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${statusClass}`}>
+                          {tool.status === "running" ? "运行中" : tool.status === "error" ? "失败" : "完成"}
+                        </span>
+                      </div>
+                      <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground [overflow-wrap:anywhere]">{label?.desc || tool.name}</p>
+                      <p className="mt-1 text-[10px] font-medium text-primary">
+                        {expanded ? "收起详情" : "展开详情"}
+                      </p>
+                    </button>
+                    {expanded && preview && (
+                      <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/40 p-2 font-mono text-[11px] leading-5 text-foreground/80 [overflow-wrap:anywhere]">
+                        {preview}
+                      </pre>
+                    )}
                     {typeof tool.elapsedMs === "number" && (
                       <p className="mt-1 text-[10px] text-muted-foreground">{(tool.elapsedMs / 1000).toFixed(1)}s</p>
                     )}

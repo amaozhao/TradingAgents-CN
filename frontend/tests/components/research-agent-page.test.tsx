@@ -172,6 +172,41 @@ describe("ResearchAgentPage", () => {
     await waitFor(() => expect(screen.getByText("就绪")).toBeInTheDocument())
   })
 
+  it("keeps execution steps collapsed by default and expands full tool output on click", async () => {
+    const longTraceback = [
+      "Traceback (most recent call last):",
+      "  File \"/tmp/run.py\", line 42, in <module>",
+      "    raise RuntimeError('完整错误内容应该在展开后可见')",
+      "RuntimeError: 完整错误内容应该在展开后可见"
+    ].join("\n")
+    vi.mocked(researchAgentApi.listEvents).mockResolvedValue({
+      success: true,
+      data: [
+        { event_id: 1, event_type: "tool_started", payload: { tool_name: "bash" } },
+        {
+          event_id: 2,
+          event_type: "tool_failed",
+          payload: {
+            tool_name: "bash",
+            result: { status: "error", exit_code: 1, stderr: longTraceback }
+          }
+        }
+      ],
+      message: "ok"
+    })
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    const step = await screen.findByRole("button", { name: /命令执行/ })
+    expect(screen.queryByText(/完整错误内容应该在展开后可见/)).not.toBeInTheDocument()
+
+    await user.click(step)
+
+    expect(await screen.findByText(/完整错误内容应该在展开后可见/)).toBeInTheDocument()
+    expect(screen.getByText(/Traceback \(most recent call last\):/)).toBeInTheDocument()
+  })
+
   it("sends the composer with Enter and keeps Shift+Enter for new lines", async () => {
     const user = userEvent.setup()
     render(<ResearchAgentPage />)
@@ -327,12 +362,20 @@ describe("ResearchAgentPage", () => {
       message: "ok"
     })
 
+    const user = userEvent.setup()
     render(<ResearchAgentPage />)
 
     expect(await screen.findByText("加载能力模块")).toBeInTheDocument()
+    expect(screen.queryByText(/已加载技能 moodtx/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /加载能力模块/ }))
     expect(screen.getByText(/已加载技能 moodtx/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /网页读取/ }))
     expect(screen.getByText(/工具失败：remote reader request failed/)).toBeInTheDocument()
+
     expect(screen.getByText("命令执行")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: /命令执行/ }))
     expect(screen.getByText(/命令失败（exit 1）/)).toBeInTheDocument()
     expect(screen.queryByText(/\{"status":/)).not.toBeInTheDocument()
   })
