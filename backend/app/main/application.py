@@ -651,14 +651,6 @@ app.include_router(
     prefix="/api/research-agent",
     tags=["research-agent"],
 )
-vibe_agent_app = load_vibe_app()
-if vibe_agent_app is not None:
-    app.mount("/api/vibe", vibe_agent_app, name="vibe-agent")
-app.include_router(
-    vibe_history_router.router,
-    prefix="/api/vibe-history",
-    tags=["vibe-history"],
-)
 app.include_router(alpha_zoo.router, prefix="/api/alpha-zoo", tags=["alpha-zoo"])
 app.include_router(
     research_matrix.router,

@@ -44,9 +44,19 @@ class ResearchToolRegistry:
         from .tools.analysis import analysis_tools
         from .tools.alpha import alpha_tools
         from .tools.correlation import correlation_tools
+        from .tools.coverage import coverage_tools
+        from .tools.files import file_tools
+        from .tools.goals import goal_tools
+        from .tools.journal import journal_tools
+        from .tools.live import live_tools
         from .tools.market_data import market_data_tools
+        from .tools.memory import memory_tools
+        from .tools.quant import quant_tools
         from .tools.reports import report_tools
         from .tools.screening import screening_tools
+        from .tools.shadow import shadow_tools
+        from .tools.skills import skill_tools
+        from .tools.swarm import swarm_tools
 
         return cls(
             [
@@ -56,6 +66,16 @@ class ResearchToolRegistry:
                 *report_tools(),
                 *alpha_tools(),
                 *correlation_tools(),
+                *coverage_tools(),
+                *file_tools(),
+                *journal_tools(),
+                *goal_tools(),
+                *swarm_tools(),
+                *live_tools(),
+                *shadow_tools(),
+                *skill_tools(),
+                *memory_tools(),
+                *quant_tools(),
                 ResearchTool(
                     name="admin_config_write",
                     description="Mutate global admin-owned model configuration.",

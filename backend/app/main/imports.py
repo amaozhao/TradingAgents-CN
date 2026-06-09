@@ -74,8 +74,6 @@ from app.routers import system as system_config_router
 from app.routers import tushare as tushare_init
 from app.routers import user_model_keys as user_model_keys_router
 from app.routers import usage as usage_statistics
-from app.routers import vibe_history as vibe_history_router
 from app.services.quotes.ingestion import QuotesIngestionService
 from app.services.scheduler import set_scheduler_instance
 from app.services.sync.source import get_multi_source_sync_service
-from app.services.vibe_agent_bridge import load_vibe_app

@@ -29,8 +29,28 @@ def test_default_registry_filters_tools_for_normal_user():
         "batch_stock_analysis",
         "report_lookup",
         "report_write",
+        "compact_context",
+        "session_search",
+        "check_background",
+        "factor_analysis",
+        "backtest",
+        "read_document",
+        "read_url",
+        "web_search",
+        "start_research_goal",
+        "load_skill",
+        "trading_connections",
+        "propose_mandate_profiles",
+        "run_swarm",
+        "extract_shadow_strategy",
+        "analyze_trade_journal",
     }.issubset(names)
     assert "admin_config_write" not in names
+    assert "bash" not in names
+    assert "write_file" not in names
+    assert "save_skill" not in names
+    assert "trading_place_order" not in names
+    assert "mcp_remote" not in names
 
 
 def test_default_registry_exposes_admin_tools_to_admin_user():
@@ -38,6 +58,10 @@ def test_default_registry_exposes_admin_tools_to_admin_user():
     names = {tool.name for tool in tools}
 
     assert "admin_config_write" in names
+    assert "bash" in names
+    assert "write_file" in names
+    assert "save_skill" in names
+    assert "trading_place_order" in names
 
 
 @pytest.mark.asyncio
@@ -61,3 +85,29 @@ async def test_tool_run_accepts_authorized_principal():
     assert result["tool"] == "single_stock_analysis"
     assert result["accepted"] is True
     assert result["payload"]["symbol"] == "600519"
+
+
+@pytest.mark.asyncio
+async def test_not_yet_migrated_tool_returns_explicit_disabled_state():
+    registry = ResearchToolRegistry.default()
+    tool = registry.get("background_run")
+    context = ToolExecutionContext(principal=_principal(), session_id="session-1")
+
+    result = await tool.run(context, {"task": "unsafe"})
+
+    assert result["status"] == "disabled_config_required"
+    assert result["accepted"] is False
+    assert result["source_tool_class"] == "BackgroundRunTool"
+
+
+@pytest.mark.asyncio
+async def test_admin_unsafe_tool_is_registered_but_disabled():
+    registry = ResearchToolRegistry.default()
+    tool = registry.get("bash")
+    context = ToolExecutionContext(principal=_principal(is_admin=True), session_id="session-1")
+
+    result = await tool.run(context, {"cmd": "pwd"})
+
+    assert result["status"] == "disabled_config_required"
+    assert result["accepted"] is False
+    assert result["required_capability"] == "sandboxed_shell"

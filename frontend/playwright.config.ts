@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test"
 
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3100"
+const reuseExternalServer = Boolean(process.env.PLAYWRIGHT_BASE_URL)
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
@@ -7,10 +10,10 @@ export default defineConfig({
   retries: 0,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:3100",
+    baseURL,
     trace: "on-first-retry"
   },
-  webServer: {
+  webServer: reuseExternalServer ? undefined : {
     command: "pnpm dev --hostname 127.0.0.1 --port 3100",
     url: "http://127.0.0.1:3100",
     reuseExistingServer: true,

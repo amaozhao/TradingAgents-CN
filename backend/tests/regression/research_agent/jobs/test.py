@@ -7,7 +7,8 @@ import pytest
 from app.services.research_agent import events as events_module
 from app.services.research_agent import jobs as jobs_module
 from app.services.research_agent.context import ResearchPrincipal
-from app.services.research_agent.jobs import ResearchJobService
+from app.services.research_agent.events import ResearchEventService
+from app.services.research_agent.jobs import ResearchAttemptService, ResearchJobService
 
 
 USER_A = {"id": "user-a", "username": "alice", "is_admin": False, "roles": []}
@@ -88,6 +89,7 @@ class FakeCollection:
 
 class FakeDb:
     def __init__(self):
+        self.research_attempts = FakeCollection()
         self.research_jobs = FakeCollection()
         self.research_events = FakeCollection()
 
@@ -165,3 +167,78 @@ async def test_job_state_transitions_persist_events(fake_db):
         "job_running",
         "job_completed",
     ]
+
+
+@pytest.mark.asyncio
+async def test_agent_attempt_jobs_write_events_to_session_stream(fake_db):
+    attempt_service = ResearchAttemptService()
+    job_service = ResearchJobService()
+    event_service = ResearchEventService()
+    principal = _principal(USER_A)
+    session_id = "session-a"
+
+    attempt = await attempt_service.create(
+        principal=principal,
+        session_id=session_id,
+        user_message="分析储能",
+    )
+    job = await job_service.enqueue(
+        principal=principal,
+        task_type="agent_research",
+        resource_id=session_id,
+        payload={"prompt": "分析储能", "attempt_id": attempt["attempt_id"]},
+        session_id=session_id,
+        attempt_id=attempt["attempt_id"],
+    )
+    await attempt_service.attach_job(attempt["attempt_id"], USER_A["id"], job["job_id"])
+    await job_service.mark_running(job["job_id"])
+
+    session_events = await event_service.list_after(
+        session_id=session_id,
+        user_id=USER_A["id"],
+        after_event_id=0,
+    )
+    old_job_stream_events = await job_service.list_events(
+        job["job_id"], USER_A["id"], after_event_id=0
+    )
+
+    assert [event["event_type"] for event in session_events] == [
+        "attempt.created",
+        "job_queued",
+        "job_running",
+    ]
+    assert session_events[1]["payload"]["attempt_id"] == attempt["attempt_id"]
+    assert session_events[1]["payload"]["session_id"] == session_id
+    assert old_job_stream_events == []
+
+
+@pytest.mark.asyncio
+async def test_cancel_active_for_session_is_owner_and_session_scoped(fake_db):
+    service = ResearchJobService()
+    principal = _principal(USER_A)
+    target = await service.enqueue(
+        principal=principal,
+        task_type="agent_research",
+        resource_id="session-a",
+        payload={"prompt": "分析储能"},
+        session_id="session-a",
+        attempt_id="attempt-a",
+    )
+    other_session = await service.enqueue(
+        principal=principal,
+        task_type="agent_research",
+        resource_id="session-b",
+        payload={"prompt": "分析白酒"},
+        session_id="session-b",
+        attempt_id="attempt-b",
+    )
+
+    assert await service.cancel_active_for_session("session-a", USER_B["id"]) == []
+    cancelled = await service.cancel_active_for_session("session-a", USER_A["id"])
+    target_after = await service.get(target["job_id"], USER_A["id"])
+    other_after = await service.get(other_session["job_id"], USER_A["id"])
+
+    assert [job["job_id"] for job in cancelled] == [target["job_id"]]
+    assert target_after["status"] == "cancelled"
+    assert target_after["cancel_requested"] is True
+    assert other_after["status"] == "queued"

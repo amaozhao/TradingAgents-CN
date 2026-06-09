@@ -5,6 +5,8 @@ import pytest
 from app.services.research_agent.context import ResearchPrincipal
 from app.services.research_agent.permissions import (
     ADMIN_CONFIG_WRITE,
+    ADMIN_UNSAFE_TOOL,
+    DISABLED_RESEARCH_TOOL,
     REPORT_READ,
     SINGLE_STOCK_ANALYSIS,
     admin_permissions,
@@ -22,7 +24,9 @@ def test_normal_user_principal_gets_research_permissions_without_admin_tools():
     assert principal.session_id == "session-1"
     assert SINGLE_STOCK_ANALYSIS in principal.permissions
     assert REPORT_READ in principal.permissions
+    assert DISABLED_RESEARCH_TOOL in principal.permissions
     assert ADMIN_CONFIG_WRITE not in principal.permissions
+    assert ADMIN_UNSAFE_TOOL not in principal.permissions
 
 
 def test_admin_principal_gets_admin_permissions():
@@ -32,6 +36,7 @@ def test_admin_principal_gets_admin_permissions():
 
     assert principal.role == "admin"
     assert ADMIN_CONFIG_WRITE in principal.permissions
+    assert ADMIN_UNSAFE_TOOL in principal.permissions
     assert normal_user_permissions().issubset(principal.permissions)
     assert admin_permissions().issubset(principal.permissions)
 

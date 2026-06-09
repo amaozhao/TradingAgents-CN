@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator
+import copy
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -14,6 +15,7 @@ from .sessions import ResearchSessionService
 @dataclass(frozen=True)
 class ModelStreamChunk:
     delta: str | None = None
+    reasoning_content: str | None = None
     tool_call: dict[str, Any] | None = None
     finish_reason: str | None = None
 
@@ -21,6 +23,10 @@ class ModelStreamChunk:
 class ModelClientProtocol:
     async def stream(self, **kwargs: Any) -> AsyncIterator[ModelStreamChunk]:
         raise NotImplementedError
+
+
+class ResearchAgentCancelled(RuntimeError):
+    pass
 
 
 def build_research_prompt(
@@ -48,6 +54,10 @@ class ResearchAgentLoop:
         session_service: ResearchSessionService | None = None,
         event_service: ResearchEventService | None = None,
         max_length_continuations: int = 1,
+        max_tool_iterations: int = 8,
+        context_char_budget: int = 40_000,
+        preserve_recent_messages: int = 6,
+        cancel_checker: Callable[[], Awaitable[bool]] | None = None,
         emit_terminal_event: bool = True,
     ):
         self.model_client = model_client
@@ -55,7 +65,14 @@ class ResearchAgentLoop:
         self.session_service = session_service or ResearchSessionService()
         self.event_service = event_service or ResearchEventService()
         self.max_length_continuations = max_length_continuations
+        self.max_tool_iterations = max_tool_iterations
+        self.context_char_budget = context_char_budget
+        self.preserve_recent_messages = preserve_recent_messages
+        self.cancel_checker = cancel_checker
         self.emit_terminal_event = emit_terminal_event
+
+    async def _is_cancelled(self) -> bool:
+        return bool(self.cancel_checker and await self.cancel_checker())
 
     async def _append_event(
         self,
@@ -80,6 +97,7 @@ class ResearchAgentLoop:
         role: str,
         content: str,
         metadata: dict[str, Any] | None = None,
+        linked_attempt_id: str | None = None,
     ) -> dict[str, Any]:
         message = await self.session_service.append_message(
             session_id=session_id,
@@ -87,6 +105,7 @@ class ResearchAgentLoop:
             role=role,
             content=content,
             metadata=metadata or {},
+            linked_attempt_id=linked_attempt_id,
         )
         if message is None:
             raise PermissionError("research session is not available to this principal")
@@ -123,7 +142,11 @@ class ResearchAgentLoop:
             user_id=context.principal.user_id,
             role="tool",
             content=json.dumps(result, ensure_ascii=False, default=str),
-            metadata={"tool_name": tool_name},
+            metadata={
+                "tool_name": tool_name,
+                "tool_call_id": tool_call.get("id"),
+            },
+            linked_attempt_id=context.request_id,
         )
         completed_payload: dict[str, Any] = {
             "tool_name": tool_name,
@@ -148,48 +171,152 @@ class ResearchAgentLoop:
         principal: ResearchPrincipal,
         session_id: str,
         user_message: str,
+        attempt_id: str | None = None,
+        persist_user_message: bool = True,
     ) -> dict[str, Any]:
         if not await self.session_service.get_session(session_id, principal.user_id):
             raise PermissionError("research session is not available to this principal")
 
         available_tools = self.registry.for_principal(principal)
         prompt = build_research_prompt(principal=principal, tools=available_tools)
-        context = ToolExecutionContext(principal=principal, session_id=session_id)
-
-        await self._append_message(
+        context = ToolExecutionContext(
+            principal=principal,
             session_id=session_id,
-            user_id=principal.user_id,
-            role="user",
-            content=user_message,
+            request_id=attempt_id,
         )
 
+        if persist_user_message:
+            await self._append_message(
+                session_id=session_id,
+                user_id=principal.user_id,
+                role="user",
+                content=user_message,
+                linked_attempt_id=attempt_id,
+            )
+
         content_parts: list[str] = []
+        reasoning_parts: list[str] = []
         linked_artifact_ids: list[str] = []
         linked_task_ids: list[str] = []
         continuation_count = 0
+        tool_iteration_count = 0
         finish_reason: str | None = None
 
         try:
             while True:
+                if await self._is_cancelled():
+                    await self._append_event(
+                        session_id=session_id,
+                        user_id=principal.user_id,
+                        event_type="task_failed",
+                        payload={"status": "cancelled", "attempt_id": attempt_id},
+                    )
+                    raise ResearchAgentCancelled("research attempt cancelled")
                 finish_reason = None
+                had_tool_call = False
+                round_content_start = len(content_parts)
+                raw_messages = await self.session_service.list_messages(
+                    session_id, principal.user_id
+                )
+                context_messages, compact_payload = compact_messages_for_context(
+                    raw_messages,
+                    char_budget=self.context_char_budget,
+                    preserve_recent=self.preserve_recent_messages,
+                )
+                if compact_payload:
+                    await self._append_event(
+                        session_id=session_id,
+                        user_id=principal.user_id,
+                        event_type="compact",
+                        payload={**compact_payload, "attempt_id": attempt_id},
+                    )
                 async for chunk in self.model_client.stream(
                     prompt=prompt,
                     session_id=session_id,
-                    messages=await self.session_service.list_messages(
-                        session_id, principal.user_id
-                    ),
+                    messages=context_messages,
                     tools=available_tools,
                     continuation_count=continuation_count,
                 ):
+                    if await self._is_cancelled():
+                        await self._append_event(
+                            session_id=session_id,
+                            user_id=principal.user_id,
+                            event_type="task_failed",
+                            payload={"status": "cancelled", "attempt_id": attempt_id},
+                        )
+                        raise ResearchAgentCancelled("research attempt cancelled")
                     if chunk.delta:
                         content_parts.append(chunk.delta)
                         await self._append_event(
                             session_id=session_id,
                             user_id=principal.user_id,
                             event_type="assistant_delta",
-                            payload={"text": chunk.delta, "content": chunk.delta},
+                            payload={
+                                "text": chunk.delta,
+                                "content": chunk.delta,
+                                "attempt_id": attempt_id,
+                            },
+                        )
+                    if chunk.reasoning_content:
+                        reasoning_parts.append(chunk.reasoning_content)
+                        await self._append_event(
+                            session_id=session_id,
+                            user_id=principal.user_id,
+                            event_type="log",
+                            payload={
+                                "kind": "reasoning",
+                                "content": chunk.reasoning_content,
+                                "attempt_id": attempt_id,
+                            },
                         )
                     if chunk.tool_call:
+                        if await self._is_cancelled():
+                            await self._append_event(
+                                session_id=session_id,
+                                user_id=principal.user_id,
+                                event_type="task_failed",
+                                payload={"status": "cancelled", "attempt_id": attempt_id},
+                            )
+                            raise ResearchAgentCancelled("research attempt cancelled")
+                        had_tool_call = True
+                        await self._append_message(
+                            session_id=session_id,
+                            user_id=principal.user_id,
+                            role="assistant",
+                            content="",
+                            metadata={
+                                "finish_reason": "tool_calls",
+                                "tool_calls": [
+                                    {
+                                        "id": chunk.tool_call.get("id"),
+                                        "type": "function",
+                                        "function": {
+                                            "name": chunk.tool_call.get("name"),
+                                            "arguments": json.dumps(
+                                                chunk.tool_call.get("arguments") or {},
+                                                ensure_ascii=False,
+                                            ),
+                                        },
+                                        **(
+                                            {
+                                                "extra_content": {
+                                                    "google": {
+                                                        "thought_signature": chunk.tool_call[
+                                                            "thought_signature"
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                            if chunk.tool_call.get("thought_signature")
+                                            else {}
+                                        ),
+                                    }
+                                ],
+                                "attempt_id": attempt_id,
+                                "reasoning_content": "".join(reasoning_parts),
+                            },
+                            linked_attempt_id=attempt_id,
+                        )
                         tool_result = await self._run_tool(
                             tool_call=chunk.tool_call, context=context
                         )
@@ -204,6 +331,17 @@ class ResearchAgentLoop:
                     if chunk.finish_reason:
                         finish_reason = chunk.finish_reason
 
+                should_continue_for_tool = had_tool_call and (
+                    finish_reason in {"tool_calls", "function_call"}
+                    or len(content_parts) == round_content_start
+                )
+                if should_continue_for_tool:
+                    tool_iteration_count += 1
+                    if tool_iteration_count >= self.max_tool_iterations:
+                        finish_reason = "tool_iteration_limit"
+                        break
+                    continue
+
                 if (
                     finish_reason == "length"
                     and continuation_count < self.max_length_continuations
@@ -213,6 +351,7 @@ class ResearchAgentLoop:
                 break
 
             final_content = "".join(content_parts)
+            reasoning_content = "".join(reasoning_parts)
             assistant_message = await self._append_message(
                 session_id=session_id,
                 user_id=principal.user_id,
@@ -223,7 +362,10 @@ class ResearchAgentLoop:
                     "continuations": continuation_count,
                     "artifact_ids": linked_artifact_ids,
                     "task_ids": linked_task_ids,
+                    "attempt_id": attempt_id,
+                    "reasoning_content": reasoning_content,
                 },
+                linked_attempt_id=attempt_id,
             )
             await self._append_event(
                 session_id=session_id,
@@ -234,6 +376,7 @@ class ResearchAgentLoop:
                     "content": final_content,
                     "artifact_ids": linked_artifact_ids,
                     "task_ids": linked_task_ids,
+                    "attempt_id": attempt_id,
                 },
             )
             if self.emit_terminal_event:
@@ -245,6 +388,7 @@ class ResearchAgentLoop:
                         "finish_reason": finish_reason,
                         "artifact_ids": linked_artifact_ids,
                         "task_ids": linked_task_ids,
+                        "attempt_id": attempt_id,
                     },
                 )
             return {
@@ -263,3 +407,63 @@ class ResearchAgentLoop:
                 payload={"error": str(exc)},
             )
             raise
+
+
+def _message_chars(messages: list[dict[str, Any]]) -> int:
+    return len(json.dumps(messages, ensure_ascii=False, default=str))
+
+
+def compact_messages_for_context(
+    messages: list[dict[str, Any]],
+    *,
+    char_budget: int = 40_000,
+    preserve_recent: int = 6,
+) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    original_chars = _message_chars(messages)
+    if original_chars <= char_budget:
+        return messages, None
+
+    compacted = copy.deepcopy(messages)
+    preserved_start = max(0, len(compacted) - max(1, preserve_recent))
+    cleared_tool_results = 0
+    collapsed_messages = 0
+
+    for index, message in enumerate(compacted):
+        if index >= preserved_start:
+            continue
+        content = message.get("content")
+        if message.get("role") == "tool" and isinstance(content, str) and len(content) > 120:
+            message["content"] = "[cleared old tool result during context compaction]"
+            cleared_tool_results += 1
+            continue
+        if isinstance(content, str) and len(content) > 1200:
+            head = content[:500]
+            tail = content[-300:]
+            omitted = len(content) - len(head) - len(tail)
+            message["content"] = (
+                f"{head}\n\n...[{omitted} chars compacted for context budget]...\n\n{tail}"
+            )
+            collapsed_messages += 1
+
+    compacted_chars = _message_chars(compacted)
+    if compacted_chars > char_budget and len(compacted) > preserve_recent:
+        first_message = compacted[0:1]
+        recent_messages = compacted[-preserve_recent:]
+        omitted_count = len(compacted) - len(first_message) - len(recent_messages)
+        compacted = [
+            *first_message,
+            {
+                "role": "system",
+                "content": f"[{omitted_count} older messages compacted for context budget]",
+                "metadata": {"compact": True, "omitted_messages": omitted_count},
+            },
+            *recent_messages,
+        ]
+        compacted_chars = _message_chars(compacted)
+
+    return compacted, {
+        "original_chars": original_chars,
+        "compacted_chars": compacted_chars,
+        "cleared_tool_results": cleared_tool_results,
+        "collapsed_messages": collapsed_messages,
+    }

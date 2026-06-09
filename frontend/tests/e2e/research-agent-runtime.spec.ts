@@ -22,7 +22,7 @@ test.beforeEach(async ({ page }) => {
     })
   })
 
-  await page.route("**/api/vibe/sessions", async (route) => {
+  await page.route("**/api/research-agent/sessions", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -31,10 +31,10 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
-test("agent page exposes the migrated Vibe runtime capability surface", async ({ page }) => {
+test("agent page exposes the current-project Agent runtime capability surface", async ({ page }) => {
   await page.goto("/agent")
 
-  await expect(page.getByRole("heading", { name: "Vibe Agent" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "TradingAgents-CN Agent" })).toBeVisible()
   await expect(page.getByText("跨市场组合回测")).toBeVisible()
   await expect(page.getByText("运行时与连接器")).toBeVisible()
   await expect(page.getByText("检查交易连接器")).toBeVisible()

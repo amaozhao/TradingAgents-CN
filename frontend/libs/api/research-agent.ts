@@ -12,6 +12,8 @@ export interface ResearchSession {
   status?: string
   created_at?: string
   updated_at?: string
+  last_attempt_id?: string | null
+  config?: Record<string, unknown>
 }
 
 export interface ResearchMessage {
@@ -25,20 +27,58 @@ export interface ResearchMessage {
 }
 
 export interface SendResearchMessageResponse {
-  message_id: string
+  status?: string
+  message_id?: string
   attempt_id?: string
+  job_id?: string
+  session_id?: string
+}
+
+export interface ResearchAttempt {
+  attempt_id: string
+  session_id?: string
+  user_id?: string
+  status?: string
+  error?: string | null
+  result?: Record<string, unknown> | null
+  created_at?: string
+  started_at?: string | null
+  completed_at?: string | null
 }
 
 export interface ResearchAgentEvent {
-  event_id?: number
+  event_id?: number | string
   event_type: string
   payload: Record<string, unknown>
+}
+
+export interface ResearchGoalEvidence {
+  evidence_id?: string
+  kind?: string
+  summary?: string
+  artifact_id?: string | null
+  message_id?: string | null
+  metadata?: Record<string, unknown>
+  created_at?: string
+}
+
+export interface ResearchGoal {
+  goal_id: string
+  session_id?: string
+  title?: string
+  description?: string
+  criteria?: string[]
+  status?: string
+  status_reason?: string
+  evidence?: ResearchGoalEvidence[]
+  created_at?: string
+  updated_at?: string
 }
 
 export interface ParsedResearchStreamEvent {
   event: string
   data: Record<string, unknown>
-  eventId?: number
+  eventId?: string
 }
 
 export interface LiveBrokerStatus {
@@ -67,19 +107,67 @@ export interface LiveStatus {
   brokers: LiveBrokerStatus[]
 }
 
+export interface ResearchSwarmPreset {
+  preset: string
+  title?: string
+  description?: string
+  workers?: string[]
+}
+
+export interface ResearchSwarmRun {
+  run_id: string
+  session_id?: string | null
+  parent_run_id?: string | null
+  preset: string
+  title?: string
+  variables?: Record<string, unknown>
+  workers?: Array<Record<string, unknown>>
+  status: string
+  created_at?: string
+  updated_at?: string
+  completed_at?: string | null
+  error?: string | null
+}
+
+export interface ResearchSwarmEvent {
+  event_id?: number | string
+  run_id: string
+  session_id?: string | null
+  event_type: string
+  payload: Record<string, unknown>
+  created_at?: string
+}
+
+export interface ResearchArtifact {
+  artifact_id: string
+  session_id: string
+  artifact_type: string
+  payload: Record<string, unknown>
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ResearchSkill {
+  name: string
+  title?: string
+  status: string
+  source_runtime_dependency?: boolean
+  mutation_allowed?: boolean
+  summary?: string
+  prompt_context?: string
+}
+
 export type ResearchAgentStreamHandlers = {
   onEvent: (event: ParsedResearchStreamEvent) => void
   onError?: (error: Event) => void
   onOpen?: () => void
 }
 
+const BASE = "/api/research-agent"
+
 function getStoredToken() {
   if (typeof window === "undefined") return null
   return window.localStorage.getItem("auth-token")
-}
-
-function envelope<T>(data: T, message = "ok"): ApiEnvelope<T> {
-  return { success: true, data, message }
 }
 
 function parseEventData(raw: string): Record<string, unknown> {
@@ -112,7 +200,7 @@ function formatSwarmStatus(data: Record<string, unknown>) {
 
 function mapSwarmEvent(
   data: Record<string, unknown>,
-  eventId?: number
+  eventId?: string
 ): ParsedResearchStreamEvent {
   const event = data.event && typeof data.event === "object"
     ? data.event as Record<string, unknown>
@@ -137,7 +225,7 @@ function mapSwarmEvent(
   }
 }
 
-function mapVibeEvent(eventName: string, data: Record<string, unknown>, eventId?: number): ParsedResearchStreamEvent[] {
+function mapResearchAgentEvent(eventName: string, data: Record<string, unknown>, eventId?: string): ParsedResearchStreamEvent[] {
   if (eventName === "text_delta") {
     return [{ event: "assistant_delta", data: { ...data, content: data.delta || data.text || "" }, eventId }]
   }
@@ -170,7 +258,7 @@ function mapVibeEvent(eventName: string, data: Record<string, unknown>, eventId?
   }
   if (eventName === "attempt.completed") {
     return [
-      { event: "message_completed", data: { ...data, content: data.summary || "" }, eventId },
+      { event: "message_completed", data: { ...data, content: data.summary || data.content || "" }, eventId },
       { event: "task_completed", data, eventId }
     ]
   }
@@ -179,7 +267,7 @@ function mapVibeEvent(eventName: string, data: Record<string, unknown>, eventId?
   }
   if (eventName === "tool_heartbeat" || eventName === "tool_progress") {
     return [{
-      event: "tool_started",
+      event: "tool_progress",
       data: { ...data, tool_name: data.tool || data.tool_name },
       eventId
     }]
@@ -213,37 +301,111 @@ function mapVibeEvent(eventName: string, data: Record<string, unknown>, eventId?
 
 export const researchAgentApi = {
   createSession: async (payload: { title?: string }) =>
-    envelope(await request.post<ResearchSession>("/api/vibe/sessions", payload)),
-  listSessions: async () => envelope(await request.get<ResearchSession[]>("/api/vibe/sessions")),
-  updateSession: async (sessionId: string, payload: { title: string }) => {
-    await request.patch<{ status: string }>(`/api/vibe/sessions/${sessionId}`, payload)
-    const session = await request.get<ResearchSession>(`/api/vibe/sessions/${sessionId}`)
-    return envelope(session)
-  },
+    request.post<ApiEnvelope<ResearchSession>>(`${BASE}/sessions`, payload),
+  listSessions: async () => request.get<ApiEnvelope<ResearchSession[]>>(`${BASE}/sessions`),
+  updateSession: async (sessionId: string, payload: { title: string }) =>
+    request.patch<ApiEnvelope<ResearchSession>>(`${BASE}/sessions/${sessionId}`, payload),
   deleteSession: async (sessionId: string) =>
-    envelope(await request.delete<{ status: string; session_id?: string }>(`/api/vibe/sessions/${sessionId}`)),
+    request.delete<ApiEnvelope<{ status: string; session_id?: string }>>(`${BASE}/sessions/${sessionId}`),
   cancelSession: async (sessionId: string) =>
-    envelope(await request.post<{ status: string }>(`/api/vibe/sessions/${sessionId}/cancel`)),
-  uploadFile: async (file: File) => {
+    request.post<ApiEnvelope<{ status: string }>>(`${BASE}/sessions/${sessionId}/cancel`),
+  uploadFile: async (file: File, sessionId?: string | null) => {
     const form = new FormData()
     form.append("file", file)
-    const response = await fetch("/api/vibe/upload", { method: "POST", body: form })
-    if (!response.ok) throw new Error(await response.text())
-    return envelope(await response.json() as { status: string; file_path: string; filename: string })
+    if (sessionId) form.append("session_id", sessionId)
+    return request.post<ApiEnvelope<{ status: string; file_path?: string; file_id?: string; artifact_id?: string; filename: string; size?: number }>>(`${BASE}/upload`, form, {
+      headers: { "Content-Type": "multipart/form-data" }
+    })
   },
-  getLiveStatus: async () => envelope(await request.get<LiveStatus>("/api/vibe/live/status")),
+  getArtifact: async (artifactId: string) =>
+    request.get<ApiEnvelope<ResearchArtifact>>(`${BASE}/artifacts/${artifactId}`),
+  listArtifacts: async (sessionId: string, artifactType?: string) =>
+    request.get<ApiEnvelope<ResearchArtifact[]>>(`${BASE}/sessions/${sessionId}/artifacts`, {
+      params: artifactType ? { artifact_type: artifactType } : undefined
+    }),
+  listRuns: async () =>
+    request.get<ApiEnvelope<ResearchArtifact[]>>(`${BASE}/runs`),
+  getRun: async (runId: string) =>
+    request.get<ApiEnvelope<ResearchArtifact>>(`${BASE}/runs/${runId}`),
+  getRunCode: async (runId: string) =>
+    request.get<ApiEnvelope<ResearchArtifact>>(`${BASE}/runs/${runId}/code`),
+  getRunPine: async (runId: string) =>
+    request.get<ApiEnvelope<ResearchArtifact>>(`${BASE}/runs/${runId}/pine`),
+  getShadowReport: async (shadowId: string) =>
+    request.get<ApiEnvelope<ResearchArtifact>>(`${BASE}/shadow-reports/${shadowId}`),
+  listSkills: async () =>
+    request.get<ApiEnvelope<ResearchSkill[]>>(`${BASE}/skills`),
+  getCapabilities: async () =>
+    request.get<ApiEnvelope<Record<string, unknown>>>(`${BASE}/api`),
+  getLlmSettings: async () =>
+    request.get<ApiEnvelope<Record<string, unknown>>>(`${BASE}/settings/llm`),
+  updateLlmSettings: async (values: Record<string, unknown>) =>
+    request.put<ApiEnvelope<Record<string, unknown>>>(`${BASE}/settings/llm`, { values }),
+  getDataSourceSettings: async () =>
+    request.get<ApiEnvelope<Record<string, unknown>>>(`${BASE}/settings/data-sources`),
+  updateDataSourceSettings: async (values: Record<string, unknown>) =>
+    request.put<ApiEnvelope<Record<string, unknown>>>(`${BASE}/settings/data-sources`, { values }),
+  rejectSystemShutdown: async () =>
+    request.post<ApiEnvelope<Record<string, unknown>>>(`${BASE}/system/shutdown`),
+  rejectRunShutdown: async (runId: string) =>
+    request.post<ApiEnvelope<Record<string, unknown>>>(`${BASE}/runs/${runId}/shutdown`),
+  getLiveStatus: async () => request.get<ApiEnvelope<LiveStatus>>(`${BASE}/live/status`),
   haltLive: async (payload: { reason: string; broker?: string | null; session_id?: string | null }) =>
-    envelope(await request.post<{ halted: boolean; broker?: string | null; reason: string }>("/api/vibe/live/halt", payload)),
+    request.post<ApiEnvelope<{ halted: boolean; broker?: string | null; reason: string }>>(`${BASE}/live/halt`, payload),
+  resumeLive: async (payload: { reason: string; broker?: string | null; session_id?: string | null }) =>
+    request.post<ApiEnvelope<{ resumed: boolean; broker?: string | null; reason: string }>>(`${BASE}/live/resume`, payload),
+  authorizeLive: async (payload: { broker?: string; session_id?: string | null }) =>
+    request.post<ApiEnvelope<{ broker: string; oauth_token_present: boolean }>>(`${BASE}/live/authorize`, payload),
+  startLiveRunner: async (payload: { broker?: string; session_id?: string | null }) =>
+    request.post<ApiEnvelope<{ broker: string; alive: boolean }>>(`${BASE}/live/runner/start`, payload),
+  stopLiveRunner: async (payload: { broker?: string; session_id?: string | null }) =>
+    request.post<ApiEnvelope<{ broker: string; alive: boolean }>>(`${BASE}/live/runner/stop`, payload),
+  commitMandate: async (payload: { proposal: Record<string, unknown>; session_id?: string | null }) =>
+    request.post<ApiEnvelope<Record<string, unknown>>>(`${BASE}/mandate/commit`, payload),
+  listSwarmPresets: async () =>
+    request.get<ApiEnvelope<ResearchSwarmPreset[]>>(`${BASE}/swarm/presets`),
+  createSwarmRun: async (payload: { preset: string; variables?: Record<string, unknown>; session_id?: string | null }) =>
+    request.post<ApiEnvelope<ResearchSwarmRun>>(`${BASE}/swarm/runs`, payload),
+  listSwarmRuns: async () =>
+    request.get<ApiEnvelope<ResearchSwarmRun[]>>(`${BASE}/swarm/runs`),
+  getSwarmRun: async (runId: string) =>
+    request.get<ApiEnvelope<ResearchSwarmRun>>(`${BASE}/swarm/runs/${runId}`),
+  listSwarmRunEvents: async (runId: string, afterEventId: string | number = 0) =>
+    request.get<ApiEnvelope<ResearchSwarmEvent[]>>(`${BASE}/swarm/runs/${runId}/events`, {
+      params: { after_event_id: Number(afterEventId) || 0 }
+    }),
+  cancelSwarmRun: async (runId: string) =>
+    request.post<ApiEnvelope<ResearchSwarmRun>>(`${BASE}/swarm/runs/${runId}/cancel`),
+  retrySwarmRun: async (runId: string) =>
+    request.post<ApiEnvelope<ResearchSwarmRun>>(`${BASE}/swarm/runs/${runId}/retry`),
   listMessages: async (sessionId: string) =>
-    envelope(await request.get<ResearchMessage[]>(`/api/vibe/sessions/${sessionId}/messages`)),
-  appendMessage: async (sessionId: string, payload: { role?: string; content: string; metadata?: Record<string, unknown> }) =>
-    envelope(await request.post<SendResearchMessageResponse>(`/api/vibe/sessions/${sessionId}/messages`, { content: payload.content })),
-  listEvents: async (sessionId: string, afterEventId = 0) =>
-    envelope(await request.get<ResearchAgentEvent[]>(`/api/vibe-history/sessions/${sessionId}/events`, {
-      params: { after_event_id: afterEventId },
+    request.get<ApiEnvelope<ResearchMessage[]>>(`${BASE}/sessions/${sessionId}/messages`),
+  listAttempts: async (sessionId: string) =>
+    request.get<ApiEnvelope<ResearchAttempt[]>>(`${BASE}/sessions/${sessionId}/attempts`, {
       skipErrorHandler: true
-    })),
-  streamEvents: async (sessionId: string, afterEventId = 0) => {
+    }),
+  appendMessage: async (sessionId: string, payload: { role?: string; content: string; metadata?: Record<string, unknown> }) =>
+    request.post<ApiEnvelope<SendResearchMessageResponse>>(`${BASE}/sessions/${sessionId}/messages`, {
+      role: payload.role || "user",
+      content: payload.content,
+      metadata: payload.metadata || {}
+    }),
+  createGoal: async (sessionId: string, payload: { title: string; description?: string; criteria?: string[] }) =>
+    request.post<ApiEnvelope<ResearchGoal>>(`${BASE}/sessions/${sessionId}/goal`, payload),
+  getGoal: async (sessionId: string) =>
+    request.get<ApiEnvelope<ResearchGoal | null>>(`${BASE}/sessions/${sessionId}/goal`),
+  updateGoal: async (sessionId: string, payload: { title?: string; description?: string; criteria?: string[] }) =>
+    request.patch<ApiEnvelope<ResearchGoal>>(`${BASE}/sessions/${sessionId}/goal`, payload),
+  addGoalEvidence: async (sessionId: string, payload: { kind?: string; summary: string; artifact_id?: string | null; message_id?: string | null; metadata?: Record<string, unknown> }) =>
+    request.post<ApiEnvelope<ResearchGoal>>(`${BASE}/sessions/${sessionId}/goal/evidence`, payload),
+  updateGoalStatus: async (sessionId: string, payload: { status: string; reason?: string; expected_goal_id?: string }) =>
+    request.patch<ApiEnvelope<ResearchGoal>>(`${BASE}/sessions/${sessionId}/goal/status`, payload),
+  listEvents: async (sessionId: string, afterEventId: string | number = 0) =>
+    request.get<ApiEnvelope<ResearchAgentEvent[]>>(`${BASE}/sessions/${sessionId}/events`, {
+      params: { after_event_id: Number(afterEventId) || 0 },
+      skipErrorHandler: true
+    }),
+  streamEvents: async (sessionId: string, afterEventId: string | number = 0) => {
     void sessionId
     void afterEventId
     return [] as ParsedResearchStreamEvent[]
@@ -251,26 +413,35 @@ export const researchAgentApi = {
   subscribeEvents: (
     sessionId: string,
     handlers: ResearchAgentStreamHandlers,
-    afterEventId = 0
+    afterEventId: string | number = ""
   ) => {
     const token = getStoredToken()
     const params = new URLSearchParams()
-    params.set("replay", "active")
-    if (afterEventId > 0) params.set("last_index", String(afterEventId))
-    if (token) params.set("api_key", token)
+    if (afterEventId) params.set("after_event_id", String(Number(afterEventId) || 0))
+    if (token) params.set("token", token)
     const query = params.toString()
     const source = new EventSource(
-      `/api/vibe/sessions/${sessionId}/events${query ? `?${query}` : ""}`
+      `${BASE}/sessions/${sessionId}/events/stream${query ? `?${query}` : ""}`
     )
     const eventTypes = [
       "text_delta",
-      "thinking_done",
       "answer_truncated",
+      "assistant_delta",
+      "message_completed",
+      "task_completed",
+      "task_failed",
       "tool_call",
-      "tool_result",
-      "tool_heartbeat",
+      "tool_started",
       "tool_progress",
-      "compact",
+      "tool_heartbeat",
+      "tool_result",
+      "tool_completed",
+      "tool_failed",
+      "job_queued",
+      "job_running",
+      "job_completed",
+      "job_failed",
+      "job_cancelled",
       "attempt.created",
       "attempt.started",
       "attempt.completed",
@@ -285,13 +456,14 @@ export const researchAgentApi = {
       "live.action",
       "live.halted",
       "live.resumed",
+      "compact",
       "heartbeat"
     ]
 
     const parse = (eventName: string, message: MessageEvent) => {
       const data = parseEventData(message.data)
-      const eventId = message.lastEventId ? Number(message.lastEventId) : undefined
-      for (const mapped of mapVibeEvent(eventName, data, eventId)) handlers.onEvent(mapped)
+      const eventId = message.lastEventId || undefined
+      for (const mapped of mapResearchAgentEvent(eventName, data, eventId)) handlers.onEvent(mapped)
     }
 
     source.onopen = () => handlers.onOpen?.()

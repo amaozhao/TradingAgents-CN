@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ResearchAgentPage } from "@/features/research-agent/research-agent-page"
 import { researchAgentApi } from "@/libs/api/research-agent"
+import { useAppStore } from "@/stores/app-store"
 
 vi.mock("@/libs/api/research-agent", () => ({
   researchAgentApi: {
@@ -17,6 +18,12 @@ vi.mock("@/libs/api/research-agent", () => ({
     haltLive: vi.fn(),
     listMessages: vi.fn(),
     listEvents: vi.fn(),
+    createGoal: vi.fn(),
+    getGoal: vi.fn(),
+    updateGoal: vi.fn(),
+    addGoalEvidence: vi.fn(),
+    updateGoalStatus: vi.fn(),
+    listAttempts: vi.fn(),
     appendMessage: vi.fn(),
     streamEvents: vi.fn(),
     subscribeEvents: vi.fn()
@@ -26,6 +33,7 @@ vi.mock("@/libs/api/research-agent", () => ({
 describe("ResearchAgentPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useAppStore.setState({ language: "zh-CN" })
     vi.spyOn(window, "confirm").mockReturnValue(true)
     vi.mocked(researchAgentApi.listSessions).mockResolvedValue({
       success: true,
@@ -71,6 +79,21 @@ describe("ResearchAgentPage", () => {
       message: "ok"
     })
     vi.mocked(researchAgentApi.listMessages).mockResolvedValue({ success: true, data: [], message: "ok" })
+    vi.mocked(researchAgentApi.listAttempts).mockResolvedValue({ success: true, data: [], message: "ok" })
+    vi.mocked(researchAgentApi.getGoal).mockResolvedValue({ success: true, data: null, message: "ok" })
+    vi.mocked(researchAgentApi.createGoal).mockResolvedValue({
+      success: true,
+      data: {
+        goal_id: "goal-1",
+        session_id: "session-1",
+        title: "验证储能板块投资机会",
+        description: "验证储能板块投资机会",
+        criteria: ["保持研究用途，不执行交易下单"],
+        status: "active",
+        evidence: []
+      },
+      message: "ok"
+    })
     vi.mocked(researchAgentApi.listEvents).mockResolvedValue({
       success: true,
       data: [
@@ -92,22 +115,84 @@ describe("ResearchAgentPage", () => {
     vi.mocked(researchAgentApi.subscribeEvents).mockReturnValue(vi.fn())
   })
 
-  it("renders the migrated Vibe Agent capability surface", async () => {
+  it("renders the current-project Agent capability surface", async () => {
     render(<ResearchAgentPage />)
 
-    expect(screen.getByText("Vibe Agent")).toBeInTheDocument()
+    expect(screen.getByText("TradingAgents-CN Agent")).toBeInTheDocument()
     expect(screen.getByText("研究与回测")).toBeInTheDocument()
     expect(screen.getByText("跨市场组合回测")).toBeInTheDocument()
     expect(screen.getByText("文档与网页")).toBeInTheDocument()
     expect(screen.getByText("运行时与连接器")).toBeInTheDocument()
     expect(screen.getAllByText("Shadow Account").length).toBeGreaterThan(0)
     expect(screen.getByText("执行步骤")).toBeInTheDocument()
-    expect(screen.getByText("Vibe Agent Runtime")).toBeInTheDocument()
+    expect(screen.getByText("Agent Runtime")).toBeInTheDocument()
     expect(screen.getByText("交易连接器")).toBeInTheDocument()
     expect(screen.getByText("交易连接器运行")).toBeInTheDocument()
     expect(await screen.findByText("储能验证")).toBeInTheDocument()
     expect(screen.getAllByRole("button", { name: /新会话/ }).length).toBeGreaterThan(0)
     expect(screen.getByRole("button", { name: "更多选项" })).toBeInTheDocument()
+  })
+
+  it("uses the configured language for static Agent page copy", async () => {
+    useAppStore.setState({ language: "en-US" })
+
+    render(<ResearchAgentPage />)
+
+    expect(screen.getByText("Research and backtests")).toBeInTheDocument()
+    expect(screen.getAllByRole("button", { name: /New session/ }).length).toBeGreaterThan(0)
+    expect(screen.getByPlaceholderText("Example: run a backtest, check connector status, or analyze the A-share energy storage sector")).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText("例如：运行回测、检查连接器状态，或分析 A 股储能板块")).not.toBeInTheDocument()
+    expect(await screen.findByText("储能验证")).toBeInTheDocument()
+  })
+
+  it("renders the persisted research goal ledger for the active session", async () => {
+    vi.mocked(researchAgentApi.getGoal).mockResolvedValue({
+      success: true,
+      data: {
+        goal_id: "goal-session-1",
+        session_id: "session-1",
+        title: "验证储能板块投资机会",
+        description: "结合 Alpha、回测和基本面证据验证储能板块机会。",
+        criteria: ["覆盖候选股票", "输出风险点"],
+        status: "active",
+        evidence: [
+          { evidence_id: "e-1", kind: "tool", summary: "Alpha coverage 已覆盖 300750 与 阳光电源。" }
+        ]
+      },
+      message: "ok"
+    })
+
+    render(<ResearchAgentPage />)
+
+    expect(await screen.findByText("当前研究目标")).toBeInTheDocument()
+    expect(await screen.findByText("验证储能板块投资机会")).toBeInTheDocument()
+    expect(screen.getByText("active")).toBeInTheDocument()
+    expect(screen.getByText("覆盖候选股票")).toBeInTheDocument()
+    expect(screen.getByText("Alpha coverage 已覆盖 300750 与 阳光电源。")).toBeInTheDocument()
+  })
+
+  it("creates a backend research goal before sending goal-mode prompts", async () => {
+    vi.mocked(researchAgentApi.listSessions).mockResolvedValue({ success: true, data: [], message: "ok" })
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    await user.click(screen.getByRole("button", { name: "更多选项" }))
+    await user.click(screen.getByRole("button", { name: "研究目标" }))
+    await user.type(screen.getByPlaceholderText("描述要绑定到当前会话的研究目标"), "验证储能板块投资机会")
+    await user.click(screen.getByRole("button", { name: "发送" }))
+
+    await waitFor(() => expect(researchAgentApi.createGoal).toHaveBeenCalledWith("session-new", expect.objectContaining({
+      title: "验证储能板块投资机会",
+      description: "验证储能板块投资机会"
+    })))
+    await waitFor(() => expect(researchAgentApi.appendMessage).toHaveBeenCalledWith("session-new", expect.objectContaining({
+      metadata: expect.objectContaining({
+        mode: "goal",
+        goal_id: "goal-1"
+      })
+    })))
+    expect((await screen.findAllByText("验证储能板块投资机会")).length).toBeGreaterThan(0)
   })
 
   it("renames and deletes research sessions through the backend API", async () => {
@@ -154,13 +239,13 @@ describe("ResearchAgentPage", () => {
     })
     vi.mocked(researchAgentApi.subscribeEvents).mockImplementation((_sessionId, handlers) => {
       queueMicrotask(() => {
-        handlers.onEvent({ event: "assistant_delta", data: { content: "开始分析" }, eventId: 1 })
-        handlers.onEvent({ event: "tool_started", data: { tool_name: "alpha_bench" }, eventId: 2 })
-        handlers.onEvent({ event: "tool_started", data: { tool_name: "run_swarm", preview: "preset=investment_committee" }, eventId: 3 })
-        handlers.onEvent({ event: "tool_progress", data: { tool_name: "run_swarm", preview: "event=task_started · task=task-a" }, eventId: 4 })
-        handlers.onEvent({ event: "tool_completed", data: { tool_name: "alpha_bench", result: { ok: true } }, eventId: 5 })
-        handlers.onEvent({ event: "message_completed", data: { content: "分析完成" }, eventId: 6 })
-        handlers.onEvent({ event: "task_completed", data: {}, eventId: 7 })
+        handlers.onEvent({ event: "assistant_delta", data: { content: "开始分析" }, eventId: "1" })
+        handlers.onEvent({ event: "tool_started", data: { tool_name: "alpha_bench" }, eventId: "2" })
+        handlers.onEvent({ event: "tool_started", data: { tool_name: "run_swarm", preview: "preset=investment_committee" }, eventId: "3" })
+        handlers.onEvent({ event: "tool_progress", data: { tool_name: "run_swarm", preview: "event=task_started · task=task-a" }, eventId: "4" })
+        handlers.onEvent({ event: "tool_completed", data: { tool_name: "alpha_bench", result: { ok: true } }, eventId: "5" })
+        handlers.onEvent({ event: "message_completed", data: { content: "分析完成" }, eventId: "6" })
+        handlers.onEvent({ event: "task_completed", data: {}, eventId: "7" })
       })
       return vi.fn()
     })
@@ -168,7 +253,7 @@ describe("ResearchAgentPage", () => {
     const user = userEvent.setup()
     render(<ResearchAgentPage />)
 
-    await user.type(screen.getByPlaceholderText("例如：Run a backtest, check connector status, or analyze A 股储能板块"), "分析贵州茅台")
+    await user.type(screen.getByPlaceholderText("例如：运行回测、检查连接器状态，或分析 A 股储能板块"), "分析贵州茅台")
     await user.click(screen.getByRole("button", { name: "发送" }))
 
     await waitFor(() => expect(researchAgentApi.subscribeEvents).toHaveBeenCalled())
@@ -218,7 +303,7 @@ describe("ResearchAgentPage", () => {
     const user = userEvent.setup()
     render(<ResearchAgentPage />)
 
-    const composer = screen.getByPlaceholderText("例如：Run a backtest, check connector status, or analyze A 股储能板块")
+    const composer = screen.getByPlaceholderText("例如：运行回测、检查连接器状态，或分析 A 股储能板块")
     await user.click(composer)
     await user.type(composer, "第一行")
     await user.keyboard("{Shift>}{Enter}{/Shift}")
@@ -237,7 +322,7 @@ describe("ResearchAgentPage", () => {
     const user = userEvent.setup()
     render(<ResearchAgentPage />)
 
-    const composer = screen.getByPlaceholderText("例如：Run a backtest, check connector status, or analyze A 股储能板块") as HTMLTextAreaElement
+    const composer = screen.getByPlaceholderText("例如：运行回测、检查连接器状态，或分析 A 股储能板块") as HTMLTextAreaElement
     Object.defineProperty(composer, "scrollHeight", { configurable: true, value: 96 })
 
     await user.type(composer, "第一行{Shift>}{Enter}{/Shift}第二行{Shift>}{Enter}{/Shift}第三行")
@@ -278,7 +363,7 @@ describe("ResearchAgentPage", () => {
     expect(screen.getByText("ibkr-paper-local")).toBeInTheDocument()
   })
 
-  it("reloads execution steps when switching between persisted Vibe sessions", async () => {
+  it("reloads execution steps when switching between persisted research-agent sessions", async () => {
     vi.mocked(researchAgentApi.listEvents).mockImplementation(async (sessionId) => ({
       success: true,
       data: sessionId === "session-1"
@@ -437,7 +522,7 @@ describe("ResearchAgentPage", () => {
     const user = userEvent.setup()
     render(<ResearchAgentPage />)
 
-    await user.type(screen.getByPlaceholderText("例如：Run a backtest, check connector status, or analyze A 股储能板块"), "Read https://example.com")
+    await user.type(screen.getByPlaceholderText("例如：运行回测、检查连接器状态，或分析 A 股储能板块"), "Read https://example.com")
     await user.click(screen.getByRole("button", { name: "发送" }))
 
     await waitFor(() => expect(researchAgentApi.listMessages).toHaveBeenCalledWith("session-new"))

@@ -10,6 +10,7 @@ from app.services.research_agent.context import ResearchPrincipal
 from app.services.research_agent.loop import (
     ModelStreamChunk,
     ResearchAgentLoop,
+    ResearchAgentCancelled,
     build_research_prompt,
 )
 from app.services.research_agent.registry import ResearchToolRegistry
@@ -78,6 +79,13 @@ class FakeCollection:
     async def count_documents(self, query: dict[str, Any]):
         return len([doc for doc in self.documents if _matches_query(doc, query)])
 
+    async def update_one(self, query: dict[str, Any], update: dict[str, Any]):
+        for document in self.documents:
+            if _matches_query(document, query):
+                document.update(update.get("$set", {}))
+                return type("FakeUpdateResult", (), {"modified_count": 1})()
+        return type("FakeUpdateResult", (), {"modified_count": 0})()
+
 
 class FakeDb:
     def __init__(self):
@@ -90,8 +98,10 @@ class FakeModelClient:
     def __init__(self, responses: list[list[ModelStreamChunk]]):
         self.responses = responses
         self.calls = 0
+        self.call_kwargs: list[dict[str, Any]] = []
 
     async def stream(self, **_kwargs):
+        self.call_kwargs.append(_kwargs)
         response = self.responses[self.calls]
         self.calls += 1
         for chunk in response:
@@ -164,6 +174,7 @@ async def test_tool_calls_create_tool_events_and_tool_messages(fake_db):
     client = FakeModelClient(
         [
             [
+                ModelStreamChunk(reasoning_content="先调用工具确认证据。"),
                 ModelStreamChunk(
                     tool_call={
                         "name": "single_stock_analysis",
@@ -193,6 +204,88 @@ async def test_tool_calls_create_tool_events_and_tool_messages(fake_db):
 
 
 @pytest.mark.asyncio
+async def test_tool_call_finish_reason_continues_react_loop(fake_db):
+    session = await _create_session(fake_db)
+    client = FakeModelClient(
+        [
+            [
+                ModelStreamChunk(reasoning_content="先调用工具确认证据。"),
+                ModelStreamChunk(
+                    tool_call={
+                        "id": "call-1",
+                        "name": "single_stock_analysis",
+                        "arguments": {"symbol": "600519"},
+                        "thought_signature": "sig-1",
+                    },
+                    finish_reason="tool_calls",
+                ),
+            ],
+            [
+                ModelStreamChunk(delta="工具证据已纳入。", finish_reason="stop"),
+            ],
+        ]
+    )
+
+    result = await ResearchAgentLoop(model_client=client).run(
+        principal=_principal(),
+        session_id=session["session_id"],
+        user_message="调用工具后继续回答",
+    )
+    messages = await ResearchSessionService().list_messages(
+        session["session_id"], USER_A["id"]
+    )
+    assistant_tool_calls = [
+        message
+        for message in messages
+        if message["role"] == "assistant" and message["metadata"].get("tool_calls")
+    ]
+    tool_messages = [message for message in messages if message["role"] == "tool"]
+
+    assert client.calls == 2
+    assert result["content"] == "工具证据已纳入。"
+    assert assistant_tool_calls[0]["metadata"]["tool_calls"][0]["id"] == "call-1"
+    assert assistant_tool_calls[0]["metadata"]["tool_calls"][0]["extra_content"] == {
+        "google": {"thought_signature": "sig-1"}
+    }
+    assert assistant_tool_calls[0]["metadata"]["reasoning_content"] == "先调用工具确认证据。"
+    assert tool_messages[0]["metadata"]["tool_call_id"] == "call-1"
+
+
+@pytest.mark.asyncio
+async def test_reasoning_chunks_are_logged_and_saved_in_final_metadata(fake_db):
+    session = await _create_session(fake_db)
+    client = FakeModelClient(
+        [
+            [
+                ModelStreamChunk(reasoning_content="先看上下文。"),
+                ModelStreamChunk(delta="最终回答。", finish_reason="stop"),
+            ]
+        ]
+    )
+
+    await ResearchAgentLoop(model_client=client).run(
+        principal=_principal(),
+        session_id=session["session_id"],
+        user_message="解释能力",
+    )
+    messages = await ResearchSessionService().list_messages(
+        session["session_id"], USER_A["id"]
+    )
+    log_events = [
+        event
+        for event in fake_db.research_events.documents
+        if event["event_type"] == "log"
+    ]
+
+    assert log_events[0]["payload"] == {
+        "kind": "reasoning",
+        "content": "先看上下文。",
+        "attempt_id": None,
+    }
+    assert messages[-1]["metadata"]["reasoning_content"] == "先看上下文。"
+
+
+@pytest.mark.asyncio
 async def test_finish_reason_length_triggers_one_continuation(fake_db):
     session = await _create_session(fake_db)
     client = FakeModelClient(
@@ -210,3 +303,75 @@ async def test_finish_reason_length_triggers_one_continuation(fake_db):
 
     assert client.calls == 2
     assert result["content"] == "第一段第二段"
+
+
+@pytest.mark.asyncio
+async def test_loop_stops_when_cancel_checker_trips_mid_stream(fake_db):
+    session = await _create_session(fake_db)
+    client = FakeModelClient(
+        [
+            [
+                ModelStreamChunk(delta="第一段"),
+                ModelStreamChunk(delta="不应写入", finish_reason="stop"),
+            ]
+        ]
+    )
+    checks = 0
+
+    async def cancel_after_first_chunk() -> bool:
+        nonlocal checks
+        checks += 1
+        return checks >= 3
+
+    with pytest.raises(ResearchAgentCancelled):
+        await ResearchAgentLoop(
+            model_client=client,
+            cancel_checker=cancel_after_first_chunk,
+        ).run(
+            principal=_principal(),
+            session_id=session["session_id"],
+            user_message="取消测试",
+            attempt_id="attempt-cancel",
+        )
+
+    messages = await ResearchSessionService().list_messages(
+        session["session_id"], USER_A["id"]
+    )
+    event_types = [event["event_type"] for event in fake_db.research_events.documents]
+
+    assert "task_failed" in event_types
+    assert messages[-1]["role"] == "user"
+    assert all(message["content"] != "第一段不应写入" for message in messages)
+
+
+@pytest.mark.asyncio
+async def test_context_compaction_emits_event_and_collapses_old_messages(fake_db):
+    session = await _create_session(fake_db)
+    long_content = "旧研究上下文" * 500
+    await ResearchSessionService().append_message(
+        session_id=session["session_id"],
+        user_id=USER_A["id"],
+        role="assistant",
+        content=long_content,
+    )
+    client = FakeModelClient(
+        [[ModelStreamChunk(delta="已压缩上下文。", finish_reason="stop")]]
+    )
+
+    await ResearchAgentLoop(
+        model_client=client,
+        context_char_budget=900,
+        preserve_recent_messages=1,
+    ).run(
+        principal=_principal(),
+        session_id=session["session_id"],
+        user_message="继续",
+    )
+
+    event_types = [event["event_type"] for event in fake_db.research_events.documents]
+    outbound_messages = client.call_kwargs[0]["messages"]
+    outbound_content = "\n".join(str(message.get("content") or "") for message in outbound_messages)
+
+    assert "compact" in event_types
+    assert "compacted for context budget" in outbound_content
+    assert long_content not in outbound_content

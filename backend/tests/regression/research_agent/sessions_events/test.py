@@ -10,10 +10,13 @@ from app.routers import research_agent as research_agent_router
 from app.services.research_agent import artifacts as artifacts_module
 from app.services.research_agent import events as events_module
 from app.services.research_agent import jobs as jobs_module
+from app.services.research_agent import live as live_module
+from app.services.research_agent import runtime as runtime_module
 from app.services.research_agent import sessions as sessions_module
 from app.services.research_agent.artifacts import ResearchArtifactService
 from app.services.research_agent.context import ResearchPrincipal
 from app.services.research_agent.events import ResearchEventService
+from app.services.research_agent.loop import ModelStreamChunk
 from app.services.research_agent.sessions import ResearchSessionService
 
 
@@ -115,18 +118,87 @@ class FakeDb:
         self.research_events = FakeCollection()
         self.research_artifacts = FakeCollection()
         self.research_jobs = FakeCollection()
+        self.research_attempts = FakeCollection()
+        self.research_goals = FakeCollection()
+        self.research_live_state = FakeCollection()
+        self.research_live_audit = FakeCollection()
 
 
 @pytest.fixture()
 def fake_db(monkeypatch):
     db = FakeDb()
-    for module in (sessions_module, events_module, artifacts_module, jobs_module):
+    for module in (sessions_module, events_module, artifacts_module, jobs_module, live_module):
         monkeypatch.setattr(module, "get_postgres_db", lambda db=db: db)
     return db
 
 
 def _principal(user: dict[str, Any]) -> ResearchPrincipal:
     return ResearchPrincipal.from_user(user, session_id="request-session")
+
+
+class FakeProviderModelClient:
+    calls = 0
+
+    def __init__(self, _principal: ResearchPrincipal) -> None:
+        return None
+
+    async def stream(self, **_kwargs: Any):
+        responses = [
+            [
+                ModelStreamChunk(
+                    tool_call={
+                        "id": "call-screen",
+                        "name": "screening_run",
+                        "arguments": {
+                            "sector": "储能",
+                            "symbols": ["300750.SZ", "002594.SZ"],
+                        },
+                    },
+                    finish_reason="tool_calls",
+                )
+            ],
+            [
+                ModelStreamChunk(
+                    tool_call={
+                        "id": "call-analysis",
+                        "name": "single_stock_analysis",
+                        "arguments": {"symbol": "300750.SZ"},
+                    },
+                    finish_reason="tool_calls",
+                )
+            ],
+            [ModelStreamChunk(delta="基于工具证据，储能板块优先关注 300750.SZ。", finish_reason="stop")],
+        ]
+        response = responses[FakeProviderModelClient.calls]
+        FakeProviderModelClient.calls += 1
+        for chunk in response:
+            yield chunk
+
+
+class ConnectorProviderModelClient:
+    calls = 0
+
+    def __init__(self, _principal: ResearchPrincipal) -> None:
+        return None
+
+    async def stream(self, **_kwargs: Any):
+        responses = [
+            [
+                ModelStreamChunk(
+                    tool_call={
+                        "id": "call-connector",
+                        "name": "trading_check",
+                        "arguments": {"broker": "paper"},
+                    },
+                    finish_reason="tool_calls",
+                )
+            ],
+            [ModelStreamChunk(delta="交易连接器检查完成：当前为只读研究模式。", finish_reason="stop")],
+        ]
+        response = responses[ConnectorProviderModelClient.calls]
+        ConnectorProviderModelClient.calls += 1
+        for chunk in response:
+            yield chunk
 
 
 @pytest.mark.asyncio
@@ -292,8 +364,12 @@ async def test_user_can_rename_and_delete_only_own_research_session(fake_db):
 
 
 @pytest.mark.asyncio
-async def test_user_prompt_route_queues_agent_workflow_for_background_execution(fake_db):
+async def test_user_prompt_route_runs_stock_workflow_from_provider_tool_calls(fake_db, monkeypatch):
     _ = fake_db
+    FakeProviderModelClient.calls = 0
+    monkeypatch.setattr(
+        runtime_module, "OpenAICompatibleModelClient", FakeProviderModelClient
+    )
     research_agent_router.session_service = ResearchSessionService()
     research_agent_router.event_service = ResearchEventService()
     research_agent_router.artifact_service = ResearchArtifactService()
@@ -316,12 +392,19 @@ async def test_user_prompt_route_queues_agent_workflow_for_background_execution(
     events = await ResearchEventService().list_after(
         session_id=session_id, user_id=USER_A["id"], after_event_id=0
     )
+    messages = await ResearchSessionService().list_messages(session_id, USER_A["id"])
+    session = await ResearchSessionService().get_session(session_id, USER_A["id"])
     event_types = [event["event_type"] for event in events]
     artifacts = fake_db.research_artifacts.documents
 
     assert response["success"] is True
     assert response["data"]["status"] == "queued"
     assert response["data"]["job_id"]
+    assert response["data"]["attempt_id"]
+    assert response["data"]["message_id"]
+    assert messages[0]["role"] == "user"
+    assert messages[0]["linked_attempt_id"] == response["data"]["attempt_id"]
+    assert session["last_attempt_id"] == response["data"]["attempt_id"]
     assert "tool_completed" not in event_types
     assert artifacts == []
 
@@ -341,22 +424,26 @@ async def test_user_prompt_route_queues_agent_workflow_for_background_execution(
         for event in events
         if event["event_type"] == "tool_completed"
     ]
+    messages = await ResearchSessionService().list_messages(session_id, USER_A["id"])
+    assistant_messages = [message for message in messages if message["role"] == "assistant"]
 
     assert "tool_completed" in event_types
     assert "message_completed" in event_types
     assert "task_completed" in event_types
-    assert "report_write" in tool_names
-    assert event_types.index("task_completed") > max(
-        index
-        for index, event in enumerate(events)
-        if event["payload"].get("tool_name") == "report_write"
-    )
-    assert any(artifact["artifact_type"] == "research_report" for artifact in artifacts)
+    assert "screening_run" in tool_names
+    assert "single_stock_analysis" in tool_names
+    assert "report_write" not in tool_names
+    assert assistant_messages[-1]["linked_attempt_id"] == response["data"]["attempt_id"]
+    assert FakeProviderModelClient.calls == 3
+    assert messages[-1]["content"] == "基于工具证据，储能板块优先关注 300750.SZ。"
+    assert artifacts == []
 
 
 @pytest.mark.asyncio
-async def test_connector_prompt_reports_missing_vibe_runtime_without_fake_stock_tools(fake_db):
+async def test_connector_prompt_uses_migrated_live_tool_without_fake_stock_workflow(fake_db, monkeypatch):
     _ = fake_db
+    ConnectorProviderModelClient.calls = 0
+    monkeypatch.setattr(runtime_module, "OpenAICompatibleModelClient", ConnectorProviderModelClient)
     research_agent_router.session_service = ResearchSessionService()
     research_agent_router.event_service = ResearchEventService()
     research_agent_router.artifact_service = ResearchArtifactService()
@@ -388,14 +475,20 @@ async def test_connector_prompt_reports_missing_vibe_runtime_without_fake_stock_
     )
     messages = await ResearchSessionService().list_messages(session_id, USER_A["id"])
 
-    assert [event["event_type"] for event in events] == [
-        "assistant_delta",
-        "message_completed",
-        "task_completed",
-    ]
+    event_types = [event["event_type"] for event in events]
+    tool_names = [event["payload"].get("tool_name") for event in events]
+    assert "attempt.created" in event_types
+    assert "job_queued" in event_types
+    assert "job_running" in event_types
+    assert "tool_started" in event_types
+    assert "tool_completed" in event_types
+    assert "assistant_delta" in event_types
+    assert "message_completed" in event_types
+    assert "task_completed" in event_types
     assert fake_db.research_artifacts.documents == []
-    assert "不会再伪造运行结果" in messages[-1]["content"]
-    assert "交易连接器运行状态" in messages[-1]["content"]
+    assert "trading_check" in tool_names
+    assert "不会再伪造运行结果" not in messages[-1]["content"]
+    assert "只读研究模式" in messages[-1]["content"]
 
 
 @pytest.mark.asyncio
@@ -440,7 +533,7 @@ async def test_unsupported_cross_market_backtest_does_not_fake_stock_workflow(fa
 
 
 @pytest.mark.asyncio
-async def test_goal_mode_stock_prompt_runs_stock_research_tools(fake_db):
+async def test_goal_mode_stock_prompt_requires_provider_config(fake_db):
     _ = fake_db
     research_agent_router.session_service = ResearchSessionService()
     research_agent_router.event_service = ResearchEventService()
@@ -469,29 +562,28 @@ async def test_goal_mode_stock_prompt_runs_stock_research_tools(fake_db):
         current_user=USER_A,
     )
 
-    await research_agent_router.runtime_service.run_queued_user_prompt(
-        principal=ResearchPrincipal.from_user(USER_A, session_id=session_id),
-        session_id=session_id,
-        user_message=goal_prompt,
-        job_id=response["data"]["job_id"],
-    )
+    with pytest.raises(RuntimeError):
+        await research_agent_router.runtime_service.run_queued_user_prompt(
+            principal=ResearchPrincipal.from_user(USER_A, session_id=session_id),
+            session_id=session_id,
+            user_message=goal_prompt,
+            job_id=response["data"]["job_id"],
+        )
 
     events = await ResearchEventService().list_after(
         session_id=session_id, user_id=USER_A["id"], after_event_id=0
     )
-    messages = await ResearchSessionService().list_messages(session_id, USER_A["id"])
+    event_types = [event["event_type"] for event in events]
     tool_names = [
         event["payload"].get("tool_name")
         for event in events
         if event["event_type"] == "tool_completed"
     ]
 
-    assert "screening_run" in tool_names
-    assert "alpha_bench" in tool_names
-    assert "correlation_matrix" in tool_names
-    assert "report_write" in tool_names
-    assert "不会再伪造运行结果" not in messages[-1]["content"]
-    assert "开始分析储能" in messages[-1]["content"]
+    assert tool_names == []
+    assert "job_failed" in event_types
+    assert "attempt.failed" in event_types
+    assert "task_failed" in event_types
 
 
 @pytest.mark.asyncio
@@ -516,19 +608,24 @@ async def test_general_chat_prompt_does_not_run_stock_research_pipeline(fake_db)
         current_user=USER_A,
     )
 
-    await research_agent_router.runtime_service.run_queued_user_prompt(
-        principal=ResearchPrincipal.from_user(USER_A, session_id=session_id),
-        session_id=session_id,
-        user_message="用一句话说明你能做什么",
-        job_id=response["data"]["job_id"],
-    )
+    with pytest.raises(RuntimeError):
+        await research_agent_router.runtime_service.run_queued_user_prompt(
+            principal=ResearchPrincipal.from_user(USER_A, session_id=session_id),
+            session_id=session_id,
+            user_message="用一句话说明你能做什么",
+            job_id=response["data"]["job_id"],
+        )
 
     events = await ResearchEventService().list_after(
         session_id=session_id, user_id=USER_A["id"], after_event_id=0
     )
     messages = await ResearchSessionService().list_messages(session_id, USER_A["id"])
+    event_types = [event["event_type"] for event in events]
 
     assert all(event["event_type"] != "tool_started" for event in events)
     assert all(event["event_type"] != "tool_completed" for event in events)
+    assert "job_failed" in event_types
+    assert "attempt.failed" in event_types
+    assert "task_failed" in event_types
     assert fake_db.research_artifacts.documents == []
-    assert "当前后端可处理 A 股研究" in messages[-1]["content"]
+    assert messages[-1]["role"] == "user"

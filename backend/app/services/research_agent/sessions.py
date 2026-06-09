@@ -22,6 +22,15 @@ class ResearchSessionService:
     def _artifacts(self):
         return get_postgres_db().research_artifacts
 
+    def _jobs(self):
+        return get_postgres_db().research_jobs
+
+    def _attempts(self):
+        return get_postgres_db().research_attempts
+
+    def _goals(self):
+        return get_postgres_db().research_goals
+
     async def create_session(
         self, principal: ResearchPrincipal, title: str | None = None
     ) -> dict[str, Any]:
@@ -75,6 +84,9 @@ class ResearchSessionService:
         await self._messages().delete_many(query)
         await self._events().delete_many(query)
         await self._artifacts().delete_many(query)
+        await self._jobs().delete_many(query)
+        await self._attempts().delete_many(query)
+        await self._goals().delete_many(query)
         await self._sessions().delete_one(query)
         return True
 
@@ -86,12 +98,16 @@ class ResearchSessionService:
         role: str,
         content: str,
         metadata: dict[str, Any] | None = None,
+        linked_attempt_id: str | None = None,
     ) -> dict[str, Any] | None:
         session = await self.get_session(session_id, user_id)
         if not session:
             return None
 
         now = now_utc()
+        message_metadata = dict(metadata or {})
+        if linked_attempt_id:
+            message_metadata.setdefault("linked_attempt_id", linked_attempt_id)
         message = {
             "_id": str(uuid.uuid4()),
             "message_id": str(uuid.uuid4()),
@@ -99,10 +115,18 @@ class ResearchSessionService:
             "user_id": str(user_id),
             "role": role,
             "content": content,
-            "metadata": metadata or {},
+            "metadata": message_metadata,
+            "linked_attempt_id": linked_attempt_id,
             "created_at": now,
         }
         await self._messages().insert_one(message)
+        session_update: dict[str, Any] = {"updated_at": now}
+        if linked_attempt_id:
+            session_update["last_attempt_id"] = linked_attempt_id
+        await self._sessions().update_one(
+            {"session_id": session_id, "user_id": str(user_id)},
+            {"$set": session_update},
+        )
         return message
 
     async def list_messages(self, session_id: str, user_id: str) -> list[dict[str, Any]]:
