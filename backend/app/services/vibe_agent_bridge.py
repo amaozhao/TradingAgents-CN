@@ -11,10 +11,15 @@ def _default_vibe_agent_path() -> Path:
     return Path(__file__).resolve().parents[4] / "Vibe-Trading" / "agent"
 
 
+def get_vibe_agent_path() -> Path | None:
+    agent_path = _default_vibe_agent_path()
+    return agent_path if agent_path.exists() else None
+
+
 def load_vibe_app() -> FastAPI | None:
     """Load the local Vibe-Trading FastAPI app when the source tree is present."""
-    agent_path = _default_vibe_agent_path()
-    if not agent_path.exists():
+    agent_path = get_vibe_agent_path()
+    if agent_path is None:
         return None
 
     path_text = str(agent_path)

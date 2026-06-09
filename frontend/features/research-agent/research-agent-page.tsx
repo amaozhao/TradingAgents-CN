@@ -160,6 +160,8 @@ const QUICK_RESEARCH_PROMPTS = [
 ]
 
 const TOOL_LABELS: Record<string, { title: string; desc: string }> = {
+  load_skill: { title: "加载能力模块", desc: "加载 Vibe 工具或技能说明" },
+  bash: { title: "命令执行", desc: "执行辅助命令并收集输出" },
   screening_run: { title: "股票筛选", desc: "构建候选池并筛掉不满足条件的标的" },
   alpha_bench: { title: "Alpha 覆盖检查", desc: "检查候选股票可用因子、覆盖率和有效性" },
   correlation_matrix: { title: "相关性矩阵", desc: "分析候选股票之间的相关性和组合分散度" },
@@ -184,6 +186,7 @@ const TOOL_LABELS: Record<string, { title: string; desc: string }> = {
   render_shadow_report: { title: "Shadow 报告", desc: "渲染影子账户报告" },
   start_research_goal: { title: "创建研究目标", desc: "创建或绑定 research goal" },
   add_goal_evidence: { title: "追加目标证据", desc: "向 goal ledger 写入证据" },
+  update_research_goal_status: { title: "更新目标状态", desc: "把本次研究目标标记为最新状态" },
   get_research_goal: { title: "读取研究目标", desc: "读取当前 research goal 状态" }
 }
 
@@ -211,6 +214,140 @@ function previewFromEventData(data: Record<string, unknown>) {
     if (formatted) return formatted
   }
   return ""
+}
+
+function parseJsonPreview(value: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(value)
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null
+  } catch {
+    return null
+  }
+}
+
+function compactPreviewText(value: unknown) {
+  return formatEventValue(value)
+    .replace(/<skill\b[^>]*>/g, "")
+    .replace(/<\/skill>/g, "")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/[#*`>]+/g, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .slice(0, 220)
+}
+
+function decodeJsonFragment(value: string) {
+  try {
+    return JSON.parse(`"${value}"`) as string
+  } catch {
+    return value
+      .replace(/\\"/g, "\"")
+      .replace(/\\n/g, "\n")
+      .replace(/\\t/g, " ")
+  }
+}
+
+function jsonFragmentStringField(raw: string, key: string) {
+  const match = raw.match(new RegExp(`"${key}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)`))
+  return match ? decodeJsonFragment(match[1]) : ""
+}
+
+function jsonFragmentNumberField(raw: string, key: string) {
+  const match = raw.match(new RegExp(`"${key}"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)`))
+  return match ? Number(match[1]) : undefined
+}
+
+function jsonFragmentPreview(toolName: string, raw: string) {
+  const result = {
+    status: jsonFragmentStringField(raw, "status"),
+    error: jsonFragmentStringField(raw, "error"),
+    content: jsonFragmentStringField(raw, "content"),
+    stdout: jsonFragmentStringField(raw, "stdout"),
+    stderr: jsonFragmentStringField(raw, "stderr"),
+    exit_code: jsonFragmentNumberField(raw, "exit_code") ?? jsonFragmentNumberField(raw, "exitcode")
+  }
+
+  if (toolName === "load_skill" && result.content) return skillPreview(result.content)
+  if (toolName === "bash") return bashPreview(result)
+  if (result.error) return `工具失败：${compactPreviewText(result.error)}`
+  if (result.content) return compactPreviewText(result.content)
+  if (result.stdout || result.stderr) return bashPreview(result)
+  return compactPreviewText(raw.replace(/^\{+/, ""))
+}
+
+function skillPreview(content: string) {
+  const name = content.match(/<skill\s+name=["']([^"']+)["']/)?.[1]
+  const heading = content.match(/^#{1,6}\s+(.+)$/m)?.[1]
+  const body = compactPreviewText(content)
+  const prefix = name ? `已加载技能 ${name}` : "技能已加载"
+  if (heading && body) return `${prefix}: ${heading} - ${body}`
+  if (heading) return `${prefix}: ${heading}`
+  return body ? `${prefix}: ${body}` : prefix
+}
+
+function bashPreview(result: Record<string, unknown>) {
+  const exitCode = result.exit_code ?? result.code
+  const stdout = compactPreviewText(result.stdout)
+  const stderr = compactPreviewText(result.stderr || result.error)
+  const failed = String(result.status || "") === "error" || (typeof exitCode === "number" && exitCode !== 0)
+  const prefix = failed
+    ? `命令失败${exitCode != null ? `（exit ${exitCode}）` : ""}`
+    : "命令执行成功"
+  if (stdout && stderr) return `${prefix}。输出：${stdout}。错误：${stderr}`
+  if (stderr) return `${prefix}。错误：${stderr}`
+  if (stdout) return `${prefix}。输出：${stdout}`
+  return prefix
+}
+
+function evidencePreview(result: Record<string, unknown>) {
+  const evidence = result.evidence
+  if (evidence && typeof evidence === "object") {
+    const text = compactPreviewText((evidence as Record<string, unknown>).text)
+    if (text) return `证据已写入：${text}`
+  }
+  return result.status === "ok" ? "证据已写入 goal ledger" : compactPreviewText(result.error || result)
+}
+
+function goalStatusPreview(result: Record<string, unknown>) {
+  const snapshot = result.snapshot
+  if (snapshot && typeof snapshot === "object") {
+    const goal = (snapshot as Record<string, unknown>).goal
+    if (goal && typeof goal === "object") {
+      const status = compactPreviewText((goal as Record<string, unknown>).status)
+      const objective = compactPreviewText((goal as Record<string, unknown>).objective)
+      if (status && objective) return `目标状态已更新为 ${status}：${objective}`
+      if (status) return `目标状态已更新为 ${status}`
+    }
+  }
+  return result.status === "ok" ? "目标状态已更新" : compactPreviewText(result.error || result)
+}
+
+function readableToolPreview(tool: ToolState) {
+  if (!tool.preview) return ""
+  const parsed = parseJsonPreview(tool.preview)
+  if (!parsed) {
+    const trimmed = tool.preview.trim()
+    return trimmed.startsWith("{")
+      ? jsonFragmentPreview(tool.name, trimmed)
+      : compactPreviewText(tool.preview)
+  }
+
+  if (tool.name === "load_skill") {
+    return skillPreview(formatEventValue(parsed.content || parsed.text || parsed.preview))
+  }
+  if (tool.name === "bash") return bashPreview(parsed)
+  if (tool.name === "add_goal_evidence") return evidencePreview(parsed)
+  if (tool.name === "update_research_goal_status") return goalStatusPreview(parsed)
+
+  const content = parsed.content || parsed.text || parsed.summary || parsed.stdout || parsed.error || parsed.preview
+  if (content) return compactPreviewText(content)
+  if (parsed.status === "ok") return "工具执行完成"
+  return compactPreviewText(parsed)
 }
 
 function normalizePersistedEvent(event: ResearchAgentEvent): ParsedResearchStreamEvent {
@@ -315,6 +452,31 @@ function WelcomeScreen({ onExample }: { onExample: (prompt: string) => void }) {
             </section>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+function SessionLoadingView() {
+  return (
+    <div className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-10">
+      <div className="flex items-center gap-3 rounded-lg border bg-background px-4 py-3 shadow-sm">
+        <div className="flex size-9 items-center justify-center rounded-full bg-primary/10">
+          <Loader2 className="size-4 animate-spin text-primary" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium">正在载入会话</p>
+          <p className="mt-1 text-xs text-muted-foreground">正在恢复历史消息和执行步骤...</p>
+        </div>
+      </div>
+      <div className="space-y-3">
+        {[0, 1, 2].map((item) => (
+          <div key={item} className="animate-pulse rounded-xl border bg-background p-4">
+            <div className="h-3 w-1/3 rounded bg-muted" />
+            <div className="mt-3 h-3 w-full rounded bg-muted" />
+            <div className="mt-2 h-3 w-5/6 rounded bg-muted" />
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -464,6 +626,7 @@ function LiveStatusPanel({
 function ToolRail({
   tools,
   running,
+  loading,
   liveStatus,
   liveStatusLoading,
   liveStatusUnavailable,
@@ -472,6 +635,7 @@ function ToolRail({
 }: {
   tools: ToolState[]
   running: boolean
+  loading: boolean
   liveStatus: LiveStatus | null
   liveStatusLoading: boolean
   liveStatusUnavailable: boolean
@@ -484,29 +648,51 @@ function ToolRail({
         <section className="rounded-lg border bg-background p-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium">执行步骤</h2>
-            {running && <Loader2 className="size-4 animate-spin text-primary" />}
+            {(running || loading) && <Loader2 className="size-4 animate-spin text-primary" />}
           </div>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
             这里展示的是本次 Vibe Agent 调用了哪些后端工具。
           </p>
           <div className="mt-3 space-y-2">
-            {tools.length === 0 ? (
+            {loading ? (
+              <div className="space-y-2" aria-label="正在载入执行步骤">
+                {[0, 1, 2].map((item) => (
+                  <div key={item} className="animate-pulse rounded-md border bg-background px-3 py-2">
+                    <div className="flex items-center justify-between">
+                      <div className="h-3 w-24 rounded bg-muted" />
+                      <div className="h-4 w-10 rounded-full bg-muted" />
+                    </div>
+                    <div className="mt-2 h-3 w-full rounded bg-muted" />
+                    <div className="mt-2 h-3 w-2/3 rounded bg-muted" />
+                  </div>
+                ))}
+              </div>
+            ) : tools.length === 0 ? (
               <p className="rounded-md border border-dashed px-3 py-4 text-xs text-muted-foreground">
                 等待回测、Alpha、矩阵、文档/Web、Swarm、连接器或 Shadow 工具步骤。
               </p>
             ) : (
               tools.map((tool) => {
                 const label = TOOL_LABELS[tool.name]
+                const preview = readableToolPreview(tool)
+                const statusClass = tool.status === "error"
+                  ? "bg-destructive/10 text-destructive"
+                  : tool.status === "running"
+                    ? "bg-primary/10 text-primary"
+                    : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
                 return (
-                  <div key={tool.id} className="rounded-md border bg-muted/20 px-3 py-2">
+                  <div key={tool.id} className="rounded-md border bg-background px-3 py-2 shadow-sm">
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-xs font-medium">{label?.title || tool.name}</span>
-                      <span className="shrink-0 rounded-full bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${statusClass}`}>
                         {tool.status === "running" ? "运行中" : tool.status === "error" ? "失败" : "完成"}
                       </span>
                     </div>
                     <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{label?.desc || tool.name}</p>
-                    {tool.preview && <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-[11px] text-muted-foreground">{tool.preview}</p>}
+                    {preview && <p className="mt-1 line-clamp-3 text-[11px] leading-4 text-foreground/75">{preview}</p>}
+                    {typeof tool.elapsedMs === "number" && (
+                      <p className="mt-1 text-[10px] text-muted-foreground">{(tool.elapsedMs / 1000).toFixed(1)}s</p>
+                    )}
                   </div>
                 )
               })
@@ -642,7 +828,7 @@ function SessionRail({
           <div className="mb-2 flex items-center gap-2 font-medium text-foreground">
             <Users className="size-4" />当前 Agent 范围
           </div>
-          当前页面调用 TradingAgents-CN 后端挂载的 Vibe Runtime，不再使用简化 Agent stub。
+          当前页面直接调用后端挂载的 Vibe Runtime，不再使用简化 Agent stub。
         </div>
       </div>
     </aside>
@@ -656,6 +842,7 @@ export function ResearchAgentPage() {
   const [tools, setTools] = useState<ToolState[]>([])
   const [input, setInput] = useState("")
   const [running, setRunning] = useState(false)
+  const [sessionLoading, setSessionLoading] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [composerMode, setComposerMode] = useState<"chat" | "goal">("chat")
   const [showScrollButton, setShowScrollButton] = useState(false)
@@ -670,6 +857,7 @@ export function ResearchAgentPage() {
   const lastEventIdRef = useRef(0)
   const streamingAnswerIdRef = useRef<string | null>(null)
   const runFinishedRef = useRef(false)
+  const sessionLoadSeqRef = useRef(0)
 
   useEffect(() => {
     void researchAgentApi.listSessions().then((response) => {
@@ -680,11 +868,20 @@ export function ResearchAgentPage() {
   }, [])
 
   useEffect(() => {
-    if (!activeSessionId || running) return
+    if (!activeSessionId || running) {
+      setSessionLoading(false)
+      return
+    }
+    const loadSeq = sessionLoadSeqRef.current + 1
+    sessionLoadSeqRef.current = loadSeq
+    setSessionLoading(true)
+    setMessages([])
+    setTools([])
     void Promise.all([
       researchAgentApi.listMessages(activeSessionId),
       researchAgentApi.listEvents(activeSessionId)
     ]).then(([messageResponse, eventResponse]) => {
+      if (sessionLoadSeqRef.current !== loadSeq) return
       const rawEvents = eventResponse.data || []
       const persistedEvents = rawEvents.map(normalizePersistedEvent)
       lastEventIdRef.current = Math.max(0, ...rawEvents.map((event) => Number(event.event_id || 0)))
@@ -697,8 +894,11 @@ export function ResearchAgentPage() {
       setTools(toolsFromEvents(persistedEvents))
       requestAnimationFrame(scrollToBottom)
     }).catch(() => {
+      if (sessionLoadSeqRef.current !== loadSeq) return
       setMessages([])
       setTools([])
+    }).finally(() => {
+      if (sessionLoadSeqRef.current === loadSeq) setSessionLoading(false)
     })
   }, [activeSessionId, running])
 
@@ -963,6 +1163,8 @@ export function ResearchAgentPage() {
     stopCompletionPolling()
     runFinishedRef.current = true
     setActiveSessionId(null)
+    sessionLoadSeqRef.current += 1
+    setSessionLoading(false)
     lastEventIdRef.current = 0
     setMessages([])
     setTools([])
@@ -976,6 +1178,9 @@ export function ResearchAgentPage() {
     stopCompletionPolling()
     runFinishedRef.current = true
     lastEventIdRef.current = 0
+    setSessionLoading(true)
+    setMessages([])
+    setTools([])
     setActiveSessionId(sessionId)
   }
 
@@ -1016,7 +1221,7 @@ export function ResearchAgentPage() {
 
   async function handleHaltLive() {
     await researchAgentApi.haltLive({
-      reason: "user requested halt from TradingAgents-CN Agent page",
+      reason: "user requested halt from Agent page",
       session_id: activeSessionId
     })
     await refreshLiveStatus()
@@ -1059,7 +1264,7 @@ export function ResearchAgentPage() {
               <span className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">{statusLabel}</span>
             </div>
             <p className="mt-1 truncate text-xs text-muted-foreground">
-              已接入 Vibe-Trading 原始 Agent Runtime，并运行在 TradingAgents-CN 后端进程内。
+              已接入 Vibe-Trading 原始 Agent Runtime，并运行在当前后端进程内。
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -1076,7 +1281,13 @@ export function ResearchAgentPage() {
 
         <div ref={listRef} onScroll={onScroll} className="relative min-h-0 overflow-auto p-5">
           <div className="w-full space-y-4">
-            {messages.length === 0 ? <WelcomeScreen onExample={runPrompt} /> : messages.map((message) => <MessageBubble key={message.id} message={message} />)}
+            {sessionLoading ? (
+              <SessionLoadingView />
+            ) : messages.length === 0 ? (
+              <WelcomeScreen onExample={runPrompt} />
+            ) : (
+              messages.map((message) => <MessageBubble key={message.id} message={message} />)
+            )}
             {running && (
               <div className="flex gap-3">
                 <div className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full border bg-background">
@@ -1154,6 +1365,7 @@ export function ResearchAgentPage() {
       <ToolRail
         tools={tools}
         running={running}
+        loading={sessionLoading}
         liveStatus={liveStatus}
         liveStatusLoading={liveStatusLoading}
         liveStatusUnavailable={liveStatusUnavailable}

@@ -198,6 +198,126 @@ describe("ResearchAgentPage", () => {
     expect(screen.getByText("ibkr-paper-local")).toBeInTheDocument()
   })
 
+  it("reloads execution steps when switching between persisted Vibe sessions", async () => {
+    vi.mocked(researchAgentApi.listEvents).mockImplementation(async (sessionId) => ({
+      success: true,
+      data: sessionId === "session-1"
+        ? [
+            { event_id: 1, event_type: "tool_started", payload: { tool_name: "read_url" } },
+            { event_id: 2, event_type: "tool_completed", payload: { tool_name: "read_url", preview: "No finance content" } }
+          ]
+        : [
+            { event_id: 1, event_type: "tool_started", payload: { tool_name: "alpha_bench" } },
+            { event_id: 2, event_type: "tool_completed", payload: { tool_name: "alpha_bench", preview: "Coverage ok" } }
+          ],
+      message: "ok"
+    }))
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    expect(await screen.findByText("网页读取")).toBeInTheDocument()
+    expect(screen.queryByText("Alpha 覆盖检查")).not.toBeInTheDocument()
+
+    await user.click(await screen.findByText("白酒研究"))
+
+    expect(await screen.findByText("Alpha 覆盖检查")).toBeInTheDocument()
+    expect(screen.queryByText("网页读取")).not.toBeInTheDocument()
+  })
+
+  it("shows a loading state while switching sessions and ignores stale responses", async () => {
+    let resolveSession1Messages: ((value: Awaited<ReturnType<typeof researchAgentApi.listMessages>>) => void) | undefined
+    vi.mocked(researchAgentApi.listMessages).mockImplementation((sessionId) => {
+      if (sessionId === "session-1") {
+        return new Promise((resolve) => {
+          resolveSession1Messages = resolve
+        })
+      }
+      return Promise.resolve({
+        success: true,
+        data: [{ message_id: "session-2-user", role: "user", content: "白酒研究内容", metadata: {} }],
+        message: "ok"
+      })
+    })
+    vi.mocked(researchAgentApi.listEvents).mockImplementation(async (sessionId) => ({
+      success: true,
+      data: sessionId === "session-2"
+        ? [{ event_id: 1, event_type: "tool_completed", payload: { tool_name: "alpha_bench", preview: "Coverage ok" } }]
+        : [{ event_id: 1, event_type: "tool_completed", payload: { tool_name: "read_url", preview: "Stale content" } }],
+      message: "ok"
+    }))
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    expect(await screen.findByText("正在载入会话")).toBeInTheDocument()
+    await user.click(await screen.findByText("白酒研究"))
+
+    expect(await screen.findByText("白酒研究内容")).toBeInTheDocument()
+    expect(await screen.findByText("Alpha 覆盖检查")).toBeInTheDocument()
+
+    resolveSession1Messages?.({
+      success: true,
+      data: [{ message_id: "session-1-user", role: "user", content: "过期的储能内容", metadata: {} }],
+      message: "ok"
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(screen.queryByText("过期的储能内容")).not.toBeInTheDocument()
+    expect(screen.getByText("白酒研究内容")).toBeInTheDocument()
+  })
+
+  it("renders readable execution step summaries instead of raw tool JSON", async () => {
+    vi.mocked(researchAgentApi.listEvents).mockResolvedValue({
+      success: true,
+      data: [
+        {
+          event_id: 1,
+          event_type: "tool_completed",
+          payload: {
+            tool_name: "load_skill",
+            result: JSON.stringify({
+              status: "ok",
+              content: "<skill name=\"moodtx\">\\n## Overview\\n\\nMoodtx talks the native protocol over TCP."
+            })
+          }
+        },
+        {
+          event_id: 2,
+          event_type: "tool_failed",
+          payload: {
+            tool_name: "read_url",
+            preview: "{\"status\": \"error\", \"error\": \"remote reader request failed: HTTPSConnectionPool"
+          }
+        },
+        {
+          event_id: 3,
+          event_type: "tool_failed",
+          payload: {
+            tool_name: "bash",
+            elapsed_ms: 1200,
+            result: JSON.stringify({
+              status: "error",
+              exit_code: 1,
+              stdout: "=== 阳光电源资金流 ===",
+              stderr: "Traceback: request timeout"
+            })
+          }
+        }
+      ],
+      message: "ok"
+    })
+
+    render(<ResearchAgentPage />)
+
+    expect(await screen.findByText("加载能力模块")).toBeInTheDocument()
+    expect(screen.getByText(/已加载技能 moodtx/)).toBeInTheDocument()
+    expect(screen.getByText(/工具失败：remote reader request failed/)).toBeInTheDocument()
+    expect(screen.getByText("命令执行")).toBeInTheDocument()
+    expect(screen.getByText(/命令失败（exit 1）/)).toBeInTheDocument()
+    expect(screen.queryByText(/\{"status":/)).not.toBeInTheDocument()
+  })
+
   it("recovers completed assistant messages from storage when SSE completion is missed", async () => {
     vi.mocked(researchAgentApi.listSessions).mockResolvedValue({ success: true, data: [], message: "ok" })
     vi.mocked(researchAgentApi.createSession).mockResolvedValue({

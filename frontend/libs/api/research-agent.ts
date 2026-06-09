@@ -167,11 +167,11 @@ export const researchAgentApi = {
     envelope(await request.get<ResearchMessage[]>(`/api/vibe/sessions/${sessionId}/messages`)),
   appendMessage: async (sessionId: string, payload: { role?: string; content: string; metadata?: Record<string, unknown> }) =>
     envelope(await request.post<SendResearchMessageResponse>(`/api/vibe/sessions/${sessionId}/messages`, { content: payload.content })),
-  listEvents: async (sessionId: string, afterEventId = 0) => {
-    void sessionId
-    void afterEventId
-    return envelope<ResearchAgentEvent[]>([])
-  },
+  listEvents: async (sessionId: string, afterEventId = 0) =>
+    envelope(await request.get<ResearchAgentEvent[]>(`/api/vibe-history/sessions/${sessionId}/events`, {
+      params: { after_event_id: afterEventId },
+      skipErrorHandler: true
+    })),
   streamEvents: async (sessionId: string, afterEventId = 0) => {
     void sessionId
     void afterEventId
