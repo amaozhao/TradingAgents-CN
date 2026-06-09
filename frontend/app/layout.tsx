@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Providers } from "@/app/providers"
 import { AppFrame } from "@/components/layout/app-frame"
 
+import "katex/dist/katex.min.css"
 import "./globals.css"
 
 const geistSans = Geist({

@@ -3,7 +3,18 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+import asyncio
+
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
@@ -30,6 +41,10 @@ class ResearchAgentResponse(ApiResponse):
 
 class ResearchSessionCreateRequest(BaseModel):
     title: str | None = None
+
+
+class ResearchSessionUpdateRequest(BaseModel):
+    title: str
 
 
 class ResearchMessageCreateRequest(BaseModel):
@@ -80,22 +95,61 @@ async def get_research_session(
     return ok(data=session, message="研究会话获取成功")
 
 
+@router.patch("/sessions/{session_id}", response_model=ResearchAgentResponse)
+async def update_research_session(
+    session_id: str,
+    request: ResearchSessionUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    title = request.title.strip()
+    if not title:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="标题不能为空")
+    session = await session_service.rename_session(
+        session_id, _current_user_id(current_user), title[:100]
+    )
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在")
+    return ok(data=session, message="研究会话已重命名")
+
+
+@router.delete("/sessions/{session_id}", response_model=ResearchAgentResponse)
+async def delete_research_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    deleted = await session_service.delete_session(
+        session_id, _current_user_id(current_user)
+    )
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在")
+    return ok(data={"status": "deleted", "session_id": session_id}, message="研究会话已删除")
+
+
 @router.post("/sessions/{session_id}/messages", response_model=ResearchAgentResponse)
 async def append_research_message(
     session_id: str,
     request: ResearchMessageCreateRequest,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
 ):
     user_id = _current_user_id(current_user)
     if request.role == "user":
         if not await session_service.get_session(session_id, user_id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在")
-        result = await runtime_service.run_user_prompt(
+        principal = _principal(current_user, session_id=session_id)
+        result = await runtime_service.enqueue_user_prompt(
             principal=_principal(current_user, session_id=session_id),
             session_id=session_id,
             user_message=request.content,
         )
-        return ok(data=result, message="研究任务执行完成")
+        background_tasks.add_task(
+            runtime_service.run_queued_user_prompt,
+            principal=principal,
+            session_id=session_id,
+            user_message=request.content,
+            job_id=result["job_id"],
+        )
+        return ok(data=result, message="研究任务已开始")
 
     message = await session_service.append_message(
         session_id=session_id,
@@ -140,7 +194,12 @@ async def list_research_events(
     )
     if "text/event-stream" in request.headers.get("accept", ""):
         return StreamingResponse(
-            _format_research_events_as_sse(events), media_type="text/event-stream"
+            _stream_research_events(
+                session_id=session_id,
+                user_id=user_id,
+                after_event_id=after_event_id,
+            ),
+            media_type="text/event-stream",
         )
     return ok(data=events, message="研究事件列表获取成功")
 
@@ -149,20 +208,24 @@ async def list_research_events(
 async def stream_research_events(
     session_id: str,
     after_event_id: int = Query(0, ge=0),
-    current_user: dict = Depends(get_current_user),
+    authorization: str | None = Header(default=None),
+    token: str | None = Query(default=None),
 ):
+    current_user = await get_current_user(
+        authorization or (f"Bearer {token}" if token else None)
+    )
     user_id = _current_user_id(current_user)
     if not await session_service.get_session(session_id, user_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="会话不存在")
 
-    async def replay_existing_events():
-        events = await event_service.list_after(
-            session_id=session_id, user_id=user_id, after_event_id=after_event_id
-        )
-        for chunk in _format_research_events_as_sse(events):
-            yield chunk
-
-    return StreamingResponse(replay_existing_events(), media_type="text/event-stream")
+    return StreamingResponse(
+        _stream_research_events(
+            session_id=session_id,
+            user_id=user_id,
+            after_event_id=after_event_id,
+        ),
+        media_type="text/event-stream",
+    )
 
 
 def _format_research_events_as_sse(events: list[dict[str, Any]]):
@@ -172,3 +235,35 @@ def _format_research_events_as_sse(events: list[dict[str, Any]]):
             f"event: {event['event_type']}\n"
             f"data: {json.dumps(event['payload'], ensure_ascii=False)}\n\n"
         )
+
+
+async def _stream_research_events(
+    *,
+    session_id: str,
+    user_id: str,
+    after_event_id: int = 0,
+    idle_timeout_seconds: float = 120.0,
+):
+    last_event_id = int(after_event_id or 0)
+    idle_elapsed = 0.0
+    poll_interval = 0.5
+    terminal_events = {"task_completed", "task_failed"}
+
+    while idle_elapsed < idle_timeout_seconds:
+        events = await event_service.list_after(
+            session_id=session_id,
+            user_id=user_id,
+            after_event_id=last_event_id,
+        )
+        if events:
+            idle_elapsed = 0.0
+            for chunk in _format_research_events_as_sse(events):
+                yield chunk
+            last_event_id = int(events[-1]["event_id"])
+            if any(event["event_type"] in terminal_events for event in events):
+                return
+            continue
+
+        yield "event: heartbeat\ndata: {}\n\n"
+        await asyncio.sleep(poll_interval)
+        idle_elapsed += poll_interval

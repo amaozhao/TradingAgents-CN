@@ -16,6 +16,12 @@ class ResearchSessionService:
     def _messages(self):
         return get_postgres_db().research_messages
 
+    def _events(self):
+        return get_postgres_db().research_events
+
+    def _artifacts(self):
+        return get_postgres_db().research_artifacts
+
     async def create_session(
         self, principal: ResearchPrincipal, title: str | None = None
     ) -> dict[str, Any]:
@@ -44,6 +50,33 @@ class ResearchSessionService:
         return await self._sessions().find_one(
             {"session_id": session_id, "user_id": str(user_id)}
         )
+
+    async def rename_session(
+        self, session_id: str, user_id: str, title: str
+    ) -> dict[str, Any] | None:
+        normalized_title = title.strip()
+        if not normalized_title:
+            return None
+        now = now_utc()
+        result = await self._sessions().update_one(
+            {"session_id": session_id, "user_id": str(user_id)},
+            {"$set": {"title": normalized_title, "updated_at": now}},
+        )
+        if getattr(result, "modified_count", 0) == 0:
+            return await self.get_session(session_id, user_id)
+        return await self.get_session(session_id, user_id)
+
+    async def delete_session(self, session_id: str, user_id: str) -> bool:
+        query = {"session_id": session_id, "user_id": str(user_id)}
+        session = await self._sessions().find_one(query)
+        if not session:
+            return False
+
+        await self._messages().delete_many(query)
+        await self._events().delete_many(query)
+        await self._artifacts().delete_many(query)
+        await self._sessions().delete_one(query)
+        return True
 
     async def append_message(
         self,

@@ -120,29 +120,30 @@ export function AlphaZooPage() {
 
   useEffect(() => {
     let alive = true
-    setLoading(true)
-    setError(null)
 
-    alphaZooApi
-      .list({
-        zoo: zoo === "all" ? undefined : zoo,
-        theme: theme === "all" ? undefined : theme,
-        universe: universe === "all" ? undefined : universe,
-        search: search.trim() || undefined,
-        limit: 1000
-      })
-      .then((response) => {
+    const loadFactors = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const response = await alphaZooApi.list({
+          zoo: zoo === "all" ? undefined : zoo,
+          theme: theme === "all" ? undefined : theme,
+          universe: universe === "all" ? undefined : universe,
+          search: search.trim() || undefined,
+          limit: 1000
+        })
         if (!alive) return
         setItems(response.data.items || response.data.alphas || [])
-      })
-      .catch((err: unknown) => {
+      } catch (err) {
         if (!alive) return
         setItems([])
         setError(err instanceof Error ? err.message : copy.loadError)
-      })
-      .finally(() => {
+      } finally {
         if (alive) setLoading(false)
-      })
+      }
+    }
+
+    void loadFactors()
 
     return () => {
       alive = false

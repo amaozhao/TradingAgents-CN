@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 from pathlib import Path
 
@@ -18,123 +19,138 @@ class RootResponse(BaseModel):
     docs_url: str | None = None
 
 
-async def run_tushare_basic_info_sync(*args, **kwargs):
-    _run = getattr(
-        importlib.import_module("app.worker.tushare.sync"),
+def _run_worker_coroutine(module_name: str, function_name: str, *args, **kwargs):
+    async def runner():
+        _run = getattr(importlib.import_module(module_name), function_name)
+        return await _run(*args, **kwargs)
+
+    return asyncio.run(runner())
+
+
+def run_tushare_basic_info_sync(*args, **kwargs):
+    return _run_worker_coroutine(
+        "app.worker.tushare.sync",
         "run_tushare_basic_info_sync",
+        *args,
+        **kwargs,
     )
 
-    return await _run(*args, **kwargs)
 
-
-async def run_tushare_quotes_sync(*args, **kwargs):
-    _run = getattr(
-        importlib.import_module("app.worker.tushare.sync"), "run_tushare_quotes_sync"
+def run_tushare_quotes_sync(*args, **kwargs):
+    return _run_worker_coroutine(
+        "app.worker.tushare.sync",
+        "run_tushare_quotes_sync",
+        *args,
+        **kwargs,
     )
 
-    return await _run(*args, **kwargs)
 
-
-async def run_tushare_historical_sync(*args, **kwargs):
-    _run = getattr(
-        importlib.import_module("app.worker.tushare.sync"),
+def run_tushare_historical_sync(*args, **kwargs):
+    return _run_worker_coroutine(
+        "app.worker.tushare.sync",
         "run_tushare_historical_sync",
+        *args,
+        **kwargs,
     )
 
-    return await _run(*args, **kwargs)
 
-
-async def run_tushare_financial_sync(*args, **kwargs):
-    _run = getattr(
-        importlib.import_module("app.worker.tushare.sync"), "run_tushare_financial_sync"
+def run_tushare_financial_sync(*args, **kwargs):
+    return _run_worker_coroutine(
+        "app.worker.tushare.sync",
+        "run_tushare_financial_sync",
+        *args,
+        **kwargs,
     )
 
-    return await _run(*args, **kwargs)
 
-
-async def run_tushare_status_check(*args, **kwargs):
-    _run = getattr(
-        importlib.import_module("app.worker.tushare.sync"), "run_tushare_status_check"
+def run_tushare_status_check(*args, **kwargs):
+    return _run_worker_coroutine(
+        "app.worker.tushare.sync",
+        "run_tushare_status_check",
+        *args,
+        **kwargs,
     )
 
-    return await _run(*args, **kwargs)
 
-
-async def run_akshare_basic_info_sync(*args, **kwargs):
-    _run = getattr(
-        importlib.import_module("app.worker.akshare.sync"),
+def run_akshare_basic_info_sync(*args, **kwargs):
+    return _run_worker_coroutine(
+        "app.worker.akshare.sync",
         "run_akshare_basic_info_sync",
+        *args,
+        **kwargs,
     )
 
-    return await _run(*args, **kwargs)
 
-
-async def run_akshare_quotes_sync(*args, **kwargs):
-    _run = getattr(
-        importlib.import_module("app.worker.akshare.sync"), "run_akshare_quotes_sync"
+def run_akshare_quotes_sync(*args, **kwargs):
+    return _run_worker_coroutine(
+        "app.worker.akshare.sync",
+        "run_akshare_quotes_sync",
+        *args,
+        **kwargs,
     )
 
-    return await _run(*args, **kwargs)
 
-
-async def run_akshare_historical_sync(*args, **kwargs):
-    _run = getattr(
-        importlib.import_module("app.worker.akshare.sync"),
+def run_akshare_historical_sync(*args, **kwargs):
+    return _run_worker_coroutine(
+        "app.worker.akshare.sync",
         "run_akshare_historical_sync",
+        *args,
+        **kwargs,
     )
 
-    return await _run(*args, **kwargs)
 
-
-async def run_akshare_financial_sync(*args, **kwargs):
-    _run = getattr(
-        importlib.import_module("app.worker.akshare.sync"), "run_akshare_financial_sync"
+def run_akshare_financial_sync(*args, **kwargs):
+    return _run_worker_coroutine(
+        "app.worker.akshare.sync",
+        "run_akshare_financial_sync",
+        *args,
+        **kwargs,
     )
 
-    return await _run(*args, **kwargs)
 
-
-async def run_akshare_status_check(*args, **kwargs):
-    _run = getattr(
-        importlib.import_module("app.worker.akshare.sync"), "run_akshare_status_check"
+def run_akshare_status_check(*args, **kwargs):
+    return _run_worker_coroutine(
+        "app.worker.akshare.sync",
+        "run_akshare_status_check",
+        *args,
+        **kwargs,
     )
 
-    return await _run(*args, **kwargs)
 
-
-async def run_baostock_basic_info_sync(*args, **kwargs):
-    _run = getattr(
-        importlib.import_module("app.worker.baostock.sync"),
+def run_baostock_basic_info_sync(*args, **kwargs):
+    return _run_worker_coroutine(
+        "app.worker.baostock.sync",
         "run_baostock_basic_info_sync",
+        *args,
+        **kwargs,
     )
 
-    return await _run(*args, **kwargs)
 
-
-async def run_baostock_daily_quotes_sync(*args, **kwargs):
-    _run = getattr(
-        importlib.import_module("app.worker.baostock.sync"),
+def run_baostock_daily_quotes_sync(*args, **kwargs):
+    return _run_worker_coroutine(
+        "app.worker.baostock.sync",
         "run_baostock_daily_quotes_sync",
+        *args,
+        **kwargs,
     )
 
-    return await _run(*args, **kwargs)
 
-
-async def run_baostock_historical_sync(*args, **kwargs):
-    _run = getattr(
-        importlib.import_module("app.worker.baostock.sync"),
+def run_baostock_historical_sync(*args, **kwargs):
+    return _run_worker_coroutine(
+        "app.worker.baostock.sync",
         "run_baostock_historical_sync",
+        *args,
+        **kwargs,
     )
 
-    return await _run(*args, **kwargs)
 
-
-async def run_baostock_status_check(*args, **kwargs):
-    _run = getattr(
-        importlib.import_module("app.worker.baostock.sync"), "run_baostock_status_check"
+def run_baostock_status_check(*args, **kwargs):
+    return _run_worker_coroutine(
+        "app.worker.baostock.sync",
+        "run_baostock_status_check",
+        *args,
+        **kwargs,
     )
-
-    return await _run(*args, **kwargs)
 
 
 def get_version() -> str:

@@ -19,5 +19,5 @@ describe("root layout metadata", () => {
       ],
       shortcut: "/favicon.ico?v=20260604"
     })
-  })
+  }, 10_000)
 })

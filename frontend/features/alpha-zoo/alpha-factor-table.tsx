@@ -1,3 +1,5 @@
+import Link from "next/link"
+
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { AlphaFactor } from "@/libs/api/alpha-zoo"
@@ -83,7 +85,12 @@ export function AlphaFactorTable({ factors, loading = false, selectedIds, onTogg
                     />
                   </TableCell>
                   <TableCell className="font-mono text-xs">
-                    <span className="text-primary">{factor.id}</span>
+                    <Link
+                      href={`/alpha-zoo/${encodeURIComponent(factor.id)}`}
+                      className="font-semibold text-primary underline-offset-4 hover:underline"
+                    >
+                      {factor.id}
+                    </Link>
                     {factor.nickname ? <span className="ml-2 font-sans text-muted-foreground">{factor.nickname}</span> : null}
                   </TableCell>
                   <TableCell className="text-xs">{factor.zoo}</TableCell>

@@ -56,6 +56,7 @@ export const routeConfig: AppRoute[] = [
   { path: "/reports/token", title: "Token统计", requiresAuth: true, hideInMenu: true },
   { path: "/agent", title: "研究 Agent", icon: ClipboardList, requiresAuth: true },
   { path: "/alpha-zoo", title: "Alpha 因子库", titleI18n: { "zh-CN": "Alpha 因子库", "en-US": "Alpha Zoo" }, icon: BarChart3, requiresAuth: true },
+  { path: "/alpha-zoo/[id]", title: "Alpha 因子详情", titleI18n: { "zh-CN": "Alpha 因子详情", "en-US": "Alpha detail" }, requiresAuth: true, hideInMenu: true },
   { path: "/alpha-zoo/bench", title: "Alpha 基准测试", titleI18n: { "zh-CN": "Alpha 基准测试", "en-US": "Alpha benchmark" }, requiresAuth: true, hideInMenu: true },
   { path: "/alpha-zoo/compare", title: "Alpha 因子对比", titleI18n: { "zh-CN": "Alpha 因子对比", "en-US": "Alpha compare" }, requiresAuth: true, hideInMenu: true },
   { path: "/correlation", title: "相关性矩阵", titleI18n: { "zh-CN": "相关性矩阵", "en-US": "Correlation Matrix" }, icon: ChartNoAxesCombined, requiresAuth: true },

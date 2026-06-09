@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from fastapi import BackgroundTasks
 from fastapi import HTTPException
 
 from app.routers import research_agent as research_agent_router
@@ -89,6 +90,22 @@ class FakeCollection:
                 document.update(update.get("$set", {}))
                 return type("FakeUpdateResult", (), {"modified_count": 1})()
         return type("FakeUpdateResult", (), {"modified_count": 0})()
+
+    async def delete_one(self, query: dict[str, Any]):
+        for index, document in enumerate(self.documents):
+            if _matches_query(document, query):
+                del self.documents[index]
+                return type("FakeDeleteResult", (), {"deleted_count": 1})()
+        return type("FakeDeleteResult", (), {"deleted_count": 0})()
+
+    async def delete_many(self, query: dict[str, Any]):
+        before = len(self.documents)
+        self.documents = [
+            document for document in self.documents if not _matches_query(document, query)
+        ]
+        return type(
+            "FakeDeleteResult", (), {"deleted_count": before - len(self.documents)}
+        )()
 
 
 class FakeDb:
@@ -203,7 +220,79 @@ async def test_research_agent_routes_enforce_session_ownership(fake_db):
 
 
 @pytest.mark.asyncio
-async def test_user_prompt_route_runs_agent_workflow_and_persists_artifacts(fake_db):
+async def test_user_can_rename_and_delete_only_own_research_session(fake_db):
+    _ = fake_db
+    research_agent_router.session_service = ResearchSessionService()
+    research_agent_router.event_service = ResearchEventService()
+    research_agent_router.artifact_service = ResearchArtifactService()
+
+    created = await research_agent_router.create_research_session(
+        research_agent_router.ResearchSessionCreateRequest(title="储能分析"),
+        current_user=USER_A,
+    )
+    session_id = created["data"]["session_id"]
+
+    renamed = await research_agent_router.update_research_session(
+        session_id,
+        research_agent_router.ResearchSessionUpdateRequest(title="储能复盘"),
+        current_user=USER_A,
+    )
+
+    assert renamed["data"]["title"] == "储能复盘"
+    with pytest.raises(HTTPException) as exc:
+        await research_agent_router.update_research_session(
+            session_id,
+            research_agent_router.ResearchSessionUpdateRequest(title="越权改名"),
+            current_user=USER_B,
+        )
+    assert exc.value.status_code == 404
+
+    await ResearchSessionService().append_message(
+        session_id=session_id,
+        user_id=USER_A["id"],
+        role="user",
+        content="分析储能",
+    )
+    await ResearchEventService().append(
+        session_id=session_id,
+        user_id=USER_A["id"],
+        event_type="tool_completed",
+        payload={"tool_name": "alpha_bench"},
+    )
+    await ResearchArtifactService().create_artifact(
+        session_id=session_id,
+        user_id=USER_A["id"],
+        artifact_type="research_report",
+        payload={"summary": "ok"},
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await research_agent_router.delete_research_session(
+            session_id,
+            current_user=USER_B,
+        )
+    assert exc.value.status_code == 404
+
+    deleted = await research_agent_router.delete_research_session(
+        session_id,
+        current_user=USER_A,
+    )
+
+    assert deleted["data"]["status"] == "deleted"
+    assert await ResearchSessionService().get_session(session_id, USER_A["id"]) is None
+    assert (
+        await ResearchSessionService().list_messages(session_id, USER_A["id"])
+    ) == []
+    assert (
+        await ResearchEventService().list_after(
+            session_id=session_id, user_id=USER_A["id"], after_event_id=0
+        )
+    ) == []
+    assert fake_db.research_artifacts.documents == []
+
+
+@pytest.mark.asyncio
+async def test_user_prompt_route_queues_agent_workflow_for_background_execution(fake_db):
     _ = fake_db
     research_agent_router.session_service = ResearchSessionService()
     research_agent_router.event_service = ResearchEventService()
@@ -220,6 +309,7 @@ async def test_user_prompt_route_runs_agent_workflow_and_persists_artifacts(fake
         research_agent_router.ResearchMessageCreateRequest(
             role="user", content="分析 A 股储能板块，给出推荐个股"
         ),
+        background_tasks=BackgroundTasks(),
         current_user=USER_A,
     )
 
@@ -230,9 +320,215 @@ async def test_user_prompt_route_runs_agent_workflow_and_persists_artifacts(fake
     artifacts = fake_db.research_artifacts.documents
 
     assert response["success"] is True
-    assert response["data"]["status"] == "completed"
-    assert response["data"]["artifact_ids"]
+    assert response["data"]["status"] == "queued"
+    assert response["data"]["job_id"]
+    assert "tool_completed" not in event_types
+    assert artifacts == []
+
+    await research_agent_router.runtime_service.run_queued_user_prompt(
+        principal=ResearchPrincipal.from_user(USER_A, session_id=session_id),
+        session_id=session_id,
+        user_message="分析 A 股储能板块，给出推荐个股",
+        job_id=response["data"]["job_id"],
+    )
+
+    events = await ResearchEventService().list_after(
+        session_id=session_id, user_id=USER_A["id"], after_event_id=0
+    )
+    event_types = [event["event_type"] for event in events]
+    tool_names = [
+        event["payload"].get("tool_name")
+        for event in events
+        if event["event_type"] == "tool_completed"
+    ]
+
     assert "tool_completed" in event_types
     assert "message_completed" in event_types
     assert "task_completed" in event_types
+    assert "report_write" in tool_names
+    assert event_types.index("task_completed") > max(
+        index
+        for index, event in enumerate(events)
+        if event["payload"].get("tool_name") == "report_write"
+    )
     assert any(artifact["artifact_type"] == "research_report" for artifact in artifacts)
+
+
+@pytest.mark.asyncio
+async def test_connector_prompt_reports_missing_vibe_runtime_without_fake_stock_tools(fake_db):
+    _ = fake_db
+    research_agent_router.session_service = ResearchSessionService()
+    research_agent_router.event_service = ResearchEventService()
+    research_agent_router.artifact_service = ResearchArtifactService()
+
+    created = await research_agent_router.create_research_session(
+        research_agent_router.ResearchSessionCreateRequest(title="交易连接器检查"),
+        current_user=USER_A,
+    )
+    session_id = created["data"]["session_id"]
+
+    response = await research_agent_router.append_research_message(
+        session_id,
+        research_agent_router.ResearchMessageCreateRequest(
+            role="user", content="检查交易连接器运行状态"
+        ),
+        background_tasks=BackgroundTasks(),
+        current_user=USER_A,
+    )
+
+    await research_agent_router.runtime_service.run_queued_user_prompt(
+        principal=ResearchPrincipal.from_user(USER_A, session_id=session_id),
+        session_id=session_id,
+        user_message="检查交易连接器运行状态",
+        job_id=response["data"]["job_id"],
+    )
+
+    events = await ResearchEventService().list_after(
+        session_id=session_id, user_id=USER_A["id"], after_event_id=0
+    )
+    messages = await ResearchSessionService().list_messages(session_id, USER_A["id"])
+
+    assert [event["event_type"] for event in events] == [
+        "assistant_delta",
+        "message_completed",
+        "task_completed",
+    ]
+    assert fake_db.research_artifacts.documents == []
+    assert "不会再伪造运行结果" in messages[-1]["content"]
+    assert "交易连接器运行状态" in messages[-1]["content"]
+
+
+@pytest.mark.asyncio
+async def test_unsupported_cross_market_backtest_does_not_fake_stock_workflow(fake_db):
+    _ = fake_db
+    research_agent_router.session_service = ResearchSessionService()
+    research_agent_router.event_service = ResearchEventService()
+    research_agent_router.artifact_service = ResearchArtifactService()
+
+    created = await research_agent_router.create_research_session(
+        research_agent_router.ResearchSessionCreateRequest(title="跨市场回测"),
+        current_user=USER_A,
+    )
+    session_id = created["data"]["session_id"]
+    prompt = (
+        "Backtest a risk-parity portfolio of 000001.SZ, BTC-USDT, and AAPL "
+        "for full-year 2024, compare against equal-weight baseline"
+    )
+
+    response = await research_agent_router.append_research_message(
+        session_id,
+        research_agent_router.ResearchMessageCreateRequest(role="user", content=prompt),
+        background_tasks=BackgroundTasks(),
+        current_user=USER_A,
+    )
+
+    await research_agent_router.runtime_service.run_queued_user_prompt(
+        principal=ResearchPrincipal.from_user(USER_A, session_id=session_id),
+        session_id=session_id,
+        user_message=prompt,
+        job_id=response["data"]["job_id"],
+    )
+
+    events = await ResearchEventService().list_after(
+        session_id=session_id, user_id=USER_A["id"], after_event_id=0
+    )
+    messages = await ResearchSessionService().list_messages(session_id, USER_A["id"])
+
+    assert all(event["event_type"] != "tool_completed" for event in events)
+    assert fake_db.research_artifacts.documents == []
+    assert "不会再伪造运行结果" in messages[-1]["content"]
+
+
+@pytest.mark.asyncio
+async def test_goal_mode_stock_prompt_runs_stock_research_tools(fake_db):
+    _ = fake_db
+    research_agent_router.session_service = ResearchSessionService()
+    research_agent_router.event_service = ResearchEventService()
+    research_agent_router.artifact_service = ResearchArtifactService()
+
+    created = await research_agent_router.create_research_session(
+        research_agent_router.ResearchSessionCreateRequest(title="储能目标"),
+        current_user=USER_A,
+    )
+    session_id = created["data"]["session_id"]
+    goal_prompt = "\n".join(
+        [
+            "Start working on this research goal now.",
+            "Keep it research-only, use available tools when evidence is needed, add concrete evidence to the goal ledger, and keep going until the goal is complete, blocked, waiting for user input, or budget-limited.",
+            "",
+            "Goal: 帮我分析 A 股的储能板块",
+        ]
+    )
+
+    response = await research_agent_router.append_research_message(
+        session_id,
+        research_agent_router.ResearchMessageCreateRequest(
+            role="user", content=goal_prompt
+        ),
+        background_tasks=BackgroundTasks(),
+        current_user=USER_A,
+    )
+
+    await research_agent_router.runtime_service.run_queued_user_prompt(
+        principal=ResearchPrincipal.from_user(USER_A, session_id=session_id),
+        session_id=session_id,
+        user_message=goal_prompt,
+        job_id=response["data"]["job_id"],
+    )
+
+    events = await ResearchEventService().list_after(
+        session_id=session_id, user_id=USER_A["id"], after_event_id=0
+    )
+    messages = await ResearchSessionService().list_messages(session_id, USER_A["id"])
+    tool_names = [
+        event["payload"].get("tool_name")
+        for event in events
+        if event["event_type"] == "tool_completed"
+    ]
+
+    assert "screening_run" in tool_names
+    assert "alpha_bench" in tool_names
+    assert "correlation_matrix" in tool_names
+    assert "report_write" in tool_names
+    assert "不会再伪造运行结果" not in messages[-1]["content"]
+    assert "开始分析储能" in messages[-1]["content"]
+
+
+@pytest.mark.asyncio
+async def test_general_chat_prompt_does_not_run_stock_research_pipeline(fake_db):
+    _ = fake_db
+    research_agent_router.session_service = ResearchSessionService()
+    research_agent_router.event_service = ResearchEventService()
+    research_agent_router.artifact_service = ResearchArtifactService()
+
+    created = await research_agent_router.create_research_session(
+        research_agent_router.ResearchSessionCreateRequest(title="能力介绍"),
+        current_user=USER_A,
+    )
+    session_id = created["data"]["session_id"]
+
+    response = await research_agent_router.append_research_message(
+        session_id,
+        research_agent_router.ResearchMessageCreateRequest(
+            role="user", content="用一句话说明你能做什么"
+        ),
+        background_tasks=BackgroundTasks(),
+        current_user=USER_A,
+    )
+
+    await research_agent_router.runtime_service.run_queued_user_prompt(
+        principal=ResearchPrincipal.from_user(USER_A, session_id=session_id),
+        session_id=session_id,
+        user_message="用一句话说明你能做什么",
+        job_id=response["data"]["job_id"],
+    )
+
+    events = await ResearchEventService().list_after(
+        session_id=session_id, user_id=USER_A["id"], after_event_id=0
+    )
+    messages = await ResearchSessionService().list_messages(session_id, USER_A["id"])
+
+    assert all(event["event_type"] != "tool_started" for event in events)
+    assert all(event["event_type"] != "tool_completed" for event in events)
+    assert fake_db.research_artifacts.documents == []
+    assert "当前后端可处理 A 股研究" in messages[-1]["content"]

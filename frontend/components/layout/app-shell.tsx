@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import { usePathname } from "next/navigation"
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -21,8 +22,10 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const pathname = usePathname()
   const sidebarCollapsed = useAppStore((state) => state.sidebarCollapsed)
   const setSidebarCollapsed = useAppStore((state) => state.setSidebarCollapsed)
+  const isWorkbenchRoute = pathname === "/agent" || pathname.startsWith("/agent/")
 
   return (
     <div className="min-h-screen bg-muted/30 text-foreground">
@@ -66,7 +69,14 @@ export function AppShell({ children }: AppShellProps) {
           </div>
           <HeaderActions />
         </header>
-        <main className="mx-auto min-h-[calc(100vh-7rem)] w-full max-w-[1400px] p-4 sm:p-6">{children}</main>
+        <main
+          className={cn(
+            "min-h-[calc(100vh-7rem)] w-full",
+            isWorkbenchRoute ? "max-w-none p-3 sm:p-4" : "mx-auto max-w-[1400px] p-4 sm:p-6"
+          )}
+        >
+          {children}
+        </main>
         <Footer />
       </div>
     </div>

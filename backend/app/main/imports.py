@@ -77,3 +77,4 @@ from app.routers import usage as usage_statistics
 from app.services.quotes.ingestion import QuotesIngestionService
 from app.services.scheduler import set_scheduler_instance
 from app.services.sync.source import get_multi_source_sync_service
+from app.services.vibe_agent_bridge import load_vibe_app

@@ -64,11 +64,15 @@ type ResultRow = {
   non_null_values?: number
 }
 
+function parseAlphaIdsParam(ids: string | null) {
+  return (ids || "").split(",").map(decodeURIComponent).filter(Boolean).join(",")
+}
+
 export function AlphaComparePage() {
   const language = useAppStore((state) => state.language)
   const copy = COPY[language]
   const searchParams = useSearchParams()
-  const [alphaIdsText, setAlphaIdsText] = useState("")
+  const [alphaIdsText, setAlphaIdsText] = useState(() => parseAlphaIdsParam(searchParams.get("ids")))
   const [symbols, setSymbols] = useState("600519,000001,300750")
   const [startDate, setStartDate] = useState("2026-06-01")
   const [endDate, setEndDate] = useState("2026-06-03")
@@ -77,9 +81,11 @@ export function AlphaComparePage() {
   const [job, setJob] = useState<AlphaJob | null>(null)
 
   useEffect(() => {
-    const ids = searchParams.get("ids") || ""
-    setAlphaIdsText(ids.split(",").map(decodeURIComponent).filter(Boolean).join(","))
-  }, [searchParams])
+    const nextAlphaIdsText = parseAlphaIdsParam(searchParams.get("ids"))
+    if (nextAlphaIdsText !== alphaIdsText) {
+      queueMicrotask(() => setAlphaIdsText(nextAlphaIdsText))
+    }
+  }, [alphaIdsText, searchParams])
 
   const alphaIds = useMemo(() => alphaIdsText.split(",").map((item) => item.trim()).filter(Boolean), [alphaIdsText])
   const rows = useMemo(() => {

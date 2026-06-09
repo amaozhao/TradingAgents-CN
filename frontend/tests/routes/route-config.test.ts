@@ -28,6 +28,7 @@ describe("route config", () => {
         "/reports/token",
         "/agent",
         "/alpha-zoo",
+        "/alpha-zoo/[id]",
         "/alpha-zoo/bench",
         "/alpha-zoo/compare",
         "/correlation",

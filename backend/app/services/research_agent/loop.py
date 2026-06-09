@@ -48,12 +48,14 @@ class ResearchAgentLoop:
         session_service: ResearchSessionService | None = None,
         event_service: ResearchEventService | None = None,
         max_length_continuations: int = 1,
+        emit_terminal_event: bool = True,
     ):
         self.model_client = model_client
         self.registry = registry or ResearchToolRegistry.default()
         self.session_service = session_service or ResearchSessionService()
         self.event_service = event_service or ResearchEventService()
         self.max_length_continuations = max_length_continuations
+        self.emit_terminal_event = emit_terminal_event
 
     async def _append_event(
         self,
@@ -234,16 +236,17 @@ class ResearchAgentLoop:
                     "task_ids": linked_task_ids,
                 },
             )
-            await self._append_event(
-                session_id=session_id,
-                user_id=principal.user_id,
-                event_type="task_completed",
-                payload={
-                    "finish_reason": finish_reason,
-                    "artifact_ids": linked_artifact_ids,
-                    "task_ids": linked_task_ids,
-                },
-            )
+            if self.emit_terminal_event:
+                await self._append_event(
+                    session_id=session_id,
+                    user_id=principal.user_id,
+                    event_type="task_completed",
+                    payload={
+                        "finish_reason": finish_reason,
+                        "artifact_ids": linked_artifact_ids,
+                        "task_ids": linked_task_ids,
+                    },
+                )
             return {
                 "content": final_content,
                 "message_id": assistant_message["message_id"],

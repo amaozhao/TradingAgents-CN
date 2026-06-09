@@ -66,7 +66,10 @@ async def lifespan(app: FastAPI):
     # 启动每日定时任务：可配置
     scheduler: AsyncIOScheduler | None = None
     try:
-        scheduler = AsyncIOScheduler(timezone=settings.TIMEZONE)
+        scheduler = AsyncIOScheduler(
+            timezone=settings.TIMEZONE,
+            job_defaults={"coalesce": True, "max_instances": 1},
+        )
 
         # 使用多数据源同步服务（支持自动切换）
         multi_source_service = get_multi_source_sync_service()
@@ -648,6 +651,9 @@ app.include_router(
     prefix="/api/research-agent",
     tags=["research-agent"],
 )
+vibe_agent_app = load_vibe_app()
+if vibe_agent_app is not None:
+    app.mount("/api/vibe", vibe_agent_app, name="vibe-agent")
 app.include_router(alpha_zoo.router, prefix="/api/alpha-zoo", tags=["alpha-zoo"])
 app.include_router(
     research_matrix.router,
