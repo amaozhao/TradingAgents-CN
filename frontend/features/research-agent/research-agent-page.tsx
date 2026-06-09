@@ -151,6 +151,8 @@ const CAPABILITY_CHIPS = [
 ]
 
 const AGENT_COMPLETION_POLL_TIMEOUT_MS = 60 * 60_000
+const COMPOSER_MIN_HEIGHT = 44
+const COMPOSER_MAX_HEIGHT = 128
 
 const QUICK_RESEARCH_PROMPTS = [
   { label: "跨市场回测", prompt: "Create a risk-parity style backtest for 000001.SZ, BTC-USDT, and AAPL from 2025-01-01 to 2026-06-01." },
@@ -890,12 +892,26 @@ export function ResearchAgentPage() {
   const [liveStatusUnavailable, setLiveStatusUnavailable] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
   const streamStopRef = useRef<(() => void) | null>(null)
   const completionPollRef = useRef<number | null>(null)
   const lastEventIdRef = useRef(0)
   const streamingAnswerIdRef = useRef<string | null>(null)
   const runFinishedRef = useRef(false)
   const sessionLoadSeqRef = useRef(0)
+
+  function resizeComposer() {
+    const textarea = composerRef.current
+    if (!textarea) return
+    textarea.style.height = `${COMPOSER_MIN_HEIGHT}px`
+    const nextHeight = Math.min(Math.max(textarea.scrollHeight, COMPOSER_MIN_HEIGHT), COMPOSER_MAX_HEIGHT)
+    textarea.style.height = `${nextHeight}px`
+    textarea.style.overflowY = textarea.scrollHeight > COMPOSER_MAX_HEIGHT ? "auto" : "hidden"
+  }
+
+  useEffect(() => {
+    resizeComposer()
+  }, [input, composerMode])
 
   useEffect(() => {
     void researchAgentApi.listSessions().then((response) => {
@@ -1385,12 +1401,13 @@ export function ResearchAgentPage() {
                 )}
               </div>
               <textarea
+                ref={composerRef}
                 value={input}
                 rows={1}
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={handleComposerKeyDown}
                 placeholder={composerMode === "goal" ? "描述要绑定到当前会话的研究目标" : "例如：Run a backtest, check connector status, or analyze A 股储能板块"}
-                className="h-11 max-h-32 min-h-11 min-w-0 flex-1 resize-none rounded-xl border bg-background px-4 py-2.5 text-sm leading-6 outline-none transition-shadow focus:ring-2 focus:ring-primary/30"
+                className="max-h-32 min-h-11 min-w-0 flex-1 resize-none overflow-hidden rounded-xl border bg-background px-4 py-2.5 text-sm leading-6 outline-none transition-shadow focus:ring-2 focus:ring-primary/30"
                 disabled={running}
               />
               {running ? (

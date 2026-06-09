@@ -226,6 +226,25 @@ describe("ResearchAgentPage", () => {
     expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).toBe("第一行\n第二行")
   })
 
+  it("auto-grows the composer until the maximum height before scrolling", async () => {
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    const composer = screen.getByPlaceholderText("例如：Run a backtest, check connector status, or analyze A 股储能板块") as HTMLTextAreaElement
+    Object.defineProperty(composer, "scrollHeight", { configurable: true, value: 96 })
+
+    await user.type(composer, "第一行{Shift>}{Enter}{/Shift}第二行{Shift>}{Enter}{/Shift}第三行")
+
+    await waitFor(() => expect(composer.style.height).toBe("96px"))
+    expect(composer.style.overflowY).toBe("hidden")
+
+    Object.defineProperty(composer, "scrollHeight", { configurable: true, value: 220 })
+    await user.type(composer, "{Shift>}{Enter}{/Shift}第四行")
+
+    await waitFor(() => expect(composer.style.height).toBe("128px"))
+    expect(composer.style.overflowY).toBe("auto")
+  })
+
   it("renders assistant markdown answers instead of plain text", async () => {
     vi.mocked(researchAgentApi.listSessions).mockResolvedValue({
       success: true,
