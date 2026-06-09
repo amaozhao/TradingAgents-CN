@@ -150,6 +150,8 @@ const CAPABILITY_CHIPS = [
   "Shadow Account"
 ]
 
+const AGENT_COMPLETION_POLL_TIMEOUT_MS = 60 * 60_000
+
 const QUICK_RESEARCH_PROMPTS = [
   { label: "跨市场回测", prompt: "Create a risk-parity style backtest for 000001.SZ, BTC-USDT, and AAPL from 2025-01-01 to 2026-06-01." },
   { label: "检查交易连接器", prompt: "List my trading connector profiles and check the selected connector. Do not place or modify orders." },
@@ -778,14 +780,14 @@ export function ResearchAgentPage() {
     const startedAt = Date.now()
     void refreshCompletedAttemptFromStore(sessionId, attemptId).catch(() => undefined)
     completionPollRef.current = window.setInterval(() => {
-      if (Date.now() - startedAt > 300_000) {
+      if (Date.now() - startedAt > AGENT_COMPLETION_POLL_TIMEOUT_MS) {
         stopCompletionPolling()
         runFinishedRef.current = true
         setRunning(false)
         appendStreamMessage({
           id: nowId("error"),
           type: "error",
-          content: "Agent 运行超过 300 秒仍未收到完成事件，请刷新会话或检查后端日志。",
+          content: "Agent 运行超过 60 分钟仍未收到完成事件，请刷新会话或检查后端日志。",
           timestamp: Date.now()
         })
         return
