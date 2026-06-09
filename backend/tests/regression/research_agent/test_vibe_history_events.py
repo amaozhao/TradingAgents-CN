@@ -45,6 +45,13 @@ def test_load_session_trace_events_restores_tool_steps(tmp_path):
                         "preview": "No market content.",
                     }
                 ),
+                json.dumps(
+                    {
+                        "type": "answer_truncated",
+                        "iter": 2,
+                        "content": "partial answer before continuation",
+                    }
+                ),
             ]
         )
         + "\n",
@@ -78,6 +85,16 @@ def test_load_session_trace_events_restores_tool_steps(tmp_path):
                 "content": "No market content.",
                 "call_id": "call-1",
                 "run_id": run_id,
+            },
+        },
+        {
+            "event_id": 3,
+            "event_type": "assistant_delta",
+            "payload": {
+                "content": "partial answer before continuation",
+                "run_id": run_id,
+                "truncated": True,
+                "iter": 2,
             },
         },
     ]

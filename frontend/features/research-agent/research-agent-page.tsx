@@ -397,7 +397,23 @@ function toolsFromEvents(events: ParsedResearchStreamEvent[]): ToolState[] {
     const toolName = String(event.data.tool_name || event.data.tool || "")
     if (!toolName) continue
     if (event.event === "tool_started") {
-      tools.set(toolName, { id: toolName, name: toolName, status: "running" })
+      tools.set(toolName, {
+        id: toolName,
+        name: toolName,
+        status: "running",
+        preview: previewFromEventData(event.data)
+      })
+    }
+    if (event.event === "tool_progress") {
+      const existing = tools.get(toolName)
+      tools.set(toolName, {
+        id: toolName,
+        name: toolName,
+        status: "running",
+        preview: previewFromEventData(event.data) || existing?.preview,
+        artifactId: existing?.artifactId,
+        elapsedMs: existing?.elapsedMs
+      })
     }
     if (event.event === "tool_completed" || event.event === "tool_failed") {
       tools.set(toolName, {
@@ -1107,8 +1123,13 @@ export function ResearchAgentPage() {
     }
     if (item.event === "tool_started") {
       const toolName = String(item.data.tool_name || item.data.tool || "tool")
-      upsertTool({ id: toolName, name: toolName, status: "running" })
+      upsertTool({ id: toolName, name: toolName, status: "running", preview: previewFromEventData(item.data) })
       appendStreamMessage({ id: nowId("tool-call"), type: "tool_call", content: "", tool: toolName, status: "running", timestamp: Date.now() })
+      return
+    }
+    if (item.event === "tool_progress") {
+      const toolName = String(item.data.tool_name || item.data.tool || "tool")
+      upsertTool({ id: toolName, name: toolName, status: "running", preview: previewFromEventData(item.data) })
       return
     }
     if (item.event === "tool_completed" || item.event === "tool_failed") {

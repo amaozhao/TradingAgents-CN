@@ -123,6 +123,17 @@ def _map_trace_row(row: dict[str, Any], run_id: str, event_id: int) -> dict[str,
         event_type = "tool_completed" if status_value == "ok" else "tool_failed"
         return {"event_id": event_id, "event_type": event_type, "payload": payload}
 
+    if row_type == "answer_truncated":
+        content = row.get("content") or row.get("text") or ""
+        payload = {
+            "content": str(content),
+            "run_id": run_id,
+            "truncated": True,
+        }
+        if row.get("iter") is not None:
+            payload["iter"] = row["iter"]
+        return {"event_id": event_id, "event_type": "assistant_delta", "payload": payload}
+
     return None
 
 

@@ -90,9 +90,59 @@ function parseEventData(raw: string): Record<string, unknown> {
   }
 }
 
+function formatSwarmStatus(data: Record<string, unknown>) {
+  const event = data.event && typeof data.event === "object"
+    ? data.event as Record<string, unknown>
+    : {}
+  const eventType = String(event.type || "")
+  const preset = String(data.preset || "")
+  const runId = String(data.run_id || "")
+  const agentId = String(event.agent_id || "")
+  const taskId = String(event.task_id || "")
+  const status = String(data.status || eventType || "")
+  const parts: string[] = []
+  if (preset) parts.push(`preset=${preset}`)
+  if (runId) parts.push(`run=${runId}`)
+  if (eventType) parts.push(`event=${eventType}`)
+  if (agentId) parts.push(`agent=${agentId}`)
+  if (taskId) parts.push(`task=${taskId}`)
+  if (status && !eventType) parts.push(`status=${status}`)
+  return parts.length ? parts.join(" · ") : "Swarm event received"
+}
+
+function mapSwarmEvent(
+  data: Record<string, unknown>,
+  eventId?: number
+): ParsedResearchStreamEvent {
+  const event = data.event && typeof data.event === "object"
+    ? data.event as Record<string, unknown>
+    : {}
+  const eventType = String(event.type || "")
+  const eventName = eventType === "run_completed"
+    ? "tool_completed"
+    : eventType === "run_error" || eventType === "run_cancelled"
+      ? "tool_failed"
+      : "tool_progress"
+  return {
+    event: eventName,
+    data: {
+      ...data,
+      tool_name: "run_swarm",
+      tool: "run_swarm",
+      preview: formatSwarmStatus(data),
+      content: formatSwarmStatus(data),
+      result: data.event || data
+    },
+    eventId
+  }
+}
+
 function mapVibeEvent(eventName: string, data: Record<string, unknown>, eventId?: number): ParsedResearchStreamEvent[] {
   if (eventName === "text_delta") {
     return [{ event: "assistant_delta", data: { ...data, content: data.delta || data.text || "" }, eventId }]
+  }
+  if (eventName === "answer_truncated") {
+    return [{ event: "assistant_delta", data: { ...data, content: data.content || data.text || "" }, eventId }]
   }
   if (eventName === "tool_call") {
     return [{
@@ -133,6 +183,27 @@ function mapVibeEvent(eventName: string, data: Record<string, unknown>, eventId?
       data: { ...data, tool_name: data.tool || data.tool_name },
       eventId
     }]
+  }
+  if (eventName === "swarm.started") {
+    return [{
+      event: "tool_started",
+      data: {
+        ...data,
+        tool_name: "run_swarm",
+        tool: "run_swarm",
+        arguments: {
+          preset: data.preset,
+          run_id: data.run_id,
+          variables: data.variables
+        },
+        preview: formatSwarmStatus(data),
+        content: formatSwarmStatus(data)
+      },
+      eventId
+    }]
+  }
+  if (eventName === "swarm.event") {
+    return [mapSwarmEvent(data, eventId)]
   }
   if (eventName === "heartbeat") {
     return [{ event: "heartbeat", data, eventId }]
@@ -194,6 +265,7 @@ export const researchAgentApi = {
     const eventTypes = [
       "text_delta",
       "thinking_done",
+      "answer_truncated",
       "tool_call",
       "tool_result",
       "tool_heartbeat",

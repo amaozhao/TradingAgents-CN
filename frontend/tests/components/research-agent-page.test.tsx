@@ -76,8 +76,10 @@ describe("ResearchAgentPage", () => {
       data: [
         { event_id: 1, event_type: "tool_started", payload: { tool_name: "alpha_bench" } },
         { event_id: 2, event_type: "tool_completed", payload: { tool_name: "alpha_bench", result: { ok: true } } },
-        { event_id: 3, event_type: "message_completed", payload: { content: "分析完成" } },
-        { event_id: 4, event_type: "task_completed", payload: {} }
+        { event_id: 3, event_type: "tool_started", payload: { tool_name: "run_swarm", preview: "preset=investment_committee" } },
+        { event_id: 4, event_type: "tool_completed", payload: { tool_name: "run_swarm", preview: "event=run_completed" } },
+        { event_id: 5, event_type: "message_completed", payload: { content: "分析完成" } },
+        { event_id: 6, event_type: "task_completed", payload: {} }
       ],
       message: "ok"
     })
@@ -143,8 +145,10 @@ describe("ResearchAgentPage", () => {
       data: [
         { event_id: 1, event_type: "tool_started", payload: { tool_name: "alpha_bench" } },
         { event_id: 2, event_type: "tool_completed", payload: { tool_name: "alpha_bench", result: { ok: true } } },
-        { event_id: 3, event_type: "message_completed", payload: { content: "分析完成" } },
-        { event_id: 4, event_type: "task_completed", payload: {} }
+        { event_id: 3, event_type: "tool_started", payload: { tool_name: "run_swarm", preview: "preset=investment_committee" } },
+        { event_id: 4, event_type: "tool_completed", payload: { tool_name: "run_swarm", preview: "event=run_completed" } },
+        { event_id: 5, event_type: "message_completed", payload: { content: "分析完成" } },
+        { event_id: 6, event_type: "task_completed", payload: {} }
       ],
       message: "ok"
     })
@@ -152,9 +156,11 @@ describe("ResearchAgentPage", () => {
       queueMicrotask(() => {
         handlers.onEvent({ event: "assistant_delta", data: { content: "开始分析" }, eventId: 1 })
         handlers.onEvent({ event: "tool_started", data: { tool_name: "alpha_bench" }, eventId: 2 })
-        handlers.onEvent({ event: "tool_completed", data: { tool_name: "alpha_bench", result: { ok: true } }, eventId: 3 })
-        handlers.onEvent({ event: "message_completed", data: { content: "分析完成" }, eventId: 4 })
-        handlers.onEvent({ event: "task_completed", data: {}, eventId: 5 })
+        handlers.onEvent({ event: "tool_started", data: { tool_name: "run_swarm", preview: "preset=investment_committee" }, eventId: 3 })
+        handlers.onEvent({ event: "tool_progress", data: { tool_name: "run_swarm", preview: "event=task_started · task=task-a" }, eventId: 4 })
+        handlers.onEvent({ event: "tool_completed", data: { tool_name: "alpha_bench", result: { ok: true } }, eventId: 5 })
+        handlers.onEvent({ event: "message_completed", data: { content: "分析完成" }, eventId: 6 })
+        handlers.onEvent({ event: "task_completed", data: {}, eventId: 7 })
       })
       return vi.fn()
     })
@@ -168,6 +174,7 @@ describe("ResearchAgentPage", () => {
     await waitFor(() => expect(researchAgentApi.subscribeEvents).toHaveBeenCalled())
     expect(await screen.findByText("分析完成")).toBeInTheDocument()
     expect(screen.getAllByText("Alpha 覆盖检查").length).toBeGreaterThan(0)
+    await waitFor(() => expect(screen.getAllByText("智能体团队").length).toBeGreaterThan(0))
     expect(screen.queryByText("[object Object]")).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByText("就绪")).toBeInTheDocument())
   })
