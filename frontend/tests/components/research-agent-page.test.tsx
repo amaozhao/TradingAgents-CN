@@ -172,6 +172,25 @@ describe("ResearchAgentPage", () => {
     await waitFor(() => expect(screen.getByText("就绪")).toBeInTheDocument())
   })
 
+  it("sends the composer with Enter and keeps Shift+Enter for new lines", async () => {
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    const composer = screen.getByPlaceholderText("例如：Run a backtest, check connector status, or analyze A 股储能板块")
+    await user.click(composer)
+    await user.type(composer, "第一行")
+    await user.keyboard("{Shift>}{Enter}{/Shift}")
+
+    expect(composer).toHaveValue("第一行\n")
+    expect(researchAgentApi.appendMessage).not.toHaveBeenCalled()
+
+    await user.type(composer, "第二行")
+    await user.keyboard("{Enter}")
+
+    await waitFor(() => expect(researchAgentApi.appendMessage).toHaveBeenCalled())
+    expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).toBe("第一行\n第二行")
+  })
+
   it("renders assistant markdown answers instead of plain text", async () => {
     vi.mocked(researchAgentApi.listSessions).mockResolvedValue({
       success: true,

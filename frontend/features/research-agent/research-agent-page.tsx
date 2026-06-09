@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react"
 import {
   Activity,
   ArrowDown,
@@ -643,9 +643,9 @@ function ToolRail({
   onHaltLive: () => void
 }) {
   return (
-    <aside className="hidden w-80 shrink-0 border-l bg-muted/10 xl:block">
-      <div className="sticky top-0 grid gap-4 p-4">
-        <section className="rounded-lg border bg-background p-3">
+    <aside className="hidden h-full w-[360px] shrink-0 overflow-y-auto border-l bg-muted/10 xl:block">
+      <div className="grid min-w-0 gap-4 p-4">
+        <section className="min-w-0 rounded-lg border bg-background p-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium">执行步骤</h2>
             {(running || loading) && <Loader2 className="size-4 animate-spin text-primary" />}
@@ -681,15 +681,15 @@ function ToolRail({
                     ? "bg-primary/10 text-primary"
                     : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
                 return (
-                  <div key={tool.id} className="rounded-md border bg-background px-3 py-2 shadow-sm">
+                  <div key={tool.id} className="min-w-0 rounded-md border bg-background px-3 py-2 shadow-sm">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-xs font-medium">{label?.title || tool.name}</span>
+                      <span className="min-w-0 truncate text-xs font-medium">{label?.title || tool.name}</span>
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${statusClass}`}>
                         {tool.status === "running" ? "运行中" : tool.status === "error" ? "失败" : "完成"}
                       </span>
                     </div>
-                    <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{label?.desc || tool.name}</p>
-                    {preview && <p className="mt-1 line-clamp-3 text-[11px] leading-4 text-foreground/75">{preview}</p>}
+                    <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground [overflow-wrap:anywhere]">{label?.desc || tool.name}</p>
+                    {preview && <p className="mt-1 line-clamp-3 break-words text-[11px] leading-4 text-foreground/75 [overflow-wrap:anywhere]">{preview}</p>}
                     {typeof tool.elapsedMs === "number" && (
                       <p className="mt-1 text-[10px] text-muted-foreground">{(tool.elapsedMs / 1000).toFixed(1)}s</p>
                     )}
@@ -1158,6 +1158,12 @@ export function ResearchAgentPage() {
     void runPrompt(input)
   }
 
+  function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return
+    event.preventDefault()
+    void runPrompt(input)
+  }
+
   function handleNewSession() {
     stopStream()
     stopCompletionPolling()
@@ -1321,9 +1327,9 @@ export function ResearchAgentPage() {
                 </span>
               )}
             </div>
-            <div className="flex min-w-0 items-end gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <div ref={menuRef} className="relative">
-                <Button type="button" variant="outline" size="icon" disabled={running} onClick={() => setShowMenu((open) => !open)} aria-label="更多选项">
+                <Button type="button" variant="outline" size="icon" disabled={running} onClick={() => setShowMenu((open) => !open)} aria-label="更多选项" className="size-11 rounded-xl">
                   <Plus className="size-4" />
                 </Button>
                 {showMenu && (
@@ -1344,16 +1350,17 @@ export function ResearchAgentPage() {
                 value={input}
                 rows={1}
                 onChange={(event) => setInput(event.target.value)}
+                onKeyDown={handleComposerKeyDown}
                 placeholder={composerMode === "goal" ? "描述要绑定到当前会话的研究目标" : "例如：Run a backtest, check connector status, or analyze A 股储能板块"}
-                className="max-h-32 min-h-10 min-w-0 flex-1 resize-none rounded-xl border bg-background px-4 py-2.5 text-sm outline-none transition-shadow focus:ring-2 focus:ring-primary/30"
+                className="h-11 max-h-32 min-h-11 min-w-0 flex-1 resize-none rounded-xl border bg-background px-4 py-2.5 text-sm leading-6 outline-none transition-shadow focus:ring-2 focus:ring-primary/30"
                 disabled={running}
               />
               {running ? (
-                <Button type="button" variant="destructive" onClick={handleCancel} aria-label="停止生成">
+                <Button type="button" variant="destructive" onClick={handleCancel} aria-label="停止生成" className="h-11 w-14 rounded-xl">
                   <Square className="size-4" />
                 </Button>
               ) : (
-                <Button type="submit" disabled={!input.trim()} aria-label="发送">
+                <Button type="submit" disabled={!input.trim()} aria-label="发送" className="h-11 w-14 rounded-xl">
                   <Send className="size-4" />
                 </Button>
               )}
