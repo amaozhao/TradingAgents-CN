@@ -35,7 +35,14 @@ async def _extract_shadow_strategy(
 ) -> dict[str, Any]:
     description = str(payload.get("description") or payload.get("strategy") or "").strip()
     if not description:
-        raise ValueError("description is required")
+        return {
+            "tool": "extract_shadow_strategy",
+            "status": "config_required",
+            "accepted": False,
+            "missing": ["description"],
+            "reason": "description is required",
+            "instruction": "Provide a strategy description or strategy text before extraction.",
+        }
     tokens = re.findall(r"[A-Za-z0-9_\-.]+|[\u4e00-\u9fff]+", description)
     strategy = {
         "name": str(payload.get("name") or "shadow_strategy"),
@@ -169,7 +176,18 @@ def shadow_tools() -> list[ResearchTool]:
             name="extract_shadow_strategy",
             description="Extract a research-only shadow strategy artifact from a strategy description.",
             permission=SHADOW_RUN,
-            schema={"type": "object", "additionalProperties": True},
+            schema={
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string"},
+                    "strategy": {"type": "string"},
+                    "name": {"type": "string"},
+                    "entry_rules": {"type": "array", "items": {}},
+                    "exit_rules": {"type": "array", "items": {}},
+                    "risk_rules": {"type": "array", "items": {}},
+                },
+                "additionalProperties": True,
+            },
             handler=_extract_shadow_strategy,
         ),
         ResearchTool(

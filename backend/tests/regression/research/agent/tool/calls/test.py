@@ -476,6 +476,39 @@ async def test_all_enabled_research_agent_tools_are_invokable(
 
 
 @pytest.mark.asyncio
+async def test_enabled_research_agent_tools_handle_empty_agent_payloads(
+    fake_db, deterministic_external_boundaries
+):
+    _ = fake_db, deterministic_external_boundaries
+    principal = ResearchPrincipal.from_user(USER)
+    session = await ResearchSessionService().create_session(
+        principal, title="empty tool payloads"
+    )
+    session_id = session["session_id"]
+    principal = ResearchPrincipal.from_user(USER, session_id=session_id)
+    context = _context(principal, session_id)
+
+    registry = ResearchToolRegistry.default()
+    results: dict[str, dict[str, Any]] = {}
+    for tool in registry.for_principal(principal, include_disabled=False):
+        result = await tool.run(context, {})
+        assert isinstance(result, dict), tool.name
+        results[tool.name] = result
+
+    assert len(results) == 48
+    assert results["update_hypothesis"]["status"] == "config_required"
+    assert results["update_hypothesis"]["missing"] == ["hypothesis_id"]
+    assert results["link_backtest"]["status"] == "config_required"
+    assert results["correlation_matrix"]["status"] == "config_required"
+    assert results["extract_shadow_strategy"]["status"] == "config_required"
+    assert {
+        name: result
+        for name, result in results.items()
+        if result.get("status") == "error"
+    } == {}
+
+
+@pytest.mark.asyncio
 async def test_web_get_uses_httpx_proxy_keyword(monkeypatch):
     calls: list[dict[str, Any]] = []
 

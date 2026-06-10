@@ -188,15 +188,44 @@ def _diversification_candidates(matrix: dict[str, dict[str, float]]) -> list[dic
 async def _correlation_matrix(
     context: ToolExecutionContext, payload: dict[str, Any]
 ) -> dict[str, Any]:
+    unsupported_selectors = [
+        name
+        for name in ("screening_result_id", "favorites_id", "universe_id")
+        if payload.get(name)
+    ]
+    if unsupported_selectors:
+        return {
+            "tool": "correlation_matrix",
+            "status": "config_required",
+            "accepted": False,
+            "missing": ["symbols"],
+            "reason": (
+                "Persisted selector inputs are not available yet: "
+                + ", ".join(unsupported_selectors)
+            ),
+            "instruction": "Provide an explicit symbols array or a supported sector value.",
+        }
+
+    symbols = list(payload.get("symbols") or [])
+    if not symbols and not payload.get("sector"):
+        return {
+            "tool": "correlation_matrix",
+            "status": "config_required",
+            "accepted": False,
+            "missing": ["symbols"],
+            "reason": "symbols or sector is required",
+            "instruction": "Provide an explicit symbols array or a supported sector value.",
+        }
+
     return await ResearchMatrixJobService().create_correlation_job(
         principal=context.principal,
-        symbols=list(payload.get("symbols") or []),
+        symbols=symbols,
         method=str(payload.get("method") or "pearson"),
         window=int(payload.get("window") or 60),
-        screening_result_id=payload.get("screening_result_id"),
+        screening_result_id=None,
         sector=payload.get("sector"),
-        favorites_id=payload.get("favorites_id"),
-        universe_id=payload.get("universe_id"),
+        favorites_id=None,
+        universe_id=None,
     )
 
 
@@ -210,9 +239,11 @@ def correlation_tools() -> list[ResearchTool]:
                 "type": "object",
                 "properties": {
                     "symbols": {"type": "array", "items": {"type": "string"}},
+                    "sector": {"type": "string"},
                     "method": {"type": "string"},
                     "window": {"type": "integer"},
                 },
+                "additionalProperties": True,
             },
             handler=_correlation_matrix,
         )

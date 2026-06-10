@@ -252,7 +252,7 @@ async def test_tool_call_finish_reason_continues_react_loop(fake_db):
 
 
 @pytest.mark.asyncio
-async def test_tool_argument_error_degrades_without_failing_attempt(fake_db):
+async def test_missing_tool_argument_returns_config_required_without_failing_attempt(fake_db):
     session = await _create_session(fake_db)
     client = FakeModelClient(
         [
@@ -285,11 +285,12 @@ async def test_tool_argument_error_degrades_without_failing_attempt(fake_db):
 
     assert client.calls == 2
     assert result["content"] == "已根据现有证据继续总结。"
-    assert "tool_failed" in event_types
+    assert "tool_completed" in event_types
+    assert "tool_failed" not in event_types
     assert "task_failed" not in event_types
     assert "message_completed" in event_types
     assert tool_messages[0]["metadata"]["tool_name"] == "extract_shadow_strategy"
-    assert '"status": "error"' in tool_messages[0]["content"]
+    assert '"status": "config_required"' in tool_messages[0]["content"]
     assert "description is required" in tool_messages[0]["content"]
 
 

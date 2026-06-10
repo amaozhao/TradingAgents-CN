@@ -40,7 +40,16 @@ async def _create_hypothesis(
     if not title and statement:
         title = statement[:120]
     if not title or not thesis:
-        raise ValueError("title and thesis are required")
+        return {
+            "tool": "create_hypothesis",
+            "status": "config_required",
+            "accepted": False,
+            "missing": ["title", "thesis"],
+            "reason": "title and thesis are required",
+            "instruction": (
+                "Provide title and thesis, or provide statement so the title can be derived."
+            ),
+        }
     item = await ResearchHypothesisService().create(
         principal=context.principal,
         session_id=str(context.session_id) if context.session_id else None,
@@ -96,8 +105,23 @@ async def _link_backtest(
 ) -> dict[str, Any]:
     hypothesis_id = str(payload.get("hypothesis_id") or "").strip()
     backtest_id = str(payload.get("backtest_id") or payload.get("artifact_id") or "").strip()
-    if not hypothesis_id or not backtest_id:
-        raise ValueError("hypothesis_id and backtest_id are required")
+    missing = []
+    if not hypothesis_id:
+        missing.append("hypothesis_id")
+    if not backtest_id:
+        missing.append("backtest_id")
+    if missing:
+        return {
+            "tool": "link_backtest",
+            "status": "config_required",
+            "accepted": False,
+            "missing": missing,
+            "reason": "hypothesis_id and backtest_id are required",
+            "instruction": (
+                "Use a hypothesis_id returned by create_hypothesis/search_hypotheses and "
+                "a backtest_id or artifact_id returned by a backtest tool."
+            ),
+        }
     item = await ResearchHypothesisService().link_backtest(
         hypothesis_id=hypothesis_id,
         user_id=context.principal.user_id,
@@ -142,7 +166,18 @@ def memory_tools() -> list[ResearchTool]:
             name="update_hypothesis",
             description="Update an owner-scoped research hypothesis.",
             permission=HYPOTHESIS_WRITE,
-            schema={"type": "object", "additionalProperties": True},
+            schema={
+                "type": "object",
+                "properties": {
+                    "hypothesis_id": {"type": "string"},
+                    "title": {"type": "string"},
+                    "thesis": {"type": "string"},
+                    "status": {"type": "string"},
+                    "evidence": {"type": "array", "items": {}},
+                },
+                "required": ["hypothesis_id"],
+                "additionalProperties": True,
+            },
             handler=_update_hypothesis,
         ),
         ResearchTool(
@@ -156,7 +191,17 @@ def memory_tools() -> list[ResearchTool]:
             name="link_backtest",
             description="Link a backtest artifact to an owner-scoped hypothesis.",
             permission=HYPOTHESIS_WRITE,
-            schema={"type": "object", "additionalProperties": True},
+            schema={
+                "type": "object",
+                "properties": {
+                    "hypothesis_id": {"type": "string"},
+                    "backtest_id": {"type": "string"},
+                    "artifact_id": {"type": "string"},
+                    "summary": {"type": "string"},
+                },
+                "required": ["hypothesis_id"],
+                "additionalProperties": True,
+            },
             handler=_link_backtest,
         ),
     ]

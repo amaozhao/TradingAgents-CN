@@ -11,6 +11,27 @@ from .permissions import ADMIN_CONFIG_WRITE
 ToolHandler = Callable[[ToolExecutionContext, dict[str, Any]], Awaitable[dict[str, Any]]]
 
 
+def _missing_required_arguments(
+    schema: dict[str, Any], payload: dict[str, Any]
+) -> list[str]:
+    required = schema.get("required") if isinstance(schema, dict) else None
+    if not isinstance(required, list):
+        return []
+
+    missing: list[str] = []
+    for name in required:
+        if not isinstance(name, str):
+            continue
+        value = payload.get(name)
+        if value is None:
+            missing.append(name)
+        elif isinstance(value, str) and not value.strip():
+            missing.append(name)
+        elif isinstance(value, (list, tuple, set, dict)) and not value:
+            missing.append(name)
+    return missing
+
+
 @dataclass(frozen=True)
 class ResearchTool:
     name: str
@@ -27,6 +48,19 @@ class ResearchTool:
             raise PermissionError(f"missing permission: {self.permission}")
         if self.handler is None:
             return {"tool": self.name, "accepted": True, "payload": payload}
+        missing = _missing_required_arguments(self.schema, payload)
+        if missing:
+            return {
+                "tool": self.name,
+                "status": "config_required",
+                "accepted": False,
+                "missing": missing,
+                "reason": f"Missing required argument(s): {', '.join(missing)}",
+                "instruction": (
+                    "Provide the missing arguments from the user request or from a prior "
+                    "tool result before calling this tool."
+                ),
+            }
         return await self.handler(context, payload)
 
 
