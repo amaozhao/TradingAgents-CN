@@ -1,14 +1,32 @@
 """Worker package for analysis and related background jobs."""
 
-from . import examples as example_sdk_sync_service
-from .akshare import sync as akshare_sync_service
-from .baostock import init as baostock_init_service
-from .baostock import sync as baostock_sync_service
-from .hk import data as hk_data_service
-from .hk import sync as hk_sync_service
-from .tushare import sync as tushare_sync_service
-from .us import data as us_data_service
-from .us import sync as us_sync_service
+from __future__ import annotations
+
+import importlib
+from typing import Any
+
+
+_LAZY_MODULES = {
+    "akshare_sync_service": ".akshare.sync",
+    "baostock_init_service": ".baostock.init",
+    "baostock_sync_service": ".baostock.sync",
+    "example_sdk_sync_service": ".examples",
+    "hk_data_service": ".hk.data",
+    "hk_sync_service": ".hk.sync",
+    "tushare_sync_service": ".tushare.sync",
+    "us_data_service": ".us.data",
+    "us_sync_service": ".us.sync",
+}
+
+
+def __getattr__(name: str) -> Any:
+    try:
+        module_path = _LAZY_MODULES[name]
+    except KeyError as exc:
+        raise AttributeError(name) from exc
+    module = importlib.import_module(module_path, __name__)
+    globals()[name] = module
+    return module
 
 __all__ = [
     "akshare_sync_service",

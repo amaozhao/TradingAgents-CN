@@ -34,6 +34,7 @@ def test_default_registry_filters_tools_for_normal_user():
         "check_background",
         "factor_analysis",
         "backtest",
+        "multi_factor_alpha_backtest",
         "read_document",
         "read_url",
         "web_search",

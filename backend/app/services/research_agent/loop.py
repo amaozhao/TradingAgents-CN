@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import json
 import copy
+import json
+import re
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
@@ -29,6 +30,16 @@ class ResearchAgentCancelled(RuntimeError):
     pass
 
 
+def _error_message(exc: Exception) -> str:
+    message = str(exc).strip()
+    if message:
+        return message
+    error_name = exc.__class__.__name__
+    if "Timeout" in error_name:
+        return f"外部模型或网络服务请求超时（{error_name}）"
+    return error_name
+
+
 def build_research_prompt(
     *, principal: ResearchPrincipal, tools: list[ResearchTool]
 ) -> str:
@@ -36,13 +47,64 @@ def build_research_prompt(
         f"- {tool.name}: {tool.description}" for tool in sorted(tools, key=lambda t: t.name)
     )
     return (
-        "You are the TradingAgents-CN research workspace agent.\n"
+        "You are the current-project research workspace agent.\n"
         f"Current principal: {principal.role} user {principal.user_id}.\n"
         "Use only the tools listed below. Respect owner-scoped data access, "
         "persisted artifacts, and evidence-backed conclusions.\n"
+        "Never call a tool with empty arguments when the user request includes "
+        "explicit symbols, dates, text, URLs, factor IDs, or other required inputs. "
+        "Pass those inputs through to the matching tool.\n"
+        "For requests mentioning 沪深300/HS300/CSI300 plus multi-factor alpha, "
+        "momentum/reversal/volatility/turnover, IC weighting, or 2023-2024 backtests, "
+        "call multi_factor_alpha_backtest with the requested universe, factors, and dates "
+        "before writing the final answer.\n"
         "Available tools:\n"
         f"{tool_lines}\n"
     )
+
+
+def _extract_symbols_from_text(text: str) -> list[str]:
+    match = re.search(
+        r"\bsymbols?\s+(.+?)(?:\s+from\b|\s+between\b|\s+for\s+the\s+period\b|$)",
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    source = match.group(1) if match else text
+    tokens = re.findall(
+        r"\b(?:SH|SZ|BJ)?\d{6}(?:\.(?:SH|SZ|BJ))?\b|\b[A-Z]{1,8}(?:[-/](?:USD|USDT))?\b",
+        source.upper(),
+    )
+    ignored = {"CREATE", "STYLE", "BACKTEST", "FROM", "SHOW", "USE", "THEN", "AND", "FOR"}
+    symbols: list[str] = []
+    for token in tokens:
+        if token in ignored:
+            continue
+        if token not in symbols:
+            symbols.append(token)
+    return symbols
+
+
+def _infer_empty_tool_arguments(
+    tool_call: dict[str, Any], *, user_message: str
+) -> dict[str, Any]:
+    arguments = tool_call.get("arguments")
+    if isinstance(arguments, dict) and arguments:
+        return tool_call
+    if str(tool_call.get("name") or "") != "backtest":
+        return tool_call
+
+    symbols = _extract_symbols_from_text(user_message)
+    dates = re.findall(r"\b\d{4}-\d{2}-\d{2}\b", user_message)
+    inferred: dict[str, Any] = {}
+    if symbols:
+        inferred["symbols"] = symbols
+    if len(dates) >= 1:
+        inferred["start_date"] = dates[0]
+    if len(dates) >= 2:
+        inferred["end_date"] = dates[1]
+    if re.search(r"risk[-\s]?parity|inverse[-\s]?vol", user_message, flags=re.IGNORECASE):
+        inferred["strategy"] = "risk_parity"
+    return {**tool_call, "arguments": inferred} if inferred else tool_call
 
 
 class ResearchAgentLoop:
@@ -129,13 +191,23 @@ class ResearchAgentLoop:
         try:
             result = await tool.run(context, arguments)
         except Exception as exc:
+            error_message = _error_message(exc)
+            result = {
+                "tool": tool_name,
+                "status": "error",
+                "accepted": False,
+                "error": error_message,
+                "instruction": (
+                    "The tool call failed. Continue with available evidence, "
+                    "or call the same tool again only if you can provide the missing inputs."
+                ),
+            }
             await self._append_event(
                 session_id=str(context.session_id),
                 user_id=context.principal.user_id,
                 event_type="tool_failed",
-                payload={"tool_name": tool_name, "error": str(exc)},
+                payload={"tool_name": tool_name, "error": error_message, "result": result},
             )
-            raise
 
         await self._append_message(
             session_id=str(context.session_id),
@@ -164,6 +236,79 @@ class ResearchAgentLoop:
             payload=completed_payload,
         )
         return result
+
+    async def _force_final_answer(
+        self,
+        *,
+        prompt: str,
+        session_id: str,
+        principal: ResearchPrincipal,
+        attempt_id: str | None,
+        content_parts: list[str],
+        reasoning_parts: list[str],
+        continuation_count: int,
+    ) -> str:
+        raw_messages = await self.session_service.list_messages(
+            session_id, principal.user_id
+        )
+        context_messages, compact_payload = compact_messages_for_context(
+            raw_messages,
+            char_budget=self.context_char_budget,
+            preserve_recent=self.preserve_recent_messages,
+        )
+        if compact_payload:
+            await self._append_event(
+                session_id=session_id,
+                user_id=principal.user_id,
+                event_type="compact",
+                payload={**compact_payload, "attempt_id": attempt_id},
+            )
+        context_messages = [
+            *context_messages,
+            {
+                "role": "user",
+                "content": (
+                    "工具调用预算已经用尽。不要再调用任何工具。请只基于当前会话中已经"
+                    "返回的工具结果和受限信息，直接输出最终中文结论。若 Web 搜索、"
+                    "行情或分析工具受限，必须明确说明证据缺口，不要编造外部事实。"
+                ),
+            },
+        ]
+        final_finish_reason = "tool_iteration_limit"
+        async for chunk in self.model_client.stream(
+            prompt=f"{prompt}\nDo not call tools in the finalization round.",
+            session_id=session_id,
+            messages=context_messages,
+            tools=[],
+            continuation_count=continuation_count,
+        ):
+            if chunk.delta:
+                content_parts.append(chunk.delta)
+                await self._append_event(
+                    session_id=session_id,
+                    user_id=principal.user_id,
+                    event_type="assistant_delta",
+                    payload={
+                        "text": chunk.delta,
+                        "content": chunk.delta,
+                        "attempt_id": attempt_id,
+                    },
+                )
+            if chunk.reasoning_content:
+                reasoning_parts.append(chunk.reasoning_content)
+                await self._append_event(
+                    session_id=session_id,
+                    user_id=principal.user_id,
+                    event_type="log",
+                    payload={
+                        "kind": "reasoning",
+                        "content": chunk.reasoning_content,
+                        "attempt_id": attempt_id,
+                    },
+                )
+            if chunk.finish_reason:
+                final_finish_reason = f"tool_iteration_limit:{chunk.finish_reason}"
+        return final_finish_reason
 
     async def run(
         self,
@@ -270,6 +415,10 @@ class ResearchAgentLoop:
                             },
                         )
                     if chunk.tool_call:
+                        tool_call = _infer_empty_tool_arguments(
+                            chunk.tool_call,
+                            user_message=user_message,
+                        )
                         if await self._is_cancelled():
                             await self._append_event(
                                 session_id=session_id,
@@ -291,9 +440,9 @@ class ResearchAgentLoop:
                                         "id": chunk.tool_call.get("id"),
                                         "type": "function",
                                         "function": {
-                                            "name": chunk.tool_call.get("name"),
+                                            "name": tool_call.get("name"),
                                             "arguments": json.dumps(
-                                                chunk.tool_call.get("arguments") or {},
+                                                tool_call.get("arguments") or {},
                                                 ensure_ascii=False,
                                             ),
                                         },
@@ -318,7 +467,7 @@ class ResearchAgentLoop:
                             linked_attempt_id=attempt_id,
                         )
                         tool_result = await self._run_tool(
-                            tool_call=chunk.tool_call, context=context
+                            tool_call=tool_call, context=context
                         )
                         artifact_id = tool_result.get("artifact_id")
                         if not artifact_id and isinstance(tool_result.get("result"), dict):
@@ -339,6 +488,15 @@ class ResearchAgentLoop:
                     tool_iteration_count += 1
                     if tool_iteration_count >= self.max_tool_iterations:
                         finish_reason = "tool_iteration_limit"
+                        finish_reason = await self._force_final_answer(
+                            prompt=prompt,
+                            session_id=session_id,
+                            principal=principal,
+                            attempt_id=attempt_id,
+                            content_parts=content_parts,
+                            reasoning_parts=reasoning_parts,
+                            continuation_count=continuation_count,
+                        )
                         break
                     continue
 
@@ -404,7 +562,7 @@ class ResearchAgentLoop:
                 session_id=session_id,
                 user_id=principal.user_id,
                 event_type="task_failed",
-                payload={"error": str(exc)},
+                payload={"error": _error_message(exc)},
             )
             raise
 

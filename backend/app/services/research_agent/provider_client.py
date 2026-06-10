@@ -30,7 +30,7 @@ class AgentModelConfig:
     model: str
     api_key: str
     base_url: str
-    timeout_seconds: float = 120.0
+    timeout_seconds: float = 300.0
 
 
 def _is_placeholder(value: str | None) -> bool:
@@ -132,6 +132,26 @@ def _provider_base_url(provider: str, configured_base_url: str = "") -> str:
     raise AgentModelConfigurationError(f"不支持的 Agent 模型提供方: {provider}")
 
 
+def _candidate_backend_url(
+    provider: str,
+    configured_base_url: str = "",
+    provider_default_base_url: str = "",
+) -> str:
+    provider = provider.lower()
+    configured = str(configured_base_url or "").strip()
+    provider_default = str(provider_default_base_url or "").strip()
+    if provider != "minimax-token-plan":
+        return configured or provider_default
+    if configured:
+        try:
+            return _minimax_token_plan_base_url(configured)
+        except AgentModelConfigurationError:
+            if provider_default:
+                return provider_default
+            raise
+    return provider_default
+
+
 def _provider_env_key(provider: str) -> str:
     provider = provider.lower()
     bridged_key = get_bridged_api_key(provider)
@@ -188,7 +208,11 @@ def _configured_candidate_models() -> list[tuple[str, str, dict[str, Any]]]:
                 {
                     "provider": provider,
                     "api_key": item.get("api_key") or (provider_doc or {}).get("api_key") or "",
-                    "backend_url": item.get("api_base") or (provider_doc or {}).get("default_base_url") or "",
+                    "backend_url": _candidate_backend_url(
+                        provider,
+                        str(item.get("api_base") or ""),
+                        str((provider_doc or {}).get("default_base_url") or ""),
+                    ),
                 },
             ))
 
@@ -575,6 +599,13 @@ def _anthropic_finish_reason(stop_reason: Any) -> str:
     return str(stop_reason or "stop")
 
 
+def _provider_timeout_message(config: AgentModelConfig) -> str:
+    return (
+        f"Agent LLM request timed out after {config.timeout_seconds:.0f}s "
+        f"for {config.provider}/{config.model}"
+    )
+
+
 async def _complete_anthropic_message(
     *,
     config: AgentModelConfig,
@@ -592,14 +623,17 @@ async def _complete_anthropic_message(
     if tools:
         payload["tools"] = [_anthropic_tool_schema(tool) for tool in tools]
 
-    async with httpx.AsyncClient(timeout=config.timeout_seconds) as client:
-        response = await client.post(
-            _anthropic_url(config.base_url),
-            headers=_anthropic_headers(config.api_key),
-            json=payload,
-        )
-        response.raise_for_status()
-        body = response.json()
+    try:
+        async with httpx.AsyncClient(timeout=config.timeout_seconds) as client:
+            response = await client.post(
+                _anthropic_url(config.base_url),
+                headers=_anthropic_headers(config.api_key),
+                json=payload,
+            )
+            response.raise_for_status()
+            body = response.json()
+    except httpx.TimeoutException as exc:
+        raise TimeoutError(_provider_timeout_message(config)) from exc
 
     for block in body.get("content") or []:
         if block.get("type") == "thinking" and block.get("thinking"):
@@ -622,42 +656,45 @@ async def _stream_chat_completion(
     tool_calls: dict[int, dict[str, Any]] = {}
     finish_reason = "stop"
 
-    async with httpx.AsyncClient(timeout=config.timeout_seconds) as client:
-        async with client.stream(
-            "POST",
-            _chat_url(config.base_url),
-            headers={
-                "Authorization": f"Bearer {config.api_key}",
-                "Content-Type": "application/json",
-            },
-            json=streaming_payload,
-        ) as response:
-            response.raise_for_status()
-            async for line in response.aiter_lines():
-                if not line or not line.startswith("data:"):
-                    continue
-                raw = line.split(":", 1)[1].strip()
-                if raw == "[DONE]":
-                    break
-                try:
-                    body = json.loads(raw)
-                except json.JSONDecodeError:
-                    continue
-                choices = body.get("choices") or []
-                if not choices:
-                    continue
-                choice = choices[0]
-                if choice.get("finish_reason"):
-                    finish_reason = str(choice["finish_reason"])
-                delta = choice.get("delta") or {}
-                content = delta.get("content")
-                if content:
-                    yield ModelStreamChunk(delta=str(content))
-                reasoning_content = delta.get("reasoning_content") or delta.get("reasoning")
-                if reasoning_content:
-                    yield ModelStreamChunk(reasoning_content=str(reasoning_content))
-                for tool_delta in delta.get("tool_calls") or []:
-                    _merge_tool_call_delta(tool_calls, tool_delta)
+    try:
+        async with httpx.AsyncClient(timeout=config.timeout_seconds) as client:
+            async with client.stream(
+                "POST",
+                _chat_url(config.base_url),
+                headers={
+                    "Authorization": f"Bearer {config.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=streaming_payload,
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if not line or not line.startswith("data:"):
+                        continue
+                    raw = line.split(":", 1)[1].strip()
+                    if raw == "[DONE]":
+                        break
+                    try:
+                        body = json.loads(raw)
+                    except json.JSONDecodeError:
+                        continue
+                    choices = body.get("choices") or []
+                    if not choices:
+                        continue
+                    choice = choices[0]
+                    if choice.get("finish_reason"):
+                        finish_reason = str(choice["finish_reason"])
+                    delta = choice.get("delta") or {}
+                    content = delta.get("content")
+                    if content:
+                        yield ModelStreamChunk(delta=str(content))
+                    reasoning_content = delta.get("reasoning_content") or delta.get("reasoning")
+                    if reasoning_content:
+                        yield ModelStreamChunk(reasoning_content=str(reasoning_content))
+                    for tool_delta in delta.get("tool_calls") or []:
+                        _merge_tool_call_delta(tool_calls, tool_delta)
+    except httpx.TimeoutException as exc:
+        raise TimeoutError(_provider_timeout_message(config)) from exc
 
     for tool_call in _final_tool_calls(tool_calls):
         yield ModelStreamChunk(tool_call=tool_call)
@@ -726,17 +763,20 @@ def _extract_thought_signature(tool_call: dict[str, Any]) -> str | None:
 async def _complete_chat_completion(
     config: AgentModelConfig, payload: dict[str, Any]
 ) -> AsyncIterator[ModelStreamChunk]:
-    async with httpx.AsyncClient(timeout=config.timeout_seconds) as client:
-        response = await client.post(
-            _chat_url(config.base_url),
-            headers={
-                "Authorization": f"Bearer {config.api_key}",
-                "Content-Type": "application/json",
-            },
-            json=payload,
-        )
-        response.raise_for_status()
-        body = response.json()
+    try:
+        async with httpx.AsyncClient(timeout=config.timeout_seconds) as client:
+            response = await client.post(
+                _chat_url(config.base_url),
+                headers={
+                    "Authorization": f"Bearer {config.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+            response.raise_for_status()
+            body = response.json()
+    except httpx.TimeoutException as exc:
+        raise TimeoutError(_provider_timeout_message(config)) from exc
 
     choices = body.get("choices") or []
     message = (choices[0].get("message") if choices else {}) or {}

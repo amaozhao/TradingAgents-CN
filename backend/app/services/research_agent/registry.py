@@ -51,6 +51,7 @@ class ResearchToolRegistry:
         from .tools.live import live_tools
         from .tools.market_data import market_data_tools
         from .tools.memory import memory_tools
+        from .tools.multi_factor import multi_factor_tools
         from .tools.quant import quant_tools
         from .tools.reports import report_tools
         from .tools.screening import screening_tools
@@ -75,6 +76,7 @@ class ResearchToolRegistry:
                 *shadow_tools(),
                 *skill_tools(),
                 *memory_tools(),
+                *multi_factor_tools(),
                 *quant_tools(),
                 ResearchTool(
                     name="admin_config_write",

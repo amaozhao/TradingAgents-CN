@@ -181,6 +181,24 @@ async def test_upload_artifact_and_read_document_tool_are_owner_scoped(fake_db):
 
 
 @pytest.mark.asyncio
+async def test_read_document_accepts_inline_example_text(fake_db):
+    _ = fake_db
+    registry = ResearchToolRegistry.default()
+    result = await registry.get("read_document").run(
+        ToolExecutionContext(principal=_principal(USER_A), session_id="session-inline-doc"),
+        {
+            "filename": "energy-storage-note.md",
+            "text": "Thesis: storage demand improves. Risks: price competition and weak IRR.",
+        },
+    )
+
+    assert result["status"] == "completed"
+    assert result["artifact_id"]
+    assert result["filename"] == "energy-storage-note.md"
+    assert "storage demand" in result["content"]
+
+
+@pytest.mark.asyncio
 async def test_read_url_blocks_local_targets(fake_db):
     _ = fake_db
     registry = ResearchToolRegistry.default()

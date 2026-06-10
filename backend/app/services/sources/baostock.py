@@ -9,6 +9,8 @@ from typing import Any, Optional, cast
 
 import pandas as pd
 
+from app.core.baostock_runtime import run_baostock_session
+
 from .base import DataSourceAdapter
 
 logger = logging.getLogger(__name__)
@@ -38,17 +40,11 @@ class BaoStockAdapter(DataSourceAdapter):
         if not self.is_available():
             return None
         try:
-            bs = importlib.import_module("baostock")
-            lg = bs.login()
-            if lg.error_code != "0":
-                logger.error(f"BaoStock: Login failed: {lg.error_msg}")
-                return None
-            try:
+            def fetch_stock_list(bs):
                 logger.info("BaoStock: Querying stock basic info...")
                 rs = bs.query_stock_basic()
                 if rs.error_code != "0":
-                    logger.error(f"BaoStock: Query failed: {rs.error_msg}")
-                    return None
+                    raise Exception(f"BaoStock query failed: {rs.error_msg}")
                 data_list = []
                 while (rs.error_code == "0") & rs.next():
                     data_list.append(rs.get_row_data())
@@ -127,8 +123,8 @@ class BaoStockAdapter(DataSourceAdapter):
                         ]
                     ],
                 )
-            finally:
-                bs.logout()
+
+            return run_baostock_session(fetch_stock_list)
         except Exception as e:
             logger.error(f"BaoStock: Failed to fetch stock list: {e}")
             return None
@@ -146,18 +142,13 @@ class BaoStockAdapter(DataSourceAdapter):
         if not self.is_available():
             return None
         try:
-            bs = importlib.import_module("baostock")
             logger.info(f"BaoStock: Attempting to get valuation data for {trade_date}")
-            lg = bs.login()
-            if lg.error_code != "0":
-                logger.error(f"BaoStock: Login failed: {lg.error_msg}")
-                return None
-            try:
+
+            def fetch_daily_basic(bs):
                 logger.info("BaoStock: Querying stock basic info...")
                 rs = bs.query_stock_basic()
                 if rs.error_code != "0":
-                    logger.error(f"BaoStock: Query stock list failed: {rs.error_msg}")
-                    return None
+                    raise Exception(f"BaoStock stock list query failed: {rs.error_msg}")
                 stock_list = []
                 while (rs.error_code == "0") & rs.next():
                     stock_list.append(rs.get_row_data())
@@ -297,8 +288,8 @@ class BaoStockAdapter(DataSourceAdapter):
                         f"⚠️ BaoStock: 未获取到任何估值数据（失败 {failed_count} 只）"
                     )
                     return None
-            finally:
-                bs.logout()
+
+            return run_baostock_session(fetch_daily_basic)
         except Exception as e:
             logger.error(
                 f"BaoStock: Failed to fetch valuation data for {trade_date}: {e}"

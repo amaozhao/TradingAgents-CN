@@ -85,6 +85,27 @@ async def test_options_pricing_and_pattern_tools_require_caller_data():
 
 
 @pytest.mark.asyncio
+async def test_options_pricing_requires_complete_numeric_inputs():
+    registry = ResearchToolRegistry.default()
+    base_payload = {
+        "spot": 100,
+        "strike": 100,
+        "volatility": 0.2,
+        "time_to_expiry": 1,
+        "option_type": "call",
+    }
+
+    for field in ("spot", "strike", "volatility", "time_to_expiry"):
+        payload = dict(base_payload)
+        payload.pop(field)
+        missing_input = await registry.get("options_pricing").run(_context(), payload)
+
+        assert missing_input["status"] == "config_required"
+        assert missing_input["accepted"] is False
+        assert field in missing_input["reason"]
+
+
+@pytest.mark.asyncio
 async def test_factor_analysis_and_backtest_use_caller_data(fake_db):
     registry = ResearchToolRegistry.default()
 

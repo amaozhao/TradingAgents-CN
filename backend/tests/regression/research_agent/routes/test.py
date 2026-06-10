@@ -11,7 +11,23 @@ ADMIN = {"id": "admin-a", "username": "root", "is_admin": True, "roles": ["admin
 
 
 @pytest.mark.asyncio
-async def test_capabilities_and_settings_routes_do_not_expose_secrets():
+async def test_capabilities_and_settings_routes_do_not_expose_secrets(monkeypatch):
+    async def fake_model_resolution(_principal):
+        return {
+            "status": "configured",
+            "reason": "test",
+            "effective_provider": "openai",
+            "effective_model": "gpt-test",
+            "secrets": "redacted",
+            "candidate_models": [],
+        }
+
+    monkeypatch.setattr(
+        research_agent_router,
+        "describe_agent_model_resolution",
+        fake_model_resolution,
+    )
+
     capabilities = await research_agent_router.get_research_agent_capabilities(
         current_user=USER
     )

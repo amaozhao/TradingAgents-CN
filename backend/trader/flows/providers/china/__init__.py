@@ -1,45 +1,41 @@
-"""
-中国市场数据提供器
-包含 A股、港股等中国市场的数据源
-"""
+from __future__ import annotations
 
-# 导入 AKShare 提供器
-try:
-    from .akshare import AKShareProvider
+import importlib
+import sys
+from typing import Any
 
-    AKSHARE_AVAILABLE = True
-except ImportError:
-    AKShareProvider = None
-    AKSHARE_AVAILABLE = False
 
-# 导入 Tushare 提供器
-try:
-    from .tushare import TushareProvider
+_EXPORTS = {
+    "AKShareProvider": ".akshare",
+    "TushareProvider": ".tushare",
+    "BaoStockProvider": ".baostock",
+    "BaostockProvider": ".baostock",
+    "get_fundamentals_snapshot": ".fundamentals",
+}
 
-    TUSHARE_AVAILABLE = True
-except ImportError:
-    TushareProvider = None
-    TUSHARE_AVAILABLE = False
+_AVAILABILITY = {
+    "AKSHARE_AVAILABLE": "AKShareProvider",
+    "TUSHARE_AVAILABLE": "TushareProvider",
+    "BAOSTOCK_AVAILABLE": "BaoStockProvider",
+    "FUNDAMENTALS_SNAPSHOT_AVAILABLE": "get_fundamentals_snapshot",
+}
 
-# 导入 Baostock 提供器
-try:
-    from .baostock import BaoStockProvider
 
-    BaostockProvider = BaoStockProvider
-    BAOSTOCK_AVAILABLE = True
-except ImportError:
-    BaoStockProvider = None
-    BaostockProvider = None
-    BAOSTOCK_AVAILABLE = False
+def __getattr__(name: str) -> Any:
+    if name in _AVAILABILITY:
+        return getattr(sys.modules[__name__], _AVAILABILITY[name]) is not None
 
-# 导入基本面快照工具
-try:
-    from .fundamentals import get_cn_fund_snapshot as get_fundamentals_snapshot
+    if name in _EXPORTS:
+        try:
+            module = importlib.import_module(_EXPORTS[name], __name__)
+            value = getattr(module, "BaoStockProvider" if name == "BaostockProvider" else name)
+        except (ImportError, AttributeError):
+            value = None
+        globals()[name] = value
+        return value
 
-    FUNDAMENTALS_SNAPSHOT_AVAILABLE = True
-except ImportError:
-    get_fundamentals_snapshot = None
-    FUNDAMENTALS_SNAPSHOT_AVAILABLE = False
+    raise AttributeError(name)
+
 
 __all__ = [
     "AKShareProvider",

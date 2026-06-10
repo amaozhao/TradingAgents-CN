@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.services.research_agent.goals import ResearchGoalService
+from app.services.research_agent.goals import (
+    ResearchGoalConflictError,
+    ResearchGoalService,
+)
 
 from ..context import ToolExecutionContext
 from ..permissions import GOAL_EVIDENCE_WRITE, GOAL_READ, GOAL_WRITE
@@ -54,12 +57,29 @@ async def _add_goal_evidence(
 ) -> dict[str, Any]:
     if not context.session_id:
         raise ValueError("session_id is required")
-    goal = await ResearchGoalService().add_evidence(
-        session_id=str(context.session_id),
-        user_id=context.principal.user_id,
-        expected_goal_id=str(payload.get("expected_goal_id") or payload.get("goal_id") or ""),
-        evidence=dict(payload.get("evidence") or payload),
-    )
+    session_id = str(context.session_id)
+    user_id = context.principal.user_id
+    service = ResearchGoalService()
+    evidence = dict(payload.get("evidence") or payload)
+    expected_goal_id = str(payload.get("expected_goal_id") or payload.get("goal_id") or "")
+    try:
+        goal = await service.add_evidence(
+            session_id=session_id,
+            user_id=user_id,
+            expected_goal_id=expected_goal_id,
+            evidence=evidence,
+        )
+    except ResearchGoalConflictError:
+        current_goal = await service.get_goal(session_id, user_id)
+        return {
+            "tool": "add_goal_evidence",
+            "status": "stale_goal",
+            "accepted": False,
+            "reason": "expected_goal_id is stale; call get_research_goal and retry with the current goal_id.",
+            "expected_goal_id": expected_goal_id,
+            "current_goal_id": str((current_goal or {}).get("goal_id") or ""),
+            "written": False,
+        }
     return goal or {"status": "not_found"}
 
 

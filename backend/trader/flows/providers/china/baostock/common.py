@@ -32,14 +32,10 @@ class _BaoStockProviderMixin1:
 
         try:
             # 异步测试登录
-            def test_login():
-                lg = self.bs.login()
-                if lg.error_code != "0":
-                    raise Exception(f"登录失败: {lg.error_msg}")
-                self.bs.logout()
+            def test_login(_bs):
                 return True
 
-            await asyncio.to_thread(test_login)
+            await run_baostock_session_async(test_login, timeout=30)
             logger.info("✅ BaoStock连接测试成功")
             return True
         except Exception as e:
@@ -54,16 +50,10 @@ class _BaoStockProviderMixin1:
         try:
             logger.info("📋 获取BaoStock股票列表（同步）...")
 
-            lg = self.bs.login()
-            if lg.error_code != "0":
-                logger.error(f"BaoStock登录失败: {lg.error_msg}")
-                return None
-
-            try:
-                rs = self.bs.query_stock_basic()
+            def fetch_stock_list(bs):
+                rs = bs.query_stock_basic()
                 if rs.error_code != "0":
-                    logger.error(f"BaoStock查询失败: {rs.error_msg}")
-                    return None
+                    raise Exception(f"查询失败: {rs.error_msg}")
 
                 data_list = []
                 while (rs.error_code == "0") & rs.next():
@@ -82,8 +72,7 @@ class _BaoStockProviderMixin1:
                 logger.info(f"✅ BaoStock股票列表获取成功: {len(df)}只股票")
                 return cast(pd.DataFrame, df)
 
-            finally:
-                self.bs.logout()
+            return run_baostock_session(fetch_stock_list)
 
         except Exception as e:
             logger.error(f"❌ BaoStock获取股票列表失败: {e}")
@@ -102,25 +91,18 @@ class _BaoStockProviderMixin1:
         try:
             logger.info("📋 获取BaoStock股票列表...")
 
-            def fetch_stock_list():
-                lg = self.bs.login()
-                if lg.error_code != "0":
-                    raise Exception(f"登录失败: {lg.error_msg}")
+            def fetch_stock_list(bs):
+                rs = bs.query_stock_basic()
+                if rs.error_code != "0":
+                    raise Exception(f"查询失败: {rs.error_msg}")
 
-                try:
-                    rs = self.bs.query_stock_basic()
-                    if rs.error_code != "0":
-                        raise Exception(f"查询失败: {rs.error_msg}")
+                data_list = []
+                while (rs.error_code == "0") & rs.next():
+                    data_list.append(rs.get_row_data())
 
-                    data_list = []
-                    while (rs.error_code == "0") & rs.next():
-                        data_list.append(rs.get_row_data())
+                return data_list, rs.fields
 
-                    return data_list, rs.fields
-                finally:
-                    self.bs.logout()
-
-            data_list, fields = await asyncio.to_thread(fetch_stock_list)
+            data_list, fields = await run_baostock_session_async(fetch_stock_list, timeout=60)
 
             if not data_list:
                 logger.warning("⚠️ BaoStock股票列表为空")
@@ -216,35 +198,27 @@ class _BaoStockProviderMixin1:
 
             logger.debug(f"📊 获取{code}估值数据: {start_date} 到 {end_date}")
 
-            def fetch_valuation_data():
+            def fetch_valuation_data(bs):
                 bs_code = self._to_baostock_code(code)
-                lg = self.bs.login()
-                if lg.error_code != "0":
-                    raise Exception(f"登录失败: {lg.error_msg}")
+                rs = bs.query_history_k_data_plus(
+                    code=bs_code,
+                    fields="date,code,close,peTTM,pbMRQ,psTTM,pcfNcfTTM",
+                    start_date=start_date,
+                    end_date=end_date,
+                    frequency="d",
+                    adjustflag="3",  # 不复权
+                )
 
-                try:
-                    # 🔥 获取估值指标：peTTM, pbMRQ, psTTM, pcfNcfTTM
-                    rs = self.bs.query_history_k_data_plus(
-                        code=bs_code,
-                        fields="date,code,close,peTTM,pbMRQ,psTTM,pcfNcfTTM",
-                        start_date=start_date,
-                        end_date=end_date,
-                        frequency="d",
-                        adjustflag="3",  # 不复权
-                    )
+                if rs.error_code != "0":
+                    raise Exception(f"查询失败: {rs.error_msg}")
 
-                    if rs.error_code != "0":
-                        raise Exception(f"查询失败: {rs.error_msg}")
+                data_list = []
+                while (rs.error_code == "0") & rs.next():
+                    data_list.append(rs.get_row_data())
 
-                    data_list = []
-                    while (rs.error_code == "0") & rs.next():
-                        data_list.append(rs.get_row_data())
+                return data_list, rs.fields
 
-                    return data_list, rs.fields
-                finally:
-                    self.bs.logout()
-
-            data_list, fields = await asyncio.to_thread(fetch_valuation_data)
+            data_list, fields = await run_baostock_session_async(fetch_valuation_data, timeout=60)
 
             if not data_list:
                 logger.warning(f"⚠️ {code}估值数据为空")
@@ -287,38 +261,31 @@ class _BaoStockProviderMixin1:
         """获取股票详细信息"""
         try:
 
-            def fetch_stock_info():
+            def fetch_stock_info(bs):
                 bs_code = self._to_baostock_code(code)
-                lg = self.bs.login()
-                if lg.error_code != "0":
-                    raise Exception(f"登录失败: {lg.error_msg}")
+                rs = bs.query_stock_basic(code=bs_code)
+                if rs.error_code != "0":
+                    return {"code": code, "name": f"股票{code}"}
 
-                try:
-                    rs = self.bs.query_stock_basic(code=bs_code)
-                    if rs.error_code != "0":
-                        return {"code": code, "name": f"股票{code}"}
+                data_list = []
+                while (rs.error_code == "0") & rs.next():
+                    data_list.append(rs.get_row_data())
 
-                    data_list = []
-                    while (rs.error_code == "0") & rs.next():
-                        data_list.append(rs.get_row_data())
+                if not data_list:
+                    return {"code": code, "name": f"股票{code}"}
 
-                    if not data_list:
-                        return {"code": code, "name": f"股票{code}"}
+                row = data_list[0]
+                return {
+                    "code": code,
+                    "name": str(row[1])
+                    if len(row) > 1
+                    else f"股票{code}",  # code_name
+                    "list_date": str(row[2]) if len(row) > 2 else "",  # ipoDate
+                    "industry": "未知",  # BaoStock基础信息不包含行业
+                    "area": "未知",  # BaoStock基础信息不包含地区
+                }
 
-                    row = data_list[0]
-                    return {
-                        "code": code,
-                        "name": str(row[1])
-                        if len(row) > 1
-                        else f"股票{code}",  # code_name
-                        "list_date": str(row[2]) if len(row) > 2 else "",  # ipoDate
-                        "industry": "未知",  # BaoStock基础信息不包含行业
-                        "area": "未知",  # BaoStock基础信息不包含地区
-                    }
-                finally:
-                    self.bs.logout()
-
-            return await asyncio.to_thread(fetch_stock_info)
+            return await run_baostock_session_async(fetch_stock_info, timeout=60)
 
         except Exception as e:
             logger.debug(f"获取{code}详细信息失败: {e}")
@@ -377,57 +344,46 @@ class _BaoStockProviderMixin1:
         """获取最新K线数据作为行情"""
         try:
 
-            def fetch_latest_kline():
+            def fetch_latest_kline(bs):
                 bs_code = self._to_baostock_code(code)
-                lg = self.bs.login()
-                if lg.error_code != "0":
-                    raise Exception(f"登录失败: {lg.error_msg}")
+                end_date = datetime.now().strftime("%Y-%m-%d")
+                start_date = (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d")
 
-                try:
-                    # 获取最近5天的数据
-                    end_date = datetime.now().strftime("%Y-%m-%d")
-                    start_date = (datetime.now() - timedelta(days=5)).strftime(
-                        "%Y-%m-%d"
-                    )
+                rs = bs.query_history_k_data_plus(
+                    code=bs_code,
+                    fields="date,code,open,high,low,close,preclose,volume,amount,pctChg",
+                    start_date=start_date,
+                    end_date=end_date,
+                    frequency="d",
+                    adjustflag="3",
+                )
 
-                    rs = self.bs.query_history_k_data_plus(
-                        code=bs_code,
-                        fields="date,code,open,high,low,close,preclose,volume,amount,pctChg",
-                        start_date=start_date,
-                        end_date=end_date,
-                        frequency="d",
-                        adjustflag="3",
-                    )
+                if rs.error_code != "0":
+                    return {}
 
-                    if rs.error_code != "0":
-                        return {}
+                data_list = []
+                while (rs.error_code == "0") & rs.next():
+                    data_list.append(rs.get_row_data())
 
-                    data_list = []
-                    while (rs.error_code == "0") & rs.next():
-                        data_list.append(rs.get_row_data())
+                if not data_list:
+                    return {}
 
-                    if not data_list:
-                        return {}
+                latest_row = data_list[-1]
+                return {
+                    "name": f"股票{code}",
+                    "open": self._safe_float(latest_row[2]),
+                    "high": self._safe_float(latest_row[3]),
+                    "low": self._safe_float(latest_row[4]),
+                    "close": self._safe_float(latest_row[5]),
+                    "preclose": self._safe_float(latest_row[6]),
+                    "volume": self._safe_int(latest_row[7]),
+                    "amount": self._safe_float(latest_row[8]),
+                    "change_percent": self._safe_float(latest_row[9]),
+                    "change": self._safe_float(latest_row[5])
+                    - self._safe_float(latest_row[6]),
+                }
 
-                    # 取最新一条数据
-                    latest_row = data_list[-1]
-                    return {
-                        "name": f"股票{code}",
-                        "open": self._safe_float(latest_row[2]),
-                        "high": self._safe_float(latest_row[3]),
-                        "low": self._safe_float(latest_row[4]),
-                        "close": self._safe_float(latest_row[5]),
-                        "preclose": self._safe_float(latest_row[6]),
-                        "volume": self._safe_int(latest_row[7]),
-                        "amount": self._safe_float(latest_row[8]),
-                        "change_percent": self._safe_float(latest_row[9]),
-                        "change": self._safe_float(latest_row[5])
-                        - self._safe_float(latest_row[6]),
-                    }
-                finally:
-                    self.bs.logout()
-
-            return await asyncio.to_thread(fetch_latest_kline)
+            return await run_baostock_session_async(fetch_latest_kline, timeout=60)
 
         except Exception as e:
             logger.debug(f"获取{code}最新K线数据失败: {e}")
@@ -572,43 +528,32 @@ class _BaoStockProviderMixin1:
             frequency_map = {"daily": "d", "weekly": "w", "monthly": "m"}
             bs_frequency = frequency_map.get(period, "d")
 
-            def fetch_historical_data():
+            def fetch_historical_data(bs):
                 bs_code = self._to_baostock_code(code)
-                lg = self.bs.login()
-                if lg.error_code != "0":
-                    raise Exception(f"登录失败: {lg.error_msg}")
+                if bs_frequency == "d":
+                    fields_str = "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,pctChg,isST"
+                else:
+                    fields_str = "date,code,open,high,low,close,volume,amount,pctChg"
 
-                try:
-                    # 根据频率选择不同的字段（周线和月线支持的字段较少）
-                    if bs_frequency == "d":
-                        fields_str = "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,pctChg,isST"
-                    else:
-                        # 周线和月线只支持基础字段
-                        fields_str = (
-                            "date,code,open,high,low,close,volume,amount,pctChg"
-                        )
+                rs = bs.query_history_k_data_plus(
+                    code=bs_code,
+                    fields=fields_str,
+                    start_date=start_date,
+                    end_date=end_date,
+                    frequency=bs_frequency,
+                    adjustflag="2",  # 前复权
+                )
 
-                    rs = self.bs.query_history_k_data_plus(
-                        code=bs_code,
-                        fields=fields_str,
-                        start_date=start_date,
-                        end_date=end_date,
-                        frequency=bs_frequency,
-                        adjustflag="2",  # 前复权
-                    )
+                if rs.error_code != "0":
+                    raise Exception(f"查询失败: {rs.error_msg}")
 
-                    if rs.error_code != "0":
-                        raise Exception(f"查询失败: {rs.error_msg}")
+                data_list = []
+                while (rs.error_code == "0") & rs.next():
+                    data_list.append(rs.get_row_data())
 
-                    data_list = []
-                    while (rs.error_code == "0") & rs.next():
-                        data_list.append(rs.get_row_data())
+                return data_list, rs.fields
 
-                    return data_list, rs.fields
-                finally:
-                    self.bs.logout()
-
-            data_list, fields = await asyncio.to_thread(fetch_historical_data)
+            data_list, fields = await run_baostock_session_async(fetch_historical_data, timeout=90)
 
             if not data_list:
                 logger.warning(f"⚠️ BaoStock历史数据为空: {code}")

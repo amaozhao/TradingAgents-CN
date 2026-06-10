@@ -28,4 +28,20 @@ graph TD
     expect(screen.getByTestId("mermaid-chart")).toHaveTextContent("A[开始] --> B[结束]")
     expect(screen.queryByText("graph TD")).not.toBeInTheDocument()
   })
+
+  it("wraps markdown tables in a local horizontal scroll container", () => {
+    const { container } = render(
+      <MarkdownRenderer
+        content={[
+          "| Greek | Call | Put | 含义 | 风险/对冲含义 |",
+          "|---|---:|---:|---|---|",
+          "| Delta | +0.3930 | -0.6070 | 标的价格变动 1 元 | 卖方对冲 1 张 Call |"
+        ].join("\n")}
+      />
+    )
+
+    const scrollContainer = container.querySelector(".markdown-table-scroll")
+    expect(scrollContainer).not.toBeNull()
+    expect(scrollContainer?.querySelector("table")).toBe(screen.getByRole("table"))
+  })
 })

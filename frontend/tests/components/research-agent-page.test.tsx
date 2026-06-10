@@ -118,15 +118,25 @@ describe("ResearchAgentPage", () => {
   it("renders the current-project Agent capability surface", async () => {
     render(<ResearchAgentPage />)
 
-    expect(screen.getByText("TradingAgents-CN Agent")).toBeInTheDocument()
-    expect(screen.getByText("研究与回测")).toBeInTheDocument()
-    expect(screen.getByText("跨市场组合回测")).toBeInTheDocument()
-    expect(screen.getByText("文档与网页")).toBeInTheDocument()
-    expect(screen.getByText("运行时与连接器")).toBeInTheDocument()
+    expect(screen.getAllByRole("heading", { name: "智能体" }).length).toBeGreaterThan(0)
+    expect(screen.getByText("多市场回测")).toBeInTheDocument()
+    expect(screen.getByText("跨市场组合")).toBeInTheDocument()
+    expect(screen.getByText("文档与网页研究")).toBeInTheDocument()
+    expect(screen.getAllByText("交易连接器").length).toBeGreaterThan(0)
+    expect(screen.getByText("分析连接器组合")).toBeInTheDocument()
+    expect(screen.getByText("报价与趋势")).toBeInTheDocument()
+    expect(screen.getByText("交易日志")).toBeInTheDocument()
+    expect(screen.getByText("分析券商导出记录")).toBeInTheDocument()
+    expect(screen.getByText("我少赚了多少？")).toBeInTheDocument()
+    expect(screen.getByText("生成 Shadow 报告")).toBeInTheDocument()
+    expect(screen.getByText("当前项目补充")).toBeInTheDocument()
+    expect(screen.getByText("Alpha Zoo 覆盖检查")).toBeInTheDocument()
     expect(screen.getAllByText("Shadow Account").length).toBeGreaterThan(0)
     expect(screen.getByText("执行步骤")).toBeInTheDocument()
-    expect(screen.getByText("Agent Runtime")).toBeInTheDocument()
-    expect(screen.getByText("交易连接器")).toBeInTheDocument()
+    expect(screen.getByText("智能体运行时")).toBeInTheDocument()
+    expect(screen.getByText("会话")).toBeInTheDocument()
+    expect(screen.queryByText("Sessions")).not.toBeInTheDocument()
+    expect(screen.getAllByText("交易连接器").length).toBeGreaterThan(0)
     expect(screen.getByText("交易连接器运行")).toBeInTheDocument()
     expect(await screen.findByText("储能验证")).toBeInTheDocument()
     expect(screen.getAllByRole("button", { name: /新会话/ }).length).toBeGreaterThan(0)
@@ -138,11 +148,58 @@ describe("ResearchAgentPage", () => {
 
     render(<ResearchAgentPage />)
 
-    expect(screen.getByText("Research and backtests")).toBeInTheDocument()
+    expect(screen.getByText("Multi-market backtest")).toBeInTheDocument()
+    expect(screen.getByText("Analyze connector portfolio")).toBeInTheDocument()
+    expect(screen.getByText("Quote and trend")).toBeInTheDocument()
+    expect(screen.getByText("Trade journal")).toBeInTheDocument()
+    expect(screen.getByText("How much am I leaving on the table?")).toBeInTheDocument()
+    expect(screen.getByText("Generate shadow report")).toBeInTheDocument()
+    expect(screen.getByText("Current-project additions")).toBeInTheDocument()
     expect(screen.getAllByRole("button", { name: /New session/ }).length).toBeGreaterThan(0)
     expect(screen.getByPlaceholderText("Example: run a backtest, check connector status, or analyze the A-share energy storage sector")).toBeInTheDocument()
     expect(screen.queryByPlaceholderText("例如：运行回测、检查连接器状态，或分析 A 股储能板块")).not.toBeInTheDocument()
     expect(await screen.findByText("储能验证")).toBeInTheDocument()
+  })
+
+  it("sends localized Chinese prompts from examples", async () => {
+    vi.mocked(researchAgentApi.listSessions).mockResolvedValue({ success: true, data: [], message: "ok" })
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    await user.click(await screen.findByRole("button", { name: /跨市场组合/ }))
+
+    await waitFor(() => expect(researchAgentApi.appendMessage).toHaveBeenCalled())
+    expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).toContain("请用 backtest 工具回测一个风险平价组合")
+    expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).not.toContain("Backtest a risk-parity portfolio")
+  })
+
+  it("sends localized Chinese prompts from quick actions", async () => {
+    vi.mocked(researchAgentApi.listSessions).mockResolvedValue({ success: true, data: [], message: "ok" })
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    await user.click(await screen.findByRole("button", { name: "更多选项" }))
+    await user.click(screen.getByRole("button", { name: "分析连接器组合" }))
+
+    await waitFor(() => expect(researchAgentApi.appendMessage).toHaveBeenCalled())
+    expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).toContain("请使用当前选中的 trading connector profile")
+    expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).not.toContain("Use the selected trading connector profile")
+  })
+
+  it("keeps English prompts when the Agent page language is English", async () => {
+    useAppStore.setState({ language: "en-US" })
+    vi.mocked(researchAgentApi.listSessions).mockResolvedValue({ success: true, data: [], message: "ok" })
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    await user.click(await screen.findByRole("button", { name: /Cross-market portfolio/ }))
+
+    await waitFor(() => expect(researchAgentApi.appendMessage).toHaveBeenCalled())
+    expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).toContain("Backtest a risk-parity portfolio")
+    expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).not.toContain("请用 backtest 工具")
   })
 
   it("renders the persisted research goal ledger for the active session", async () => {
@@ -299,6 +356,93 @@ describe("ResearchAgentPage", () => {
     expect(screen.getByText(/Traceback \(most recent call last\):/)).toBeInTheDocument()
   })
 
+  it("shows degraded web search as data-limited instead of completed", async () => {
+    vi.mocked(researchAgentApi.listEvents).mockResolvedValue({
+      success: true,
+      data: [
+        { event_id: 1, event_type: "tool_started", payload: { tool_name: "web_search" } },
+        {
+          event_id: 2,
+          event_type: "tool_completed",
+          payload: {
+            tool_name: "web_search",
+            result: {
+              tool: "web_search",
+              status: "degraded",
+              error_type: "ConnectTimeout",
+              error: "外部网络连接超时，未能建立连接"
+            }
+          }
+        }
+      ],
+      message: "ok"
+    })
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    const step = await screen.findByRole("button", { name: /网页搜索/ })
+    expect(screen.getByText("数据受限")).toBeInTheDocument()
+
+    await user.click(step)
+
+    expect(await screen.findByText(/数据受限：外部网络连接超时/)).toBeInTheDocument()
+  })
+
+  it("shows concrete market data limitations from nested history reason", async () => {
+    vi.mocked(researchAgentApi.listEvents).mockResolvedValue({
+      success: true,
+      data: [
+        { event_id: 1, event_type: "tool_started", payload: { tool_name: "market_data_lookup" } },
+        {
+          event_id: 2,
+          event_type: "tool_completed",
+          payload: {
+            tool_name: "market_data_lookup",
+            result: {
+              tool: "market_data_lookup",
+              symbol: "600519",
+              status: "degraded",
+              history: {
+                status: "degraded",
+                reason: "A 股行情数据未取得可用价格序列：AKShare、BaoStock 没有返回足够数据。"
+              }
+            }
+          }
+        }
+      ],
+      message: "ok"
+    })
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    const step = await screen.findByRole("button", { name: /market_data_lookup/ })
+    expect(screen.getByText("数据受限")).toBeInTheDocument()
+
+    await user.click(step)
+
+    expect(await screen.findByText(/数据受限：A 股行情数据未取得可用价格序列/)).toBeInTheDocument()
+  })
+
+  it("humanizes persisted timeout failures", async () => {
+    vi.mocked(researchAgentApi.listEvents).mockResolvedValue({
+      success: true,
+      data: [
+        {
+          event_id: 1,
+          event_type: "attempt.failed",
+          payload: { error: "ConnectTimeout" }
+        }
+      ],
+      message: "ok"
+    })
+
+    render(<ResearchAgentPage />)
+
+    expect(await screen.findByText(/外部模型或网络服务请求超时：ConnectTimeout/)).toBeInTheDocument()
+  })
+
   it("sends the composer with Enter and keeps Shift+Enter for new lines", async () => {
     const user = userEvent.setup()
     render(<ResearchAgentPage />)
@@ -388,6 +532,38 @@ describe("ResearchAgentPage", () => {
 
     expect(await screen.findByText("Alpha 覆盖检查")).toBeInTheDocument()
     expect(screen.queryByText("网页读取")).not.toBeInTheDocument()
+  })
+
+  it("allows switching to a completed session while another session is running", async () => {
+    vi.mocked(researchAgentApi.listMessages).mockImplementation(async (sessionId) => ({
+      success: true,
+      data: sessionId === "session-2"
+        ? [{ message_id: "session-2-user", role: "user", content: "已完成的白酒研究", metadata: {} }]
+        : [],
+      message: "ok"
+    }))
+    vi.mocked(researchAgentApi.listEvents).mockImplementation(async (sessionId) => ({
+      success: true,
+      data: sessionId === "session-2"
+        ? [{ event_id: 1, event_type: "tool_completed", payload: { tool_name: "alpha_bench", preview: "Coverage ok" } }]
+        : [],
+      message: "ok"
+    }))
+    vi.mocked(researchAgentApi.subscribeEvents).mockReturnValue(vi.fn())
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    await screen.findByText("储能验证")
+    await user.type(screen.getByPlaceholderText("例如：运行回测、检查连接器状态，或分析 A 股储能板块"), "运行一个长任务")
+    await user.click(screen.getByRole("button", { name: "发送" }))
+    await waitFor(() => expect(screen.getByText("智能体正在工作...")).toBeInTheDocument())
+
+    await user.click(screen.getByText("白酒研究"))
+
+    expect(await screen.findByText("已完成的白酒研究")).toBeInTheDocument()
+    expect(await screen.findByText("Alpha 覆盖检查")).toBeInTheDocument()
+    expect(screen.queryByText("智能体正在工作...")).not.toBeInTheDocument()
   })
 
   it("shows a loading state while switching sessions and ignores stale responses", async () => {

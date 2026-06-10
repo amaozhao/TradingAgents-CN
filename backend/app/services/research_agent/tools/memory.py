@@ -28,8 +28,17 @@ async def _remember(context: ToolExecutionContext, payload: dict[str, Any]) -> d
 async def _create_hypothesis(
     context: ToolExecutionContext, payload: dict[str, Any]
 ) -> dict[str, Any]:
+    statement = str(payload.get("statement") or payload.get("hypothesis") or "").strip()
     title = str(payload.get("title") or "").strip()
-    thesis = str(payload.get("thesis") or payload.get("description") or "").strip()
+    thesis = str(
+        payload.get("thesis")
+        or payload.get("description")
+        or statement
+        or payload.get("rationale")
+        or ""
+    ).strip()
+    if not title and statement:
+        title = statement[:120]
     if not title or not thesis:
         raise ValueError("title and thesis are required")
     item = await ResearchHypothesisService().create(
@@ -37,10 +46,23 @@ async def _create_hypothesis(
         session_id=str(context.session_id) if context.session_id else None,
         title=title,
         thesis=thesis,
-        evidence=list(payload.get("evidence") or []),
+        evidence=_list_value(payload.get("evidence")),
         status=str(payload.get("status") or "open"),
     )
     return {"tool": "create_hypothesis", "status": "completed", "hypothesis": item}
+
+
+def _list_value(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, dict):
+        for key in ("items", "item", "values", "value"):
+            if key in value:
+                return _list_value(value.get(key))
+        return [value]
+    return [value]
 
 
 async def _update_hypothesis(
@@ -98,7 +120,22 @@ def memory_tools() -> list[ResearchTool]:
             name="create_hypothesis",
             description="Create an owner-scoped research hypothesis ledger item.",
             permission=HYPOTHESIS_WRITE,
-            schema={"type": "object", "additionalProperties": True},
+            schema={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "thesis": {"type": "string"},
+                    "description": {"type": "string"},
+                    "statement": {
+                        "type": "string",
+                        "description": "Alias for thesis; title is derived from this if omitted.",
+                    },
+                    "rationale": {"type": "string"},
+                    "evidence": {"type": "array", "items": {}},
+                    "status": {"type": "string"},
+                },
+                "additionalProperties": True,
+            },
             handler=_create_hypothesis,
         ),
         ResearchTool(

@@ -34,8 +34,8 @@ def _cleanup_backend_runtime_resources() -> None:
 
 def _current_available_loop() -> asyncio.AbstractEventLoop | None:
     try:
-        loop = asyncio.get_event_loop_policy().get_event_loop()
-    except (DeprecationWarning, RuntimeError):
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
         return None
     if loop.is_closed() or loop.is_running():
         return None

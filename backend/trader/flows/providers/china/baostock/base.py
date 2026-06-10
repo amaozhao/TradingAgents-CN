@@ -93,28 +93,19 @@ class _BaoStockProviderMixin2:
         """获取盈利能力数据"""
         try:
 
-            def fetch_profit_data():
+            def fetch_profit_data(bs):
                 bs_code = self._to_baostock_code(code)
-                lg = self.bs.login()
-                if lg.error_code != "0":
-                    raise Exception(f"登录失败: {lg.error_msg}")
+                rs = bs.query_profit_data(code=bs_code, year=year, quarter=quarter)
+                if rs.error_code != "0":
+                    return None
 
-                try:
-                    rs = self.bs.query_profit_data(
-                        code=bs_code, year=year, quarter=quarter
-                    )
-                    if rs.error_code != "0":
-                        return None
+                data_list = []
+                while (rs.error_code == "0") & rs.next():
+                    data_list.append(rs.get_row_data())
 
-                    data_list = []
-                    while (rs.error_code == "0") & rs.next():
-                        data_list.append(rs.get_row_data())
+                return data_list, rs.fields
 
-                    return data_list, rs.fields
-                finally:
-                    self.bs.logout()
-
-            result = await asyncio.to_thread(fetch_profit_data)
+            result = await run_baostock_session_async(fetch_profit_data, timeout=60)
             if not result or not result[0]:
                 return None
 
@@ -132,28 +123,19 @@ class _BaoStockProviderMixin2:
         """获取营运能力数据"""
         try:
 
-            def fetch_operation_data():
+            def fetch_operation_data(bs):
                 bs_code = self._to_baostock_code(code)
-                lg = self.bs.login()
-                if lg.error_code != "0":
-                    raise Exception(f"登录失败: {lg.error_msg}")
+                rs = bs.query_operation_data(code=bs_code, year=year, quarter=quarter)
+                if rs.error_code != "0":
+                    return None
 
-                try:
-                    rs = self.bs.query_operation_data(
-                        code=bs_code, year=year, quarter=quarter
-                    )
-                    if rs.error_code != "0":
-                        return None
+                data_list = []
+                while (rs.error_code == "0") & rs.next():
+                    data_list.append(rs.get_row_data())
 
-                    data_list = []
-                    while (rs.error_code == "0") & rs.next():
-                        data_list.append(rs.get_row_data())
+                return data_list, rs.fields
 
-                    return data_list, rs.fields
-                finally:
-                    self.bs.logout()
-
-            result = await asyncio.to_thread(fetch_operation_data)
+            result = await run_baostock_session_async(fetch_operation_data, timeout=60)
             if not result or not result[0]:
                 return None
 
@@ -171,28 +153,19 @@ class _BaoStockProviderMixin2:
         """获取成长能力数据"""
         try:
 
-            def fetch_growth_data():
+            def fetch_growth_data(bs):
                 bs_code = self._to_baostock_code(code)
-                lg = self.bs.login()
-                if lg.error_code != "0":
-                    raise Exception(f"登录失败: {lg.error_msg}")
+                rs = bs.query_growth_data(code=bs_code, year=year, quarter=quarter)
+                if rs.error_code != "0":
+                    return None
 
-                try:
-                    rs = self.bs.query_growth_data(
-                        code=bs_code, year=year, quarter=quarter
-                    )
-                    if rs.error_code != "0":
-                        return None
+                data_list = []
+                while (rs.error_code == "0") & rs.next():
+                    data_list.append(rs.get_row_data())
 
-                    data_list = []
-                    while (rs.error_code == "0") & rs.next():
-                        data_list.append(rs.get_row_data())
+                return data_list, rs.fields
 
-                    return data_list, rs.fields
-                finally:
-                    self.bs.logout()
-
-            result = await asyncio.to_thread(fetch_growth_data)
+            result = await run_baostock_session_async(fetch_growth_data, timeout=60)
             if not result or not result[0]:
                 return None
 
@@ -210,28 +183,19 @@ class _BaoStockProviderMixin2:
         """获取偿债能力数据"""
         try:
 
-            def fetch_balance_data():
+            def fetch_balance_data(bs):
                 bs_code = self._to_baostock_code(code)
-                lg = self.bs.login()
-                if lg.error_code != "0":
-                    raise Exception(f"登录失败: {lg.error_msg}")
+                rs = bs.query_balance_data(code=bs_code, year=year, quarter=quarter)
+                if rs.error_code != "0":
+                    return None
 
-                try:
-                    rs = self.bs.query_balance_data(
-                        code=bs_code, year=year, quarter=quarter
-                    )
-                    if rs.error_code != "0":
-                        return None
+                data_list = []
+                while (rs.error_code == "0") & rs.next():
+                    data_list.append(rs.get_row_data())
 
-                    data_list = []
-                    while (rs.error_code == "0") & rs.next():
-                        data_list.append(rs.get_row_data())
+                return data_list, rs.fields
 
-                    return data_list, rs.fields
-                finally:
-                    self.bs.logout()
-
-            result = await asyncio.to_thread(fetch_balance_data)
+            result = await run_baostock_session_async(fetch_balance_data, timeout=60)
             if not result or not result[0]:
                 return None
 
@@ -249,28 +213,19 @@ class _BaoStockProviderMixin2:
         """获取现金流量数据"""
         try:
 
-            def fetch_cash_flow_data():
+            def fetch_cash_flow_data(bs):
                 bs_code = self._to_baostock_code(code)
-                lg = self.bs.login()
-                if lg.error_code != "0":
-                    raise Exception(f"登录失败: {lg.error_msg}")
+                rs = bs.query_cash_flow_data(code=bs_code, year=year, quarter=quarter)
+                if rs.error_code != "0":
+                    return None
 
-                try:
-                    rs = self.bs.query_cash_flow_data(
-                        code=bs_code, year=year, quarter=quarter
-                    )
-                    if rs.error_code != "0":
-                        return None
+                data_list = []
+                while (rs.error_code == "0") & rs.next():
+                    data_list.append(rs.get_row_data())
 
-                    data_list = []
-                    while (rs.error_code == "0") & rs.next():
-                        data_list.append(rs.get_row_data())
+                return data_list, rs.fields
 
-                    return data_list, rs.fields
-                finally:
-                    self.bs.logout()
-
-            result = await asyncio.to_thread(fetch_cash_flow_data)
+            result = await run_baostock_session_async(fetch_cash_flow_data, timeout=60)
             if not result or not result[0]:
                 return None
 

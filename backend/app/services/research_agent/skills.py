@@ -102,7 +102,7 @@ class ResearchSkillCatalogService:
             "status": "available",
             "source_runtime_dependency": False,
             "mutation_allowed": False,
-            "summary": f"{title} capability metadata migrated into the current TradingAgents-CN research-agent catalog.",
+            "summary": f"{title} capability metadata migrated into the current-project research-agent catalog.",
             "prompt_context": (
                 f"Skill: {name}\n"
                 "Use this capability only through current-project tools, artifacts, permissions, and owner-scoped data. "

@@ -13,6 +13,13 @@ marked.use({
   breaks: true
 })
 
+const renderer = new marked.Renderer()
+const renderDefaultTable = renderer.table.bind(renderer)
+
+renderer.table = (token: Tokens.Table) => (
+  `<div class="markdown-table-scroll">${renderDefaultTable(token)}</div>`
+)
+
 export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
   const parts = splitMarkdownParts(content || "")
 
@@ -72,6 +79,7 @@ function normalizeLanguage(language?: string) {
 
 function parseMarkdown(markdown: string) {
   return marked.parse(markdown, {
-    async: false
+    async: false,
+    renderer
   })
 }

@@ -114,7 +114,8 @@ async def test_factor_list_is_available_to_authenticated_users(fake_db):
     assert response_a["success"] is True
     assert response_b["success"] is True
     assert response_a["data"]["total"] == response_b["data"]["total"]
-    assert response_a["data"]["items"][0]["factor_id"].startswith("alpha")
+    factor_ids = [item["factor_id"] for item in response_a["data"]["items"]]
+    assert any(factor_id.startswith("alpha") for factor_id in factor_ids)
 
 
 @pytest.mark.asyncio

@@ -1,11 +1,26 @@
+import importlib.util
 import unittest
+from pathlib import Path
 
-from trader.llm.clients.providers import (
-    canonical_aliases,
-    default_backend_url,
-    env_key_for_provider,
-    normalize_provider_key,
-)
+
+def load_providers_module():
+    module_path = Path(__file__).resolve().parents[5] / "trader" / "llm" / "clients" / "providers.py"
+    spec = importlib.util.spec_from_file_location(
+        "trader_llm_clients_providers_under_test",
+        module_path,
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+providers_module = load_providers_module()
+canonical_aliases = providers_module.canonical_aliases
+default_backend_url = providers_module.default_backend_url
+env_key_for_provider = providers_module.env_key_for_provider
+normalize_provider_key = providers_module.normalize_provider_key
 
 
 class ProviderKeysTests(unittest.TestCase):

@@ -261,53 +261,31 @@ class DataSourceConfigTestMixin:
             elif ds_type == "baostock":
                 # BaoStock 不需要 API Key，直接测试登录
                 try:
-                    bs = importlib.import_module("baostock")
-                    # 测试登录
-                    lg = bs.login()
+                    importlib.import_module("baostock")
+                    from app.core.baostock_runtime import run_baostock_session
 
-                    if lg.error_code == "0":
-                        # 登录成功，测试获取数据
-                        try:
-                            # 获取交易日历（轻量级测试）
-                            rs = bs.query_trade_dates(
-                                start_date="2024-01-01", end_date="2024-01-01"
-                            )
-
-                            if rs.error_code == "0":
-                                response_time = time.time() - start_time
-                                bs.logout()
-                                return {
-                                    "success": True,
-                                    "message": "成功连接到 BaoStock 数据源",
-                                    "response_time": response_time,
-                                    "details": {
-                                        "type": ds_type,
-                                        "test_result": "登录成功，获取交易日历成功",
-                                    },
-                                }
-                            else:
-                                bs.logout()
-                                return {
-                                    "success": False,
-                                    "message": f"BaoStock 数据获取失败: {rs.error_msg}",
-                                    "response_time": time.time() - start_time,
-                                    "details": None,
-                                }
-                        except Exception as e:
-                            bs.logout()
+                    def test_trade_dates(bs):
+                        rs = bs.query_trade_dates(
+                            start_date="2024-01-01", end_date="2024-01-01"
+                        )
+                        if rs.error_code != "0":
                             return {
                                 "success": False,
-                                "message": f"BaoStock 数据获取异常: {str(e)}",
+                                "message": f"BaoStock 数据获取失败: {rs.error_msg}",
                                 "response_time": time.time() - start_time,
                                 "details": None,
                             }
-                    else:
                         return {
-                            "success": False,
-                            "message": f"BaoStock 登录失败: {lg.error_msg}",
+                            "success": True,
+                            "message": "成功连接到 BaoStock 数据源",
                             "response_time": time.time() - start_time,
-                            "details": None,
+                            "details": {
+                                "type": ds_type,
+                                "test_result": "登录成功，获取交易日历成功",
+                            },
                         }
+
+                    return run_baostock_session(test_trade_dates)
                 except ImportError:
                     return {
                         "success": False,

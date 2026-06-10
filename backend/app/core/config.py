@@ -204,6 +204,10 @@ class Settings(BaseSettings):
 
     # 基础信息同步任务配置（可配置调度）
     SYNC_STOCK_BASICS_ENABLED: bool = Field(default=True)
+    SYNC_STOCK_BASICS_ON_STARTUP: bool = Field(
+        default=False,
+        description="启动时立即触发一次股票基础信息全量同步。默认关闭，避免本地启动被外部数据源长任务拖住。",
+    )
     # 优先使用 CRON 表达式，例如 "30 6 * * *" 表示每日 06:30
     SYNC_STOCK_BASICS_CRON: str = Field(default="")
     # 若未提供 CRON，则使用简单时间字符串 "HH:MM"（24小时制）

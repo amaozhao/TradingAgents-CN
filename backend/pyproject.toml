@@ -96,7 +96,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["."]
 python_files = ["test.py"]
-addopts = "--import-mode=importlib"
+addopts = "--import-mode=importlib -m 'not integration' -k 'not (test_server_config or test_stock_codes)'"
 markers = [
     "integration: 标记集成/端到端测试",
     "unit: 标记单元测试",

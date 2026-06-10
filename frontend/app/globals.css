@@ -93,7 +93,7 @@
   .markdown-body ol,
   .markdown-body blockquote,
   .markdown-body pre,
-  .markdown-body table {
+  .markdown-body .markdown-table-scroll {
     @apply mb-4;
   }
 
@@ -127,6 +127,14 @@
 
   .markdown-body table {
     @apply w-full border-collapse text-sm;
+  }
+
+  .markdown-body .markdown-table-scroll {
+    @apply max-w-full overflow-x-auto rounded-md border;
+  }
+
+  .markdown-body .markdown-table-scroll table {
+    @apply mb-0 min-w-max border-0;
   }
 
   .markdown-body th,

@@ -91,13 +91,18 @@ async def lifespan(app: FastAPI):
 
         # 配置调度：优先使用 CRON，其次使用 HH:MM
         if settings.SYNC_STOCK_BASICS_ENABLED:
-            # 立即在启动后尝试一次（不阻塞）
             async def run_sync_with_sources():
                 await multi_source_service.run_full_sync(
                     force=False, preferred_sources=preferred_sources
                 )
 
-            asyncio.create_task(run_sync_with_sources())
+            if settings.SYNC_STOCK_BASICS_ON_STARTUP:
+                asyncio.create_task(run_sync_with_sources())
+                logger.info("🚀 股票基础信息启动同步已提交后台任务")
+            else:
+                logger.info(
+                    "⏭️ 股票基础信息启动同步已跳过: SYNC_STOCK_BASICS_ON_STARTUP=false"
+                )
 
             if settings.SYNC_STOCK_BASICS_CRON:
                 # 如果提供了cron表达式

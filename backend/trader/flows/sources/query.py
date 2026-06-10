@@ -3,34 +3,23 @@ class _DataSourceManagerMixin4:
     def _get_baostock_stock_info(self, symbol: str) -> Dict:
         """使用BaoStock获取股票基本信息"""
         try:
-            bs = importlib.import_module("baostock")
-
-            # 转换股票代码格式
             if symbol.startswith("6"):
                 bs_code = f"sh.{symbol}"
             else:
                 bs_code = f"sz.{symbol}"
 
-            # 登录BaoStock
-            lg = bs.login()
-            if lg.error_code != "0":
-                logger.error(f"❌ [股票信息] BaoStock登录失败: {lg.error_msg}")
-                return {"symbol": symbol, "name": f"股票{symbol}", "source": "baostock"}
+            def fetch_stock_info(bs):
+                rs = bs.query_stock_basic(code=bs_code)
+                if rs.error_code != "0":
+                    logger.error(f"❌ [股票信息] BaoStock查询失败: {rs.error_msg}")
+                    return []
 
-            # 查询股票基本信息
-            rs = bs.query_stock_basic(code=bs_code)
-            if rs.error_code != "0":
-                bs.logout()
-                logger.error(f"❌ [股票信息] BaoStock查询失败: {rs.error_msg}")
-                return {"symbol": symbol, "name": f"股票{symbol}", "source": "baostock"}
+                data_list = []
+                while (rs.error_code == "0") & rs.next():
+                    data_list.append(rs.get_row_data())
+                return data_list
 
-            # 解析结果
-            data_list = []
-            while (rs.error_code == "0") & rs.next():
-                data_list.append(rs.get_row_data())
-
-            # 登出
-            bs.logout()
+            data_list = run_baostock_session(fetch_stock_info)
 
             if data_list:
                 # BaoStock返回格式: [code, code_name, ipoDate, outDate, type, status]

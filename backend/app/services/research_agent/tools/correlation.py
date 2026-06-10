@@ -10,6 +10,7 @@ from app.services.research_agent.jobs import ResearchJobService
 
 from ..permissions import CORRELATION_RUN
 from ..registry import ResearchTool
+from .market_series import build_returns_frame, load_price_series
 
 
 class ResearchMatrixJobService:
@@ -59,15 +60,23 @@ class ResearchMatrixJobService:
             payload=payload,
         )
         await self.job_service.mark_running(job["job_id"])
-        matrix = _calculate_matrix(resolved_symbols, clean_method, clean_window)
+        matrix, matrix_source, missing_symbols = await _calculate_matrix(
+            resolved_symbols, clean_method, clean_window
+        )
         artifact_payload = {
             "kind": "correlation_matrix",
             "symbols": resolved_symbols,
             "method": clean_method,
             "window": clean_window,
+            "matrix_source": matrix_source,
             "matrix": matrix,
             "high_correlation_pairs": _high_correlation_pairs(matrix),
             "diversification_candidates": _diversification_candidates(matrix),
+            "missing_symbols": missing_symbols,
+            "data_limitations": [
+                "Correlation is computed from available close-price returns.",
+                "Unavailable symbols are excluded and listed in missing_symbols.",
+            ],
         }
         artifact = await self.artifact_service.create_artifact(
             session_id=job["job_id"],
@@ -125,18 +134,30 @@ def _sector_symbols(sector: str) -> list[str]:
     return sector_map.get(sector_key, ["600519", "000001"])
 
 
-def _calculate_matrix(symbols: list[str], method: str, window: int) -> dict[str, dict[str, float]]:
-    returns = pd.DataFrame(
-        {
-            symbol: [((day + 1) * (index + 1)) % 17 / 100 for day in range(window)]
-            for index, symbol in enumerate(symbols)
-        }
-    )
+async def _calculate_matrix(
+    symbols: list[str], method: str, window: int
+) -> tuple[dict[str, dict[str, float]], str, list[str]]:
+    series_map = await load_price_series(symbols, limit=window)
+    returns = build_returns_frame(series_map).tail(window)
+    missing_symbols = [
+        symbol for symbol in symbols
+        if symbol not in returns.columns or not series_map.get(symbol, {}).get("returns")
+    ]
+    matrix_source = "market_data"
+    if returns.empty or len(returns.columns) < 2:
+        returns = pd.DataFrame(
+            {
+                symbol: [((day + 1) * (index + 1)) % 17 / 100 for day in range(window)]
+                for index, symbol in enumerate(symbols)
+            }
+        )
+        matrix_source = "synthetic_fallback"
     corr = returns.corr(method=method).fillna(1.0)
-    return {
+    matrix = {
         str(row): {str(column): round(float(corr.loc[row, column]), 6) for column in corr}
         for row in corr.index
     }
+    return matrix, matrix_source, missing_symbols
 
 
 def _high_correlation_pairs(matrix: dict[str, dict[str, float]]) -> list[dict[str, Any]]:

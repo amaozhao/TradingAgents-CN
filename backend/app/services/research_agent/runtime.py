@@ -16,21 +16,12 @@ from .sessions import ResearchSessionService
 class AgentIntent(str, Enum):
     CHAT = "chat"
     STOCK_RESEARCH = "stock_research"
-    VIBE_ONLY = "vibe_only"
 
 
 @dataclass(frozen=True)
 class IntentDecision:
     intent: AgentIntent
     reason: str
-
-
-class AssistantOnlyModelClient:
-    def __init__(self, answer: str) -> None:
-        self.answer = answer
-
-    async def stream(self, **_kwargs: Any) -> AsyncIterator[ModelStreamChunk]:
-        yield ModelStreamChunk(delta=self.answer, finish_reason="stop")
 
 
 def classify_agent_intent(prompt: str) -> IntentDecision:
@@ -40,25 +31,6 @@ def classify_agent_intent(prompt: str) -> IntentDecision:
 
     actionable_prompt = extract_actionable_prompt(prompt)
     actionable_normalized = actionable_prompt.lower()
-
-    unsupported_runtime_keywords = (
-        "risk-parity",
-        "risk parity",
-        "black-scholes",
-        "place order",
-        "cancel order",
-        "write file",
-        "edit file",
-        "shell",
-        "docker",
-        "mcp",
-        "robinhood",
-        "binance",
-        "okx",
-        "futu",
-    )
-    if any(keyword in actionable_normalized for keyword in unsupported_runtime_keywords):
-        return IntentDecision(AgentIntent.VIBE_ONLY, "vibe_agent_runtime_not_migrated")
 
     stock_keywords = (
         "a股",
@@ -101,23 +73,22 @@ def extract_actionable_prompt(prompt: str) -> str:
 
 
 def build_capability_gap_answer(user_message: str, decision: IntentDecision) -> str:
-    if decision.intent == AgentIntent.VIBE_ONLY:
-        return (
-            "这个请求属于完整 Agent Runtime 能力，但当前 "
-            "TradingAgents-CN 后端还没有迁入对应模块，所以我不会再伪造运行结果。\n\n"
-            "当前仍按安全策略拒绝的能力包括：未隔离 shell/docker 执行、任意文件写入、"
-            "远程 MCP 调用、未授权实盘下单/撤单和未配置 broker 运行时。\n\n"
-            "当前这个入口已经接入的能力是：A 股研究会话、Alpha Zoo 查询/覆盖检查、"
-            "相关性矩阵、单股/批量分析、Research Goal、Swarm、文档/PDF 上传读取、"
-            "Web 搜索/网页读取、Shadow Account、期权/形态/因子/回测、交易日志分析、"
-            "交易连接器只读检查、live safety surface 和研究报告 artifact。"
-        )
     return (
-        "我是 TradingAgents-CN 研究 Agent。当前后端可处理 A 股研究、Alpha Zoo、"
+        "我是当前项目研究 Agent。当前后端可处理 A 股研究、Alpha Zoo、"
         "相关性矩阵、单股/批量分析、Research Goal、Swarm、文档/PDF 上传读取、"
         "Web 搜索/网页读取、Shadow Account、期权/形态/因子/回测、交易日志分析、"
         "交易连接器只读检查、live safety surface 和报告归档。"
     )
+
+
+def _exception_message(exc: Exception) -> str:
+    message = str(exc).strip()
+    if message:
+        return message
+    error_name = exc.__class__.__name__
+    if "Timeout" in error_name:
+        return f"外部模型或网络服务请求超时（{error_name}）"
+    return error_name
 
 
 class ResearchAgentRuntime:
@@ -237,46 +208,6 @@ class ResearchAgentRuntime:
 
         try:
             decision = classify_agent_intent(user_message)
-            if decision.intent == AgentIntent.VIBE_ONLY:
-                loop_result = await ResearchAgentLoop(
-                    model_client=AssistantOnlyModelClient(
-                        build_capability_gap_answer(user_message, decision)
-                    ),
-                    registry=self.registry,
-                    event_service=self.event_service,
-                    cancel_checker=lambda: self.job_service.is_cancelled(job_id),
-                ).run(
-                    principal=principal,
-                    session_id=session_id,
-                    user_message=user_message,
-                    attempt_id=attempt_id,
-                    persist_user_message=False,
-                )
-                result = {
-                    **loop_result,
-                    "status": "completed",
-                    "job_id": job_id,
-                    "intent": decision.intent.value,
-                    "reason": decision.reason,
-                    "artifact_ids": list(loop_result.get("artifact_ids", [])),
-                }
-                if await self.job_service.is_cancelled(job_id):
-                    if attempt_id:
-                        await self.attempt_service.mark_cancelled(
-                            attempt_id, principal.user_id
-                        )
-                    return {
-                        "status": "cancelled",
-                        "job_id": job_id,
-                        "attempt_id": attempt_id,
-                    }
-                await self.job_service.mark_completed(job_id, result)
-                if attempt_id:
-                    await self.attempt_service.mark_completed(
-                        attempt_id, principal.user_id, result
-                    )
-                return result
-
             if decision.intent in {AgentIntent.CHAT, AgentIntent.STOCK_RESEARCH}:
                 loop_result = await ResearchAgentLoop(
                     model_client=OpenAICompatibleModelClient(principal),
@@ -315,22 +246,23 @@ class ResearchAgentRuntime:
                     )
                 return result
         except Exception as exc:
+            error_message = _exception_message(exc)
             if await self.job_service.is_cancelled(job_id):
                 if attempt_id:
                     await self.attempt_service.mark_cancelled(
                         attempt_id, principal.user_id
                     )
                 return {"status": "cancelled", "job_id": job_id, "attempt_id": attempt_id}
-            await self.job_service.mark_failed(job_id, str(exc))
+            await self.job_service.mark_failed(job_id, error_message)
             if attempt_id:
                 await self.attempt_service.mark_failed(
-                    attempt_id, principal.user_id, str(exc)
+                    attempt_id, principal.user_id, error_message
                 )
             return {
                 "status": "failed",
                 "job_id": job_id,
                 "attempt_id": attempt_id,
-                "error": str(exc),
+                "error": error_message,
             }
 
     async def list_attempts(

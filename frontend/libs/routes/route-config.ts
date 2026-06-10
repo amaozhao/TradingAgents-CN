@@ -86,12 +86,22 @@ export const menuRoutes: AppRoute[] = [
     children: [
       getRequiredRoute("/analysis/single"),
       getRequiredRoute("/analysis/batch"),
+      getRequiredRoute("/agent"),
       getRequiredRoute("/reports")
     ]
   },
-  getRequiredRoute("/agent"),
-  getRequiredRoute("/alpha-zoo"),
-  getRequiredRoute("/correlation"),
+  {
+    path: "/quant",
+    title: "量化研究",
+    titleI18n: { "zh-CN": "量化研究", "en-US": "Quant Research" },
+    icon: BarChart3,
+    requiresAuth: true,
+    href: "/alpha-zoo",
+    children: [
+      getRequiredRoute("/alpha-zoo"),
+      getRequiredRoute("/correlation")
+    ]
+  },
   getRequiredRoute("/tasks"),
   getRequiredRoute("/screening"),
   getRequiredRoute("/favorites"),

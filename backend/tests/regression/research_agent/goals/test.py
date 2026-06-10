@@ -204,3 +204,34 @@ async def test_goal_tools_are_real_current_project_tools(fake_db):
 
     assert goal["title"] == "工具目标"
     assert fetched["goal_id"] == goal["goal_id"]
+
+
+@pytest.mark.asyncio
+async def test_goal_evidence_tool_rejects_stale_goal_id_without_writing(fake_db):
+    _ = fake_db
+    session = await ResearchSessionService().create_session(
+        _principal(USER_A), title="目标工具"
+    )
+    registry = ResearchToolRegistry.default()
+    context = ToolExecutionContext(
+        principal=ResearchPrincipal.from_user(USER_A, session_id=session["session_id"]),
+        session_id=session["session_id"],
+    )
+    goal = await registry.get("start_research_goal").run(
+        context, {"title": "工具目标", "criteria": ["有证据"]}
+    )
+
+    result = await registry.get("add_goal_evidence").run(
+        context,
+        {
+            "expected_goal_id": "stale-goal-id",
+            "evidence": {"kind": "tool", "summary": "多因子回测数据源受限"},
+        },
+    )
+    current = await registry.get("get_research_goal").run(context, {})
+
+    assert result["status"] == "stale_goal"
+    assert result["accepted"] is False
+    assert result["written"] is False
+    assert result["current_goal_id"] == goal["goal_id"]
+    assert current["evidence"] == []

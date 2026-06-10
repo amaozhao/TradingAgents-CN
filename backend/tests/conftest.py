@@ -1,14 +1,47 @@
 import asyncio
+import importlib
 import inspect
 import os
 import sys
 import types
 
 import pytest
-from app.core.config import settings as app_settings
-from app.core.runtime import apply_runtime_env
 
 BACKEND_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+TESTS_TRADER_ROOT = os.path.join(os.path.dirname(__file__), "trader")
+
+if BACKEND_ROOT not in sys.path:
+    sys.path.insert(0, BACKEND_ROOT)
+
+
+def _module_origin_is_under(module, root: str) -> bool:
+    module_file = getattr(module, "__file__", None)
+    if module_file and os.path.abspath(module_file).startswith(root):
+        return True
+    try:
+        module_paths = getattr(module, "__path__", None) or []
+        module_paths = list(module_paths)
+    except KeyError:
+        return True
+    return any(os.path.abspath(path).startswith(root) for path in module_paths)
+
+
+def _clear_test_trader_namespace() -> None:
+    loaded_modules = sorted(
+        list(sys.modules.items()),
+        key=lambda item: item[0].count("."),
+        reverse=True,
+    )
+    for module_name, module in loaded_modules:
+        if module_name == "trader" or module_name.startswith("trader."):
+            if module is not None and _module_origin_is_under(module, TESTS_TRADER_ROOT):
+                sys.modules.pop(module_name, None)
+
+
+_clear_test_trader_namespace()
+
+app_settings = importlib.import_module("app.core.config").settings
+apply_runtime_env = importlib.import_module("app.core.runtime").apply_runtime_env
 
 apply_runtime_env(
     {
@@ -59,6 +92,14 @@ def pytest_pyfunc_call(pyfuncitem):
     }
     asyncio.run(test_func(**funcargs))
     return True
+
+
+def pytest_collection_finish(session):
+    _clear_test_trader_namespace()
+
+
+def pytest_runtest_setup(item):
+    _clear_test_trader_namespace()
 
 
 def pytest_collection_modifyitems(config, items):

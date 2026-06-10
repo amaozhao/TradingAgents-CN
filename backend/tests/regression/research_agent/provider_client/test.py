@@ -173,9 +173,10 @@ def _principal() -> ResearchPrincipal:
 
 @pytest.mark.asyncio
 async def test_missing_default_model_fails_visibly(monkeypatch):
-    monkeypatch.setattr(provider_module.settings, "TRADING_AGENTS_DEFAULT_MODEL", "")
+    monkeypatch.setattr(provider_module, "_default_agent_model", lambda: "")
+    monkeypatch.setattr(provider_module, "_fallback_configured_model", lambda: None)
 
-    with pytest.raises(AgentModelConfigurationError, match="未配置 Agent 默认模型"):
+    with pytest.raises(AgentModelConfigurationError, match="未配置可用的 Agent 模型 API Key"):
         await provider_module.resolve_agent_model_config(_principal())
 
 
@@ -190,7 +191,7 @@ async def test_openai_compatible_client_maps_tool_calls(monkeypatch):
         no_user_key,
     )
     monkeypatch.setattr(provider_module.settings, "TRADING_AGENTS_DEFAULT_MODEL", "openai/gpt-test")
-    monkeypatch.setattr(provider_module.settings, "OPENAI_API_KEY", "sk-test")
+    monkeypatch.setattr(provider_module.settings, "OPENAI_API_KEY", "sk-test-valid-123456")
     monkeypatch.setattr(provider_module.settings, "OPENAI_BASE_URL", "https://example.test/v1")
     monkeypatch.setattr(provider_module.httpx, "AsyncClient", FakeAsyncClient)
 
@@ -239,7 +240,7 @@ async def test_openai_compatible_client_streams_sse_chunks(monkeypatch):
         no_user_key,
     )
     monkeypatch.setattr(provider_module.settings, "TRADING_AGENTS_DEFAULT_MODEL", "openai/gpt-test")
-    monkeypatch.setattr(provider_module.settings, "OPENAI_API_KEY", "sk-test")
+    monkeypatch.setattr(provider_module.settings, "OPENAI_API_KEY", "sk-test-valid-123456")
     monkeypatch.setattr(provider_module.settings, "OPENAI_BASE_URL", "https://example.test/v1")
     monkeypatch.setattr(provider_module.httpx, "AsyncClient", FakeStreamingAsyncClient)
 
@@ -282,7 +283,7 @@ async def test_streaming_failure_before_output_falls_back_to_complete(monkeypatc
         no_user_key,
     )
     monkeypatch.setattr(provider_module.settings, "TRADING_AGENTS_DEFAULT_MODEL", "openai/gpt-test")
-    monkeypatch.setattr(provider_module.settings, "OPENAI_API_KEY", "sk-test")
+    monkeypatch.setattr(provider_module.settings, "OPENAI_API_KEY", "sk-test-valid-123456")
     monkeypatch.setattr(provider_module.settings, "OPENAI_BASE_URL", "https://example.test/v1")
     monkeypatch.setattr(provider_module.httpx, "AsyncClient", FakeFallbackAsyncClient)
 

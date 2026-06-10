@@ -30,6 +30,7 @@ import {
   type LiveStatus,
   type ParsedResearchStreamEvent,
   type ResearchAgentEvent,
+  type ResearchAttempt,
   type ResearchGoal,
   type ResearchMessage,
   type ResearchSession
@@ -44,14 +45,14 @@ type AgentMessage = {
   content: string
   timestamp: number
   tool?: string
-  status?: "running" | "ok" | "error"
+  status?: "running" | "ok" | "warning" | "error"
   elapsedMs?: number
 }
 
 type ToolState = {
   id: string
   name: string
-  status: "running" | "ok" | "error"
+  status: "running" | "ok" | "warning" | "error"
   preview?: string
   artifactId?: string
   elapsedMs?: number
@@ -59,97 +60,169 @@ type ToolState = {
 
 const EXAMPLE_CATEGORIES = [
   {
-    label: "研究与回测",
+    label: "多市场回测",
     icon: TrendingUp,
     examples: [
       {
-        title: "跨市场组合回测",
-        desc: "调用 Agent backtest 工具生成策略、运行回测并输出指标",
-        prompt: "Create a risk-parity style backtest for 000001.SZ, BTC-USDT, and AAPL from 2025-01-01 to 2026-06-01. Show metrics, risks, and next improvements."
+        title: "跨市场组合",
+        desc: "A 股 + Crypto + 美股，使用风险平价优化器",
+        prompt: "请用 backtest 工具回测一个风险平价组合，标的包括 000001.SZ、BTC-USDT 和 AAPL，时间范围为 2024 全年，并和等权组合基准进行对比。"
       },
+      {
+        title: "BTC 5 分钟 MACD 策略",
+        desc: "使用 OKX 实时数据做分钟级 Crypto 回测",
+        prompt: "请回测 BTC-USDT 的 5 分钟 MACD 策略，参数 fast=12、slow=26、signal=9，时间范围为最近 30 天，并总结收益、回撤和主要风险。"
+      },
+      {
+        title: "美股科技最大分散组合",
+        desc: "通过 yfinance 优化 FAANG+ 组合",
+        prompt: "请使用 max_diversification 组合优化器回测 AAPL、MSFT、GOOGL、AMZN、NVDA 在 2024 全年的表现，并说明和等权组合相比的差异。"
+      }
+    ]
+  },
+  {
+    label: "研究分析",
+    icon: Sparkles,
+    examples: [
+      {
+        title: "多因子 Alpha 模型",
+        desc: "在 300 只股票上做 IC 加权因子合成",
+        prompt: "请基于沪深 300 成分股构建多因子 Alpha 模型，因子包括 momentum、reversal、volatility 和 turnover，使用 IC 加权合成，并回测 2023-2024 年表现。"
+      },
+      {
+        title: "期权 Greeks 分析",
+        desc: "Black-Scholes 定价和 Delta/Gamma/Theta/Vega",
+        prompt: "请用 Black-Scholes 模型计算期权 Greeks：spot=100、strike=105、risk-free rate=3%、vol=25%、expiry=90 days，并解释 Delta、Gamma、Theta、Vega 的含义和风险。"
+      }
+    ]
+  },
+  {
+    label: "智能体团队",
+    icon: Users,
+    examples: [
+      {
+        title: "投委会评审",
+        desc: "多智能体辩论：多空观点、风险审查、PM 决策",
+        prompt: "[Swarm Team Mode] 请使用 investment_committee preset，根据当前市场环境评估 NVDA 应该做多、做空还是观望，并汇总多空观点、风险审查和 PM 决策。"
+      },
+      {
+        title: "量化策略桌",
+        desc: "筛选、因子研究、回测、风险审计流水线",
+        prompt: "[Swarm Team Mode] 请使用 quant_strategy_desk preset，在沪深 300 成分股中寻找并回测最佳动量策略，流程包括筛选、因子研究、回测和风险审计。"
+      }
+    ]
+  },
+  {
+    label: "文档与网页研究",
+    icon: FileText,
+    examples: [
+      {
+        title: "分析财报 PDF",
+        desc: "上传 PDF 并询问财务数据",
+        prompt: "请读取我上传的财报 PDF，总结关键财务指标、经营风险、管理层展望，以及对股价可能产生影响的要点。"
+      },
+      {
+        title: "网页研究：宏观展望",
+        desc: "读取实时网页来源并总结宏观影响",
+        prompt: "请读取最新的美联储会议纪要，并总结其中对股票市场和 Crypto 市场最重要的影响。"
+      }
+    ]
+  },
+  {
+    label: "交易日志",
+    icon: Activity,
+    examples: [
+      {
+        title: "分析券商导出记录",
+        desc: "解析同花顺/东财/富途/通用 CSV 的交易统计",
+        prompt: "请分析我刚上传的交易日志，输出完整画像，包括持仓天数、胜率、盈亏比、主要交易标的和按小时分布的交易行为。"
+      },
+      {
+        title: "诊断交易行为偏差",
+        desc: "处置效应、过度交易、追涨、锚定等诊断",
+        prompt: "请对我的交易日志运行 4 类行为诊断：disposition、overtrading、chasing、anchoring，并告诉我哪一种偏差对 PnL 伤害最大。"
+      }
+    ]
+  },
+  {
+    label: "交易连接器",
+    icon: Landmark,
+    examples: [
+      {
+        title: "检查已选连接器",
+        desc: "列出连接器配置并检查当前选中项",
+        prompt: "请列出我的 trading connector profiles，说明当前选中的是哪一个，然后检查这个连接器是否可用。如果还没准备好，请明确告诉我缺少哪一步配置。不要下单，也不要修改订单。"
+      },
+      {
+        title: "分析连接器组合",
+        desc: "读取账户摘要和持仓，保持只读",
+        prompt: "请使用当前选中的 trading connector profile 读取账户摘要和持仓，分析现金、仓位集中度和组合风险。保持只读，不要下单，也不要修改订单。"
+      },
+      {
+        title: "报价与趋势",
+        desc: "通过当前连接器获取报价和近期日线",
+        prompt: "请使用当前选中的 trading connector 获取 AAPL 的实时 quote 和最近 30 根日线，并总结当前报价相对近期趋势的位置。保持只读。"
+      }
+    ]
+  },
+  {
+    label: "Shadow Account",
+    icon: Activity,
+    examples: [
+      {
+        title: "从日志训练 Shadow",
+        desc: "从券商 CSV 提取你的策略规则",
+        prompt: "请根据我刚上传的交易日志训练 Shadow Account，提取我的策略规则，并展示这些规则是否像我的真实交易行为。"
+      },
+      {
+        title: "我少赚了多少？",
+        desc: "回测 Shadow 策略并归因实际 PnL 差异",
+        prompt: "请对最近 90 天的美股市场运行 Shadow backtest，拆解我的实际 PnL 和 Shadow 策略之间的差异，包括规则违背、过早离场和错过信号。"
+      },
+      {
+        title: "生成 Shadow 报告",
+        desc: "8 段 HTML/PDF 报告，含权益曲线和归因瀑布图",
+        prompt: "请渲染 Shadow report 并给出 URL，报告开头先说明 you-vs-shadow delta，再展示权益曲线、分市场 Sharpe 和归因瀑布图。"
+      }
+    ]
+  },
+  {
+    label: "当前项目补充",
+    icon: Sparkles,
+    examples: [
       {
         title: "A 股储能研究",
         desc: "结合 A 股研究、Alpha、矩阵和报告证据",
         prompt: "帮我分析 A 股的储能板块，给出推荐个股、证据和风险点"
-      }
-    ]
-  },
-  {
-    label: "Alpha 与矩阵",
-    icon: Sparkles,
-    examples: [
+      },
       {
         title: "Alpha Zoo 覆盖检查",
         desc: "运行 Alpha bench / compare，并解释覆盖率和 IC/IR",
-        prompt: "Run Alpha Zoo coverage for academic_carhart_mom, academic_cma, academic_mkt_rf on 600519,000001,300750 from 2025-01-01 to 2026-06-03, then explain the result in plain language."
+        prompt: "请对 600519、000001、300750 在 2025-01-01 到 2026-06-03 期间运行 Alpha Zoo coverage，因子包括 academic_carhart_mom、academic_cma、academic_mkt_rf，并用普通语言解释覆盖率、IC 和 IR。"
       },
       {
         title: "相关性矩阵",
         desc: "计算候选资产相关性并给出组合分散度建议",
-        prompt: "Build a correlation matrix for 600519, 000001, and 300750, then explain which names diversify each other."
-      }
-    ]
-  },
-  {
-    label: "文档与网页",
-    icon: FileText,
-    examples: [
-      {
-        title: "网页研究",
-        desc: "读取公开网页并提取研究证据",
-        prompt: "Read https://example.com and summarize any market-relevant information. If the page has no finance content, say so clearly."
-      },
-      {
-        title: "PDF/文档分析",
-        desc: "上传文件后让 Agent 调用 read_document 读取",
-        prompt: "Read the uploaded document and extract the trading thesis, catalysts, risks, and evidence gaps."
-      }
-    ]
-  },
-  {
-    label: "运行时与连接器",
-    icon: Landmark,
-    examples: [
-      {
-        title: "检查交易连接器",
-        desc: "列出 profiles、检查选中连接器状态，不下单",
-        prompt: "List my trading connector profiles, show which one is selected, then check that selected connector. If it is not ready, tell me exactly what setup step is missing. Do not place or modify orders."
-      },
-      {
-        title: "智能体团队",
-        desc: "启动 Agent swarm 投资委员会/研究团队",
-        prompt: "Run the investment committee swarm on A-share energy storage opportunities. Use research-only mode and summarize each worker's conclusion."
-      }
-    ]
-  },
-  {
-    label: "Shadow 与交易日志",
-    icon: Activity,
-    examples: [
-      {
-        title: "Shadow Account",
-        desc: "扫描策略信号、回测并渲染 shadow 报告",
-        prompt: "Use Shadow Account tools to scan this strategy idea: buy momentum breakouts after volume expansion and exit on failed retest. Run a safe research-only shadow backtest if enough data is available."
-      },
-      {
-        title: "交易日志诊断",
-        desc: "分析交易日志中的纪律、风险和行为问题",
-        prompt: "Analyze my trade journal and identify recurring mistakes, risk rule breaches, and one concrete improvement plan."
+        prompt: "请为 600519、000001、300750 构建相关性矩阵，并解释哪些标的之间有更好的组合分散效果。"
       }
     ]
   }
 ]
 
 const CAPABILITY_CHIPS = [
-  "Agent Runtime",
+  "智能体运行时",
   "51 个源工具迁移矩阵",
+  "金融技能库",
   "Research Goal",
   "Swarm",
   "Backtest",
   "Alpha Zoo",
   "文档/Web",
   "交易连接器",
-  "Shadow Account"
+  "交易日志分析",
+  "Shadow Account",
+  "持久记忆",
+  "会话搜索"
 ]
 
 const AGENT_COMPLETION_POLL_TIMEOUT_MS = 60 * 60_000
@@ -157,33 +230,150 @@ const COMPOSER_MIN_HEIGHT = 44
 const COMPOSER_MAX_HEIGHT = 128
 
 const QUICK_RESEARCH_PROMPTS = [
-  { label: "跨市场回测", prompt: "Create a risk-parity style backtest for 000001.SZ, BTC-USDT, and AAPL from 2025-01-01 to 2026-06-01." },
-  { label: "检查交易连接器", prompt: "List my trading connector profiles and check the selected connector. Do not place or modify orders." },
-  { label: "智能体团队", prompt: "Run the investment committee swarm on A-share energy storage opportunities in research-only mode." },
-  { label: "Shadow Account", prompt: "Use Shadow Account tools to scan a momentum breakout strategy and produce a research-only shadow report if possible." }
+  { label: "跨市场回测", prompt: "请用 backtest 工具回测一个风险平价组合，标的包括 000001.SZ、BTC-USDT 和 AAPL，时间范围为 2024 全年，并和等权组合基准进行对比。" },
+  { label: "检查交易连接器", prompt: "请列出我的 trading connector profiles，说明当前选中的是哪一个，然后检查这个连接器是否可用。如果还没准备好，请明确告诉我缺少哪一步配置。不要下单，也不要修改订单。" },
+  { label: "分析连接器组合", prompt: "请使用当前选中的 trading connector profile 读取账户摘要和持仓，分析现金、仓位集中度和组合风险。保持只读，不要下单，也不要修改订单。" },
+  { label: "智能体团队", prompt: "[Swarm Team Mode] 请使用 investment_committee preset，根据当前市场环境评估 NVDA 应该做多、做空还是观望，并汇总多空观点、风险审查和 PM 决策。" },
+  { label: "Shadow Account", prompt: "请对最近 90 天的美股市场运行 Shadow backtest，拆解我的实际 PnL 和 Shadow 策略之间的差异，包括规则违背、过早离场和错过信号。" }
 ]
 
 const EXAMPLE_CATEGORIES_EN: typeof EXAMPLE_CATEGORIES = [
   {
-    label: "Research and backtests",
+    label: "Multi-market backtest",
     icon: TrendingUp,
     examples: [
       {
-        title: "Cross-market portfolio backtest",
-        desc: "Use the Agent backtest tool to build a strategy, run it, and summarize metrics",
-        prompt: "Create a risk-parity style backtest for 000001.SZ, BTC-USDT, and AAPL from 2025-01-01 to 2026-06-01. Show metrics, risks, and next improvements."
+        title: "Cross-market portfolio",
+        desc: "A-shares + crypto + US equities with risk-parity optimizer",
+        prompt: "Backtest a risk-parity portfolio of 000001.SZ, BTC-USDT, and AAPL for full-year 2024, compare against equal-weight baseline"
       },
       {
-        title: "A-share energy storage research",
-        desc: "Combine A-share research, Alpha evidence, matrices, and reports",
-        prompt: "Analyze the A-share energy storage sector, then provide recommended names, supporting evidence, and risk points."
+        title: "BTC 5-minute MACD strategy",
+        desc: "Minute-level crypto backtest with real-time OKX data",
+        prompt: "Backtest BTC-USDT 5-minute MACD strategy, fast=12 slow=26 signal=9, last 30 days"
+      },
+      {
+        title: "US tech max diversification",
+        desc: "Portfolio optimizer across FAANG+ via yfinance",
+        prompt: "Backtest AAPL, MSFT, GOOGL, AMZN, NVDA with max_diversification portfolio optimizer, full-year 2024"
       }
     ]
   },
   {
-    label: "Alpha and matrices",
+    label: "Research and analysis",
     icon: Sparkles,
     examples: [
+      {
+        title: "Multi-factor alpha model",
+        desc: "IC-weighted factor synthesis across 300 stocks",
+        prompt: "Build a multi-factor alpha model using momentum, reversal, volatility, and turnover on CSI 300 constituents with IC-weighted factor synthesis, backtest 2023-2024"
+      },
+      {
+        title: "Options Greeks analysis",
+        desc: "Black-Scholes pricing with Delta/Gamma/Theta/Vega",
+        prompt: "Calculate option Greeks using Black-Scholes: spot=100, strike=105, risk-free rate=3%, vol=25%, expiry=90 days, analyze Delta/Gamma/Theta/Vega"
+      }
+    ]
+  },
+  {
+    label: "Swarm teams",
+    icon: Users,
+    examples: [
+      {
+        title: "Investment committee review",
+        desc: "Multi-agent debate: long vs short, risk review, PM decision",
+        prompt: "[Swarm Team Mode] Use the investment_committee preset to evaluate whether to go long or short on NVDA given current market conditions"
+      },
+      {
+        title: "Quant strategy desk",
+        desc: "Screening, factor research, backtest, and risk-audit pipeline",
+        prompt: "[Swarm Team Mode] Use the quant_strategy_desk preset to find and backtest the best momentum strategy on CSI 300 constituents"
+      }
+    ]
+  },
+  {
+    label: "Document and web research",
+    icon: FileText,
+    examples: [
+      {
+        title: "Analyze an earnings report PDF",
+        desc: "Upload a PDF and ask questions about the financials",
+        prompt: "Summarize the key financial metrics, risks, and outlook from the uploaded earnings report"
+      },
+      {
+        title: "Web research: macro outlook",
+        desc: "Read live web sources for macro analysis",
+        prompt: "Read the latest Fed meeting minutes and summarize the key takeaways for equity and crypto markets"
+      }
+    ]
+  },
+  {
+    label: "Trade journal",
+    icon: Activity,
+    examples: [
+      {
+        title: "Analyze my broker export",
+        desc: "Parse broker CSVs for holding stats, win rate, PnL ratio, and hourly distribution",
+        prompt: "Analyze the trade journal I just uploaded — full profile with holding stats, win rate, top symbols, and hourly distribution"
+      },
+      {
+        title: "Diagnose my behavior biases",
+        desc: "Disposition effect, overtrading, chasing, and anchoring diagnostics",
+        prompt: "Run the 4 behavior diagnostics on my trade journal (disposition, overtrading, chasing, anchoring) and tell me which bias hurts my PnL most"
+      }
+    ]
+  },
+  {
+    label: "Trading connectors",
+    icon: Landmark,
+    examples: [
+      {
+        title: "Check selected connector",
+        desc: "List connector profiles and verify the selected one",
+        prompt: "List my trading connector profiles, show which one is selected, then check that selected connector. If it is not ready, tell me exactly what setup step is missing. Do not place or modify orders."
+      },
+      {
+        title: "Analyze connector portfolio",
+        desc: "Read account summary and positions from the selected connector",
+        prompt: "Use the selected trading connector profile to summarize my account, positions, concentration, cash, and portfolio risk. Do not place or modify orders."
+      },
+      {
+        title: "Quote and trend",
+        desc: "Fetch a quote plus recent daily bars through the selected connector",
+        prompt: "Use the selected trading connector to fetch an AAPL quote and 30 daily bars, then summarize the current quote versus the recent trend. Keep it read-only."
+      }
+    ]
+  },
+  {
+    label: "Shadow Account",
+    icon: Activity,
+    examples: [
+      {
+        title: "Train my shadow from journal",
+        desc: "Extract your strategy rules from a broker CSV and persist a Shadow profile",
+        prompt: "Train my shadow account from the trading journal I just uploaded — show the extracted rules and confirm they look like my behavior"
+      },
+      {
+        title: "How much am I leaving on the table?",
+        desc: "Backtest your shadow strategy and attribute delta versus actual PnL",
+        prompt: "Run a shadow backtest for the last 90 days on the US market and break down where my PnL diverged from the shadow (rule violations, early exits, missed signals)"
+      },
+      {
+        title: "Generate shadow report",
+        desc: "8-section HTML/PDF with equity curve and attribution waterfall",
+        prompt: "Render the shadow report and give me the URL — lead with the you-vs-shadow delta"
+      }
+    ]
+  },
+  {
+    label: "Current-project additions",
+    icon: Sparkles,
+    examples: [
+      {
+        title: "A-share energy storage research",
+        desc: "Combine A-share research, Alpha evidence, matrices, and reports",
+        prompt: "Analyze the A-share energy storage sector, then provide recommended names, supporting evidence, and risk points."
+      },
       {
         title: "Alpha Zoo coverage check",
         desc: "Run Alpha bench/compare and explain coverage plus IC/IR",
@@ -193,54 +383,6 @@ const EXAMPLE_CATEGORIES_EN: typeof EXAMPLE_CATEGORIES = [
         title: "Correlation matrix",
         desc: "Calculate candidate-asset correlations and diversification implications",
         prompt: "Build a correlation matrix for 600519, 000001, and 300750, then explain which names diversify each other."
-      }
-    ]
-  },
-  {
-    label: "Documents and web",
-    icon: FileText,
-    examples: [
-      {
-        title: "Web research",
-        desc: "Read public pages and extract research evidence",
-        prompt: "Read https://example.com and summarize any market-relevant information. If the page has no finance content, say so clearly."
-      },
-      {
-        title: "PDF/document analysis",
-        desc: "Upload a file, then let the Agent call read_document",
-        prompt: "Read the uploaded document and extract the trading thesis, catalysts, risks, and evidence gaps."
-      }
-    ]
-  },
-  {
-    label: "Runtime and connectors",
-    icon: Landmark,
-    examples: [
-      {
-        title: "Check trading connectors",
-        desc: "List profiles and check the selected connector without placing orders",
-        prompt: "List my trading connector profiles, show which one is selected, then check that selected connector. If it is not ready, tell me exactly what setup step is missing. Do not place or modify orders."
-      },
-      {
-        title: "Agent team",
-        desc: "Run an Agent swarm investment committee or research team",
-        prompt: "Run the investment committee swarm on A-share energy storage opportunities. Use research-only mode and summarize each worker's conclusion."
-      }
-    ]
-  },
-  {
-    label: "Shadow and trade journals",
-    icon: Activity,
-    examples: [
-      {
-        title: "Shadow Account",
-        desc: "Scan strategy signals, backtest, and render a shadow report",
-        prompt: "Use Shadow Account tools to scan this strategy idea: buy momentum breakouts after volume expansion and exit on failed retest. Run a safe research-only shadow backtest if enough data is available."
-      },
-      {
-        title: "Trade journal diagnosis",
-        desc: "Analyze discipline, risk, and behavior issues in a trade journal",
-        prompt: "Analyze my trade journal and identify recurring mistakes, risk rule breaches, and one concrete improvement plan."
       }
     ]
   }
@@ -312,8 +454,9 @@ const TOOL_LABELS_EN: Record<string, { title: string; desc: string }> = {
 
 const AGENT_TEXT = {
   "zh-CN": {
-    pageSubtitle: "已接入当前项目 Agent Runtime，并运行在当前后端进程内。",
-    currentProjectDescription: "当前项目 Agent Runtime：会话、工具调用、Research Goal、Swarm、回测、文档/Web、交易连接器和 Shadow Account。",
+    pageTitle: "智能体",
+    pageSubtitle: "已接入当前项目智能体运行时，并运行在当前后端进程内。",
+    currentProjectDescription: "当前项目智能体运行时：会话、工具调用、Research Goal、Swarm、回测、文档/Web、交易连接器和 Shadow Account。",
     capabilities: CAPABILITY_CHIPS,
     quickPrompts: QUICK_RESEARCH_PROMPTS,
     examples: EXAMPLE_CATEGORIES,
@@ -321,6 +464,7 @@ const AGENT_TEXT = {
     ready: "就绪",
     running: "运行中",
     cancelling: "取消中",
+    warning: "数据受限",
     failed: "失败",
     completed: "完成",
     newSession: "新会话",
@@ -337,9 +481,9 @@ const AGENT_TEXT = {
     loadingSessionTitle: "正在载入会话",
     loadingSessionDesc: "正在恢复历史消息和执行步骤...",
     toolFallback: "tool",
-    sessions: "Sessions",
-    noSessions: "还没有 Agent 会话。",
-    scopeTitle: "当前 Agent 范围",
+    sessions: "会话",
+    noSessions: "还没有智能体会话。",
+    scopeTitle: "当前智能体范围",
     scopeDesc: "当前页面直接调用当前项目 research-agent 后端，不依赖外部运行时。",
     saveRename: "保存重命名",
     cancelRename: "取消重命名",
@@ -391,20 +535,23 @@ const AGENT_TEXT = {
     expandDetails: "展开详情"
   },
   "en-US": {
+    pageTitle: "Agent",
     pageSubtitle: "Connected to the current-project Agent Runtime running inside this backend process.",
     currentProjectDescription: "Current-project Agent Runtime: sessions, tool calls, Research Goal, Swarm, backtests, documents/web, trading connectors, and Shadow Account.",
-    capabilities: ["Agent Runtime", "51 source-tool migration matrix", "Research Goal", "Swarm", "Backtest", "Alpha Zoo", "Documents/Web", "Trading connectors", "Shadow Account"],
+    capabilities: ["Agent Runtime", "51 source-tool migration matrix", "Finance Skills Library", "Research Goal", "Swarm", "Backtest", "Alpha Zoo", "Documents/Web", "Trading connectors", "Trade journal analyzer", "Shadow Account", "Persistent memory", "Session search"],
     quickPrompts: [
-      { label: "Cross-market backtest", prompt: "Create a risk-parity style backtest for 000001.SZ, BTC-USDT, and AAPL from 2025-01-01 to 2026-06-01." },
-      { label: "Check connectors", prompt: "List my trading connector profiles and check the selected connector. Do not place or modify orders." },
-      { label: "Agent team", prompt: "Run the investment committee swarm on A-share energy storage opportunities in research-only mode." },
-      { label: "Shadow Account", prompt: "Use Shadow Account tools to scan a momentum breakout strategy and produce a research-only shadow report if possible." }
+      { label: "Cross-market backtest", prompt: "Backtest a risk-parity portfolio of 000001.SZ, BTC-USDT, and AAPL for full-year 2024, compare against equal-weight baseline" },
+      { label: "Check connector", prompt: "List my trading connector profiles, show which one is selected, then check that selected connector. If it is not ready, tell me exactly what setup step is missing. Do not place or modify orders." },
+      { label: "Analyze connector portfolio", prompt: "Use the selected trading connector profile to summarize my account, positions, concentration, cash, and portfolio risk. Do not place or modify orders." },
+      { label: "Agent team", prompt: "[Swarm Team Mode] Use the investment_committee preset to evaluate whether to go long or short on NVDA given current market conditions" },
+      { label: "Shadow Account", prompt: "Run a shadow backtest for the last 90 days on the US market and break down where my PnL diverged from the shadow (rule violations, early exits, missed signals)" }
     ],
     examples: EXAMPLE_CATEGORIES_EN,
     toolLabels: TOOL_LABELS_EN,
     ready: "Ready",
     running: "Running",
     cancelling: "Cancelling",
+    warning: "Data limited",
     failed: "Failed",
     completed: "Complete",
     newSession: "New session",
@@ -481,8 +628,48 @@ function nowId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
+function toolMessageId(toolName: string) {
+  return `tool-${toolName || "tool"}`
+}
+
 function eventContent(data: Record<string, unknown>) {
   return String(data.content || data.text || data.delta || data.summary || "")
+}
+
+function humanizeAgentError(raw: string) {
+  const message = raw.trim()
+  if (!message) return ""
+  if (/ConnectTimeout|ReadTimeout|TimeoutException|TimeoutError/i.test(message)) {
+    return `外部模型或网络服务请求超时：${message}。任务没有拿到完整结果，请检查代理/API 服务或稍后重试。`
+  }
+  return message
+}
+
+function eventFailureContent(data: Record<string, unknown>) {
+  return humanizeAgentError(eventContent(data) || String(data.error || ""))
+}
+
+function eventToolStatus(event: ParsedResearchStreamEvent): ToolState["status"] {
+  if (event.event === "tool_failed") return "error"
+  const result = event.data.result
+  const resultStatus = result && typeof result === "object" ? (result as Record<string, unknown>).status : ""
+  const status = String(event.data.status || resultStatus || "")
+  if (status === "error" || status === "failed") return "error"
+  if (
+    status === "degraded"
+    || status === "warning"
+    || status === "limited"
+    || status === "stale_goal"
+    || status === "config_required"
+  ) return "warning"
+  return "ok"
+}
+
+function statusLabel(status: ToolState["status"], text: typeof AGENT_TEXT[AppLanguage]) {
+  if (status === "running") return text.running
+  if (status === "error") return text.failed
+  if (status === "warning") return text.warning
+  return text.completed
 }
 
 function formatEventValue(value: unknown) {
@@ -698,6 +885,16 @@ function readableToolPreview(tool: ToolState, maxLength: number | null = 220) {
   if (tool.name === "bash") return bashPreview(parsed, maxLength)
   if (tool.name === "add_goal_evidence") return evidencePreview(parsed, maxLength)
   if (tool.name === "update_research_goal_status") return goalStatusPreview(parsed, maxLength)
+  if (parsed.status === "degraded") {
+    const history = parsed.history && typeof parsed.history === "object"
+      ? parsed.history as Record<string, unknown>
+      : null
+    const reason = compactPreviewText(
+      parsed.error || parsed.message || parsed.reason || history?.reason || parsed.error_type,
+      maxLength
+    )
+    return reason ? `数据受限：${reason}` : "数据或外部服务受限，Agent 已使用可用证据继续。"
+  }
 
   const content = parsed.content || parsed.text || parsed.summary || parsed.stdout || parsed.error || parsed.preview
   if (content) return compactPreviewText(content, maxLength)
@@ -754,7 +951,7 @@ function attemptResultContent(attempt: ResearchAttempt) {
 function failureMessageFromEvents(events: ParsedResearchStreamEvent[]) {
   const failed = events.filter((event) => event.event === "task_failed" || event.event === "attempt.failed" || event.event === "job_failed")
   for (const event of failed.reverse()) {
-    const content = eventContent(event.data) || String(event.data.error || "")
+    const content = eventFailureContent(event.data)
     if (content) return content
   }
   return ""
@@ -785,11 +982,11 @@ function toolsFromEvents(events: ParsedResearchStreamEvent[]): ToolState[] {
       })
     }
     if (event.event === "tool_completed" || event.event === "tool_failed" || event.event === "tool_result") {
-      const failed = event.event === "tool_failed" || String(event.data.status || "ok") === "error"
+      const status = eventToolStatus(event)
       tools.set(toolName, {
         id: toolName,
         name: toolName,
-        status: failed ? "error" : "ok",
+        status,
         preview: previewFromEventData(event.data),
         artifactId: event.data.artifact_id ? String(event.data.artifact_id) : undefined,
         elapsedMs: typeof event.data.elapsed_ms === "number" ? event.data.elapsed_ms : undefined
@@ -811,7 +1008,7 @@ function WelcomeScreen({
       <div className="mb-5 flex size-14 items-center justify-center rounded-2xl border bg-primary text-primary-foreground shadow-sm">
         <Bot className="size-7" />
       </div>
-      <h1 className="text-2xl font-semibold tracking-normal text-foreground">TradingAgents-CN Agent</h1>
+      <h1 className="text-2xl font-semibold tracking-normal text-foreground">{text.pageTitle}</h1>
       <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
         {text.currentProjectDescription}
       </p>
@@ -887,6 +1084,7 @@ function MessageBubble({
   if (message.type === "tool_call" || message.type === "tool_result") {
     const ok = message.status === "ok"
     const failed = message.status === "error"
+    const warning = message.status === "warning"
     const label = text.toolLabels[message.tool || ""]?.title || message.tool || text.toolFallback
     return (
       <div className="flex gap-3">
@@ -894,7 +1092,7 @@ function MessageBubble({
           {message.type === "tool_call" && message.status === "running" ? (
             <Loader2 className="size-4 animate-spin text-primary" />
           ) : (
-            <CheckCircle2 className={`size-4 ${failed ? "text-destructive" : ok ? "text-emerald-600" : "text-muted-foreground"}`} />
+            <CheckCircle2 className={`size-4 ${failed ? "text-destructive" : warning ? "text-amber-600" : ok ? "text-emerald-600" : "text-muted-foreground"}`} />
           )}
         </div>
         <div className="min-w-0 flex-1 rounded-lg border bg-muted/20 px-3 py-2 text-sm">
@@ -902,7 +1100,7 @@ function MessageBubble({
             <span className="text-xs font-medium">{label}</span>
             <span className="font-mono text-[11px] text-muted-foreground">{message.tool || text.toolFallback}</span>
             <span className="rounded-full bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
-              {message.status === "running" ? text.running : message.status === "error" ? text.failed : text.completed}
+              {statusLabel(message.status || "ok", text)}
             </span>
             {message.elapsedMs != null && (
               <span className="text-[11px] text-muted-foreground">{(message.elapsedMs / 1000).toFixed(1)}s</span>
@@ -925,7 +1123,7 @@ function MessageBubble({
       )}
       <div
         className={[
-          "max-w-[82%] rounded-xl px-4 py-3 text-sm leading-6",
+          "min-w-0 max-w-[82%] rounded-xl px-4 py-3 text-sm leading-6",
           isUser ? "bg-primary text-primary-foreground" : "border bg-background",
           isError ? "border-destructive/40 bg-destructive/5 text-destructive" : ""
         ].join(" ")}
@@ -935,7 +1133,7 @@ function MessageBubble({
         ) : (
           <MarkdownRenderer
             content={message.content}
-            className="overflow-x-auto text-sm leading-7 [&_h1:first-child]:mt-0 [&_h2:first-child]:mt-0 [&_h3:first-child]:mt-0 [&_table]:min-w-max [&_table]:text-xs [&_td]:align-top [&_th]:whitespace-nowrap"
+            className="min-w-0 max-w-full text-sm leading-7 [&_h1:first-child]:mt-0 [&_h2:first-child]:mt-0 [&_h3:first-child]:mt-0 [&_table]:text-xs [&_td]:align-top [&_th]:whitespace-nowrap"
           />
         )}
       </div>
@@ -1126,14 +1324,6 @@ function ToolRail({
 }) {
   const [expandedTools, setExpandedTools] = useState<Set<string>>(() => new Set())
 
-  useEffect(() => {
-    setExpandedTools((current) => {
-      const visibleIds = new Set(tools.map((tool) => tool.id))
-      const next = new Set(Array.from(current).filter((id) => visibleIds.has(id)))
-      return next.size === current.size ? current : next
-    })
-  }, [tools])
-
   function toggleTool(toolId: string) {
     setExpandedTools((current) => {
       const next = new Set(current)
@@ -1184,7 +1374,9 @@ function ToolRail({
                   ? "bg-destructive/10 text-destructive"
                   : tool.status === "running"
                     ? "bg-primary/10 text-primary"
-                    : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    : tool.status === "warning"
+                      ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                      : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
                 return (
                   <div key={tool.id} className="min-w-0 rounded-md border bg-background px-3 py-2 shadow-sm">
                     <button
@@ -1196,7 +1388,7 @@ function ToolRail({
                       <div className="flex items-center justify-between gap-2">
                         <span className="min-w-0 truncate text-xs font-medium">{label?.title || tool.name}</span>
                         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${statusClass}`}>
-                          {tool.status === "running" ? text.running : tool.status === "error" ? text.failed : text.completed}
+                          {statusLabel(tool.status, text)}
                         </span>
                       </div>
                       <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground [overflow-wrap:anywhere]">{label?.desc || tool.name}</p>
@@ -1237,7 +1429,6 @@ function ToolRail({
 function SessionRail({
   sessions,
   activeSessionId,
-  running,
   onNew,
   onSelect,
   onRename,
@@ -1246,7 +1437,6 @@ function SessionRail({
 }: {
   sessions: ResearchSession[]
   activeSessionId: string | null
-  running: boolean
   onNew: () => void
   onSelect: (sessionId: string) => void
   onRename: (sessionId: string, title: string) => Promise<void>
@@ -1311,8 +1501,7 @@ function SessionRail({
                         <button
                           type="button"
                           onClick={() => onSelect(session.session_id)}
-                          disabled={running}
-                          className="min-w-0 flex-1 text-left disabled:cursor-not-allowed disabled:opacity-60"
+                          className="min-w-0 flex-1 text-left"
                         >
                           <span className="block truncate">{session.title || "Agent session"}</span>
                           {session.updated_at && (
@@ -1646,6 +1835,17 @@ export function ResearchAgentPage() {
     requestAnimationFrame(scrollToBottom)
   }
 
+  function upsertStreamMessage(message: AgentMessage) {
+    setMessages((current) => {
+      const index = current.findIndex((item) => item.id === message.id)
+      if (index < 0) return [...current, message]
+      const next = [...current]
+      next[index] = { ...next[index], ...message }
+      return next
+    })
+    requestAnimationFrame(scrollToBottom)
+  }
+
   async function refreshLiveStatus() {
     setLiveStatusLoading(true)
     try {
@@ -1671,13 +1871,12 @@ export function ResearchAgentPage() {
       return
     }
     if (item.event === "attempt.started") {
-      appendStreamMessage({ id: nowId("attempt-started"), type: "system", content: text.running, timestamp: Date.now() })
       return
     }
     if (item.event === "tool_started" || item.event === "tool_call") {
       const toolName = String(item.data.tool_name || item.data.tool || "tool")
       upsertTool({ id: toolName, name: toolName, status: "running", preview: previewFromEventData(item.data) })
-      appendStreamMessage({ id: nowId("tool-call"), type: "tool_call", content: previewFromEventData(item.data), tool: toolName, status: "running", timestamp: Date.now() })
+      upsertStreamMessage({ id: toolMessageId(toolName), type: "tool_call", content: previewFromEventData(item.data), tool: toolName, status: "running", timestamp: Date.now() })
       return
     }
     if (item.event === "tool_progress" || item.event === "tool_heartbeat") {
@@ -1687,7 +1886,7 @@ export function ResearchAgentPage() {
     }
     if (item.event === "tool_completed" || item.event === "tool_failed" || item.event === "tool_result") {
       const toolName = String(item.data.tool_name || item.data.tool || "tool")
-      const status = item.event === "tool_failed" || String(item.data.status || "ok") === "error" ? "error" : "ok"
+      const status = eventToolStatus(item)
       const preview = previewFromEventData(item.data)
       const elapsedMs = typeof item.data.elapsed_ms === "number" ? item.data.elapsed_ms : undefined
       upsertTool({
@@ -1698,7 +1897,7 @@ export function ResearchAgentPage() {
         artifactId: item.data.artifact_id ? String(item.data.artifact_id) : undefined,
         elapsedMs
       })
-      appendStreamMessage({ id: nowId("tool-result"), type: "tool_result", content: preview, tool: toolName, status, elapsedMs, timestamp: Date.now() })
+      upsertStreamMessage({ id: toolMessageId(toolName), type: "tool_result", content: preview, tool: toolName, status, elapsedMs, timestamp: Date.now() })
       return
     }
     if (item.event === "message_completed") {
@@ -1711,7 +1910,7 @@ export function ResearchAgentPage() {
       runFinishedRef.current = true
       setRunning(false)
       setCancelRequested(false)
-      appendStreamMessage({ id: nowId("error"), type: "error", content: eventContent(item.data) || String(item.data.error || "Agent execution failed"), timestamp: Date.now() })
+      appendStreamMessage({ id: nowId("error"), type: "error", content: eventFailureContent(item.data) || "Agent execution failed", timestamp: Date.now() })
       return
     }
     if (item.event === "task_completed" || item.event === "attempt.completed") {
@@ -1822,10 +2021,11 @@ export function ResearchAgentPage() {
   }
 
   function handleSelectSession(sessionId: string) {
-    if (running) return
     stopStream()
     stopCompletionPolling()
     runFinishedRef.current = true
+    setRunning(false)
+    setCancelRequested(false)
     lastEventIdRef.current = ""
     setSessionLoading(true)
     setMessages([])
@@ -1911,7 +2111,6 @@ export function ResearchAgentPage() {
       <SessionRail
         sessions={sessions}
         activeSessionId={activeSessionId}
-        running={running}
         onNew={handleNewSession}
         onSelect={handleSelectSession}
         onRename={handleRenameSession}
@@ -1924,7 +2123,7 @@ export function ResearchAgentPage() {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <Bot className="size-5 text-primary" />
-              <h1 className="truncate text-base font-semibold">Agent</h1>
+              <h1 className="truncate text-base font-semibold">{text.pageTitle}</h1>
               <span className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">{statusLabel}</span>
             </div>
             <p className="mt-1 truncate text-xs text-muted-foreground">

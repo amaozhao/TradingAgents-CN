@@ -59,6 +59,10 @@ async def _extract_shadow_strategy(
 
 
 def _numeric_values(values: Any) -> list[float]:
+    if isinstance(values, dict):
+        for key in ("items", "item", "values", "value"):
+            if key in values:
+                return _numeric_values(values.get(key))
     if not isinstance(values, list):
         return []
     out: list[float] = []
@@ -186,7 +190,21 @@ def shadow_tools() -> list[ResearchTool]:
             name="scan_shadow_signals",
             description="Scan provided shadow signals without fabricating market data.",
             permission=SHADOW_RUN,
-            schema={"type": "object", "additionalProperties": True},
+            schema={
+                "type": "object",
+                "properties": {
+                    "signals": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": True,
+                        },
+                        "description": "Explicit signal rows to scan, for example [{'symbol':'300750.SZ','score':0.82,'reason':'volume expansion'}].",
+                    }
+                },
+                "required": ["signals"],
+                "additionalProperties": True,
+            },
             handler=_scan_shadow_signals,
         ),
     ]

@@ -1,4 +1,4 @@
-# ruff: noqa: F401,F403,F405,F821
+# ruff: noqa: F401,F403,F405,F821,E402
 """
 AGENTrader v1.0.1 FastAPI Backend
 主应用程序入口
@@ -31,6 +31,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+
+from app.core.network_proxy import configure_runtime_proxy
+
+configure_runtime_proxy()
 
 from app.core.config import settings
 from app.core.database import close_db, init_db

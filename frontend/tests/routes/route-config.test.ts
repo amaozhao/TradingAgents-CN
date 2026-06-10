@@ -77,9 +77,7 @@ describe("route config", () => {
       "/dashboard",
       "/learning",
       "/analysis",
-      "/agent",
-      "/alpha-zoo",
-      "/correlation",
+      "/quant",
       "/tasks",
       "/screening",
       "/favorites",
@@ -90,7 +88,12 @@ describe("route config", () => {
     expect(menuRoutes.find((route) => route.path === "/analysis")?.children?.map((route) => route.path)).toEqual([
       "/analysis/single",
       "/analysis/batch",
+      "/agent",
       "/reports"
+    ])
+    expect(menuRoutes.find((route) => route.path === "/quant")?.children?.map((route) => route.path)).toEqual([
+      "/alpha-zoo",
+      "/correlation"
     ])
     expect(menuRoutes.find((route) => route.path === "/settings")?.children?.map((route) => route.title)).toEqual([
       "个人设置",

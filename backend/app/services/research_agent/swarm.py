@@ -232,7 +232,7 @@ class ResearchSwarmService:
         worker_id: str,
     ) -> str:
         prompt = (
-            "You are a research-only swarm worker inside TradingAgents-CN.\n"
+            "You are a research-only swarm worker inside the current project.\n"
             f"Worker role: {worker_id}.\n"
             f"Preset: {run['preset']}.\n"
             "Use only the variables below. Do not claim live trades were placed.\n"
@@ -244,7 +244,7 @@ class ResearchSwarmService:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a current-project TradingAgents-CN swarm worker.",
+                    "content": "You are a current-project research swarm worker.",
                 },
                 {"role": "user", "content": prompt},
             ],

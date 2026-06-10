@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import ipaddress
 import html
+import os
 import re
+import socket
 from typing import Any
 from urllib.parse import quote_plus, urlparse
 
@@ -17,6 +19,29 @@ from ..registry import ResearchTool
 
 MAX_WEB_BYTES = 200_000
 MAX_SEARCH_RESULTS = 5
+LOCAL_WEB_PROXY_CANDIDATES = ("http://127.0.0.1:7897", "http://127.0.0.1:7899")
+
+
+def _network_error_result(tool: str, error: Exception) -> dict[str, Any]:
+    error_name = error.__class__.__name__
+    if isinstance(error, httpx.ConnectTimeout):
+        message = "外部网络连接超时，未能建立连接"
+    elif isinstance(error, httpx.ReadTimeout):
+        message = "外部网络读取超时，对方服务响应过慢"
+    elif isinstance(error, httpx.TimeoutException):
+        message = "外部网络请求超时"
+    elif isinstance(error, httpx.HTTPStatusError):
+        message = f"外部服务返回 HTTP {error.response.status_code}"
+    elif isinstance(error, httpx.RequestError):
+        message = f"外部网络请求失败：{error_name}"
+    else:
+        message = str(error).strip() or error_name
+    return {
+        "tool": tool,
+        "status": "degraded",
+        "error_type": error_name,
+        "error": message,
+    }
 
 
 def _artifact_content(artifact: dict[str, Any]) -> str:
@@ -28,12 +53,91 @@ def _artifact_content(artifact: dict[str, Any]) -> str:
     return ""
 
 
+def _port_open(proxy_url: str) -> bool:
+    parsed = urlparse(proxy_url)
+    if not parsed.hostname or not parsed.port:
+        return False
+    try:
+        with socket.create_connection((parsed.hostname, parsed.port), timeout=0.2):
+            return True
+    except OSError:
+        return False
+
+
+def _web_proxy_candidates() -> list[str | None]:
+    candidates: list[str | None] = [None]
+    for key in ("AGENT_WEB_PROXY", "HTTPS_PROXY", "HTTP_PROXY", "ALL_PROXY", "https_proxy", "http_proxy", "all_proxy"):
+        value = os.environ.get(key)
+        if value and value not in candidates:
+            candidates.append(value)
+    for value in LOCAL_WEB_PROXY_CANDIDATES:
+        if value not in candidates and _port_open(value):
+            candidates.append(value)
+    return candidates
+
+
+async def _web_get(
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    timeout: float = 10.0,
+) -> httpx.Response:
+    last_error: httpx.HTTPError | None = None
+    for proxy in _web_proxy_candidates():
+        try:
+            kwargs: dict[str, Any] = {
+                "timeout": timeout,
+                "follow_redirects": True,
+                "trust_env": bool(proxy is None),
+            }
+            if proxy:
+                kwargs["proxies"] = proxy
+            async with httpx.AsyncClient(**kwargs) as client:
+                response = await client.get(url, headers=headers)
+                response.raise_for_status()
+                return response
+        except httpx.HTTPError as exc:
+            last_error = exc
+            continue
+    if last_error:
+        raise last_error
+    raise httpx.ConnectError("No available web transport")
+
+
 async def _read_owned_artifact(
     context: ToolExecutionContext, payload: dict[str, Any], *, tool_name: str
 ) -> dict[str, Any]:
+    inline_text = str(payload.get("text") or payload.get("content") or "").strip()
+    if inline_text:
+        artifact = None
+        if context.session_id:
+            artifact = await ResearchArtifactService().create_artifact(
+                session_id=str(context.session_id),
+                user_id=context.principal.user_id,
+                artifact_type="document",
+                payload={
+                    "filename": str(payload.get("filename") or "inline-document.md"),
+                    "text": inline_text,
+                    "source": "inline",
+                },
+            )
+        return {
+            "tool": tool_name,
+            "status": "completed",
+            "artifact_id": artifact.get("artifact_id") if artifact else None,
+            "artifact_type": "document",
+            "filename": str(payload.get("filename") or "inline-document.md"),
+            "content": inline_text,
+            "preview": inline_text[:2000],
+        }
     artifact_id = str(payload.get("artifact_id") or payload.get("file_id") or "").strip()
     if not artifact_id:
-        raise ValueError("artifact_id or file_id is required")
+        return {
+            "tool": tool_name,
+            "status": "config_required",
+            "accepted": False,
+            "reason": "artifact_id, file_id, text, or content is required.",
+        }
     artifact = await ResearchArtifactService().get_artifact(
         artifact_id, context.principal.user_id
     )
@@ -70,11 +174,18 @@ def _validate_public_url(raw_url: str) -> str:
 async def _read_url(context: ToolExecutionContext, payload: dict[str, Any]) -> dict[str, Any]:
     raw_url = str(payload.get("url") or "").strip()
     url = _validate_public_url(raw_url)
-    async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-        response = await client.get(url)
-        response.raise_for_status()
+    try:
+        response = await _web_get(url, timeout=10.0)
         content_type = response.headers.get("content-type", "")
         raw = response.content[:MAX_WEB_BYTES]
+    except httpx.HTTPError as exc:
+        return {
+            **_network_error_result("read_url", exc),
+            "url": url,
+            "content": "",
+            "preview": "",
+            "instruction": "该网页读取失败，继续使用已有行情、分析工具或让用户提供可访问链接。",
+        }
     text = raw.decode(response.encoding or "utf-8", errors="replace")
     artifact = None
     if context.session_id:
@@ -156,11 +267,21 @@ async def _web_search(context: ToolExecutionContext, payload: dict[str, Any]) ->
     query = query[:200]
     limit = min(max(int(payload.get("limit") or MAX_SEARCH_RESULTS), 1), 10)
     url = f"https://duckduckgo.com/html/?q={quote_plus(query)}"
-    async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-        response = await client.get(url, headers={"User-Agent": "TradingAgents-CN Research Agent"})
-        response.raise_for_status()
+    try:
+        response = await _web_get(
+            url,
+            headers={"User-Agent": "Current Project Research Agent"},
+            timeout=10.0,
+        )
         markup = response.text[:MAX_WEB_BYTES]
-    results = _extract_search_results(markup, limit)
+        results = _extract_search_results(markup, limit)
+    except httpx.HTTPError as exc:
+        return {
+            **_network_error_result("web_search", exc),
+            "query": query,
+            "results": [],
+            "instruction": "Web 搜索暂时不可用，不要编造搜索结果；改用已有 A 股工具证据继续分析，并在结论中说明外部检索受限。",
+        }
     artifact = None
     if context.session_id:
         artifact = await ResearchArtifactService().create_artifact(
@@ -182,11 +303,17 @@ def file_tools() -> list[ResearchTool]:
     return [
         ResearchTool(
             name="read_document",
-            description="Read a user-owned uploaded document artifact.",
+            description="Read a user-owned uploaded document artifact or inline text/content for example-driven document analysis.",
             permission=DOCUMENT_READ,
             schema={
                 "type": "object",
-                "properties": {"artifact_id": {"type": "string"}, "file_id": {"type": "string"}},
+                "properties": {
+                    "artifact_id": {"type": "string"},
+                    "file_id": {"type": "string"},
+                    "text": {"type": "string"},
+                    "content": {"type": "string"},
+                    "filename": {"type": "string"},
+                },
             },
             handler=lambda context, payload: _read_owned_artifact(
                 context, payload, tool_name="read_document"
@@ -194,11 +321,17 @@ def file_tools() -> list[ResearchTool]:
         ),
         ResearchTool(
             name="read_file",
-            description="Read a user-owned uploaded file artifact.",
+            description="Read a user-owned uploaded file artifact or inline text/content.",
             permission=DOCUMENT_READ,
             schema={
                 "type": "object",
-                "properties": {"artifact_id": {"type": "string"}, "file_id": {"type": "string"}},
+                "properties": {
+                    "artifact_id": {"type": "string"},
+                    "file_id": {"type": "string"},
+                    "text": {"type": "string"},
+                    "content": {"type": "string"},
+                    "filename": {"type": "string"},
+                },
             },
             handler=lambda context, payload: _read_owned_artifact(
                 context, payload, tool_name="read_file"

@@ -34,7 +34,7 @@ test.beforeEach(async ({ page }) => {
 test("agent page exposes the current-project Agent runtime capability surface", async ({ page }) => {
   await page.goto("/agent")
 
-  await expect(page.getByRole("heading", { name: "TradingAgents-CN Agent" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Agent" }).first()).toBeVisible()
   await expect(page.getByText("跨市场组合回测")).toBeVisible()
   await expect(page.getByText("运行时与连接器")).toBeVisible()
   await expect(page.getByText("检查交易连接器")).toBeVisible()

@@ -252,6 +252,48 @@ async def test_tool_call_finish_reason_continues_react_loop(fake_db):
 
 
 @pytest.mark.asyncio
+async def test_tool_argument_error_degrades_without_failing_attempt(fake_db):
+    session = await _create_session(fake_db)
+    client = FakeModelClient(
+        [
+            [
+                ModelStreamChunk(
+                    tool_call={
+                        "id": "call-shadow",
+                        "name": "extract_shadow_strategy",
+                        "arguments": {},
+                    },
+                    finish_reason="tool_calls",
+                ),
+            ],
+            [
+                ModelStreamChunk(delta="已根据现有证据继续总结。", finish_reason="stop"),
+            ],
+        ]
+    )
+
+    result = await ResearchAgentLoop(model_client=client).run(
+        principal=_principal(),
+        session_id=session["session_id"],
+        user_message="请基于沪深300构建多因子模型",
+    )
+    messages = await ResearchSessionService().list_messages(
+        session["session_id"], USER_A["id"]
+    )
+    event_types = [event["event_type"] for event in fake_db.research_events.documents]
+    tool_messages = [message for message in messages if message["role"] == "tool"]
+
+    assert client.calls == 2
+    assert result["content"] == "已根据现有证据继续总结。"
+    assert "tool_failed" in event_types
+    assert "task_failed" not in event_types
+    assert "message_completed" in event_types
+    assert tool_messages[0]["metadata"]["tool_name"] == "extract_shadow_strategy"
+    assert '"status": "error"' in tool_messages[0]["content"]
+    assert "description is required" in tool_messages[0]["content"]
+
+
+@pytest.mark.asyncio
 async def test_reasoning_chunks_are_logged_and_saved_in_final_metadata(fake_db):
     session = await _create_session(fake_db)
     client = FakeModelClient(

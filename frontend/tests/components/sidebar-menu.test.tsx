@@ -25,7 +25,32 @@ describe("SidebarMenu", () => {
 
     const nav = screen.getByRole("navigation")
     expect(within(nav).getByRole("link", { name: "批量分析" })).toBeInTheDocument()
+    expect(within(nav).getByRole("link", { name: "研究 Agent" })).toBeInTheDocument()
     expect(within(nav).queryByRole("link", { name: "配置管理" })).not.toBeInTheDocument()
+  })
+
+  it("keeps research agent under the analysis group", () => {
+    pathname = "/agent"
+
+    render(<SidebarMenu collapsed={false} />)
+
+    const nav = screen.getByRole("navigation")
+    expect(within(nav).getByRole("link", { name: "股票分析" })).toHaveAttribute("href", "/analysis/single")
+    expect(within(nav).getByRole("link", { name: "研究 Agent" })).toHaveAttribute("href", "/agent")
+    expect(within(nav).getAllByRole("link", { name: "研究 Agent" })).toHaveLength(1)
+  })
+
+  it("keeps quant research tools under a dedicated group", () => {
+    pathname = "/alpha-zoo"
+
+    render(<SidebarMenu collapsed={false} />)
+
+    const nav = screen.getByRole("navigation")
+    expect(within(nav).getByRole("link", { name: "量化研究" })).toHaveAttribute("href", "/alpha-zoo")
+    expect(within(nav).getByRole("link", { name: "Alpha 因子库" })).toHaveAttribute("href", "/alpha-zoo")
+    expect(within(nav).getByRole("link", { name: "相关性矩阵" })).toHaveAttribute("href", "/correlation")
+    expect(within(nav).getAllByRole("link", { name: "Alpha 因子库" })).toHaveLength(1)
+    expect(within(nav).getAllByRole("link", { name: "相关性矩阵" })).toHaveLength(1)
   })
 
   it("keeps inactive group headers available as navigation links", () => {
@@ -35,8 +60,10 @@ describe("SidebarMenu", () => {
 
     const nav = screen.getByRole("navigation")
     expect(within(nav).getByRole("link", { name: "股票分析" })).toHaveAttribute("href", "/analysis/single")
+    expect(within(nav).getByRole("link", { name: "量化研究" })).toHaveAttribute("href", "/alpha-zoo")
     expect(within(nav).getByRole("link", { name: "设置" })).toHaveAttribute("href", "/settings")
     expect(within(nav).queryByRole("link", { name: "批量分析" })).not.toBeInTheDocument()
+    expect(within(nav).queryByRole("link", { name: "Alpha 因子库" })).not.toBeInTheDocument()
     expect(within(nav).queryByRole("link", { name: "配置管理" })).not.toBeInTheDocument()
   })
 
