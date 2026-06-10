@@ -633,7 +633,14 @@ function toolMessageId(toolName: string) {
 }
 
 function eventContent(data: Record<string, unknown>) {
-  return String(data.content || data.text || data.delta || data.summary || "")
+  const direct = data.content || data.text || data.delta || data.summary
+  if (direct) return String(direct)
+  const result = data.result
+  if (result && typeof result === "object") {
+    const nested = result as Record<string, unknown>
+    return String(nested.content || nested.text || nested.delta || nested.summary || "")
+  }
+  return ""
 }
 
 function humanizeAgentError(raw: string) {
@@ -937,8 +944,11 @@ function messagesFromApi(messages: ResearchMessage[]): AgentMessage[] {
 
 function finalAnswerFromEvents(events: ParsedResearchStreamEvent[]) {
   const completed = events.filter((event) => event.event === "message_completed" || event.event === "attempt.completed")
-  const last = completed.at(-1)
-  return last ? eventContent(last.data) || String(last.data.summary || "") : ""
+  for (const event of completed.reverse()) {
+    const content = eventContent(event.data)
+    if (content) return content
+  }
+  return ""
 }
 
 function attemptResultContent(attempt: ResearchAttempt) {
@@ -1983,6 +1993,7 @@ export function ResearchAgentPage() {
     if (activeSessionId) return activeSessionId
     const response = await researchAgentApi.createSession({ title: title.slice(0, 50) || "Agent session" })
     const session = response.data
+    lastEventIdRef.current = ""
     setActiveSessionId(session.session_id)
     setSessions((current) => [session, ...current])
     return session.session_id
