@@ -108,7 +108,7 @@ GOOGLE_API_KEY=your_google_api_key_here
 1. **启动Web界面**:
    ```bash
    # 终端 1：启动 FastAPI 后端
-   ./backend/scripts/dev/start_backend.sh
+   ./backend/scripts/dev/start/backend.sh
 
    # 终端 2：启动 Next.js 前端
    cd frontend
@@ -294,7 +294,7 @@ conda run --no-capture-output -n trader python -m pytest -c backend/pyproject.to
 
 ```bash
 # 启动Web界面
-./backend/scripts/dev/start_backend.sh
+./backend/scripts/dev/start/backend.sh
 cd frontend && pnpm dev --hostname 0.0.0.0 --port 3000
 
 # 或使用CLI

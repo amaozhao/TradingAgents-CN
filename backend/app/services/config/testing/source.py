@@ -262,7 +262,7 @@ class DataSourceConfigTestMixin:
                 # BaoStock 不需要 API Key，直接测试登录
                 try:
                     importlib.import_module("baostock")
-                    from app.core.baostock_runtime import run_baostock_session
+                    from app.core.baostock.runtime import run_baostock_session
 
                     def test_trade_dates(bs):
                         rs = bs.query_trade_dates(

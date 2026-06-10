@@ -249,11 +249,11 @@ Vibe-Trading provides the missing global research layer:
 Add these modules to TradingAgents-CN:
 
 ```text
-backend/app/routers/research_agent.py
-backend/app/routers/alpha_zoo.py
-backend/app/routers/research_matrix.py
+backend/app/routers/research/agent.py
+backend/app/routers/alpha/zoo.py
+backend/app/routers/research/matrix.py
 
-backend/app/services/research_agent/
+backend/app/services/research/agent/
   __init__.py
   context.py
   loop.py
@@ -273,7 +273,7 @@ backend/app/services/research_agent/
     screening.py
     sector.py
 
-backend/app/services/alpha_zoo/
+backend/app/services/alpha/zoo/
   __init__.py
   jobs.py
   service.py
@@ -474,7 +474,7 @@ The migration should include regression tests where user A cannot:
 Define tool permissions in code, not only in UI:
 
 ```text
-research.market_data.read
+research.market.data.read
 research.screening.run
 research.alpha.read
 research.alpha.run
@@ -783,7 +783,7 @@ Exit criteria:
 
 Goal: adapt Alpha Zoo to TradingAgents-CN data, not Vibe's lightweight loaders.
 
-Create `backend/trader/factors/panel_loader.py`.
+Create `backend/trader/factors/panel/loader.py`.
 
 Required output:
 

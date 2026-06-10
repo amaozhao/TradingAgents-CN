@@ -9,7 +9,7 @@ from typing import Any, Optional, cast
 
 import pandas as pd
 
-from app.core.baostock_runtime import run_baostock_session
+from app.core.baostock.runtime import run_baostock_session
 
 from .base import DataSourceAdapter
 

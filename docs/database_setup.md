@@ -133,7 +133,7 @@ conda run --no-capture-output -n trader alembic revision --autogenerate -m "desc
 
 ```bash
 # 终端 1：后端
-./backend/scripts/dev/start_backend.sh
+./backend/scripts/dev/start/backend.sh
 
 # 终端 2：前端
 cd frontend

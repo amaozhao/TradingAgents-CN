@@ -125,7 +125,7 @@ REDIS_PASSWORD=trading_agents123
 
 ```bash
 # 终端 1：启动 FastAPI 后端
-./backend/scripts/dev/start_backend.sh
+./backend/scripts/dev/start/backend.sh
 
 # 终端 2：启动 Next.js 前端
 cd frontend

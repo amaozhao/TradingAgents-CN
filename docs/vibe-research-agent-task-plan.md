@@ -77,54 +77,54 @@ Backend files to modify:
 
 Backend files to create:
 
-- `backend/app/services/research_agent/context.py`
-- `backend/app/services/research_agent/permissions.py`
-- `backend/app/services/research_agent/models.py`
-- `backend/app/services/research_agent/sessions.py`
-- `backend/app/services/research_agent/events.py`
-- `backend/app/services/research_agent/artifacts.py`
-- `backend/app/services/research_agent/jobs.py`
-- `backend/app/services/research_agent/registry.py`
-- `backend/app/services/research_agent/loop.py`
-- `backend/app/services/research_agent/user_model_keys.py`
-- `backend/app/services/research_agent/tools/analysis.py`
-- `backend/app/services/research_agent/tools/market_data.py`
-- `backend/app/services/research_agent/tools/reports.py`
-- `backend/app/services/research_agent/tools/screening.py`
-- `backend/app/services/research_agent/tools/alpha.py`
-- `backend/app/services/research_agent/tools/correlation.py`
-- `backend/app/routers/research_agent.py`
-- `backend/app/routers/alpha_zoo.py`
-- `backend/app/routers/research_matrix.py`
-- `backend/app/services/alpha_zoo/schemas.py`
-- `backend/app/services/alpha_zoo/service.py`
-- `backend/app/services/alpha_zoo/jobs.py`
+- `backend/app/services/research/agent/context.py`
+- `backend/app/services/research/agent/permissions.py`
+- `backend/app/services/research/agent/models.py`
+- `backend/app/services/research/agent/sessions.py`
+- `backend/app/services/research/agent/events.py`
+- `backend/app/services/research/agent/artifacts.py`
+- `backend/app/services/research/agent/jobs.py`
+- `backend/app/services/research/agent/registry.py`
+- `backend/app/services/research/agent/loop.py`
+- `backend/app/services/research/agent/user/model/keys.py`
+- `backend/app/services/research/agent/tools/analysis.py`
+- `backend/app/services/research/agent/tools/market/data.py`
+- `backend/app/services/research/agent/tools/reports.py`
+- `backend/app/services/research/agent/tools/screening.py`
+- `backend/app/services/research/agent/tools/alpha.py`
+- `backend/app/services/research/agent/tools/correlation.py`
+- `backend/app/routers/research/agent.py`
+- `backend/app/routers/alpha/zoo.py`
+- `backend/app/routers/research/matrix.py`
+- `backend/app/services/alpha/zoo/schemas.py`
+- `backend/app/services/alpha/zoo/service.py`
+- `backend/app/services/alpha/zoo/jobs.py`
 - `backend/trader/factors/base.py`
 - `backend/trader/factors/registry.py`
-- `backend/trader/factors/factor_analysis_core.py`
-- `backend/trader/factors/bench_runner.py`
-- `backend/trader/factors/compare_runner.py`
-- `backend/trader/factors/panel_loader.py`
+- `backend/trader/factors/factor/analysis/core.py`
+- `backend/trader/factors/bench/runner.py`
+- `backend/trader/factors/compare/runner.py`
+- `backend/trader/factors/panel/loader.py`
 - `backend/trader/factors/zoo/alpha101/`
 - `backend/trader/factors/zoo/gtja191/`
 - `backend/trader/factors/zoo/qlib158/`
 
 Backend tests to create:
 
-- `backend/tests/regression/reports_user_isolation/test.py`
-- `backend/tests/regression/analysis_user_isolation/test.py`
-- `backend/tests/regression/config_admin/test.py`
-- `backend/tests/regression/research_agent/permissions/test.py`
-- `backend/tests/regression/research_agent/sessions_events/test.py`
-- `backend/tests/regression/research_agent/tool_registry/test.py`
-- `backend/tests/regression/research_agent/user_model_keys/test.py`
-- `backend/tests/regression/research_agent/agent_loop/test.py`
-- `backend/tests/regression/research_agent/jobs/test.py`
-- `backend/tests/regression/research_agent/report_synthesis/test.py`
-- `backend/tests/regression/alpha_zoo/factor_registry/test.py`
-- `backend/tests/regression/alpha_zoo/panel_loader/test.py`
-- `backend/tests/regression/alpha_zoo/jobs_scope/test.py`
-- `backend/tests/regression/research_matrix/jobs_scope/test.py`
+- `backend/tests/regression/reports/user/isolation/test.py`
+- `backend/tests/regression/analysis/user/isolation/test.py`
+- `backend/tests/regression/config/admin/test.py`
+- `backend/tests/regression/research/agent/permissions/test.py`
+- `backend/tests/regression/research/agent/sessions/events/test.py`
+- `backend/tests/regression/research/agent/tool/registry/test.py`
+- `backend/tests/regression/research/agent/user/model/keys/test.py`
+- `backend/tests/regression/research/agent/agent/loop/test.py`
+- `backend/tests/regression/research/agent/jobs/test.py`
+- `backend/tests/regression/research/agent/report/synthesis/test.py`
+- `backend/tests/regression/alpha/zoo/factor/registry/test.py`
+- `backend/tests/regression/alpha/zoo/panel/loader/test.py`
+- `backend/tests/regression/alpha/zoo/jobs/scope/test.py`
+- `backend/tests/regression/research/matrix/jobs/scope/test.py`
 
 The `backend/pyproject.toml` and `backend/tests/pytest.ini` files currently set
 `python_files = ["test.py"]`. New backend regression tests must therefore use a
@@ -174,7 +174,7 @@ existing route tests remain valid.
 
 **Files:**
 
-- Create: `backend/tests/regression/reports_user_isolation/test.py`
+- Create: `backend/tests/regression/reports/user/isolation/test.py`
 - Modify after tests fail: `backend/app/routers/reports.py`
 - Modify after tests fail: `backend/app/services/analysis/simple/reports.py`
 
@@ -305,7 +305,7 @@ Run:
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/reports_user_isolation/test.py -q
+conda run -n trader pytest tests/regression/reports/user/isolation/test.py -q
 ```
 
 Expected before implementation: at least one test fails because report queries
@@ -374,7 +374,7 @@ Run:
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/reports_user_isolation/test.py -q
+conda run -n trader pytest tests/regression/reports/user/isolation/test.py -q
 ```
 
 Expected after implementation: all tests pass.
@@ -382,7 +382,7 @@ Expected after implementation: all tests pass.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add backend/app/routers/reports.py backend/app/services/analysis/simple/reports.py backend/tests/regression/reports_user_isolation/test.py
+git add backend/app/routers/reports.py backend/app/services/analysis/simple/reports.py backend/tests/regression/reports/user/isolation/test.py
 git commit -F /tmp/tradingagents-lore-commit.txt
 ```
 
@@ -390,7 +390,7 @@ git commit -F /tmp/tradingagents-lore-commit.txt
 
 **Files:**
 
-- Create: `backend/tests/regression/analysis_user_isolation/test.py`
+- Create: `backend/tests/regression/analysis/user/isolation/test.py`
 - Modify: `backend/app/routers/analysis/single.py`
 - Modify: `backend/app/routers/analysis/result.py`
 - Modify: `backend/app/routers/analysis/setup.py`
@@ -413,7 +413,7 @@ assert exc.value.status_code == 404
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/analysis_user_isolation/test.py -q
+conda run -n trader pytest tests/regression/analysis/user/isolation/test.py -q
 ```
 
 Expected before implementation: at least one path returns user B's task or
@@ -460,7 +460,7 @@ calls. Return `404` when a task/report exists but does not belong to the user.
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/analysis_user_isolation/test.py -q
+conda run -n trader pytest tests/regression/analysis/user/isolation/test.py -q
 ```
 
 Expected: all task ownership tests pass.
@@ -468,7 +468,7 @@ Expected: all task ownership tests pass.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add backend/app/routers/analysis/single.py backend/app/routers/analysis/result.py backend/app/routers/analysis/setup.py backend/app/services/analysis/simple/status.py backend/tests/regression/analysis_user_isolation/test.py
+git add backend/app/routers/analysis/single.py backend/app/routers/analysis/result.py backend/app/routers/analysis/setup.py backend/app/services/analysis/simple/status.py backend/tests/regression/analysis/user/isolation/test.py
 git commit -F /tmp/tradingagents-lore-commit.txt
 ```
 
@@ -476,7 +476,7 @@ git commit -F /tmp/tradingagents-lore-commit.txt
 
 **Files:**
 
-- Create: `backend/tests/regression/config_admin/test.py`
+- Create: `backend/tests/regression/config/admin/test.py`
 - Modify: `backend/app/routers/config/llm.py`
 - Modify: `backend/app/routers/config/providers.py`
 - Modify: `backend/app/routers/config/legacy.py`
@@ -509,7 +509,7 @@ assert exc.value.status_code == 403
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/config_admin/test.py -q
+conda run -n trader pytest tests/regression/config/admin/test.py -q
 ```
 
 Expected before implementation: non-admin users can call at least one mutating
@@ -544,7 +544,7 @@ to authenticated users with sanitized output.
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/config_admin/test.py -q
+conda run -n trader pytest tests/regression/config/admin/test.py -q
 ```
 
 Expected: non-admin mutation denied, admin mutation reaches service mock.
@@ -552,7 +552,7 @@ Expected: non-admin mutation denied, admin mutation reaches service mock.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add backend/app/routers/config/llm.py backend/app/routers/config/providers.py backend/app/routers/config/legacy.py backend/app/routers/config/catalog.py backend/tests/regression/config_admin/test.py
+git add backend/app/routers/config/llm.py backend/app/routers/config/providers.py backend/app/routers/config/legacy.py backend/app/routers/config/catalog.py backend/tests/regression/config/admin/test.py
 git commit -F /tmp/tradingagents-lore-commit.txt
 ```
 
@@ -560,9 +560,9 @@ git commit -F /tmp/tradingagents-lore-commit.txt
 
 **Files:**
 
-- Create: `backend/app/services/research_agent/user_model_keys.py`
-- Create: `backend/app/routers/user_model_keys.py`
-- Create: `backend/tests/regression/research_agent/user_model_keys/test.py`
+- Create: `backend/app/services/research/agent/user/model/keys.py`
+- Create: `backend/app/routers/user/model/keys.py`
+- Create: `backend/tests/regression/research/agent/user/model/keys/test.py`
 - Modify: `backend/app/main/imports.py`
 - Modify: `backend/app/main/application.py`
 
@@ -596,7 +596,7 @@ assert "sk-real-private-key" not in str(listed[0])
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/research_agent/user_model_keys/test.py -q
+conda run -n trader pytest tests/regression/research/agent/user/model/keys/test.py -q
 ```
 
 Expected before implementation: service/router does not exist.
@@ -647,7 +647,7 @@ app.include_router(user_model_keys.router, prefix="/api", tags=["user-model-keys
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/research_agent/user_model_keys/test.py -q
+conda run -n trader pytest tests/regression/research/agent/user/model/keys/test.py -q
 ```
 
 Expected: user-owned key storage, redaction, and isolation tests pass.
@@ -655,7 +655,7 @@ Expected: user-owned key storage, redaction, and isolation tests pass.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add backend/app/services/research_agent/user_model_keys.py backend/app/routers/user_model_keys.py backend/app/main/imports.py backend/app/main/application.py backend/tests/regression/research_agent/user_model_keys/test.py
+git add backend/app/services/research/agent/user/model/keys.py backend/app/routers/user/model/keys.py backend/app/main/imports.py backend/app/main/application.py backend/tests/regression/research/agent/user/model/keys/test.py
 git commit -F /tmp/tradingagents-lore-commit.txt
 ```
 
@@ -663,15 +663,15 @@ git commit -F /tmp/tradingagents-lore-commit.txt
 
 **Files:**
 
-- Create: `backend/app/services/research_agent/context.py`
-- Create: `backend/app/services/research_agent/permissions.py`
-- Create: `backend/app/services/research_agent/registry.py`
-- Create: `backend/app/services/research_agent/tools/market_data.py`
-- Create: `backend/app/services/research_agent/tools/analysis.py`
-- Create: `backend/app/services/research_agent/tools/reports.py`
-- Create: `backend/app/services/research_agent/tools/screening.py`
-- Create: `backend/tests/regression/research_agent/permissions/test.py`
-- Create: `backend/tests/regression/research_agent/tool_registry/test.py`
+- Create: `backend/app/services/research/agent/context.py`
+- Create: `backend/app/services/research/agent/permissions.py`
+- Create: `backend/app/services/research/agent/registry.py`
+- Create: `backend/app/services/research/agent/tools/market/data.py`
+- Create: `backend/app/services/research/agent/tools/analysis.py`
+- Create: `backend/app/services/research/agent/tools/reports.py`
+- Create: `backend/app/services/research/agent/tools/screening.py`
+- Create: `backend/tests/regression/research/agent/permissions/test.py`
+- Create: `backend/tests/regression/research/agent/tool/registry/test.py`
 
 - [ ] **Step 1: Write failing permission tests**
 
@@ -742,7 +742,7 @@ it must not call Vibe loaders or unrestricted URL fetchers.
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/research_agent/permissions/test.py tests/regression/research_agent/tool_registry/test.py -q
+conda run -n trader pytest tests/regression/research/agent/permissions/test.py tests/regression/research/agent/tool/registry/test.py -q
 ```
 
 Expected: all permission and registry tests pass.
@@ -750,7 +750,7 @@ Expected: all permission and registry tests pass.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add backend/app/services/research_agent backend/tests/regression/research_agent/permissions/test.py backend/tests/regression/research_agent/tool_registry/test.py
+git add backend/app/services/research/agent backend/tests/regression/research/agent/permissions/test.py backend/tests/regression/research/agent/tool/registry/test.py
 git commit -F /tmp/tradingagents-lore-commit.txt
 ```
 
@@ -758,12 +758,12 @@ git commit -F /tmp/tradingagents-lore-commit.txt
 
 **Files:**
 
-- Create: `backend/app/services/research_agent/models.py`
-- Create: `backend/app/services/research_agent/sessions.py`
-- Create: `backend/app/services/research_agent/events.py`
-- Create: `backend/app/services/research_agent/artifacts.py`
-- Create: `backend/app/routers/research_agent.py`
-- Create: `backend/tests/regression/research_agent/sessions_events/test.py`
+- Create: `backend/app/services/research/agent/models.py`
+- Create: `backend/app/services/research/agent/sessions.py`
+- Create: `backend/app/services/research/agent/events.py`
+- Create: `backend/app/services/research/agent/artifacts.py`
+- Create: `backend/app/routers/research/agent.py`
+- Create: `backend/tests/regression/research/agent/sessions/events/test.py`
 - Modify: `backend/app/main/imports.py`
 - Modify: `backend/app/main/application.py`
 
@@ -818,7 +818,7 @@ SSE endpoint must check session ownership before streaming.
 Import the router in `backend/app/main/imports.py`:
 
 ```python
-from app.routers import research_agent as research_agent
+from app.routers.research import agent as research_agent
 ```
 
 Include it in `backend/app/main/application.py`:
@@ -831,7 +831,7 @@ app.include_router(research_agent.router, prefix="/api/research-agent", tags=["r
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/research_agent/sessions_events/test.py -q
+conda run -n trader pytest tests/regression/research/agent/sessions/events/test.py -q
 ```
 
 Expected: all session, ownership, replay, and route-registration tests pass.
@@ -839,7 +839,7 @@ Expected: all session, ownership, replay, and route-registration tests pass.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add backend/app/services/research_agent/models.py backend/app/services/research_agent/sessions.py backend/app/services/research_agent/events.py backend/app/services/research_agent/artifacts.py backend/app/routers/research_agent.py backend/app/main/imports.py backend/app/main/application.py backend/tests/regression/research_agent/sessions_events/test.py
+git add backend/app/services/research/agent/models.py backend/app/services/research/agent/sessions.py backend/app/services/research/agent/events.py backend/app/services/research/agent/artifacts.py backend/app/routers/research/agent.py backend/app/main/imports.py backend/app/main/application.py backend/tests/regression/research/agent/sessions/events/test.py
 git commit -F /tmp/tradingagents-lore-commit.txt
 ```
 
@@ -847,9 +847,9 @@ git commit -F /tmp/tradingagents-lore-commit.txt
 
 **Files:**
 
-- Create: `backend/app/services/research_agent/jobs.py`
-- Modify: `backend/app/services/research_agent/events.py`
-- Create: `backend/tests/regression/research_agent/jobs/test.py`
+- Create: `backend/app/services/research/agent/jobs.py`
+- Modify: `backend/app/services/research/agent/events.py`
+- Create: `backend/tests/regression/research/agent/jobs/test.py`
 
 - [ ] **Step 1: Write failing job tests**
 
@@ -896,7 +896,7 @@ service and default to current system constants.
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/research_agent/jobs/test.py -q
+conda run -n trader pytest tests/regression/research/agent/jobs/test.py -q
 ```
 
 Expected: typed non-symbol jobs work and ownership checks pass.
@@ -904,7 +904,7 @@ Expected: typed non-symbol jobs work and ownership checks pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add backend/app/services/research_agent/jobs.py backend/app/services/research_agent/events.py backend/tests/regression/research_agent/jobs/test.py
+git add backend/app/services/research/agent/jobs.py backend/app/services/research/agent/events.py backend/tests/regression/research/agent/jobs/test.py
 git commit -F /tmp/tradingagents-lore-commit.txt
 ```
 
@@ -912,9 +912,9 @@ git commit -F /tmp/tradingagents-lore-commit.txt
 
 **Files:**
 
-- Create: `backend/app/services/research_agent/loop.py`
-- Modify: `backend/app/services/research_agent/registry.py`
-- Create: `backend/tests/regression/research_agent/agent_loop/test.py`
+- Create: `backend/app/services/research/agent/loop.py`
+- Modify: `backend/app/services/research/agent/registry.py`
+- Create: `backend/tests/regression/research/agent/agent/loop/test.py`
 
 - [ ] **Step 1: Write failing Agent loop tests**
 
@@ -956,7 +956,7 @@ Every emitted event must be persisted through `research_events`.
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/research_agent/agent_loop/test.py -q
+conda run -n trader pytest tests/regression/research/agent/agent/loop/test.py -q
 ```
 
 Expected: loop tests pass and generated output can be reloaded from persisted
@@ -965,7 +965,7 @@ messages.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add backend/app/services/research_agent/loop.py backend/app/services/research_agent/registry.py backend/tests/regression/research_agent/agent_loop/test.py
+git add backend/app/services/research/agent/loop.py backend/app/services/research/agent/registry.py backend/tests/regression/research/agent/agent/loop/test.py
 git commit -F /tmp/tradingagents-lore-commit.txt
 ```
 
@@ -975,14 +975,14 @@ git commit -F /tmp/tradingagents-lore-commit.txt
 
 - Create: `backend/trader/factors/base.py`
 - Create: `backend/trader/factors/registry.py`
-- Create: `backend/trader/factors/factor_analysis_core.py`
-- Create: `backend/trader/factors/bench_runner.py`
-- Create: `backend/trader/factors/compare_runner.py`
-- Create: `backend/trader/factors/panel_loader.py`
+- Create: `backend/trader/factors/factor/analysis/core.py`
+- Create: `backend/trader/factors/bench/runner.py`
+- Create: `backend/trader/factors/compare/runner.py`
+- Create: `backend/trader/factors/panel/loader.py`
 - Create directories: `backend/trader/factors/zoo/alpha101/`,
   `backend/trader/factors/zoo/gtja191/`, `backend/trader/factors/zoo/qlib158/`
-- Create: `backend/tests/regression/alpha_zoo/factor_registry/test.py`
-- Create: `backend/tests/regression/alpha_zoo/panel_loader/test.py`
+- Create: `backend/tests/regression/alpha/zoo/factor/registry/test.py`
+- Create: `backend/tests/regression/alpha/zoo/panel/loader/test.py`
 
 - [ ] **Step 1: Write deterministic factor registry tests**
 
@@ -1023,7 +1023,7 @@ Vibe CSV paths and do not use `~/.vibe-trading/cache`.
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/alpha_zoo/factor_registry/test.py tests/regression/alpha_zoo/panel_loader/test.py -q
+conda run -n trader pytest tests/regression/alpha/zoo/factor/registry/test.py tests/regression/alpha/zoo/panel/loader/test.py -q
 ```
 
 Expected: factor registry and panel loader tests pass.
@@ -1031,7 +1031,7 @@ Expected: factor registry and panel loader tests pass.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add backend/trader/factors backend/tests/regression/alpha_zoo/factor_registry/test.py backend/tests/regression/alpha_zoo/panel_loader/test.py
+git add backend/trader/factors backend/tests/regression/alpha/zoo/factor/registry/test.py backend/tests/regression/alpha/zoo/panel/loader/test.py
 git commit -F /tmp/tradingagents-lore-commit.txt
 ```
 
@@ -1039,11 +1039,11 @@ git commit -F /tmp/tradingagents-lore-commit.txt
 
 **Files:**
 
-- Create: `backend/app/services/alpha_zoo/schemas.py`
-- Create: `backend/app/services/alpha_zoo/service.py`
-- Create: `backend/app/services/alpha_zoo/jobs.py`
-- Create: `backend/app/routers/alpha_zoo.py`
-- Create: `backend/tests/regression/alpha_zoo/jobs_scope/test.py`
+- Create: `backend/app/services/alpha/zoo/schemas.py`
+- Create: `backend/app/services/alpha/zoo/service.py`
+- Create: `backend/app/services/alpha/zoo/jobs.py`
+- Create: `backend/app/routers/alpha/zoo.py`
+- Create: `backend/tests/regression/alpha/zoo/jobs/scope/test.py`
 - Modify: `backend/app/main/imports.py`
 - Modify: `backend/app/main/application.py`
 
@@ -1077,7 +1077,7 @@ results.
 Import the router in `backend/app/main/imports.py`:
 
 ```python
-from app.routers import alpha_zoo as alpha_zoo
+from app.routers.alpha import zoo as alpha_zoo
 ```
 
 Include it in `backend/app/main/application.py`:
@@ -1098,7 +1098,7 @@ research.alpha.run
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/alpha_zoo/jobs_scope/test.py -q
+conda run -n trader pytest tests/regression/alpha/zoo/jobs/scope/test.py -q
 ```
 
 Expected: Alpha API ownership tests pass.
@@ -1106,7 +1106,7 @@ Expected: Alpha API ownership tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add backend/app/services/alpha_zoo backend/app/routers/alpha_zoo.py backend/app/services/research_agent/tools/alpha.py backend/app/main/imports.py backend/app/main/application.py backend/tests/regression/alpha_zoo/jobs_scope/test.py
+git add backend/app/services/alpha/zoo backend/app/routers/alpha/zoo.py backend/app/services/research/agent/tools/alpha.py backend/app/main/imports.py backend/app/main/application.py backend/tests/regression/alpha/zoo/jobs/scope/test.py
 git commit -F /tmp/tradingagents-lore-commit.txt
 ```
 
@@ -1114,9 +1114,9 @@ git commit -F /tmp/tradingagents-lore-commit.txt
 
 **Files:**
 
-- Create: `backend/app/routers/research_matrix.py`
-- Create: `backend/app/services/research_agent/tools/correlation.py`
-- Create: `backend/tests/regression/research_matrix/jobs_scope/test.py`
+- Create: `backend/app/routers/research/matrix.py`
+- Create: `backend/app/services/research/agent/tools/correlation.py`
+- Create: `backend/tests/regression/research/matrix/jobs/scope/test.py`
 - Modify: `backend/app/main/imports.py`
 - Modify: `backend/app/main/application.py`
 
@@ -1147,7 +1147,7 @@ input. Reject `screening_result_id` until screening runs are persisted.
 Import the router in `backend/app/main/imports.py`:
 
 ```python
-from app.routers import research_matrix as research_matrix
+from app.routers.research import matrix as research_matrix
 ```
 
 Include it in `backend/app/main/application.py`:
@@ -1166,7 +1166,7 @@ research.correlation.run
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/research_matrix/jobs_scope/test.py -q
+conda run -n trader pytest tests/regression/research/matrix/jobs/scope/test.py -q
 ```
 
 Expected: correlation job ownership and artifact tests pass.
@@ -1174,7 +1174,7 @@ Expected: correlation job ownership and artifact tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add backend/app/routers/research_matrix.py backend/app/services/research_agent/tools/correlation.py backend/app/main/imports.py backend/app/main/application.py backend/tests/regression/research_matrix/jobs_scope/test.py
+git add backend/app/routers/research/matrix.py backend/app/services/research/agent/tools/correlation.py backend/app/main/imports.py backend/app/main/application.py backend/tests/regression/research/matrix/jobs/scope/test.py
 git commit -F /tmp/tradingagents-lore-commit.txt
 ```
 
@@ -1268,11 +1268,11 @@ git commit -F /tmp/tradingagents-lore-commit.txt
 
 **Files:**
 
-- Modify: `backend/app/services/research_agent/loop.py`
-- Modify: `backend/app/services/research_agent/tools/reports.py`
-- Modify: `backend/app/routers/research_agent.py`
+- Modify: `backend/app/services/research/agent/loop.py`
+- Modify: `backend/app/services/research/agent/tools/reports.py`
+- Modify: `backend/app/routers/research/agent.py`
 - Create: `frontend/tests/e2e/research-workflow.spec.ts`
-- Create: `backend/tests/regression/research_agent/report_synthesis/test.py`
+- Create: `backend/tests/regression/research/agent/report/synthesis/test.py`
 
 - [ ] **Step 1: Write report synthesis tests**
 
@@ -1341,7 +1341,7 @@ Verify:
 
 ```bash
 cd backend
-conda run -n trader pytest tests/regression/research_agent/report_synthesis/test.py -q
+conda run -n trader pytest tests/regression/research/agent/report/synthesis/test.py -q
 
 cd ../frontend
 pnpm test:e2e tests/e2e/research-workflow.spec.ts
@@ -1352,7 +1352,7 @@ Expected: backend synthesis and frontend workflow tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add backend/app/services/research_agent/loop.py backend/app/services/research_agent/tools/reports.py backend/app/routers/research_agent.py backend/tests/regression/research_agent/report_synthesis/test.py frontend/tests/e2e/research-workflow.spec.ts
+git add backend/app/services/research/agent/loop.py backend/app/services/research/agent/tools/reports.py backend/app/routers/research/agent.py backend/tests/regression/research/agent/report/synthesis/test.py frontend/tests/e2e/research-workflow.spec.ts
 git commit -F /tmp/tradingagents-lore-commit.txt
 ```
 

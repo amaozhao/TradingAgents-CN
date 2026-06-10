@@ -145,13 +145,16 @@ class Registry:
             except RegistryError as exc:
                 self._load_errors.append(_LoadError(zoo_id, str(exc)))
                 continue
-            for py_file in sorted(zoo_dir.glob("*.py")):
-                if py_file.name.startswith("_"):
+            for py_file in sorted(zoo_dir.rglob("*.py")):
+                relative_parts = py_file.relative_to(zoo_dir).parts
+                if any(part.startswith("_") or part == "__pycache__" for part in relative_parts):
                     continue
                 self._try_register(zoo_id, py_file)
 
     def _try_register(self, zoo_id: str, py_file: Path) -> None:
-        short_id = py_file.stem
+        zoo_dir = self._zoo_root / zoo_id
+        module_parts = py_file.relative_to(zoo_dir).with_suffix("").parts
+        short_id = "_".join(module_parts)
         try:
             _validate_id_token(short_id, "alpha_id_short")
             meta = load_alpha_meta_from_py(py_file)
@@ -159,7 +162,7 @@ class Registry:
             self._load_errors.append(_LoadError(f"{zoo_id}.{short_id}", str(exc)))
             return
 
-        module_path = f"trader.factors.zoo.{zoo_id}.{short_id}"
+        module_path = ".".join(("trader", "factors", "zoo", zoo_id, *module_parts))
         alpha = Alpha(id=meta.id, zoo=zoo_id, module_path=module_path, meta=meta.model_dump())
         if alpha.id in self._alphas:
             self._load_errors.append(_LoadError(alpha.id, "duplicate alpha id"))
