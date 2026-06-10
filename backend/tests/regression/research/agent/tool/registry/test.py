@@ -65,6 +65,45 @@ def test_default_registry_exposes_admin_tools_to_admin_user():
     assert "trading_place_order" in names
 
 
+def test_default_registry_can_hide_disabled_placeholders_from_model_tools():
+    tools = ResearchToolRegistry.default().for_principal(
+        _principal(), include_disabled=False
+    )
+    names = {tool.name for tool in tools}
+
+    assert "run_swarm" in names
+    assert "market_data_lookup" in names
+    assert "single_stock_analysis" in names
+    assert "background_run" not in names
+    assert all(tool.enabled for tool in tools)
+
+
+def test_default_registry_tool_schemas_are_well_formed():
+    tools = ResearchToolRegistry.default().all()
+
+    assert tools
+    assert len({tool.name for tool in tools}) == len(tools)
+
+    for tool in tools:
+        assert tool.name
+        assert tool.description
+        assert tool.permission
+        assert tool.schema.get("type") == "object"
+
+        properties = tool.schema.get("properties", {})
+        assert isinstance(properties, dict)
+
+        for field in tool.schema.get("required", []):
+            assert field in properties
+
+        for field_schema in properties.values():
+            enum = field_schema.get("enum") if isinstance(field_schema, dict) else None
+            if enum is not None:
+                assert isinstance(enum, list)
+                assert enum
+                assert len(enum) == len(set(enum))
+
+
 @pytest.mark.asyncio
 async def test_tool_run_rejects_principal_without_required_permission():
     registry = ResearchToolRegistry.default()

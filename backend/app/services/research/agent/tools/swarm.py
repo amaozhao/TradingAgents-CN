@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.services.research.agent.swarm import ResearchSwarmService
+from app.services.research.agent.swarm import DEFAULT_SWARM_PRESETS, ResearchSwarmService
 
 from ..context import ToolExecutionContext
 from ..permissions import SWARM_RUN
@@ -35,6 +35,7 @@ async def _run_swarm(
 
 
 def swarm_tools() -> list[ResearchTool]:
+    preset_names = [str(preset["preset"]) for preset in DEFAULT_SWARM_PRESETS]
     return [
         ResearchTool(
             name="run_swarm",
@@ -45,7 +46,7 @@ def swarm_tools() -> list[ResearchTool]:
                 "properties": {
                     "preset": {
                         "type": "string",
-                        "enum": ["investment_committee", "research_team"],
+                        "enum": preset_names,
                     },
                     "variables": {"type": "object"},
                 },

@@ -144,6 +144,7 @@ def _disabled_tool(
             reason=reason,
             required_capability=required_capability,
         ),
+        enabled=False,
     )
 
 

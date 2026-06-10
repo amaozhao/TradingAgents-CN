@@ -18,6 +18,7 @@ class ResearchTool:
     permission: str
     schema: dict[str, Any] = field(default_factory=dict)
     handler: ToolHandler | None = None
+    enabled: bool = True
 
     async def run(
         self, context: ToolExecutionContext, payload: dict[str, Any]
@@ -97,9 +98,12 @@ class ResearchToolRegistry:
         except KeyError as exc:
             raise KeyError(f"unknown research tool: {name}") from exc
 
-    def for_principal(self, principal: ResearchPrincipal) -> list[ResearchTool]:
+    def for_principal(
+        self, principal: ResearchPrincipal, *, include_disabled: bool = True
+    ) -> list[ResearchTool]:
         return [
             tool
             for tool in self._tools.values()
             if tool.permission in principal.permissions
+            and (include_disabled or tool.enabled)
         ]

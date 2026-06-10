@@ -948,6 +948,20 @@ function attemptResultContent(attempt: ResearchAttempt) {
   return typeof content === "string" ? content.trim() : ""
 }
 
+function attemptTimestamp(attempt: ResearchAttempt) {
+  const timestamp = attempt.started_at || attempt.created_at
+  if (!timestamp) return 0
+  const parsed = new Date(timestamp).getTime()
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function latestActiveAttempt(attempts: ResearchAttempt[]) {
+  return attempts
+    .filter((attempt) => attempt.status === "queued" || attempt.status === "running")
+    .sort((left, right) => attemptTimestamp(left) - attemptTimestamp(right))
+    .at(-1)
+}
+
 function failureMessageFromEvents(events: ParsedResearchStreamEvent[]) {
   const failed = events.filter((event) => event.event === "task_failed" || event.event === "attempt.failed" || event.event === "job_failed")
   for (const event of failed.reverse()) {
@@ -1575,6 +1589,7 @@ export function ResearchAgentPage() {
   const streamingAnswerIdRef = useRef<string | null>(null)
   const runFinishedRef = useRef(false)
   const sessionLoadSeqRef = useRef(0)
+  const localRunningSessionRef = useRef<string | null>(null)
 
   function resizeComposer() {
     const textarea = composerRef.current
@@ -1598,7 +1613,11 @@ export function ResearchAgentPage() {
   }, [])
 
   useEffect(() => {
-    if (!activeSessionId || running) {
+    if (!activeSessionId) {
+      setSessionLoading(false)
+      return
+    }
+    if (running && localRunningSessionRef.current === activeSessionId) {
       setSessionLoading(false)
       return
     }
@@ -1611,8 +1630,9 @@ export function ResearchAgentPage() {
     void Promise.all([
       researchAgentApi.listMessages(activeSessionId),
       researchAgentApi.listEvents(activeSessionId),
-      researchAgentApi.getGoal(activeSessionId)
-    ]).then(([messageResponse, eventResponse, goalResponse]) => {
+      researchAgentApi.getGoal(activeSessionId),
+      researchAgentApi.listAttempts(activeSessionId)
+    ]).then(([messageResponse, eventResponse, goalResponse, attemptResponse]) => {
       if (sessionLoadSeqRef.current !== loadSeq) return
       const rawEvents = eventResponse.data || []
       const persistedEvents = rawEvents.map(normalizePersistedEvent)
@@ -1629,16 +1649,37 @@ export function ResearchAgentPage() {
       setMessages(nextMessages)
       setTools(toolsFromEvents(persistedEvents))
       setGoal(goalResponse.data || persistedEvents.reduce((current, event) => mergeGoalEvent(current, event.event, event.data), null as ResearchGoal | null))
+      const activeAttempt = latestActiveAttempt(attemptResponse.data || [])
+      if (activeAttempt) {
+        runFinishedRef.current = false
+        localRunningSessionRef.current = null
+        setRunning(true)
+        setCancelRequested(false)
+        stopStream()
+        streamStopRef.current = researchAgentApi.subscribeEvents(
+          activeSessionId,
+          { onEvent: handleStreamEvent, onError: () => undefined },
+          lastEventIdRef.current
+        )
+        startCompletionPolling(activeSessionId, activeAttempt.attempt_id)
+      } else {
+        runFinishedRef.current = true
+        setRunning(false)
+        setCancelRequested(false)
+      }
       requestAnimationFrame(scrollToBottom)
     }).catch(() => {
       if (sessionLoadSeqRef.current !== loadSeq) return
       setMessages([])
       setTools([])
       setGoal(null)
+      setRunning(false)
     }).finally(() => {
       if (sessionLoadSeqRef.current === loadSeq) setSessionLoading(false)
     })
-  }, [activeSessionId, running])
+    // Session reload is keyed by session identity; running changes are handled in refs to avoid resubscribing loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSessionId])
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
@@ -1706,6 +1747,7 @@ export function ResearchAgentPage() {
     stopStream()
     stopCompletionPolling()
     runFinishedRef.current = true
+    localRunningSessionRef.current = null
     setMessages(messagesFromApi(storedMessages))
     setRunning(false)
     setCancelRequested(false)
@@ -1724,6 +1766,7 @@ export function ResearchAgentPage() {
       stopStream()
       stopCompletionPolling()
       runFinishedRef.current = true
+      localRunningSessionRef.current = null
       setRunning(false)
       setCancelRequested(false)
       appendStreamMessage({
@@ -1739,6 +1782,7 @@ export function ResearchAgentPage() {
       stopStream()
       stopCompletionPolling()
       runFinishedRef.current = true
+      localRunningSessionRef.current = null
       setRunning(false)
       setCancelRequested(false)
       appendStreamMessage({
@@ -1755,6 +1799,7 @@ export function ResearchAgentPage() {
       stopStream()
       stopCompletionPolling()
       runFinishedRef.current = true
+      localRunningSessionRef.current = null
       setRunning(false)
       setCancelRequested(false)
       if (content) {
@@ -1908,6 +1953,7 @@ export function ResearchAgentPage() {
       stopStream()
       stopCompletionPolling()
       runFinishedRef.current = true
+      localRunningSessionRef.current = null
       setRunning(false)
       setCancelRequested(false)
       appendStreamMessage({ id: nowId("error"), type: "error", content: eventFailureContent(item.data) || "Agent execution failed", timestamp: Date.now() })
@@ -1921,6 +1967,7 @@ export function ResearchAgentPage() {
       stopStream()
       stopCompletionPolling()
       runFinishedRef.current = true
+      localRunningSessionRef.current = null
       setRunning(false)
       setCancelRequested(false)
       void researchAgentApi.listSessions().then((response) => setSessions(response.data || [])).catch(() => undefined)
@@ -1965,6 +2012,7 @@ export function ResearchAgentPage() {
 
     try {
       const sessionId = await ensureSession(trimmed)
+      localRunningSessionRef.current = sessionId
       let linkedGoalId = goal?.goal_id
       if (requestedMode === "goal") {
         const goalResponse = await researchAgentApi.createGoal(sessionId, createGoalDraft(trimmed, text))
@@ -1987,6 +2035,7 @@ export function ResearchAgentPage() {
       stopStream()
       stopCompletionPolling()
       runFinishedRef.current = true
+      localRunningSessionRef.current = null
       setMessages((current) => [...current, { id: nowId("error"), type: "error", content: error instanceof Error ? error.message : text.sendFailed, timestamp: Date.now() }])
       setRunning(false)
       setCancelRequested(false)
@@ -2009,6 +2058,7 @@ export function ResearchAgentPage() {
     stopStream()
     stopCompletionPolling()
     runFinishedRef.current = true
+    localRunningSessionRef.current = null
     setActiveSessionId(null)
     sessionLoadSeqRef.current += 1
     setSessionLoading(false)
@@ -2024,6 +2074,7 @@ export function ResearchAgentPage() {
     stopStream()
     stopCompletionPolling()
     runFinishedRef.current = true
+    localRunningSessionRef.current = null
     setRunning(false)
     setCancelRequested(false)
     lastEventIdRef.current = ""
@@ -2056,6 +2107,7 @@ export function ResearchAgentPage() {
     stopStream()
     stopCompletionPolling()
     runFinishedRef.current = true
+    localRunningSessionRef.current = null
     setCancelRequested(true)
     setRunning(false)
     setMessages((current) => [

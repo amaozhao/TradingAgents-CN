@@ -28,6 +28,12 @@ DEFAULT_SWARM_PRESETS: tuple[dict[str, Any], ...] = (
         "description": "Evidence collection and critique for market research tasks.",
         "workers": ["researcher", "data", "critic"],
     },
+    {
+        "preset": "quant_strategy_desk",
+        "title": "量化策略桌",
+        "description": "Quant research workflow for screening, factors, backtests, and risk review.",
+        "workers": ["screening", "factor_research", "backtest", "risk_audit"],
+    },
 )
 
 

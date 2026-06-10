@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+BACKEND_DIR="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 REPO_ROOT="$(cd "${BACKEND_DIR}/.." && pwd)"
 COMPOSE_FILE="${REPO_ROOT}/deploy/docker/compose/docker-compose.yml"
 

@@ -569,7 +569,12 @@ async def get_research_agent_capabilities(current_user: dict = Depends(get_curre
                 "sessions": True,
                 "events": True,
                 "provider_loop": True,
-                "tools": [tool.name for tool in runtime_service.registry.for_principal(_principal(current_user))],
+                "tools": [
+                    tool.name
+                    for tool in runtime_service.registry.for_principal(
+                        _principal(current_user), include_disabled=False
+                    )
+                ],
                 "skills": len(skill_service.list_skills()),
                 "live_mutation_requires_admin_surface": True,
             },

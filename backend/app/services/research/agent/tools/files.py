@@ -91,7 +91,7 @@ async def _web_get(
                 "trust_env": bool(proxy is None),
             }
             if proxy:
-                kwargs["proxies"] = proxy
+                kwargs["proxy"] = proxy
             async with httpx.AsyncClient(**kwargs) as client:
                 response = await client.get(url, headers=headers)
                 response.raise_for_status()

@@ -322,7 +322,7 @@ class ResearchAgentLoop:
         if not await self.session_service.get_session(session_id, principal.user_id):
             raise PermissionError("research session is not available to this principal")
 
-        available_tools = self.registry.for_principal(principal)
+        available_tools = self.registry.for_principal(principal, include_disabled=False)
         prompt = build_research_prompt(principal=principal, tools=available_tools)
         context = ToolExecutionContext(
             principal=principal,

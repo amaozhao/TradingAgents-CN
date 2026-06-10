@@ -14,7 +14,7 @@ from app.services.research.agent.events import ResearchEventService
 from app.services.research.agent.loop import ModelStreamChunk
 from app.services.research.agent.registry import ResearchToolRegistry
 from app.services.research.agent.sessions import ResearchSessionService
-from app.services.research.agent.swarm import ResearchSwarmService
+from app.services.research.agent.swarm import DEFAULT_SWARM_PRESETS, ResearchSwarmService
 
 
 USER_A = {"id": "user-a", "username": "alice", "is_admin": False, "roles": []}
@@ -179,6 +179,20 @@ async def test_swarm_service_executes_workers_with_current_model_client(fake_db)
 
 
 @pytest.mark.asyncio
+async def test_swarm_preset_contract_includes_quant_strategy_desk(fake_db):
+    _ = fake_db
+    service = ResearchSwarmService()
+    presets = await service.list_presets()
+    preset_names = {preset["preset"] for preset in presets}
+    tool_schema_presets = set(
+        ResearchToolRegistry.default().get("run_swarm").schema["properties"]["preset"]["enum"]
+    )
+
+    assert "quant_strategy_desk" in preset_names
+    assert tool_schema_presets == {preset["preset"] for preset in DEFAULT_SWARM_PRESETS}
+
+
+@pytest.mark.asyncio
 async def test_swarm_routes_enforce_session_owner_and_retry(fake_db):
     _ = fake_db
     research_agent_router.session_service = ResearchSessionService()
@@ -236,11 +250,12 @@ async def test_run_swarm_tool_is_current_project_tool(fake_db, monkeypatch):
     )
 
     result = await registry.get("run_swarm").run(
-        context, {"preset": "research_team", "variables": {"topic": "储能"}}
+        context, {"preset": "quant_strategy_desk", "variables": {"topic": "储能"}}
     )
 
     assert result["tool"] == "run_swarm"
     assert result["status"] == "completed"
+    assert result["preset"] == "quant_strategy_desk"
     assert result["run_id"]
     assert result["summaries"][0]["summary"] == "worker summary"
     assert fake_db.research_swarm_runs.documents[0]["session_id"] == session["session_id"]
