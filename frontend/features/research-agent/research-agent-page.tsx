@@ -2096,6 +2096,13 @@ export function ResearchAgentPage() {
     void runPrompt(input)
   }
 
+  function fillComposerFromQuickPrompt(prompt: string) {
+    setInput(prompt)
+    setComposerMode("chat")
+    setShowMenu(false)
+    requestAnimationFrame(() => composerRef.current?.focus())
+  }
+
   function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return
     event.preventDefault()
@@ -2296,7 +2303,7 @@ export function ResearchAgentPage() {
                     </button>
                     <div className="my-1 border-t" />
                     {text.quickPrompts.map((item) => (
-                      <button key={item.label} type="button" onClick={() => { setShowMenu(false); void runPrompt(item.prompt) }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted">
+                      <button key={item.label} type="button" onClick={() => fillComposerFromQuickPrompt(item.prompt)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted">
                         <Sparkles className="size-4" />{item.label}
                       </button>
                     ))}

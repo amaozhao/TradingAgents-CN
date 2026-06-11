@@ -174,7 +174,7 @@ describe("ResearchAgentPage", () => {
     expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).not.toContain("Backtest a risk-parity portfolio")
   })
 
-  it("sends localized Chinese prompts from quick actions", async () => {
+  it("fills the composer from quick actions without sending", async () => {
     vi.mocked(researchAgentApi.listSessions).mockResolvedValue({ success: true, data: [], message: "ok" })
 
     const user = userEvent.setup()
@@ -183,9 +183,9 @@ describe("ResearchAgentPage", () => {
     await user.click(await screen.findByRole("button", { name: "更多选项" }))
     await user.click(screen.getByRole("button", { name: "分析连接器组合" }))
 
-    await waitFor(() => expect(researchAgentApi.appendMessage).toHaveBeenCalled())
-    expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).toContain("请使用当前选中的 trading connector profile")
-    expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).not.toContain("Use the selected trading connector profile")
+    const composer = screen.getByPlaceholderText("例如：运行回测、检查连接器状态，或分析 A 股储能板块") as HTMLTextAreaElement
+    await waitFor(() => expect(composer.value).toContain("请使用当前选中的 trading connector profile"))
+    expect(researchAgentApi.appendMessage).not.toHaveBeenCalled()
   })
 
   it("keeps English prompts when the Agent page language is English", async () => {
