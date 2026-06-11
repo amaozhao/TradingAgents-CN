@@ -117,6 +117,128 @@ async def test_single_stock_analysis_tool_submits_existing_dag_task(monkeypatch)
 
 
 @pytest.mark.asyncio
+async def test_single_stock_analysis_tool_uses_configured_models_when_agent_omits_models(
+    monkeypatch,
+):
+    service = FakeAnalysisService()
+    queue = FakeQueueService()
+    monkeypatch.setattr(
+        analysis_tools_module, "get_simple_analysis_service", lambda: service, raising=False
+    )
+    monkeypatch.setattr(analysis_tools_module, "get_queue_service", lambda: queue, raising=False)
+    monkeypatch.setattr(
+        analysis_tools_module,
+        "_load_active_system_config_doc",
+        lambda: {
+            "system_settings": {
+                "quick_analysis_model": "minimax-m1",
+                "deep_analysis_model": "minimax-m1",
+            },
+            "llm_configs": [
+                {
+                    "model_name": "minimax-m1",
+                    "provider": "minimax",
+                    "enabled": True,
+                    "api_key": "minimax-key",
+                    "priority": 10,
+                    "capability_level": 4,
+                    "suitable_roles": ["both"],
+                    "features": ["tool_calling", "reasoning"],
+                    "recommended_depths": ["标准", "深度", "全面"],
+                }
+            ],
+        },
+        raising=False,
+    )
+    monkeypatch.setattr(
+        analysis_tools_module,
+        "get_provider_and_url_by_model_sync",
+        lambda model: {
+            "provider": "minimax" if model == "minimax-m1" else "qwen",
+            "backend_url": "https://example.test/v1",
+            "api_key": "minimax-key" if model == "minimax-m1" else "",
+        },
+        raising=False,
+    )
+
+    tool = ResearchToolRegistry.default().get("single_stock_analysis")
+    result = await tool.run(
+        _context(),
+        {
+            "symbol": "601818",
+            "market_type": "A股",
+            "research_depth": "标准",
+            "selected_analysts": ["market", "fundamentals"],
+        },
+    )
+
+    assert result["accepted"] is True
+    [(user_id, request)] = service.created
+    assert user_id == "user-a"
+    assert request.parameters.quick_analysis_model == "minimax-m1"
+    assert request.parameters.deep_analysis_model == "minimax-m1"
+    [queued] = queue.enqueued
+    assert queued["params"]["quick_analysis_model"] == "minimax-m1"
+    assert queued["params"]["deep_analysis_model"] == "minimax-m1"
+
+
+@pytest.mark.asyncio
+async def test_single_stock_analysis_tool_uses_default_llm_when_quick_deep_are_unset(
+    monkeypatch,
+):
+    service = FakeAnalysisService()
+    queue = FakeQueueService()
+    monkeypatch.setattr(
+        analysis_tools_module, "get_simple_analysis_service", lambda: service, raising=False
+    )
+    monkeypatch.setattr(analysis_tools_module, "get_queue_service", lambda: queue, raising=False)
+    monkeypatch.setattr(
+        analysis_tools_module,
+        "_load_active_system_config_doc",
+        lambda: {
+            "default_llm": "MiniMax-M3",
+            "system_settings": {},
+            "llm_configs": [
+                {
+                    "model_name": "glm-4",
+                    "provider": "zhipu",
+                    "enabled": True,
+                    "api_key": "glm-key",
+                    "suitable_roles": ["both"],
+                },
+                {
+                    "model_name": "MiniMax-M3",
+                    "provider": "minimax-token-plan",
+                    "enabled": True,
+                    "api_key": "minimax-key",
+                    "suitable_roles": ["both"],
+                },
+            ],
+        },
+        raising=False,
+    )
+    monkeypatch.setattr(
+        analysis_tools_module,
+        "get_provider_and_url_by_model_sync",
+        lambda model: {
+            "provider": "minimax-token-plan" if model == "MiniMax-M3" else "zhipu",
+            "backend_url": "https://example.test/v1",
+            "api_key": "minimax-key" if model == "MiniMax-M3" else "glm-key",
+        },
+        raising=False,
+    )
+
+    tool = ResearchToolRegistry.default().get("single_stock_analysis")
+    result = await tool.run(_context(), {"symbol": "601818", "research_depth": "标准"})
+
+    assert result["accepted"] is True
+    [(user_id, request)] = service.created
+    assert user_id == "user-a"
+    assert request.parameters.quick_analysis_model == "MiniMax-M3"
+    assert request.parameters.deep_analysis_model == "MiniMax-M3"
+
+
+@pytest.mark.asyncio
 async def test_stock_analysis_status_reads_owner_scoped_task_status(monkeypatch):
     service = FakeAnalysisService()
     service.status_by_task_id["task-600519"] = {

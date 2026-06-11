@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.database import get_postgres_db
+from app.core.database import get_postgres_db, get_postgres_db_sync
 from app.schemas.analysis import AnalysisParameters, SingleAnalysisRequest
 from app.services.analysis.simple import (
     get_provider_and_url_by_model_sync,
@@ -42,6 +42,155 @@ _DEPTH_TO_LABEL = {
 }
 
 
+def _clean_model_name(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    value = str(raw).strip()
+    return value or None
+
+
+def _load_active_system_config_doc() -> dict[str, Any] | None:
+    try:
+        db = get_postgres_db_sync()
+        doc = db.system_configs.find_one({"is_active": True}, sort=[("version", -1)])
+        return doc if isinstance(doc, dict) else None
+    except Exception:
+        return None
+
+
+def _enabled_llm_configs(doc: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not doc:
+        return []
+    configs = doc.get("llm_configs") or []
+    if not isinstance(configs, list):
+        return []
+    return [
+        config
+        for config in configs
+        if isinstance(config, dict)
+        and config.get("model_name")
+        and config.get("enabled", True) is not False
+    ]
+
+
+def _role_values(config: dict[str, Any]) -> set[str]:
+    roles = config.get("suitable_roles") or ["both"]
+    if not isinstance(roles, list):
+        roles = [roles]
+    return {
+        str(getattr(role, "value", role)).strip().lower()
+        for role in roles
+        if str(getattr(role, "value", role)).strip()
+    }
+
+
+def _is_role_candidate(config: dict[str, Any], role: str) -> bool:
+    roles = _role_values(config)
+    return "both" in roles or role in roles
+
+
+def _model_sort_key(config: dict[str, Any], role: str) -> tuple[int, int, float]:
+    metrics = config.get("performance_metrics") or {}
+    if not isinstance(metrics, dict):
+        metrics = {}
+    role_metric = metrics.get("speed" if role == "quick_analysis" else "quality", 0)
+    try:
+        role_score = float(role_metric or 0)
+    except (TypeError, ValueError):
+        role_score = 0.0
+    return (
+        int(config.get("priority") or 0),
+        int(config.get("capability_level") or 2),
+        role_score,
+    )
+
+
+def _provider_info_for_model(
+    model_name: str, cache: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    if model_name not in cache:
+        cache[model_name] = get_provider_and_url_by_model_sync(model_name)
+    return cache[model_name]
+
+
+def _model_has_configured_key(
+    model_name: str, cache: dict[str, dict[str, Any]]
+) -> bool:
+    provider_info = _provider_info_for_model(model_name, cache)
+    api_key = provider_info.get("api_key")
+    return bool(str(api_key or "").strip())
+
+
+def _dedupe_model_names(names: list[str | None]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for name in names:
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        result.append(name)
+    return result
+
+
+def _configured_model_for_role(
+    *,
+    doc: dict[str, Any] | None,
+    role: str,
+    configured_default: str | None,
+    provider_cache: dict[str, dict[str, Any]],
+) -> str | None:
+    configs = _enabled_llm_configs(doc)
+    role_candidates = sorted(
+        [config for config in configs if _is_role_candidate(config, role)],
+        key=lambda config: _model_sort_key(config, role),
+        reverse=True,
+    )
+    fallback_candidates = sorted(
+        configs,
+        key=lambda config: _model_sort_key(config, role),
+        reverse=True,
+    )
+    candidate_names = _dedupe_model_names(
+        [configured_default]
+        + [str(config["model_name"]) for config in role_candidates]
+        + [str(config["model_name"]) for config in fallback_candidates]
+    )
+    for model_name in candidate_names:
+        if _model_has_configured_key(model_name, provider_cache):
+            return model_name
+    return None
+
+
+def _resolve_analysis_models(payload: dict[str, Any]) -> tuple[str | None, str | None]:
+    explicit_quick_model = _clean_model_name(payload.get("quick_analysis_model"))
+    explicit_deep_model = _clean_model_name(payload.get("deep_analysis_model"))
+    if explicit_quick_model and explicit_deep_model:
+        return explicit_quick_model, explicit_deep_model
+
+    doc = _load_active_system_config_doc()
+    settings = doc.get("system_settings") if doc else {}
+    if not isinstance(settings, dict):
+        settings = {}
+    default_model = _clean_model_name(doc.get("default_llm")) if doc else None
+
+    provider_cache: dict[str, dict[str, Any]] = {}
+    quick_model = explicit_quick_model or _configured_model_for_role(
+        doc=doc,
+        role="quick_analysis",
+        configured_default=_clean_model_name(settings.get("quick_analysis_model"))
+        or default_model,
+        provider_cache=provider_cache,
+    )
+    deep_model = explicit_deep_model or _configured_model_for_role(
+        doc=doc,
+        role="deep_analysis",
+        configured_default=_clean_model_name(settings.get("deep_analysis_model"))
+        or default_model,
+        provider_cache=provider_cache,
+    )
+    return quick_model, deep_model
+
+
 def _normalize_analysts(raw: Any) -> list[str]:
     if not raw:
         return ["market", "fundamentals"]
@@ -62,6 +211,7 @@ def _normalize_depth(raw: Any) -> str:
 
 
 def _analysis_parameters(payload: dict[str, Any]) -> AnalysisParameters:
+    quick_model, deep_model = _resolve_analysis_models(payload)
     return AnalysisParameters.model_validate(
         {
             "market_type": payload.get("market_type") or "A股",
@@ -74,8 +224,8 @@ def _analysis_parameters(payload: dict[str, Any]) -> AnalysisParameters:
             "include_sentiment": bool(payload.get("include_sentiment", True)),
             "include_risk": bool(payload.get("include_risk", True)),
             "language": payload.get("language") or "zh-CN",
-            "quick_analysis_model": payload.get("quick_analysis_model") or "qwen-turbo",
-            "deep_analysis_model": payload.get("deep_analysis_model") or "qwen-max",
+            "quick_analysis_model": quick_model,
+            "deep_analysis_model": deep_model,
         }
     )
 
@@ -87,6 +237,7 @@ def _missing_model_keys(parameters: AnalysisParameters) -> list[str]:
         ("深度决策模型", parameters.deep_analysis_model),
     ):
         if not model_name:
+            missing.append(f"{role_name} 未选择可用模型")
             continue
         provider_info = get_provider_and_url_by_model_sync(model_name)
         if not provider_info.get("api_key"):
