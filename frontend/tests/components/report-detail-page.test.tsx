@@ -113,4 +113,28 @@ describe("ReportDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "应用到交易" }))
     expect(push).toHaveBeenCalledWith("/paper?code=600519&side=buy&quantity=100&analysis_id=report-1")
   })
+
+  it("loads reports by the Agent task_id link target", async () => {
+    vi.mocked(fetchReportDetail).mockResolvedValue({
+      id: "task-600519",
+      stock_symbol: "600519",
+      stock_name: "贵州茅台",
+      status: "completed",
+      recommendation: "谨慎关注",
+      risk_level: "中等",
+      confidence_score: 0.66,
+      summary: "Agent 读取到的真实报告摘要",
+      created_at: "2026-06-11T10:00:00+08:00",
+      reports: {
+        market_report: "市场分析内容"
+      }
+    })
+
+    renderWithQueryClient(<ReportDetailPage id="task-600519" />)
+
+    await waitFor(() => expect(fetchReportDetail).toHaveBeenCalledWith("task-600519"))
+    expect(await screen.findByText("Agent 读取到的真实报告摘要")).toBeInTheDocument()
+    expect(screen.getByText("谨慎关注")).toBeInTheDocument()
+    expect(screen.getByText("中等")).toBeInTheDocument()
+  })
 })

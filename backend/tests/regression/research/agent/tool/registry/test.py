@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
+from app.services.research.agent import stock as stock_module
 from app.services.research.agent.context import ResearchPrincipal, ToolExecutionContext
 from app.services.research.agent.registry import ResearchToolRegistry
-from app.services.research.agent.tools import analysis as analysis_tools_module
 
 
 def _principal(is_admin: bool = False) -> ResearchPrincipal:
@@ -26,6 +26,7 @@ def test_default_registry_filters_tools_for_normal_user():
     assert {
         "market_data_lookup",
         "screening_run",
+        "stock_analysis",
         "single_stock_analysis",
         "batch_stock_analysis",
         "report_lookup",
@@ -74,6 +75,7 @@ def test_default_registry_can_hide_disabled_placeholders_from_model_tools():
 
     assert "run_swarm" in names
     assert "market_data_lookup" in names
+    assert "stock_analysis" in names
     assert "single_stock_analysis" in names
     assert "background_run" not in names
     assert all(tool.enabled for tool in tools)
@@ -125,20 +127,29 @@ async def test_tool_run_accepts_authorized_principal(monkeypatch):
         async def enqueue_task(self, **_kwargs):
             return "task-600519"
 
-    monkeypatch.setattr(analysis_tools_module, "get_simple_analysis_service", lambda: FakeService())
-    monkeypatch.setattr(analysis_tools_module, "get_queue_service", lambda: FakeQueue())
     monkeypatch.setattr(
-        analysis_tools_module,
+        stock_module, "get_simple_analysis_service", lambda: FakeService()
+    )
+    monkeypatch.setattr(stock_module, "get_queue_service", lambda: FakeQueue())
+    monkeypatch.setattr(
+        stock_module,
         "get_provider_and_url_by_model_sync",
-        lambda _model: {"provider": "qwen", "backend_url": "https://example.test/v1", "api_key": "key"},
+        lambda _model: {
+            "provider": "qwen",
+            "backend_url": "https://example.test/v1",
+            "api_key": "key",
+        },
     )
     registry = ResearchToolRegistry.default()
-    tool = registry.get("single_stock_analysis")
+    tool = registry.get("stock_analysis")
     context = ToolExecutionContext(principal=_principal(), session_id="session-1")
 
-    result = await tool.run(context, {"symbol": "600519", "wait_for_completion": False})
+    result = await tool.run(
+        context, {"mode": "single", "symbol": "600519", "wait_for_completion": False}
+    )
 
-    assert result["tool"] == "single_stock_analysis"
+    assert result["tool"] == "stock_analysis"
+    assert result["mode"] == "single"
     assert result["accepted"] is True
     assert result["status"] == "queued"
     assert result["task_id"] == "task-600519"
@@ -162,7 +173,9 @@ async def test_not_yet_migrated_tool_returns_explicit_disabled_state():
 async def test_admin_unsafe_tool_is_registered_but_disabled():
     registry = ResearchToolRegistry.default()
     tool = registry.get("bash")
-    context = ToolExecutionContext(principal=_principal(is_admin=True), session_id="session-1")
+    context = ToolExecutionContext(
+        principal=_principal(is_admin=True), session_id="session-1"
+    )
 
     result = await tool.run(context, {"cmd": "pwd"})
 

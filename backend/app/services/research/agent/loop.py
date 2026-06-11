@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .context import ResearchPrincipal, ToolExecutionContext
+from .direct import DirectToolMixin
 from .events import ResearchEventService
 from .registry import ResearchTool, ResearchToolRegistry
 from .sessions import ResearchSessionService
@@ -50,7 +51,8 @@ def build_research_prompt(
     *, principal: ResearchPrincipal, tools: list[ResearchTool]
 ) -> str:
     tool_lines = "\n".join(
-        f"- {tool.name}: {tool.description}" for tool in sorted(tools, key=lambda t: t.name)
+        f"- {tool.name}: {tool.description}"
+        for tool in sorted(tools, key=lambda t: t.name)
     )
     return (
         "You are the current-project research workspace agent.\n"
@@ -70,6 +72,9 @@ def build_research_prompt(
         "trading_orders, trading_history, or trading_quote unless the selected connector "
         "status is connected. If the connector is config_required or missing OAuth, explain "
         "the setup gap instead of calling more trading read tools.\n"
+        "stock_analysis submits a single-stock analysis through the Agent workflow wrapper; "
+        "phase one preserves the existing single-stock LangGraph DAG as a baseline and "
+        "calls it through the current queue adapter without modifying DAG internals. "
         "single_stock_analysis submits the existing single-stock LangGraph DAG to the "
         "analysis queue and waits for the report by default. If it returns "
         "wait_timed_out or the user asks for an existing task, use stock_analysis_status "
@@ -94,7 +99,17 @@ def _extract_symbols_from_text(text: str) -> list[str]:
         r"\b(?:SH|SZ|BJ)?\d{6}(?:\.(?:SH|SZ|BJ))?\b|\b[A-Z]{1,8}(?:[-/](?:USD|USDT))?\b",
         source.upper(),
     )
-    ignored = {"CREATE", "STYLE", "BACKTEST", "FROM", "SHOW", "USE", "THEN", "AND", "FOR"}
+    ignored = {
+        "CREATE",
+        "STYLE",
+        "BACKTEST",
+        "FROM",
+        "SHOW",
+        "USE",
+        "THEN",
+        "AND",
+        "FOR",
+    }
     symbols: list[str] = []
     for token in tokens:
         if token in ignored:
@@ -122,12 +137,14 @@ def _infer_empty_tool_arguments(
         inferred["start_date"] = dates[0]
     if len(dates) >= 2:
         inferred["end_date"] = dates[1]
-    if re.search(r"risk[-\s]?parity|inverse[-\s]?vol", user_message, flags=re.IGNORECASE):
+    if re.search(
+        r"risk[-\s]?parity|inverse[-\s]?vol", user_message, flags=re.IGNORECASE
+    ):
         inferred["strategy"] = "risk_parity"
     return {**tool_call, "arguments": inferred} if inferred else tool_call
 
 
-class ResearchAgentLoop:
+class ResearchAgentLoop(DirectToolMixin):
     def __init__(
         self,
         *,
@@ -212,6 +229,14 @@ class ResearchAgentLoop:
                 "attempt_id": context.request_id,
             },
         )
+        if tool_name == "stock_analysis":
+            await self._append_stock_stage_event(
+                context=context,
+                stage="validate_input",
+                status="running",
+                progress=5,
+                message="正在校验单股分析参数。",
+            )
         try:
             result = await tool.run(context, arguments)
         except Exception as exc:
@@ -265,6 +290,8 @@ class ResearchAgentLoop:
             event_type="tool_completed",
             payload=completed_payload,
         )
+        if tool_name == "stock_analysis":
+            await self._append_stock_stage_from_result(context=context, result=result)
         return result
 
     async def _force_final_answer(
@@ -456,7 +483,10 @@ class ResearchAgentLoop:
                                 session_id=session_id,
                                 user_id=principal.user_id,
                                 event_type="task_failed",
-                                payload={"status": "cancelled", "attempt_id": attempt_id},
+                                payload={
+                                    "status": "cancelled",
+                                    "attempt_id": attempt_id,
+                                },
                             )
                             raise ResearchAgentCancelled("research attempt cancelled")
                         had_tool_call = True
@@ -503,11 +533,15 @@ class ResearchAgentLoop:
                             tool_call=tool_call, context=context
                         )
                         artifact_id = tool_result.get("artifact_id")
-                        if not artifact_id and isinstance(tool_result.get("result"), dict):
+                        if not artifact_id and isinstance(
+                            tool_result.get("result"), dict
+                        ):
                             artifact_id = tool_result["result"].get("artifact_id")
                         if artifact_id and str(artifact_id) not in linked_artifact_ids:
                             linked_artifact_ids.append(str(artifact_id))
-                        task_id = tool_result.get("task_id") or tool_result.get("job_id")
+                        task_id = tool_result.get("task_id") or tool_result.get(
+                            "job_id"
+                        )
                         if task_id and str(task_id) not in linked_task_ids:
                             linked_task_ids.append(str(task_id))
                     if chunk.finish_reason:
@@ -649,7 +683,11 @@ def compact_messages_for_context(
         if index >= preserved_start:
             continue
         content = message.get("content")
-        if message.get("role") == "tool" and isinstance(content, str) and len(content) > 120:
+        if (
+            message.get("role") == "tool"
+            and isinstance(content, str)
+            and len(content) > 120
+        ):
             message["content"] = "[cleared old tool result during context compaction]"
             cleared_tool_results += 1
             continue

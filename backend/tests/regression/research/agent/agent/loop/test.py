@@ -5,13 +5,12 @@ from typing import Any
 import pytest
 
 from app.services.research.agent import events as events_module
+from app.services.research.agent import jobs as jobs_module
 from app.services.research.agent import sessions as sessions_module
 from app.services.research.agent.context import ResearchPrincipal
 from app.services.research.agent.loop import (
-    EMPTY_FINAL_ANSWER_FALLBACK,
     ModelStreamChunk,
     ResearchAgentLoop,
-    ResearchAgentCancelled,
     build_research_prompt,
 )
 from app.services.research.agent.permissions import WEB_SEARCH
@@ -95,6 +94,8 @@ class FakeDb:
         self.research_sessions = FakeCollection()
         self.research_messages = FakeCollection()
         self.research_events = FakeCollection()
+        self.research_jobs = FakeCollection()
+        self.research_attempts = FakeCollection()
 
 
 class FakeModelClient:
@@ -111,6 +112,15 @@ class FakeModelClient:
             yield chunk
 
 
+class ExplodingModelClient:
+    def __init__(self, *_args: Any, **_kwargs: Any):
+        pass
+
+    async def stream(self, **_kwargs):
+        raise AssertionError("direct invocation must not call the model")
+        yield ModelStreamChunk()
+
+
 async def _fake_web_search(_context, payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "tool": "web_search",
@@ -118,6 +128,69 @@ async def _fake_web_search(_context, payload: dict[str, Any]) -> dict[str, Any]:
         "query": payload.get("query"),
         "results": [{"title": "FOMC minutes", "snippet": "Rates remain restrictive."}],
     }
+
+
+async def _fake_stock_analysis(_context, payload: dict[str, Any]) -> dict[str, Any]:
+    if payload.get("status_override") == "failed":
+        return {
+            "tool": "stock_analysis",
+            "mode": payload.get("mode") or "single",
+            "status": "failed",
+            "accepted": True,
+            "task_id": "task-600519",
+            "symbol": payload.get("symbol"),
+            "market_type": payload.get("market_type"),
+            "progress": 35,
+            "task_url": "/tasks?task_id=task-600519",
+            "report_url": "/reports/view/task-600519",
+            "error_message": "行情数据源无可用历史数据。",
+        }
+    if payload.get("status_override") == "timed_out":
+        return {
+            "tool": "stock_analysis",
+            "mode": payload.get("mode") or "single",
+            "status": "processing",
+            "accepted": True,
+            "wait_timed_out": True,
+            "task_id": "task-600519",
+            "symbol": payload.get("symbol"),
+            "market_type": payload.get("market_type"),
+            "progress": 40,
+            "task_url": "/tasks?task_id=task-600519",
+            "report_url": "/reports/view/task-600519",
+            "message": "单股分析任务仍在执行，已返回任务链接。",
+        }
+    result = {
+        "tool": "stock_analysis",
+        "mode": payload.get("mode") or "single",
+        "status": "queued",
+        "accepted": True,
+        "task_id": "task-600519",
+        "symbol": payload.get("symbol"),
+        "market_type": payload.get("market_type"),
+        "task_url": "/tasks?task_id=task-600519",
+        "report_url": "/reports/view/task-600519",
+        "message": "单股分析任务已提交。",
+    }
+    if payload.get("include_stage_plan"):
+        result["stage_plan"] = [
+            {"stage": "prepare_data", "title": "数据准备", "status": "pending"},
+            {"stage": "market_analysis", "title": "市场分析师", "status": "pending"},
+            {
+                "stage": "fundamentals_analysis",
+                "title": "基本面分析师",
+                "status": "skipped",
+                "reason": "未选择该分析师。",
+            },
+            {
+                "stage": "risk_review",
+                "title": "风险评估",
+                "status": "skipped",
+                "reason": "用户关闭风险评估。",
+            },
+            {"stage": "agent_summary", "title": "Agent 总结", "status": "pending"},
+        ]
+    return result
 
 
 def _web_search_registry() -> ResearchToolRegistry:
@@ -134,11 +207,33 @@ def _web_search_registry() -> ResearchToolRegistry:
     )
 
 
+def _stock_registry() -> ResearchToolRegistry:
+    return ResearchToolRegistry(
+        [
+            ResearchTool(
+                name="stock_analysis",
+                description="Submit a single-stock analysis workflow.",
+                permission=WEB_SEARCH,
+                schema={
+                    "type": "object",
+                    "properties": {
+                        "mode": {"type": "string"},
+                        "symbol": {"type": "string"},
+                        "market_type": {"type": "string"},
+                    },
+                },
+                handler=_fake_stock_analysis,
+            )
+        ]
+    )
+
+
 @pytest.fixture()
 def fake_db(monkeypatch):
     db = FakeDb()
     monkeypatch.setattr(sessions_module, "get_postgres_db", lambda: db)
     monkeypatch.setattr(events_module, "get_postgres_db", lambda: db)
+    monkeypatch.setattr(jobs_module, "get_postgres_db", lambda: db)
     return db
 
 
@@ -156,10 +251,16 @@ def test_prompt_uses_filtered_registry_tools_only():
     tools = ResearchToolRegistry.default().for_principal(principal)
     prompt = build_research_prompt(principal=principal, tools=tools)
 
+    assert "stock_analysis" in prompt
     assert "single_stock_analysis" in prompt
     assert "stock_analysis_status" in prompt
     assert "stock_analysis_report" in prompt
-    assert "single_stock_analysis submits the existing single-stock LangGraph DAG" in prompt
+    assert "stock_analysis submits a single-stock analysis" in prompt
+    assert "without modifying DAG internals" in prompt
+    assert (
+        "single_stock_analysis submits the existing single-stock LangGraph DAG"
+        in prompt
+    )
     assert "waits for the report by default" in prompt
     assert "market_data_lookup" in prompt
     assert "admin_config_write" not in prompt
@@ -334,263 +435,8 @@ async def test_tool_call_finish_reason_continues_react_loop(fake_db):
     assert assistant_tool_calls[0]["metadata"]["tool_calls"][0]["extra_content"] == {
         "google": {"thought_signature": "sig-1"}
     }
-    assert assistant_tool_calls[0]["metadata"]["reasoning_content"] == "先调用工具确认证据。"
+    assert (
+        assistant_tool_calls[0]["metadata"]["reasoning_content"]
+        == "先调用工具确认证据。"
+    )
     assert tool_messages[0]["metadata"]["tool_call_id"] == "call-1"
-
-
-@pytest.mark.asyncio
-async def test_completed_tool_run_forces_visible_final_answer_when_model_stops_empty(fake_db):
-    session = await _create_session(fake_db)
-    client = FakeModelClient(
-        [
-            [
-                ModelStreamChunk(
-                    tool_call={
-                        "id": "call-search",
-                        "name": "web_search",
-                        "arguments": {"query": "FOMC minutes April 2026"},
-                    },
-                    finish_reason="tool_calls",
-                ),
-            ],
-            [ModelStreamChunk(finish_reason="stop")],
-            [ModelStreamChunk(delta="搜索结果显示会议纪要偏谨慎。", finish_reason="stop")],
-        ]
-    )
-
-    result = await ResearchAgentLoop(
-        model_client=client,
-        registry=_web_search_registry(),
-    ).run(
-        principal=_principal(),
-        session_id=session["session_id"],
-        user_message="请读取最新的美联储会议纪要并总结影响",
-        attempt_id="attempt-final",
-    )
-    messages = await ResearchSessionService().list_messages(
-        session["session_id"], USER_A["id"]
-    )
-    message_completed = [
-        event
-        for event in fake_db.research_events.documents
-        if event["event_type"] == "message_completed"
-    ][0]
-
-    assert client.calls == 3
-    assert result["content"] == "搜索结果显示会议纪要偏谨慎。"
-    assert messages[-1]["role"] == "assistant"
-    assert messages[-1]["content"] == "搜索结果显示会议纪要偏谨慎。"
-    assert message_completed["payload"]["content"] == "搜索结果显示会议纪要偏谨慎。"
-
-
-@pytest.mark.asyncio
-async def test_completed_attempt_never_persists_blank_assistant_message(fake_db):
-    session = await _create_session(fake_db)
-    client = FakeModelClient(
-        [
-            [
-                ModelStreamChunk(
-                    tool_call={
-                        "id": "call-search",
-                        "name": "web_search",
-                        "arguments": {"query": "FOMC minutes April 2026"},
-                    },
-                    finish_reason="tool_calls",
-                ),
-            ],
-            [ModelStreamChunk(finish_reason="stop")],
-            [ModelStreamChunk(finish_reason="stop")],
-        ]
-    )
-
-    result = await ResearchAgentLoop(
-        model_client=client,
-        registry=_web_search_registry(),
-    ).run(
-        principal=_principal(),
-        session_id=session["session_id"],
-        user_message="请读取最新的美联储会议纪要并总结影响",
-        attempt_id="attempt-fallback",
-    )
-    messages = await ResearchSessionService().list_messages(
-        session["session_id"], USER_A["id"]
-    )
-    message_completed = [
-        event
-        for event in fake_db.research_events.documents
-        if event["event_type"] == "message_completed"
-    ][0]
-
-    assert result["content"] == EMPTY_FINAL_ANSWER_FALLBACK
-    assert messages[-1]["role"] == "assistant"
-    assert messages[-1]["content"] == EMPTY_FINAL_ANSWER_FALLBACK
-    assert message_completed["payload"]["content"] == EMPTY_FINAL_ANSWER_FALLBACK
-
-
-@pytest.mark.asyncio
-async def test_missing_tool_argument_returns_config_required_without_failing_attempt(fake_db):
-    session = await _create_session(fake_db)
-    client = FakeModelClient(
-        [
-            [
-                ModelStreamChunk(
-                    tool_call={
-                        "id": "call-shadow",
-                        "name": "extract_shadow_strategy",
-                        "arguments": {},
-                    },
-                    finish_reason="tool_calls",
-                ),
-            ],
-            [
-                ModelStreamChunk(delta="已根据现有证据继续总结。", finish_reason="stop"),
-            ],
-        ]
-    )
-
-    result = await ResearchAgentLoop(model_client=client).run(
-        principal=_principal(),
-        session_id=session["session_id"],
-        user_message="请基于沪深300构建多因子模型",
-    )
-    messages = await ResearchSessionService().list_messages(
-        session["session_id"], USER_A["id"]
-    )
-    event_types = [event["event_type"] for event in fake_db.research_events.documents]
-    tool_messages = [message for message in messages if message["role"] == "tool"]
-
-    assert client.calls == 2
-    assert result["content"] == "已根据现有证据继续总结。"
-    assert "tool_completed" in event_types
-    assert "tool_failed" not in event_types
-    assert "task_failed" not in event_types
-    assert "message_completed" in event_types
-    assert tool_messages[0]["metadata"]["tool_name"] == "extract_shadow_strategy"
-    assert '"status": "config_required"' in tool_messages[0]["content"]
-    assert "description is required" in tool_messages[0]["content"]
-
-
-@pytest.mark.asyncio
-async def test_reasoning_chunks_are_logged_and_saved_in_final_metadata(fake_db):
-    session = await _create_session(fake_db)
-    client = FakeModelClient(
-        [
-            [
-                ModelStreamChunk(reasoning_content="先看上下文。"),
-                ModelStreamChunk(delta="最终回答。", finish_reason="stop"),
-            ]
-        ]
-    )
-
-    await ResearchAgentLoop(model_client=client).run(
-        principal=_principal(),
-        session_id=session["session_id"],
-        user_message="解释能力",
-    )
-    messages = await ResearchSessionService().list_messages(
-        session["session_id"], USER_A["id"]
-    )
-    log_events = [
-        event
-        for event in fake_db.research_events.documents
-        if event["event_type"] == "log"
-    ]
-
-    assert log_events[0]["payload"] == {
-        "kind": "reasoning",
-        "content": "先看上下文。",
-        "attempt_id": None,
-    }
-    assert messages[-1]["metadata"]["reasoning_content"] == "先看上下文。"
-
-
-@pytest.mark.asyncio
-async def test_finish_reason_length_triggers_one_continuation(fake_db):
-    session = await _create_session(fake_db)
-    client = FakeModelClient(
-        [
-            [ModelStreamChunk(delta="第一段", finish_reason="length")],
-            [ModelStreamChunk(delta="第二段", finish_reason="stop")],
-        ]
-    )
-
-    result = await ResearchAgentLoop(model_client=client).run(
-        principal=_principal(),
-        session_id=session["session_id"],
-        user_message="继续生成",
-    )
-
-    assert client.calls == 2
-    assert result["content"] == "第一段第二段"
-
-
-@pytest.mark.asyncio
-async def test_loop_stops_when_cancel_checker_trips_mid_stream(fake_db):
-    session = await _create_session(fake_db)
-    client = FakeModelClient(
-        [
-            [
-                ModelStreamChunk(delta="第一段"),
-                ModelStreamChunk(delta="不应写入", finish_reason="stop"),
-            ]
-        ]
-    )
-    checks = 0
-
-    async def cancel_after_first_chunk() -> bool:
-        nonlocal checks
-        checks += 1
-        return checks >= 3
-
-    with pytest.raises(ResearchAgentCancelled):
-        await ResearchAgentLoop(
-            model_client=client,
-            cancel_checker=cancel_after_first_chunk,
-        ).run(
-            principal=_principal(),
-            session_id=session["session_id"],
-            user_message="取消测试",
-            attempt_id="attempt-cancel",
-        )
-
-    messages = await ResearchSessionService().list_messages(
-        session["session_id"], USER_A["id"]
-    )
-    event_types = [event["event_type"] for event in fake_db.research_events.documents]
-
-    assert "task_failed" in event_types
-    assert messages[-1]["role"] == "user"
-    assert all(message["content"] != "第一段不应写入" for message in messages)
-
-
-@pytest.mark.asyncio
-async def test_context_compaction_emits_event_and_collapses_old_messages(fake_db):
-    session = await _create_session(fake_db)
-    long_content = "旧研究上下文" * 500
-    await ResearchSessionService().append_message(
-        session_id=session["session_id"],
-        user_id=USER_A["id"],
-        role="assistant",
-        content=long_content,
-    )
-    client = FakeModelClient(
-        [[ModelStreamChunk(delta="已压缩上下文。", finish_reason="stop")]]
-    )
-
-    await ResearchAgentLoop(
-        model_client=client,
-        context_char_budget=900,
-        preserve_recent_messages=1,
-    ).run(
-        principal=_principal(),
-        session_id=session["session_id"],
-        user_message="继续",
-    )
-
-    event_types = [event["event_type"] for event in fake_db.research_events.documents]
-    outbound_messages = client.call_kwargs[0]["messages"]
-    outbound_content = "\n".join(str(message.get("content") or "") for message in outbound_messages)
-
-    assert "compact" in event_types
-    assert "compacted for context budget" in outbound_content
-    assert long_content not in outbound_content

@@ -226,6 +226,12 @@ describe("researchAgentApi", () => {
     source.emit("swarm.started", { run_id: "swarm-1", preset: "investment_committee" }, "3")
     source.emit("swarm.event", { run_id: "swarm-1", event: { type: "task_started", task_id: "task-a" } }, "4")
     source.emit("swarm.event", { run_id: "swarm-1", event: { type: "run_completed" } }, "5")
+    source.emit("stock_analysis.stage", {
+      stage: "analysis_task",
+      title: "单股分析任务",
+      tool_name: "stock_analysis",
+      task_id: "task-600519"
+    }, "6")
     stop()
 
     expect(onEvent).toHaveBeenCalledWith({
@@ -248,6 +254,16 @@ describe("researchAgentApi", () => {
       data: expect.objectContaining({ tool_name: "run_swarm", preview: expect.stringContaining("run_completed") }),
       eventId: "5"
     }))
+    expect(onEvent).toHaveBeenCalledWith({
+      event: "stock_analysis.stage",
+      data: {
+        stage: "analysis_task",
+        title: "单股分析任务",
+        tool_name: "stock_analysis",
+        task_id: "task-600519"
+      },
+      eventId: "6"
+    })
     expect(source.close).toHaveBeenCalled()
   })
 })

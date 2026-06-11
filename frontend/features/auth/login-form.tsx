@@ -26,6 +26,7 @@ const loginSchema = z.object({
 })
 
 type LoginValues = z.infer<typeof loginSchema>
+const showDefaultCredentials = process.env.NODE_ENV !== "production"
 
 export function LoginForm() {
   const router = useRouter()
@@ -107,6 +108,11 @@ export function LoginForm() {
         <AsyncButton type="submit" className="w-full" loading={loginLoading} loadingText="登录中...">
           登录
         </AsyncButton>
+        {showDefaultCredentials ? (
+          <p className="text-center text-xs text-muted-foreground">
+            开发默认账号：admin / admin123
+          </p>
+        ) : null}
       </form>
     </Form>
   )

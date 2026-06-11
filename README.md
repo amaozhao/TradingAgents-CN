@@ -145,14 +145,13 @@
 本地后端开发启动：
 
 ```bash
-./backend/scripts/dev/start_backend.sh
+./backend/scripts/dev/start/backend.sh
 ```
 
 本地前端开发启动：
 
 ```bash
-cd frontend
-pnpm dev --hostname 0.0.0.0 --port 3000
+./frontend/scripts/dev/start_next.sh
 ```
 
 Docker 一体化启动：

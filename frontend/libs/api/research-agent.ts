@@ -441,6 +441,7 @@ export const researchAgentApi = {
       "tool_result",
       "tool_completed",
       "tool_failed",
+      "stock_analysis.stage",
       "job_queued",
       "job_running",
       "job_completed",

@@ -60,9 +60,10 @@ export function TaskCenterPage() {
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const initialTab = normalizeTab(searchParams.get("tab"))
+  const initialTaskId = searchParams.get("task_id") || ""
   const [activeTab, setActiveTab] = useState<TaskTab>(initialTab)
   const [filters, setFilters] = useState({ startDate: "", endDate: "", market: "all", status: "all", stock: "" })
-  const [keyword, setKeyword] = useState("")
+  const [keyword, setKeyword] = useState(initialTaskId)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [resultOpen, setResultOpen] = useState(false)
   const [currentResult, setCurrentResult] = useState<unknown>(null)

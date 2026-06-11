@@ -81,6 +81,21 @@ def build_capability_gap_answer(user_message: str, decision: IntentDecision) -> 
     )
 
 
+def direct_tool_call_from_metadata(
+    metadata: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if not isinstance(metadata, dict):
+        return None
+    tool_name = str(metadata.get("tool_name") or "").strip()
+    tool_arguments = metadata.get("tool_arguments")
+    if tool_name != "stock_analysis" or not isinstance(tool_arguments, dict):
+        return None
+    mode = str(tool_arguments.get("mode") or "single").strip().lower()
+    if mode != "single":
+        return None
+    return {"tool_name": tool_name, "tool_arguments": dict(tool_arguments)}
+
+
 def _exception_message(exc: Exception) -> str:
     message = str(exc).strip()
     if message:
@@ -103,7 +118,9 @@ class ResearchAgentRuntime:
     ) -> None:
         self._registry = registry
         self.event_service = event_service or ResearchEventService()
-        self.job_service = job_service or ResearchJobService(event_service=self.event_service)
+        self.job_service = job_service or ResearchJobService(
+            event_service=self.event_service
+        )
         self.attempt_service = attempt_service or ResearchAttemptService(
             event_service=self.event_service
         )
@@ -121,11 +138,13 @@ class ResearchAgentRuntime:
         principal: ResearchPrincipal,
         session_id: str,
         user_message: str,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         queued = await self.enqueue_user_prompt(
             principal=principal,
             session_id=session_id,
             user_message=user_message,
+            metadata=metadata,
         )
         return await self.run_queued_user_prompt(
             principal=principal,
@@ -133,6 +152,7 @@ class ResearchAgentRuntime:
             user_message=user_message,
             job_id=queued["job_id"],
             attempt_id=queued["attempt_id"],
+            metadata=metadata,
         )
 
     async def enqueue_user_prompt(
@@ -141,6 +161,7 @@ class ResearchAgentRuntime:
         principal: ResearchPrincipal,
         session_id: str,
         user_message: str,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         attempt = await self.attempt_service.create(
             principal=principal,
@@ -155,6 +176,7 @@ class ResearchAgentRuntime:
                 "session_id": session_id,
                 "attempt_id": attempt["attempt_id"],
                 "prompt": user_message,
+                "metadata": dict(metadata or {}),
             },
             session_id=session_id,
             attempt_id=attempt["attempt_id"],
@@ -167,14 +189,22 @@ class ResearchAgentRuntime:
             user_id=principal.user_id,
             role="user",
             content=user_message,
-            metadata={"job_id": job["job_id"], "attempt_id": attempt["attempt_id"]},
+            metadata={
+                **dict(metadata or {}),
+                "job_id": job["job_id"],
+                "attempt_id": attempt["attempt_id"],
+            },
             linked_attempt_id=attempt["attempt_id"],
         )
         if message is None:
             await self.attempt_service.mark_failed(
-                attempt["attempt_id"], principal.user_id, "research session is unavailable"
+                attempt["attempt_id"],
+                principal.user_id,
+                "research session is unavailable",
             )
-            await self.job_service.mark_failed(job["job_id"], "research session is unavailable")
+            await self.job_service.mark_failed(
+                job["job_id"], "research session is unavailable"
+            )
             raise PermissionError("research session is not available to this principal")
         return {
             "status": "queued",
@@ -192,10 +222,16 @@ class ResearchAgentRuntime:
         user_message: str,
         job_id: str,
         attempt_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if attempt_id is None:
             job = await self.job_service.get(job_id, principal.user_id)
             attempt_id = job.get("attempt_id") if job else None
+            if metadata is None and job:
+                payload = job.get("payload")
+                if isinstance(payload, dict):
+                    raw_metadata = payload.get("metadata")
+                    metadata = raw_metadata if isinstance(raw_metadata, dict) else None
 
         if await self.job_service.is_cancelled(job_id):
             if attempt_id:
@@ -207,6 +243,46 @@ class ResearchAgentRuntime:
             await self.attempt_service.mark_started(attempt_id, principal.user_id)
 
         try:
+            direct_call = direct_tool_call_from_metadata(metadata)
+            if direct_call:
+                loop_result = await ResearchAgentLoop(
+                    model_client=OpenAICompatibleModelClient(principal),
+                    registry=self.registry,
+                    event_service=self.event_service,
+                    cancel_checker=lambda: self.job_service.is_cancelled(job_id),
+                ).run_direct_tool(
+                    principal=principal,
+                    session_id=session_id,
+                    user_message=user_message,
+                    tool_name=direct_call["tool_name"],
+                    tool_arguments=direct_call["tool_arguments"],
+                    attempt_id=attempt_id,
+                    persist_user_message=False,
+                )
+                result = {
+                    **loop_result,
+                    "status": "completed",
+                    "job_id": job_id,
+                    "intent": AgentIntent.STOCK_RESEARCH.value,
+                    "reason": "structured_metadata_direct_tool",
+                    "artifact_ids": list(loop_result.get("artifact_ids", [])),
+                }
+                if await self.job_service.is_cancelled(job_id):
+                    if attempt_id:
+                        await self.attempt_service.mark_cancelled(
+                            attempt_id, principal.user_id
+                        )
+                    return {
+                        "status": "cancelled",
+                        "job_id": job_id,
+                        "attempt_id": attempt_id,
+                    }
+                await self.job_service.mark_completed(job_id, result)
+                if attempt_id:
+                    await self.attempt_service.mark_completed(
+                        attempt_id, principal.user_id, result
+                    )
+                return result
             decision = classify_agent_intent(user_message)
             if decision.intent in {AgentIntent.CHAT, AgentIntent.STOCK_RESEARCH}:
                 loop_result = await ResearchAgentLoop(
@@ -252,7 +328,11 @@ class ResearchAgentRuntime:
                     await self.attempt_service.mark_cancelled(
                         attempt_id, principal.user_id
                     )
-                return {"status": "cancelled", "job_id": job_id, "attempt_id": attempt_id}
+                return {
+                    "status": "cancelled",
+                    "job_id": job_id,
+                    "attempt_id": attempt_id,
+                }
             await self.job_service.mark_failed(job_id, error_message)
             if attempt_id:
                 await self.attempt_service.mark_failed(

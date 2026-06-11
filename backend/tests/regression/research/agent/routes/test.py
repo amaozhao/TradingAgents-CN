@@ -4,6 +4,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.routers.research import agent as research_agent_router
+from app.routers.research import extra as research_extra_router
 
 
 USER = {"id": "user-a", "username": "alice", "is_admin": False, "roles": []}
@@ -23,16 +24,16 @@ async def test_capabilities_and_settings_routes_do_not_expose_secrets(monkeypatc
         }
 
     monkeypatch.setattr(
-        research_agent_router,
+        research_extra_router,
         "describe_agent_model_resolution",
         fake_model_resolution,
     )
 
-    capabilities = await research_agent_router.get_research_agent_capabilities(
+    capabilities = await research_extra_router.get_research_agent_capabilities(
         current_user=USER
     )
-    llm = await research_agent_router.get_research_agent_llm_settings(current_user=USER)
-    data_sources = await research_agent_router.get_research_agent_data_source_settings(
+    llm = await research_extra_router.get_research_agent_llm_settings(current_user=USER)
+    data_sources = await research_extra_router.get_research_agent_data_source_settings(
         current_user=USER
     )
 
@@ -45,20 +46,20 @@ async def test_capabilities_and_settings_routes_do_not_expose_secrets(monkeypatc
 @pytest.mark.asyncio
 async def test_settings_mutation_and_shutdown_are_admin_gated_and_disabled():
     with pytest.raises(HTTPException) as llm_exc:
-        await research_agent_router.update_research_agent_llm_settings(
+        await research_extra_router.update_research_agent_llm_settings(
             research_agent_router.ResearchSettingsUpdateRequest(values={"model": "x"}),
             current_user=USER,
         )
-    admin_llm = await research_agent_router.update_research_agent_llm_settings(
+    admin_llm = await research_extra_router.update_research_agent_llm_settings(
         research_agent_router.ResearchSettingsUpdateRequest(values={"model": "x"}),
         current_user=ADMIN,
     )
-    shutdown = await research_agent_router.reject_system_shutdown(current_user=ADMIN)
-    run_shutdown = await research_agent_router.reject_run_shutdown(
+    shutdown = await research_extra_router.reject_system_shutdown(current_user=ADMIN)
+    run_shutdown = await research_extra_router.reject_run_shutdown(
         "run-1", current_user=ADMIN
     )
     with pytest.raises(HTTPException) as run_shutdown_exc:
-        await research_agent_router.reject_run_shutdown("run-1", current_user=USER)
+        await research_extra_router.reject_run_shutdown("run-1", current_user=USER)
 
     assert llm_exc.value.status_code == 403
     assert admin_llm["data"]["accepted"] is False
