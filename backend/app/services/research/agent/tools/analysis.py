@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from typing import Any
 
@@ -161,6 +162,65 @@ def _as_positive_float(raw: Any, default: float, *, maximum: float) -> float:
     return min(value, maximum)
 
 
+def _normalize_requested_market(raw: Any) -> str | None:
+    value = str(raw or "").strip().upper()
+    if not value:
+        return None
+    if raw == "港股" or value in {"HK", "HKEX", "HKG"}:
+        return "港股"
+    if raw == "美股" or value in {"US", "USA", "NASDAQ", "NYSE", "AMEX"}:
+        return "美股"
+    if raw == "A股" or value in {"A", "ASHARE", "A-SHARE", "CN", "CHINA"}:
+        return "A股"
+    return None
+
+
+def _normalize_stock_symbol_for_analysis(
+    raw: Any, market_type: str | None
+) -> tuple[str, str]:
+    symbol = str(raw or "").strip().upper()
+    if not symbol:
+        return "", _normalize_requested_market(market_type) or "A股"
+
+    requested_market = _normalize_requested_market(market_type)
+
+    a_share_prefix_match = re.match(r"^(SH|SZ|BJ|SSE|SZSE|BSE)(\d{6})$", symbol)
+    if a_share_prefix_match:
+        return a_share_prefix_match.group(2), "A股"
+    a_share_suffix_match = re.match(r"^(\d{6})\.(SH|SZ|BJ|SSE|SZSE|BSE)$", symbol)
+    if a_share_suffix_match:
+        return a_share_suffix_match.group(1), "A股"
+    if re.match(r"^\d{6}$", symbol):
+        return symbol, requested_market or "A股"
+
+    hk_prefix_match = re.match(r"^HK(\d{1,5})$", symbol)
+    if hk_prefix_match:
+        return hk_prefix_match.group(1), "港股"
+    hk_suffix_match = re.match(r"^(\d{1,5})\.HK$", symbol)
+    if hk_suffix_match:
+        return hk_suffix_match.group(1), "港股"
+    if re.match(r"^\d{1,5}$", symbol):
+        return symbol, requested_market or "港股"
+
+    us_suffix_match = re.match(r"^([A-Z]{1,5})\.(US|NASDAQ|NYSE|AMEX)$", symbol)
+    if us_suffix_match:
+        return us_suffix_match.group(1), "美股"
+    if re.match(r"^[A-Z]{1,5}$", symbol):
+        return symbol, requested_market or "美股"
+
+    return symbol, requested_market or "A股"
+
+
+def _stock_symbol_format_error(raw_symbol: Any, symbol: str, market_type: str) -> str | None:
+    if market_type == "A股" and not re.match(r"^\d{6}$", symbol):
+        return f"A股代码格式错误：{raw_symbol}。Agent 已支持 600519、600519.SH、SH600519 格式。"
+    if market_type == "港股" and not re.match(r"^\d{1,5}$", symbol):
+        return f"港股代码格式错误：{raw_symbol}。Agent 已支持 700、0700.HK、HK09988 格式。"
+    if market_type == "美股" and not re.match(r"^[A-Z]{1,5}$", symbol):
+        return f"美股代码格式错误：{raw_symbol}。Agent 已支持 AAPL、TSLA、AAPL.US 格式。"
+    return None
+
+
 def _configured_model_for_role(
     *,
     doc: dict[str, Any] | None,
@@ -291,7 +351,12 @@ def _queue_params(request: SingleAnalysisRequest, task_id: str, user_id: str) ->
 async def _single_stock_analysis(
     context: ToolExecutionContext, payload: dict[str, Any]
 ) -> dict[str, Any]:
-    symbol = str(payload.get("symbol") or payload.get("stock_code") or "").strip().upper()
+    raw_symbol = payload.get("symbol") or payload.get("stock_code")
+    symbol, market_type = _normalize_stock_symbol_for_analysis(
+        raw_symbol, payload.get("market_type")
+    )
+    parameter_payload = {**payload, "market_type": market_type}
+    parameters = _analysis_parameters(parameter_payload)
     if not symbol:
         return {
             "tool": "single_stock_analysis",
@@ -301,7 +366,15 @@ async def _single_stock_analysis(
             "reason": "Missing required argument: symbol or stock_code.",
             "instruction": "请提供要分析的股票代码，例如 600519、000001、AAPL 或 00700。",
         }
-    parameters = _analysis_parameters(payload)
+    format_error = _stock_symbol_format_error(raw_symbol, symbol, parameters.market_type)
+    if format_error:
+        return {
+            "tool": "single_stock_analysis",
+            "status": "config_required",
+            "accepted": False,
+            "reason": format_error,
+            "instruction": "请提供可识别的 A 股、港股或美股代码。",
+        }
     missing_keys = _missing_model_keys(parameters)
     if missing_keys:
         return {

@@ -251,6 +251,62 @@ async def test_single_stock_analysis_tool_uses_default_llm_when_quick_deep_are_u
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("raw_symbol", "expected_symbol", "expected_market"),
+    [
+        ("601989.SH", "601989", "A股"),
+        ("SH601989", "601989", "A股"),
+        ("sz000001", "000001", "A股"),
+        ("000001.SZ", "000001", "A股"),
+        ("0700.HK", "0700", "港股"),
+        ("700", "700", "港股"),
+        ("HK09988", "09988", "港股"),
+        ("aapl", "AAPL", "美股"),
+        ("AAPL.US", "AAPL", "美股"),
+    ],
+)
+async def test_single_stock_analysis_tool_normalizes_exchange_symbol(
+    monkeypatch, raw_symbol, expected_symbol, expected_market
+):
+    service = FakeAnalysisService()
+    queue = FakeQueueService()
+    monkeypatch.setattr(
+        analysis_tools_module, "get_simple_analysis_service", lambda: service, raising=False
+    )
+    monkeypatch.setattr(analysis_tools_module, "get_queue_service", lambda: queue, raising=False)
+    monkeypatch.setattr(
+        analysis_tools_module,
+        "get_provider_and_url_by_model_sync",
+        lambda model: {"provider": "qwen", "backend_url": "https://example.test/v1", "api_key": "key"},
+        raising=False,
+    )
+
+    tool = ResearchToolRegistry.default().get("single_stock_analysis")
+    result = await tool.run(
+        _context(),
+        {
+            "symbol": raw_symbol,
+            "quick_analysis_model": "qwen-turbo",
+            "deep_analysis_model": "qwen-max",
+            "wait_for_completion": False,
+        },
+    )
+
+    assert result["accepted"] is True
+    assert result["symbol"] == expected_symbol
+    assert result["market_type"] == expected_market
+    [(user_id, request)] = service.created
+    assert user_id == "user-a"
+    assert request.get_symbol() == expected_symbol
+    assert request.parameters.market_type == expected_market
+    [queued] = queue.enqueued
+    assert queued["symbol"] == expected_symbol
+    assert queued["params"]["symbol"] == expected_symbol
+    assert queued["params"]["stock_code"] == expected_symbol
+    assert queued["params"]["market_type"] == expected_market
+
+
+@pytest.mark.asyncio
 async def test_single_stock_analysis_tool_waits_for_completed_report_by_default(
     monkeypatch,
 ):
