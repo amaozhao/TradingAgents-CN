@@ -876,6 +876,28 @@ function goalStatusPreview(result: Record<string, unknown>, maxLength: number | 
   return result.status === "ok" ? "目标状态已更新" : compactPreviewText(result.error || result, maxLength)
 }
 
+function configRequiredPreview(toolName: string, result: Record<string, unknown>, maxLength: number | null = 220) {
+  const instruction = compactPreviewText(result.instruction, maxLength)
+  if (instruction) return `需要补充数据：${instruction}`
+
+  const knownToolMessage = (() => {
+    if (toolName === "analyze_trade_journal") {
+      return "请先上传交易日志文件、粘贴交易日志文本，或提供当前用户可访问的 artifact_id/file_id。缺少这些用户侧输入时不会生成模拟交易日志。"
+    }
+    if (toolName === "run_shadow_backtest") {
+      return "请先上传或粘贴交易日志，或明确提供 returns / trades[].pnl；缺少真实收益序列时不会生成模拟回测数据。"
+    }
+    if (toolName.startsWith("trading_")) {
+      return "请先连接交易器并完成 OAuth 授权；连接器未就绪时不会读取账户、订单或持仓数据。"
+    }
+    return ""
+  })()
+  if (knownToolMessage) return `需要补充数据：${knownToolMessage}`
+
+  const reason = compactPreviewText(result.reason || result.message || result.error, maxLength)
+  return `需要补充数据：${reason || "缺少该工具必需的用户数据或配置，请先补充后再运行。"}`
+}
+
 function readableToolPreview(tool: ToolState, maxLength: number | null = 220) {
   if (!tool.preview) return ""
   const parsed = parseJsonPreview(tool.preview)
@@ -892,6 +914,7 @@ function readableToolPreview(tool: ToolState, maxLength: number | null = 220) {
   if (tool.name === "bash") return bashPreview(parsed, maxLength)
   if (tool.name === "add_goal_evidence") return evidencePreview(parsed, maxLength)
   if (tool.name === "update_research_goal_status") return goalStatusPreview(parsed, maxLength)
+  if (parsed.status === "config_required") return configRequiredPreview(tool.name, parsed, maxLength)
   if (parsed.status === "degraded") {
     const history = parsed.history && typeof parsed.history === "object"
       ? parsed.history as Record<string, unknown>

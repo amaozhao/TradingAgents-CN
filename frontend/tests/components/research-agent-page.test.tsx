@@ -467,6 +467,40 @@ describe("ResearchAgentPage", () => {
     expect(await screen.findByText(/数据受限：A 股行情数据未取得可用价格序列/)).toBeInTheDocument()
   })
 
+  it("humanizes config-required journal steps from older persisted events", async () => {
+    vi.mocked(researchAgentApi.listEvents).mockResolvedValue({
+      success: true,
+      data: [
+        {
+          event_id: 1,
+          event_type: "tool_completed",
+          payload: {
+            tool_name: "analyze_trade_journal",
+            result: {
+              tool: "analyze_trade_journal",
+              reason: "Provide journal text or an owner-scoped uploaded artifact_id/file_id; no synthetic trade data is generated.",
+              source: { source: "missing" },
+              status: "config_required",
+              accepted: false
+            }
+          }
+        }
+      ],
+      message: "ok"
+    })
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    const step = await screen.findByRole("button", { name: /交易日志分析/ })
+    expect(screen.getByText("数据受限")).toBeInTheDocument()
+
+    await user.click(step)
+
+    expect(await screen.findByText(/需要补充数据：请先上传交易日志文件/)).toBeInTheDocument()
+    expect(screen.queryByText(/"tool": "analyze_trade_journal"/)).not.toBeInTheDocument()
+  })
+
   it("humanizes persisted timeout failures", async () => {
     vi.mocked(researchAgentApi.listEvents).mockResolvedValue({
       success: true,
