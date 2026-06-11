@@ -164,6 +164,16 @@ def test_prompt_uses_filtered_registry_tools_only():
     assert "live trading" not in prompt.lower()
 
 
+def test_prompt_blocks_shadow_and_journal_calls_without_owner_data():
+    principal = _principal()
+    tools = ResearchToolRegistry.default().for_principal(principal)
+    prompt = build_research_prompt(principal=principal, tools=tools)
+
+    assert "Do not call analyze_trade_journal" in prompt
+    assert "Do not call run_shadow_backtest" in prompt
+    assert "ask the user to upload or paste the missing data" in prompt
+
+
 @pytest.mark.asyncio
 async def test_streamed_model_text_persists_events_and_final_message(fake_db):
     session = await _create_session(fake_db)

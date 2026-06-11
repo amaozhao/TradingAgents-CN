@@ -135,12 +135,12 @@ const EXAMPLE_CATEGORIES = [
       {
         title: "分析券商导出记录",
         desc: "解析同花顺/东财/富途/通用 CSV 的交易统计",
-        prompt: "请分析我刚上传的交易日志，输出完整画像，包括持仓天数、胜率、盈亏比、主要交易标的和按小时分布的交易行为。"
+        prompt: "请分析我刚上传的交易日志，输出完整画像，包括持仓天数、胜率、盈亏比、主要交易标的和按小时分布的交易行为。如果当前会话没有可读取的交易日志 artifact_id/file_id 或日志文本，请先让我上传或粘贴日志，不要调用交易日志工具。"
       },
       {
         title: "诊断交易行为偏差",
         desc: "处置效应、过度交易、追涨、锚定等诊断",
-        prompt: "请对我的交易日志运行 4 类行为诊断：disposition、overtrading、chasing、anchoring，并告诉我哪一种偏差对 PnL 伤害最大。"
+        prompt: "请对我的交易日志运行 4 类行为诊断：disposition、overtrading、chasing、anchoring，并告诉我哪一种偏差对 PnL 伤害最大。如果当前会话没有可读取的交易日志 artifact_id/file_id 或日志文本，请先让我上传或粘贴日志，不要调用交易日志工具。"
       }
     ]
   },
@@ -172,17 +172,17 @@ const EXAMPLE_CATEGORIES = [
       {
         title: "从日志训练 Shadow",
         desc: "从券商 CSV 提取你的策略规则",
-        prompt: "请根据我刚上传的交易日志训练 Shadow Account，提取我的策略规则，并展示这些规则是否像我的真实交易行为。"
+        prompt: "请根据我刚上传的交易日志训练 Shadow Account，提取我的策略规则，并展示这些规则是否像我的真实交易行为。如果当前会话没有可读取的交易日志 artifact_id/file_id 或日志文本，请先让我上传或粘贴日志，不要调用 Shadow 或交易日志工具。"
       },
       {
         title: "我少赚了多少？",
         desc: "回测 Shadow 策略并归因实际 PnL 差异",
-        prompt: "请对最近 90 天的美股市场运行 Shadow backtest，拆解我的实际 PnL 和 Shadow 策略之间的差异，包括规则违背、过早离场和错过信号。"
+        prompt: "请对最近 90 天的美股市场运行 Shadow backtest，拆解我的实际 PnL 和 Shadow 策略之间的差异，包括规则违背、过早离场和错过信号。如果当前会话没有 returns、trades[].pnl、交易日志 artifact_id/file_id 或日志文本，请先让我上传或粘贴数据，不要调用 Shadow backtest 工具。"
       },
       {
         title: "生成 Shadow 报告",
         desc: "8 段 HTML/PDF 报告，含权益曲线和归因瀑布图",
-        prompt: "请渲染 Shadow report 并给出 URL，报告开头先说明 you-vs-shadow delta，再展示权益曲线、分市场 Sharpe 和归因瀑布图。"
+        prompt: "请渲染 Shadow report 并给出 URL，报告开头先说明 you-vs-shadow delta，再展示权益曲线、分市场 Sharpe 和归因瀑布图。如果当前会话没有 shadow backtest_id 或 shadow report 数据，请先说明缺少什么，不要直接调用 Shadow 报告工具。"
       }
     ]
   },
@@ -234,7 +234,7 @@ const QUICK_RESEARCH_PROMPTS = [
   { label: "检查交易连接器", prompt: "请列出我的 trading connector profiles，说明当前选中的是哪一个，然后检查这个连接器是否可用。如果还没准备好，请明确告诉我缺少哪一步配置。不要下单，也不要修改订单。" },
   { label: "分析连接器组合", prompt: "请使用当前选中的 trading connector profile 读取账户摘要和持仓，分析现金、仓位集中度和组合风险。保持只读，不要下单，也不要修改订单。" },
   { label: "智能体团队", prompt: "[Swarm Team Mode] 请使用 investment_committee preset，根据当前市场环境评估 NVDA 应该做多、做空还是观望，并汇总多空观点、风险审查和 PM 决策。" },
-  { label: "Shadow Account", prompt: "请对最近 90 天的美股市场运行 Shadow backtest，拆解我的实际 PnL 和 Shadow 策略之间的差异，包括规则违背、过早离场和错过信号。" }
+  { label: "Shadow Account", prompt: "请对最近 90 天的美股市场运行 Shadow backtest，拆解我的实际 PnL 和 Shadow 策略之间的差异，包括规则违背、过早离场和错过信号。如果当前会话没有 returns、trades[].pnl、交易日志 artifact_id/file_id 或日志文本，请先让我上传或粘贴数据，不要调用 Shadow backtest 工具。" }
 ]
 
 const EXAMPLE_CATEGORIES_EN: typeof EXAMPLE_CATEGORIES = [
@@ -314,12 +314,12 @@ const EXAMPLE_CATEGORIES_EN: typeof EXAMPLE_CATEGORIES = [
       {
         title: "Analyze my broker export",
         desc: "Parse broker CSVs for holding stats, win rate, PnL ratio, and hourly distribution",
-        prompt: "Analyze the trade journal I just uploaded — full profile with holding stats, win rate, top symbols, and hourly distribution"
+        prompt: "Analyze the trade journal I just uploaded — full profile with holding stats, win rate, top symbols, and hourly distribution. If this session has no readable journal artifact_id/file_id or pasted journal text, ask me to upload or paste it before calling the trade journal tool."
       },
       {
         title: "Diagnose my behavior biases",
         desc: "Disposition effect, overtrading, chasing, and anchoring diagnostics",
-        prompt: "Run the 4 behavior diagnostics on my trade journal (disposition, overtrading, chasing, anchoring) and tell me which bias hurts my PnL most"
+        prompt: "Run the 4 behavior diagnostics on my trade journal (disposition, overtrading, chasing, anchoring) and tell me which bias hurts my PnL most. If this session has no readable journal artifact_id/file_id or pasted journal text, ask me to upload or paste it before calling the trade journal tool."
       }
     ]
   },
@@ -351,17 +351,17 @@ const EXAMPLE_CATEGORIES_EN: typeof EXAMPLE_CATEGORIES = [
       {
         title: "Train my shadow from journal",
         desc: "Extract your strategy rules from a broker CSV and persist a Shadow profile",
-        prompt: "Train my shadow account from the trading journal I just uploaded — show the extracted rules and confirm they look like my behavior"
+        prompt: "Train my shadow account from the trading journal I just uploaded — show the extracted rules and confirm they look like my behavior. If this session has no readable journal artifact_id/file_id or pasted journal text, ask me to upload or paste it before calling Shadow or trade journal tools."
       },
       {
         title: "How much am I leaving on the table?",
         desc: "Backtest your shadow strategy and attribute delta versus actual PnL",
-        prompt: "Run a shadow backtest for the last 90 days on the US market and break down where my PnL diverged from the shadow (rule violations, early exits, missed signals)"
+        prompt: "Run a shadow backtest for the last 90 days on the US market and break down where my PnL diverged from the shadow (rule violations, early exits, missed signals). If this session has no returns, trades[].pnl, journal artifact_id/file_id, or pasted journal text, ask me to upload or paste data before calling the shadow backtest tool."
       },
       {
         title: "Generate shadow report",
         desc: "8-section HTML/PDF with equity curve and attribution waterfall",
-        prompt: "Render the shadow report and give me the URL — lead with the you-vs-shadow delta"
+        prompt: "Render the shadow report and give me the URL — lead with the you-vs-shadow delta. If this session has no shadow backtest_id or shadow report data, explain what is missing before calling the shadow report tool."
       }
     ]
   },
@@ -544,7 +544,7 @@ const AGENT_TEXT = {
       { label: "Check connector", prompt: "List my trading connector profiles, show which one is selected, then check that selected connector. If it is not ready, tell me exactly what setup step is missing. Do not place or modify orders." },
       { label: "Analyze connector portfolio", prompt: "Use the selected trading connector profile to summarize my account, positions, concentration, cash, and portfolio risk. Do not place or modify orders." },
       { label: "Agent team", prompt: "[Swarm Team Mode] Use the investment_committee preset to evaluate whether to go long or short on NVDA given current market conditions" },
-      { label: "Shadow Account", prompt: "Run a shadow backtest for the last 90 days on the US market and break down where my PnL diverged from the shadow (rule violations, early exits, missed signals)" }
+      { label: "Shadow Account", prompt: "Run a shadow backtest for the last 90 days on the US market and break down where my PnL diverged from the shadow (rule violations, early exits, missed signals). If this session has no returns, trades[].pnl, journal artifact_id/file_id, or pasted journal text, ask me to upload or paste data before calling the shadow backtest tool." }
     ],
     examples: EXAMPLE_CATEGORIES_EN,
     toolLabels: TOOL_LABELS_EN,
@@ -2254,7 +2254,7 @@ export function ResearchAgentPage() {
             {sessionLoading ? (
               <SessionLoadingView text={text} />
             ) : messages.length === 0 ? (
-              <WelcomeScreen onExample={runPrompt} text={text} />
+              <WelcomeScreen onExample={fillComposerFromQuickPrompt} text={text} />
             ) : (
               messages.map((message) => <MessageBubble key={message.id} message={message} text={text} />)
             )}

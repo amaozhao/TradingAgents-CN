@@ -161,7 +161,7 @@ describe("ResearchAgentPage", () => {
     expect(await screen.findByText("储能验证")).toBeInTheDocument()
   })
 
-  it("sends localized Chinese prompts from examples", async () => {
+  it("fills the composer from examples without sending", async () => {
     vi.mocked(researchAgentApi.listSessions).mockResolvedValue({ success: true, data: [], message: "ok" })
 
     const user = userEvent.setup()
@@ -169,9 +169,10 @@ describe("ResearchAgentPage", () => {
 
     await user.click(await screen.findByRole("button", { name: /跨市场组合/ }))
 
-    await waitFor(() => expect(researchAgentApi.appendMessage).toHaveBeenCalled())
-    expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).toContain("请用 backtest 工具回测一个风险平价组合")
-    expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).not.toContain("Backtest a risk-parity portfolio")
+    const composer = screen.getByPlaceholderText("例如：运行回测、检查连接器状态，或分析 A 股储能板块") as HTMLTextAreaElement
+    await waitFor(() => expect(composer.value).toContain("请用 backtest 工具回测一个风险平价组合"))
+    expect(composer.value).not.toContain("Backtest a risk-parity portfolio")
+    expect(researchAgentApi.appendMessage).not.toHaveBeenCalled()
   })
 
   it("fills the composer from quick actions without sending", async () => {
@@ -197,9 +198,10 @@ describe("ResearchAgentPage", () => {
 
     await user.click(await screen.findByRole("button", { name: /Cross-market portfolio/ }))
 
-    await waitFor(() => expect(researchAgentApi.appendMessage).toHaveBeenCalled())
-    expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).toContain("Backtest a risk-parity portfolio")
-    expect(vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1].content).not.toContain("请用 backtest 工具")
+    const composer = screen.getByPlaceholderText("Example: run a backtest, check connector status, or analyze the A-share energy storage sector") as HTMLTextAreaElement
+    await waitFor(() => expect(composer.value).toContain("Backtest a risk-parity portfolio"))
+    expect(composer.value).not.toContain("请用 backtest 工具")
+    expect(researchAgentApi.appendMessage).not.toHaveBeenCalled()
   })
 
   it("renders the persisted research goal ledger for the active session", async () => {

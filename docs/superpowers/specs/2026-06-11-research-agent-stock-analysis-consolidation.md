@@ -6,7 +6,7 @@
 
 TradingAgents-CN 需要把现有“单股分析”和“批量分析”逐步合并到研究 Agent 入口里。这里的“合并”不是重写股票分析引擎，而是让研究 Agent 成为统一交互入口，现有分析任务、队列、状态、报告和下载体系继续作为执行系统和事实来源。
 
-第一版目标是：用户可以在 `/agent` 中自然语言请求单股或批量分析，Agent 调用真实分析服务提交任务，返回 `task_id` 或 `batch_id`、状态链接和报告链接；等任务完成后，用户可以继续让 Agent 读取真实报告并总结。
+第一版目标是：用户可以在 `/agent` 中自然语言请求单股或批量分析，Agent 调用真实分析服务提交任务，并进入统一的有上限等待体验；如果任务在等待窗口内完成，Agent 读取真实报告并总结；如果仍在执行，Agent 返回 `task_id` 或 `batch_id`、状态链接和报告链接，并明确说明任务仍在 pending。
 
 ## 当前代码现状
 
@@ -50,7 +50,7 @@ TradingAgents-CN 需要把现有“单股分析”和“批量分析”逐步合
   - 读取已完成报告
 - 旧 `/analysis/single` 和 `/analysis/batch` 第一阶段继续可用。
 - 所有任务、报告和 Agent 资源必须保持用户隔离。
-- 长耗时分析必须异步执行，不能让一个 Agent 请求无限阻塞等待。
+- 长耗时分析必须异步执行；Agent 可以做有硬超时的 bounded wait，但不能无限阻塞等待。
 
 ## 非目标
 
@@ -73,13 +73,13 @@ TradingAgents-CN 需要把现有“单股分析”和“批量分析”逐步合
 3. Agent 识别股票代码、市场、分析深度、分析师模块、情绪/风险选项、模型偏好。
 4. Agent 调用股票分析工具的 single 模式。
 5. 工具通过现有分析服务和队列创建真实分析任务。
-6. Agent 返回：
+6. Agent 进入统一 bounded wait 后返回：
    - 标准化股票代码；
    - `task_id`；
-   - 当前状态；
+   - 当前等待/任务状态；
    - 任务状态链接；
-   - 报告链接，如果报告已存在；
-   - 如果任务仍在执行，必须明确提示 pending。
+   - 如果等待窗口内完成，读取报告并总结；
+   - 如果任务仍在执行，返回 pending、报告链接占位和后续查询方式。
 7. 用户后续问 `总结刚才的分析` 时，Agent 必须读取真实任务/报告状态，再总结。
 
 ### 批量分析流程
@@ -88,12 +88,13 @@ TradingAgents-CN 需要把现有“单股分析”和“批量分析”逐步合
 2. Agent 校验股票列表，保持现有最多 10 只的批量限制。
 3. Agent 调用股票分析工具的 batch 模式。
 4. 工具创建 batch，并通过现有队列提交每只股票的分析任务。
-5. Agent 返回：
+5. Agent 进入统一 bounded wait 后返回：
    - `batch_id`；
    - 股票列表；
    - 每只股票对应的 `task_id`；
-   - batch 当前状态；
+   - batch 当前等待/任务状态；
    - 跳转到任务中心的链接。
+   - 如果等待窗口内已有完成项，可以总结已完成部分；未完成项必须明确 pending。
 6. 用户可以继续问：
    - `这个批量任务完成了吗？`
    - `谁的风险最大？`
@@ -151,7 +152,7 @@ TradingAgents-CN 需要把现有“单股分析”和“批量分析”逐步合
   "language": "zh-CN",
   "quick_analysis_model": "qwen-turbo",
   "deep_analysis_model": "qwen-max",
-  "wait_for_completion": false
+  "wait_for_completion": true
 }
 ```
 
@@ -163,7 +164,7 @@ TradingAgents-CN 需要把现有“单股分析”和“批量分析”逐步合
   "symbols": ["AAPL", "MSFT", "NVDA"],
   "market_type": "美股",
   "research_depth": "标准",
-  "wait_for_completion": false
+  "wait_for_completion": true
 }
 ```
 
@@ -173,14 +174,15 @@ TradingAgents-CN 需要把现有“单股分析”和“批量分析”逐步合
 {
   "tool": "stock_analysis",
   "mode": "single",
-  "status": "submitted",
+  "status": "pending",
+  "wait_status": "timed_out",
   "symbol": "600519",
   "task_id": "task-id",
   "links": {
     "task": "/tasks?task_id=task-id",
     "report": null
   },
-  "message": "单股分析任务已提交，结果生成后可继续让 Agent 总结。"
+  "message": "单股分析任务已提交并等待到超时，结果生成后可继续让 Agent 总结。"
 }
 ```
 
@@ -190,7 +192,8 @@ TradingAgents-CN 需要把现有“单股分析”和“批量分析”逐步合
 {
   "tool": "stock_analysis",
   "mode": "batch",
-  "status": "submitted",
+  "status": "pending",
+  "wait_status": "timed_out",
   "batch_id": "batch-id",
   "total_tasks": 3,
   "tasks": [
@@ -201,7 +204,7 @@ TradingAgents-CN 需要把现有“单股分析”和“批量分析”逐步合
   "links": {
     "batch": "/tasks?batch_id=batch-id"
   },
-  "message": "批量分析任务已提交。"
+  "message": "批量分析任务已提交并等待到超时，已完成项可继续读取报告。"
 }
 ```
 
@@ -266,10 +269,11 @@ TradingAgents-CN 需要把现有“单股分析”和“批量分析”逐步合
 
 ### 异步执行要求
 
-- 默认 `wait_for_completion=false`。
-- 工具提交任务后立即返回任务 ID。
-- 可以支持短时间 bounded wait，但必须有硬超时。
-- 批量分析不能在 Agent attempt 内同步等待完成。
+- 默认 `wait_for_completion=true`，但必须是 bounded wait。
+- 工具提交任务后进入统一 bounded wait。
+- 单股和批量都采用相同的视觉和交互模型：提交、等待、完成则读取报告，超时则返回 pending 和链接。
+- bounded wait 必须有硬超时，不能让 Agent attempt 无限阻塞。
+- 批量分析可以等待到硬超时或部分完成，但不能无限等待全部完成。
 - Agent 最终回答必须明确说明任务是否只是“已提交”，还是“已完成并已读取报告”。
 
 ### 事件和 Artifact
@@ -393,8 +397,8 @@ Agent 消息和工具卡片应提供：
 - 旧 `/analysis/single`、`/analysis/batch`、`/tasks`、`/reports` 继续可用。
 - 后端和前端目标测试通过。
 
-## 待 Review 的关键选择
+## 已确认的关键选择
 
-1. 第一版菜单是否仍保留旧 `单股分析` / `批量分析` 入口？
-2. Agent 默认是否只提交任务并返回链接，还是单股分析可以短时间等待完成？
-3. `stock_analysis_status` / `stock_analysis_report` 是独立工具，还是合并成 `stock_analysis` 的 action？
+1. 第一版保留旧 `单股分析` / `批量分析` 入口；研究 Agent 是新增统一入口，不直接删除旧页面。
+2. 单股和批量分析都采用统一的有上限等待体验；完成则读取报告并总结，超时或未完成则返回 pending、任务链接和后续查询方式。
+3. `stock_analysis_status` / `stock_analysis_report` 保持独立工具。等待逻辑放在提交工具或等待编排层；`status` 只查一次当前状态，`report` 只读取已完成报告，不做长轮询。

@@ -96,6 +96,10 @@ async def _run_shadow_backtest(
             "status": "config_required",
             "accepted": False,
             "reason": "returns or trades[].pnl is required; the agent will not fabricate market data.",
+            "instruction": (
+                "请先上传或粘贴交易日志，或明确提供 returns / trades[].pnl；"
+                "缺少这些 owner-scoped 输入时不要运行 Shadow backtest。"
+            ),
         }
     total_return = sum(series)
     win_rate = len([value for value in series if value > 0]) / len(series)
@@ -194,7 +198,32 @@ def shadow_tools() -> list[ResearchTool]:
             name="run_shadow_backtest",
             description="Run a research-only shadow backtest from provided returns or trade PnL data.",
             permission=SHADOW_RUN,
-            schema={"type": "object", "additionalProperties": True},
+            schema={
+                "type": "object",
+                "properties": {
+                    "strategy_id": {
+                        "type": "string",
+                        "description": "Optional strategy artifact id returned by extract_shadow_strategy.",
+                    },
+                    "returns": {
+                        "type": "array",
+                        "items": {"type": "number"},
+                        "description": "Explicit owner-provided return series. Do not invent market or account returns.",
+                    },
+                    "trades": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {"pnl": {"type": "number"}},
+                            "required": ["pnl"],
+                            "additionalProperties": True,
+                        },
+                        "description": "Explicit owner-provided trades. Each item must include pnl.",
+                    },
+                },
+                "anyOf": [{"required": ["returns"]}, {"required": ["trades"]}],
+                "additionalProperties": True,
+            },
             handler=_run_shadow_backtest,
         ),
         ResearchTool(

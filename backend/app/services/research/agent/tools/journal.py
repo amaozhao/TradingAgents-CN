@@ -116,6 +116,10 @@ async def _analyze_trade_journal(
             "status": "config_required",
             "accepted": False,
             "reason": "Provide journal text or an owner-scoped uploaded artifact_id/file_id; no synthetic trade data is generated.",
+            "instruction": (
+                "请先上传交易日志文件，或粘贴交易日志文本，或提供当前用户可访问的 artifact_id/file_id；"
+                "缺少这些 owner-scoped 输入时不要调用交易日志分析工具。"
+            ),
             "source": source,
         }
 
@@ -192,10 +196,25 @@ def journal_tools() -> list[ResearchTool]:
             schema={
                 "type": "object",
                 "properties": {
-                    "text": {"type": "string"},
-                    "artifact_id": {"type": "string"},
-                    "file_id": {"type": "string"},
+                    "text": {
+                        "type": "string",
+                        "description": "Pasted trade journal text supplied by the user.",
+                    },
+                    "artifact_id": {
+                        "type": "string",
+                        "description": "Owner-scoped uploaded journal artifact id from this session.",
+                    },
+                    "file_id": {
+                        "type": "string",
+                        "description": "Owner-scoped uploaded journal file id from this session.",
+                    },
                 },
+                "anyOf": [
+                    {"required": ["text"]},
+                    {"required": ["artifact_id"]},
+                    {"required": ["file_id"]},
+                ],
+                "additionalProperties": False,
             },
             handler=_analyze_trade_journal,
         )

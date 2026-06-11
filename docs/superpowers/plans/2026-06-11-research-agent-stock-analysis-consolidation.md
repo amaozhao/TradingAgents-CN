@@ -4,7 +4,7 @@
 
 **目标：** 让研究 Agent 成为单股分析和批量分析的统一入口，同时复用现有分析任务、队列、状态和报告系统。
 
-**架构：** 股票分析的执行仍留在现有 analysis service 和 queue 中。研究 Agent 只增加工具适配层：提交任务、查询状态、读取报告，并以当前用户身份访问。前端先在 `/agent` 增加单股/批量快捷入口，旧分析页面继续保留。
+**架构：** 股票分析的执行仍留在现有 analysis service 和 queue 中。研究 Agent 只增加工具适配层：提交任务、有上限等待、查询状态、读取报告，并以当前用户身份访问。前端先在 `/agent` 增加单股/批量快捷入口，旧分析页面继续保留。
 
 **技术栈：** FastAPI、现有 TradingAgents-CN document store、现有 queue service、Research Agent tool registry、pytest、Ruff、Next.js、React、Vitest、TypeScript。
 
@@ -18,12 +18,18 @@
 
 计划不删除旧分析路由，不重写股票分析引擎，只把研究 Agent 接到现有能力上。
 
+## 已确认决策
+
+- 第一版保留旧 `单股分析` / `批量分析` 入口；研究 Agent 是新增统一入口，不直接删除旧页面。
+- 单股和批量分析都采用统一 bounded wait 体验：完成则读取报告并总结，超时或未完成则返回 pending、任务链接和后续查询方式。
+- `stock_analysis_status` 和 `stock_analysis_report` 保持独立工具。等待逻辑放在提交工具或等待编排层；`status` 只查一次当前状态，`report` 只读取已完成报告，不做长轮询。
+
 ## 文件地图
 
 ### 后端主要修改文件
 
 - `backend/app/services/research/agent/tools/analysis.py`
-  - 把占位工具改成真实提交、状态读取、报告读取适配器。
+  - 把占位工具改成真实提交、有上限等待、状态读取、报告读取适配器。
 - `backend/app/services/research/agent/registry.py`
   - 如果新增独立工具，在 registry 中注册。
 - `backend/app/services/research/agent/permissions.py`
@@ -95,7 +101,8 @@ result = await tool.run(
 
 assert result["tool"] == "stock_analysis"
 assert result["mode"] == "single"
-assert result["status"] == "submitted"
+assert result["status"] == "pending"
+assert result["wait_status"] == "timed_out"
 assert result["symbol"] == "600519"
 assert result["task_id"] == "task-600519"
 assert result["links"]["task"] == "/tasks?task_id=task-600519"
@@ -129,7 +136,8 @@ result = await tool.run(
 
 assert result["tool"] == "stock_analysis"
 assert result["mode"] == "batch"
-assert result["status"] == "submitted"
+assert result["status"] == "pending"
+assert result["wait_status"] == "timed_out"
 assert result["batch_id"] == "batch-1"
 assert result["total_tasks"] == 2
 assert result["tasks"] == [
@@ -194,14 +202,15 @@ def _analysis_parameters_from_payload(payload: dict[str, Any]) -> AnalysisParame
 {
     "tool": "stock_analysis",
     "mode": "single",
-    "status": "submitted",
+    "status": "pending",
+    "wait_status": "timed_out",
     "symbol": symbol,
     "task_id": task_id,
     "links": {
         "task": f"/tasks?task_id={task_id}",
         "report": None,
     },
-    "message": "单股分析任务已提交，结果生成后可继续让 Agent 总结。",
+    "message": "单股分析任务已提交并等待到超时，结果生成后可继续让 Agent 总结。",
 }
 ```
 
@@ -217,14 +226,15 @@ def _analysis_parameters_from_payload(payload: dict[str, Any]) -> AnalysisParame
 {
     "tool": "stock_analysis",
     "mode": "batch",
-    "status": "submitted",
+    "status": "pending",
+    "wait_status": "timed_out",
     "batch_id": batch_id,
     "total_tasks": len(tasks),
     "tasks": tasks,
     "links": {
         "batch": f"/tasks?batch_id={batch_id}",
     },
-    "message": "批量分析任务已提交。",
+    "message": "批量分析任务已提交并等待到超时，已完成项可继续读取报告。",
 }
 ```
 
@@ -458,9 +468,9 @@ PYTHONPATH=backend python -m pytest backend/tests/regression/research/agent/agen
 建议描述：
 
 ```text
-stock_analysis: 提交现有单股或批量股票分析任务。
-stock_analysis_status: 查询当前用户自己的股票分析任务或批次状态。
-stock_analysis_report: 读取当前用户自己的已完成股票分析报告，再进行总结。
+stock_analysis: 提交现有单股或批量股票分析任务，并执行有硬超时的 bounded wait。
+stock_analysis_status: 查询当前用户自己的股票分析任务或批次状态；只查一次，不做长轮询。
+stock_analysis_report: 读取当前用户自己的已完成股票分析报告，再进行总结；只读取已完成报告，不等待生成。
 ```
 
 - [ ] **步骤 4：更新 Agent 系统提示词约束**
