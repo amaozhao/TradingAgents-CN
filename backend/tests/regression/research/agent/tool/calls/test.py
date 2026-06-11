@@ -340,7 +340,11 @@ async def test_all_enabled_research_agent_tools_are_invokable(
     await _run_tool(registry, context, called, "market_data_lookup", {"symbol": "600519", "limit": 4})
     await _run_tool(registry, context, called, "screening_run", {"query": "energy storage"})
     single_analysis = await _run_tool(
-        registry, context, called, "single_stock_analysis", {"symbol": "600519"}
+        registry,
+        context,
+        called,
+        "single_stock_analysis",
+        {"symbol": "600519", "wait_for_completion": False},
     )
     await _run_tool(
         registry,

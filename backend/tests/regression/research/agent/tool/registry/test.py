@@ -136,7 +136,7 @@ async def test_tool_run_accepts_authorized_principal(monkeypatch):
     tool = registry.get("single_stock_analysis")
     context = ToolExecutionContext(principal=_principal(), session_id="session-1")
 
-    result = await tool.run(context, {"symbol": "600519"})
+    result = await tool.run(context, {"symbol": "600519", "wait_for_completion": False})
 
     assert result["tool"] == "single_stock_analysis"
     assert result["accepted"] is True

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import time
 from typing import Any
 
 from app.core.database import get_postgres_db, get_postgres_db_sync
@@ -40,6 +42,10 @@ _DEPTH_TO_LABEL = {
     "深度": "深度",
     "全面": "全面",
 }
+
+_TERMINAL_ANALYSIS_STATUSES = {"completed", "failed", "cancelled"}
+_DEFAULT_WAIT_TIMEOUT_SECONDS = 900.0
+_DEFAULT_POLL_INTERVAL_SECONDS = 2.0
 
 
 def _clean_model_name(raw: Any) -> str | None:
@@ -130,6 +136,29 @@ def _dedupe_model_names(names: list[str | None]) -> list[str]:
         seen.add(name)
         result.append(name)
     return result
+
+
+def _as_bool(raw: Any, default: bool) -> bool:
+    if raw is None:
+        return default
+    if isinstance(raw, bool):
+        return raw
+    value = str(raw).strip().lower()
+    if value in {"1", "true", "yes", "y", "on"}:
+        return True
+    if value in {"0", "false", "no", "n", "off"}:
+        return False
+    return default
+
+
+def _as_positive_float(raw: Any, default: float, *, maximum: float) -> float:
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return default
+    if value <= 0:
+        return default
+    return min(value, maximum)
 
 
 def _configured_model_for_role(
@@ -295,7 +324,7 @@ async def _single_stock_analysis(
         task_id=task_id,
     )
 
-    return {
+    base_result = {
         "tool": "single_stock_analysis",
         "status": "queued",
         "accepted": True,
@@ -313,6 +342,25 @@ async def _single_stock_analysis(
         "report_url": f"/reports/view/{task_id}",
         "message": "单股分析 DAG 任务已提交到现有分析队列。",
     }
+    if not _as_bool(payload.get("wait_for_completion"), True):
+        return base_result
+
+    wait_result = await _wait_for_analysis_result(
+        context,
+        service=service,
+        task_id=task_id,
+        timeout_seconds=_as_positive_float(
+            payload.get("wait_timeout_seconds"),
+            _DEFAULT_WAIT_TIMEOUT_SECONDS,
+            maximum=1800.0,
+        ),
+        poll_interval_seconds=_as_positive_float(
+            payload.get("poll_interval_seconds"),
+            _DEFAULT_POLL_INTERVAL_SECONDS,
+            maximum=30.0,
+        ),
+    )
+    return {**base_result, **wait_result}
 
 
 async def _batch_stock_analysis(
@@ -390,14 +438,83 @@ async def _stock_analysis_report(
     }
 
 
+async def _wait_for_analysis_result(
+    context: ToolExecutionContext,
+    *,
+    service: Any,
+    task_id: str,
+    timeout_seconds: float,
+    poll_interval_seconds: float,
+) -> dict[str, Any]:
+    deadline = time.monotonic() + timeout_seconds
+    last_status: dict[str, Any] | None = None
+
+    while True:
+        status = await service.get_task_status(task_id, user_id=context.principal.user_id)
+        if status:
+            last_status = status
+            status_value = str(status.get("status") or "").lower()
+            if status_value == "completed":
+                report = await _stock_analysis_report(context, {"task_id": task_id})
+                report_available = bool(report.get("accepted"))
+                return {
+                    "status": "completed",
+                    "accepted": True,
+                    "progress": status.get("progress", 100),
+                    "message": status.get("message") or "单股分析已完成。",
+                    "raw_status": status,
+                    "report": report if report_available else None,
+                    "summary": report.get("summary", "") if report_available else "",
+                    "recommendation": report.get("recommendation", "")
+                    if report_available
+                    else "",
+                    "risk_level": report.get("risk_level") if report_available else None,
+                    "decision": report.get("decision", {}) if report_available else {},
+                }
+            if status_value in _TERMINAL_ANALYSIS_STATUSES:
+                error_message = (
+                    status.get("error_message")
+                    or status.get("last_error")
+                    or status.get("error")
+                    or status.get("message")
+                    or f"单股分析任务已结束: {status_value}"
+                )
+                return {
+                    "status": status_value,
+                    "accepted": True,
+                    "progress": status.get("progress", 0),
+                    "message": error_message,
+                    "error_message": error_message,
+                    "raw_status": status,
+                }
+
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            status_value = str((last_status or {}).get("status") or "queued").lower()
+            return {
+                "status": status_value,
+                "accepted": True,
+                "wait_timed_out": True,
+                "progress": (last_status or {}).get("progress", 0),
+                "message": (
+                    "单股分析任务仍在执行，已返回任务链接；"
+                    "如果长期停留在 pending/queued，请确认 analysis worker 进程正在运行。"
+                ),
+                "raw_status": last_status,
+            }
+
+        await asyncio.sleep(min(poll_interval_seconds, remaining))
+
+
 def analysis_tools() -> list[ResearchTool]:
     return [
         ResearchTool(
             name="single_stock_analysis",
             description=(
                 "Submit the existing single-stock TradingAgents LangGraph DAG to the "
-                "analysis queue. Supports market_type, analysis_date, research_depth, "
-                "selected_analysts, include_sentiment/include_risk, and quick/deep models."
+                "analysis queue and wait for the resulting report by default. Supports "
+                "market_type, analysis_date, research_depth, selected_analysts, "
+                "include_sentiment/include_risk, quick/deep models, and wait controls."
             ),
             permission=SINGLE_STOCK_ANALYSIS,
             schema={
@@ -424,6 +541,9 @@ def analysis_tools() -> list[ResearchTool]:
                     "quick_analysis_model": {"type": "string"},
                     "deep_analysis_model": {"type": "string"},
                     "custom_prompt": {"type": "string"},
+                    "wait_for_completion": {"type": "boolean"},
+                    "wait_timeout_seconds": {"type": "number"},
+                    "poll_interval_seconds": {"type": "number"},
                 },
             },
             handler=_single_stock_analysis,

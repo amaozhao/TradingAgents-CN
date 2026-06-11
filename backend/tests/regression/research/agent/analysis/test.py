@@ -16,13 +16,20 @@ class FakeAnalysisService:
     def __init__(self):
         self.created: list[tuple[str, Any]] = []
         self.status_by_task_id: dict[str, dict[str, Any]] = {}
+        self.status_sequence_by_task_id: dict[str, list[dict[str, Any]]] = {}
 
     async def create_analysis_task(self, user_id: str, request):
         self.created.append((user_id, request))
         return {"task_id": "task-600519", "status": "pending", "message": "任务已创建，等待执行"}
 
     async def get_task_status(self, task_id: str, user_id: str | None = None):
-        status = self.status_by_task_id.get(task_id)
+        sequence = self.status_sequence_by_task_id.get(task_id)
+        if sequence:
+            status = sequence.pop(0)
+            if not sequence:
+                self.status_by_task_id[task_id] = status
+        else:
+            status = self.status_by_task_id.get(task_id)
         if not status:
             return None
         if user_id and str(status.get("user_id")) != str(user_id):
@@ -90,6 +97,7 @@ async def test_single_stock_analysis_tool_submits_existing_dag_task(monkeypatch)
             "include_risk": True,
             "quick_analysis_model": "qwen-turbo",
             "deep_analysis_model": "qwen-max",
+            "wait_for_completion": False,
         },
     )
 
@@ -169,6 +177,7 @@ async def test_single_stock_analysis_tool_uses_configured_models_when_agent_omit
             "market_type": "A股",
             "research_depth": "标准",
             "selected_analysts": ["market", "fundamentals"],
+            "wait_for_completion": False,
         },
     )
 
@@ -229,13 +238,82 @@ async def test_single_stock_analysis_tool_uses_default_llm_when_quick_deep_are_u
     )
 
     tool = ResearchToolRegistry.default().get("single_stock_analysis")
-    result = await tool.run(_context(), {"symbol": "601818", "research_depth": "标准"})
+    result = await tool.run(
+        _context(),
+        {"symbol": "601818", "research_depth": "标准", "wait_for_completion": False},
+    )
 
     assert result["accepted"] is True
     [(user_id, request)] = service.created
     assert user_id == "user-a"
     assert request.parameters.quick_analysis_model == "MiniMax-M3"
     assert request.parameters.deep_analysis_model == "MiniMax-M3"
+
+
+@pytest.mark.asyncio
+async def test_single_stock_analysis_tool_waits_for_completed_report_by_default(
+    monkeypatch,
+):
+    service = FakeAnalysisService()
+    service.status_sequence_by_task_id["task-600519"] = [
+        {
+            "task_id": "task-600519",
+            "user_id": "user-a",
+            "status": "processing",
+            "progress": 35,
+            "message": "市场分析师正在分析",
+        },
+        {
+            "task_id": "task-600519",
+            "user_id": "user-a",
+            "status": "completed",
+            "progress": 100,
+            "message": "分析完成",
+        },
+    ]
+    queue = FakeQueueService()
+    db = FakeDb(
+        [
+            {
+                "task_id": "task-600519",
+                "user_id": "user-a",
+                "analysis_id": "analysis-1",
+                "stock_symbol": "600519",
+                "status": "completed",
+                "summary": "贵州茅台基本面稳健。",
+                "recommendation": "持有",
+                "reports": {"market_report": "市场报告"},
+                "decision": {"action": "持有"},
+            }
+        ]
+    )
+    monkeypatch.setattr(
+        analysis_tools_module, "get_simple_analysis_service", lambda: service, raising=False
+    )
+    monkeypatch.setattr(analysis_tools_module, "get_queue_service", lambda: queue, raising=False)
+    monkeypatch.setattr(analysis_tools_module, "get_postgres_db", lambda: db, raising=False)
+    monkeypatch.setattr(
+        analysis_tools_module,
+        "get_provider_and_url_by_model_sync",
+        lambda model: {"provider": "qwen", "backend_url": "https://example.test/v1", "api_key": "key"},
+        raising=False,
+    )
+    tool = ResearchToolRegistry.default().get("single_stock_analysis")
+    result = await tool.run(
+        _context(),
+        {
+            "symbol": "600519",
+            "wait_timeout_seconds": 30,
+            "poll_interval_seconds": 0.01,
+        },
+    )
+
+    assert result["accepted"] is True
+    assert result["status"] == "completed"
+    assert result["task_id"] == "task-600519"
+    assert result["summary"] == "贵州茅台基本面稳健。"
+    assert result["recommendation"] == "持有"
+    assert result["report"]["analysis_id"] == "analysis-1"
 
 
 @pytest.mark.asyncio
