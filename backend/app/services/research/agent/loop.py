@@ -192,7 +192,11 @@ class ResearchAgentLoop:
             session_id=str(context.session_id),
             user_id=context.principal.user_id,
             event_type="tool_started",
-            payload={"tool_name": tool_name, "arguments": arguments},
+            payload={
+                "tool_name": tool_name,
+                "arguments": arguments,
+                "attempt_id": context.request_id,
+            },
         )
         try:
             result = await tool.run(context, arguments)
@@ -212,7 +216,12 @@ class ResearchAgentLoop:
                 session_id=str(context.session_id),
                 user_id=context.principal.user_id,
                 event_type="tool_failed",
-                payload={"tool_name": tool_name, "error": error_message, "result": result},
+                payload={
+                    "tool_name": tool_name,
+                    "error": error_message,
+                    "result": result,
+                    "attempt_id": context.request_id,
+                },
             )
 
         await self._append_message(
@@ -229,6 +238,7 @@ class ResearchAgentLoop:
         completed_payload: dict[str, Any] = {
             "tool_name": tool_name,
             "result": result,
+            "attempt_id": context.request_id,
         }
         artifact_id = result.get("artifact_id")
         if not artifact_id and isinstance(result.get("result"), dict):

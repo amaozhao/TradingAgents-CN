@@ -972,6 +972,12 @@ function latestActiveAttempt(attempts: ResearchAttempt[]) {
     .at(-1)
 }
 
+function latestAttempt(attempts: ResearchAttempt[]) {
+  return [...attempts]
+    .sort((left, right) => attemptTimestamp(left) - attemptTimestamp(right))
+    .at(-1)
+}
+
 function failureMessageFromEvents(events: ParsedResearchStreamEvent[]) {
   const failed = events.filter((event) => event.event === "task_failed" || event.event === "attempt.failed" || event.event === "job_failed")
   for (const event of failed.reverse()) {
@@ -981,9 +987,29 @@ function failureMessageFromEvents(events: ParsedResearchStreamEvent[]) {
   return ""
 }
 
-function toolsFromEvents(events: ParsedResearchStreamEvent[]): ToolState[] {
+function attemptScopedEvents(
+  events: ParsedResearchStreamEvent[],
+  attemptId?: string
+) {
+  if (!attemptId) return events
+  const startIndex = events.findIndex((event) => (
+    String(event.data.attempt_id || "") === attemptId &&
+    (event.event === "attempt.created" || event.event === "attempt.started")
+  ))
+  if (startIndex >= 0) {
+    const endIndex = events.findIndex((event, index) => (
+      index > startIndex &&
+      String(event.data.attempt_id || "") !== attemptId &&
+      (event.event === "attempt.created" || event.event === "attempt.started")
+    ))
+    return events.slice(startIndex, endIndex >= 0 ? endIndex : undefined)
+  }
+  return events.filter((event) => String(event.data.attempt_id || "") === attemptId)
+}
+
+function toolsFromEvents(events: ParsedResearchStreamEvent[], attemptId?: string): ToolState[] {
   const tools = new Map<string, ToolState>()
-  for (const event of events) {
+  for (const event of attemptScopedEvents(events, attemptId)) {
     const toolName = String(event.data.tool_name || event.data.tool || "")
     if (!toolName) continue
     if (event.event === "tool_started" || event.event === "tool_call") {
@@ -1657,9 +1683,11 @@ export function ResearchAgentPage() {
         nextMessages = [...nextMessages, { id: nowId("error"), type: "error" as const, content: failure, timestamp: Date.now() }]
       }
       setMessages(nextMessages)
-      setTools(toolsFromEvents(persistedEvents))
+      const attempts = attemptResponse.data || []
+      const activeAttempt = latestActiveAttempt(attempts)
+      const visibleAttempt = activeAttempt || latestAttempt(attempts)
+      setTools(toolsFromEvents(persistedEvents, visibleAttempt?.attempt_id))
       setGoal(goalResponse.data || persistedEvents.reduce((current, event) => mergeGoalEvent(current, event.event, event.data), null as ResearchGoal | null))
-      const activeAttempt = latestActiveAttempt(attemptResponse.data || [])
       if (activeAttempt) {
         runFinishedRef.current = false
         localRunningSessionRef.current = null
@@ -2026,6 +2054,7 @@ export function ResearchAgentPage() {
     setCancelRequested(false)
     runFinishedRef.current = false
     setRunning(true)
+    setTools([])
     setMessages((current) => [...current, { id: nowId("user"), type: "user", content: finalPrompt, timestamp: Date.now() }])
     requestAnimationFrame(scrollToBottom)
 

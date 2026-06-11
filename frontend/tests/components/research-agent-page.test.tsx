@@ -801,6 +801,58 @@ describe("ResearchAgentPage", () => {
     expect(screen.queryByText(/\{"status":/)).not.toBeInTheDocument()
   })
 
+  it("shows execution steps only for the latest completed attempt in a session", async () => {
+    vi.mocked(researchAgentApi.listMessages).mockResolvedValue({
+      success: true,
+      data: [
+        { message_id: "user-1", role: "user", content: "第一次问题", linked_attempt_id: "attempt-old", metadata: {} },
+        { message_id: "answer-1", role: "assistant", content: "第一次回答", linked_attempt_id: "attempt-old", metadata: {} },
+        { message_id: "user-2", role: "user", content: "第二次问题", linked_attempt_id: "attempt-new", metadata: {} },
+        { message_id: "answer-2", role: "assistant", content: "第二次回答", linked_attempt_id: "attempt-new", metadata: {} }
+      ],
+      message: "ok"
+    })
+    vi.mocked(researchAgentApi.listAttempts).mockResolvedValue({
+      success: true,
+      data: [
+        {
+          attempt_id: "attempt-old",
+          session_id: "session-1",
+          status: "completed",
+          created_at: "2026-06-09T12:00:00Z",
+          started_at: "2026-06-09T12:00:01Z",
+          completed_at: "2026-06-09T12:01:00Z",
+          result: { content: "第一次回答" }
+        },
+        {
+          attempt_id: "attempt-new",
+          session_id: "session-1",
+          status: "completed",
+          created_at: "2026-06-09T12:02:00Z",
+          started_at: "2026-06-09T12:02:01Z",
+          completed_at: "2026-06-09T12:03:00Z",
+          result: { content: "第二次回答" }
+        }
+      ],
+      message: "ok"
+    })
+    vi.mocked(researchAgentApi.listEvents).mockResolvedValue({
+      success: true,
+      data: [
+        { event_id: 1, event_type: "tool_completed", payload: { tool_name: "web_search", attempt_id: "attempt-old", preview: "旧搜索结果" } },
+        { event_id: 2, event_type: "tool_completed", payload: { tool_name: "read_url", attempt_id: "attempt-new", preview: "新网页读取" } },
+        { event_id: 3, event_type: "message_completed", payload: { attempt_id: "attempt-new", content: "第二次回答" } }
+      ],
+      message: "ok"
+    })
+
+    render(<ResearchAgentPage />)
+
+    expect(await screen.findByText("第二次回答")).toBeInTheDocument()
+    expect(screen.getByText("网页读取")).toBeInTheDocument()
+    expect(screen.queryByText("网页搜索")).not.toBeInTheDocument()
+  })
+
   it("recovers completed assistant messages from storage when SSE completion is missed", async () => {
     vi.mocked(researchAgentApi.listSessions).mockResolvedValue({ success: true, data: [], message: "ok" })
     vi.mocked(researchAgentApi.createSession).mockResolvedValue({

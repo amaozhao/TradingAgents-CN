@@ -230,6 +230,43 @@ async def test_tool_calls_create_tool_events_and_tool_messages(fake_db):
 
 
 @pytest.mark.asyncio
+async def test_tool_events_are_scoped_to_attempt_id(fake_db):
+    session = await _create_session(fake_db)
+    client = FakeModelClient(
+        [
+            [
+                ModelStreamChunk(
+                    tool_call={
+                        "id": "call-1",
+                        "name": "single_stock_analysis",
+                        "arguments": {"symbol": "600519"},
+                    },
+                    finish_reason="tool_calls",
+                ),
+            ],
+            [ModelStreamChunk(delta="完成。", finish_reason="stop")],
+        ]
+    )
+
+    await ResearchAgentLoop(model_client=client).run(
+        principal=_principal(),
+        session_id=session["session_id"],
+        user_message="调用工具分析",
+        attempt_id="attempt-tool-scope",
+    )
+    tool_events = [
+        event
+        for event in fake_db.research_events.documents
+        if event["event_type"] in {"tool_started", "tool_completed"}
+    ]
+
+    assert tool_events
+    assert {event["payload"].get("attempt_id") for event in tool_events} == {
+        "attempt-tool-scope"
+    }
+
+
+@pytest.mark.asyncio
 async def test_tool_call_finish_reason_continues_react_loop(fake_db):
     session = await _create_session(fake_db)
     client = FakeModelClient(
