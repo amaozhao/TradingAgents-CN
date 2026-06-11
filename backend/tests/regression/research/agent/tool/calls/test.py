@@ -12,12 +12,12 @@ from app.services.research.agent import jobs as jobs_module
 from app.services.research.agent import live as live_module
 from app.services.research.agent import memory as memory_module
 from app.services.research.agent import sessions as sessions_module
+from app.services.research.agent import stock as stock_module
 from app.services.research.agent import swarm as swarm_module
 from app.services.research.agent.context import ResearchPrincipal, ToolExecutionContext
 from app.services.research.agent.loop import ModelStreamChunk
 from app.services.research.agent.registry import ResearchToolRegistry
 from app.services.research.agent.sessions import ResearchSessionService
-from app.services.research.agent.tools import analysis as analysis_tools_module
 from app.services.research.agent.tools import correlation as correlation_module
 from app.services.research.agent.tools import files as files_module
 from app.services.research.agent.tools import multi as _multi_package
@@ -173,11 +173,6 @@ class FakeAnalysisService:
         return dict(status)
 
 
-class FakeQueueService:
-    async def enqueue_task(self, **kwargs: Any):
-        return kwargs["task_id"]
-
-
 @pytest.fixture()
 def fake_db(monkeypatch):
     db = FakeDb()
@@ -203,7 +198,7 @@ def fake_db(monkeypatch):
         memory_module,
         live_module,
         swarm_module,
-        analysis_tools_module,
+        stock_module,
     ):
         monkeypatch.setattr(module, "get_postgres_db", lambda db=db: db)
     monkeypatch.setattr(swarm_module, "OpenAICompatibleModelClient", FakeWorkerModelClient)
@@ -269,14 +264,36 @@ def deterministic_external_boundaries(monkeypatch):
             "_artifact_payload": {"kind": "multi_factor_alpha_backtest"},
         }
 
+    async def fake_native_workflow(_context, **kwargs: Any):
+        return {
+            "tool": kwargs["tool_name"],
+            "mode": "single",
+            "status": "completed",
+            "accepted": True,
+            "stage": "agent_summary",
+            "wait_status": "completed",
+            "progress": 100,
+            "task_id": "task-600519",
+            "symbol": kwargs["symbol"],
+            "market_type": kwargs["market_type"],
+            "summary": "覆盖测试报告",
+            "recommendation": "持有",
+            "links": {
+                "task": "/tasks?task_id=task-600519",
+                "report": "/reports/view/task-600519",
+            },
+            "task_url": "/tasks?task_id=task-600519",
+            "report_url": "/reports/view/task-600519",
+        }
+
     monkeypatch.setattr(files_module, "_web_get", fake_web_get)
     monkeypatch.setattr(market_data_module, "lookup_market_snapshot", fake_market_snapshot)
     monkeypatch.setattr(correlation_module, "load_price_series", fake_price_series)
     monkeypatch.setattr(multi_factor_module, "_build_multi_factor_alpha_result", fake_multi_factor_result)
-    monkeypatch.setattr(analysis_tools_module, "get_simple_analysis_service", lambda: FakeAnalysisService())
-    monkeypatch.setattr(analysis_tools_module, "get_queue_service", lambda: FakeQueueService())
+    monkeypatch.setattr(stock_module, "get_simple_analysis_service", lambda: FakeAnalysisService())
+    monkeypatch.setattr(stock_module, "run_native_stock_workflow", fake_native_workflow)
     monkeypatch.setattr(
-        analysis_tools_module,
+        stock_module,
         "get_provider_and_url_by_model_sync",
         lambda _model: {"provider": "qwen", "backend_url": "https://example.test/v1", "api_key": "key"},
     )
@@ -332,7 +349,7 @@ async def test_all_enabled_research_agent_tools_are_invokable(
     }
     called: set[str] = set()
 
-    assert len(enabled_tool_names) == 50
+    assert len(enabled_tool_names) == 51
     assert "web_search" in enabled_tool_names
     assert "run_swarm" in enabled_tool_names
     assert "trading_place_order" not in enabled_tool_names
@@ -345,6 +362,13 @@ async def test_all_enabled_research_agent_tools_are_invokable(
         called,
         "single_stock_analysis",
         {"symbol": "600519", "wait_for_completion": False},
+    )
+    await _run_tool(
+        registry,
+        context,
+        called,
+        "stock_analysis",
+        {"mode": "single", "symbol": "600519", "wait_for_completion": False},
     )
     await _run_tool(
         registry,
@@ -568,7 +592,7 @@ async def test_enabled_research_agent_tools_handle_empty_agent_payloads(
         assert isinstance(result, dict), tool.name
         results[tool.name] = result
 
-    assert len(results) == 50
+    assert len(results) == 51
     assert results["update_hypothesis"]["status"] == "config_required"
     assert results["update_hypothesis"]["missing"] == ["hypothesis_id"]
     assert results["link_backtest"]["status"] == "config_required"

@@ -579,3 +579,23 @@ async def list_research_artifacts(
 extra = import_module("app.routers.research.extra")
 
 router.include_router(extra.router)
+
+
+def _sync_extra_state() -> None:
+    for name in (
+        "artifact_service",
+        "event_service",
+        "live_service",
+        "runtime_service",
+        "session_service",
+        "skill_service",
+        "swarm_service",
+    ):
+        setattr(extra, name, globals()[name])
+
+
+def __getattr__(name: str):
+    if hasattr(extra, name):
+        _sync_extra_state()
+        return getattr(extra, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

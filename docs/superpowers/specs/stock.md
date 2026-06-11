@@ -17,7 +17,7 @@
 - **StockAnalysisWorkflow** 负责确定性编排、阶段顺序、状态推进、等待窗口、超时、任务/报告绑定和事件上报。
 - **Stage modules** 负责具体阶段能力，例如输入校验、数据准备、市场分析、基本面分析、新闻分析、研究辩论、风险评估和报告生成。
 
-该方案不是把所有逻辑塞进 Agent，也不是修改原有 LangGraph DAG。旧 DAG 必须作为不可变基线保留，用于回归测试和结果对比；新 Agent workflow 只能通过 adapter 旁路调用旧入口或实现新阶段。
+该方案不是把所有逻辑塞进 Agent，也不是修改原有 LangGraph DAG。旧 DAG 必须作为不可变基线保留，用于回归测试和结果对比；新 Agent workflow 是独立执行路径，不得把旧队列/worker 当作 Agent 主执行层。
 
 ## 当前代码基线
 
@@ -46,12 +46,10 @@
 
 ### 当前实现事实
 
-- 当前 `single_stock_analysis` 仍然提交旧 TradingAgents LangGraph DAG 到现有分析队列。
-- 当前工具会创建真实 `task_id`，并通过队列启动后台任务。
-- 当前工具默认 `wait_for_completion=true`。
-- 当前默认等待上限是 900 秒，最大允许 1800 秒。
-- 当前默认轮询间隔是 2 秒，最大允许 30 秒。
-- 当前任务状态来自现有任务系统，主要包括 `pending`、`processing`、`completed`、`failed`、`cancelled`。
+- 当前 `stock_analysis` 和 `single_stock_analysis` 走 Agent-native workflow，不提交旧 TradingAgents LangGraph 队列。
+- 当前 Agent workflow 会创建真实 `task_id` 和 `analysis_id`，并写入 `analysis_tasks`、`analysis_reports`。
+- 当前 Agent workflow 不依赖 Redis queue、analysis worker 或旧 `/analysis/single` 后台消费进程。
+- 当前任务状态来自 Agent workflow 写入的现有任务/报告集合，主要包括 `completed`、`failed`；后续长耗时阶段如异步化，必须明确 `processing` 和恢复策略。
 - 当前报告读取通过 `analysis_reports`，并按 `context.principal.user_id` 过滤。
 - 编写本规格前没有 `stock_analysis` 统一工具；第一阶段实现后必须补齐并纳入回归测试。
 - 编写本规格前没有独立的 `StockAnalysisWorkflow` 服务；第一阶段实现后必须作为工具层外的 Agent-facing 编排外壳存在。
@@ -73,24 +71,24 @@
 
 ### 当前主要问题
 
-- 单股分析当前仍是“Agent 工具包裹旧 LangGraph DAG”，对 Agent 右侧执行栏来说仍偏黑盒。
+- 单股分析已经从“Agent 工具包裹旧 LangGraph DAG”改为 Agent-owned workflow；后续风险是 workflow 阶段能力还不够细，需要逐步 skill 化。
 - 用户不能在 Agent 中明确确认市场、日期、分析深度、分析师团队、情绪/风险选项和模型配置。
 - Agent 事件、旧任务进度、报告状态还不是统一状态源。
-- 旧 LangGraph state 与 Agent attempt/event 体系并存，长期会造成双状态源。
+- 旧 LangGraph state 与 Agent attempt/event 体系并存，但只允许旧 `/analysis/single` 使用旧 state；`/agent` 必须以 Agent attempt/event 为准。
 - 结构化配置入口如果没有后端直达执行链路，仍可能被 LLM 改写参数。
 
 ## 目标
 
 - 研究 Agent 成为单股分析的新主入口。
 - 保留旧 `/analysis/single`、`/tasks`、`/reports`，直到新路径稳定。
-- 用 `StockAnalysisWorkflow` 作为 Agent 单股入口的编排外壳；第一阶段不替代、不修改旧 LangGraph DAG。
+- 用 `StockAnalysisWorkflow` 作为 Agent 单股入口的编排外壳；第一阶段替换 `/agent` 的单股执行路径，但不修改旧 LangGraph DAG。
 - 用独立阶段模块实现每个分析阶段，避免新 workflow 变成另一个大黑盒。
 - 单股分析复用现有参数 schema、任务状态、报告产物和权限隔离。
 - Agent 不依赖 LLM 猜测关键分析参数；结构化入口提交时必须保留原始 payload。
 - 右侧执行步骤展示当前 attempt 的真实阶段进度，而不是旧会话或全局任务状态。
 - 任务 pending、processing、failed、timeout 时，Agent 必须明确说明真实状态，不能编造完成结论。
 - 所有任务、报告、artifact 读取都必须使用当前用户身份过滤。
-- 建立旧 DAG baseline 对比测试，确保新入口没有破坏旧单股分析的任务、状态、报告和权限行为。
+- 建立旧 DAG baseline 对比测试，确保新 Agent workflow 写出的任务、报告和权限字段与旧报告页兼容。
 
 ## 非目标
 
@@ -104,7 +102,7 @@
 - 不把长耗时分析同步阻塞在前端请求中无限等待。
 - 不新增交易下单、调仓或实盘执行能力。
 - 不允许 pending、processing 或 failed 任务被总结成已完成报告。
-- 不把“未来替换 LangGraph”作为第一阶段验收项。
+- 不把“删除 LangGraph”作为第一阶段验收项；本阶段只切 `/agent` 单股执行路径。
 
 ## 核心架构
 
@@ -602,13 +600,12 @@ React 不负责：
 - `save_report_artifact(...)`
 - `wait_bounded(...)`
 
-第一阶段允许 `run_single` 内部通过 adapter 调用现有单股任务创建和队列提交逻辑，但必须把以下边界固定下来：
+第一阶段 `run_single` 必须直接执行 Agent-owned workflow，不允许调用现有单股队列提交逻辑。必须把以下边界固定下来：
 
 - 工具输入统一走同一个 payload normalize/validate helper。
 - `single_stock_analysis` 和 `stock_analysis` 不复制两套参数处理逻辑。
-- adapter 只能调用旧入口的公开函数或 service，不能修改旧 DAG 内部文件。
-- wait timeout 只表示等待窗口结束，不代表任务失败。
-- completed 后必须通过真实报告读取路径生成摘要。
+- 旧 DAG 只能作为 baseline 对照，不得成为 `/agent` 执行依赖。
+- completed 后必须通过真实报告写入和读取路径生成摘要。
 - failed 后不能调用总结逻辑生成看似成功的结论。
 
 ### Baseline 对比
@@ -621,8 +618,8 @@ React 不负责：
 
 对比方式：
 
-- 旧路径：通过现有 `single_stock_analysis` 或旧单股 service 提交任务。
-- 新路径：通过 `stock_analysis` direct invocation 提交同等 payload。
+- 旧路径：通过旧 `/analysis/single` 或旧单股 service 提交任务，作为对照。
+- 新路径：通过 `stock_analysis` direct invocation 执行同等 payload。
 - 不要求 LLM 文本逐字一致。
 - 必须对比结构字段：`task_id`、`symbol`、`market_type`、status transition、progress、report URL、summary/recommendation/risk/key_points 字段存在性。
 - 必须对比权限行为：用户 A 不能读用户 B 的 task/report。
@@ -632,7 +629,8 @@ React 不负责：
 
 第一阶段不新增阶段子目录、伪造合成词或其它多词目录。新增文件必须遵守命名约束，使用单个真实单词：
 
-- `backend/app/services/research/agent/stock.py`：Agent-facing 单股 workflow 外壳，负责参数归一化、权限过滤、队列 adapter、等待窗口和结果绑定。
+- `backend/app/services/research/agent/stock.py`：Agent-facing 单股 workflow 外壳，负责参数归一化、权限过滤和结果绑定。
+- `backend/app/services/research/agent/native.py`：Agent-owned 单股执行路径，负责数据读取、阶段输出、任务写入和报告写入。
 - `backend/app/services/research/agent/stage.py`：阶段计划和阶段标题，供后端事件与前端执行栏复用。
 - `backend/app/services/research/agent/direct.py`：结构化 metadata 直达工具执行，避免 LLM 改写已确认参数。
 
@@ -655,7 +653,7 @@ React 不负责：
 
 ### Phase 1：Agent 单股入口收敛
 
-- 保持当前 `single_stock_analysis` 真实队列接入。
+- 禁止 `stock_analysis` / `single_stock_analysis` 提交旧分析队列。
 - 增加 `stock_analysis` 单股入口。
 - `single_stock_analysis` 改为兼容别名，调用同一 helper/workflow。
 - `stock_analysis_status` / `stock_analysis_report` 继续按 `task_id` 读取当前用户自己的任务和报告。
@@ -666,7 +664,7 @@ React 不负责：
 ### Phase 2：Workflow 外壳
 
 - 引入 `StockAnalysisWorkflow`。
-- 第一版只能通过 adapter 调用旧 helper 或旧 service，不能改旧 DAG 内部实现。
+- 第一版必须是 Agent-owned workflow，不能通过旧 queue/worker 伪装成迁移。
 - Workflow 必须发 `stock_analysis.stage` 事件。
 - 右侧执行栏按当前 attempt 渲染阶段。
 
@@ -697,16 +695,14 @@ React 不负责：
 
 ## 等待策略
 
-- 单股默认 `wait_for_completion=true`。
-- 默认等待 900 秒；最大等待 1800 秒。
-- timeout 不是 failed，应返回 `wait_timed_out=true`。
-- worker 未运行时，应提示“任务已入队但 worker 未处理”，并给出检查建议。
+- 当前 Agent-native 第一阶段在后端请求内完成并写入报告，不依赖外部 worker。
+- 如果后续某个 skill 变成长耗时异步阶段，必须由 Agent workflow 自己持久化 `processing` 状态和恢复策略，不能回退到旧分析队列。
+- timeout 不是 failed；如果引入异步等待，必须返回明确的 `processing`/`timed_out` 状态和可继续查询的 `task_id`。
 - Agent 最终回答必须明确区分：
-  - 已提交
-  - 等待中
+  - 正在执行
   - 已完成并读取报告
   - 失败
-  - 超时但仍在执行
+  - 超时但仍可继续查询
 
 ## 权限和隔离
 
@@ -724,7 +720,7 @@ React 不负责：
 - 没有启用模型：前端禁用提交，后端返回 `config_required`。
 - 模型 API Key 缺失：后端返回明确缺失模型和 provider。
 - 数据源无数据：返回“无可用历史数据/可能停牌/退市/代码不支持”。
-- worker 未运行：返回“任务已入队但 worker 未处理”。
+- Agent workflow 执行异常：写入 failed stage event 和错误原因。
 - 阶段失败：写入 failed stage event 和错误原因。
 - completed 但报告缺失：说明报告尚未生成或读取失败，不能生成最终投资结论。
 
@@ -837,17 +833,17 @@ React 不负责：
 - 不再让 Agent 自由管理股票分析阶段。
 - 不再允许实现者自由发挥页面布局；配置卡片、三栏边界、提交流程都有明确契约。
 - 明确了 Workflow 与 Skill 的分工。
-- 明确当前实现仍是旧 LangGraph DAG 入队，迁移必须分阶段完成。
+- 明确 Agent 单股入口不得再入旧 LangGraph 队列，迁移必须保护真实执行层。
 - 明确旧 DAG 是不可变 baseline，不是本阶段改造对象。
 - 明确 structured metadata 必须有后端 direct tool invocation 支持，否则不能宣称参数绕过 LLM。
 - 明确 LangGraph 删除或旧页面切换都不属于本规格授权范围。
 
 推荐执行顺序：
 
-1. 新增 `stock_analysis` 单股入口，并让 `single_stock_analysis` 共用同一 helper。
+1. 新增 `stock_analysis` 单股入口，并让 `single_stock_analysis` 共用同一 workflow。
 2. 后端支持 structured metadata direct tool invocation。
 3. 前端增加单股配置卡片。
 4. 建立旧 DAG baseline fixture 和结构兼容性对比。
-5. 引入 `StockAnalysisWorkflow` 外壳和 stage events。
-6. 在新 workflow 旁路阶段性实现 skills。
+5. 引入 `StockAnalysisWorkflow` 和 stage events。
+6. 在 Agent-native workflow 内阶段性实现 skills。
 7. 保持旧单股页面和旧 DAG 作为对照组，直到另一个明确批准的替换提案出现。

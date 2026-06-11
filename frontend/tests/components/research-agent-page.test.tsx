@@ -30,54 +30,29 @@ vi.mock("@/libs/api/research-agent", () => ({
   }
 }))
 
+async function openSession(title: string) {
+  await userEvent.setup().click((await screen.findByText(title)).closest("button") as HTMLButtonElement)
+}
+
 describe("ResearchAgentPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useAppStore.setState({ language: "zh-CN" })
     vi.spyOn(window, "confirm").mockReturnValue(true)
-    vi.mocked(researchAgentApi.listSessions).mockResolvedValue({
-      success: true,
-      data: [
-        { session_id: "session-1", title: "储能验证", updated_at: "2026-06-08T11:34:01Z" },
-        { session_id: "session-2", title: "白酒研究", updated_at: "2026-06-08T11:33:01Z" }
-      ],
-      message: "ok"
-    })
-    vi.mocked(researchAgentApi.createSession).mockResolvedValue({
-      success: true,
-      data: { session_id: "session-new", title: "Agent session" },
-      message: "ok"
-    })
-    vi.mocked(researchAgentApi.updateSession).mockResolvedValue({
-      success: true,
-      data: { session_id: "session-1", title: "储能复盘", updated_at: "2026-06-08T11:34:01Z" },
-      message: "ok"
-    })
-    vi.mocked(researchAgentApi.deleteSession).mockResolvedValue({
-      success: true,
-      data: { status: "deleted", session_id: "session-1" },
-      message: "ok"
-    })
-    vi.mocked(researchAgentApi.getLiveStatus).mockResolvedValue({
-      success: true,
-      data: {
-        global_halted: false,
-        brokers: [
-          {
-            auth: { broker: "ibkr", oauth_token_present: false, is_live_broker: true },
-            mandate: null,
-            runner: { broker: "ibkr", alive: false, last_tick: null, last_tick_age_seconds: null },
-            halted: false
-          }
-        ]
-      },
-      message: "ok"
-    })
-    vi.mocked(researchAgentApi.haltLive).mockResolvedValue({
-      success: true,
-      data: { halted: true, broker: null, reason: "test" },
-      message: "ok"
-    })
+    vi.mocked(researchAgentApi.listSessions).mockResolvedValue({ success: true, data: [
+      { session_id: "session-1", title: "储能验证", updated_at: "2026-06-08T11:34:01Z" },
+      { session_id: "session-2", title: "白酒研究", updated_at: "2026-06-08T11:33:01Z" }
+    ], message: "ok" })
+    vi.mocked(researchAgentApi.createSession).mockResolvedValue({ success: true, data: { session_id: "session-new", title: "Agent session" }, message: "ok" })
+    vi.mocked(researchAgentApi.updateSession).mockResolvedValue({ success: true, data: { session_id: "session-1", title: "储能复盘", updated_at: "2026-06-08T11:34:01Z" }, message: "ok" })
+    vi.mocked(researchAgentApi.deleteSession).mockResolvedValue({ success: true, data: { status: "deleted", session_id: "session-1" }, message: "ok" })
+    vi.mocked(researchAgentApi.getLiveStatus).mockResolvedValue({ success: true, data: { global_halted: false, brokers: [{
+      auth: { broker: "ibkr", oauth_token_present: false, is_live_broker: true },
+      mandate: null,
+      runner: { broker: "ibkr", alive: false, last_tick: null, last_tick_age_seconds: null },
+      halted: false
+    }] }, message: "ok" })
+    vi.mocked(researchAgentApi.haltLive).mockResolvedValue({ success: true, data: { halted: true, broker: null, reason: "test" }, message: "ok" })
     vi.mocked(researchAgentApi.listMessages).mockResolvedValue({ success: true, data: [], message: "ok" })
     vi.mocked(researchAgentApi.listAttempts).mockResolvedValue({ success: true, data: [], message: "ok" })
     vi.mocked(researchAgentApi.getGoal).mockResolvedValue({ success: true, data: null, message: "ok" })
@@ -137,7 +112,7 @@ describe("ResearchAgentPage", () => {
     expect(screen.getByText("会话")).toBeInTheDocument()
     expect(screen.queryByText("Sessions")).not.toBeInTheDocument()
     expect(screen.getAllByText("交易连接器").length).toBeGreaterThan(0)
-    expect(screen.getByText("交易连接器运行")).toBeInTheDocument()
+    expect(screen.getAllByText("交易连接器运行").length).toBeGreaterThan(0)
     expect(await screen.findByText("储能验证")).toBeInTheDocument()
     expect(screen.getAllByRole("button", { name: /新会话/ }).length).toBeGreaterThan(0)
     expect(screen.getByRole("button", { name: "更多选项" })).toBeInTheDocument()
@@ -223,6 +198,7 @@ describe("ResearchAgentPage", () => {
     })
 
     render(<ResearchAgentPage />)
+    await openSession("储能验证")
 
     expect(await screen.findByText("当前研究目标")).toBeInTheDocument()
     expect(await screen.findByText("验证储能板块投资机会")).toBeInTheDocument()
@@ -388,6 +364,7 @@ describe("ResearchAgentPage", () => {
 
     const user = userEvent.setup()
     render(<ResearchAgentPage />)
+    await openSession("储能验证")
 
     const step = await screen.findByRole("button", { name: /命令执行/ })
     expect(screen.queryByText(/完整错误内容应该在展开后可见/)).not.toBeInTheDocument()
@@ -422,6 +399,7 @@ describe("ResearchAgentPage", () => {
 
     const user = userEvent.setup()
     render(<ResearchAgentPage />)
+    await openSession("储能验证")
 
     const step = await screen.findByRole("button", { name: /网页搜索/ })
     expect(screen.getByText("数据受限")).toBeInTheDocument()
@@ -458,6 +436,7 @@ describe("ResearchAgentPage", () => {
 
     const user = userEvent.setup()
     render(<ResearchAgentPage />)
+    await openSession("储能验证")
 
     const step = await screen.findByRole("button", { name: /market_data_lookup/ })
     expect(screen.getByText("数据受限")).toBeInTheDocument()
@@ -465,6 +444,39 @@ describe("ResearchAgentPage", () => {
     await user.click(step)
 
     expect(await screen.findByText(/数据受限：A 股行情数据未取得可用价格序列/)).toBeInTheDocument()
+  })
+
+  it("shows skipped stock analysts as skipped instead of data-limited", async () => {
+    vi.mocked(researchAgentApi.listEvents).mockResolvedValue({
+      success: true,
+      data: [
+        {
+          event_id: 1,
+          event_type: "stock_analysis.stage",
+          payload: {
+            tool_name: "stock_analysis",
+            stage: "news_analysis",
+            title: "新闻分析师",
+            status: "skipped",
+            progress: 100,
+            message: "未选择该分析师。"
+          }
+        }
+      ],
+      message: "ok"
+    })
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+    await openSession("储能验证")
+
+    const step = await screen.findByRole("button", { name: /新闻分析师/ })
+    expect(screen.getByText("已跳过")).toBeInTheDocument()
+    expect(screen.queryByText("数据受限")).not.toBeInTheDocument()
+
+    await user.click(step)
+
+    expect(await screen.findByText(/news_analysis · 100% · 未选择该分析师。/)).toBeInTheDocument()
   })
 
   it("humanizes config-required journal steps from older persisted events", async () => {
@@ -491,6 +503,7 @@ describe("ResearchAgentPage", () => {
 
     const user = userEvent.setup()
     render(<ResearchAgentPage />)
+    await openSession("储能验证")
 
     const step = await screen.findByRole("button", { name: /交易日志分析/ })
     expect(screen.getByText("数据受限")).toBeInTheDocument()
@@ -515,6 +528,7 @@ describe("ResearchAgentPage", () => {
     })
 
     render(<ResearchAgentPage />)
+    await openSession("储能验证")
 
     expect(await screen.findByText(/外部模型或网络服务请求超时：ConnectTimeout/)).toBeInTheDocument()
   })
@@ -577,6 +591,7 @@ describe("ResearchAgentPage", () => {
     })
 
     render(<ResearchAgentPage />)
+    await openSession("connector report")
 
     expect(await screen.findByRole("heading", { name: "Trading Connector Profiles" })).toBeInTheDocument()
     expect(screen.getByRole("table")).toBeInTheDocument()
@@ -600,6 +615,7 @@ describe("ResearchAgentPage", () => {
 
     const user = userEvent.setup()
     render(<ResearchAgentPage />)
+    await openSession("储能验证")
 
     expect(await screen.findByText("网页读取")).toBeInTheDocument()
     expect(screen.queryByText("Alpha 覆盖检查")).not.toBeInTheDocument()
@@ -668,6 +684,7 @@ describe("ResearchAgentPage", () => {
     })
 
     render(<ResearchAgentPage />)
+    await openSession("储能验证")
 
     expect(await screen.findByText("继续分析储能")).toBeInTheDocument()
     expect(await screen.findByText("智能体正在工作...")).toBeInTheDocument()
@@ -725,6 +742,7 @@ describe("ResearchAgentPage", () => {
     })
 
     render(<ResearchAgentPage />)
+    await openSession("储能验证")
 
     expect(await screen.findByText("智能体正在工作...")).toBeInTheDocument()
     streamHandlers?.onEvent({
@@ -762,6 +780,7 @@ describe("ResearchAgentPage", () => {
     const user = userEvent.setup()
     render(<ResearchAgentPage />)
 
+    await user.click(await screen.findByText("储能验证"))
     expect(await screen.findByText("正在载入会话")).toBeInTheDocument()
     await user.click(await screen.findByText("白酒研究"))
 
@@ -825,6 +844,7 @@ describe("ResearchAgentPage", () => {
     })
 
     render(<ResearchAgentPage />)
+    await openSession("储能验证")
 
     expect(await screen.findByText("第二次回答")).toBeInTheDocument()
     expect(screen.getByText("网页读取")).toBeInTheDocument()

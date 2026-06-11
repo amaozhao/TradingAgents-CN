@@ -256,12 +256,10 @@ def test_prompt_uses_filtered_registry_tools_only():
     assert "stock_analysis_status" in prompt
     assert "stock_analysis_report" in prompt
     assert "stock_analysis submits a single-stock analysis" in prompt
-    assert "without modifying DAG internals" in prompt
-    assert (
-        "single_stock_analysis submits the existing single-stock LangGraph DAG"
-        in prompt
-    )
-    assert "waits for the report by default" in prompt
+    assert "original single-stock LangGraph DAG remains only a baseline" in prompt
+    assert "Do not submit the DAG queue" in prompt
+    assert "migrated Agent-native workflow directly" in prompt
+    assert "report compatible with the existing report pages" in prompt
     assert "market_data_lookup" in prompt
     assert "admin_config_write" not in prompt
     assert "shell" not in prompt.lower()

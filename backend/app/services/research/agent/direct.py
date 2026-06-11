@@ -80,8 +80,22 @@ class DirectToolMixin:
     ) -> None:
         status = str(result.get("status") or "queued").lower()
         emitted_plan = False
+        stage_events = result.get("stage_events")
+        if isinstance(stage_events, list):
+            for stage in stage_events:
+                if not isinstance(stage, dict):
+                    continue
+                emitted_plan = True
+                await self._append_stock_stage_event(
+                    context=context,
+                    stage=str(stage.get("stage") or "analysis_task"),
+                    status=str(stage.get("status") or "completed"),
+                    progress=int(stage.get("progress") or result.get("progress") or 0),
+                    message=str(stage.get("message") or "Agent-native 单股阶段已更新。"),
+                    result=result,
+                )
         stage_plan = result.get("stage_plan")
-        if isinstance(stage_plan, list):
+        if not emitted_plan and isinstance(stage_plan, list):
             for stage in stage_plan:
                 if not isinstance(stage, dict) or stage.get("stage") == "agent_summary":
                     continue
@@ -95,7 +109,7 @@ class DirectToolMixin:
                     status=planned_status,
                     progress=int(result.get("progress") or 0),
                     message=str(
-                        stage.get("reason") or "等待现有单股 DAG 返回该阶段结果。"
+                        stage.get("reason") or "等待 Agent-native 单股阶段结果。"
                     ),
                     result=result,
                 )

@@ -61,7 +61,6 @@ export function ResearchAgentPage() {
     void researchAgentApi.listSessions().then((response) => {
       const loaded = response.data || []
       setSessions(loaded)
-      if (loaded[0]?.session_id) setActiveSessionId(loaded[0].session_id)
     }).catch(() => setSessions([]))
   }, [])
 
@@ -163,6 +162,7 @@ export function ResearchAgentPage() {
     return text.ready
   }, [cancelRequested, running, text])
   const stockRunStatus = tools.filter((tool) => tool.name === "stock_analysis").at(-1)
+  const showWelcome = !sessionLoading && messages.length === 0 && !showStockConfig && composerMode === "chat"
 
   function scrollToBottom() {
     const list = listRef.current
@@ -648,6 +648,29 @@ export function ResearchAgentPage() {
     await refreshLiveStatus()
   }
 
+  async function handleResumeLive() {
+    await researchAgentApi.resumeLive({
+      reason: "user requested resume from Agent page",
+      session_id: activeSessionId
+    })
+    await refreshLiveStatus()
+  }
+
+  async function handleAuthorizeLive(broker: string) {
+    await researchAgentApi.authorizeLive({ broker, session_id: activeSessionId })
+    await refreshLiveStatus()
+  }
+
+  async function handleStartLiveRunner(broker: string) {
+    await researchAgentApi.startLiveRunner({ broker, session_id: activeSessionId })
+    await refreshLiveStatus()
+  }
+
+  async function handleStopLiveRunner(broker: string) {
+    await researchAgentApi.stopLiveRunner({ broker, session_id: activeSessionId })
+    await refreshLiveStatus()
+  }
+
   function handleExport() {
     if (!messages.length && !goal) return
     const lines = [`# Agent Chat Export`, ``, `Export time: ${new Date().toLocaleString()}`, ``]
@@ -734,7 +757,7 @@ export function ResearchAgentPage() {
           <div className="w-full space-y-4">
             {sessionLoading ? (
               <SessionLoadingView text={text} />
-            ) : messages.length === 0 ? (
+            ) : showWelcome ? (
               <WelcomeScreen onExample={fillComposerFromQuickPrompt} text={text} />
             ) : (
               messages.map(renderMessage)
@@ -854,6 +877,10 @@ export function ResearchAgentPage() {
         liveStatusUnavailable={liveStatusUnavailable}
         onRefreshLiveStatus={() => void refreshLiveStatus()}
         onHaltLive={() => void handleHaltLive()}
+        onResumeLive={() => void handleResumeLive()}
+        onAuthorizeLive={(broker) => void handleAuthorizeLive(broker)}
+        onStartLiveRunner={(broker) => void handleStartLiveRunner(broker)}
+        onStopLiveRunner={(broker) => void handleStopLiveRunner(broker)}
         text={text}
       />
     </div>

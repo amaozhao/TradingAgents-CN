@@ -92,6 +92,7 @@ export interface LiveBrokerStatus {
     account_ref: string
     expires_at: string
     expired: boolean
+    limits?: Record<string, unknown>
   } | null
   runner?: {
     broker: string

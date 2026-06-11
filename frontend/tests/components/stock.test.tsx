@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { toolsFromEvents } from "@/features/agent/event"
 import { defaultStockModels, enabledModels } from "@/features/research/models"
 import {
   createStockDraft,
@@ -29,6 +30,10 @@ vi.mock("@/libs/api/research-agent", () => ({
     uploadFile: vi.fn(),
     getLiveStatus: vi.fn(),
     haltLive: vi.fn(),
+    resumeLive: vi.fn(),
+    authorizeLive: vi.fn(),
+    startLiveRunner: vi.fn(),
+    stopLiveRunner: vi.fn(),
     listMessages: vi.fn(),
     listEvents: vi.fn(),
     createGoal: vi.fn(),
@@ -48,6 +53,13 @@ vi.mock("@/libs/api/config", () => ({
     getLLMConfigs: vi.fn()
   }
 }))
+
+async function openSession(title: string) {
+  const label = await screen.findByText(title)
+  const button = label.closest("button")
+  expect(button).not.toBeNull()
+  await userEvent.setup().click(button as HTMLButtonElement)
+}
 
 const models: LLMConfig[] = [
   {
@@ -132,6 +144,27 @@ describe("stock analysis shared frontend logic", () => {
     expect(stockDraftSummary(draft, normalized)).toContain("600519 / A股 / 标准")
   })
 
+  it("keeps queued single-stock tool events in the running state", () => {
+    const [tool] = toolsFromEvents([
+      {
+        event: "tool_completed",
+        eventId: "event-1",
+        data: {
+          tool_name: "stock_analysis",
+          result: {
+            tool: "stock_analysis",
+            status: "queued",
+            task_id: "task-600519"
+          }
+        }
+      }
+    ])
+
+    expect(tool?.name).toBe("stock_analysis")
+    expect(tool?.status).toBe("running")
+    expect(tool?.taskId).toBe("task-600519")
+  })
+
   it("uses the browser local date for default analysis dates", () => {
     expect(localDateKey(new Date(2026, 5, 11, 0, 30))).toBe("2026-06-11")
   })
@@ -175,6 +208,26 @@ describe("ResearchAgentPage stock analysis", () => {
     vi.mocked(researchAgentApi.haltLive).mockResolvedValue({
       success: true,
       data: { halted: true, broker: null, reason: "test" },
+      message: "ok"
+    })
+    vi.mocked(researchAgentApi.resumeLive).mockResolvedValue({
+      success: true,
+      data: { resumed: true, broker: null, reason: "test" },
+      message: "ok"
+    })
+    vi.mocked(researchAgentApi.authorizeLive).mockResolvedValue({
+      success: true,
+      data: { broker: "paper", oauth_token_present: true },
+      message: "ok"
+    })
+    vi.mocked(researchAgentApi.startLiveRunner).mockResolvedValue({
+      success: true,
+      data: { broker: "paper", alive: true },
+      message: "ok"
+    })
+    vi.mocked(researchAgentApi.stopLiveRunner).mockResolvedValue({
+      success: true,
+      data: { broker: "paper", alive: false },
       message: "ok"
     })
     vi.mocked(researchAgentApi.listMessages).mockResolvedValue({ success: true, data: [], message: "ok" })
@@ -328,6 +381,7 @@ describe("ResearchAgentPage stock analysis", () => {
     })
 
     render(<ResearchAgentPage />)
+    await openSession("贵州茅台")
 
     expect(await screen.findByText("运行中")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "更多选项" })).toBeDisabled()
@@ -433,6 +487,7 @@ describe("ResearchAgentPage stock analysis", () => {
     })
 
     render(<ResearchAgentPage />)
+    await openSession("贵州茅台")
 
     expect(await screen.findByLabelText("单股分析历史配置")).toBeInTheDocument()
     expect(screen.getByText("600519 / A股 / 标准 / market+fundamentals / 情绪+风险 / qwen-turbo -> qwen-max")).toBeInTheDocument()
@@ -515,6 +570,7 @@ describe("ResearchAgentPage stock analysis", () => {
     })
 
     render(<ResearchAgentPage />)
+    await openSession("贵州茅台")
 
     expect(await screen.findByLabelText("单股分析历史配置")).toBeInTheDocument()
     expect(screen.getByText("当前状态：失败")).toBeInTheDocument()
@@ -597,6 +653,7 @@ describe("ResearchAgentPage stock analysis", () => {
     })
 
     render(<ResearchAgentPage />)
+    await openSession("贵州茅台")
 
     expect(await screen.findByLabelText("单股分析历史配置")).toBeInTheDocument()
     expect(screen.getByText("当前状态：运行中")).toBeInTheDocument()
@@ -710,6 +767,7 @@ describe("ResearchAgentPage stock analysis", () => {
 
     const user = userEvent.setup()
     render(<ResearchAgentPage />)
+    await openSession("贵州茅台")
 
     expect(await screen.findByText("加载能力模块")).toBeInTheDocument()
     expect(screen.queryByText(/已加载技能 moodtx/)).not.toBeInTheDocument()
@@ -725,7 +783,7 @@ describe("ResearchAgentPage stock analysis", () => {
     expect(screen.getByText(/命令失败（exit 1）/)).toBeInTheDocument()
     expect(screen.queryByText(/\{"status":/)).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole("button", { name: /单股分析完成/ }))
+    await user.click(screen.getByRole("button", { name: /单股分析运行中/ }))
     expect(screen.getByText(/600519（标准） 任务 task-600519已提交到分析队列/)).toBeInTheDocument()
 
     await user.click(screen.getByRole("button", { name: /单股分析进度/ }))

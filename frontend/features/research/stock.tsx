@@ -30,7 +30,7 @@ import { configApi, type LLMConfig } from "@/libs/api/config"
 export type { StockPayload, StockSubmit }
 
 export type StockRunStatus = {
-  status: "running" | "ok" | "warning" | "error"
+  status: "running" | "ok" | "warning" | "error" | "skipped"
   preview?: string
   taskId?: string
   reportUrl?: string
@@ -39,8 +39,23 @@ export type StockRunStatus = {
 function runStatusText(runStatus?: StockRunStatus) {
   if (runStatus?.status === "ok") return "已完成"
   if (runStatus?.status === "error") return "失败"
+  if (runStatus?.status === "skipped") return "已跳过"
   if (runStatus?.status === "warning") return "需要关注"
   return "运行中"
+}
+
+function FieldNote({
+  children,
+  error = false
+}: {
+  children?: string
+  error?: boolean
+}) {
+  return (
+    <span className={`min-h-4 text-[11px] leading-4 ${error ? "text-destructive" : "text-muted-foreground"}`}>
+      {children || ""}
+    </span>
+  )
 }
 
 export function StockReplayCard({
@@ -204,8 +219,8 @@ export function StockConfigCard({
 
   return (
     <section className="rounded-lg border bg-background p-4 shadow-sm" aria-label="单股分析配置">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
+      <div className="grid gap-3">
+        <div className="min-w-0 pr-2">
           <div className="flex items-center gap-2">
             <BarChart3 className="size-4 text-primary" />
             <h2 className="text-sm font-semibold">单股分析</h2>
@@ -213,12 +228,12 @@ export function StockConfigCard({
           <p className="mt-1 break-words text-xs text-muted-foreground">{summary}</p>
         </div>
         {blockingError && (
-          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs text-destructive">
+          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
             {blockingError}
           </p>
         )}
         {locked && !blockingError && (
-          <p className="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-xs text-primary">
+          <p className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
             已提交，执行步骤和报告链接会在右侧更新。
           </p>
         )}
@@ -254,9 +269,9 @@ export function StockConfigCard({
         </div>
       )}
 
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
-        <label className="grid gap-1 text-xs font-medium">
-          股票代码
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        <label className="grid content-start gap-1 text-xs font-medium">
+          <span>股票代码</span>
           <Input
             value={draft.symbol}
             onChange={(event) => update("symbol", event.target.value)}
@@ -267,14 +282,10 @@ export function StockConfigCard({
             placeholder="600519 / 0700.HK / AAPL"
             disabled={disabled}
           />
-          {draft.symbol && !error && (
-            <span className="text-[11px] text-muted-foreground">
-              规范化：{normalized.symbol} / {normalized.market}
-            </span>
-          )}
+          <FieldNote error={Boolean(error)}>{error || (draft.symbol ? `规范化：${normalized.symbol} / ${normalized.market}` : "")}</FieldNote>
         </label>
-        <label className="grid gap-1 text-xs font-medium">
-          市场类型
+        <label className="grid content-start gap-1 text-xs font-medium">
+          <span>市场类型</span>
           <Select
             value={draft.market}
             onValueChange={(value) => update("market", value as Market)}
@@ -285,9 +296,10 @@ export function StockConfigCard({
               {MARKETS.map((market) => <SelectItem key={market} value={market}>{market}</SelectItem>)}
             </SelectContent>
           </Select>
+          <FieldNote>自动识别后可手动调整</FieldNote>
         </label>
-        <label className="grid gap-1 text-xs font-medium">
-          分析日期
+        <label className="grid content-start gap-1 text-xs font-medium">
+          <span>分析日期</span>
           <Input
             type="date"
             value={draft.date}
@@ -295,13 +307,13 @@ export function StockConfigCard({
             onChange={(event) => update("date", event.target.value)}
             disabled={disabled}
           />
-          {dateError && <span className="text-[11px] text-destructive">{dateError}</span>}
+          <FieldNote error={Boolean(dateError)}>{dateError}</FieldNote>
         </label>
       </div>
 
-      <div className="mt-3 grid gap-3 md:grid-cols-[14rem_minmax(0,1fr)]">
-        <label className="grid gap-1 text-xs font-medium">
-          分析深度
+      <div className="mt-3 grid gap-3 lg:grid-cols-[12rem_minmax(0,1fr)]">
+        <label className="grid content-start gap-1 text-xs font-medium">
+          <span>分析深度</span>
           <Select
             value={draft.depth}
             onValueChange={(value) => update("depth", value as Depth)}
@@ -312,17 +324,18 @@ export function StockConfigCard({
               {DEPTHS.map((depth) => <SelectItem key={depth} value={depth}>{depth}</SelectItem>)}
             </SelectContent>
           </Select>
+          <FieldNote />
         </label>
         <fieldset className="grid gap-2 text-xs font-medium">
           <legend>分析师团队</legend>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {ANALYSTS.map((analyst) => {
               const optionDisabled = disabled || (analyst.id === "social" && normalized.market === "A股")
               const checked = effectiveAnalysts.includes(analyst.id)
               return (
                 <label
                   key={analyst.id}
-                  className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm"
+                  className="inline-flex h-9 min-w-0 items-center gap-2 rounded-md border px-3 text-sm"
                 >
                   <input
                     type="checkbox"
@@ -335,14 +348,12 @@ export function StockConfigCard({
               )
             })}
           </div>
-          {normalized.market === "A股" && (
-            <span className="text-[11px] text-muted-foreground">A 股默认禁用社媒分析。</span>
-          )}
+          <FieldNote>{normalized.market === "A股" ? "A 股默认禁用社媒分析。" : ""}</FieldNote>
         </fieldset>
       </div>
 
-      <div className="mt-3 grid gap-3 md:grid-cols-4">
-        <label className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <label className="flex h-10 items-center justify-between rounded-md border px-3 text-sm">
           情绪分析
           <input
             type="checkbox"
@@ -351,7 +362,7 @@ export function StockConfigCard({
             onChange={(event) => update("sentiment", event.target.checked)}
           />
         </label>
-        <label className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+        <label className="flex h-10 items-center justify-between rounded-md border px-3 text-sm">
           风险评估
           <input
             type="checkbox"
@@ -360,7 +371,7 @@ export function StockConfigCard({
             onChange={(event) => update("risk", event.target.checked)}
           />
         </label>
-        <label className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+        <label className="flex h-10 items-center justify-between rounded-md border px-3 text-sm">
           等待完成
           <input
             type="checkbox"
@@ -369,8 +380,8 @@ export function StockConfigCard({
             onChange={(event) => update("wait", event.target.checked)}
           />
         </label>
-        <label className="grid gap-1 text-xs font-medium">
-          等待秒数
+        <label className="grid content-start gap-1 text-xs font-medium">
+          <span>等待秒数</span>
           <Input
             type="number"
             min={30}
@@ -379,12 +390,13 @@ export function StockConfigCard({
             disabled={disabled || !draft.wait}
             onChange={(event) => update("timeout", Number(event.target.value) || 900)}
           />
+          <FieldNote>{draft.wait ? "30-1800 秒" : "未启用等待完成"}</FieldNote>
         </label>
       </div>
 
       <div className="mt-3 grid gap-3 md:grid-cols-2">
-        <label className="grid gap-1 text-xs font-medium">
-          快速分析模型
+        <label className="grid content-start gap-1 text-xs font-medium">
+          <span>快速分析模型</span>
           <Select
             value={draft.quick}
             onValueChange={(value) => update("quick", value)}
@@ -399,9 +411,10 @@ export function StockConfigCard({
               ))}
             </SelectContent>
           </Select>
+          <FieldNote />
         </label>
-        <label className="grid gap-1 text-xs font-medium">
-          深度决策模型
+        <label className="grid content-start gap-1 text-xs font-medium">
+          <span>深度决策模型</span>
           <Select
             value={draft.deep}
             onValueChange={(value) => update("deep", value)}
@@ -416,6 +429,7 @@ export function StockConfigCard({
               ))}
             </SelectContent>
           </Select>
+          <FieldNote>{modelsError}</FieldNote>
         </label>
       </div>
 

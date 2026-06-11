@@ -41,49 +41,87 @@ class FakeAnalysisService:
         return dict(status)
 
 
-class FakeQueueService:
-    def __init__(self):
-        self.enqueued: list[dict[str, Any]] = []
-
-    async def enqueue_task(self, **kwargs):
-        self.enqueued.append(kwargs)
-        return kwargs["task_id"]
-
-
-class FakeReportCollection:
-    def __init__(self, documents: list[dict[str, Any]]):
-        self.documents = documents
-        self.last_query: dict[str, Any] | None = None
-
-    async def find_one(self, query: dict[str, Any]):
-        self.last_query = query
-        for document in self.documents:
-            if all(document.get(key) == value for key, value in query.items()):
-                return dict(document)
-        return None
-
-
-class FakeDb:
-    def __init__(self, reports: list[dict[str, Any]]):
-        self.analysis_reports = FakeReportCollection(reports)
-
-
 def _context() -> ToolExecutionContext:
     principal = ResearchPrincipal.from_user(USER, session_id="session-1")
     return ToolExecutionContext(principal=principal, session_id="session-1")
 
 
-@pytest.mark.asyncio
-async def test_single_stock_analysis_tool_submits_existing_dag_task(monkeypatch):
+class WorkflowCalls(list[dict[str, Any]]):
+    service: FakeAnalysisService
+
+
+def _patch_native_workflow(monkeypatch):
+    calls = WorkflowCalls()
     service = FakeAnalysisService()
-    queue = FakeQueueService()
+
+    async def run_native_stock_workflow(
+        context,
+        *,
+        tool_name: str,
+        symbol: str,
+        market_type: str,
+        parameters,
+        skipped_stages,
+        stage_plan,
+    ):
+        calls.append(
+            {
+                "context": context,
+                "symbol": symbol,
+                "market_type": market_type,
+                "parameters": parameters,
+                "skipped_stages": skipped_stages,
+                "stage_plan": stage_plan,
+            }
+        )
+        return {
+            "tool": tool_name,
+            "mode": "single",
+            "status": "completed",
+            "accepted": True,
+            "stage": "agent_summary",
+            "wait_status": "completed",
+            "progress": 100,
+            "task_id": "task-600519",
+            "analysis_id": "analysis-1",
+            "symbol": symbol,
+            "market_type": market_type,
+            "analysis_date": parameters.analysis_date.isoformat()
+            if parameters.analysis_date
+            else None,
+            "research_depth": parameters.research_depth,
+            "selected_analysts": parameters.selected_analysts,
+            "include_sentiment": parameters.include_sentiment,
+            "include_risk": parameters.include_risk,
+            "skipped_stages": skipped_stages,
+            "stage_plan": stage_plan,
+            "summary": "贵州茅台基本面稳健。",
+            "recommendation": "持有",
+            "risk_level": "中",
+            "decision": {"action": "持有"},
+            "report": {"analysis_id": "analysis-1"},
+            "links": {
+                "task": "/tasks?task_id=task-600519",
+                "report": "/reports/view/task-600519",
+            },
+            "task_url": "/tasks?task_id=task-600519",
+            "report_url": "/reports/view/task-600519",
+            "message": "Agent-native 单股分析已完成，未提交原 LangGraph 队列。",
+        }
+
+    monkeypatch.setattr(stock_module, "get_simple_analysis_service", lambda: service)
     monkeypatch.setattr(
         stock_module,
-        "get_simple_analysis_service",
-        lambda: service,
-        raising=False,
+        "run_native_stock_workflow",
+        run_native_stock_workflow,
     )
-    monkeypatch.setattr(stock_module, "get_queue_service", lambda: queue, raising=False)
+    calls.service = service
+    return calls
+
+
+@pytest.mark.asyncio
+async def test_single_stock_analysis_tool_runs_native_workflow(monkeypatch):
+    calls = _patch_native_workflow(monkeypatch)
     monkeypatch.setattr(
         stock_module,
         "get_provider_and_url_by_model_sync",
@@ -114,9 +152,9 @@ async def test_single_stock_analysis_tool_submits_existing_dag_task(monkeypatch)
 
     assert result["tool"] == "single_stock_analysis"
     assert result["accepted"] is True
-    assert result["status"] == "queued"
-    assert result["stage"] == "analysis_task"
-    assert result["wait_status"] == "not_waited"
+    assert result["status"] == "completed"
+    assert result["stage"] == "agent_summary"
+    assert result["wait_status"] == "completed"
     assert result["task_id"] == "task-600519"
     assert result["links"] == {
         "task": "/tasks?task_id=task-600519",
@@ -124,36 +162,20 @@ async def test_single_stock_analysis_tool_submits_existing_dag_task(monkeypatch)
     }
     assert result["task_url"] == "/tasks?task_id=task-600519"
     assert result["report_url"] == "/reports/view/task-600519"
-
-    [(user_id, request)] = service.created
-    assert user_id == "user-a"
-    assert request.get_symbol() == "600519"
-    assert request.parameters.market_type == "A股"
-    assert request.parameters.research_depth == "标准"
-    assert request.parameters.selected_analysts == ["market", "fundamentals", "news"]
-    assert request.parameters.include_sentiment is False
-
-    [queued] = queue.enqueued
-    assert queued["user_id"] == "user-a"
-    assert queued["symbol"] == "600519"
-    assert queued["task_id"] == "task-600519"
-    assert queued["params"]["task_id"] == "task-600519"
-    assert queued["params"]["selected_analysts"] == ["market", "fundamentals", "news"]
+    [call] = calls
+    assert call["context"].principal.user_id == "user-a"
+    assert call["symbol"] == "600519"
+    assert call["market_type"] == "A股"
+    assert call["parameters"].research_depth == "标准"
+    assert call["parameters"].selected_analysts == ["market", "fundamentals", "news"]
+    assert call["parameters"].include_sentiment is False
 
 
 @pytest.mark.asyncio
-async def test_stock_analysis_tool_submits_single_mode_through_same_queue_adapter(
+async def test_stock_analysis_tool_runs_single_mode_through_native_workflow(
     monkeypatch,
 ):
-    service = FakeAnalysisService()
-    queue = FakeQueueService()
-    monkeypatch.setattr(
-        stock_module,
-        "get_simple_analysis_service",
-        lambda: service,
-        raising=False,
-    )
-    monkeypatch.setattr(stock_module, "get_queue_service", lambda: queue, raising=False)
+    calls = _patch_native_workflow(monkeypatch)
     monkeypatch.setattr(
         stock_module,
         "get_provider_and_url_by_model_sync",
@@ -183,15 +205,12 @@ async def test_stock_analysis_tool_submits_single_mode_through_same_queue_adapte
     assert result["tool"] == "stock_analysis"
     assert result["mode"] == "single"
     assert result["accepted"] is True
-    assert result["status"] == "queued"
+    assert result["status"] == "completed"
     assert result["task_id"] == "task-600519"
-    [(user_id, request)] = service.created
-    assert user_id == "user-a"
-    assert request.get_symbol() == "600519"
-    assert request.parameters.selected_analysts == ["market", "fundamentals"]
-    [queued] = queue.enqueued
-    assert queued["task_id"] == "task-600519"
-    assert queued["params"]["symbol"] == "600519"
+    [call] = calls
+    assert call["context"].principal.user_id == "user-a"
+    assert call["symbol"] == "600519"
+    assert call["parameters"].selected_analysts == ["market", "fundamentals"]
 
 
 @pytest.mark.asyncio
@@ -206,15 +225,7 @@ async def test_stock_analysis_tool_submits_single_mode_through_same_queue_adapte
 async def test_stock_analysis_baseline_fixture_inputs_are_structurally_compatible(
     monkeypatch, raw_symbol, market_type, expected_symbol, expected_market
 ):
-    service = FakeAnalysisService()
-    queue = FakeQueueService()
-    monkeypatch.setattr(
-        stock_module,
-        "get_simple_analysis_service",
-        lambda: service,
-        raising=False,
-    )
-    monkeypatch.setattr(stock_module, "get_queue_service", lambda: queue, raising=False)
+    calls = _patch_native_workflow(monkeypatch)
     monkeypatch.setattr(
         stock_module,
         "get_provider_and_url_by_model_sync",
@@ -259,24 +270,16 @@ async def test_stock_analysis_baseline_fixture_inputs_are_structurally_compatibl
     assert result["mode"] == "single"
     assert result["symbol"] == expected_symbol
     assert result["market_type"] == expected_market
-    [queued] = queue.enqueued
-    assert queued["symbol"] == expected_symbol
-    assert queued["params"]["market_type"] == expected_market
+    [call] = calls
+    assert call["symbol"] == expected_symbol
+    assert call["market_type"] == expected_market
 
 
 @pytest.mark.asyncio
-async def test_stock_analysis_matches_existing_single_stock_queue_baseline(
+async def test_stock_analysis_matches_single_stock_analysis_alias(
     monkeypatch,
 ):
-    service = FakeAnalysisService()
-    queue = FakeQueueService()
-    monkeypatch.setattr(
-        stock_module,
-        "get_simple_analysis_service",
-        lambda: service,
-        raising=False,
-    )
-    monkeypatch.setattr(stock_module, "get_queue_service", lambda: queue, raising=False)
+    calls = _patch_native_workflow(monkeypatch)
     monkeypatch.setattr(
         stock_module,
         "get_provider_and_url_by_model_sync",
@@ -329,28 +332,18 @@ async def test_stock_analysis_matches_existing_single_stock_queue_baseline(
     assert {key: stock_result[key] for key in comparable_result_keys} == {
         key: baseline_result[key] for key in comparable_result_keys
     }
-    assert len(queue.enqueued) == 2
-    assert queue.enqueued[0] == queue.enqueued[1]
-    first_request = service.created[0][1]
-    second_request = service.created[1][1]
-    assert first_request.model_dump(mode="json") == second_request.model_dump(
-        mode="json"
-    )
+    assert len(calls) == 2
+    assert calls[0]["symbol"] == calls[1]["symbol"]
+    assert calls[0]["parameters"].model_dump(mode="json") == calls[1][
+        "parameters"
+    ].model_dump(mode="json")
 
 
 @pytest.mark.asyncio
 async def test_single_stock_analysis_tool_uses_configured_models_when_agent_omits_models(
     monkeypatch,
 ):
-    service = FakeAnalysisService()
-    queue = FakeQueueService()
-    monkeypatch.setattr(
-        stock_module,
-        "get_simple_analysis_service",
-        lambda: service,
-        raising=False,
-    )
-    monkeypatch.setattr(stock_module, "get_queue_service", lambda: queue, raising=False)
+    calls = _patch_native_workflow(monkeypatch)
     monkeypatch.setattr(
         stock_module,
         "_load_active_system_config_doc",
@@ -399,28 +392,17 @@ async def test_single_stock_analysis_tool_uses_configured_models_when_agent_omit
     )
 
     assert result["accepted"] is True
-    [(user_id, request)] = service.created
-    assert user_id == "user-a"
-    assert request.parameters.quick_analysis_model == "minimax-m1"
-    assert request.parameters.deep_analysis_model == "minimax-m1"
-    [queued] = queue.enqueued
-    assert queued["params"]["quick_analysis_model"] == "minimax-m1"
-    assert queued["params"]["deep_analysis_model"] == "minimax-m1"
+    [call] = calls
+    assert call["context"].principal.user_id == "user-a"
+    assert call["parameters"].quick_analysis_model == "minimax-m1"
+    assert call["parameters"].deep_analysis_model == "minimax-m1"
 
 
 @pytest.mark.asyncio
 async def test_single_stock_analysis_tool_uses_default_llm_when_quick_deep_are_unset(
     monkeypatch,
 ):
-    service = FakeAnalysisService()
-    queue = FakeQueueService()
-    monkeypatch.setattr(
-        stock_module,
-        "get_simple_analysis_service",
-        lambda: service,
-        raising=False,
-    )
-    monkeypatch.setattr(stock_module, "get_queue_service", lambda: queue, raising=False)
+    calls = _patch_native_workflow(monkeypatch)
     monkeypatch.setattr(
         stock_module,
         "_load_active_system_config_doc",
@@ -464,10 +446,10 @@ async def test_single_stock_analysis_tool_uses_default_llm_when_quick_deep_are_u
     )
 
     assert result["accepted"] is True
-    [(user_id, request)] = service.created
-    assert user_id == "user-a"
-    assert request.parameters.quick_analysis_model == "MiniMax-M3"
-    assert request.parameters.deep_analysis_model == "MiniMax-M3"
+    [call] = calls
+    assert call["context"].principal.user_id == "user-a"
+    assert call["parameters"].quick_analysis_model == "MiniMax-M3"
+    assert call["parameters"].deep_analysis_model == "MiniMax-M3"
 
 
 @pytest.mark.asyncio
@@ -488,15 +470,7 @@ async def test_single_stock_analysis_tool_uses_default_llm_when_quick_deep_are_u
 async def test_single_stock_analysis_tool_normalizes_exchange_symbol(
     monkeypatch, raw_symbol, expected_symbol, expected_market
 ):
-    service = FakeAnalysisService()
-    queue = FakeQueueService()
-    monkeypatch.setattr(
-        stock_module,
-        "get_simple_analysis_service",
-        lambda: service,
-        raising=False,
-    )
-    monkeypatch.setattr(stock_module, "get_queue_service", lambda: queue, raising=False)
+    calls = _patch_native_workflow(monkeypatch)
     monkeypatch.setattr(
         stock_module,
         "get_provider_and_url_by_model_sync",
@@ -522,28 +496,15 @@ async def test_single_stock_analysis_tool_normalizes_exchange_symbol(
     assert result["accepted"] is True
     assert result["symbol"] == expected_symbol
     assert result["market_type"] == expected_market
-    [(user_id, request)] = service.created
-    assert user_id == "user-a"
-    assert request.get_symbol() == expected_symbol
-    assert request.parameters.market_type == expected_market
-    [queued] = queue.enqueued
-    assert queued["symbol"] == expected_symbol
-    assert queued["params"]["symbol"] == expected_symbol
-    assert queued["params"]["stock_code"] == expected_symbol
-    assert queued["params"]["market_type"] == expected_market
+    [call] = calls
+    assert call["context"].principal.user_id == "user-a"
+    assert call["symbol"] == expected_symbol
+    assert call["parameters"].market_type == expected_market
 
 
 @pytest.mark.asyncio
 async def test_stock_analysis_filters_social_analyst_for_a_share(monkeypatch):
-    service = FakeAnalysisService()
-    queue = FakeQueueService()
-    monkeypatch.setattr(
-        stock_module,
-        "get_simple_analysis_service",
-        lambda: service,
-        raising=False,
-    )
-    monkeypatch.setattr(stock_module, "get_queue_service", lambda: queue, raising=False)
+    calls = _patch_native_workflow(monkeypatch)
     monkeypatch.setattr(
         stock_module,
         "get_provider_and_url_by_model_sync",
@@ -577,24 +538,14 @@ async def test_stock_analysis_filters_social_analyst_for_a_share(monkeypatch):
     assert {"stage": "social_analysis", "reason": "A 股默认禁用社媒分析。"} in result[
         "skipped_stages"
     ]
-    [(user_id, request)] = service.created
-    assert user_id == "user-a"
-    assert request.parameters.selected_analysts == ["market"]
-    [queued] = queue.enqueued
-    assert queued["params"]["selected_analysts"] == ["market"]
+    [call] = calls
+    assert call["context"].principal.user_id == "user-a"
+    assert call["parameters"].selected_analysts == ["market"]
 
 
 @pytest.mark.asyncio
 async def test_stock_analysis_returns_recoverable_stage_plan(monkeypatch):
-    service = FakeAnalysisService()
-    queue = FakeQueueService()
-    monkeypatch.setattr(
-        stock_module,
-        "get_simple_analysis_service",
-        lambda: service,
-        raising=False,
-    )
-    monkeypatch.setattr(stock_module, "get_queue_service", lambda: queue, raising=False)
+    _patch_native_workflow(monkeypatch)
     monkeypatch.setattr(
         stock_module,
         "get_provider_and_url_by_model_sync",
@@ -644,49 +595,7 @@ async def test_stock_analysis_returns_recoverable_stage_plan(monkeypatch):
 async def test_single_stock_analysis_tool_waits_for_completed_report_by_default(
     monkeypatch,
 ):
-    service = FakeAnalysisService()
-    service.status_sequence_by_task_id["task-600519"] = [
-        {
-            "task_id": "task-600519",
-            "user_id": "user-a",
-            "status": "processing",
-            "progress": 35,
-            "message": "市场分析师正在分析",
-        },
-        {
-            "task_id": "task-600519",
-            "user_id": "user-a",
-            "status": "completed",
-            "progress": 100,
-            "message": "分析完成",
-        },
-    ]
-    queue = FakeQueueService()
-    db = FakeDb(
-        [
-            {
-                "task_id": "task-600519",
-                "user_id": "user-a",
-                "analysis_id": "analysis-1",
-                "stock_symbol": "600519",
-                "status": "completed",
-                "summary": "贵州茅台基本面稳健。",
-                "recommendation": "持有",
-                "risk_level": "中",
-                "key_points": ["现金流稳定"],
-                "reports": {"market_report": "市场报告"},
-                "decision": {"action": "持有"},
-            }
-        ]
-    )
-    monkeypatch.setattr(
-        stock_module,
-        "get_simple_analysis_service",
-        lambda: service,
-        raising=False,
-    )
-    monkeypatch.setattr(stock_module, "get_queue_service", lambda: queue, raising=False)
-    monkeypatch.setattr(stock_module, "get_postgres_db", lambda: db, raising=False)
+    _patch_native_workflow(monkeypatch)
     monkeypatch.setattr(
         stock_module,
         "get_provider_and_url_by_model_sync",
@@ -718,33 +627,12 @@ async def test_single_stock_analysis_tool_waits_for_completed_report_by_default(
     }
     assert result["summary"] == "贵州茅台基本面稳健。"
     assert result["recommendation"] == "持有"
-    assert result["report_summary"] == {
-        "summary": "贵州茅台基本面稳健。",
-        "recommendation": "持有",
-        "risk_level": "中",
-        "key_points": ["现金流稳定"],
-    }
     assert result["report"]["analysis_id"] == "analysis-1"
 
 
 @pytest.mark.asyncio
-async def test_single_stock_analysis_tool_returns_bounded_wait_timeout(monkeypatch):
-    service = FakeAnalysisService()
-    service.status_by_task_id["task-600519"] = {
-        "task_id": "task-600519",
-        "user_id": "user-a",
-        "status": "processing",
-        "progress": 42,
-        "message": "市场分析师正在分析",
-    }
-    queue = FakeQueueService()
-    monkeypatch.setattr(
-        stock_module,
-        "get_simple_analysis_service",
-        lambda: service,
-        raising=False,
-    )
-    monkeypatch.setattr(stock_module, "get_queue_service", lambda: queue, raising=False)
+async def test_single_stock_analysis_tool_ignores_legacy_wait_timeout(monkeypatch):
+    _patch_native_workflow(monkeypatch)
     monkeypatch.setattr(
         stock_module,
         "get_provider_and_url_by_model_sync",
@@ -773,8 +661,8 @@ async def test_single_stock_analysis_tool_returns_bounded_wait_timeout(monkeypat
     )
 
     assert result["accepted"] is True
-    assert result["status"] == "processing"
-    assert result["stage"] == "wait_bounded"
-    assert result["wait_status"] == "timed_out"
-    assert result["wait_timed_out"] is True
-    assert result["progress"] == 42
+    assert result["status"] == "completed"
+    assert result["stage"] == "agent_summary"
+    assert result["wait_status"] == "completed"
+    assert "wait_timed_out" not in result
+    assert result["progress"] == 100

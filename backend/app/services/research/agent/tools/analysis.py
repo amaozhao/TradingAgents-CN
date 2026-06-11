@@ -100,9 +100,9 @@ def analysis_tools() -> list[ResearchTool]:
             name="stock_analysis",
             description=(
                 "Submit an owner-scoped single-stock analysis through the Agent-facing "
-                "workflow wrapper. The first phase preserves the existing single-stock "
-                "LangGraph DAG as the baseline and calls it through the current queue "
-                "adapter without modifying DAG internals."
+                "native workflow. The original LangGraph DAG is kept as a baseline, "
+                "but this tool executes the migrated Agent workflow directly and writes "
+                "its own compatible report."
             ),
             permission=SINGLE_STOCK_ANALYSIS,
             schema=stock_analysis_schema,
@@ -111,10 +111,10 @@ def analysis_tools() -> list[ResearchTool]:
         ResearchTool(
             name="single_stock_analysis",
             description=(
-                "Submit the existing single-stock TradingAgents LangGraph DAG to the "
-                "analysis queue and wait for the resulting report by default. Supports "
-                "market_type, analysis_date, research_depth, selected_analysts, "
-                "include_sentiment/include_risk, quick/deep models, and wait controls."
+                "Compatibility alias for stock_analysis. Runs the migrated Agent-native "
+                "single-stock workflow and returns the generated compatible report. "
+                "Supports market_type, analysis_date, research_depth, selected_analysts, "
+                "include_sentiment/include_risk, and quick/deep models."
             ),
             permission=SINGLE_STOCK_ANALYSIS,
             schema=stock_analysis_schema,
@@ -122,7 +122,7 @@ def analysis_tools() -> list[ResearchTool]:
         ),
         ResearchTool(
             name="stock_analysis_status",
-            description="Read status/progress for an existing owner-scoped single-stock DAG task.",
+            description="Read status/progress for an existing owner-scoped single-stock analysis task.",
             permission=SINGLE_STOCK_ANALYSIS,
             schema={
                 "type": "object",
@@ -133,7 +133,7 @@ def analysis_tools() -> list[ResearchTool]:
         ),
         ResearchTool(
             name="stock_analysis_report",
-            description="Read the completed owner-scoped single-stock DAG report by task_id.",
+            description="Read the completed owner-scoped single-stock analysis report by task_id.",
             permission=REPORT_READ,
             schema={
                 "type": "object",

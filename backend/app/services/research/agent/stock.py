@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-import asyncio
 import re
-import time
 from typing import Any
 
 from app.core.database import get_postgres_db, get_postgres_db_sync
-from app.schemas.analysis import AnalysisParameters, SingleAnalysisRequest
+from app.schemas.analysis import AnalysisParameters
 from app.services.analysis.simple import (
     get_provider_and_url_by_model_sync,
     get_simple_analysis_service,
 )
-from app.services.queue.service import get_queue_service
 
 from .context import ToolExecutionContext
+from .native import run_native_stock_workflow
 from .stage import planned_stock_stages
 
 
@@ -43,24 +41,10 @@ _DEPTH_TO_LABEL = {
     "全面": "全面",
 }
 
-_TERMINAL_ANALYSIS_STATUSES = {"completed", "failed", "cancelled"}
-_DEFAULT_WAIT_TIMEOUT_SECONDS = 900.0
-_DEFAULT_POLL_INTERVAL_SECONDS = 2.0
-
-
 def _stock_links(task_id: str) -> dict[str, str]:
     return {
         "task": f"/tasks?task_id={task_id}",
         "report": f"/reports/view/{task_id}",
-    }
-
-
-def _report_summary(report: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "summary": report.get("summary", ""),
-        "recommendation": report.get("recommendation", ""),
-        "risk_level": report.get("risk_level"),
-        "key_points": report.get("key_points", []),
     }
 
 
@@ -149,29 +133,6 @@ def _dedupe_model_names(names: list[str | None]) -> list[str]:
         seen.add(name)
         result.append(name)
     return result
-
-
-def _as_bool(raw: Any, default: bool) -> bool:
-    if raw is None:
-        return default
-    if isinstance(raw, bool):
-        return raw
-    value = str(raw).strip().lower()
-    if value in {"1", "true", "yes", "y", "on"}:
-        return True
-    if value in {"0", "false", "no", "n", "off"}:
-        return False
-    return default
-
-
-def _as_positive_float(raw: Any, default: float, *, maximum: float) -> float:
-    try:
-        value = float(raw)
-    except (TypeError, ValueError):
-        return default
-    if value <= 0:
-        return default
-    return min(value, maximum)
 
 
 def _normalize_requested_market(raw: Any) -> str | None:
@@ -387,22 +348,6 @@ def _missing_model_keys(parameters: AnalysisParameters) -> list[str]:
     return missing
 
 
-def _queue_params(
-    request: SingleAnalysisRequest, task_id: str, user_id: str
-) -> dict[str, Any]:
-    params = request.parameters.model_dump(mode="json") if request.parameters else {}
-    symbol = request.get_symbol()
-    params.update(
-        {
-            "task_id": task_id,
-            "stock_code": symbol,
-            "symbol": symbol,
-            "user_id": user_id,
-        }
-    )
-    return params
-
-
 async def read_stock_analysis_status(
     context: ToolExecutionContext, payload: dict[str, Any]
 ) -> dict[str, Any]:
@@ -420,13 +365,20 @@ async def read_stock_analysis_status(
         task_id, user_id=context.principal.user_id
     )
     if not status:
-        return {
-            "tool": "stock_analysis_status",
-            "status": "not_found",
-            "accepted": False,
-            "task_id": task_id,
-            "reason": "未找到当前用户可访问的单股分析任务。",
-        }
+        try:
+            status = await get_postgres_db().analysis_tasks.find_one(
+                {"task_id": task_id, "user_id": context.principal.user_id}
+            )
+        except RuntimeError:
+            status = None
+        if not status:
+            return {
+                "tool": "stock_analysis_status",
+                "status": "not_found",
+                "accepted": False,
+                "task_id": task_id,
+                "reason": "未找到当前用户可访问的单股分析任务。",
+            }
 
     current_step = (
         status.get("current_step_name")
@@ -518,86 +470,6 @@ async def read_stock_analysis_report(
     }
 
 
-async def _wait_for_analysis_result(
-    context: ToolExecutionContext,
-    *,
-    service: Any,
-    task_id: str,
-    timeout_seconds: float,
-    poll_interval_seconds: float,
-) -> dict[str, Any]:
-    deadline = time.monotonic() + timeout_seconds
-    last_status: dict[str, Any] | None = None
-
-    while True:
-        status = await service.get_task_status(
-            task_id, user_id=context.principal.user_id
-        )
-        if status:
-            last_status = status
-            status_value = str(status.get("status") or "").lower()
-            if status_value == "completed":
-                report = await read_stock_analysis_report(context, {"task_id": task_id})
-                report_available = bool(report.get("accepted"))
-                summary = _report_summary(report) if report_available else {}
-                return {
-                    "status": "completed",
-                    "accepted": True,
-                    "stage": "agent_summary",
-                    "wait_status": "completed",
-                    "progress": status.get("progress", 100),
-                    "message": status.get("message") or "单股分析已完成。",
-                    "raw_status": status,
-                    "report": report if report_available else None,
-                    "report_summary": summary,
-                    "summary": report.get("summary", "") if report_available else "",
-                    "recommendation": report.get("recommendation", "")
-                    if report_available
-                    else "",
-                    "risk_level": report.get("risk_level")
-                    if report_available
-                    else None,
-                    "decision": report.get("decision", {}) if report_available else {},
-                }
-            if status_value in _TERMINAL_ANALYSIS_STATUSES:
-                error_message = (
-                    status.get("error_message")
-                    or status.get("last_error")
-                    or status.get("error")
-                    or status.get("message")
-                    or f"单股分析任务已结束: {status_value}"
-                )
-                return {
-                    "status": status_value,
-                    "accepted": True,
-                    "stage": "analysis_task",
-                    "wait_status": status_value,
-                    "progress": status.get("progress", 0),
-                    "message": error_message,
-                    "error_message": error_message,
-                    "raw_status": status,
-                }
-
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            status_value = str((last_status or {}).get("status") or "queued").lower()
-            return {
-                "status": status_value,
-                "accepted": True,
-                "stage": "wait_bounded",
-                "wait_status": "timed_out",
-                "wait_timed_out": True,
-                "progress": (last_status or {}).get("progress", 0),
-                "message": (
-                    "单股分析任务仍在执行，已返回任务链接；"
-                    "如果长期停留在 pending/queued，请确认 analysis worker 进程正在运行。"
-                ),
-                "raw_status": last_status,
-            }
-
-        await asyncio.sleep(min(poll_interval_seconds, remaining))
-
-
 class StockAnalysisWorkflow:
     def __init__(self, *, tool_name: str):
         self.tool_name = tool_name
@@ -654,61 +526,12 @@ class StockAnalysisWorkflow:
                 ),
             }
 
-        request = SingleAnalysisRequest(
-            symbol=symbol, stock_code=symbol, parameters=parameters
-        )
-        service = get_simple_analysis_service()
-        result = await service.create_analysis_task(context.principal.user_id, request)
-        task_id = str(result["task_id"])
-
-        await get_queue_service().enqueue_task(
-            user_id=context.principal.user_id,
-            symbol=symbol,
-            params=_queue_params(request, task_id, context.principal.user_id),
-            task_id=task_id,
-        )
-
-        base_result = {
-            "tool": self.tool_name,
-            "mode": "single",
-            "status": "queued",
-            "accepted": True,
-            "stage": "analysis_task",
-            "wait_status": "not_waited",
-            "progress": 0,
-            "task_id": task_id,
-            "symbol": symbol,
-            "market_type": parameters.market_type,
-            "analysis_date": parameters.analysis_date.isoformat()
-            if parameters.analysis_date
-            else None,
-            "research_depth": parameters.research_depth,
-            "selected_analysts": parameters.selected_analysts,
-            "include_sentiment": parameters.include_sentiment,
-            "include_risk": parameters.include_risk,
-            "skipped_stages": skipped_stages,
-            "stage_plan": stage_plan,
-            "links": _stock_links(task_id),
-            "task_url": f"/tasks?task_id={task_id}",
-            "report_url": f"/reports/view/{task_id}",
-            "message": "单股分析 DAG 任务已提交到现有分析队列。",
-        }
-        if not _as_bool(payload.get("wait_for_completion"), True):
-            return base_result
-
-        wait_result = await _wait_for_analysis_result(
+        return await run_native_stock_workflow(
             context,
-            service=service,
-            task_id=task_id,
-            timeout_seconds=_as_positive_float(
-                payload.get("wait_timeout_seconds"),
-                _DEFAULT_WAIT_TIMEOUT_SECONDS,
-                maximum=1800.0,
-            ),
-            poll_interval_seconds=_as_positive_float(
-                payload.get("poll_interval_seconds"),
-                _DEFAULT_POLL_INTERVAL_SECONDS,
-                maximum=30.0,
-            ),
+            tool_name=self.tool_name,
+            symbol=symbol,
+            market_type=parameters.market_type,
+            parameters=parameters,
+            skipped_stages=skipped_stages,
+            stage_plan=stage_plan,
         )
-        return {**base_result, **wait_result}

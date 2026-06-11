@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from app.services.research.agent import stock as stock_module
@@ -16,6 +18,14 @@ def _principal(is_admin: bool = False) -> ResearchPrincipal:
         },
         session_id="session-1",
     )
+
+
+class FakeAnalysisService:
+    async def create_analysis_task(self, _user_id: str, _request):
+        return {"task_id": "task-600519", "status": "pending"}
+
+    async def get_task_status(self, _task_id: str, user_id: str | None = None):
+        return {"task_id": "task-600519", "user_id": user_id, "status": "queued"}
 
 
 def test_default_registry_filters_tools_for_normal_user():
@@ -119,18 +129,19 @@ async def test_tool_run_rejects_principal_without_required_permission():
 
 @pytest.mark.asyncio
 async def test_tool_run_accepts_authorized_principal(monkeypatch):
-    class FakeService:
-        async def create_analysis_task(self, _user_id, _request):
-            return {"task_id": "task-600519"}
+    monkeypatch.setattr(stock_module, "get_simple_analysis_service", lambda: FakeAnalysisService())
 
-    class FakeQueue:
-        async def enqueue_task(self, **_kwargs):
-            return "task-600519"
+    async def fake_native_workflow(_context, **kwargs: Any):
+        return {
+            "tool": kwargs["tool_name"],
+            "mode": "single",
+            "accepted": True,
+            "status": "completed",
+            "task_id": "task-600519",
+            "symbol": kwargs["symbol"],
+        }
 
-    monkeypatch.setattr(
-        stock_module, "get_simple_analysis_service", lambda: FakeService()
-    )
-    monkeypatch.setattr(stock_module, "get_queue_service", lambda: FakeQueue())
+    monkeypatch.setattr(stock_module, "run_native_stock_workflow", fake_native_workflow)
     monkeypatch.setattr(
         stock_module,
         "get_provider_and_url_by_model_sync",
@@ -151,7 +162,7 @@ async def test_tool_run_accepts_authorized_principal(monkeypatch):
     assert result["tool"] == "stock_analysis"
     assert result["mode"] == "single"
     assert result["accepted"] is True
-    assert result["status"] == "queued"
+    assert result["status"] == "completed"
     assert result["task_id"] == "task-600519"
     assert result["symbol"] == "600519"
 

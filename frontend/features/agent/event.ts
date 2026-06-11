@@ -61,7 +61,7 @@ export function eventToolStatus(event: ParsedResearchStreamEvent): ToolState["st
   if (event.event === "stock_analysis.stage") {
     const stageStatus = String(event.data.status || "")
     if (stageStatus === "failed") return "error"
-    if (stageStatus === "skipped") return "warning"
+    if (stageStatus === "skipped") return "skipped"
     if (stageStatus === "running" || stageStatus === "pending") return "running"
     return "ok"
   }
@@ -69,6 +69,7 @@ export function eventToolStatus(event: ParsedResearchStreamEvent): ToolState["st
   const resultStatus = result && typeof result === "object" ? (result as Record<string, unknown>).status : ""
   const status = String(event.data.status || resultStatus || "")
   if (status === "error" || status === "failed") return "error"
+  if (status === "queued" || status === "pending" || status === "processing" || status === "running") return "running"
   if (
     status === "degraded"
     || status === "warning"
@@ -82,6 +83,7 @@ export function eventToolStatus(event: ParsedResearchStreamEvent): ToolState["st
 export function statusLabel(status: ToolState["status"], text: typeof AGENT_TEXT[AppLanguage]) {
   if (status === "running") return text.running
   if (status === "error") return text.failed
+  if (status === "skipped") return text.skipped
   if (status === "warning") return text.warning
   return text.completed
 }
