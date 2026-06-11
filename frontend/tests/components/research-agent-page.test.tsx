@@ -815,6 +815,47 @@ describe("ResearchAgentPage", () => {
               stderr: "Traceback: request timeout"
             })
           }
+        },
+        {
+          event_id: 4,
+          event_type: "tool_completed",
+          payload: {
+            tool_name: "single_stock_analysis",
+            result: {
+              tool: "single_stock_analysis",
+              status: "queued",
+              task_id: "task-600519",
+              symbol: "600519",
+              research_depth: "标准"
+            }
+          }
+        },
+        {
+          event_id: 5,
+          event_type: "tool_completed",
+          payload: {
+            tool_name: "stock_analysis_status",
+            result: {
+              tool: "stock_analysis_status",
+              status: "running",
+              task_id: "task-600519",
+              progress: 45,
+              current_step: "基本面分析师"
+            }
+          }
+        },
+        {
+          event_id: 6,
+          event_type: "tool_completed",
+          payload: {
+            tool_name: "stock_analysis_report",
+            result: {
+              tool: "stock_analysis_report",
+              status: "completed",
+              task_id: "task-600519",
+              summary: "贵州茅台基本面稳健。"
+            }
+          }
         }
       ],
       message: "ok"
@@ -836,6 +877,16 @@ describe("ResearchAgentPage", () => {
     await user.click(screen.getByRole("button", { name: /命令执行/ }))
     expect(screen.getByText(/命令失败（exit 1）/)).toBeInTheDocument()
     expect(screen.queryByText(/\{"status":/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /单股分析完成/ }))
+    expect(screen.getByText(/600519（标准） 任务 task-600519已提交到分析队列/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /单股分析进度/ }))
+    expect(screen.getByText(/任务 task-600519进度 45%：基本面分析师/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: /单股分析报告/ }))
+    expect(screen.getByText(/单股分析报告已生成：贵州茅台基本面稳健/)).toBeInTheDocument()
+    expect(screen.queryByText(/"task_id": "task-600519"/)).not.toBeInTheDocument()
   })
 
   it("shows execution steps only for the latest completed attempt in a session", async () => {

@@ -395,6 +395,8 @@ const TOOL_LABELS: Record<string, { title: string; desc: string }> = {
   alpha_bench: { title: "Alpha 覆盖检查", desc: "检查候选股票可用因子、覆盖率和有效性" },
   correlation_matrix: { title: "相关性矩阵", desc: "分析候选股票之间的相关性和组合分散度" },
   single_stock_analysis: { title: "单股分析", desc: "生成单股证据、风险点和研究摘要" },
+  stock_analysis_status: { title: "单股分析进度", desc: "读取单股 LangGraph DAG 任务状态" },
+  stock_analysis_report: { title: "单股分析报告", desc: "读取已完成的单股分析报告" },
   report_write: { title: "报告写入", desc: "把本次研究证据保存为报告产物" },
   backtest: { title: "回测", desc: "生成/运行策略并输出绩效指标与产物" },
   alpha_zoo: { title: "Alpha Zoo", desc: "查询因子定义、公式和元数据" },
@@ -427,6 +429,8 @@ const TOOL_LABELS_EN: Record<string, { title: string; desc: string }> = {
   alpha_bench: { title: "Alpha coverage check", desc: "Check factor availability, coverage, and validity" },
   correlation_matrix: { title: "Correlation matrix", desc: "Analyze correlations and portfolio diversification" },
   single_stock_analysis: { title: "Single-stock analysis", desc: "Generate evidence, risks, and a research summary" },
+  stock_analysis_status: { title: "Single-stock progress", desc: "Read single-stock LangGraph DAG task status" },
+  stock_analysis_report: { title: "Single-stock report", desc: "Read a completed single-stock analysis report" },
   report_write: { title: "Report write", desc: "Save research evidence as a report artifact" },
   backtest: { title: "Backtest", desc: "Build/run a strategy and output metrics plus artifacts" },
   alpha_zoo: { title: "Alpha Zoo", desc: "Query factor definitions, formulas, and metadata" },
@@ -898,6 +902,31 @@ function configRequiredPreview(toolName: string, result: Record<string, unknown>
   return `需要补充数据：${reason || "缺少该工具必需的用户数据或配置，请先补充后再运行。"}`
 }
 
+function stockAnalysisPreview(toolName: string, result: Record<string, unknown>, maxLength: number | null = 220) {
+  const taskId = compactPreviewText(result.task_id, maxLength)
+  if (toolName === "single_stock_analysis") {
+    const symbol = compactPreviewText(result.symbol || result.stock_code, maxLength)
+    const depth = compactPreviewText(result.research_depth, maxLength)
+    const task = taskId ? `任务 ${taskId}` : "任务"
+    const target = symbol ? `${symbol}${depth ? `（${depth}）` : ""}` : "单股分析"
+    return `${target} ${task}已提交到分析队列。`
+  }
+  if (toolName === "stock_analysis_status") {
+    const progress = typeof result.progress === "number" ? `${result.progress}%` : ""
+    const step = compactPreviewText(result.current_step || result.message || result.status, maxLength)
+    const task = taskId ? `任务 ${taskId}` : "单股分析任务"
+    if (progress && step) return `${task}进度 ${progress}：${step}`
+    if (step) return `${task}状态：${step}`
+    return `${task}状态已读取。`
+  }
+  if (toolName === "stock_analysis_report") {
+    const summary = compactPreviewText(result.summary || result.recommendation, maxLength)
+    if (summary) return `单股分析报告已生成：${summary}`
+    return "单股分析报告已生成。"
+  }
+  return ""
+}
+
 function readableToolPreview(tool: ToolState, maxLength: number | null = 220) {
   if (!tool.preview) return ""
   const parsed = parseJsonPreview(tool.preview)
@@ -914,6 +943,14 @@ function readableToolPreview(tool: ToolState, maxLength: number | null = 220) {
   if (tool.name === "bash") return bashPreview(parsed, maxLength)
   if (tool.name === "add_goal_evidence") return evidencePreview(parsed, maxLength)
   if (tool.name === "update_research_goal_status") return goalStatusPreview(parsed, maxLength)
+  if (
+    tool.name === "single_stock_analysis"
+    || tool.name === "stock_analysis_status"
+    || tool.name === "stock_analysis_report"
+  ) {
+    const preview = stockAnalysisPreview(tool.name, parsed, maxLength)
+    if (preview) return preview
+  }
   if (parsed.status === "config_required") return configRequiredPreview(tool.name, parsed, maxLength)
   if (parsed.status === "degraded") {
     const history = parsed.history && typeof parsed.history === "object"

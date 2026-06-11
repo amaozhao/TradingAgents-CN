@@ -4,6 +4,7 @@ import pytest
 
 from app.services.research.agent.context import ResearchPrincipal, ToolExecutionContext
 from app.services.research.agent.registry import ResearchToolRegistry
+from app.services.research.agent.tools import analysis as analysis_tools_module
 
 
 def _principal(is_admin: bool = False) -> ResearchPrincipal:
@@ -115,7 +116,22 @@ async def test_tool_run_rejects_principal_without_required_permission():
 
 
 @pytest.mark.asyncio
-async def test_tool_run_accepts_authorized_principal():
+async def test_tool_run_accepts_authorized_principal(monkeypatch):
+    class FakeService:
+        async def create_analysis_task(self, _user_id, _request):
+            return {"task_id": "task-600519"}
+
+    class FakeQueue:
+        async def enqueue_task(self, **_kwargs):
+            return "task-600519"
+
+    monkeypatch.setattr(analysis_tools_module, "get_simple_analysis_service", lambda: FakeService())
+    monkeypatch.setattr(analysis_tools_module, "get_queue_service", lambda: FakeQueue())
+    monkeypatch.setattr(
+        analysis_tools_module,
+        "get_provider_and_url_by_model_sync",
+        lambda _model: {"provider": "qwen", "backend_url": "https://example.test/v1", "api_key": "key"},
+    )
     registry = ResearchToolRegistry.default()
     tool = registry.get("single_stock_analysis")
     context = ToolExecutionContext(principal=_principal(), session_id="session-1")
@@ -124,7 +140,9 @@ async def test_tool_run_accepts_authorized_principal():
 
     assert result["tool"] == "single_stock_analysis"
     assert result["accepted"] is True
-    assert result["payload"]["symbol"] == "600519"
+    assert result["status"] == "queued"
+    assert result["task_id"] == "task-600519"
+    assert result["symbol"] == "600519"
 
 
 @pytest.mark.asyncio

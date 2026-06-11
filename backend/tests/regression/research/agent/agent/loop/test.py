@@ -157,6 +157,9 @@ def test_prompt_uses_filtered_registry_tools_only():
     prompt = build_research_prompt(principal=principal, tools=tools)
 
     assert "single_stock_analysis" in prompt
+    assert "stock_analysis_status" in prompt
+    assert "stock_analysis_report" in prompt
+    assert "single_stock_analysis submits the existing single-stock LangGraph DAG" in prompt
     assert "market_data_lookup" in prompt
     assert "admin_config_write" not in prompt
     assert "shell" not in prompt.lower()

@@ -17,6 +17,7 @@ from app.services.research.agent.context import ResearchPrincipal, ToolExecution
 from app.services.research.agent.loop import ModelStreamChunk
 from app.services.research.agent.registry import ResearchToolRegistry
 from app.services.research.agent.sessions import ResearchSessionService
+from app.services.research.agent.tools import analysis as analysis_tools_module
 from app.services.research.agent.tools import correlation as correlation_module
 from app.services.research.agent.tools import files as files_module
 from app.services.research.agent.tools import multi as _multi_package
@@ -136,6 +137,7 @@ class FakeDb:
         self.research_live_audit = FakeCollection()
         self.research_swarm_runs = FakeCollection()
         self.research_swarm_events = FakeCollection()
+        self.analysis_reports = FakeCollection()
 
 
 class FakeWorkerModelClient:
@@ -146,9 +148,52 @@ class FakeWorkerModelClient:
         yield ModelStreamChunk(delta="worker summary", finish_reason="stop")
 
 
+class FakeAnalysisService:
+    def __init__(self):
+        self.status_by_task_id = {
+            "task-600519": {
+                "task_id": "task-600519",
+                "user_id": USER["id"],
+                "status": "completed",
+                "progress": 100,
+                "current_step_name": "报告生成",
+                "message": "分析完成",
+            }
+        }
+
+    async def create_analysis_task(self, _user_id: str, _request: Any):
+        return {"task_id": "task-600519", "status": "pending"}
+
+    async def get_task_status(self, task_id: str, user_id: str | None = None):
+        status = self.status_by_task_id.get(task_id)
+        if not status:
+            return None
+        if user_id and str(status.get("user_id")) != str(user_id):
+            return None
+        return dict(status)
+
+
+class FakeQueueService:
+    async def enqueue_task(self, **kwargs: Any):
+        return kwargs["task_id"]
+
+
 @pytest.fixture()
 def fake_db(monkeypatch):
     db = FakeDb()
+    db.analysis_reports.documents.append(
+        {
+            "task_id": "task-600519",
+            "user_id": USER["id"],
+            "analysis_id": "analysis-600519",
+            "stock_symbol": "600519",
+            "status": "completed",
+            "summary": "覆盖测试报告",
+            "recommendation": "持有",
+            "reports": {"market_report": "市场报告"},
+            "decision": {"action": "持有"},
+        }
+    )
     for module in (
         sessions_module,
         events_module,
@@ -158,6 +203,7 @@ def fake_db(monkeypatch):
         memory_module,
         live_module,
         swarm_module,
+        analysis_tools_module,
     ):
         monkeypatch.setattr(module, "get_postgres_db", lambda db=db: db)
     monkeypatch.setattr(swarm_module, "OpenAICompatibleModelClient", FakeWorkerModelClient)
@@ -227,6 +273,13 @@ def deterministic_external_boundaries(monkeypatch):
     monkeypatch.setattr(market_data_module, "lookup_market_snapshot", fake_market_snapshot)
     monkeypatch.setattr(correlation_module, "load_price_series", fake_price_series)
     monkeypatch.setattr(multi_factor_module, "_build_multi_factor_alpha_result", fake_multi_factor_result)
+    monkeypatch.setattr(analysis_tools_module, "get_simple_analysis_service", lambda: FakeAnalysisService())
+    monkeypatch.setattr(analysis_tools_module, "get_queue_service", lambda: FakeQueueService())
+    monkeypatch.setattr(
+        analysis_tools_module,
+        "get_provider_and_url_by_model_sync",
+        lambda _model: {"provider": "qwen", "backend_url": "https://example.test/v1", "api_key": "key"},
+    )
     assert _multi_package
 
 
@@ -279,14 +332,30 @@ async def test_all_enabled_research_agent_tools_are_invokable(
     }
     called: set[str] = set()
 
-    assert len(enabled_tool_names) == 48
+    assert len(enabled_tool_names) == 50
     assert "web_search" in enabled_tool_names
     assert "run_swarm" in enabled_tool_names
     assert "trading_place_order" not in enabled_tool_names
 
     await _run_tool(registry, context, called, "market_data_lookup", {"symbol": "600519", "limit": 4})
     await _run_tool(registry, context, called, "screening_run", {"query": "energy storage"})
-    await _run_tool(registry, context, called, "single_stock_analysis", {"symbol": "600519"})
+    single_analysis = await _run_tool(
+        registry, context, called, "single_stock_analysis", {"symbol": "600519"}
+    )
+    await _run_tool(
+        registry,
+        context,
+        called,
+        "stock_analysis_status",
+        {"task_id": single_analysis["task_id"]},
+    )
+    await _run_tool(
+        registry,
+        context,
+        called,
+        "stock_analysis_report",
+        {"task_id": single_analysis["task_id"]},
+    )
     await _run_tool(registry, context, called, "batch_stock_analysis", {"symbols": ["600519", "000001"]})
     await _run_tool(registry, context, called, "report_lookup", {"report_id": "report-1"})
     report = await _run_tool(
@@ -495,7 +564,7 @@ async def test_enabled_research_agent_tools_handle_empty_agent_payloads(
         assert isinstance(result, dict), tool.name
         results[tool.name] = result
 
-    assert len(results) == 48
+    assert len(results) == 50
     assert results["update_hypothesis"]["status"] == "config_required"
     assert results["update_hypothesis"]["missing"] == ["hypothesis_id"]
     assert results["link_backtest"]["status"] == "config_required"
