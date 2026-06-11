@@ -447,9 +447,9 @@ class AnalysisStatusMixin:
                 if task_id:
                     task_dict[task_id] = task
 
-            # 再添加 PostgreSQL 中的任务
-            # 对于 processing/running 状态，使用 PostgreSQL 中的进度数据（更新）
-            # 对于其他状态，如果内存中已有，则跳过（内存优先）
+            # 再添加 PostgreSQL 中的任务。
+            # Worker 和 Web 进程不共享内存，Web 进程里的 pending/running 可能已经过期；
+            # PostgreSQL 是跨进程的任务真相源，终态和运行态都必须覆盖旧内存状态。
             for task in postgres_tasks:
                 task_id = task.get("task_id")
                 if not task_id:
@@ -460,20 +460,19 @@ class AnalysisStatusMixin:
                     mem_task = task_dict[task_id]
                     postgres_task = task
 
-                    # 如果是 processing/running 状态，使用 PostgreSQL 中的进度数据
-                    if postgres_task.get("status") in ["processing", "running"]:
-                        # 保留内存中的基本信息，但更新进度相关字段
-                        mem_task["progress"] = postgres_task.get(
-                            "progress", mem_task.get("progress", 0)
-                        )
-                        mem_task["message"] = postgres_task.get(
-                            "message", mem_task.get("message", "")
-                        )
-                        mem_task["current_step"] = postgres_task.get(
-                            "current_step", mem_task.get("current_step", "")
-                        )
+                    postgres_status = str(postgres_task.get("status") or "")
+                    if postgres_status in {
+                        "processing",
+                        "running",
+                        "completed",
+                        "failed",
+                        "cancelled",
+                    }:
+                        task_dict[task_id] = {**mem_task, **postgres_task}
                         logger.debug(
-                            f"🔄 [Tasks] 更新任务进度: {task_id}, progress={mem_task['progress']}%"
+                            "🔄 [Tasks] 使用PostgreSQL任务状态覆盖旧内存: %s, status=%s",
+                            task_id,
+                            postgres_status,
                         )
                 else:
                     # 内存中没有，直接添加 PostgreSQL 中的任务
