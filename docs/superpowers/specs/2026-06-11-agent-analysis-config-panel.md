@@ -281,6 +281,42 @@ React 执行步骤栏、任务中心、报告页统一展示
 
 这意味着 React 可以继续使用现有组件和 hook，但它只能是 workflow 的“输入和显示层”，不能成为 workflow 的第二个执行引擎。
 
+### 统一状态模型
+
+为了避免确定性 workflow 和当前 React 逻辑冲突，前后端必须采用单一状态源原则：
+
+| 状态类型 | 所属层 | 示例 | 说明 |
+| --- | --- | --- | --- |
+| 表单草稿状态 | React | `stock_symbol`、`market_type`、`research_depth`、`selected_analysts` | 用户提交前的临时 UI 状态，可以由 React `useState` / form hook 管理 |
+| 提交中状态 | React | 按钮 loading、防重复提交 | 只表示请求是否已发出，不表示分析 workflow 运行阶段 |
+| workflow 执行状态 | 后端 skill | `stage=market_analysis`、`status=running`、`progress=35` | 唯一真实执行状态，React 只能订阅展示 |
+| 任务状态 | 后端任务系统 | `task_id`、`processing`、`completed`、`failed` | 任务中心、Agent 右栏和报告页共用 |
+| 报告状态 | 后端报告系统 | `report_url`、`summary`、`recommendation` | 只从真实报告读取，不能由前端拼接 |
+
+当前 React 页面中可以保留的逻辑：
+
+- 表单字段控制。
+- 股票代码输入提示和提交前格式校验。
+- 模型下拉框加载和禁用状态。
+- A 股禁用社媒分析的 UI 约束。
+- 提交按钮 loading 和错误 toast。
+- 根据后端事件渲染进度条、阶段列表和报告链接。
+
+当前 React 页面中不应继续承担的逻辑：
+
+- 自己推断“下一步应该执行哪个分析阶段”。
+- 自己把 `progress` 从 10% 改到 30%、50%、80%。
+- 自己把一个阶段标记为 completed/failed。
+- 根据本地 timeout 判断任务失败。
+- 在没有后端报告时拼接最终分析结论。
+
+迁移方式：
+
+1. 第一阶段：原 `/analysis/single` 页面保留现有 UI，但提交后读取后端 `task_id` 和任务状态；不要在页面内部推演 DAG 步骤。
+2. 第二阶段：Agent 配置卡片复用同一套表单 schema 和校验逻辑，提交到 `stock_analysis_skill`。
+3. 第三阶段：任务中心、Agent 右栏、报告页都读取同一套 `task status + stage event + report`，消除多套状态展示。
+4. 第四阶段：如果原 `/analysis/single` 也切换到 `stock_analysis_skill`，只改提交 API 和状态订阅，不改用户可见的表单体验。
+
 ### 共享配置模块
 
 从 `single-analysis-page.tsx` 中抽出共享模块：
