@@ -103,6 +103,7 @@ export function createApiClient(options: ApiClientOptions = {}): AxiosInstance {
   instance.interceptors.response.use(
     (response) => {
       const config = response.config as RequestConfig
+      useAppStore.getState().setApiConnected(true)
 
       if (config.showLoading) {
         options.onLoadingChange?.(false)
@@ -131,6 +132,7 @@ export function createApiClient(options: ApiClientOptions = {}): AxiosInstance {
     },
     (error) => {
       const config = error.config as RequestConfig | undefined
+      useAppStore.getState().setApiConnected(Boolean(error.response))
 
       if (config?.showLoading) {
         options.onLoadingChange?.(false)

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { createApiClient, isAuthErrorCode } from "@/libs/api/client"
 import type { RequestConfig } from "@/libs/api/types"
+import { useAppStore } from "@/stores/app-store"
 
 interface CapturedConfig {
   headers: Record<string, string>
@@ -73,6 +74,21 @@ describe("api client", () => {
       data: { value: 42 },
       message: "ok"
     })
+  })
+
+  it("marks the backend connected after any successful API response", async () => {
+    useAppStore.getState().setApiConnected(false)
+    const client = createApiClient({
+      adapter: adapterWithResponse({
+        success: true,
+        data: { value: 42 },
+        message: "ok"
+      })
+    })
+
+    await client.get("/api/example")
+
+    expect(useAppStore.getState().apiConnected).toBe(true)
   })
 
   it("rejects non-auth business errors without auth cleanup", async () => {
