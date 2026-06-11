@@ -9,6 +9,8 @@ __pycache__/
 *.egg-info/
 
 backend/data/
+backend/app/data/
+backend/trader/dataflows/
 
 .venv/
 __pycache__/
