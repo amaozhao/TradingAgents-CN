@@ -131,6 +131,24 @@ class FakeSearchClient:
         return FakeSearchResponse()
 
 
+class FakeHttpx028SearchClient:
+    created_kwargs: dict[str, Any] | None = None
+
+    def __init__(self, *_args: Any, **kwargs: Any):
+        if "proxies" in kwargs:
+            raise TypeError("AsyncClient.__init__() got an unexpected keyword argument 'proxies'")
+        self.__class__.created_kwargs = dict(kwargs)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_args: Any):
+        return None
+
+    async def get(self, *_args: Any, **_kwargs: Any):
+        return FakeSearchResponse()
+
+
 @pytest.fixture()
 def fake_db(monkeypatch):
     db = FakeDb()
@@ -274,6 +292,20 @@ async def test_web_search_parses_results_and_stores_artifact(fake_db, monkeypatc
     assert result["results"][0]["title"] == "Alpha Result"
     assert result["artifact_id"]
     assert fake_db.research_artifacts.documents[0]["artifact_type"] == "web_search"
+
+
+@pytest.mark.asyncio
+async def test_web_get_uses_httpx_028_proxy_argument(fake_db, monkeypatch):
+    _ = fake_db
+    monkeypatch.setattr(files_module, "_web_proxy_candidates", lambda: ["http://127.0.0.1:7897"])
+    monkeypatch.setattr(files_module.httpx, "AsyncClient", FakeHttpx028SearchClient)
+
+    response = await files_module._web_get("https://duckduckgo.com/html/?q=alpha")
+
+    assert response.text
+    assert FakeHttpx028SearchClient.created_kwargs is not None
+    assert FakeHttpx028SearchClient.created_kwargs["proxy"] == "http://127.0.0.1:7897"
+    assert "proxies" not in FakeHttpx028SearchClient.created_kwargs
 
 
 @pytest.mark.asyncio
