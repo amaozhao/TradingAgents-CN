@@ -146,6 +146,22 @@ class _StockDataPreparerMixin1:
         ]
         return "\n".join(suggestions)
 
+    def _missing_history_suggestion(
+        self,
+        *,
+        has_basic_info: bool,
+        stock_code: str,
+        analysis_date: Optional[str],
+    ) -> str:
+        if has_basic_info:
+            date_hint = f"分析日期 {analysis_date} 附近" if analysis_date else "分析日期附近"
+            return (
+                f"{date_hint}没有可用交易数据。该股票可能处于停牌、退市、终止上市、换股合并"
+                "或长期无交易状态；请改用仍在交易的承继/相关证券代码，或把分析日期调整到"
+                "该股票仍有交易记录的历史日期。"
+            )
+        return "请检查网络连接或数据源配置，或稍后重试"
+
     def _extract_hk_stock_name(self, stock_info, stock_code: str) -> str:
         """从港股信息中提取股票名称，支持多种格式"""
         if not stock_info:
@@ -482,7 +498,11 @@ class _StockDataPreparerMixin1:
                     stock_name=stock_name,
                     has_basic_info=has_basic_info,
                     error_message=f"无法获取股票 {stock_code} 的历史数据",
-                    suggestion="请检查网络连接或数据源配置，或稍后重试",
+                    suggestion=self._missing_history_suggestion(
+                        has_basic_info=has_basic_info,
+                        stock_code=stock_code,
+                        analysis_date=analysis_date,
+                    ),
                 )
 
             # 5. 数据准备成功
@@ -638,7 +658,11 @@ class _StockDataPreparerMixin1:
                     stock_name=stock_name,
                     has_basic_info=has_basic_info,
                     error_message=f"无法获取股票 {stock_code} 的历史数据",
-                    suggestion="请检查网络连接或数据源配置，或稍后重试",
+                    suggestion=self._missing_history_suggestion(
+                        has_basic_info=has_basic_info,
+                        stock_code=stock_code,
+                        analysis_date=analysis_date,
+                    ),
                 )
 
             # 5. 数据准备成功
