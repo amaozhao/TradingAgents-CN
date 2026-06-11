@@ -14,8 +14,13 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from app.core.config import settings
-from app.core.database import close_database, get_redis_client, init_database
-from app.schemas.analysis import AnalysisParameters, SingleAnalysisRequest
+from app.core.database import (
+    close_database,
+    get_postgres_db,
+    get_redis_client,
+    init_database,
+)
+from app.schemas.analysis import AnalysisParameters, AnalysisStatus, SingleAnalysisRequest
 from app.services.analysis.simple import get_simple_analysis_service
 from app.services.provider import provider as config_provider
 from app.services.queue import (
@@ -193,12 +198,12 @@ class AnalysisWorker:
             )
 
             service = get_simple_analysis_service()
+            await self._mark_task_started(service, task_id)
             await service.execute_analysis_background(task_id, str(user_id), request)
-            task_status = await service.get_task_status(task_id)
-            status_value = str((task_status or {}).get("status", "completed"))
+            status_value = await self._resolve_task_status(service, task_id)
             success = status_value == "completed"
 
-            logger.info(f"✅ 任务完成: {task_id} - status={status_value}")
+            logger.info(f"✅ 任务处理结束: {task_id} - status={status_value}")
 
         except Exception as e:
             logger.error(f"❌ 任务执行失败: {task_id} - {e}")
@@ -213,6 +218,35 @@ class AnalysisWorker:
                 logger.error(f"确认任务失败: {task_id} - {e}")
 
             self.current_task = None
+
+    async def _mark_task_started(self, service: Any, task_id: str) -> None:
+        update_status = getattr(service, "_update_task_status", None)
+        if not callable(update_status):
+            return
+        try:
+            await update_status(task_id, AnalysisStatus.PROCESSING, 10)
+        except Exception as exc:
+            logger.warning("更新任务启动状态失败: %s - %s", task_id, exc)
+
+    async def _resolve_task_status(self, service: Any, task_id: str) -> str:
+        task_status = await service.get_task_status(task_id)
+        if task_status:
+            return str(task_status.get("status", "unknown"))
+        persisted_status = await self._get_persisted_task_status(task_id)
+        return persisted_status or "unknown"
+
+    async def _get_persisted_task_status(self, task_id: str) -> str | None:
+        try:
+            task_document = await get_postgres_db().analysis_tasks.find_one(
+                {"task_id": task_id}, {"status": 1}
+            )
+            if not task_document:
+                return None
+            status = task_document.get("status")
+            return str(status) if status else None
+        except Exception as exc:
+            logger.warning("读取持久化任务状态失败: %s - %s", task_id, exc)
+            return None
 
     def _progress_callback(self, progress: int, message: str):
         """进度回调函数"""
