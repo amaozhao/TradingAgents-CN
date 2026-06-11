@@ -321,6 +321,45 @@ describe("ResearchAgentPage", () => {
     await waitFor(() => expect(screen.getByText("就绪")).toBeInTheDocument())
   })
 
+  it("restores the final answer from store when a new-session stream only receives task completion", async () => {
+    vi.mocked(researchAgentApi.listSessions).mockResolvedValue({ success: true, data: [], message: "ok" })
+    vi.mocked(researchAgentApi.listEvents).mockResolvedValue({ success: true, data: [], message: "ok" })
+    vi.mocked(researchAgentApi.listAttempts).mockResolvedValue({ success: true, data: [], message: "ok" })
+    vi.mocked(researchAgentApi.listMessages).mockResolvedValue({
+      success: true,
+      data: [
+        { message_id: "new-user", role: "user", content: "读取会议纪要", linked_attempt_id: "attempt-1", metadata: {} },
+        { message_id: "tool-call", role: "assistant", content: "", linked_attempt_id: "attempt-1", metadata: { tool_calls: [] } },
+        { message_id: "final-answer", role: "assistant", content: "会议纪要总结完成", linked_attempt_id: "attempt-1", metadata: {} }
+      ],
+      message: "ok"
+    })
+    let streamHandlers: Parameters<typeof researchAgentApi.subscribeEvents>[1] | undefined
+    vi.mocked(researchAgentApi.subscribeEvents).mockImplementation((_sessionId, handlers) => {
+      streamHandlers = handlers
+      return vi.fn()
+    })
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    await user.type(screen.getByPlaceholderText("例如：运行回测、检查连接器状态，或分析 A 股储能板块"), "读取会议纪要")
+    await user.click(screen.getByRole("button", { name: "发送" }))
+    await waitFor(() => expect(researchAgentApi.appendMessage).toHaveBeenCalledWith("session-new", expect.objectContaining({
+      content: "读取会议纪要"
+    })))
+
+    streamHandlers?.onEvent({
+      event: "task_completed",
+      data: { attempt_id: "attempt-1", status: "completed" },
+      eventId: "8"
+    })
+
+    expect(await screen.findByText("会议纪要总结完成")).toBeInTheDocument()
+    expect(screen.queryByText("tool-call")).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText("就绪")).toBeInTheDocument())
+  })
+
   it("keeps execution steps collapsed by default and expands full tool output on click", async () => {
     const longTraceback = [
       "Traceback (most recent call last):",

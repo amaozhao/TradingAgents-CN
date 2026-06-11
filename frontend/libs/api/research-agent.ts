@@ -257,8 +257,12 @@ function mapResearchAgentEvent(eventName: string, data: Record<string, unknown>,
     }]
   }
   if (eventName === "attempt.completed") {
+    const result = data.result && typeof data.result === "object"
+      ? data.result as Record<string, unknown>
+      : {}
+    const content = data.summary || data.content || result.summary || result.content || ""
     return [
-      { event: "message_completed", data: { ...data, content: data.summary || data.content || "" }, eventId },
+      { event: "message_completed", data: { ...data, content }, eventId },
       { event: "task_completed", data, eventId }
     ]
   }

@@ -1971,8 +1971,16 @@ export function ResearchAgentPage() {
     }
     if (item.event === "task_completed" || item.event === "attempt.completed") {
       const attemptId = String(item.data.attempt_id || "")
-      if (activeSessionId && attemptId) {
-        void refreshCompletedAttemptFromStore(activeSessionId, attemptId)
+      const terminalSessionId = activeSessionId || localRunningSessionRef.current || String(item.data.session_id || "")
+      const terminalContent = eventContent(item.data)
+      if (terminalContent) upsertStreamingAnswer(terminalContent, true)
+      if (terminalSessionId && attemptId) {
+        void refreshCompletedAttemptFromStore(terminalSessionId, attemptId).then((found) => {
+          if (found) return
+          window.setTimeout(() => {
+            void refreshAttemptStatusFromStore(terminalSessionId, attemptId).catch(() => undefined)
+          }, 500)
+        }).catch(() => undefined)
       }
       stopStream()
       stopCompletionPolling()

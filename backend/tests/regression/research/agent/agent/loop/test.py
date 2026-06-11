@@ -8,12 +8,15 @@ from app.services.research.agent import events as events_module
 from app.services.research.agent import sessions as sessions_module
 from app.services.research.agent.context import ResearchPrincipal
 from app.services.research.agent.loop import (
+    EMPTY_FINAL_ANSWER_FALLBACK,
     ModelStreamChunk,
     ResearchAgentLoop,
     ResearchAgentCancelled,
     build_research_prompt,
 )
+from app.services.research.agent.permissions import WEB_SEARCH
 from app.services.research.agent.registry import ResearchToolRegistry
+from app.services.research.agent.registry import ResearchTool
 from app.services.research.agent.sessions import ResearchSessionService
 
 
@@ -106,6 +109,29 @@ class FakeModelClient:
         self.calls += 1
         for chunk in response:
             yield chunk
+
+
+async def _fake_web_search(_context, payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "tool": "web_search",
+        "status": "completed",
+        "query": payload.get("query"),
+        "results": [{"title": "FOMC minutes", "snippet": "Rates remain restrictive."}],
+    }
+
+
+def _web_search_registry() -> ResearchToolRegistry:
+    return ResearchToolRegistry(
+        [
+            ResearchTool(
+                name="web_search",
+                description="搜索公开网页资料",
+                permission=WEB_SEARCH,
+                schema={"type": "object", "required": ["query"]},
+                handler=_fake_web_search,
+            )
+        ]
+    )
 
 
 @pytest.fixture()
@@ -249,6 +275,95 @@ async def test_tool_call_finish_reason_continues_react_loop(fake_db):
     }
     assert assistant_tool_calls[0]["metadata"]["reasoning_content"] == "先调用工具确认证据。"
     assert tool_messages[0]["metadata"]["tool_call_id"] == "call-1"
+
+
+@pytest.mark.asyncio
+async def test_completed_tool_run_forces_visible_final_answer_when_model_stops_empty(fake_db):
+    session = await _create_session(fake_db)
+    client = FakeModelClient(
+        [
+            [
+                ModelStreamChunk(
+                    tool_call={
+                        "id": "call-search",
+                        "name": "web_search",
+                        "arguments": {"query": "FOMC minutes April 2026"},
+                    },
+                    finish_reason="tool_calls",
+                ),
+            ],
+            [ModelStreamChunk(finish_reason="stop")],
+            [ModelStreamChunk(delta="搜索结果显示会议纪要偏谨慎。", finish_reason="stop")],
+        ]
+    )
+
+    result = await ResearchAgentLoop(
+        model_client=client,
+        registry=_web_search_registry(),
+    ).run(
+        principal=_principal(),
+        session_id=session["session_id"],
+        user_message="请读取最新的美联储会议纪要并总结影响",
+        attempt_id="attempt-final",
+    )
+    messages = await ResearchSessionService().list_messages(
+        session["session_id"], USER_A["id"]
+    )
+    message_completed = [
+        event
+        for event in fake_db.research_events.documents
+        if event["event_type"] == "message_completed"
+    ][0]
+
+    assert client.calls == 3
+    assert result["content"] == "搜索结果显示会议纪要偏谨慎。"
+    assert messages[-1]["role"] == "assistant"
+    assert messages[-1]["content"] == "搜索结果显示会议纪要偏谨慎。"
+    assert message_completed["payload"]["content"] == "搜索结果显示会议纪要偏谨慎。"
+
+
+@pytest.mark.asyncio
+async def test_completed_attempt_never_persists_blank_assistant_message(fake_db):
+    session = await _create_session(fake_db)
+    client = FakeModelClient(
+        [
+            [
+                ModelStreamChunk(
+                    tool_call={
+                        "id": "call-search",
+                        "name": "web_search",
+                        "arguments": {"query": "FOMC minutes April 2026"},
+                    },
+                    finish_reason="tool_calls",
+                ),
+            ],
+            [ModelStreamChunk(finish_reason="stop")],
+            [ModelStreamChunk(finish_reason="stop")],
+        ]
+    )
+
+    result = await ResearchAgentLoop(
+        model_client=client,
+        registry=_web_search_registry(),
+    ).run(
+        principal=_principal(),
+        session_id=session["session_id"],
+        user_message="请读取最新的美联储会议纪要并总结影响",
+        attempt_id="attempt-fallback",
+    )
+    messages = await ResearchSessionService().list_messages(
+        session["session_id"], USER_A["id"]
+    )
+    message_completed = [
+        event
+        for event in fake_db.research_events.documents
+        if event["event_type"] == "message_completed"
+    ][0]
+
+    assert result["content"] == EMPTY_FINAL_ANSWER_FALLBACK
+    assert messages[-1]["role"] == "assistant"
+    assert messages[-1]["content"] == EMPTY_FINAL_ANSWER_FALLBACK
+    assert message_completed["payload"]["content"] == EMPTY_FINAL_ANSWER_FALLBACK
 
 
 @pytest.mark.asyncio

@@ -30,6 +30,12 @@ class ResearchAgentCancelled(RuntimeError):
     pass
 
 
+EMPTY_FINAL_ANSWER_FALLBACK = (
+    "本次任务已结束，但模型没有返回最终回答。工具执行记录已保留，请展开执行步骤查看；"
+    "如果需要完整结论，请重新发送请求。"
+)
+
+
 def _error_message(exc: Exception) -> str:
     message = str(exc).strip()
     if message:
@@ -345,6 +351,8 @@ class ResearchAgentLoop:
         linked_task_ids: list[str] = []
         continuation_count = 0
         tool_iteration_count = 0
+        used_tool_call = False
+        forced_final_answer = False
         finish_reason: str | None = None
 
         try:
@@ -428,6 +436,7 @@ class ResearchAgentLoop:
                             )
                             raise ResearchAgentCancelled("research attempt cancelled")
                         had_tool_call = True
+                        used_tool_call = True
                         await self._append_message(
                             session_id=session_id,
                             user_id=principal.user_id,
@@ -497,6 +506,7 @@ class ResearchAgentLoop:
                             reasoning_parts=reasoning_parts,
                             continuation_count=continuation_count,
                         )
+                        forced_final_answer = True
                         break
                     continue
 
@@ -509,6 +519,31 @@ class ResearchAgentLoop:
                 break
 
             final_content = "".join(content_parts)
+            if not final_content.strip() and used_tool_call and not forced_final_answer:
+                finish_reason = await self._force_final_answer(
+                    prompt=prompt,
+                    session_id=session_id,
+                    principal=principal,
+                    attempt_id=attempt_id,
+                    content_parts=content_parts,
+                    reasoning_parts=reasoning_parts,
+                    continuation_count=continuation_count,
+                )
+                final_content = "".join(content_parts)
+                forced_final_answer = True
+            if not final_content.strip():
+                final_content = EMPTY_FINAL_ANSWER_FALLBACK
+                content_parts.append(final_content)
+                await self._append_event(
+                    session_id=session_id,
+                    user_id=principal.user_id,
+                    event_type="assistant_delta",
+                    payload={
+                        "text": final_content,
+                        "content": final_content,
+                        "attempt_id": attempt_id,
+                    },
+                )
             reasoning_content = "".join(reasoning_parts)
             assistant_message = await self._append_message(
                 session_id=session_id,
