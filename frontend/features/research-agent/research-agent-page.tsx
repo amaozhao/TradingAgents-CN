@@ -156,12 +156,12 @@ const EXAMPLE_CATEGORIES = [
       {
         title: "分析连接器组合",
         desc: "读取账户摘要和持仓，保持只读",
-        prompt: "请使用当前选中的 trading connector profile 读取账户摘要和持仓，分析现金、仓位集中度和组合风险。保持只读，不要下单，也不要修改订单。"
+        prompt: "请先检查当前选中的 trading connector profile 是否 connected；如果未 connected 或缺 OAuth/token，请只说明缺少哪一步配置，不要调用账户、持仓、订单或历史读取工具。如果已 connected，再读取账户摘要和持仓，分析现金、仓位集中度和组合风险。保持只读，不要下单，也不要修改订单。"
       },
       {
         title: "报价与趋势",
         desc: "通过当前连接器获取报价和近期日线",
-        prompt: "请使用当前选中的 trading connector 获取 AAPL 的实时 quote 和最近 30 根日线，并总结当前报价相对近期趋势的位置。保持只读。"
+        prompt: "请先检查当前选中的 trading connector 是否 connected；如果未 connected 或缺 OAuth/token，请只说明缺少哪一步配置，不要调用 quote 或 history 工具。如果已 connected，再获取 AAPL 的实时 quote 和最近 30 根日线，并总结当前报价相对近期趋势的位置。保持只读。"
       }
     ]
   },
@@ -232,7 +232,7 @@ const COMPOSER_MAX_HEIGHT = 128
 const QUICK_RESEARCH_PROMPTS = [
   { label: "跨市场回测", prompt: "请用 backtest 工具回测一个风险平价组合，标的包括 000001.SZ、BTC-USDT 和 AAPL，时间范围为 2024 全年，并和等权组合基准进行对比。" },
   { label: "检查交易连接器", prompt: "请列出我的 trading connector profiles，说明当前选中的是哪一个，然后检查这个连接器是否可用。如果还没准备好，请明确告诉我缺少哪一步配置。不要下单，也不要修改订单。" },
-  { label: "分析连接器组合", prompt: "请使用当前选中的 trading connector profile 读取账户摘要和持仓，分析现金、仓位集中度和组合风险。保持只读，不要下单，也不要修改订单。" },
+  { label: "分析连接器组合", prompt: "请先检查当前选中的 trading connector profile 是否 connected；如果未 connected 或缺 OAuth/token，请只说明缺少哪一步配置，不要调用账户、持仓、订单或历史读取工具。如果已 connected，再读取账户摘要和持仓，分析现金、仓位集中度和组合风险。保持只读，不要下单，也不要修改订单。" },
   { label: "智能体团队", prompt: "[Swarm Team Mode] 请使用 investment_committee preset，根据当前市场环境评估 NVDA 应该做多、做空还是观望，并汇总多空观点、风险审查和 PM 决策。" },
   { label: "Shadow Account", prompt: "请对最近 90 天的美股市场运行 Shadow backtest，拆解我的实际 PnL 和 Shadow 策略之间的差异，包括规则违背、过早离场和错过信号。如果当前会话没有 returns、trades[].pnl、交易日志 artifact_id/file_id 或日志文本，请先让我上传或粘贴数据，不要调用 Shadow backtest 工具。" }
 ]
@@ -335,12 +335,12 @@ const EXAMPLE_CATEGORIES_EN: typeof EXAMPLE_CATEGORIES = [
       {
         title: "Analyze connector portfolio",
         desc: "Read account summary and positions from the selected connector",
-        prompt: "Use the selected trading connector profile to summarize my account, positions, concentration, cash, and portfolio risk. Do not place or modify orders."
+        prompt: "First check whether the selected trading connector profile is connected. If it is not connected or OAuth/token is missing, only explain the missing setup step and do not call account, position, order, or history read tools. If it is connected, summarize my account, positions, concentration, cash, and portfolio risk. Do not place or modify orders."
       },
       {
         title: "Quote and trend",
         desc: "Fetch a quote plus recent daily bars through the selected connector",
-        prompt: "Use the selected trading connector to fetch an AAPL quote and 30 daily bars, then summarize the current quote versus the recent trend. Keep it read-only."
+        prompt: "First check whether the selected trading connector is connected. If it is not connected or OAuth/token is missing, only explain the missing setup step and do not call quote or history tools. If it is connected, fetch an AAPL quote and 30 daily bars, then summarize the current quote versus the recent trend. Keep it read-only."
       }
     ]
   },
@@ -542,7 +542,7 @@ const AGENT_TEXT = {
     quickPrompts: [
       { label: "Cross-market backtest", prompt: "Backtest a risk-parity portfolio of 000001.SZ, BTC-USDT, and AAPL for full-year 2024, compare against equal-weight baseline" },
       { label: "Check connector", prompt: "List my trading connector profiles, show which one is selected, then check that selected connector. If it is not ready, tell me exactly what setup step is missing. Do not place or modify orders." },
-      { label: "Analyze connector portfolio", prompt: "Use the selected trading connector profile to summarize my account, positions, concentration, cash, and portfolio risk. Do not place or modify orders." },
+      { label: "Analyze connector portfolio", prompt: "First check whether the selected trading connector profile is connected. If it is not connected or OAuth/token is missing, only explain the missing setup step and do not call account, position, order, or history read tools. If it is connected, summarize my account, positions, concentration, cash, and portfolio risk. Do not place or modify orders." },
       { label: "Agent team", prompt: "[Swarm Team Mode] Use the investment_committee preset to evaluate whether to go long or short on NVDA given current market conditions" },
       { label: "Shadow Account", prompt: "Run a shadow backtest for the last 90 days on the US market and break down where my PnL diverged from the shadow (rule violations, early exits, missed signals). If this session has no returns, trades[].pnl, journal artifact_id/file_id, or pasted journal text, ask me to upload or paste data before calling the shadow backtest tool." }
     ],

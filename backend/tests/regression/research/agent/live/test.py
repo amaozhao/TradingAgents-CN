@@ -191,6 +191,10 @@ async def test_live_tools_are_readonly_and_mandate_proposal_only(fake_db):
     assert selected["selected"] is True
     assert selected["live_trading_enabled"] is False
     assert check["read_only"] is True
+    assert check["status"] == "config_required"
+    assert positions["status"] == "config_required"
+    assert positions["accepted"] is False
+    assert "OAuth" in positions["reason"]
     assert positions["live_trading_enabled"] is False
     assert proposal["status"] == "proposed"
     assert place_order["accepted"] is False

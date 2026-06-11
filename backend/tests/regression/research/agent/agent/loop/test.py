@@ -174,6 +174,16 @@ def test_prompt_blocks_shadow_and_journal_calls_without_owner_data():
     assert "ask the user to upload or paste the missing data" in prompt
 
 
+def test_prompt_blocks_trading_reads_until_connector_is_connected():
+    principal = _principal()
+    tools = ResearchToolRegistry.default().for_principal(principal)
+    prompt = build_research_prompt(principal=principal, tools=tools)
+
+    assert "Call trading_check before trading_account" in prompt
+    assert "Do not call trading_account" in prompt
+    assert "status is connected" in prompt
+
+
 @pytest.mark.asyncio
 async def test_streamed_model_text_persists_events_and_final_message(fake_db):
     session = await _create_session(fake_db)

@@ -185,7 +185,8 @@ describe("ResearchAgentPage", () => {
     await user.click(screen.getByRole("button", { name: "分析连接器组合" }))
 
     const composer = screen.getByPlaceholderText("例如：运行回测、检查连接器状态，或分析 A 股储能板块") as HTMLTextAreaElement
-    await waitFor(() => expect(composer.value).toContain("请使用当前选中的 trading connector profile"))
+    await waitFor(() => expect(composer.value).toContain("请先检查当前选中的 trading connector profile 是否 connected"))
+    expect(composer.value).toContain("不要调用账户、持仓、订单或历史读取工具")
     expect(researchAgentApi.appendMessage).not.toHaveBeenCalled()
   })
 

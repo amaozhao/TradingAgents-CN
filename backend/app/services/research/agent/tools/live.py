@@ -50,9 +50,29 @@ async def _empty_readonly(
     snapshot = await LiveSafetyService().connector_snapshot(
         context.principal, str(payload.get("broker") or "") or None
     )
+    if snapshot["status"] != "connected":
+        broker = snapshot["broker"]
+        return {
+            "tool": tool_name,
+            "status": "config_required",
+            "accepted": False,
+            "read_only": True,
+            "live_trading_enabled": False,
+            "broker": broker,
+            "data": [],
+            "reason": (
+                f"Trading connector {broker} is not connected or OAuth token is missing; "
+                "account, position, order, quote, and history reads are unavailable."
+            ),
+            "instruction": (
+                "请先在交易连接器中完成授权/配置，并用 trading_check 确认 status=connected；"
+                "未连接前不要继续调用账户、持仓、订单、报价或历史读取工具。"
+            ),
+        }
     return {
         "tool": tool_name,
         "status": snapshot["status"],
+        "accepted": True,
         "read_only": True,
         "live_trading_enabled": False,
         "broker": snapshot["broker"],
@@ -100,7 +120,10 @@ def live_tools() -> list[ResearchTool]:
         *[
             ResearchTool(
                 name=name,
-                description=f"Read-only live connector {name.removeprefix('trading_')} snapshot.",
+                description=(
+                    f"Read-only live connector {name.removeprefix('trading_')} snapshot. "
+                    "Only call after trading_check returns status=connected; otherwise explain the missing connector/OAuth setup."
+                ),
                 permission=LIVE_READ,
                 schema={"type": "object", "properties": {"broker": {"type": "string"}}},
                 handler=lambda context, payload, tool_name=name: _empty_readonly(
