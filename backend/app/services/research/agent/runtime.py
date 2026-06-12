@@ -88,12 +88,19 @@ def direct_tool_call_from_metadata(
         return None
     tool_name = str(metadata.get("tool_name") or "").strip()
     tool_arguments = metadata.get("tool_arguments")
-    if tool_name != "stock_analysis" or not isinstance(tool_arguments, dict):
+    if not isinstance(tool_arguments, dict):
         return None
-    mode = str(tool_arguments.get("mode") or "single").strip().lower()
-    if mode != "single":
-        return None
-    return {"tool_name": tool_name, "tool_arguments": dict(tool_arguments)}
+    if tool_name == "stock_analysis":
+        mode = str(tool_arguments.get("mode") or "single").strip().lower()
+        if mode != "single":
+            return None
+        return {"tool_name": tool_name, "tool_arguments": dict(tool_arguments)}
+    if tool_name == "batch_stock_analysis":
+        symbols = tool_arguments.get("symbols") or tool_arguments.get("stock_codes")
+        if not symbols:
+            return None
+        return {"tool_name": tool_name, "tool_arguments": dict(tool_arguments)}
+    return None
 
 
 def _exception_message(exc: Exception) -> str:

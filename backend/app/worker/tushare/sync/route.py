@@ -1,8 +1,6 @@
-from typing import TYPE_CHECKING
+from .query import TushareSyncService
 
-if TYPE_CHECKING:
-    from .query import TushareSyncService
-    from .task import _tushare_sync_service
+_tushare_sync_service = None
 
 
 async def get_tushare_sync_service() -> TushareSyncService:

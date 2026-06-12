@@ -1,9 +1,6 @@
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .base import _TushareSyncServiceMixin2
-    from .common import _TushareSyncServiceMixin1
-    from .models import _TushareSyncServiceMixin3
+from .base import _TushareSyncServiceMixin2
+from .common import _TushareSyncServiceMixin1
+from .models import _TushareSyncServiceMixin3
 
 
 class TushareSyncService(_TushareSyncServiceMixin1, _TushareSyncServiceMixin2, _TushareSyncServiceMixin3):

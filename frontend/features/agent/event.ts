@@ -1,4 +1,4 @@
-import type { StockPayload } from "@/features/research/stock"
+import type { BatchPayload, StockPayload } from "@/features/research/payload"
 import type { ParsedResearchStreamEvent, ResearchAgentEvent, ResearchAttempt, ResearchGoal, ResearchMessage } from "@/libs/api/research-agent"
 import type { AppLanguage } from "@/stores/app-store"
 
@@ -24,6 +24,15 @@ export function stockPayloadFromMetadata(metadata?: Record<string, unknown>) {
   return payload as StockPayload
 }
 
+export function batchPayloadFromMetadata(metadata?: Record<string, unknown>) {
+  if (metadata?.tool_name !== "batch_stock_analysis") return null
+  const value = metadata.tool_arguments
+  if (!value || typeof value !== "object") return null
+  const payload = value as Partial<BatchPayload>
+  if (!payload.title || !Array.isArray(payload.symbols) || payload.symbols.length === 0) return null
+  return payload as BatchPayload
+}
+
 export function initialStockWorkflowTools(value: unknown): ToolState[] {
   if (!value || typeof value !== "object") return []
   const payload = value as Partial<StockPayload>
@@ -34,6 +43,19 @@ export function initialStockWorkflowTools(value: unknown): ToolState[] {
     title: "参数校验",
     status: "running",
     preview: "正在提交并校验个股分析参数。"
+  }]
+}
+
+export function initialBatchWorkflowTools(value: unknown): ToolState[] {
+  if (!value || typeof value !== "object") return []
+  const payload = value as Partial<BatchPayload>
+  if (!Array.isArray(payload.symbols) || payload.symbols.length === 0) return []
+  return [{
+    id: "batch_stock_analysis:submit",
+    name: "batch_stock_analysis",
+    title: "提交批量分析",
+    status: "running",
+    preview: "正在提交并校验批量分析参数。"
   }]
 }
 

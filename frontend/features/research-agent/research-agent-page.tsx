@@ -1,15 +1,16 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react"
-import { ArrowDown, Bot, Download, Loader2, Plus, Send, Sparkles, Square, Target, TrendingUp, X } from "lucide-react"
+import { ArrowDown, BarChart3, Bot, Download, Loader2, Plus, Send, Sparkles, Square, Target, TrendingUp, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { MessageBubble, SessionLoadingView, SessionRail, ToolRail, WelcomeScreen } from "@/features/agent/view"
+import { BatchConfigCard, BatchReplayCard, type BatchPayload, type BatchRunStatus } from "@/features/research/batch"
 import { StockConfigCard, StockReplayCard, type StockPayload, type StockRunStatus } from "@/features/research/stock"
 import { researchAgentApi, type LiveStatus, type ParsedResearchStreamEvent, type ResearchGoal, type ResearchSession } from "@/libs/api/research-agent"
 import { useAppStore } from "@/stores/app-store"
 
-import { attemptResultContent, createGoalDraft, eventContent, eventFailureContent, eventToolStatus, finalAnswerFromEvents, failureMessageFromEvents, initialStockWorkflowTools, latestActiveAttempt, latestAttempt, mergeGoalEvent, messagesFromApi, normalizePersistedEvent, nowId, previewFromEventData, stockLinksFromEventData, stockPayloadFromMetadata, stockStageId, stockStageTitle, toolMessageId, toolsFromEvents } from "@/features/agent/event"
+import { attemptResultContent, batchPayloadFromMetadata, createGoalDraft, eventContent, eventFailureContent, eventToolStatus, finalAnswerFromEvents, failureMessageFromEvents, initialBatchWorkflowTools, initialStockWorkflowTools, latestActiveAttempt, latestAttempt, mergeGoalEvent, messagesFromApi, normalizePersistedEvent, nowId, previewFromEventData, stockLinksFromEventData, stockPayloadFromMetadata, stockStageId, stockStageTitle, toolMessageId, toolsFromEvents } from "@/features/agent/event"
 import { AGENT_COMPLETION_POLL_TIMEOUT_MS, AGENT_TEXT, COMPOSER_MAX_HEIGHT, COMPOSER_MIN_HEIGHT } from "@/features/agent/text"
 import type { AgentMessage, ToolState } from "@/features/agent/types"
 
@@ -27,6 +28,8 @@ export function ResearchAgentPage() {
   const [showMenu, setShowMenu] = useState(false)
   const [showStockConfig, setShowStockConfig] = useState(false)
   const [stockConfigSubmitted, setStockConfigSubmitted] = useState(false)
+  const [showBatchConfig, setShowBatchConfig] = useState(false)
+  const [batchConfigSubmitted, setBatchConfigSubmitted] = useState(false)
   const [composerMode, setComposerMode] = useState<"chat" | "goal">("chat")
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [cancelRequested, setCancelRequested] = useState(false)
@@ -162,7 +165,8 @@ export function ResearchAgentPage() {
     return text.ready
   }, [cancelRequested, running, text])
   const stockRunStatus = tools.filter((tool) => tool.name === "stock_analysis").at(-1)
-  const showWelcome = !sessionLoading && messages.length === 0 && !showStockConfig && composerMode === "chat"
+  const batchRunStatus = tools.filter((tool) => tool.name === "batch_stock_analysis").at(-1)
+  const showWelcome = !sessionLoading && messages.length === 0 && !showStockConfig && !showBatchConfig && composerMode === "chat"
 
   function scrollToBottom() {
     const list = listRef.current
@@ -498,7 +502,12 @@ export function ResearchAgentPage() {
     setCancelRequested(false)
     runFinishedRef.current = false
     setRunning(true)
-    setTools(metadata.tool_name === "stock_analysis" ? initialStockWorkflowTools(metadata.tool_arguments) : [])
+    setTools(metadata.tool_name === "stock_analysis"
+      ? initialStockWorkflowTools(metadata.tool_arguments)
+      : metadata.tool_name === "batch_stock_analysis"
+        ? initialBatchWorkflowTools(metadata.tool_arguments)
+        : []
+    )
     setMessages((current) => [...current, { id: nowId("user"), type: "user", content: finalPrompt, timestamp: Date.now() }])
     requestAnimationFrame(scrollToBottom)
 
@@ -554,11 +563,26 @@ export function ResearchAgentPage() {
     requestAnimationFrame(() => composerRef.current?.focus())
   }
 
+  function fillComposerFromBatchSummary(summary: string) {
+    setInput(`请进行批量分析：${summary}`)
+    setComposerMode("chat")
+    requestAnimationFrame(() => composerRef.current?.focus())
+  }
+
   async function runStockAnalysis(summary: string, payload: StockPayload) {
     setStockConfigSubmitted(true)
     await runPrompt(`个股分析：${summary}`, {
       mode: "stock_analysis_workflow",
       tool_name: "stock_analysis",
+      tool_arguments: payload
+    })
+  }
+
+  async function runBatchAnalysis(summary: string, payload: BatchPayload) {
+    setBatchConfigSubmitted(true)
+    await runPrompt(`批量分析：${summary}`, {
+      mode: "batch_analysis_workflow",
+      tool_name: "batch_stock_analysis",
       tool_arguments: payload
     })
   }
@@ -584,6 +608,8 @@ export function ResearchAgentPage() {
     setInput("")
     setShowStockConfig(false)
     setStockConfigSubmitted(false)
+    setShowBatchConfig(false)
+    setBatchConfigSubmitted(false)
     setComposerMode("chat")
   }
 
@@ -601,6 +627,8 @@ export function ResearchAgentPage() {
     setGoal(null)
     setShowStockConfig(false)
     setStockConfigSubmitted(false)
+    setShowBatchConfig(false)
+    setBatchConfigSubmitted(false)
     setActiveSessionId(sessionId)
   }
 
@@ -701,16 +729,29 @@ export function ResearchAgentPage() {
   }
 
   function renderMessage(message: AgentMessage) {
-    const payload = message.type === "user"
+    const stockPayload = message.type === "user"
       ? stockPayloadFromMetadata(message.metadata)
       : null
-    if (payload) {
+    if (stockPayload) {
       return (
         <StockReplayCard
           key={message.id}
           content={message.content}
-          payload={payload}
+          payload={stockPayload}
           runStatus={stockRunStatus as StockRunStatus | undefined}
+        />
+      )
+    }
+    const batchPayload = message.type === "user"
+      ? batchPayloadFromMetadata(message.metadata)
+      : null
+    if (batchPayload) {
+      return (
+        <BatchReplayCard
+          key={message.id}
+          content={message.content}
+          payload={batchPayload}
+          runStatus={batchRunStatus as BatchRunStatus | undefined}
         />
       )
     }
@@ -788,6 +829,21 @@ export function ResearchAgentPage() {
                 }}
               />
             )}
+            {showBatchConfig && (
+              <BatchConfigCard
+                running={running}
+                locked={batchConfigSubmitted}
+                runStatus={batchRunStatus as BatchRunStatus | undefined}
+                onCancel={() => {
+                  setShowBatchConfig(false)
+                  setBatchConfigSubmitted(false)
+                }}
+                onSave={fillComposerFromBatchSummary}
+                onSubmit={({ summary, payload }) => {
+                  void runBatchAnalysis(summary, payload)
+                }}
+              />
+            )}
           </div>
           {showScrollButton && (
             <button
@@ -825,6 +881,8 @@ export function ResearchAgentPage() {
                       disabled={running}
                       onClick={() => {
                         setShowStockConfig(true)
+                        setShowBatchConfig(false)
+                        setBatchConfigSubmitted(false)
                         setStockConfigSubmitted(false)
                         setComposerMode("chat")
                         setShowMenu(false)
@@ -834,12 +892,31 @@ export function ResearchAgentPage() {
                     >
                       <TrendingUp className="size-4" />{text.singleStock}
                     </button>
+                    <button
+                      type="button"
+                      disabled={running}
+                      onClick={() => {
+                        setShowBatchConfig(true)
+                        setShowStockConfig(false)
+                        setStockConfigSubmitted(false)
+                        setBatchConfigSubmitted(false)
+                        setComposerMode("chat")
+                        setShowMenu(false)
+                        requestAnimationFrame(scrollToBottom)
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <BarChart3 className="size-4" />{text.batchStock}
+                    </button>
                     <div className="my-1 border-t" />
-                    {text.quickPrompts.map((item) => (
-                      <button key={item.label} type="button" onClick={() => fillComposerFromQuickPrompt(item.prompt)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted">
-                        <Sparkles className="size-4" />{item.label}
-                      </button>
-                    ))}
+                    {text.quickPrompts.map((item) => {
+                      const Icon = item.icon || Sparkles
+                      return (
+                        <button key={item.label} type="button" onClick={() => fillComposerFromQuickPrompt(item.prompt)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted">
+                          <Icon className="size-4" />{item.label}
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
               </div>

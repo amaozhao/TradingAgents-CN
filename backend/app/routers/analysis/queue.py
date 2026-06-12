@@ -1,25 +1,28 @@
-from .imports import (
-    BatchRepository,
-    Depends,
-    HTTPException,
-    Optional,
-    Query,
-    QueueService,
-    get_current_user,
-    get_queue_service,
-    get_simple_analysis_service,
-    importlib,
-    router,
-)
-from .setup import (
-    AnalysisDataResponse,
-    AnalysisLooseObjectResponse,
-    AnalysisOperationResponse,
-    AnalysisQueueBatchResponse,
-    AnalysisQueueTaskResponse,
-    BatchAnalyzeRequest,
-    SingleAnalyzeRequest,
-)
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        BatchRepository,
+        Depends,
+        HTTPException,
+        Optional,
+        Query,
+        QueueService,
+        get_current_user,
+        get_queue_service,
+        get_simple_analysis_service,
+        importlib,
+        router,
+    )
+    from .setup import (
+        AnalysisDataResponse,
+        AnalysisLooseObjectResponse,
+        AnalysisOperationResponse,
+        AnalysisQueueBatchResponse,
+        AnalysisQueueTaskResponse,
+        BatchAnalyzeRequest,
+        SingleAnalyzeRequest,
+    )
 
 @router.post("/analyze", response_model=AnalysisQueueTaskResponse)
 async def analyze_single(

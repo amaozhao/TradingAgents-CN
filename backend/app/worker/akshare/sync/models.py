@@ -1,8 +1,5 @@
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .base import _AKShareSyncServiceMixin2
-    from .common import _AKShareSyncServiceMixin1
+from .base import _AKShareSyncServiceMixin2
+from .common import _AKShareSyncServiceMixin1
 
 
 class AKShareSyncService(_AKShareSyncServiceMixin1, _AKShareSyncServiceMixin2):

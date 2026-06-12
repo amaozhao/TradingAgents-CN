@@ -1,19 +1,16 @@
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .imports import (
-        Any,
-        Dict,
-        List,
-        Optional,
-        asyncio,
-        datetime,
-        get_historical_data_service,
-        importlib,
-        logger,
-        timedelta,
-        utcnow_naive,
-    )
+from .imports import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    asyncio,
+    datetime,
+    get_historical_data_service,
+    importlib,
+    logger,
+    timedelta,
+    utcnow_naive,
+)
 
 class _AKShareSyncServiceMixin2:
     async def _process_historical_batch(

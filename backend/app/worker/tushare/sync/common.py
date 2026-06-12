@@ -1,26 +1,23 @@
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .imports import (
-        Any,
-        Dict,
-        List,
-        Optional,
-        TushareProvider,
-        asyncio,
-        cast,
-        datetime,
-        get_historical_data_service,
-        get_news_data_service,
-        get_postgres_db,
-        get_stock_data_service,
-        get_tushare_rate_limiter,
-        importlib,
-        inspect,
-        logger,
-        settings,
-        timezone,
-    )
+from .imports import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    TushareProvider,
+    asyncio,
+    cast,
+    datetime,
+    get_historical_data_service,
+    get_news_data_service,
+    get_postgres_db,
+    get_stock_data_service,
+    get_tushare_rate_limiter,
+    importlib,
+    inspect,
+    logger,
+    settings,
+    timezone,
+)
 
 class _TushareSyncServiceMixin1:
     def __init__(self):

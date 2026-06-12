@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ResearchAgentPage } from "@/features/research-agent/research-agent-page"
+import { configApi } from "@/libs/api/config"
 import { researchAgentApi } from "@/libs/api/research-agent"
 import { useAppStore } from "@/stores/app-store"
 
@@ -27,6 +28,12 @@ vi.mock("@/libs/api/research-agent", () => ({
     appendMessage: vi.fn(),
     streamEvents: vi.fn(),
     subscribeEvents: vi.fn()
+  }
+}))
+
+vi.mock("@/libs/api/config", () => ({
+  configApi: {
+    getLLMConfigs: vi.fn()
   }
 }))
 
@@ -86,6 +93,28 @@ describe("ResearchAgentPage", () => {
       data: { message_id: "message-1", attempt_id: "attempt-1" },
       message: "ok"
     })
+    vi.mocked(configApi.getLLMConfigs).mockResolvedValue([
+      {
+        provider: "dashscope",
+        model_name: "qwen-turbo",
+        model_display_name: "通义千问 Turbo",
+        max_tokens: 2000,
+        temperature: 0.7,
+        timeout: 60,
+        retry_times: 2,
+        enabled: true
+      },
+      {
+        provider: "dashscope",
+        model_name: "qwen-max",
+        model_display_name: "通义千问 Max",
+        max_tokens: 8000,
+        temperature: 0.7,
+        timeout: 60,
+        retry_times: 2,
+        enabled: true
+      }
+    ])
     vi.mocked(researchAgentApi.streamEvents).mockResolvedValue([])
     vi.mocked(researchAgentApi.subscribeEvents).mockReturnValue(vi.fn())
   })
@@ -163,6 +192,60 @@ describe("ResearchAgentPage", () => {
     await waitFor(() => expect(composer.value).toContain("请先检查当前选中的 trading connector profile 是否 connected"))
     expect(composer.value).toContain("不要调用账户、持仓、订单或历史读取工具")
     expect(researchAgentApi.appendMessage).not.toHaveBeenCalled()
+  })
+
+  it("opens batch analysis configuration from quick actions without sending", async () => {
+    vi.mocked(researchAgentApi.listSessions).mockResolvedValue({ success: true, data: [], message: "ok" })
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    await user.click(await screen.findByRole("button", { name: "更多选项" }))
+    await user.click(screen.getByRole("button", { name: "批量分析" }))
+
+    expect(await screen.findByLabelText("批量分析配置")).toBeInTheDocument()
+    expect(screen.getByLabelText("股票代码列表")).toBeInTheDocument()
+    expect(screen.getByLabelText("批次标题")).toBeInTheDocument()
+    expect(screen.getByPlaceholderText("例如：运行回测、检查连接器状态，或分析 A 股储能板块")).toHaveValue("")
+    expect(researchAgentApi.appendMessage).not.toHaveBeenCalled()
+  })
+
+  it("submits batch analysis configuration through structured metadata", async () => {
+    vi.mocked(researchAgentApi.listSessions).mockResolvedValue({ success: true, data: [], message: "ok" })
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    await user.click(await screen.findByRole("button", { name: "更多选项" }))
+    await user.click(screen.getByRole("button", { name: "批量分析" }))
+    await screen.findByText("通义千问 Turbo (qwen-turbo)")
+    await user.type(screen.getByLabelText("批次标题"), "银行板块批量分析")
+    await user.type(screen.getByLabelText("股票代码列表"), "000001\n600519")
+    await user.click(screen.getByRole("button", { name: /开始批量分析/ }))
+
+    await waitFor(() => expect(researchAgentApi.appendMessage).toHaveBeenCalled())
+    const payload = vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1]
+    expect(payload?.content).toContain("批量分析")
+    expect(payload?.metadata).toMatchObject({
+      mode: "batch_analysis_workflow",
+      tool_name: "batch_stock_analysis",
+      tool_arguments: {
+        title: "银行板块批量分析",
+        symbols: ["000001", "600519"],
+        stock_codes: ["000001", "600519"],
+        research_depth: "标准",
+        selected_analysts: ["market", "fundamentals"],
+        include_sentiment: true,
+        include_risk: true,
+        language: "zh-CN",
+        quick_analysis_model: "qwen-turbo",
+        deep_analysis_model: "qwen-max",
+        strict_symbols: true,
+        max_concurrency: 3,
+        wait_for_completion: false
+      }
+    })
+    expect(screen.getByText("已提交，批量任务进度会在右侧执行步骤中更新。")).toBeInTheDocument()
   })
 
   it("keeps English prompts when the Agent page language is English", async () => {

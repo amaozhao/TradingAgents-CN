@@ -1,19 +1,16 @@
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .imports import (
-        Any,
-        Dict,
-        List,
-        Optional,
-        asyncio,
-        datetime,
-        get_historical_data_service,
-        importlib,
-        logger,
-        timedelta,
-        timezone,
-    )
+from .imports import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    asyncio,
+    datetime,
+    get_historical_data_service,
+    importlib,
+    logger,
+    timedelta,
+    timezone,
+)
 
 class _TushareSyncServiceMixin2:
     async def sync_historical_data(

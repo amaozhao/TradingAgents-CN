@@ -1,23 +1,20 @@
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .imports import (
-        Any,
-        Dict,
-        List,
-        Optional,
-        asyncio,
-        cast,
-        datetime,
-        dual_write_hot_document,
-        get_akshare_provider,
-        get_historical_data_service,
-        get_news_data_service,
-        get_postgres_db,
-        logger,
-        timedelta,
-        utcnow_naive,
-    )
+from .imports import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    asyncio,
+    cast,
+    datetime,
+    dual_write_hot_document,
+    get_akshare_provider,
+    get_historical_data_service,
+    get_news_data_service,
+    get_postgres_db,
+    logger,
+    timedelta,
+    utcnow_naive,
+)
 
 class _AKShareSyncServiceMixin1:
     def __init__(self):

@@ -1,16 +1,13 @@
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .imports import (
-        Any,
-        Dict,
-        List,
-        asyncio,
-        dual_write_hot_document,
-        get_utc8_now,
-        importlib,
-        logger,
-    )
+from .imports import (
+    Any,
+    Dict,
+    List,
+    asyncio,
+    dual_write_hot_document,
+    get_utc8_now,
+    importlib,
+    logger,
+)
 
 class _TushareSyncServiceMixin3:
     async def _process_news_batch(self, batch: List[str], hours_back: int, max_news_per_stock: int) -> Dict[str, Any]:

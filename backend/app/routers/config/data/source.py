@@ -1,4 +1,4 @@
-from ..imports import (
+from app.routers.config.imports import (
     ActionType,
     DataSourceConfig,
     DataSourceConfigRequest,
@@ -15,7 +15,7 @@ from ..imports import (
     router,
     status,
 )
-from ..setup import ConfigApiResponse, _sanitize_datasource_configs
+from app.routers.config.setup import ConfigApiResponse, _sanitize_datasource_configs
 
 @router.get("/datasource", response_model=ConfigApiResponse)
 async def get_data_source_configs(current_user: User = Depends(get_current_user)):

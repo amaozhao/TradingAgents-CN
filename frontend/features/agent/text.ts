@@ -172,11 +172,11 @@ export const COMPOSER_MIN_HEIGHT = 44
 export const COMPOSER_MAX_HEIGHT = 128
 
 export const QUICK_RESEARCH_PROMPTS = [
-  { label: "跨市场回测", prompt: "请用 backtest 工具回测一个风险平价组合，标的包括 000001.SZ、BTC-USDT 和 AAPL，时间范围为 2024 全年，并和等权组合基准进行对比。" },
-  { label: "检查交易连接器", prompt: "请列出我的 trading connector profiles，说明当前选中的是哪一个，然后检查这个连接器是否可用。如果还没准备好，请明确告诉我缺少哪一步配置。不要下单，也不要修改订单。" },
-  { label: "分析连接器组合", prompt: "请先检查当前选中的 trading connector profile 是否 connected；如果未 connected 或缺 OAuth/token，请只说明缺少哪一步配置，不要调用账户、持仓、订单或历史读取工具。如果已 connected，再读取账户摘要和持仓，分析现金、仓位集中度和组合风险。保持只读，不要下单，也不要修改订单。" },
-  { label: "智能体团队", prompt: "[Swarm Team Mode] 请使用 investment_committee preset，根据当前市场环境评估 NVDA 应该做多、做空还是观望，并汇总多空观点、风险审查和 PM 决策。" },
-  { label: "Shadow Account", prompt: "请对最近 90 天的美股市场运行 Shadow backtest，拆解我的实际 PnL 和 Shadow 策略之间的差异，包括规则违背、过早离场和错过信号。如果当前会话没有 returns、trades[].pnl、交易日志 artifact_id/file_id 或日志文本，请先让我上传或粘贴数据，不要调用 Shadow backtest 工具。" }
+  { label: "跨市场回测", icon: TrendingUp, prompt: "请用 backtest 工具回测一个风险平价组合，标的包括 000001.SZ、BTC-USDT 和 AAPL，时间范围为 2024 全年，并和等权组合基准进行对比。" },
+  { label: "检查交易连接器", icon: Landmark, prompt: "请列出我的 trading connector profiles，说明当前选中的是哪一个，然后检查这个连接器是否可用。如果还没准备好，请明确告诉我缺少哪一步配置。不要下单，也不要修改订单。" },
+  { label: "分析连接器组合", icon: Activity, prompt: "请先检查当前选中的 trading connector profile 是否 connected；如果未 connected 或缺 OAuth/token，请只说明缺少哪一步配置，不要调用账户、持仓、订单或历史读取工具。如果已 connected，再读取账户摘要和持仓，分析现金、仓位集中度和组合风险。保持只读，不要下单，也不要修改订单。" },
+  { label: "智能体团队", icon: Users, prompt: "[Swarm Team Mode] 请使用 investment_committee preset，根据当前市场环境评估 NVDA 应该做多、做空还是观望，并汇总多空观点、风险审查和 PM 决策。" },
+  { label: "Shadow Account", icon: Sparkles, prompt: "请对最近 90 天的美股市场运行 Shadow backtest，拆解我的实际 PnL 和 Shadow 策略之间的差异，包括规则违背、过早离场和错过信号。如果当前会话没有 returns、trades[].pnl、交易日志 artifact_id/file_id 或日志文本，请先让我上传或粘贴数据，不要调用 Shadow backtest 工具。" }
 ]
 
 export const EXAMPLE_CATEGORIES_EN: typeof EXAMPLE_CATEGORIES = [
@@ -337,6 +337,7 @@ export const TOOL_LABELS: Record<string, { title: string; desc: string }> = {
   alpha_bench: { title: "Alpha 覆盖检查", desc: "检查候选股票可用因子、覆盖率和有效性" },
   correlation_matrix: { title: "相关性矩阵", desc: "分析候选股票之间的相关性和组合分散度" },
   stock_analysis: { title: "个股分析", desc: "通过 Agent workflow 提交并跟踪个股分析" },
+  batch_stock_analysis: { title: "批量分析", desc: "通过 Agent workflow 提交并跟踪批量股票分析" },
   single_stock_analysis: { title: "个股分析", desc: "生成个股证据、风险点和研究摘要" },
   stock_analysis_status: { title: "个股分析进度", desc: "读取个股 LangGraph DAG 任务状态" },
   stock_analysis_report: { title: "个股分析报告", desc: "读取已完成的个股分析报告" },
@@ -372,6 +373,7 @@ export const TOOL_LABELS_EN: Record<string, { title: string; desc: string }> = {
   alpha_bench: { title: "Alpha coverage check", desc: "Check factor availability, coverage, and validity" },
   correlation_matrix: { title: "Correlation matrix", desc: "Analyze correlations and portfolio diversification" },
   stock_analysis: { title: "Single-stock analysis", desc: "Submit and track single-stock analysis through the Agent workflow" },
+  batch_stock_analysis: { title: "Batch analysis", desc: "Submit and track batch stock analysis through the Agent workflow" },
   single_stock_analysis: { title: "Single-stock analysis", desc: "Generate evidence, risks, and a research summary" },
   stock_analysis_status: { title: "Single-stock progress", desc: "Read single-stock LangGraph DAG task status" },
   stock_analysis_report: { title: "Single-stock report", desc: "Read a completed single-stock analysis report" },
@@ -423,6 +425,7 @@ export const AGENT_TEXT = {
     moreOptions: "更多选项",
     researchGoal: "研究目标",
     singleStock: "个股分析",
+    batchStock: "批量分析",
     goalPlaceholder: "描述要绑定到当前会话的研究目标",
     chatPlaceholder: "例如：运行回测、检查连接器状态，或分析 A 股储能板块",
     stop: "停止生成",
@@ -519,11 +522,11 @@ export const AGENT_TEXT = {
     pageSubtitle: "Connected to the current-project Agent Runtime running inside this backend process.",
     capabilities: ["Agent Runtime", "51 source-tool migration matrix", "Finance Skills Library", "Research Goal", "Swarm", "Backtest", "Alpha Zoo", "Documents/Web", "Trading connectors", "Trade journal analyzer", "Shadow Account", "Persistent memory", "Session search"],
     quickPrompts: [
-      { label: "Cross-market backtest", prompt: "Backtest a risk-parity portfolio of 000001.SZ, BTC-USDT, and AAPL for full-year 2024, compare against equal-weight baseline" },
-      { label: "Check connector", prompt: "List my trading connector profiles, show which one is selected, then check that selected connector. If it is not ready, tell me exactly what setup step is missing. Do not place or modify orders." },
-      { label: "Analyze connector portfolio", prompt: "First check whether the selected trading connector profile is connected. If it is not connected or OAuth/token is missing, only explain the missing setup step and do not call account, position, order, or history read tools. If it is connected, summarize my account, positions, concentration, cash, and portfolio risk. Do not place or modify orders." },
-      { label: "Agent team", prompt: "[Swarm Team Mode] Use the investment_committee preset to evaluate whether to go long or short on NVDA given current market conditions" },
-      { label: "Shadow Account", prompt: "Run a shadow backtest for the last 90 days on the US market and break down where my PnL diverged from the shadow (rule violations, early exits, missed signals). If this session has no returns, trades[].pnl, journal artifact_id/file_id, or pasted journal text, ask me to upload or paste data before calling the shadow backtest tool." }
+      { label: "Cross-market backtest", icon: TrendingUp, prompt: "Backtest a risk-parity portfolio of 000001.SZ, BTC-USDT, and AAPL for full-year 2024, compare against equal-weight baseline" },
+      { label: "Check connector", icon: Landmark, prompt: "List my trading connector profiles, show which one is selected, then check that selected connector. If it is not ready, tell me exactly what setup step is missing. Do not place or modify orders." },
+      { label: "Analyze connector portfolio", icon: Activity, prompt: "First check whether the selected trading connector profile is connected. If it is not connected or OAuth/token is missing, only explain the missing setup step and do not call account, position, order, or history read tools. If it is connected, summarize my account, positions, concentration, cash, and portfolio risk. Do not place or modify orders." },
+      { label: "Agent team", icon: Users, prompt: "[Swarm Team Mode] Use the investment_committee preset to evaluate whether to go long or short on NVDA given current market conditions" },
+      { label: "Shadow Account", icon: Sparkles, prompt: "Run a shadow backtest for the last 90 days on the US market and break down where my PnL diverged from the shadow (rule violations, early exits, missed signals). If this session has no returns, trades[].pnl, journal artifact_id/file_id, or pasted journal text, ask me to upload or paste data before calling the shadow backtest tool." }
     ],
     examples: EXAMPLE_CATEGORIES_EN,
     toolLabels: TOOL_LABELS_EN,
@@ -542,6 +545,7 @@ export const AGENT_TEXT = {
     moreOptions: "More options",
     researchGoal: "Research goal",
     singleStock: "Single-stock analysis",
+    batchStock: "Batch analysis",
     goalPlaceholder: "Describe the research goal to bind to this session",
     chatPlaceholder: "Example: run a backtest, check connector status, or analyze the A-share energy storage sector",
     stop: "Stop generation",

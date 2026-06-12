@@ -1,8 +1,6 @@
-from typing import TYPE_CHECKING
+from .models import AKShareSyncService
 
-if TYPE_CHECKING:
-    from .models import AKShareSyncService
-    from .service import _akshare_sync_service
+_akshare_sync_service = None
 
 
 async def get_akshare_sync_service() -> AKShareSyncService:
