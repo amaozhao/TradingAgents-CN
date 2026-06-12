@@ -1,8 +1,5 @@
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .base import _StockDataPreparerMixin2
-    from .common import _StockDataPreparerMixin1
+from .base import _StockDataPreparerMixin2
+from .common import _StockDataPreparerMixin1
 
 
 class StockDataPreparer(_StockDataPreparerMixin1, _StockDataPreparerMixin2):

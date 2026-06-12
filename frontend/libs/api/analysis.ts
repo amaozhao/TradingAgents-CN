@@ -5,38 +5,6 @@
 
 import { request, type ApiResponse } from './request'
 
-// 分析相关类型定义
-export interface AnalysisRequest {
-  market_type: string
-  stock_symbol: string
-  analysis_date: string
-  analysis_type: string
-  data_sources: string[]
-  analysis_depth: number
-  include_news: boolean
-  include_financials: boolean
-  llm_provider?: string
-  llm_model?: string
-}
-
-// 后端期望的请求格式
-export interface SingleAnalysisRequest {
-  symbol?: string  // 主字段：6位股票代码
-  stock_code?: string  // 兼容字段（已废弃）
-  parameters?: {
-    market_type?: string
-    analysis_date?: string
-    research_depth?: string
-    selected_analysts?: string[]
-    custom_prompt?: string
-    include_sentiment?: boolean
-    include_risk?: boolean
-    language?: string
-    quick_analysis_model?: string
-    deep_analysis_model?: string
-  }
-}
-
 export interface AnalysisProgress {
   analysis_id: string
   status: 'pending' | 'running' | 'completed' | 'failed'
@@ -117,16 +85,6 @@ export interface AnalysisHistory {
 
 // 股票分析API
 export const analysisApi = {
-  // 开始分析
-  startAnalysis(analysisRequest: AnalysisRequest): Promise<{ analysis_id: string; message: string }> {
-    return request.post('/api/analysis/single', analysisRequest)
-  },
-
-  // 开始个股分析（使用后端期望的格式）
-  startSingleAnalysis(analysisRequest: SingleAnalysisRequest): Promise<ApiResponse<unknown>> {
-    return request.post('/api/analysis/single', analysisRequest)
-  },
-
   // 获取任务状态
   getTaskStatus(taskId: string): Promise<ApiResponse<unknown>> {
     return request.get(`/api/analysis/tasks/${taskId}/status`)
@@ -173,17 +131,6 @@ export const analysisApi = {
       params: { format },
       responseType: 'blob'
     })
-  },
-
-  // 批量分析（方案A：与单股一致的进程内执行）
-  startBatchAnalysis(batchRequest: {
-    title: string
-    description?: string
-    symbols?: string[]  // 主字段：股票代码列表
-    stock_codes?: string[]  // 兼容字段（已废弃）
-    parameters?: SingleAnalysisRequest['parameters']
-  }): Promise<ApiResponse<{ batch_id: string; total_tasks: number; task_ids: string[]; mapping?: unknown[]; status: string }>>{
-    return request.post('/api/analysis/batch', batchRequest)
   },
 
   // 获取批次详情（兼容原有队列接口，若后续需要）
@@ -362,39 +309,6 @@ export const STEP_STATUS = {
   SUCCESS: 'success',
   ERROR: 'error'
 } as const
-
-// 验证函数
-export const validateAnalysisRequest = (request: Partial<AnalysisRequest>): string[] => {
-  const errors: string[] = []
-
-  if (!request.market_type) errors.push('请选择市场类型')
-  if (!request.stock_symbol) errors.push('请输入股票代码')
-  if (!request.analysis_date) errors.push('请选择分析日期')
-  if (!request.analysis_type) errors.push('请选择分析类型')
-  if (!request.data_sources || request.data_sources.length === 0) {
-    errors.push('请至少选择一个数据源')
-  }
-
-  // 验证股票代码格式
-  if (request.stock_symbol) {
-    const symbol = request.stock_symbol.trim().toUpperCase()
-    if (request.market_type === '美股') {
-      if (!/^[A-Z]{1,5}$/.test(symbol)) {
-        errors.push('美股代码格式不正确，应为1-5个字母')
-      }
-    } else if (request.market_type === 'A股') {
-      if (!/^\d{6}$/.test(symbol)) {
-        errors.push('A股代码格式不正确，应为6位数字')
-      }
-    } else if (request.market_type === '港股') {
-      if (!/^\d{4,5}\.HK$/.test(symbol)) {
-        errors.push('港股代码格式不正确，应为4-5位数字.HK')
-      }
-    }
-  }
-
-  return errors
-}
 
 // 格式化函数
 export const formatAnalysisType = (type: string): string => {

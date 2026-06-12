@@ -132,6 +132,8 @@ export function StockReplayCard({
 }
 
 export function StockConfigCard({
+  initialMarket,
+  initialSymbol,
   running,
   locked = false,
   runStatus,
@@ -139,6 +141,8 @@ export function StockConfigCard({
   onSave,
   onSubmit
 }: {
+  initialMarket?: Market
+  initialSymbol?: string
   running: boolean
   locked?: boolean
   runStatus?: StockRunStatus
@@ -146,7 +150,11 @@ export function StockConfigCard({
   onSave: (summary: string) => void
   onSubmit: (value: StockSubmit) => void
 }) {
-  const [draft, setDraft] = useState<StockDraft>(() => createStockDraft())
+  const [draft, setDraft] = useState<StockDraft>(() => ({
+    ...createStockDraft(),
+    market: initialMarket || "A股",
+    symbol: initialSymbol || ""
+  }))
   const [models, setModels] = useState<LLMConfig[]>([])
   const [modelsLoaded, setModelsLoaded] = useState(false)
   const [modelsError, setModelsError] = useState("")

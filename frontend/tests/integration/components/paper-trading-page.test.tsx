@@ -93,7 +93,7 @@ describe("PaperTradingPage", () => {
     expect(screen.queryByText(/Apple/)).not.toBeInTheDocument()
 
     await user.click(screen.getByRole("button", { name: "分析 000001" }))
-    expect(push).toHaveBeenCalledWith("/analysis/single?stock=000001&market=A%E8%82%A1")
+    expect(push).toHaveBeenCalledWith("/agent?mode=stock&symbol=000001&market=A%E8%82%A1")
 
     await user.click(screen.getByRole("button", { name: "卖出 000001" }))
     await user.click(screen.getByRole("button", { name: "确认卖出" }))

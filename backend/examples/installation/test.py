@@ -79,7 +79,8 @@ class InstallationTester:
         print("📚 检查依赖包...")
 
         dependencies = [
-            ("streamlit", "Web框架"),
+            ("fastapi", "后端API框架"),
+            ("uvicorn", "ASGI服务器"),
             ("pandas", "数据处理"),
             ("numpy", "数值计算"),
             ("requests", "HTTP请求"),
@@ -170,23 +171,24 @@ class InstallationTester:
 
         return True
 
-    def test_web_application(self) -> bool:
-        """测试Web应用"""
-        print("🌐 检查Web应用...")
+    def test_application_structure(self) -> bool:
+        """测试应用结构"""
+        print("🌐 检查应用结构...")
 
-        web_files = [
-            ("backend/web/app.py", "Streamlit主应用"),
-            ("backend/web/components/sidebar.py", "侧边栏组件"),
-            ("backend/web/run_web.py", "启动脚本"),
+        app_files = [
+            ("backend/app/main/__init__.py", "FastAPI主应用"),
+            ("backend/scripts/dev/start/backend.sh", "后端启动脚本"),
+            ("frontend/app", "Next.js App Router"),
+            ("frontend/scripts/dev/start_next.sh", "前端启动脚本"),
         ]
 
         success = True
-        for file_path, description in web_files:
+        for file_path, description in app_files:
             full_path = project_root / file_path
             if full_path.exists():
-                self.results.append(f"✅ Web文件: {file_path} ({description})")
+                self.results.append(f"✅ 应用路径: {file_path} ({description})")
             else:
-                self.errors.append(f"❌ Web文件缺失: {file_path} ({description})")
+                self.errors.append(f"❌ 应用路径缺失: {file_path} ({description})")
                 success = False
 
         return success
@@ -223,7 +225,7 @@ class InstallationTester:
             ("依赖包", self.test_dependencies),
             ("配置文件", self.test_config_files),
             ("环境变量", self.test_environment_variables),
-            ("Web应用", self.test_web_application),
+            ("应用结构", self.test_application_structure),
             ("数据目录", self.test_data_directories),
         ]
 
@@ -272,7 +274,8 @@ class InstallationTester:
         if passed_tests == total_tests:
             print("\n🎉 恭喜！安装验证全部通过！")
             print("   你可以开始使用TradingAgents-CN了！")
-            print("   运行: python start_web.py")
+            print("   后端: ./backend/scripts/dev/start/backend.sh")
+            print("   前端: ./frontend/scripts/dev/start_next.sh")
         else:
             print("\n⚠️ 安装验证发现问题，请根据上述错误信息进行修复。")
             print("   参考文档: docs/overview/quick-start.md")

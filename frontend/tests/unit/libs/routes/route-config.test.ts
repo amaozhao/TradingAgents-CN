@@ -14,8 +14,6 @@ describe("route config", () => {
     expect(paths).toEqual(
       expect.arrayContaining([
         "/dashboard",
-        "/analysis/single",
-        "/analysis/batch",
         "/screening",
         "/favorites",
         "/learning",
@@ -86,8 +84,6 @@ describe("route config", () => {
       "/about"
     ])
     expect(menuRoutes.find((route) => route.path === "/analysis")?.children?.map((route) => route.path)).toEqual([
-      "/analysis/single",
-      "/analysis/batch",
       "/agent",
       "/reports"
     ])

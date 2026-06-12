@@ -25,16 +25,6 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
-test("opens single and batch analysis pages", async ({ page }) => {
-  await page.goto("/analysis/single")
-  await expect(page.getByRole("heading", { name: "个股分析" })).toBeVisible()
-  await expect(page.getByLabel("股票代码")).toBeVisible()
-
-  await page.goto("/analysis/batch")
-  await expect(page.getByRole("heading", { name: "批量分析" })).toBeVisible()
-  await expect(page.getByLabel("股票代码列表")).toBeVisible()
-})
-
 test("opens the completed task tab from history redirect", async ({ page }) => {
   await page.goto("/analysis/history")
 

@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { favoritesApi, type FavoriteItem } from "@/libs/api/favorites"
+import { stockAgentHref } from "@/libs/routes/agent"
 import { stockSyncApi } from "@/libs/api/stock-sync"
 import { tagsApi } from "@/libs/api/tags"
 import { formatDateTime } from "@/libs/utils/datetime"
@@ -193,7 +194,7 @@ export function FavoritesPage() {
                       <TableCell>{item.added_at ? formatDateTime(item.added_at) : "-"}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline" asChild><Link href={`/analysis/single?symbol=${symbolOf(item)}`}>分析</Link></Button>
+                          <Button size="sm" variant="outline" asChild><Link href={stockAgentHref({ symbol: symbolOf(item), market: item.market })}>分析</Link></Button>
                           <Button size="sm" variant="destructive" onClick={() => setRemoveTarget(item)}>移除</Button>
                         </div>
                       </TableCell>

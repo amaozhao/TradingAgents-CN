@@ -1,15 +1,16 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react"
-import { ArrowDown, BarChart3, Bot, Download, Loader2, Plus, Send, Sparkles, Square, Target, TrendingUp, X } from "lucide-react"
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react"
 
-import { Button } from "@/components/ui/button"
 import { MessageBubble, SessionLoadingView, SessionRail, ToolRail, WelcomeScreen } from "@/features/agent/view"
 import { BatchConfigCard, BatchReplayCard, type BatchPayload, type BatchRunStatus } from "@/features/research/batch"
 import { StockConfigCard, StockReplayCard, type StockPayload, type StockRunStatus } from "@/features/research/stock"
+import { AgentComposer } from "@/features/research-agent/composer"
+import { RunningIndicator, ScrollButton } from "@/features/research-agent/feed"
+import { AgentHeader } from "@/features/research-agent/header"
+import { useAgentRouteMode } from "@/features/research-agent/query"
 import { researchAgentApi, type LiveStatus, type ParsedResearchStreamEvent, type ResearchGoal, type ResearchSession } from "@/libs/api/research-agent"
 import { useAppStore } from "@/stores/app-store"
-
 import { attemptResultContent, batchPayloadFromMetadata, createGoalDraft, eventContent, eventFailureContent, eventToolStatus, finalAnswerFromEvents, failureMessageFromEvents, initialBatchWorkflowTools, initialStockWorkflowTools, latestActiveAttempt, latestAttempt, mergeGoalEvent, messagesFromApi, normalizePersistedEvent, nowId, previewFromEventData, stockLinksFromEventData, stockPayloadFromMetadata, stockStageId, stockStageTitle, toolMessageId, toolsFromEvents } from "@/features/agent/event"
 import { AGENT_COMPLETION_POLL_TIMEOUT_MS, AGENT_TEXT, COMPOSER_MAX_HEIGHT, COMPOSER_MIN_HEIGHT } from "@/features/agent/text"
 import type { AgentMessage, ToolState } from "@/features/agent/types"
@@ -46,6 +47,17 @@ export function ResearchAgentPage() {
   const runFinishedRef = useRef(false)
   const sessionLoadSeqRef = useRef(0)
   const localRunningSessionRef = useRef<string | null>(null)
+  const {
+    batchInitialSymbols,
+    stockInitialMarket,
+    stockInitialSymbol
+  } = useAgentRouteMode({
+    setBatchConfigSubmitted,
+    setComposerMode,
+    setShowBatchConfig,
+    setShowStockConfig,
+    setStockConfigSubmitted
+  })
 
   function resizeComposer() {
     const textarea = composerRef.current
@@ -159,11 +171,6 @@ export function ResearchAgentPage() {
     return () => window.clearInterval(timer)
   }, [])
 
-  const statusLabel = useMemo(() => {
-    if (cancelRequested) return text.cancelling
-    if (running) return text.running
-    return text.ready
-  }, [cancelRequested, running, text])
   const stockRunStatus = tools.filter((tool) => tool.name === "stock_analysis").at(-1)
   const batchRunStatus = tools.filter((tool) => tool.name === "batch_stock_analysis").at(-1)
   const showWelcome = !sessionLoading && messages.length === 0 && !showStockConfig && !showBatchConfig && composerMode === "chat"
@@ -569,6 +576,26 @@ export function ResearchAgentPage() {
     requestAnimationFrame(() => composerRef.current?.focus())
   }
 
+  function openStockConfig() {
+    setShowStockConfig(true)
+    setShowBatchConfig(false)
+    setBatchConfigSubmitted(false)
+    setStockConfigSubmitted(false)
+    setComposerMode("chat")
+    setShowMenu(false)
+    requestAnimationFrame(scrollToBottom)
+  }
+
+  function openBatchConfig() {
+    setShowBatchConfig(true)
+    setShowStockConfig(false)
+    setStockConfigSubmitted(false)
+    setBatchConfigSubmitted(false)
+    setComposerMode("chat")
+    setShowMenu(false)
+    requestAnimationFrame(scrollToBottom)
+  }
+
   async function runStockAnalysis(summary: string, payload: StockPayload) {
     setStockConfigSubmitted(true)
     await runPrompt(`个股分析：${summary}`, {
@@ -771,28 +798,15 @@ export function ResearchAgentPage() {
       />
 
       <main className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
-        <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Bot className="size-5 text-primary" />
-              <h1 className="truncate text-base font-semibold">{text.pageTitle}</h1>
-              <span className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">{statusLabel}</span>
-            </div>
-            <p className="mt-1 truncate text-xs text-muted-foreground">
-              {text.pageSubtitle}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleNewSession}>
-              <Plus className="mr-2 size-4" />{text.newSession}
-            </Button>
-            {(messages.length > 0 || goal) && (
-              <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download className="mr-2 size-4" />{text.exportChat}
-              </Button>
-            )}
-          </div>
-        </header>
+        <AgentHeader
+          cancelRequested={cancelRequested}
+          goal={goal}
+          messagesLength={messages.length}
+          onExport={handleExport}
+          onNew={handleNewSession}
+          running={running}
+          text={text}
+        />
 
         <div ref={listRef} onScroll={onScroll} className="relative min-h-0 overflow-auto p-5">
           <div className="w-full space-y-4">
@@ -803,22 +817,15 @@ export function ResearchAgentPage() {
             ) : (
               messages.map(renderMessage)
             )}
-            {running && (
-              <div className="flex gap-3">
-                <div className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full border bg-background">
-                  <Bot className="size-4 text-primary" />
-                </div>
-                <div className="flex min-w-0 flex-1 items-center gap-2 pt-2 text-sm text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin text-primary" />
-                  <span>{text.working}</span>
-                </div>
-              </div>
-            )}
+            {running && <RunningIndicator text={text} />}
             {showStockConfig && (
               <StockConfigCard
+                key={`${stockInitialSymbol}|${stockInitialMarket || ""}`}
                 running={running}
                 locked={stockConfigSubmitted}
                 runStatus={stockRunStatus}
+                initialSymbol={stockInitialSymbol}
+                initialMarket={stockInitialMarket}
                 onCancel={() => {
                   setShowStockConfig(false)
                   setStockConfigSubmitted(false)
@@ -831,9 +838,11 @@ export function ResearchAgentPage() {
             )}
             {showBatchConfig && (
               <BatchConfigCard
+                key={batchInitialSymbols}
                 running={running}
                 locked={batchConfigSubmitted}
                 runStatus={batchRunStatus as BatchRunStatus | undefined}
+                initialSymbols={batchInitialSymbols}
                 onCancel={() => {
                   setShowBatchConfig(false)
                   setBatchConfigSubmitted(false)
@@ -845,103 +854,27 @@ export function ResearchAgentPage() {
               />
             )}
           </div>
-          {showScrollButton && (
-            <button
-              type="button"
-              onClick={scrollToBottom}
-              className="sticky bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-lg"
-            >
-              <ArrowDown className="size-3" />{text.newMessages}
-            </button>
-          )}
+          {showScrollButton && <ScrollButton text={text} onClick={scrollToBottom} />}
         </div>
 
-        <form onSubmit={handleSubmit} className="min-w-0 border-t bg-background/90 p-4">
-          <div className="w-full min-w-0 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              {composerMode === "goal" && (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                  <Target className="size-3" />{text.goalModeChip}
-                  <button type="button" onClick={() => setComposerMode("chat")}><X className="size-3" /></button>
-                </span>
-              )}
-            </div>
-            <div className="flex min-w-0 items-center gap-2">
-              <div ref={menuRef} className="relative">
-                <Button type="button" variant="outline" size="icon" disabled={running} onClick={() => setShowMenu((open) => !open)} aria-label={text.moreOptions} className="size-11 rounded-xl">
-                  <Plus className="size-4" />
-                </Button>
-                {showMenu && (
-                  <div className="absolute bottom-full left-0 z-20 mb-2 w-56 rounded-lg border bg-background py-1 shadow-lg">
-                    <button type="button" onClick={() => { setComposerMode("goal"); setShowMenu(false) }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted">
-                      <Target className="size-4" />{text.researchGoal}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={running}
-                      onClick={() => {
-                        setShowStockConfig(true)
-                        setShowBatchConfig(false)
-                        setBatchConfigSubmitted(false)
-                        setStockConfigSubmitted(false)
-                        setComposerMode("chat")
-                        setShowMenu(false)
-                        requestAnimationFrame(scrollToBottom)
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <TrendingUp className="size-4" />{text.singleStock}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={running}
-                      onClick={() => {
-                        setShowBatchConfig(true)
-                        setShowStockConfig(false)
-                        setStockConfigSubmitted(false)
-                        setBatchConfigSubmitted(false)
-                        setComposerMode("chat")
-                        setShowMenu(false)
-                        requestAnimationFrame(scrollToBottom)
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <BarChart3 className="size-4" />{text.batchStock}
-                    </button>
-                    <div className="my-1 border-t" />
-                    {text.quickPrompts.map((item) => {
-                      const Icon = item.icon || Sparkles
-                      return (
-                        <button key={item.label} type="button" onClick={() => fillComposerFromQuickPrompt(item.prompt)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted">
-                          <Icon className="size-4" />{item.label}
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-              <textarea
-                ref={composerRef}
-                value={input}
-                rows={1}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={handleComposerKeyDown}
-                placeholder={composerMode === "goal" ? text.goalPlaceholder : text.chatPlaceholder}
-                className="max-h-32 min-h-11 min-w-0 flex-1 resize-none overflow-hidden rounded-xl border bg-background px-4 py-2.5 text-sm leading-6 outline-none transition-shadow focus:ring-2 focus:ring-primary/30"
-                disabled={running}
-              />
-              {running ? (
-                <Button type="button" variant="destructive" onClick={handleCancel} aria-label={text.stop} className="h-11 w-14 rounded-xl">
-                  <Square className="size-4" />
-                </Button>
-              ) : (
-                <Button type="submit" disabled={!input.trim()} aria-label={text.send} className="h-11 w-14 rounded-xl">
-                  <Send className="size-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </form>
+        <AgentComposer
+          composerMode={composerMode}
+          composerRef={composerRef}
+          fillComposerFromQuickPrompt={fillComposerFromQuickPrompt}
+          handleCancel={handleCancel}
+          handleComposerKeyDown={handleComposerKeyDown}
+          handleSubmit={handleSubmit}
+          input={input}
+          menuRef={menuRef}
+          onOpenBatchConfig={openBatchConfig}
+          onOpenStockConfig={openStockConfig}
+          running={running}
+          setComposerMode={setComposerMode}
+          setInput={setInput}
+          setShowMenu={setShowMenu}
+          showMenu={showMenu}
+          text={text}
+        />
       </main>
 
       <ToolRail

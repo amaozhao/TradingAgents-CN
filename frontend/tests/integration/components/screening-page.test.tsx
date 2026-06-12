@@ -87,7 +87,7 @@ describe("ScreeningPage", () => {
     await user.click(screen.getByLabelText("选择 000001"))
     await user.click(screen.getAllByRole("button", { name: "批量分析 (1)" })[0])
 
-    expect(push).toHaveBeenCalledWith("/analysis/batch?stocks=000001")
+    expect(push).toHaveBeenCalledWith("/agent?mode=batch&stocks=000001")
   })
 
   it("keeps Vue-compatible screening filters visible", async () => {

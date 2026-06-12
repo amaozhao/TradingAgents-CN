@@ -42,8 +42,6 @@ export interface RedirectRoute {
 
 export const routeConfig: AppRoute[] = [
   { path: "/dashboard", title: "仪表板", icon: LayoutDashboard, requiresAuth: true },
-  { path: "/analysis/single", title: "个股分析", icon: ChartNoAxesCombined, requiresAuth: true },
-  { path: "/analysis/batch", title: "批量分析", icon: BarChart3, requiresAuth: true },
   { path: "/screening", title: "股票筛选", icon: Search, requiresAuth: true },
   { path: "/favorites", title: "我的自选股", icon: Star, requiresAuth: true },
   { path: "/learning", title: "学习中心", icon: BookOpen, requiresAuth: false },
@@ -82,10 +80,8 @@ export const menuRoutes: AppRoute[] = [
     title: "股票分析",
     icon: ChartNoAxesCombined,
     requiresAuth: true,
-    href: "/analysis/single",
+    href: "/agent",
     children: [
-      getRequiredRoute("/analysis/single"),
-      getRequiredRoute("/analysis/batch"),
       getRequiredRoute("/agent"),
       getRequiredRoute("/reports")
     ]

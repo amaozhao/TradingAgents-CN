@@ -20,7 +20,6 @@
 - `backend/scripts/` - 运维脚本 / Operational Scripts
 - `docs/` - 文档 / Documentation
 - `backend/examples/` - 示例代码 / Example Code
-- `backend/web/` - Streamlit Web 应用 / Streamlit Web Application
 - `tests/` - 测试文件 / Test Files
 - 其他配置文件 / Other Configuration Files
 

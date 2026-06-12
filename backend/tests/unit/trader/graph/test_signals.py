@@ -97,5 +97,4 @@ class TestSignalProcessor:
 
 _export_module(globals(), "support.chinese.output.module")
 _export_module(globals(), "support.signal.processor.debug.module")
-_export_module(globals(), "support.signal.processor.fi.module")
 del _export_module

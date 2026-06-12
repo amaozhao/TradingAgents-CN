@@ -4,6 +4,7 @@ import { Cpu, FileText, Monitor, Search, Settings, Star, TrendingUp } from "luci
 import { PageHeader } from "@/components/feedback/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { stockAgentHref } from "@/libs/routes/agent"
 
 const features = [
   { title: "多智能体分析", icon: TrendingUp, text: "基本面、技术面、新闻分析等智能体协作，提供多角度股票分析。" },
@@ -26,7 +27,7 @@ export function AboutPage() {
         description="现代化的多智能体股票分析学习平台。"
         actions={
           <div className="flex gap-2">
-            <Button asChild><Link href="/analysis/single">开始分析</Link></Button>
+            <Button asChild><Link href={stockAgentHref()}>开始分析</Link></Button>
             <Button variant="outline" asChild><Link href="/learning">查看文档</Link></Button>
           </div>
         }

@@ -53,7 +53,7 @@ assignees: ''
 **依赖版本 / Dependencies:**
 ```bash
 # 请运行以下命令并粘贴结果 / Please run the following command and paste the result
-pip list | grep -E "(streamlit|langchain|openai|requests|tushare|akshare|baostock)"
+pip list | grep -E "(fastapi|uvicorn|langchain|openai|requests|tushare|akshare|baostock)"
 ```
 
 **浏览器信息 / Browser Info (仅Web界面问题):**

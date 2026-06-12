@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { clearAllCache } from "@/libs/api/cache"
 import { favoritesApi } from "@/libs/api/favorites"
+import { stockAgentHref } from "@/libs/routes/agent"
 import { stockSyncApi } from "@/libs/api/stock-sync"
 import { stocksApi, type KlineBar } from "@/libs/api/stocks"
 import { formatDateTime } from "@/libs/utils/datetime"
@@ -143,7 +144,7 @@ export function StockDetailPage({ code }: { code: string }) {
               <RefreshCw className="mr-2 size-4" />同步数据
             </Button>
             <Button variant="outline" onClick={() => setClearCacheOpen(true)}>清除缓存</Button>
-            <Button variant="outline" onClick={() => router.push(`/analysis/single?symbol=${code}`)}>
+            <Button variant="outline" onClick={() => router.push(stockAgentHref({ symbol: code, market: quote?.market || fundamentals?.market }))}>
               <RefreshCw className="mr-2 size-4" />发起分析
             </Button>
             <Button onClick={() => router.push(`/paper?code=${code}`)}>
@@ -220,7 +221,7 @@ export function StockDetailPage({ code }: { code: string }) {
               </Table>
             </CardContent>
           </Card>
-          <Link className="block rounded-md border p-4 text-sm hover:bg-muted" href={`/analysis/single?symbol=${code}`}>进入个股分析</Link>
+          <Link className="block rounded-md border p-4 text-sm hover:bg-muted" href={stockAgentHref({ symbol: code, market: quote?.market || fundamentals?.market })}>进入个股分析</Link>
         </div>
       </div>
       <Dialog open={syncOpen} onOpenChange={setSyncOpen}>

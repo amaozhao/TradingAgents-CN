@@ -126,8 +126,9 @@ def test_package_imports():
         ("pandas", "Pandas"),
         ("numpy", "NumPy"),
         ("tushare", "Tushare"),
-        ("streamlit", "Streamlit"),
-        ("trading_agents", "TradingAgents"),
+        ("fastapi", "FastAPI"),
+        ("uvicorn", "Uvicorn"),
+        ("trader", "TradingAgents"),
     ]
 
     success_count = 0
@@ -153,9 +154,10 @@ def test_project_structure():
 
     required_dirs = [
         "backend/trader",
+        "backend/app",
         "backend/tests",
         "backend/cli",
-        "backend/web",
+        "frontend",
         ".vscode",
     ]
 

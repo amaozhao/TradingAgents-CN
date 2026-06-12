@@ -14,7 +14,6 @@ TradingAgents-CN 项目采用**混合许可证策略**，不同组件使用不�
 ├── backend/scripts/        # 运维脚本
 ├── docs/                   # 文档
 ├── backend/examples/       # 示例代码
-├── backend/web/            # Streamlit Web 应用
 ├── tests/                  # 测试文件
 ├── *.md                    # 文档文件
 ├── *.yml, *.yaml           # 配置文件

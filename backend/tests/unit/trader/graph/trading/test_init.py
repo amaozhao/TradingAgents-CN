@@ -8,6 +8,5 @@ _export_module(globals(), "support.dashscope.simple.fi.module")
 _export_module(globals(), "support.gemini.m25.pro.module")
 _export_module(globals(), "support.gemini.final.module")
 _export_module(globals(), "support.reddit.fallback.module")
-_export_module(globals(), "support.risk.assessment.module")
 _export_module(globals(), "support.vscode.config.module")
 del _export_module

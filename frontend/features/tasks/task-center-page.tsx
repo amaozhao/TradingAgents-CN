@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { analysisApi } from "@/libs/api/analysis"
+import { stockAgentHref } from "@/libs/routes/agent"
 import { formatDateTime } from "@/libs/utils/datetime"
 
 type TaskTab = "running" | "completed" | "failed" | "all"
@@ -152,7 +153,7 @@ export function TaskCenterPage() {
       <PageHeader
         title="任务中心"
         description="统一查看并管理分析任务：进行中 / 已完成 / 失败"
-        actions={<Button onClick={() => router.push("/analysis/single")}>新建分析</Button>}
+        actions={<Button onClick={() => router.push(stockAgentHref())}>新建分析</Button>}
       />
       <Card>
         <CardContent className="p-6">

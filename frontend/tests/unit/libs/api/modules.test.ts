@@ -24,7 +24,7 @@ import { getUsageRecords } from "@/libs/api/usage"
 
 describe("migrated API modules", () => {
   it("exports the Vue API surface from Next libs/api modules", () => {
-    expect(analysisApi.startAnalysis).toBeTypeOf("function")
+    expect(analysisApi.getTaskStatus).toBeTypeOf("function")
     expect(authApi.login).toBeTypeOf("function")
     expect(getCacheStats).toBeTypeOf("function")
     expect(configApi.getSystemConfig).toBeTypeOf("function")

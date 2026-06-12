@@ -135,6 +135,7 @@ export function BatchReplayCard({
 }
 
 export function BatchConfigCard({
+  initialSymbols,
   running,
   locked = false,
   runStatus,
@@ -142,6 +143,7 @@ export function BatchConfigCard({
   onSave,
   onSubmit
 }: {
+  initialSymbols?: string
   running: boolean
   locked?: boolean
   runStatus?: BatchRunStatus
@@ -149,7 +151,10 @@ export function BatchConfigCard({
   onSave: (summary: string) => void
   onSubmit: (value: BatchSubmit) => void
 }) {
-  const [draft, setDraft] = useState<BatchDraft>(() => createBatchDraft())
+  const [draft, setDraft] = useState<BatchDraft>(() => ({
+    ...createBatchDraft(),
+    symbols: initialSymbols ? initialSymbols.split(",").map((item) => item.trim()).filter(Boolean).join("\n") : ""
+  }))
   const [models, setModels] = useState<LLMConfig[]>([])
   const [modelsLoaded, setModelsLoaded] = useState(false)
   const [modelsError, setModelsError] = useState("")

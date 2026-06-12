@@ -19,13 +19,13 @@ describe("SidebarMenu", () => {
   })
 
   it("expands only the active analysis group", () => {
-    pathname = "/analysis/batch"
+    pathname = "/agent"
 
     render(<SidebarMenu collapsed={false} />)
 
     const nav = screen.getByRole("navigation")
-    expect(within(nav).getByRole("link", { name: "批量分析" })).toBeInTheDocument()
     expect(within(nav).getByRole("link", { name: "研究 Agent" })).toBeInTheDocument()
+    expect(within(nav).getByRole("link", { name: "分析报告" })).toBeInTheDocument()
     expect(within(nav).queryByRole("link", { name: "配置管理" })).not.toBeInTheDocument()
   })
 
@@ -35,7 +35,7 @@ describe("SidebarMenu", () => {
     render(<SidebarMenu collapsed={false} />)
 
     const nav = screen.getByRole("navigation")
-    expect(within(nav).getByRole("link", { name: "股票分析" })).toHaveAttribute("href", "/analysis/single")
+    expect(within(nav).getByRole("link", { name: "股票分析" })).toHaveAttribute("href", "/agent")
     expect(within(nav).getByRole("link", { name: "研究 Agent" })).toHaveAttribute("href", "/agent")
     expect(within(nav).getAllByRole("link", { name: "研究 Agent" })).toHaveLength(1)
   })
@@ -59,7 +59,7 @@ describe("SidebarMenu", () => {
     render(<SidebarMenu collapsed={false} />)
 
     const nav = screen.getByRole("navigation")
-    expect(within(nav).getByRole("link", { name: "股票分析" })).toHaveAttribute("href", "/analysis/single")
+    expect(within(nav).getByRole("link", { name: "股票分析" })).toHaveAttribute("href", "/agent")
     expect(within(nav).getByRole("link", { name: "量化研究" })).toHaveAttribute("href", "/alpha-zoo")
     expect(within(nav).getByRole("link", { name: "设置" })).toHaveAttribute("href", "/settings")
     expect(within(nav).queryByRole("link", { name: "批量分析" })).not.toBeInTheDocument()

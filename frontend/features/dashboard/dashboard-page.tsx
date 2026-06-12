@@ -17,6 +17,7 @@ import { favoritesApi } from "@/libs/api/favorites"
 import type { NewsItem } from "@/libs/api/news"
 import { newsApi } from "@/libs/api/news"
 import { paperApi, type PaperAccountSummary } from "@/libs/api/paper"
+import { batchAgentHref, stockAgentHref } from "@/libs/routes/agent"
 import { formatDateTime } from "@/libs/utils/datetime"
 import { useAuthStore } from "@/stores/auth-store"
 
@@ -116,7 +117,7 @@ export function DashboardPage() {
         actions={
           <>
             <Button asChild>
-              <Link href="/analysis/single">
+              <Link href={stockAgentHref()}>
                 <TrendingUp className="size-4" />
                 快速分析
               </Link>
@@ -162,8 +163,8 @@ export function DashboardPage() {
               <CardTitle>快速操作</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
-              <ActionLink href="/analysis/single" icon={FileText} title="个股分析" description="深度分析单只股票" />
-              <ActionLink href="/analysis/batch" icon={BarChart3} title="批量分析" description="同时分析多只股票" />
+              <ActionLink href={stockAgentHref()} icon={FileText} title="个股分析" description="深度分析单只股票" />
+              <ActionLink href={batchAgentHref()} icon={BarChart3} title="批量分析" description="同时分析多只股票" />
               <ActionLink href="/screening" icon={Search} title="股票筛选" description="多维条件筛选股票" />
               <ActionLink href="/tasks" icon={ListChecks} title="任务中心" description="查看和管理分析任务" />
             </CardContent>

@@ -10,8 +10,6 @@ def test_analysis_service_import_facade_exports_public_api() -> None:
     assert callable(module.get_analysis_service)
 
     for method_name in (
-        "submit_single_analysis",
-        "submit_batch_analysis",
         "execute_analysis_task",
         "get_task_status",
         "cancel_task",

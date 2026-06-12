@@ -31,8 +31,6 @@ test("preserves page titles, core shell behavior, and notification drawer", asyn
 
   for (const [route, title, heading] of [
     ["/dashboard", "仪表板 - AGENTrader", "欢迎使用 AGENTrader"],
-    ["/analysis/single", "个股分析 - AGENTrader", "个股分析"],
-    ["/analysis/batch", "批量分析 - AGENTrader", "批量分析"],
     ["/tasks", "任务中心 - AGENTrader", "任务中心"],
     ["/reports", "分析报告 - AGENTrader", "分析报告"],
     ["/reports/view/r1", "报告详情 - AGENTrader", "贵州茅台 分析报告"],

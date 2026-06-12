@@ -19,6 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { favoritesApi } from "@/libs/api/favorites"
 import { screeningApi, type ScreeningRunItem } from "@/libs/api/screening"
 import { getCurrentDataSource } from "@/libs/api/sync"
+import { batchAgentHref, stockAgentHref } from "@/libs/routes/agent"
 
 function unwrap<T>(response: T | { data: T }): T {
   return response && typeof response === "object" && "data" in response ? response.data : response
@@ -125,7 +126,7 @@ export function ScreeningPage() {
       toast.warning("请先选择要分析的股票")
       return
     }
-    router.push(`/analysis/batch?stocks=${encodeURIComponent(selectedCodes.join(","))}`)
+    router.push(batchAgentHref({ stocks: selectedCodes }))
   }
 
   const exportResults = () => {
@@ -302,7 +303,7 @@ export function ScreeningPage() {
                         <TableCell>{item.exchange || "-"}</TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline" onClick={() => router.push(`/analysis/single?stock=${encodeURIComponent(item.code)}&market=${encodeURIComponent(item.market || "A股")}`)}>分析</Button>
+                            <Button size="sm" variant="outline" onClick={() => router.push(stockAgentHref({ stock: item.code, market: item.market || "A股" }))}>分析</Button>
                             <Button size="sm" variant="outline" onClick={() => void toggleFavorite(item)}>
                               <Star className="mr-1 size-3" />
                               {favorites.has(item.code) ? "取消自选" : "加入自选"}

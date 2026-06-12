@@ -863,7 +863,6 @@ async def _submit_batch_via_workflow(
 - `backend/app/**`
 - `backend/trader/**`
 - `backend/support/**`
-- `backend/web/**`
 - `backend/tests/unit/**`
 - `backend/tests/integration/**`
 - `backend/tests/e2e/**`

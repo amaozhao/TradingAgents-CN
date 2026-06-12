@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { paperApi, type CurrencyAmount, type PaperPositionItem, type PlaceOrderPayload } from "@/libs/api/paper"
+import { stockAgentHref } from "@/libs/routes/agent"
 import { formatDateTime } from "@/libs/utils/datetime"
 
 type MarketCode = "CN" | "HK" | "US"
@@ -119,7 +120,7 @@ export function PaperTradingPage() {
 
   const goAnalysisWithCode = (code: string) => {
     const market = marketTabs.find((item) => item.value === marketOf(code))?.analysisMarket || "A股"
-    router.push(`/analysis/single?stock=${encodeURIComponent(code)}&market=${encodeURIComponent(market)}`)
+    router.push(stockAgentHref({ stock: code, market }))
   }
 
   return (

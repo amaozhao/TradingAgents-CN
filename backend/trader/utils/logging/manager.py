@@ -116,7 +116,6 @@ class TradingAgentsLogger:
             "loggers": {
                 "trading_agents": {"level": log_level},
                 "web": {"level": log_level},
-                "streamlit": {"level": "WARNING"},  # Streamlit日志较多，设为WARNING
                 "urllib3": {"level": "WARNING"},  # HTTP请求日志较多
                 "requests": {"level": "WARNING"},
                 "matplotlib": {"level": "WARNING"},

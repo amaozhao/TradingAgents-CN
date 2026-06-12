@@ -4,7 +4,6 @@
 """
 
 import importlib
-import sys
 
 import pytest
 
@@ -63,39 +62,6 @@ def test_config_unification():
         pytest.fail(str(e))
 
 
-def test_web_config_access():
-    """测试Web界面配置访问"""
-    print("\n🌐 测试Web界面配置访问")
-    print("=" * 60)
-
-    try:
-        # 模拟Web界面的导入方式
-
-        # 导入Web配置管理页面
-        web_config_manager = getattr(
-            importlib.import_module("web.modules.config"), "config_manager"
-        )
-
-        print("🔧 测试Web配置管理器...")
-
-        # 检查配置目录
-        print(f"📁 Web配置目录: {web_config_manager.config_dir}")
-        print(f"📁 Web配置目录绝对路径: {web_config_manager.config_dir.absolute()}")
-
-        # 加载定价配置
-        web_pricing_configs = web_config_manager.load_pricing()
-        print(f"📊 Web加载的定价配置数量: {len(web_pricing_configs)}")
-
-        assert web_pricing_configs, "Web界面未加载到定价配置"
-        print("✅ Web界面找到定价配置")
-
-    except Exception as e:
-        print(f"❌ Web配置访问测试失败: {e}")
-        traceback = importlib.import_module("traceback")
-        traceback.print_exc()
-        pytest.fail(str(e))
-
-
 def test_config_consistency():
     """测试配置一致性"""
     print("\n🔄 测试配置一致性")
@@ -106,77 +72,25 @@ def test_config_consistency():
             importlib.import_module("trader.config.manager"), "config_manager"
         )
 
-        # 从不同路径导入，应该使用相同的配置
-        web_config_manager = getattr(
-            importlib.import_module("web.modules.config"), "config_manager"
-        )
-
-        # 比较配置目录
+        # 配置统一入口应保持稳定，旧 Streamlit Web 配置入口已下线。
         main_config_dir = config_manager.config_dir.absolute()
-        web_config_dir = web_config_manager.config_dir.absolute()
 
         print(f"📁 主配置目录: {main_config_dir}")
-        print(f"📁 Web配置目录: {web_config_dir}")
 
-        assert main_config_dir == web_config_dir, "配置目录不一致"
-        print("✅ 配置目录一致")
+        assert config_manager.pricing_file.parent.absolute() == main_config_dir
+        assert config_manager.models_file.parent.absolute() == main_config_dir
+        assert config_manager.settings_file.parent.absolute() == main_config_dir
+        print("✅ 配置文件目录一致")
 
-        # 比较配置数量
         main_configs = config_manager.load_pricing()
-        web_configs = web_config_manager.load_pricing()
 
         print(f"📊 主配置数量: {len(main_configs)}")
-        print(f"📊 Web配置数量: {len(web_configs)}")
 
-        assert len(main_configs) == len(web_configs), "配置数量不一致"
-        print("✅ 配置数量一致")
+        assert main_configs, "配置数量为空"
+        print("✅ 配置可读取")
 
     except Exception as e:
         print(f"❌ 配置一致性测试失败: {e}")
         traceback = importlib.import_module("traceback")
         traceback.print_exc()
         pytest.fail(str(e))
-
-
-def main():
-    """主函数"""
-    print("🔬 配置统一测试")
-    print("=" * 80)
-    print("📝 这个测试将验证配置统一是否成功")
-    print("📝 检查所有组件是否使用相同的配置文件")
-    print("=" * 80)
-
-    # 测试配置统一
-    unification_success = test_config_unification()
-
-    # 测试Web配置访问
-    web_access_success = test_web_config_access()
-
-    # 测试配置一致性
-    consistency_success = test_config_consistency()
-
-    # 总结
-    print("\n📋 测试总结")
-    print("=" * 60)
-
-    print(f"配置统一: {'✅ 成功' if unification_success else '❌ 失败'}")
-    print(f"Web配置访问: {'✅ 成功' if web_access_success else '❌ 失败'}")
-    print(f"配置一致性: {'✅ 成功' if consistency_success else '❌ 失败'}")
-
-    overall_success = unification_success and web_access_success and consistency_success
-
-    if overall_success:
-        print("\n🎉 配置统一成功！")
-        print("   现在所有组件都使用项目根目录的统一配置")
-        print("   不再需要维护多套配置文件")
-    else:
-        print("\n❌ 配置统一失败")
-        print("   需要进一步调试")
-
-    print("\n🎯 测试完成！")
-    return overall_success
-
-
-if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)
