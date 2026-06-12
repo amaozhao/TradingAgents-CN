@@ -1,15 +1,13 @@
-from typing import TYPE_CHECKING
+from .imports import (
+    Annotated,
+    Doc,
+    importlib,
+    interface,
+    log_tool_call,
+    logger,
+    tool,
+)
 
-if TYPE_CHECKING:
-    from .imports import (
-        Annotated,
-        Doc,
-        importlib,
-        interface,
-        log_tool_call,
-        logger,
-        tool,
-    )
 
 class _ToolkitMixin3:
     @tool

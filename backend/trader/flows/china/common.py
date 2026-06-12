@@ -1,20 +1,18 @@
-from typing import TYPE_CHECKING
+from .imports import (
+    Any,
+    Dict,
+    ZoneInfo,
+    config_manager,
+    datetime,
+    get_cache,
+    get_float,
+    get_postgres_cache_adapter,
+    get_timezone_name,
+    importlib,
+    logger,
+    time,
+)
 
-if TYPE_CHECKING:
-    from .imports import (
-        Any,
-        Dict,
-        ZoneInfo,
-        config_manager,
-        datetime,
-        get_cache,
-        get_float,
-        get_postgres_cache_adapter,
-        get_timezone_name,
-        importlib,
-        logger,
-        time,
-    )
 
 class _OptimizedChinaDataProviderMixin1:
     def __init__(self):
@@ -40,7 +38,9 @@ class _OptimizedChinaDataProviderMixin1:
 
         self.last_api_call = time.time()
 
-    def _format_financial_data_to_fundamentals(self, financial_data: Dict[str, Any], symbol: str) -> str:
+    def _format_financial_data_to_fundamentals(
+        self, financial_data: Dict[str, Any], symbol: str
+    ) -> str:
         """将PostgreSQL财务数据转换为基本面分析格式"""
         try:
             # 提取关键财务指标
@@ -63,11 +63,19 @@ class _OptimizedChinaDataProviderMixin1:
 
             # 计算财务比率
             roe = "N/A"
-            if isinstance(net_profit, (int, float)) and isinstance(total_equity, (int, float)) and total_equity != 0:
+            if (
+                isinstance(net_profit, (int, float))
+                and isinstance(total_equity, (int, float))
+                and total_equity != 0
+            ):
                 roe = f"{(net_profit / total_equity * 100):.2f}%"
 
             roa = "N/A"
-            if isinstance(net_profit, (int, float)) and isinstance(total_assets, (int, float)) and total_assets != 0:
+            if (
+                isinstance(net_profit, (int, float))
+                and isinstance(total_assets, (int, float))
+                and total_assets != 0
+            ):
                 roa = f"{(net_profit / total_assets * 100):.2f}%"
 
             # 格式化输出
@@ -96,7 +104,9 @@ class _OptimizedChinaDataProviderMixin1:
             logger.warning(f"⚠️ 格式化财务数据失败: {e}")
             return f"# {symbol} 基本面数据\n\n❌ 数据格式化失败: {str(e)}"
 
-    def get_stock_data(self, symbol: str, start_date: str, end_date: str, force_refresh: bool = False) -> str:
+    def get_stock_data(
+        self, symbol: str, start_date: str, end_date: str, force_refresh: bool = False
+    ) -> str:
         """
         获取A股数据 - 优先使用缓存
 
@@ -117,7 +127,9 @@ class _OptimizedChinaDataProviderMixin1:
             if adapter.use_app_cache:
                 df = adapter.get_historical_data(symbol, start_date, end_date)
                 if df is not None and not df.empty:
-                    logger.info(f"📊 [数据来源: PostgreSQL] 使用PostgreSQL历史数据: {symbol} ({len(df)}条记录)")
+                    logger.info(
+                        f"📊 [数据来源: PostgreSQL] 使用PostgreSQL历史数据: {symbol} ({len(df)}条记录)"
+                    )
                     return df.to_string()
 
         # 2. 检查文件缓存（除非强制刷新）
@@ -148,7 +160,9 @@ class _OptimizedChinaDataProviderMixin1:
                 "get_china_stock_data_unified",
             )
 
-            formatted_data = get_china_stock_data_unified(symbol=symbol, start_date=start_date, end_date=end_date)
+            formatted_data = get_china_stock_data_unified(
+                symbol=symbol, start_date=start_date, end_date=end_date
+            )
 
             # 检查是否获取成功
             if "❌" in formatted_data or "错误" in formatted_data:
@@ -161,7 +175,9 @@ class _OptimizedChinaDataProviderMixin1:
 
                 # 生成备用数据
                 logger.warning(f"⚠️ [数据来源: 备用数据] 生成备用数据: {symbol}")
-                return self._generate_fallback_data(symbol, start_date, end_date, "数据源API调用失败")
+                return self._generate_fallback_data(
+                    symbol, start_date, end_date, "数据源API调用失败"
+                )
 
             # 保存到缓存
             self.cache.save_stock_data(
@@ -207,9 +223,13 @@ class _OptimizedChinaDataProviderMixin1:
             if adapter.use_app_cache:
                 financial_data = adapter.get_financial_data(symbol)
                 if financial_data:
-                    logger.info(f"💰 [数据来源: PostgreSQL财务数据] 使用PostgreSQL财务数据: {symbol}")
+                    logger.info(
+                        f"💰 [数据来源: PostgreSQL财务数据] 使用PostgreSQL财务数据: {symbol}"
+                    )
                     # 将财务数据转换为基本面分析格式
-                    return self._format_financial_data_to_fundamentals(financial_data, symbol)
+                    return self._format_financial_data_to_fundamentals(
+                        financial_data, symbol
+                    )
 
         # 2. 检查文件缓存（除非强制刷新）
         if not force_refresh:
@@ -226,10 +246,14 @@ class _OptimizedChinaDataProviderMixin1:
                         and metadata.get("market_type") == "china"
                     ):
                         cache_key = metadata_file.stem.replace("_meta", "")
-                        if self.cache.is_cache_valid(cache_key, symbol=symbol, data_type="fundamentals"):
+                        if self.cache.is_cache_valid(
+                            cache_key, symbol=symbol, data_type="fundamentals"
+                        ):
                             cached_data = self.cache.load_stock_data(cache_key)
                             if cached_data:
-                                logger.info(f"⚡ [数据来源: 文件缓存] 从缓存加载A股基本面数据: {symbol}")
+                                logger.info(
+                                    f"⚡ [数据来源: 文件缓存] 从缓存加载A股基本面数据: {symbol}"
+                                )
                                 return cached_data
                 except Exception:
                     continue
@@ -243,7 +267,9 @@ class _OptimizedChinaDataProviderMixin1:
             stock_basic_info = self._get_stock_basic_info_only(symbol)
 
             # 生成基本面分析报告
-            fundamentals_data = self._generate_fundamentals_report(symbol, stock_basic_info)
+            fundamentals_data = self._generate_fundamentals_report(
+                symbol, stock_basic_info
+            )
 
             # 保存到缓存
             self.cache.save_fundamentals_data(
@@ -297,7 +323,9 @@ class _OptimizedChinaDataProviderMixin1:
                         row_q = df_q.iloc[-1]
                         current_price = str(row_q.get("close", "N/A"))
                         change_pct = (
-                            f"{float(row_q.get('pct_chg', 0)):+.2f}%" if row_q.get("pct_chg") is not None else "N/A"
+                            f"{float(row_q.get('pct_chg', 0)):+.2f}%"
+                            if row_q.get("pct_chg") is not None
+                            else "N/A"
                         )
                         volume = str(row_q.get("volume", "N/A"))
 

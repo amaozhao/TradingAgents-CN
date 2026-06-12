@@ -1,15 +1,13 @@
-from typing import TYPE_CHECKING
+from .imports import (
+    Annotated,
+    Doc,
+    datetime,
+    importlib,
+    interface,
+    logger,
+    tool,
+)
 
-if TYPE_CHECKING:
-    from .imports import (
-        Annotated,
-        Doc,
-        datetime,
-        importlib,
-        interface,
-        logger,
-        tool,
-    )
 
 class _ToolkitMixin1:
     def update_config(cls, config):
@@ -28,7 +26,9 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_reddit_news(
-        curr_date: Annotated[str, Doc("Date you want to get news for in yyyy-mm-dd format")],
+        curr_date: Annotated[
+            str, Doc("Date you want to get news for in yyyy-mm-dd format")
+        ],
     ) -> str:
         """
         Retrieve global news from Reddit within a specified time frame.
@@ -370,7 +370,9 @@ class _ToolkitMixin1:
         ticker: Annotated[str, Doc("ticker symbol")],
         freq: Annotated[
             str,
-            Doc("reporting frequency of the company's financial history: annual/quarterly"),
+            Doc(
+                "reporting frequency of the company's financial history: annual/quarterly"
+            ),
         ],
         curr_date: Annotated[str, Doc("current date you are trading at, yyyy-mm-dd")],
     ):
@@ -394,7 +396,9 @@ class _ToolkitMixin1:
         ticker: Annotated[str, Doc("ticker symbol")],
         freq: Annotated[
             str,
-            Doc("reporting frequency of the company's financial history: annual/quarterly"),
+            Doc(
+                "reporting frequency of the company's financial history: annual/quarterly"
+            ),
         ],
         curr_date: Annotated[str, Doc("current date you are trading at, yyyy-mm-dd")],
     ):
@@ -418,7 +422,9 @@ class _ToolkitMixin1:
         ticker: Annotated[str, Doc("ticker symbol")],
         freq: Annotated[
             str,
-            Doc("reporting frequency of the company's financial history: annual/quarterly"),
+            Doc(
+                "reporting frequency of the company's financial history: annual/quarterly"
+            ),
         ],
         curr_date: Annotated[str, Doc("current date you are trading at, yyyy-mm-dd")],
     ):

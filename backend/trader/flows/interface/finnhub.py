@@ -1,18 +1,16 @@
-from typing import TYPE_CHECKING
+from .imports import (
+    Annotated,
+    Doc,
+    cast,
+    datetime,
+    get_data_in_range,
+    logger,
+    os,
+    pd,
+    relativedelta,
+)
+from .setup import DATA_DIR
 
-if TYPE_CHECKING:
-    from .imports import (
-        Annotated,
-        Doc,
-        cast,
-        datetime,
-        get_data_in_range,
-        logger,
-        os,
-        pd,
-        relativedelta,
-    )
-    from .setup import DATA_DIR
 
 def get_finnhub_news(
     ticker: Annotated[
@@ -150,7 +148,9 @@ def get_simfin_balance_sheet(
     ticker: Annotated[str, Doc("ticker symbol")],
     freq: Annotated[
         str,
-        Doc("reporting frequency of the company's financial history: annual / quarterly"),
+        Doc(
+            "reporting frequency of the company's financial history: annual / quarterly"
+        ),
     ],
     curr_date: Annotated[str, Doc("current date you are trading at, yyyy-mm-dd")],
 ):
@@ -199,7 +199,9 @@ def get_simfin_cashflow(
     ticker: Annotated[str, Doc("ticker symbol")],
     freq: Annotated[
         str,
-        Doc("reporting frequency of the company's financial history: annual / quarterly"),
+        Doc(
+            "reporting frequency of the company's financial history: annual / quarterly"
+        ),
     ],
     curr_date: Annotated[str, Doc("current date you are trading at, yyyy-mm-dd")],
 ):

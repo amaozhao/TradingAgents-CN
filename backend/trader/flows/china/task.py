@@ -1,11 +1,8 @@
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .base import _OptimizedChinaDataProviderMixin2
-    from .common import _OptimizedChinaDataProviderMixin1
-    from .models import _OptimizedChinaDataProviderMixin3
-    from .query import _OptimizedChinaDataProviderMixin4
-    from .service import _OptimizedChinaDataProviderMixin5
+from .base import _OptimizedChinaDataProviderMixin2
+from .common import _OptimizedChinaDataProviderMixin1
+from .models import _OptimizedChinaDataProviderMixin3
+from .query import _OptimizedChinaDataProviderMixin4
+from .service import _OptimizedChinaDataProviderMixin5
 
 
 class OptimizedChinaDataProvider(

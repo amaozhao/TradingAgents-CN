@@ -1,14 +1,12 @@
-from typing import TYPE_CHECKING
+from .imports import (
+    Annotated,
+    Doc,
+    datetime,
+    importlib,
+    logger,
+    time,
+)
 
-if TYPE_CHECKING:
-    from .imports import (
-        Annotated,
-        Doc,
-        datetime,
-        importlib,
-        logger,
-        time,
-    )
 
 def get_china_stock_data_tushare(
     ticker: Annotated[str, Doc("中国股票代码，如：000001、600036等")],

@@ -1,14 +1,12 @@
-from typing import TYPE_CHECKING
+from .imports import (
+    Optional,
+    ZoneInfo,
+    datetime,
+    get_timezone_name,
+    importlib,
+    random,
+)
 
-if TYPE_CHECKING:
-    from .imports import (
-        Optional,
-        ZoneInfo,
-        datetime,
-        get_timezone_name,
-        importlib,
-        random,
-    )
 
 class _OptimizedChinaDataProviderMixin5:
     def _calculate_valuation_score(self, metrics: dict) -> float:
@@ -103,7 +101,9 @@ class _OptimizedChinaDataProviderMixin5:
         else:
             return "成长潜力需要结合具体行业和公司基本面分析。建议关注行业发展趋势和公司竞争优势。"
 
-    def _analyze_risks(self, symbol: str, financial_estimates: dict, industry_info: dict) -> str:
+    def _analyze_risks(
+        self, symbol: str, financial_estimates: dict, industry_info: dict
+    ) -> str:
         """分析投资风险"""
         risk_level = financial_estimates["risk_level"]
 
@@ -130,7 +130,9 @@ class _OptimizedChinaDataProviderMixin5:
 
         return risk_analysis
 
-    def _generate_investment_advice(self, financial_estimates: dict, industry_info: dict) -> str:
+    def _generate_investment_advice(
+        self, financial_estimates: dict, industry_info: dict
+    ) -> str:
         """生成投资建议"""
         fundamental_score = financial_estimates["fundamental_score"]
         valuation_score = financial_estimates["valuation_score"]
@@ -154,7 +156,9 @@ class _OptimizedChinaDataProviderMixin5:
 - 建议等待基本面改善或估值回落
 - 风险承受能力较低的投资者应避免"""
 
-    def _try_get_old_cache(self, symbol: str, start_date: str, end_date: str) -> Optional[str]:
+    def _try_get_old_cache(
+        self, symbol: str, start_date: str, end_date: str
+    ) -> Optional[str]:
         """尝试获取过期的缓存数据作为备用"""
         try:
             # 查找任何相关的缓存，不考虑TTL
@@ -181,7 +185,9 @@ class _OptimizedChinaDataProviderMixin5:
 
         return None
 
-    def _generate_fallback_data(self, symbol: str, start_date: str, end_date: str, error_msg: str) -> str:
+    def _generate_fallback_data(
+        self, symbol: str, start_date: str, end_date: str, error_msg: str
+    ) -> str:
         """生成备用数据"""
         return f"""# {symbol} A股数据获取失败
 

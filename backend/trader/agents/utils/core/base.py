@@ -1,16 +1,23 @@
-from typing import TYPE_CHECKING
+from .imports import (
+    Annotated,
+    Doc,
+    Optional,
+    importlib,
+    log_tool_call,
+    logger,
+    tool,
+)
 
-if TYPE_CHECKING:
-    from .imports import (
-        Annotated,
-        Doc,
-        Optional,
-        importlib,
-        log_tool_call,
-        logger,
-        tool,
-    )
-    from .query import Toolkit
+
+def _get_research_depth() -> str | int | float:
+    toolkit = getattr(importlib.import_module("trader.agents.utils.core"), "Toolkit")
+    config = getattr(toolkit, "_config", {})
+    if isinstance(config, dict):
+        research_depth = config.get("research_depth", "标准")
+        if isinstance(research_depth, str | int | float):
+            return research_depth
+    return "标准"
+
 
 class _ToolkitMixin2:
     @tool
@@ -39,7 +46,7 @@ class _ToolkitMixin2:
         logger.info(f"📊 [统一基本面工具] 分析股票: {ticker}")
 
         # 🔧 获取分析级别配置，支持基于级别的数据获取策略
-        research_depth = Toolkit._config.get("research_depth", "标准")
+        research_depth = _get_research_depth()
         logger.info(f"🔧 [分析级别] 当前分析级别: {research_depth}")
 
         # 数字等级到中文等级的映射
@@ -440,11 +447,15 @@ class _ToolkitMixin2:
         ticker: Annotated[str, Doc("股票代码（支持A股、港股、美股）")],
         start_date: Annotated[
             str,
-            Doc("开始日期，格式：YYYY-MM-DD。注意：系统会自动扩展到配置的回溯天数（通常为365天），你只需要传递分析日期即可"),
+            Doc(
+                "开始日期，格式：YYYY-MM-DD。注意：系统会自动扩展到配置的回溯天数（通常为365天），你只需要传递分析日期即可"
+            ),
         ],
         end_date: Annotated[
             str,
-            Doc("结束日期，格式：YYYY-MM-DD。通常与start_date相同，传递当前分析日期即可"),
+            Doc(
+                "结束日期，格式：YYYY-MM-DD。通常与start_date相同，传递当前分析日期即可"
+            ),
         ],
     ) -> str:
         """

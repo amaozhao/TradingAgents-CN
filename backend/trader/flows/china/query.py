@@ -1,13 +1,11 @@
-from typing import TYPE_CHECKING
+from .imports import (
+    Any,
+    Optional,
+    cast,
+    importlib,
+    logger,
+)
 
-if TYPE_CHECKING:
-    from .imports import (
-        Any,
-        Optional,
-        cast,
-        importlib,
-        logger,
-    )
 
 class _OptimizedChinaDataProviderMixin4:
     def _parse_akshare_financial_data(
@@ -43,7 +41,9 @@ class _OptimizedChinaDataProviderMixin4:
 
             # main_indicators是DataFrame，需要转换为字典格式便于查找
             # 获取最新数据列（第3列，索引为2）
-            latest_col = main_indicators.columns[2] if len(main_indicators.columns) > 2 else None
+            latest_col = (
+                main_indicators.columns[2] if len(main_indicators.columns) > 2 else None
+            )
             if latest_col is None:
                 logger.warning("AKShare主要财务指标缺少数据列")
                 return None
@@ -69,9 +69,16 @@ class _OptimizedChinaDataProviderMixin4:
 
             try:
                 # 获取股票代码
-                stock_code = stock_info.get("code", "").replace(".SH", "").replace(".SZ", "").zfill(6)
+                stock_code = (
+                    stock_info.get("code", "")
+                    .replace(".SH", "")
+                    .replace(".SZ", "")
+                    .zfill(6)
+                )
                 if stock_code:
-                    logger.info(f"📊 [AKShare-PE计算-第1层] 尝试使用实时PE/PB计算: {stock_code}")
+                    logger.info(
+                        f"📊 [AKShare-PE计算-第1层] 尝试使用实时PE/PB计算: {stock_code}"
+                    )
 
                     get_database_manager = getattr(
                         importlib.import_module("trader.config.databases"),
@@ -95,7 +102,9 @@ class _OptimizedChinaDataProviderMixin4:
                             if market_cap is not None and market_cap > 0:
                                 is_realtime = realtime_metrics.get("is_realtime", False)
                                 realtime_tag = " (实时)" if is_realtime else ""
-                                metrics["total_mv"] = f"{market_cap:.2f}亿元{realtime_tag}"
+                                metrics["total_mv"] = (
+                                    f"{market_cap:.2f}亿元{realtime_tag}"
+                                )
                                 logger.info(
                                     f"✅ [AKShare-总市值获取成功] 总市值={market_cap:.2f}亿元 | 实时={is_realtime}"
                                 )
@@ -115,8 +124,12 @@ class _OptimizedChinaDataProviderMixin4:
                             if pe_ttm_value is not None and pe_ttm_value > 0:
                                 is_realtime = realtime_metrics.get("is_realtime", False)
                                 realtime_tag = " (实时)" if is_realtime else ""
-                                metrics["pe_ttm"] = f"{pe_ttm_value:.1f}倍{realtime_tag}"
-                                logger.info(f"✅ [AKShare-PE_TTM计算-第1层成功] PE_TTM={pe_ttm_value:.2f}倍")
+                                metrics["pe_ttm"] = (
+                                    f"{pe_ttm_value:.1f}倍{realtime_tag}"
+                                )
+                                logger.info(
+                                    f"✅ [AKShare-PE_TTM计算-第1层成功] PE_TTM={pe_ttm_value:.2f}倍"
+                                )
 
                             # 使用实时PB
                             pb_value = realtime_metrics.get("pb")
@@ -124,11 +137,17 @@ class _OptimizedChinaDataProviderMixin4:
                                 is_realtime = realtime_metrics.get("is_realtime", False)
                                 realtime_tag = " (实时)" if is_realtime else ""
                                 metrics["pb"] = f"{pb_value:.2f}倍{realtime_tag}"
-                                logger.info(f"✅ [AKShare-PB计算-第1层成功] PB={pb_value:.2f}倍")
+                                logger.info(
+                                    f"✅ [AKShare-PB计算-第1层成功] PB={pb_value:.2f}倍"
+                                )
                         else:
-                            logger.warning("⚠️ [AKShare-PE计算-第1层失败] 实时计算返回空结果，将尝试降级计算")
+                            logger.warning(
+                                "⚠️ [AKShare-PE计算-第1层失败] 实时计算返回空结果，将尝试降级计算"
+                            )
             except Exception as e:
-                logger.warning(f"⚠️ [AKShare-PE计算-第1层异常] 实时计算失败: {e}，将尝试降级计算")
+                logger.warning(
+                    f"⚠️ [AKShare-PE计算-第1层异常] 实时计算失败: {e}，将尝试降级计算"
+                )
 
             # 获取ROE - 直接从指标中获取
             roe_value = indicators_dict.get("净资产收益率(ROE)")
@@ -149,7 +168,9 @@ class _OptimizedChinaDataProviderMixin4:
                 total_mv_static = stock_info.get("total_mv")
                 if total_mv_static is not None and total_mv_static > 0:
                     metrics["total_mv"] = f"{total_mv_static:.2f}亿元"
-                    logger.info(f"✅ [AKShare-总市值-第2层成功] 总市值={total_mv_static:.2f}亿元")
+                    logger.info(
+                        f"✅ [AKShare-总市值-第2层成功] 总市值={total_mv_static:.2f}亿元"
+                    )
                 else:
                     metrics["total_mv"] = "N/A"
                     logger.warning("⚠️ [AKShare-总市值-全部失败] 无可用总市值数据")
@@ -166,24 +187,36 @@ class _OptimizedChinaDataProviderMixin4:
                     # 尝试计算 TTM EPS
                     if "基本每股收益" in main_indicators["指标"].values:
                         # 提取基本每股收益的所有期数数据
-                        eps_row = main_indicators[main_indicators["指标"] == "基本每股收益"]
+                        eps_row = main_indicators[
+                            main_indicators["指标"] == "基本每股收益"
+                        ]
                         if not eps_row.empty:
                             # 获取所有数值列（排除'指标'列）
-                            value_cols = [col for col in eps_row.columns if col != "指标"]
+                            value_cols = [
+                                col for col in eps_row.columns if col != "指标"
+                            ]
 
                             # 构建 DataFrame 用于 TTM 计算
                             pd = importlib.import_module("pandas")
                             eps_data = []
                             for col in value_cols:
                                 eps_val = cast(Any, eps_row[col]).iloc[0]
-                                if eps_val is not None and str(eps_val) != "nan" and eps_val != "--":
-                                    eps_data.append({"报告期": col, "基本每股收益": eps_val})
+                                if (
+                                    eps_val is not None
+                                    and str(eps_val) != "nan"
+                                    and eps_val != "--"
+                                ):
+                                    eps_data.append(
+                                        {"报告期": col, "基本每股收益": eps_val}
+                                    )
 
                             if len(eps_data) >= 2:
                                 eps_df = pd.DataFrame(eps_data)
                                 # 使用 TTM 计算函数
                                 _calculate_ttm_metric = getattr(
-                                    importlib.import_module("scripts.sync.financial.data.script"),
+                                    importlib.import_module(
+                                        "scripts.sync.financial.data.script"
+                                    ),
                                     "_calculate_ttm_metric",
                                 )
                                 ttm_eps = _calculate_ttm_metric(eps_df, "基本每股收益")
@@ -199,7 +232,11 @@ class _OptimizedChinaDataProviderMixin4:
                 if not eps_for_pe:
                     # 降级到单期 EPS
                     eps_value = indicators_dict.get("基本每股收益")
-                    if eps_value is not None and str(eps_value) != "nan" and eps_value != "--":
+                    if (
+                        eps_value is not None
+                        and str(eps_value) != "nan"
+                        and eps_value != "--"
+                    ):
                         try:
                             eps_for_pe = float(eps_value)
                         except (ValueError, TypeError):
@@ -213,7 +250,9 @@ class _OptimizedChinaDataProviderMixin4:
                     )
                 elif eps_for_pe and eps_for_pe <= 0:
                     metrics["pe"] = "N/A（亏损）"
-                    logger.warning(f"⚠️ [AKShare-PE计算-第2层失败] 亏损股票，EPS={eps_for_pe}")
+                    logger.warning(
+                        f"⚠️ [AKShare-PE计算-第2层失败] 亏损股票，EPS={eps_for_pe}"
+                    )
                 else:
                     metrics["pe"] = "N/A"
                     logger.error("❌ [AKShare-PE计算-全部失败] 无可用EPS数据")
@@ -224,7 +263,11 @@ class _OptimizedChinaDataProviderMixin4:
 
                 # 获取每股净资产 - 用于计算PB
                 bps_value = indicators_dict.get("每股净资产_最新股数")
-                if bps_value is not None and str(bps_value) != "nan" and bps_value != "--":
+                if (
+                    bps_value is not None
+                    and str(bps_value) != "nan"
+                    and bps_value != "--"
+                ):
                     try:
                         bps_val = float(bps_value)
                         if bps_val > 0:
@@ -236,7 +279,9 @@ class _OptimizedChinaDataProviderMixin4:
                             )
                         else:
                             metrics["pb"] = "N/A"
-                            logger.warning(f"⚠️ [AKShare-PB计算-第2层失败] BPS无效: {bps_val}")
+                            logger.warning(
+                                f"⚠️ [AKShare-PB计算-第2层失败] BPS无效: {bps_val}"
+                            )
                     except (ValueError, TypeError) as e:
                         metrics["pb"] = "N/A"
                         logger.error(f"❌ [AKShare-PB计算-第2层异常] {e}")
@@ -258,7 +303,11 @@ class _OptimizedChinaDataProviderMixin4:
 
             # 毛利率
             gross_margin_value = indicators_dict.get("毛利率")
-            if gross_margin_value is not None and str(gross_margin_value) != "nan" and gross_margin_value != "--":
+            if (
+                gross_margin_value is not None
+                and str(gross_margin_value) != "nan"
+                and gross_margin_value != "--"
+            ):
                 try:
                     gross_margin_val = float(gross_margin_value)
                     metrics["gross_margin"] = f"{gross_margin_val:.1f}%"
@@ -269,7 +318,11 @@ class _OptimizedChinaDataProviderMixin4:
 
             # 销售净利率
             net_margin_value = indicators_dict.get("销售净利率")
-            if net_margin_value is not None and str(net_margin_value) != "nan" and net_margin_value != "--":
+            if (
+                net_margin_value is not None
+                and str(net_margin_value) != "nan"
+                and net_margin_value != "--"
+            ):
                 try:
                     net_margin_val = float(net_margin_value)
                     metrics["net_margin"] = f"{net_margin_val:.1f}%"
@@ -280,7 +333,11 @@ class _OptimizedChinaDataProviderMixin4:
 
             # 资产负债率
             debt_ratio_value = indicators_dict.get("资产负债率")
-            if debt_ratio_value is not None and str(debt_ratio_value) != "nan" and debt_ratio_value != "--":
+            if (
+                debt_ratio_value is not None
+                and str(debt_ratio_value) != "nan"
+                and debt_ratio_value != "--"
+            ):
                 try:
                     debt_ratio_val = float(debt_ratio_value)
                     metrics["debt_ratio"] = f"{debt_ratio_val:.1f}%"
@@ -291,7 +348,11 @@ class _OptimizedChinaDataProviderMixin4:
 
             # 流动比率
             current_ratio_value = indicators_dict.get("流动比率")
-            if current_ratio_value is not None and str(current_ratio_value) != "nan" and current_ratio_value != "--":
+            if (
+                current_ratio_value is not None
+                and str(current_ratio_value) != "nan"
+                and current_ratio_value != "--"
+            ):
                 try:
                     current_ratio_val = float(current_ratio_value)
                     metrics["current_ratio"] = f"{current_ratio_val:.2f}"
@@ -302,7 +363,11 @@ class _OptimizedChinaDataProviderMixin4:
 
             # 速动比率
             quick_ratio_value = indicators_dict.get("速动比率")
-            if quick_ratio_value is not None and str(quick_ratio_value) != "nan" and quick_ratio_value != "--":
+            if (
+                quick_ratio_value is not None
+                and str(quick_ratio_value) != "nan"
+                and quick_ratio_value != "--"
+            ):
                 try:
                     quick_ratio_val = float(quick_ratio_value)
                     metrics["quick_ratio"] = f"{quick_ratio_val:.2f}"
@@ -318,24 +383,36 @@ class _OptimizedChinaDataProviderMixin4:
                 if "营业收入" in main_indicators["指标"].values:
                     revenue_row = main_indicators[main_indicators["指标"] == "营业收入"]
                     if not revenue_row.empty:
-                        value_cols = [col for col in revenue_row.columns if col != "指标"]
+                        value_cols = [
+                            col for col in revenue_row.columns if col != "指标"
+                        ]
 
                         pd = importlib.import_module("pandas")
                         revenue_data = []
                         for col in value_cols:
                             rev_val = cast(Any, revenue_row[col]).iloc[0]
-                            if rev_val is not None and str(rev_val) != "nan" and rev_val != "--":
-                                revenue_data.append({"报告期": col, "营业收入": rev_val})
+                            if (
+                                rev_val is not None
+                                and str(rev_val) != "nan"
+                                and rev_val != "--"
+                            ):
+                                revenue_data.append(
+                                    {"报告期": col, "营业收入": rev_val}
+                                )
 
                         if len(revenue_data) >= 2:
                             revenue_df = pd.DataFrame(revenue_data)
                             _calculate_ttm_metric = getattr(
-                                importlib.import_module("scripts.sync.financial.data.script"),
+                                importlib.import_module(
+                                    "scripts.sync.financial.data.script"
+                                ),
                                 "_calculate_ttm_metric",
                             )
                             ttm_revenue = _calculate_ttm_metric(revenue_df, "营业收入")
                             if ttm_revenue:
-                                logger.info(f"✅ 计算 TTM 营业收入: {ttm_revenue:.2f} 万元")
+                                logger.info(
+                                    f"✅ 计算 TTM 营业收入: {ttm_revenue:.2f} 万元"
+                                )
             except Exception as e:
                 logger.debug(f"计算 TTM 营业收入失败: {e}")
 
@@ -346,7 +423,11 @@ class _OptimizedChinaDataProviderMixin4:
             if not revenue_for_ps:
                 # 降级到单期营业收入
                 revenue_value = indicators_dict.get("营业收入")
-                if revenue_value is not None and str(revenue_value) != "nan" and revenue_value != "--":
+                if (
+                    revenue_value is not None
+                    and str(revenue_value) != "nan"
+                    and revenue_value != "--"
+                ):
                     try:
                         revenue_for_ps = float(revenue_value)
                     except (ValueError, TypeError):
@@ -378,15 +459,19 @@ class _OptimizedChinaDataProviderMixin4:
             growth_score = self._calculate_growth_score(metrics, stock_info)
             risk_level = self._calculate_risk_level(metrics, stock_info)
 
-            metrics.update({
-                "fundamental_score": fundamental_score,
-                "valuation_score": valuation_score,
-                "growth_score": growth_score,
-                "risk_level": risk_level,
-                "data_source": "AKShare",
-            })
+            metrics.update(
+                {
+                    "fundamental_score": fundamental_score,
+                    "valuation_score": valuation_score,
+                    "growth_score": growth_score,
+                    "risk_level": risk_level,
+                    "data_source": "AKShare",
+                }
+            )
 
-            logger.info(f"✅ AKShare财务数据解析成功: PE={metrics['pe']}, PB={metrics['pb']}, ROE={metrics['roe']}")
+            logger.info(
+                f"✅ AKShare财务数据解析成功: PE={metrics['pe']}, PB={metrics['pb']}, ROE={metrics['roe']}"
+            )
             return metrics
 
         except Exception as e:
@@ -437,17 +522,23 @@ class _OptimizedChinaDataProviderMixin4:
                         end_date = stmt.get("end_date")
                         revenue = stmt.get("total_revenue")
                         if end_date and revenue is not None:
-                            revenue_data.append({"报告期": str(end_date), "营业收入": float(revenue)})
+                            revenue_data.append(
+                                {"报告期": str(end_date), "营业收入": float(revenue)}
+                            )
 
                     if len(revenue_data) >= 2:
                         revenue_df = pd.DataFrame(revenue_data)
                         _calculate_ttm_metric = getattr(
-                            importlib.import_module("scripts.sync.financial.data.script"),
+                            importlib.import_module(
+                                "scripts.sync.financial.data.script"
+                            ),
                             "_calculate_ttm_metric",
                         )
                         ttm_revenue = _calculate_ttm_metric(revenue_df, "营业收入")
                         if ttm_revenue:
-                            logger.info(f"✅ Tushare 计算 TTM 营业收入: {ttm_revenue:.2f} 万元")
+                            logger.info(
+                                f"✅ Tushare 计算 TTM 营业收入: {ttm_revenue:.2f} 万元"
+                            )
 
                     # 构建净利润 DataFrame
                     profit_data = []
@@ -455,19 +546,31 @@ class _OptimizedChinaDataProviderMixin4:
                         end_date = stmt.get("end_date")
                         profit = stmt.get("n_income")
                         if end_date and profit is not None:
-                            profit_data.append({"报告期": str(end_date), "净利润": float(profit)})
+                            profit_data.append(
+                                {"报告期": str(end_date), "净利润": float(profit)}
+                            )
 
                     if len(profit_data) >= 2:
                         profit_df = pd.DataFrame(profit_data)
                         ttm_net_income = _calculate_ttm_metric(profit_df, "净利润")
                         if ttm_net_income:
-                            logger.info(f"✅ Tushare 计算 TTM 净利润: {ttm_net_income:.2f} 万元")
+                            logger.info(
+                                f"✅ Tushare 计算 TTM 净利润: {ttm_net_income:.2f} 万元"
+                            )
             except Exception as e:
                 logger.warning(f"⚠️ Tushare TTM 计算失败: {e}")
 
             # 降级到单期数据
-            total_revenue = ttm_revenue if ttm_revenue else (latest_income.get("total_revenue", 0) or 0)
-            net_income = ttm_net_income if ttm_net_income else (latest_income.get("n_income", 0) or 0)
+            total_revenue = (
+                ttm_revenue
+                if ttm_revenue
+                else (latest_income.get("total_revenue", 0) or 0)
+            )
+            net_income = (
+                ttm_net_income
+                if ttm_net_income
+                else (latest_income.get("n_income", 0) or 0)
+            )
             revenue_type = "TTM" if ttm_revenue else "单期"
             profit_type = "TTM" if ttm_net_income else "单期"
 
@@ -484,7 +587,9 @@ class _OptimizedChinaDataProviderMixin4:
                     f"✅ [Tushare-总市值计算成功] 总市值={market_cap_yi:.2f}亿元 (股价{price_value}元 × 总股本{total_share}万股)"
                 )
             else:
-                logger.error(f"❌ {stock_info.get('code', 'Unknown')} 无法获取总股本，无法计算准确的估值指标")
+                logger.error(
+                    f"❌ {stock_info.get('code', 'Unknown')} 无法获取总股本，无法计算准确的估值指标"
+                )
                 market_cap = None
                 metrics["total_mv"] = "N/A"
 
@@ -551,13 +656,15 @@ class _OptimizedChinaDataProviderMixin4:
                 metrics["debt_ratio"] = "N/A"
 
             # 其他指标设为默认值
-            metrics.update({
-                "dividend_yield": "待查询",
-                "gross_margin": "待计算",
-                "current_ratio": "待计算",
-                "quick_ratio": "待计算",
-                "cash_ratio": "待分析",
-            })
+            metrics.update(
+                {
+                    "dividend_yield": "待查询",
+                    "gross_margin": "待计算",
+                    "current_ratio": "待计算",
+                    "quick_ratio": "待计算",
+                    "cash_ratio": "待分析",
+                }
+            )
 
             # 评分（基于真实数据的简化评分）
             fundamental_score = self._calculate_fundamental_score(metrics, stock_info)
@@ -565,12 +672,14 @@ class _OptimizedChinaDataProviderMixin4:
             growth_score = self._calculate_growth_score(metrics, stock_info)
             risk_level = self._calculate_risk_level(metrics, stock_info)
 
-            metrics.update({
-                "fundamental_score": fundamental_score,
-                "valuation_score": valuation_score,
-                "growth_score": growth_score,
-                "risk_level": risk_level,
-            })
+            metrics.update(
+                {
+                    "fundamental_score": fundamental_score,
+                    "valuation_score": valuation_score,
+                    "growth_score": growth_score,
+                    "risk_level": risk_level,
+                }
+            )
 
             return metrics
 

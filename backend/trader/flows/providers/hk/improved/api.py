@@ -1,19 +1,27 @@
-from .imports import (
-    Any,
-    Dict,
-    Optional,
-    add_all_indicators,
-    ak,
-    datetime,
-    importlib,
-    logger,
-    pd,
-    threading,
-    timedelta,
-)
-from .setup import get_improved_hk_provider
+from __future__ import annotations
 
-def get_hk_stock_data_akshare(symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None):
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        Optional,
+        add_all_indicators,
+        ak,
+        datetime,
+        importlib,
+        logger,
+        pd,
+        threading,
+        timedelta,
+    )
+    from .setup import get_improved_hk_provider
+
+
+def get_hk_stock_data_akshare(
+    symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None
+):
     """
     兼容性函数：使用 AKShare 新浪财经接口获取港股历史数据
 
@@ -39,7 +47,9 @@ def get_hk_stock_data_akshare(symbol: str, start_date: Optional[str] = None, end
         if not start_date:
             start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
 
-        logger.info(f"🔄 [AKShare-新浪] 获取港股历史数据: {symbol} ({start_date} ~ {end_date})")
+        logger.info(
+            f"🔄 [AKShare-新浪] 获取港股历史数据: {symbol} ({start_date} ~ {end_date})"
+        )
 
         # 使用新浪财经接口获取历史数据
         df = ak.stock_hk_daily(symbol=normalized_symbol, adjust="qfq")
@@ -248,18 +258,24 @@ def get_hk_stock_info_akshare(symbol: str) -> Dict[str, Any]:
                         df = cache["data"]
                     else:
                         # 缓存过期，需要调用 API
-                        logger.info(f"🔄 [AKShare缓存-{thread_id}] 缓存过期（{elapsed:.1f}秒前），调用 API 刷新")
+                        logger.info(
+                            f"🔄 [AKShare缓存-{thread_id}] 缓存过期（{elapsed:.1f}秒前），调用 API 刷新"
+                        )
                         df = ak.stock_hk_spot()
                         cache["data"] = df
                         cache["timestamp"] = now
-                        logger.info(f"✅ [AKShare缓存-{thread_id}] 已缓存 {len(df)} 只港股数据")
+                        logger.info(
+                            f"✅ [AKShare缓存-{thread_id}] 已缓存 {len(df)} 只港股数据"
+                        )
                 else:
                     # 缓存为空，首次调用
                     logger.info(f"🔄 [AKShare缓存-{thread_id}] 首次获取港股数据")
                     df = ak.stock_hk_spot()
                     cache["data"] = df
                     cache["timestamp"] = now
-                    logger.info(f"✅ [AKShare缓存-{thread_id}] 已缓存 {len(df)} 只港股数据")
+                    logger.info(
+                        f"✅ [AKShare缓存-{thread_id}] 已缓存 {len(df)} 只港股数据"
+                    )
 
             finally:
                 # 释放锁
@@ -276,7 +292,9 @@ def get_hk_stock_info_akshare(symbol: str) -> Dict[str, Any]:
                     def safe_float(value):
                         try:
                             if (
-                                value is None or value == "" or (isinstance(value, float) and value != value)
+                                value is None
+                                or value == ""
+                                or (isinstance(value, float) and value != value)
                             ):  # NaN check
                                 return None
                             return float(value)
@@ -286,7 +304,9 @@ def get_hk_stock_info_akshare(symbol: str) -> Dict[str, Any]:
                     def safe_int(value):
                         try:
                             if (
-                                value is None or value == "" or (isinstance(value, float) and value != value)
+                                value is None
+                                or value == ""
+                                or (isinstance(value, float) and value != value)
                             ):  # NaN check
                                 return None
                             return int(value)

@@ -1,15 +1,15 @@
 from .finnhub import get_finnhub_company_insider_transactions
-from .fundamentals import (
-    get_fundamentals_openai,
+from .finnhub import (
     get_simfin_balance_sheet,
     get_simfin_cashflow,
-    get_simfin_income_statements,
 )
+from .fundamentals import get_fundamentals_openai
 from .hk import get_stock_data_by_market
 from .imports import datetime, importlib
 from .market import get_global_news_openai, get_stockstats_indicator
 from .setup import AlphaVantageRateLimitError, NoMarketDataError, VENDOR_METHODS
-from .social import get_google_news
+from .social import get_google_news, get_simfin_income_statements
+
 
 def _configured_vendor(category: str, method: str | None = None) -> str:
     try:

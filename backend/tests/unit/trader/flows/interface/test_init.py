@@ -10,3 +10,9 @@ _export_module(globals(), "support.finnhub.hk.module")
 _export_module(globals(), "support.fundamentals.cache.module")
 _export_module(globals(), "support.raw.data.display.module")
 del _export_module
+
+
+def test_interface_facade_imports_without_split_module_name_errors() -> None:
+    import trader.flows.interface as interface
+
+    assert callable(interface.get_finnhub_news)
