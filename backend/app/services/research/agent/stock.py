@@ -20,6 +20,13 @@ from app.services.analysis.simple import (
 from app.services.usage import usage_statistics_service
 
 from .context import ToolExecutionContext
+from .flow import StockDagParityWorkflow
+from .flow.events import build_stock_workflow_stage_events
+from .flow.graph import build_stock_dag_parity_plan
+from .flow.stages.reports import (
+    build_stock_workflow_report,
+    persist_stock_workflow_report,
+)
 from .stage import planned_stock_stages, stock_stage_title
 
 
@@ -567,14 +574,6 @@ async def run_agent_stock_workflow(
     stage_plan: list[dict[str, str]],
     batch_id: str | None = None,
 ) -> dict[str, Any]:
-    from .flow import StockDagParityWorkflow
-    from .flow.events import build_stock_workflow_stage_events
-    from .flow.graph import build_stock_dag_parity_plan
-    from .flow.stages.reports import (
-        build_stock_workflow_report,
-        persist_stock_workflow_report,
-    )
-
     task_id = str(uuid.uuid4())
     workflow_context = build_agent_stock_workflow_context(
         principal_context=context,
@@ -740,7 +739,9 @@ def _stock_workflow_node_emitter(
         except FutureTimeoutError:
             logger.warning("Timed out emitting stock workflow stage event: %s", node)
         except Exception as exc:
-            logger.warning("Failed to emit stock workflow stage event %s: %s", node, exc)
+            logger.warning(
+                "Failed to emit stock workflow stage event %s: %s", node, exc
+            )
 
     return emit
 

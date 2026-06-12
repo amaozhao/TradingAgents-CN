@@ -394,7 +394,9 @@ def test_skipped_stage_events_do_not_fabricate_unselected_reports():
     assert "sentiment_report" not in report["reports"]
     assert "news_report" not in report["reports"]
     assert "fundamentals_report" not in report["reports"]
-    assert all("native" not in event.get("message", "").lower() for event in stage_events)
+    assert all(
+        "native" not in event.get("message", "").lower() for event in stage_events
+    )
     assert any(
         event["stage"] == "risk_debate" and event["status"] == "skipped"
         for event in stage_events
@@ -641,7 +643,7 @@ def _analyst_handler(report_key: str, content: str):
 
 
 def test_agent_stock_workflow_has_no_simplified_or_legacy_runtime_calls():
-    backend_root = Path(__file__).resolve().parents[6]
+    backend_root = Path(__file__).resolve().parents[7]
     workflow_source_files = [
         *sorted((backend_root / "app/services/research/agent/flow").rglob("*.py")),
         backend_root / "app/services/research/agent/stock.py",

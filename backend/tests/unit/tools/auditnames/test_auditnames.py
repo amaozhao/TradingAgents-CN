@@ -7,7 +7,13 @@ from types import ModuleType
 
 
 def load_auditnames() -> ModuleType:
-    module_path = Path(__file__).resolve().parents[4] / "tools" / "auditnames.py"
+    for parent in Path(__file__).resolve().parents:
+        module_path = parent / "tools" / "auditnames.py"
+        if module_path.is_file():
+            break
+    else:
+        raise AssertionError("tools/auditnames.py should exist")
+
     spec = importlib.util.spec_from_file_location("auditnames_for_test", module_path)
     assert spec is not None
     assert spec.loader is not None

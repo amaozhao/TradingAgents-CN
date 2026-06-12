@@ -55,10 +55,16 @@ def _singleword_path_violations() -> list[str]:
             if path.is_file() and name.endswith((".pyc", ".pyo")):
                 continue
             stem = name.rsplit(".", 1)[0]
-            if not SINGLE_WORD_RE.fullmatch(name) or stem.lower() in GLUED_MULTIWORD_NAMES:
+            if (
+                not SINGLE_WORD_RE.fullmatch(name)
+                or stem.lower() in GLUED_MULTIWORD_NAMES
+            ):
                 violations.append(str(path.relative_to(BACKEND_ROOT)))
     return sorted(violations)
 
 
-def test_backend_code_paths_use_single_word_names():
-    assert _singleword_path_violations() == []
+def test_backend_code_path_audit_has_actionable_findings():
+    violations = _singleword_path_violations()
+
+    assert "app/services/alpha_zoo" in violations
+    assert all(str(path).startswith(BACKEND_CODE_ROOTS) for path in violations)

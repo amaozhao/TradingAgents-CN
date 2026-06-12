@@ -129,9 +129,11 @@ async def test_tool_run_rejects_principal_without_required_permission():
 
 @pytest.mark.asyncio
 async def test_tool_run_accepts_authorized_principal(monkeypatch):
-    monkeypatch.setattr(stock_module, "get_simple_analysis_service", lambda: FakeAnalysisService())
+    monkeypatch.setattr(
+        stock_module, "get_simple_analysis_service", lambda: FakeAnalysisService()
+    )
 
-    async def fake_native_workflow(_context, **kwargs: Any):
+    async def fake_agent_workflow(_context, **kwargs: Any):
         return {
             "tool": kwargs["tool_name"],
             "mode": "single",
@@ -141,7 +143,7 @@ async def test_tool_run_accepts_authorized_principal(monkeypatch):
             "symbol": kwargs["symbol"],
         }
 
-    monkeypatch.setattr(stock_module, "run_native_stock_workflow", fake_native_workflow)
+    monkeypatch.setattr(stock_module, "run_agent_stock_workflow", fake_agent_workflow)
     monkeypatch.setattr(
         stock_module,
         "get_provider_and_url_by_model_sync",

@@ -19,4 +19,4 @@ def test_analysis_router_keeps_task_list_and_batch_routes() -> None:
 
     assert ("GET", "/tasks") in routes
     assert ("GET", "/tasks/all") in routes
-    assert ("POST", "/batch") in routes
+    assert ("GET", "/batches/{batch_id}") in routes

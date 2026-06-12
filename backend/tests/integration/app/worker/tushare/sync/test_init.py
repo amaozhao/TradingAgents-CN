@@ -18,8 +18,10 @@ class TestTushareSyncService:
     def sync_service(self):
         """创建TushareSyncService实例"""
         with (
-            patch("app.worker.tushare.sync.get_postgres_db") as mock_get_db,
-            patch("app.worker.tushare.sync.get_stock_data_service") as mock_get_service,
+            patch("app.worker.tushare.sync.common.get_postgres_db") as mock_get_db,
+            patch(
+                "app.worker.tushare.sync.common.get_stock_data_service"
+            ) as mock_get_service,
         ):
             # 模拟数据库和服务
             mock_get_db.return_value = Mock()

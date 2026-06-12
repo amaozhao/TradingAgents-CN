@@ -14,6 +14,7 @@ from app.services.research.agent import memory as memory_module
 from app.services.research.agent import sessions as sessions_module
 from app.services.research.agent import stock as stock_module
 from app.services.research.agent import swarm as swarm_module
+from app.services.research.agent.batch import repository as batch_repository_module
 from app.services.research.agent.context import ResearchPrincipal, ToolExecutionContext
 from app.services.research.agent.loop import ModelStreamChunk
 from app.services.research.agent.registry import ResearchToolRegistry
@@ -25,20 +26,33 @@ from app.services.research.agent.tools.market import data as market_data_module
 from app.services.research.agent.tools.multi import factor as multi_factor_module
 
 
-USER = {"id": "user-tool-calls", "username": "tool-user", "is_admin": False, "roles": []}
+USER = {
+    "id": "user-tool-calls",
+    "username": "tool-user",
+    "is_admin": False,
+    "roles": [],
+}
 
 
 def _matches_query(document: dict[str, Any], query: dict[str, Any]) -> bool:
     for key, expected in query.items():
         value = document.get(key)
         if isinstance(expected, dict):
-            if "$gt" in expected and not (value is not None and value > expected["$gt"]):
+            if "$gt" in expected and not (
+                value is not None and value > expected["$gt"]
+            ):
                 return False
-            if "$gte" in expected and not (value is not None and value >= expected["$gte"]):
+            if "$gte" in expected and not (
+                value is not None and value >= expected["$gte"]
+            ):
                 return False
-            if "$lt" in expected and not (value is not None and value < expected["$lt"]):
+            if "$lt" in expected and not (
+                value is not None and value < expected["$lt"]
+            ):
                 return False
-            if "$lte" in expected and not (value is not None and value <= expected["$lte"]):
+            if "$lte" in expected and not (
+                value is not None and value <= expected["$lte"]
+            ):
                 return False
             if "$in" in expected and value not in expected["$in"]:
                 return False
@@ -87,11 +101,21 @@ class FakeCollection:
         self.documents.append(dict(document))
         return type("FakeInsertResult", (), {"inserted_id": document.get("_id")})()
 
+    async def insert_many(self, documents: list[dict[str, Any]]):
+        self.documents.extend(dict(document) for document in documents)
+        return type(
+            "FakeInsertManyResult",
+            (),
+            {"inserted_ids": [document.get("_id") for document in documents]},
+        )()
+
     async def find_one(self, query: dict[str, Any], *_args: Any, **kwargs: Any):
         rows = [doc for doc in self.documents if _matches_query(doc, query)]
         if sort := kwargs.get("sort"):
             key, direction = sort[0]
-            rows = sorted(rows, key=lambda item: item.get(key, 0), reverse=direction < 0)
+            rows = sorted(
+                rows, key=lambda item: item.get(key, 0), reverse=direction < 0
+            )
         return dict(rows[0]) if rows else None
 
     def find(self, query: dict[str, Any]):
@@ -110,9 +134,13 @@ class FakeCollection:
     async def delete_many(self, query: dict[str, Any]):
         before = len(self.documents)
         self.documents = [
-            document for document in self.documents if not _matches_query(document, query)
+            document
+            for document in self.documents
+            if not _matches_query(document, query)
         ]
-        return type("FakeDeleteResult", (), {"deleted_count": before - len(self.documents)})()
+        return type(
+            "FakeDeleteResult", (), {"deleted_count": before - len(self.documents)}
+        )()
 
     async def delete_one(self, query: dict[str, Any]):
         for index, document in enumerate(self.documents):
@@ -137,6 +165,8 @@ class FakeDb:
         self.research_live_audit = FakeCollection()
         self.research_swarm_runs = FakeCollection()
         self.research_swarm_events = FakeCollection()
+        self.analysis_batches = FakeCollection()
+        self.analysis_tasks = FakeCollection()
         self.analysis_reports = FakeCollection()
 
 
@@ -199,9 +229,12 @@ def fake_db(monkeypatch):
         live_module,
         swarm_module,
         stock_module,
+        batch_repository_module,
     ):
         monkeypatch.setattr(module, "get_postgres_db", lambda db=db: db)
-    monkeypatch.setattr(swarm_module, "OpenAICompatibleModelClient", FakeWorkerModelClient)
+    monkeypatch.setattr(
+        swarm_module, "OpenAICompatibleModelClient", FakeWorkerModelClient
+    )
     return db
 
 
@@ -242,7 +275,9 @@ def deterministic_external_boundaries(monkeypatch):
             "history": {"prices": _prices(symbol), "source": "fixture"},
         }
 
-    async def fake_price_series(symbols: list[str], **_kwargs: Any) -> dict[str, dict[str, Any]]:
+    async def fake_price_series(
+        symbols: list[str], **_kwargs: Any
+    ) -> dict[str, dict[str, Any]]:
         return {
             symbol: {
                 "symbol": symbol,
@@ -264,7 +299,7 @@ def deterministic_external_boundaries(monkeypatch):
             "_artifact_payload": {"kind": "multi_factor_alpha_backtest"},
         }
 
-    async def fake_native_workflow(_context, **kwargs: Any):
+    async def fake_agent_workflow(_context, **kwargs: Any):
         return {
             "tool": kwargs["tool_name"],
             "mode": "single",
@@ -287,15 +322,27 @@ def deterministic_external_boundaries(monkeypatch):
         }
 
     monkeypatch.setattr(files_module, "_web_get", fake_web_get)
-    monkeypatch.setattr(market_data_module, "lookup_market_snapshot", fake_market_snapshot)
+    monkeypatch.setattr(
+        market_data_module, "lookup_market_snapshot", fake_market_snapshot
+    )
     monkeypatch.setattr(correlation_module, "load_price_series", fake_price_series)
-    monkeypatch.setattr(multi_factor_module, "_build_multi_factor_alpha_result", fake_multi_factor_result)
-    monkeypatch.setattr(stock_module, "get_simple_analysis_service", lambda: FakeAnalysisService())
-    monkeypatch.setattr(stock_module, "run_native_stock_workflow", fake_native_workflow)
+    monkeypatch.setattr(
+        multi_factor_module,
+        "_build_multi_factor_alpha_result",
+        fake_multi_factor_result,
+    )
+    monkeypatch.setattr(
+        stock_module, "get_simple_analysis_service", lambda: FakeAnalysisService()
+    )
+    monkeypatch.setattr(stock_module, "run_agent_stock_workflow", fake_agent_workflow)
     monkeypatch.setattr(
         stock_module,
         "get_provider_and_url_by_model_sync",
-        lambda _model: {"provider": "qwen", "backend_url": "https://example.test/v1", "api_key": "key"},
+        lambda _model: {
+            "provider": "qwen",
+            "backend_url": "https://example.test/v1",
+            "api_key": "key",
+        },
     )
     assert _multi_package
 
@@ -332,7 +379,9 @@ async def test_all_enabled_research_agent_tools_are_invokable(
 ):
     _ = fake_db, deterministic_external_boundaries
     principal = ResearchPrincipal.from_user(USER)
-    session = await ResearchSessionService().create_session(principal, title="tool calls")
+    session = await ResearchSessionService().create_session(
+        principal, title="tool calls"
+    )
     session_id = session["session_id"]
     principal = ResearchPrincipal.from_user(USER, session_id=session_id)
     context = _context(principal, session_id)
@@ -354,8 +403,16 @@ async def test_all_enabled_research_agent_tools_are_invokable(
     assert "run_swarm" in enabled_tool_names
     assert "trading_place_order" not in enabled_tool_names
 
-    await _run_tool(registry, context, called, "market_data_lookup", {"symbol": "600519", "limit": 4})
-    await _run_tool(registry, context, called, "screening_run", {"query": "energy storage"})
+    await _run_tool(
+        registry,
+        context,
+        called,
+        "market_data_lookup",
+        {"symbol": "600519", "limit": 4},
+    )
+    await _run_tool(
+        registry, context, called, "screening_run", {"query": "energy storage"}
+    )
     single_analysis = await _run_tool(
         registry,
         context,
@@ -384,8 +441,16 @@ async def test_all_enabled_research_agent_tools_are_invokable(
         "stock_analysis_report",
         {"task_id": single_analysis["task_id"]},
     )
-    await _run_tool(registry, context, called, "batch_stock_analysis", {"symbols": ["600519", "000001"]})
-    await _run_tool(registry, context, called, "report_lookup", {"report_id": "report-1"})
+    await _run_tool(
+        registry,
+        context,
+        called,
+        "batch_stock_analysis",
+        {"symbols": ["600519", "000001"]},
+    )
+    await _run_tool(
+        registry, context, called, "report_lookup", {"report_id": "report-1"}
+    )
     report = await _run_tool(
         registry,
         context,
@@ -402,7 +467,11 @@ async def test_all_enabled_research_agent_tools_are_invokable(
     alpha_id = alpha_list["items"][0]["id"]
     await _run_tool(registry, context, called, "alpha_detail", {"alpha_id": alpha_id})
     alpha_bench = await _run_tool(
-        registry, context, called, "alpha_bench", {"alpha_id": alpha_id, "symbols": ["600519"]}
+        registry,
+        context,
+        called,
+        "alpha_bench",
+        {"alpha_id": alpha_id, "symbols": ["600519"]},
     )
     await _run_tool(
         registry,
@@ -419,11 +488,17 @@ async def test_all_enabled_research_agent_tools_are_invokable(
         {"symbols": ["600519", "000001"], "window": 4},
     )
 
-    await _run_tool(registry, context, called, "compact_context", {"reason": "coverage"})
+    await _run_tool(
+        registry, context, called, "compact_context", {"reason": "coverage"}
+    )
     await _run_tool(registry, context, called, "session_search", {"query": "coverage"})
-    await _run_tool(registry, context, called, "check_background", {"job_id": alpha_bench["job_id"]})
+    await _run_tool(
+        registry, context, called, "check_background", {"job_id": alpha_bench["job_id"]}
+    )
 
-    await _run_tool(registry, context, called, "factor_analysis", {"returns": [0.01, -0.02, 0.03]})
+    await _run_tool(
+        registry, context, called, "factor_analysis", {"returns": [0.01, -0.02, 0.03]}
+    )
     backtest = await _run_tool(
         registry,
         context,
@@ -436,11 +511,25 @@ async def test_all_enabled_research_agent_tools_are_invokable(
         context,
         called,
         "options_pricing",
-        {"spot": 100, "strike": 105, "volatility": 0.2, "time_to_expiry": 0.5, "rate": 0.02},
+        {
+            "spot": 100,
+            "strike": 105,
+            "volatility": 0.2,
+            "time_to_expiry": 0.5,
+            "rate": 0.02,
+        },
     )
-    await _run_tool(registry, context, called, "pattern", {"prices": [10, 11, 10.5, 12]})
+    await _run_tool(
+        registry, context, called, "pattern", {"prices": [10, 11, 10.5, 12]}
+    )
 
-    await _run_tool(registry, context, called, "read_file", {"text": "inline file", "filename": "file.txt"})
+    await _run_tool(
+        registry,
+        context,
+        called,
+        "read_file",
+        {"text": "inline file", "filename": "file.txt"},
+    )
     await _run_tool(
         registry,
         context,
@@ -448,8 +537,12 @@ async def test_all_enabled_research_agent_tools_are_invokable(
         "read_document",
         {"text": "inline document", "filename": "memo.md"},
     )
-    await _run_tool(registry, context, called, "read_url", {"url": "https://example.com"})
-    await _run_tool(registry, context, called, "web_search", {"query": "TradingAgents", "limit": 2})
+    await _run_tool(
+        registry, context, called, "read_url", {"url": "https://example.com"}
+    )
+    await _run_tool(
+        registry, context, called, "web_search", {"query": "TradingAgents", "limit": 2}
+    )
 
     goal = await _run_tool(
         registry,
@@ -477,7 +570,9 @@ async def test_all_enabled_research_agent_tools_are_invokable(
 
     await _run_tool(registry, context, called, "load_skill", {"name": "web-reader"})
     await _run_tool(registry, context, called, "trading_connections", {})
-    await _run_tool(registry, context, called, "trading_select_connection", {"broker": "paper"})
+    await _run_tool(
+        registry, context, called, "trading_select_connection", {"broker": "paper"}
+    )
     await _run_tool(registry, context, called, "trading_check", {"broker": "paper"})
     await _run_tool(registry, context, called, "trading_account", {"broker": "paper"})
     await _run_tool(registry, context, called, "trading_positions", {"broker": "paper"})
@@ -518,7 +613,11 @@ async def test_all_enabled_research_agent_tools_are_invokable(
         context,
         called,
         "render_shadow_report",
-        {"strategy_id": strategy["strategy_id"], "backtest_id": shadow_backtest["backtest_id"], "summary": "ok"},
+        {
+            "strategy_id": strategy["strategy_id"],
+            "backtest_id": shadow_backtest["backtest_id"],
+            "summary": "ok",
+        },
     )
     await _run_tool(
         registry,
@@ -542,7 +641,9 @@ async def test_all_enabled_research_agent_tools_are_invokable(
         {"universe": "hs300", "factors": ["momentum"], "sample_size": 10},
     )
 
-    await _run_tool(registry, context, called, "remember", {"content": "coverage memory"})
+    await _run_tool(
+        registry, context, called, "remember", {"content": "coverage memory"}
+    )
     hypothesis = await _run_tool(
         registry,
         context,
@@ -558,7 +659,9 @@ async def test_all_enabled_research_agent_tools_are_invokable(
         "update_hypothesis",
         {"hypothesis_id": hypothesis_id, "status": "validated"},
     )
-    await _run_tool(registry, context, called, "search_hypotheses", {"query": "Coverage"})
+    await _run_tool(
+        registry, context, called, "search_hypotheses", {"query": "Coverage"}
+    )
     await _run_tool(
         registry,
         context,
@@ -612,7 +715,9 @@ async def test_web_get_uses_httpx_proxy_keyword(monkeypatch):
     class FakeAsyncClient:
         def __init__(self, **kwargs: Any):
             if "proxies" in kwargs:
-                raise TypeError("AsyncClient.__init__() got an unexpected keyword argument 'proxies'")
+                raise TypeError(
+                    "AsyncClient.__init__() got an unexpected keyword argument 'proxies'"
+                )
             calls.append(kwargs)
 
         async def __aenter__(self):
@@ -628,7 +733,9 @@ async def test_web_get_uses_httpx_proxy_keyword(monkeypatch):
                 request=httpx.Request("GET", url),
             )
 
-    monkeypatch.setattr(files_module, "_web_proxy_candidates", lambda: ["http://127.0.0.1:7897"])
+    monkeypatch.setattr(
+        files_module, "_web_proxy_candidates", lambda: ["http://127.0.0.1:7897"]
+    )
     monkeypatch.setattr(files_module.httpx, "AsyncClient", FakeAsyncClient)
 
     response = await files_module._web_get("https://example.com")
