@@ -8,7 +8,7 @@ export interface ResearchTimelineMessage {
 
 const defaultMessages: ResearchTimelineMessage[] = [
   { role: "user", content: "分析储能产业链里估值和资金面更健康的公司" },
-  { role: "assistant", content: "已读取筛选结果、单股分析和 Alpha artifact，正在汇总证据。" }
+  { role: "assistant", content: "已读取筛选结果、个股分析和 Alpha artifact，正在汇总证据。" }
 ].map((message) => ({ ...message, id: message.role }))
 
 export function MessageTimeline({ messages = defaultMessages }: { messages?: ResearchTimelineMessage[] }) {

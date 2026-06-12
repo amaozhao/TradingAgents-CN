@@ -10,6 +10,9 @@ from .stage import stock_stage_title
 def _direct_tool_content(result: dict[str, Any]) -> str:
     status = str(result.get("status") or "unknown")
     tool_name = str(result.get("tool") or "tool")
+    if status == "error":
+        message = result.get("error") or result.get("error_message") or "工具调用失败。"
+        return f"{tool_name} 调用失败：{message}"
     if status == "config_required":
         return str(
             result.get("reason") or result.get("instruction") or "需要补充配置。"
@@ -37,6 +40,13 @@ def _direct_tool_content(result: dict[str, Any]) -> str:
     if result.get("task_id"):
         return f"{tool_name} 已提交，当前状态：{status}。任务 ID：{result['task_id']}"
     return str(result.get("message") or f"{tool_name} 已返回状态：{status}。")
+
+
+def _is_failed_direct_tool_result(result: dict[str, Any]) -> bool:
+    status = str(result.get("status") or "").lower()
+    if status in {"error", "failed"}:
+        return True
+    return bool(result.get("error") or result.get("error_message"))
 
 
 class DirectToolMixin:
@@ -132,7 +142,7 @@ class DirectToolMixin:
                 stage="wait_bounded",
                 status="running",
                 progress=int(result.get("progress") or 0),
-                message=str(result.get("message") or "单股分析仍在执行。"),
+                message=str(result.get("message") or "个股分析仍在执行。"),
                 result=result,
             )
             await self._append_event(
@@ -153,7 +163,7 @@ class DirectToolMixin:
                 stage="agent_summary",
                 status="completed",
                 progress=100,
-                message=str(result.get("message") or "单股分析已完成。"),
+                message=str(result.get("message") or "个股分析已完成。"),
                 result=result,
             )
             await self._append_event(
@@ -168,14 +178,17 @@ class DirectToolMixin:
                 },
             )
             return
-        if status in {"failed", "cancelled"}:
+        if status in {"error", "failed", "cancelled"}:
             await self._append_stock_stage_event(
                 context=context,
                 stage="analysis_task",
-                status="failed" if status == "failed" else "skipped",
+                status="skipped" if status == "cancelled" else "failed",
                 progress=int(result.get("progress") or 0),
                 message=str(
-                    result.get("message") or result.get("error_message") or status
+                    result.get("message")
+                    or result.get("error_message")
+                    or result.get("error")
+                    or status
                 ),
                 result=result,
             )
@@ -187,7 +200,7 @@ class DirectToolMixin:
                     "attempt_id": context.request_id,
                     "task_id": result.get("task_id"),
                     "status": status,
-                    "error": result.get("error_message"),
+                    "error": result.get("error_message") or result.get("error"),
                 },
             )
             return
@@ -196,7 +209,7 @@ class DirectToolMixin:
             stage="analysis_task",
             status="running",
             progress=int(result.get("progress") or 0),
-            message=str(result.get("message") or "单股分析任务已提交。"),
+            message=str(result.get("message") or "个股分析任务已提交。"),
             result=result,
         )
 
@@ -245,6 +258,7 @@ class DirectToolMixin:
             if artifact_id
         ]
         final_content = _direct_tool_content(tool_result)
+        tool_failed = _is_failed_direct_tool_result(tool_result)
         assistant_message = await self._append_message(
             session_id=session_id,
             user_id=principal.user_id,
@@ -276,18 +290,20 @@ class DirectToolMixin:
             await self._append_event(
                 session_id=session_id,
                 user_id=principal.user_id,
-                event_type="task_completed",
+                event_type="task_failed" if tool_failed else "task_completed",
                 payload={
-                    "finish_reason": "direct_tool",
+                    "finish_reason": "direct_tool_failed" if tool_failed else "direct_tool",
                     "artifact_ids": linked_artifact_ids,
                     "task_ids": linked_task_ids,
                     "attempt_id": attempt_id,
+                    "error": tool_result.get("error") or tool_result.get("error_message"),
                 },
             )
         return {
+            "status": "failed" if tool_failed else "completed",
             "content": final_content,
             "message_id": assistant_message["message_id"],
-            "finish_reason": "direct_tool",
+            "finish_reason": "direct_tool_failed" if tool_failed else "direct_tool",
             "artifact_ids": linked_artifact_ids,
             "task_ids": linked_task_ids,
             "tool_result": tool_result,

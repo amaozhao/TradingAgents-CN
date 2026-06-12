@@ -26,9 +26,9 @@ async def submit_single_analysis(
     background_tasks: BackgroundTasks,
     user: dict = Depends(get_current_user),
 ):
-    """提交单股分析任务 - 只入队，不在 FastAPI 进程内执行分析"""
+    """提交个股分析任务 - 只入队，不在 FastAPI 进程内执行分析"""
     try:
-        logger.info("🎯 收到单股分析请求")
+        logger.info("🎯 收到个股分析请求")
         logger.info(f"👤 用户信息: {user}")
         logger.info(f"📊 请求数据: {request}")
         _ = background_tasks
@@ -83,7 +83,7 @@ async def submit_single_analysis(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ 提交单股分析任务失败: {e}")
+        logger.error(f"❌ 提交个股分析任务失败: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 

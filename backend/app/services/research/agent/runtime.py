@@ -259,9 +259,10 @@ class ResearchAgentRuntime:
                     attempt_id=attempt_id,
                     persist_user_message=False,
                 )
+                direct_status = str(loop_result.get("status") or "completed")
                 result = {
                     **loop_result,
-                    "status": "completed",
+                    "status": direct_status,
                     "job_id": job_id,
                     "intent": AgentIntent.STOCK_RESEARCH.value,
                     "reason": "structured_metadata_direct_tool",
@@ -277,11 +278,24 @@ class ResearchAgentRuntime:
                         "job_id": job_id,
                         "attempt_id": attempt_id,
                     }
-                await self.job_service.mark_completed(job_id, result)
-                if attempt_id:
-                    await self.attempt_service.mark_completed(
-                        attempt_id, principal.user_id, result
+                if direct_status == "failed":
+                    error = str(
+                        loop_result.get("error")
+                        or (loop_result.get("tool_result") or {}).get("error")
+                        or loop_result.get("content")
+                        or "direct tool failed"
                     )
+                    await self.job_service.mark_failed(job_id, error)
+                    if attempt_id:
+                        await self.attempt_service.mark_failed(
+                            attempt_id, principal.user_id, error
+                        )
+                else:
+                    await self.job_service.mark_completed(job_id, result)
+                    if attempt_id:
+                        await self.attempt_service.mark_completed(
+                            attempt_id, principal.user_id, result
+                        )
                 return result
             decision = classify_agent_intent(user_message)
             if decision.intent in {AgentIntent.CHAT, AgentIntent.STOCK_RESEARCH}:

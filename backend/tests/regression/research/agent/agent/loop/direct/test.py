@@ -133,6 +133,16 @@ async def _fake_web_search(_context, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _fake_stock_analysis(_context, payload: dict[str, Any]) -> dict[str, Any]:
+    if payload.get("status_override") == "error":
+        return {
+            "tool": "stock_analysis",
+            "mode": payload.get("mode") or "single",
+            "status": "error",
+            "accepted": False,
+            "symbol": payload.get("symbol"),
+            "market_type": payload.get("market_type"),
+            "error": "Error code: 500 - input new_sensitive (1026)",
+        }
     if payload.get("status_override") == "failed":
         return {
             "tool": "stock_analysis",
@@ -160,7 +170,7 @@ async def _fake_stock_analysis(_context, payload: dict[str, Any]) -> dict[str, A
             "progress": 40,
             "task_url": "/tasks?task_id=task-600519",
             "report_url": "/reports/view/task-600519",
-            "message": "单股分析任务仍在执行，已返回任务链接。",
+            "message": "个股分析任务仍在执行，已返回任务链接。",
         }
     result = {
         "tool": "stock_analysis",
@@ -172,7 +182,7 @@ async def _fake_stock_analysis(_context, payload: dict[str, Any]) -> dict[str, A
         "market_type": payload.get("market_type"),
         "task_url": "/tasks?task_id=task-600519",
         "report_url": "/reports/view/task-600519",
-        "message": "单股分析任务已提交。",
+        "message": "个股分析任务已提交。",
     }
     if payload.get("include_stage_plan"):
         result["stage_plan"] = [
@@ -272,13 +282,13 @@ async def test_structured_metadata_direct_invocation_bypasses_model(
     queued = await runtime.enqueue_user_prompt(
         principal=_principal(),
         session_id=session["session_id"],
-        user_message="单股分析：600519 / A股",
+        user_message="个股分析：600519 / A股",
         metadata=metadata,
     )
     result = await runtime.run_queued_user_prompt(
         principal=_principal(),
         session_id=session["session_id"],
-        user_message="单股分析：600519 / A股",
+        user_message="个股分析：600519 / A股",
         job_id=queued["job_id"],
         attempt_id=queued["attempt_id"],
         metadata=metadata,
@@ -313,7 +323,7 @@ async def test_structured_metadata_direct_invocation_bypasses_model(
     assert stage_events[0]["payload"]["status"] == "running"
     assert stage_events[0]["payload"]["progress"] == 5
     assert stage_events[0]["payload"]["title"] == "参数校验"
-    assert stage_events[1]["payload"]["title"] == "单股分析任务"
+    assert stage_events[1]["payload"]["title"] == "个股分析任务"
     assert stage_events[1]["payload"]["task_id"] == "task-600519"
     assert stage_events[1]["payload"]["report_url"] == "/reports/view/task-600519"
     assert all(event["payload"]["started_at"] for event in stage_events)
@@ -345,13 +355,13 @@ async def test_structured_metadata_direct_invocation_persists_stage_plan(
     queued = await runtime.enqueue_user_prompt(
         principal=_principal(),
         session_id=session["session_id"],
-        user_message="单股分析：600519 / A股",
+        user_message="个股分析：600519 / A股",
         metadata=metadata,
     )
     await runtime.run_queued_user_prompt(
         principal=_principal(),
         session_id=session["session_id"],
-        user_message="单股分析：600519 / A股",
+        user_message="个股分析：600519 / A股",
         job_id=queued["job_id"],
         attempt_id=queued["attempt_id"],
         metadata=metadata,
@@ -385,18 +395,33 @@ async def test_structured_metadata_direct_invocation_persists_stage_plan(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("status_override", "terminal_event", "expected_content", "forbidden_content"),
+    (
+        "status_override",
+        "terminal_event",
+        "expected_status",
+        "expected_content",
+        "forbidden_content",
+    ),
     [
+        (
+            "error",
+            "task_failed",
+            "failed",
+            "input new_sensitive",
+            "工具已完成",
+        ),
         (
             "failed",
             "stock_analysis.failed",
+            "failed",
             "行情数据源无可用历史数据。",
             "工具已完成",
         ),
         (
             "timed_out",
             "stock_analysis.timed_out",
-            "单股分析任务仍在执行，已返回任务链接。",
+            "completed",
+            "个股分析任务仍在执行，已返回任务链接。",
             "工具已完成",
         ),
     ],
@@ -406,6 +431,7 @@ async def test_structured_metadata_direct_invocation_preserves_non_completed_sta
     monkeypatch,
     status_override,
     terminal_event,
+    expected_status,
     expected_content,
     forbidden_content,
 ):
@@ -429,13 +455,13 @@ async def test_structured_metadata_direct_invocation_preserves_non_completed_sta
     queued = await runtime.enqueue_user_prompt(
         principal=_principal(),
         session_id=session["session_id"],
-        user_message="单股分析：600519 / A股",
+        user_message="个股分析：600519 / A股",
         metadata=metadata,
     )
     result = await runtime.run_queued_user_prompt(
         principal=_principal(),
         session_id=session["session_id"],
-        user_message="单股分析：600519 / A股",
+        user_message="个股分析：600519 / A股",
         job_id=queued["job_id"],
         attempt_id=queued["attempt_id"],
         metadata=metadata,
@@ -447,12 +473,18 @@ async def test_structured_metadata_direct_invocation_preserves_non_completed_sta
         if event["event_type"] == "stock_analysis.stage"
     ]
 
+    assert result["status"] == expected_status
     assert expected_content in result["content"]
     assert forbidden_content not in result["content"]
     assert terminal_event in event_types
     assert "stock_analysis.completed" not in event_types
     assert stage_events[-1]["stage"] in {"analysis_task", "wait_bounded"}
     assert stage_events[-1]["status"] in {"failed", "running"}
+    if expected_status == "failed":
+        assert "job_failed" in event_types
+        assert "attempt.failed" in event_types
+        assert "job_completed" not in event_types
+        assert "attempt.completed" not in event_types
 
 
 @pytest.mark.asyncio

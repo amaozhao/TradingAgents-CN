@@ -69,12 +69,12 @@ export function StockReplayCard({
   runStatus?: StockRunStatus
 }) {
   return (
-    <section className="rounded-lg border bg-background p-4 text-sm shadow-sm" aria-label="单股分析历史配置">
+    <section className="rounded-lg border bg-background p-4 text-sm shadow-sm" aria-label="个股分析历史配置">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <BarChart3 className="size-4 text-primary" />
-            <h2 className="text-sm font-semibold">单股分析</h2>
+            <h2 className="text-sm font-semibold">个股分析</h2>
           </div>
           <p className="mt-1 break-words text-xs text-muted-foreground">{stockPayloadSummary(payload)}</p>
         </div>
@@ -222,12 +222,12 @@ export function StockConfigCard({
   }
 
   return (
-    <section className="rounded-lg border bg-background p-4 shadow-sm" aria-label="单股分析配置">
+    <section className="rounded-lg border bg-background p-4 shadow-sm" aria-label="个股分析配置">
       <div className="grid gap-3">
         <div className="min-w-0 pr-2">
           <div className="flex items-center gap-2">
             <BarChart3 className="size-4 text-primary" />
-            <h2 className="text-sm font-semibold">单股分析</h2>
+            <h2 className="text-sm font-semibold">个股分析</h2>
           </div>
           <p className="mt-1 break-words text-xs text-muted-foreground">{summary}</p>
         </div>

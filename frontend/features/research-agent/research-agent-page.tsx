@@ -9,7 +9,7 @@ import { StockConfigCard, StockReplayCard, type StockPayload, type StockRunStatu
 import { researchAgentApi, type LiveStatus, type ParsedResearchStreamEvent, type ResearchGoal, type ResearchSession } from "@/libs/api/research-agent"
 import { useAppStore } from "@/stores/app-store"
 
-import { attemptResultContent, createGoalDraft, eventContent, eventFailureContent, eventToolStatus, finalAnswerFromEvents, failureMessageFromEvents, latestActiveAttempt, latestAttempt, mergeGoalEvent, messagesFromApi, normalizePersistedEvent, nowId, previewFromEventData, stockLinksFromEventData, stockPayloadFromMetadata, stockStageId, stockStageTitle, toolMessageId, toolsFromEvents } from "@/features/agent/event"
+import { attemptResultContent, createGoalDraft, eventContent, eventFailureContent, eventToolStatus, finalAnswerFromEvents, failureMessageFromEvents, initialStockWorkflowTools, latestActiveAttempt, latestAttempt, mergeGoalEvent, messagesFromApi, normalizePersistedEvent, nowId, previewFromEventData, stockLinksFromEventData, stockPayloadFromMetadata, stockStageId, stockStageTitle, toolMessageId, toolsFromEvents } from "@/features/agent/event"
 import { AGENT_COMPLETION_POLL_TIMEOUT_MS, AGENT_TEXT, COMPOSER_MAX_HEIGHT, COMPOSER_MIN_HEIGHT } from "@/features/agent/text"
 import type { AgentMessage, ToolState } from "@/features/agent/types"
 
@@ -61,7 +61,6 @@ export function ResearchAgentPage() {
     void researchAgentApi.listSessions().then((response) => {
       const loaded = response.data || []
       setSessions(loaded)
-      setActiveSessionId((current) => current || loaded[0]?.session_id || null)
     }).catch(() => setSessions([]))
   }, [])
 
@@ -499,7 +498,7 @@ export function ResearchAgentPage() {
     setCancelRequested(false)
     runFinishedRef.current = false
     setRunning(true)
-    setTools([])
+    setTools(metadata.tool_name === "stock_analysis" ? initialStockWorkflowTools(metadata.tool_arguments) : [])
     setMessages((current) => [...current, { id: nowId("user"), type: "user", content: finalPrompt, timestamp: Date.now() }])
     requestAnimationFrame(scrollToBottom)
 
@@ -550,14 +549,14 @@ export function ResearchAgentPage() {
   }
 
   function fillComposerFromStockSummary(summary: string) {
-    setInput(`请进行单股分析：${summary}`)
+    setInput(`请进行个股分析：${summary}`)
     setComposerMode("chat")
     requestAnimationFrame(() => composerRef.current?.focus())
   }
 
   async function runStockAnalysis(summary: string, payload: StockPayload) {
     setStockConfigSubmitted(true)
-    await runPrompt(`单股分析：${summary}`, {
+    await runPrompt(`个股分析：${summary}`, {
       mode: "stock_analysis_workflow",
       tool_name: "stock_analysis",
       tool_arguments: payload

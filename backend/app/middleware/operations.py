@@ -187,7 +187,7 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
         # 根据路径生成更具体的描述
         if "/analysis/" in path:
             if "single" in path:
-                return f"{action_verb}单股分析任务"
+                return f"{action_verb}个股分析任务"
             elif "batch" in path:
                 return f"{action_verb}批量分析任务"
             else:

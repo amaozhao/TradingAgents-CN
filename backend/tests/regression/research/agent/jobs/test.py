@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
+from langchain_core.messages import HumanMessage
 
 from app.services.research.agent import events as events_module
 from app.services.research.agent import jobs as jobs_module
@@ -167,6 +169,63 @@ async def test_job_state_transitions_persist_events(fake_db):
         "job_running",
         "job_completed",
     ]
+
+
+@pytest.mark.asyncio
+async def test_job_and_attempt_completion_results_are_json_safe(fake_db):
+    principal = _principal(USER_A)
+    attempt_service = ResearchAttemptService()
+    job_service = ResearchJobService()
+    session_id = "session-a"
+    result = {
+        "status": "completed",
+        "messages": [HumanMessage(content="分析 000938", id="message-1")],
+    }
+
+    attempt = await attempt_service.create(
+        principal=principal,
+        session_id=session_id,
+        user_message="分析 000938",
+    )
+    job = await job_service.enqueue(
+        principal=principal,
+        task_type="agent_research",
+        resource_id=session_id,
+        payload={"prompt": "分析 000938"},
+        session_id=session_id,
+        attempt_id=attempt["attempt_id"],
+    )
+
+    await job_service.mark_completed(job["job_id"], result)
+    await attempt_service.mark_completed(attempt["attempt_id"], USER_A["id"], result)
+
+    completed_job = await job_service.get(job["job_id"], USER_A["id"])
+    completed_attempt = await attempt_service.get(attempt["attempt_id"], USER_A["id"])
+    events = await ResearchEventService().list_after(
+        session_id=session_id,
+        user_id=USER_A["id"],
+        after_event_id=0,
+    )
+
+    json.dumps(completed_job["result"], ensure_ascii=False)
+    json.dumps(completed_attempt["result"], ensure_ascii=False)
+    assert completed_job["result"]["messages"][0]["content"] == "分析 000938"
+    assert completed_job["result"]["messages"][0]["id"] == "message-1"
+    assert completed_job["result"]["messages"][0]["type"] == "human"
+    assert completed_attempt["result"]["messages"][0]["content"] == "分析 000938"
+    assert completed_attempt["result"]["messages"][0]["id"] == "message-1"
+    assert completed_attempt["result"]["messages"][0]["type"] == "human"
+    completed_payloads = [
+        event["payload"]["result"]
+        for event in events
+        if event["event_type"] in {"job_completed", "attempt.completed"}
+    ]
+    assert completed_payloads
+    for payload in completed_payloads:
+        json.dumps(payload, ensure_ascii=False)
+        assert payload["messages"][0]["content"] == "分析 000938"
+        assert payload["messages"][0]["id"] == "message-1"
+        assert payload["messages"][0]["type"] == "human"
 
 
 @pytest.mark.asyncio

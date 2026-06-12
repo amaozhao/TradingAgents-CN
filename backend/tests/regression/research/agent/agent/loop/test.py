@@ -158,7 +158,7 @@ async def _fake_stock_analysis(_context, payload: dict[str, Any]) -> dict[str, A
             "progress": 40,
             "task_url": "/tasks?task_id=task-600519",
             "report_url": "/reports/view/task-600519",
-            "message": "单股分析任务仍在执行，已返回任务链接。",
+            "message": "个股分析任务仍在执行，已返回任务链接。",
         }
     result = {
         "tool": "stock_analysis",
@@ -170,7 +170,7 @@ async def _fake_stock_analysis(_context, payload: dict[str, Any]) -> dict[str, A
         "market_type": payload.get("market_type"),
         "task_url": "/tasks?task_id=task-600519",
         "report_url": "/reports/view/task-600519",
-        "message": "单股分析任务已提交。",
+        "message": "个股分析任务已提交。",
     }
     if payload.get("include_stage_plan"):
         result["stage_plan"] = [
@@ -223,7 +223,21 @@ def _stock_registry() -> ResearchToolRegistry:
                     },
                 },
                 handler=_fake_stock_analysis,
-            )
+            ),
+            ResearchTool(
+                name="single_stock_analysis",
+                description="Submit a single-stock analysis workflow.",
+                permission=WEB_SEARCH,
+                schema={
+                    "type": "object",
+                    "properties": {
+                        "mode": {"type": "string"},
+                        "symbol": {"type": "string"},
+                        "market_type": {"type": "string"},
+                    },
+                },
+                handler=_fake_stock_analysis,
+            ),
         ]
     )
 
@@ -255,10 +269,10 @@ def test_prompt_uses_filtered_registry_tools_only():
     assert "single_stock_analysis" in prompt
     assert "stock_analysis_status" in prompt
     assert "stock_analysis_report" in prompt
-    assert "stock_analysis submits a single-stock analysis" in prompt
-    assert "original single-stock LangGraph DAG remains only a baseline" in prompt
-    assert "Do not submit the DAG queue" in prompt
-    assert "migrated Agent-native workflow directly" in prompt
+    assert "stock_analysis runs the Agent single-stock DAG-parity workflow" in prompt
+    assert "original TradingAgents DAG nodes" in prompt
+    assert "Do not submit the old DAG queue for new Agent single-stock requests" in prompt
+    assert "does not use the simplified native workflow" in prompt
     assert "report compatible with the existing report pages" in prompt
     assert "market_data_lookup" in prompt
     assert "admin_config_write" not in prompt
@@ -335,7 +349,7 @@ async def test_tool_calls_create_tool_events_and_tool_messages(fake_db):
         ]
     )
 
-    await ResearchAgentLoop(model_client=client).run(
+    await ResearchAgentLoop(model_client=client, registry=_stock_registry()).run(
         principal=_principal(),
         session_id=session["session_id"],
         user_message="调用工具分析",
@@ -371,7 +385,7 @@ async def test_tool_events_are_scoped_to_attempt_id(fake_db):
         ]
     )
 
-    await ResearchAgentLoop(model_client=client).run(
+    await ResearchAgentLoop(model_client=client, registry=_stock_registry()).run(
         principal=_principal(),
         session_id=session["session_id"],
         user_message="调用工具分析",
@@ -412,7 +426,7 @@ async def test_tool_call_finish_reason_continues_react_loop(fake_db):
         ]
     )
 
-    result = await ResearchAgentLoop(model_client=client).run(
+    result = await ResearchAgentLoop(model_client=client, registry=_stock_registry()).run(
         principal=_principal(),
         session_id=session["session_id"],
         user_message="调用工具后继续回答",

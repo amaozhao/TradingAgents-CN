@@ -47,6 +47,19 @@ def _context() -> ToolExecutionContext:
     return ToolExecutionContext(principal=principal, session_id="session-1")
 
 
+def _context_with_event_collector(events: list[dict[str, Any]]) -> ToolExecutionContext:
+    principal = ResearchPrincipal.from_user(USER, session_id="session-1")
+
+    async def event_emitter(event: dict[str, Any]):
+        events.append(event)
+
+    return ToolExecutionContext(
+        principal=principal,
+        session_id="session-1",
+        event_emitter=event_emitter,
+    )
+
+
 class WorkflowCalls(list[dict[str, Any]]):
     service: FakeAnalysisService
 
@@ -85,10 +98,13 @@ def _patch_native_workflow(monkeypatch):
         )
 
     class FakeWorkflow:
-        def __init__(self, workflow_context):
+        def __init__(self, workflow_context, *, on_node_record=None):
             self.context = workflow_context
+            self.on_node_record = on_node_record
 
         def run(self):
+            if self.on_node_record:
+                self.on_node_record("Market Analyst", None)
             return SimpleNamespace(
                 status="completed",
                 source="agent_workflow_dag_parity",
@@ -137,6 +153,7 @@ def _patch_native_workflow(monkeypatch):
             "reports": {"final_trade_decision": state["final_trade_decision"]},
             "decision": {"action": "持有"},
             "source": "agent_workflow_dag_parity",
+            "tokens_used": 0,
         }
 
     async def persist_report(*args, **kwargs):
@@ -160,6 +177,15 @@ def _patch_native_workflow(monkeypatch):
     monkeypatch.setattr(stock_module, "persist_stock_workflow_report", persist_report)
     calls.service = service
     return calls
+
+
+class FakeUsageService:
+    def __init__(self):
+        self.records: list[Any] = []
+
+    async def add_usage_record(self, record):
+        self.records.append(record)
+        return True
 
 
 @pytest.mark.asyncio
@@ -262,6 +288,157 @@ async def test_stock_analysis_tool_runs_single_mode_through_native_workflow(
     assert call["context"].principal.user_id == "user-a"
     assert call["symbol"] == "600519"
     assert call["parameters"].selected_analysts == ["market", "fundamentals"]
+
+
+@pytest.mark.asyncio
+async def test_stock_analysis_tool_runs_workflow_off_event_loop(monkeypatch):
+    _patch_native_workflow(monkeypatch)
+    to_thread_calls = []
+
+    async def fake_to_thread(func, *args, **kwargs):
+        to_thread_calls.append(func)
+        return func(*args, **kwargs)
+
+    monkeypatch.setattr(stock_module, "to_thread", fake_to_thread, raising=False)
+    monkeypatch.setattr(
+        stock_module,
+        "get_provider_and_url_by_model_sync",
+        lambda model: {
+            "provider": "qwen",
+            "backend_url": "https://example.test/v1",
+            "api_key": "key",
+        },
+        raising=False,
+    )
+
+    result = (
+        await ResearchToolRegistry.default()
+        .get("stock_analysis")
+        .run(
+            _context(),
+            {
+                "mode": "single",
+                "symbol": "600519",
+                "market_type": "A股",
+                "research_depth": "标准",
+                "selected_analysts": ["market"],
+                "quick_analysis_model": "qwen-turbo",
+                "deep_analysis_model": "qwen-max",
+                "wait_for_completion": False,
+            },
+        )
+    )
+
+    assert result["status"] == "completed"
+    assert to_thread_calls
+
+
+@pytest.mark.asyncio
+async def test_stock_analysis_tool_emits_stage_events_while_workflow_runs(monkeypatch):
+    _patch_native_workflow(monkeypatch)
+    emitted_events: list[dict[str, Any]] = []
+    monkeypatch.setattr(
+        stock_module,
+        "get_provider_and_url_by_model_sync",
+        lambda model: {
+            "provider": "qwen",
+            "backend_url": "https://example.test/v1",
+            "api_key": "key",
+        },
+        raising=False,
+    )
+
+    result = (
+        await ResearchToolRegistry.default()
+        .get("stock_analysis")
+        .run(
+            _context_with_event_collector(emitted_events),
+            {
+                "mode": "single",
+                "symbol": "600519",
+                "market_type": "A股",
+                "research_depth": "标准",
+                "selected_analysts": ["market"],
+                "quick_analysis_model": "qwen-turbo",
+                "deep_analysis_model": "qwen-max",
+                "wait_for_completion": False,
+            },
+        )
+    )
+
+    assert result["status"] == "completed"
+    assert any(
+        event["stage"] == "validate_input" and event["status"] == "completed"
+        for event in emitted_events
+    )
+    assert any(
+        event["stage"] == "market_analysis" and event["status"] == "completed"
+        for event in emitted_events
+    )
+
+
+@pytest.mark.asyncio
+async def test_stock_analysis_tool_records_token_usage(monkeypatch):
+    _patch_native_workflow(monkeypatch)
+    usage_service = FakeUsageService()
+    monkeypatch.setattr(stock_module, "usage_statistics_service", usage_service)
+    monkeypatch.setattr(
+        stock_module,
+        "_load_active_system_config_doc",
+        lambda: {
+            "llm_configs": [
+                {
+                    "model_name": "qwen-max",
+                    "provider": "qwen",
+                    "enabled": True,
+                    "api_key": "key",
+                    "input_price_per_1k": 0.001,
+                    "output_price_per_1k": 0.002,
+                    "currency": "CNY",
+                }
+            ]
+        },
+        raising=False,
+    )
+    monkeypatch.setattr(
+        stock_module,
+        "get_provider_and_url_by_model_sync",
+        lambda model: {
+            "provider": "qwen",
+            "backend_url": "https://example.test/v1",
+            "api_key": "key",
+        },
+        raising=False,
+    )
+
+    result = (
+        await ResearchToolRegistry.default()
+        .get("stock_analysis")
+        .run(
+            _context(),
+            {
+                "mode": "single",
+                "symbol": "600519",
+                "market_type": "A股",
+                "research_depth": "标准",
+                "selected_analysts": ["market"],
+                "quick_analysis_model": "qwen-turbo",
+                "deep_analysis_model": "qwen-max",
+                "wait_for_completion": False,
+            },
+        )
+    )
+
+    assert result["accepted"] is True
+    [record] = usage_service.records
+    assert record.provider == "qwen"
+    assert record.model_name == "qwen-max"
+    assert record.session_id == "task-600519"
+    assert record.analysis_type == "agent_stock_analysis"
+    assert record.stock_code == "600519"
+    assert record.input_tokens > 0
+    assert record.output_tokens > 0
+    assert record.cost > 0
 
 
 @pytest.mark.asyncio

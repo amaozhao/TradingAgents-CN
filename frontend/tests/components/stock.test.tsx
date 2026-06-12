@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { toolsFromEvents } from "@/features/agent/event"
+import { initialStockWorkflowTools, toolsFromEvents } from "@/features/agent/event"
 import { defaultStockModels, enabledModels } from "@/features/research/models"
 import {
   createStockDraft,
@@ -165,6 +165,24 @@ describe("stock analysis shared frontend logic", () => {
     expect(tool?.taskId).toBe("task-600519")
   })
 
+  it("builds only the active initial stock workflow step before SSE events arrive", () => {
+    const tools = initialStockWorkflowTools({
+      mode: "single",
+      symbol: "000938",
+      market_type: "A股",
+      selected_analysts: ["market", "fundamentals", "news"],
+      include_sentiment: true,
+      include_risk: true
+    })
+
+    expect(tools).toHaveLength(1)
+    expect(tools[0]).toMatchObject({
+      id: "stock_analysis:validate_input",
+      title: "参数校验",
+      status: "running"
+    })
+  })
+
   it("uses the browser local date for default analysis dates", () => {
     expect(localDateKey(new Date(2026, 5, 11, 0, 30))).toBe("2026-06-11")
   })
@@ -313,7 +331,7 @@ describe("ResearchAgentPage stock analysis", () => {
     render(<ResearchAgentPage />)
 
     await user.click(await screen.findByRole("button", { name: "更多选项" }))
-    await user.click(screen.getByRole("button", { name: /单股分析/ }))
+    await user.click(screen.getByRole("button", { name: /个股分析/ }))
     await screen.findByText("通义千问 Turbo (qwen-turbo)")
     await user.type(screen.getByPlaceholderText("600519 / 0700.HK / AAPL"), "600519")
     await user.type(screen.getByPlaceholderText("例如：重点解释估值和风险"), "重点解释估值")
@@ -321,7 +339,7 @@ describe("ResearchAgentPage stock analysis", () => {
 
     await waitFor(() => expect(researchAgentApi.appendMessage).toHaveBeenCalled())
     const payload = vi.mocked(researchAgentApi.appendMessage).mock.calls.at(-1)?.[1]
-    expect(payload?.content).toContain("单股分析")
+    expect(payload?.content).toContain("个股分析")
     expect(payload?.metadata).toMatchObject({
       mode: "stock_analysis_workflow",
       tool_name: "stock_analysis",
@@ -350,14 +368,14 @@ describe("ResearchAgentPage stock analysis", () => {
     render(<ResearchAgentPage />)
 
     await user.click(await screen.findByRole("button", { name: "更多选项" }))
-    await user.click(screen.getByRole("button", { name: /单股分析/ }))
-    expect(await screen.findByLabelText("单股分析配置")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: /个股分析/ }))
+    expect(await screen.findByLabelText("个股分析配置")).toBeInTheDocument()
     expect(researchAgentApi.appendMessage).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole("button", { name: "更多选项" }))
-    await user.click(screen.getByRole("button", { name: /单股分析/ }))
+    await user.click(screen.getByRole("button", { name: /个股分析/ }))
 
-    expect(screen.getAllByLabelText("单股分析配置")).toHaveLength(1)
+    expect(screen.getAllByLabelText("个股分析配置")).toHaveLength(1)
     expect(researchAgentApi.appendMessage).not.toHaveBeenCalled()
   })
 
@@ -366,13 +384,13 @@ describe("ResearchAgentPage stock analysis", () => {
     render(<ResearchAgentPage />)
 
     await user.click(await screen.findByRole("button", { name: "更多选项" }))
-    await user.click(screen.getByRole("button", { name: /单股分析/ }))
+    await user.click(screen.getByRole("button", { name: /个股分析/ }))
     await screen.findByText("通义千问 Turbo (qwen-turbo)")
     await user.type(screen.getByPlaceholderText("600519 / 0700.HK / AAPL"), "600519")
     await user.click(screen.getByRole("button", { name: /保存到输入框/ }))
 
     const composer = screen.getByPlaceholderText("例如：运行回测、检查连接器状态，或分析 A 股储能板块") as HTMLTextAreaElement
-    expect(composer.value).toContain("请进行单股分析：600519 / A股 / 标准")
+    expect(composer.value).toContain("请进行个股分析：600519 / A股 / 标准")
     expect(researchAgentApi.appendMessage).not.toHaveBeenCalled()
   })
 
@@ -381,7 +399,7 @@ describe("ResearchAgentPage stock analysis", () => {
     render(<ResearchAgentPage />)
 
     await user.click(await screen.findByRole("button", { name: "更多选项" }))
-    await user.click(screen.getByRole("button", { name: /单股分析/ }))
+    await user.click(screen.getByRole("button", { name: /个股分析/ }))
 
     expect(await screen.findByText("A 股默认禁用社媒分析。")).toBeInTheDocument()
     expect(screen.getByRole("checkbox", { name: "社媒" })).toBeDisabled()
@@ -419,7 +437,7 @@ describe("ResearchAgentPage stock analysis", () => {
     render(<ResearchAgentPage />)
 
     await user.click(await screen.findByRole("button", { name: "更多选项" }))
-    await user.click(screen.getByRole("button", { name: /单股分析/ }))
+    await user.click(screen.getByRole("button", { name: /个股分析/ }))
     await screen.findByText("通义千问 Turbo (qwen-turbo)")
     await user.type(screen.getByPlaceholderText("600519 / 0700.HK / AAPL"), "600519")
     await user.click(screen.getByRole("button", { name: /开始分析/ }))
@@ -433,15 +451,15 @@ describe("ResearchAgentPage stock analysis", () => {
         task_id: "task-600519",
         report_url: "/reports/view/task-600519",
         stage: "analysis_task",
-        title: "单股分析任务",
+        title: "个股分析任务",
         status: "running",
         progress: 35,
-        message: "单股分析任务已提交。"
+        message: "个股分析任务已提交。"
       }
     })
 
     expect(await screen.findByText("任务：task-600519")).toBeInTheDocument()
-    expect(screen.getByText("单股分析任务")).toBeInTheDocument()
+    expect(screen.getByText("个股分析任务")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: /查看任务/ })).toHaveAttribute(
       "href",
       "/tasks?task_id=task-600519"
@@ -464,7 +482,7 @@ describe("ResearchAgentPage stock analysis", () => {
         {
           message_id: "message-stock",
           role: "user",
-          content: "单股分析：600519 / A股 / 标准",
+          content: "个股分析：600519 / A股 / 标准",
           created_at: "2026-06-11T10:00:01Z",
           metadata: {
             source: "research-agent-page",
@@ -506,7 +524,7 @@ describe("ResearchAgentPage stock analysis", () => {
             title: "Agent 总结",
             status: "completed",
             progress: 100,
-            message: "单股分析已完成。"
+            message: "个股分析已完成。"
           }
         }
       ],
@@ -516,7 +534,7 @@ describe("ResearchAgentPage stock analysis", () => {
     render(<ResearchAgentPage />)
     await openSession("贵州茅台")
 
-    expect(await screen.findByLabelText("单股分析历史配置")).toBeInTheDocument()
+    expect(await screen.findByLabelText("个股分析历史配置")).toBeInTheDocument()
     expect(screen.getByText("600519 / A股 / 标准 / market+fundamentals / 情绪+风险 / qwen-turbo -> qwen-max")).toBeInTheDocument()
     expect(screen.getByText("重点解释估值")).toBeInTheDocument()
     expect(screen.getByText("任务：task-600519")).toBeInTheDocument()
@@ -538,7 +556,7 @@ describe("ResearchAgentPage stock analysis", () => {
         {
           message_id: "message-stock",
           role: "user",
-          content: "单股分析：600519 / A股 / 标准",
+          content: "个股分析：600519 / A股 / 标准",
           metadata: {
             source: "research-agent-page",
             mode: "stock_analysis_workflow",
@@ -581,7 +599,7 @@ describe("ResearchAgentPage stock analysis", () => {
             attempt_id: "attempt-stock",
             task_id: "task-600519",
             stage: "analysis_task",
-            title: "单股分析任务",
+            title: "个股分析任务",
             status: "failed",
             progress: 35,
             message: "行情数据源无可用历史数据。"
@@ -599,11 +617,11 @@ describe("ResearchAgentPage stock analysis", () => {
     render(<ResearchAgentPage />)
     await openSession("贵州茅台")
 
-    expect(await screen.findByLabelText("单股分析历史配置")).toBeInTheDocument()
+    expect(await screen.findByLabelText("个股分析历史配置")).toBeInTheDocument()
     expect(screen.getByText("当前状态：失败")).toBeInTheDocument()
     expect(screen.getAllByText(/行情数据源无可用历史数据/).length).toBeGreaterThan(0)
-    expect(screen.getByText("单股分析任务")).toBeInTheDocument()
-    expect(screen.queryByText(/单股分析报告已生成/)).not.toBeInTheDocument()
+    expect(screen.getByText("个股分析任务")).toBeInTheDocument()
+    expect(screen.queryByText(/个股分析报告已生成/)).not.toBeInTheDocument()
     expect(screen.queryByText("当前状态：已完成")).not.toBeInTheDocument()
     expect(screen.queryByRole("link", { name: /查看报告/ })).not.toBeInTheDocument()
   })
@@ -620,7 +638,7 @@ describe("ResearchAgentPage stock analysis", () => {
         {
           message_id: "message-stock",
           role: "user",
-          content: "单股分析：600519 / A股 / 标准",
+          content: "个股分析：600519 / A股 / 标准",
           metadata: {
             source: "research-agent-page",
             mode: "stock_analysis_workflow",
@@ -646,7 +664,7 @@ describe("ResearchAgentPage stock analysis", () => {
         {
           message_id: "message-assistant",
           role: "assistant",
-          content: "单股分析任务仍在执行，已返回任务链接。 任务 ID：task-600519",
+          content: "个股分析任务仍在执行，已返回任务链接。 任务 ID：task-600519",
           linked_attempt_id: "attempt-stock"
         }
       ],
@@ -667,7 +685,7 @@ describe("ResearchAgentPage stock analysis", () => {
             title: "等待窗口",
             status: "running",
             progress: 40,
-            message: "单股分析任务仍在执行，已返回任务链接。"
+            message: "个股分析任务仍在执行，已返回任务链接。"
           }
         },
         {
@@ -682,12 +700,12 @@ describe("ResearchAgentPage stock analysis", () => {
     render(<ResearchAgentPage />)
     await openSession("贵州茅台")
 
-    expect(await screen.findByLabelText("单股分析历史配置")).toBeInTheDocument()
+    expect(await screen.findByLabelText("个股分析历史配置")).toBeInTheDocument()
     expect(screen.getByText("当前状态：运行中")).toBeInTheDocument()
-    expect(screen.getAllByText(/单股分析任务仍在执行/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/个股分析任务仍在执行/).length).toBeGreaterThan(0)
     expect(screen.getByText("等待窗口")).toBeInTheDocument()
     expect(screen.queryByText("当前状态：已完成")).not.toBeInTheDocument()
-    expect(screen.queryByText(/单股分析报告已生成/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/个股分析报告已生成/)).not.toBeInTheDocument()
   })
 
   it("blocks single-stock submission when no enabled model exists", async () => {
@@ -697,7 +715,7 @@ describe("ResearchAgentPage stock analysis", () => {
     render(<ResearchAgentPage />)
 
     await user.click(await screen.findByRole("button", { name: "更多选项" }))
-    await user.click(screen.getByRole("button", { name: /单股分析/ }))
+    await user.click(screen.getByRole("button", { name: /个股分析/ }))
     await user.type(screen.getByPlaceholderText("600519 / 0700.HK / AAPL"), "600519")
     await screen.findByText("没有启用模型，请先在设置中配置模型。")
 
@@ -810,14 +828,14 @@ describe("ResearchAgentPage stock analysis", () => {
     expect(screen.getByText(/命令失败（exit 1）/)).toBeInTheDocument()
     expect(screen.queryByText(/\{"status":/)).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole("button", { name: /单股分析运行中/ }))
+    await user.click(screen.getByRole("button", { name: /个股分析运行中/ }))
     expect(screen.getByText(/600519（标准） 任务 task-600519已提交到分析队列/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole("button", { name: /单股分析进度/ }))
+    await user.click(screen.getByRole("button", { name: /个股分析进度/ }))
     expect(screen.getByText(/任务 task-600519进度 45%：基本面分析师/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole("button", { name: /单股分析报告/ }))
-    expect(screen.getByText(/单股分析报告已生成：贵州茅台基本面稳健/)).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: /个股分析报告/ }))
+    expect(screen.getByText(/个股分析报告已生成：贵州茅台基本面稳健/)).toBeInTheDocument()
     expect(screen.queryByText(/"task_id": "task-600519"/)).not.toBeInTheDocument()
   })
 })

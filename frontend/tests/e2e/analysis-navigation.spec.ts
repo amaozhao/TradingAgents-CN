@@ -27,7 +27,7 @@ test.beforeEach(async ({ page }) => {
 
 test("opens single and batch analysis pages", async ({ page }) => {
   await page.goto("/analysis/single")
-  await expect(page.getByRole("heading", { name: "单股分析" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "个股分析" })).toBeVisible()
   await expect(page.getByLabel("股票代码")).toBeVisible()
 
   await page.goto("/analysis/batch")

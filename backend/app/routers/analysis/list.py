@@ -90,7 +90,7 @@ async def submit_batch_analysis(
                 f"批量分析最多支持 {MAX_BATCH_SIZE} 个股票，当前提交了 {len(stock_symbols)} 个"
             )
 
-        # 为每只股票创建单股分析任务
+        # 为每只股票创建个股分析任务
         for i, symbol in enumerate(stock_symbols):
             logger.info(
                 f"📝 [批量分析] 正在创建第 {i + 1}/{len(stock_symbols)} 个任务: {symbol}"

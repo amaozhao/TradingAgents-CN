@@ -4,7 +4,7 @@ import copy
 import json
 import re
 from collections.abc import AsyncIterator, Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from .context import ResearchPrincipal, ToolExecutionContext
@@ -218,6 +218,20 @@ class ResearchAgentLoop(DirectToolMixin):
         tool_name = str(tool_call.get("name") or "")
         arguments = tool_call.get("arguments") or {}
         tool = self.registry.get(tool_name)
+        if tool_name == "stock_analysis":
+            base_context = context
+
+            async def emit_stock_stage(event: dict[str, Any]) -> None:
+                await self._append_stock_stage_event(
+                    context=base_context,
+                    stage=str(event.get("stage") or "analysis_task"),
+                    status=str(event.get("status") or "running"),
+                    progress=int(event.get("progress") or 0),
+                    message=str(event.get("message") or "个股分析阶段已更新。"),
+                    result=event,
+                )
+
+            context = replace(context, event_emitter=emit_stock_stage)
         await self._append_event(
             session_id=str(context.session_id),
             user_id=context.principal.user_id,
@@ -234,7 +248,7 @@ class ResearchAgentLoop(DirectToolMixin):
                 stage="validate_input",
                 status="running",
                 progress=5,
-                message="正在校验单股分析参数。",
+                message="正在校验个股分析参数。",
             )
         try:
             result = await tool.run(context, arguments)

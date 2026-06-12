@@ -146,7 +146,7 @@ export function SingleAnalysisPage() {
 
   return (
     <div>
-      <PageHeader title="单股分析" description="AI驱动的智能股票分析，多维度评估投资价值与风险" />
+      <PageHeader title="个股分析" description="AI驱动的智能股票分析，多维度评估投资价值与风险" />
       <Form {...form}>
         <form className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]" onSubmit={form.handleSubmit(onSubmit)}>
           <Card>

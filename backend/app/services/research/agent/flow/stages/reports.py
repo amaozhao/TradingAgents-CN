@@ -167,7 +167,7 @@ def build_stock_workflow_task_document(
         "analysis_id": result.get("analysis_id"),
         "status": "completed",
         "progress": 100,
-        "message": "Agent 单股分析 DAG 对齐工作流已完成。",
+        "message": "Agent 个股分析 DAG 对齐工作流已完成。",
         "current_step": "agent_summary",
         "current_step_name": "Agent 总结",
         "source": SOURCE,

@@ -28,10 +28,14 @@ export interface ReportDetailData {
   created_at?: string
 }
 
-async function requestJson<T>(url: string): Promise<T> {
+async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const token = useAuthStore.getState().token
   const response = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined
+    ...init,
+    headers: {
+      ...(init?.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    }
   })
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   const body = (await response.json()) as { data?: T }
@@ -44,6 +48,10 @@ export function fetchReports(params: URLSearchParams) {
 
 export function fetchReportDetail(id: string) {
   return requestJson<ReportDetailData>(`/api/reports/${id}/detail`)
+}
+
+export function deleteReport(id: string) {
+  return requestJson<unknown>(`/api/reports/${id}`, { method: "DELETE" })
 }
 
 export async function downloadReport(id: string, format = "markdown", filename = "analysis-report.md") {

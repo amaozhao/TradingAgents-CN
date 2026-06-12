@@ -38,7 +38,7 @@ class AnalysisBaseMixin:
             return cast(PyDocumentId, new_document_id)
 
     def _get_trading_graph(self, config: Dict[str, Any]) -> Any:
-        """获取或创建分析引擎图实例（带缓存）- 与单股分析保持一致"""
+        """获取或创建分析引擎图实例（带缓存）- 与个股分析保持一致"""
         config_key = json.dumps(config, sort_keys=True)
 
         if config_key not in self._trading_graph_cache:
@@ -48,7 +48,7 @@ class AnalysisBaseMixin:
             )
 
             # 直接使用完整配置，不再合并DEFAULT_CONFIG（因为create_analysis_config已经处理了）
-            # 这与单股分析服务和web目录的方式一致
+            # 这与个股分析服务和web目录的方式一致
             self._trading_graph_cache[config_key] = TradingAgentsGraph(
                 selected_analysts=config.get(
                     "selected_analysts", ["market", "fundamentals"]

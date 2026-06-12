@@ -95,7 +95,7 @@ export function ConfigWizard() {
           ) : (
             <div className="space-y-3">
               <h3 className="text-lg font-semibold">准备完成</h3>
-              <p className="text-sm text-muted-foreground">可以开始进行单股分析、股票筛选和学习中心内容浏览。</p>
+              <p className="text-sm text-muted-foreground">可以开始进行个股分析、股票筛选和学习中心内容浏览。</p>
             </div>
           )}
         </div>

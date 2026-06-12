@@ -7,6 +7,7 @@ from fastapi import BackgroundTasks
 from fastapi import HTTPException
 
 from app.routers.research import agent as research_agent_router
+from app.routers.research.stream import stream_events
 from app.services.research.agent import artifacts as artifacts_module
 from app.services.research.agent import events as events_module
 from app.services.research.agent.tools import files as files_module
@@ -1077,3 +1078,40 @@ async def test_general_chat_prompt_does_not_run_stock_research_pipeline(fake_db,
     assert "task_failed" not in event_types
     assert fake_db.research_artifacts.documents == []
     assert messages[-1]["role"] == "assistant"
+
+
+class StaticEventService:
+    def __init__(self, events: list[dict[str, Any]]):
+        self.events = events
+        self.calls = 0
+
+    async def list_after(self, **_kwargs):
+        self.calls += 1
+        return self.events if self.calls == 1 else []
+
+
+@pytest.mark.asyncio
+async def test_stream_events_stops_on_attempt_terminal_events():
+    service = StaticEventService(
+        [
+            {
+                "event_id": 1,
+                "event_type": "attempt.completed",
+                "payload": {"attempt_id": "attempt-1", "status": "completed"},
+            }
+        ]
+    )
+
+    chunks = [
+        chunk
+        async for chunk in stream_events(
+            event_service=service,
+            session_id="session-a",
+            user_id=USER_A["id"],
+            after_event_id=0,
+            idle_timeout_seconds=5,
+        )
+    ]
+
+    assert service.calls == 1
+    assert any("event: attempt.completed" in chunk for chunk in chunks)

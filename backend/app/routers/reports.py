@@ -286,7 +286,7 @@ async def get_reports_list(
                 "stock_name": stock_name,
                 "market_type": market_type,  # 🔥 添加市场类型字段
                 "model_info": doc.get("model_info", "Unknown"),  # 🔥 添加模型信息字段
-                "type": "single",  # 目前主要是单股分析
+                "type": "single",  # 目前主要是个股分析
                 "format": "markdown",  # 主要格式
                 "status": doc.get("status", "completed"),
                 "created_at": _to_report_iso(created_at),

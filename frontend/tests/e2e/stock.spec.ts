@@ -70,14 +70,14 @@ test("submits single-stock configuration through direct Agent workflow metadata"
       await route.fulfill({
         json: {
           success: true,
-          data: sessionCreated ? [{ session_id: "session-stock", title: "单股分析：600519" }] : []
+          data: sessionCreated ? [{ session_id: "session-stock", title: "个股分析：600519" }] : []
         }
       })
       return
     }
     sessionCreated = true
     await route.fulfill({
-      json: { success: true, data: { session_id: "session-stock", title: "单股分析：600519" } }
+      json: { success: true, data: { session_id: "session-stock", title: "个股分析：600519" } }
     })
   })
   await page.route("**/api/research-agent/sessions/session-stock/messages", async (route) => {
@@ -110,14 +110,14 @@ test("submits single-stock configuration through direct Agent workflow metadata"
             {
               message_id: "user-stock",
               role: "user",
-              content: "单股分析：600519 / A股 / 标准 / 市场+基本面 / 情绪+风险 / qwen-turbo -> qwen-max",
+              content: "个股分析：600519 / A股 / 标准 / 市场+基本面 / 情绪+风险 / qwen-turbo -> qwen-max",
               linked_attempt_id: "attempt-stock",
               metadata
             },
             {
               message_id: "assistant-stock",
               role: "assistant",
-              content: "单股分析任务已提交，任务 ID：task-600519",
+              content: "个股分析任务已提交，任务 ID：task-600519",
               linked_attempt_id: "attempt-stock"
             }
           ]
@@ -145,7 +145,7 @@ test("submits single-stock configuration through direct Agent workflow metadata"
           {
             attempt_id: "attempt-stock",
             status: "completed",
-            result: { content: "单股分析任务已提交，任务 ID：task-600519" }
+            result: { content: "个股分析任务已提交，任务 ID：task-600519" }
           }
         ]
       }
@@ -168,7 +168,7 @@ test("submits single-stock configuration through direct Agent workflow metadata"
                 tool_name: "stock_analysis",
                 mode: "single",
                 stage: "analysis_task",
-                title: "单股分析任务",
+                title: "个股分析任务",
                 status: "running",
                 task_id: "task-600519",
                 report_url: "/reports/view/task-600519",
@@ -186,17 +186,17 @@ test("submits single-stock configuration through direct Agent workflow metadata"
       headers: { "Content-Type": "text/event-stream" },
       body:
         "event: stock_analysis.stage\n" +
-        "data: {\"attempt_id\":\"attempt-stock\",\"tool_name\":\"stock_analysis\",\"mode\":\"single\",\"stage\":\"analysis_task\",\"title\":\"单股分析任务\",\"status\":\"running\",\"task_id\":\"task-600519\",\"report_url\":\"/reports/view/task-600519\",\"message\":\"任务已入队\",\"progress\":15}\n\n" +
+        "data: {\"attempt_id\":\"attempt-stock\",\"tool_name\":\"stock_analysis\",\"mode\":\"single\",\"stage\":\"analysis_task\",\"title\":\"个股分析任务\",\"status\":\"running\",\"task_id\":\"task-600519\",\"report_url\":\"/reports/view/task-600519\",\"message\":\"任务已入队\",\"progress\":15}\n\n" +
         "event: message_completed\n" +
-        "data: {\"attempt_id\":\"attempt-stock\",\"content\":\"单股分析任务已提交，任务 ID：task-600519\"}\n\n" +
+        "data: {\"attempt_id\":\"attempt-stock\",\"content\":\"个股分析任务已提交，任务 ID：task-600519\"}\n\n" +
         "event: attempt.completed\n" +
-        "data: {\"attempt_id\":\"attempt-stock\",\"session_id\":\"session-stock\",\"content\":\"单股分析任务已提交，任务 ID：task-600519\"}\n\n"
+        "data: {\"attempt_id\":\"attempt-stock\",\"session_id\":\"session-stock\",\"content\":\"个股分析任务已提交，任务 ID：task-600519\"}\n\n"
     })
   })
 
   await page.goto("/agent")
   await page.getByRole("button", { name: "更多选项" }).click()
-  await page.getByRole("button", { name: "单股分析" }).click()
+  await page.getByRole("button", { name: "个股分析" }).click()
   await page.getByLabel("股票代码").fill("600519")
   await page.getByRole("button", { name: /开始分析/ }).click()
 
@@ -230,7 +230,7 @@ test("restores persisted single-stock stage events into the right rail", async (
     await route.fulfill({
       json: {
         success: true,
-        data: [{ session_id: "session-stock", title: "单股分析：600519" }]
+        data: [{ session_id: "session-stock", title: "个股分析：600519" }]
       }
     })
   })
@@ -242,7 +242,7 @@ test("restores persisted single-stock stage events into the right rail", async (
           {
             message_id: "user-stock",
             role: "user",
-            content: "单股分析：600519 / A股 / 标准 / 市场+基本面 / 情绪+风险 / qwen-turbo -> qwen-max",
+            content: "个股分析：600519 / A股 / 标准 / 市场+基本面 / 情绪+风险 / qwen-turbo -> qwen-max",
             linked_attempt_id: "attempt-stock",
             metadata: {
               source: "research-agent-page",
@@ -269,7 +269,7 @@ test("restores persisted single-stock stage events into the right rail", async (
           {
             message_id: "assistant-stock",
             role: "assistant",
-            content: "单股分析任务已提交，任务 ID：task-600519",
+            content: "个股分析任务已提交，任务 ID：task-600519",
             linked_attempt_id: "attempt-stock"
           }
         ]
@@ -289,7 +289,7 @@ test("restores persisted single-stock stage events into the right rail", async (
               tool_name: "stock_analysis",
               mode: "single",
               stage: "analysis_task",
-              title: "单股分析任务",
+              title: "个股分析任务",
               status: "running",
               task_id: "task-600519",
               report_url: "/reports/view/task-600519",
@@ -310,7 +310,7 @@ test("restores persisted single-stock stage events into the right rail", async (
 
   await page.goto("/agent")
 
-  await expect(page.getByRole("button", { name: /单股分析任务/ })).toBeVisible()
+  await expect(page.getByRole("button", { name: /个股分析任务/ })).toBeVisible()
   await expect(page.getByText("任务：task-600519")).toBeVisible()
   await expect(page.getByRole("link", { name: /查看任务/ })).toHaveAttribute("href", "/tasks?task_id=task-600519")
   await expect(page.getByRole("link", { name: /查看报告/ })).toHaveAttribute("href", "/reports/view/task-600519")

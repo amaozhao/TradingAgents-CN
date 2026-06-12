@@ -22,6 +22,7 @@ from .stages.trader import TraderDecisionRunner
 from .state import create_stock_initial_state, validate_final_state
 
 WorkflowExecutor = Callable[[], tuple[dict[str, Any], dict[str, float], float]]
+NodeRecordCallback = Callable[[str, str | None], None]
 
 
 @dataclass(frozen=True)
@@ -45,10 +46,12 @@ class StockDagParityWorkflow:
         *,
         executor: WorkflowExecutor | None = None,
         events: list[dict[str, Any]] | None = None,
+        on_node_record: NodeRecordCallback | None = None,
     ):
         self.context = context
         self.executor = executor
         self.events = events or []
+        self.on_node_record = on_node_record
 
     def run(self) -> StockDagParityWorkflowResult:
         config = getattr(self.context, "config", {}) or {}
@@ -63,7 +66,7 @@ class StockDagParityWorkflow:
         if memory_log is not None and hasattr(memory_log, "get_past_context"):
             past_context = memory_log.get_past_context(self.context.symbol)
 
-        recorder = _WorkflowRecorder()
+        recorder = _WorkflowRecorder(on_record=self.on_node_record)
         plan = _plan_for_context(self.context)
         if self.executor is None:
             state, node_timings, total_elapsed = self._run_default_executor(
@@ -403,12 +406,16 @@ def _state_log_payload(state: dict[str, Any]) -> dict[str, Any]:
 
 
 class _WorkflowRecorder:
-    def __init__(self):
+    def __init__(self, *, on_record: NodeRecordCallback | None = None):
         self.nodes: list[str] = []
         self.edges: list[tuple[str, str]] = []
+        self.on_record = on_record
 
     def record(self, node: str) -> None:
+        previous = self.nodes[-1] if self.nodes else None
         self.nodes.append(node)
+        if self.on_record:
+            self.on_record(node, previous)
 
 
 def _plan_for_context(context: Any) -> StockDagParityPlan:

@@ -18,7 +18,7 @@ class AnalysisTaskMixin:
             if progress_callback:
                 progress_callback(10, "初始化分析引擎...")
 
-            # 使用标准配置函数创建完整配置 - 与单股分析保持一致
+            # 使用标准配置函数创建完整配置 - 与个股分析保持一致
             unified_config = getattr(
                 importlib.import_module("app.core.unified"), "unified_config"
             )

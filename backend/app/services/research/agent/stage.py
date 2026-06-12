@@ -42,7 +42,7 @@ STOCK_STAGE_TITLES = {
     "risk_review": "风险评估",
     "report_generation": "报告生成",
     "wait_bounded": "等待窗口",
-    "analysis_task": "单股分析任务",
+    "analysis_task": "个股分析任务",
     "agent_summary": "Agent 总结",
 }
 
@@ -69,7 +69,7 @@ _WORKFLOW_STAGE_ORDER = [
 
 
 def stock_stage_title(stage: str) -> str:
-    return STOCK_STAGE_TITLES.get(stage, "单股分析")
+    return STOCK_STAGE_TITLES.get(stage, "个股分析")
 
 
 def planned_stock_stages(

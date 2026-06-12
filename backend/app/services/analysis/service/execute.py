@@ -330,7 +330,7 @@ class AnalysisExecuteMixin:
             raise
 
     async def _execute_single_analysis_async(self, task: AnalysisTask):
-        """异步执行单股分析任务（在后台运行，不阻塞主线程）"""
+        """异步执行个股分析任务（在后台运行，不阻塞主线程）"""
         tracker = None
         try:
             logger.info(f"🔄 开始执行分析任务: {task.task_id} - {task.symbol}")

@@ -63,6 +63,8 @@ export function DataTableToolbar<TData>({
             .filter((column) => column.getCanHide())
             .map((column) => {
               const meta = column.columnDef.meta as { label?: string } | undefined
+              const header = column.columnDef.header
+              const label = meta?.label || (typeof header === "string" ? header : column.id)
 
               return (
                 <DropdownMenuCheckboxItem
@@ -70,7 +72,7 @@ export function DataTableToolbar<TData>({
                   checked={column.getIsVisible()}
                   onCheckedChange={(value) => column.toggleVisibility(!!value)}
                 >
-                  {String(meta?.label ?? column.id)}
+                  {label}
                 </DropdownMenuCheckboxItem>
               )
             })}

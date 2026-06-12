@@ -24,6 +24,19 @@ export function stockPayloadFromMetadata(metadata?: Record<string, unknown>) {
   return payload as StockPayload
 }
 
+export function initialStockWorkflowTools(value: unknown): ToolState[] {
+  if (!value || typeof value !== "object") return []
+  const payload = value as Partial<StockPayload>
+  if (payload.mode !== "single") return []
+  return [{
+    id: "stock_analysis:validate_input",
+    name: "stock_analysis",
+    title: "参数校验",
+    status: "running",
+    preview: "正在提交并校验个股分析参数。"
+  }]
+}
+
 export function nowId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
@@ -336,21 +349,21 @@ export function stockAnalysisPreview(toolName: string, result: Record<string, un
     const symbol = compactPreviewText(result.symbol || result.stock_code, maxLength)
     const depth = compactPreviewText(result.research_depth, maxLength)
     const task = taskId ? `任务 ${taskId}` : "任务"
-    const target = symbol ? `${symbol}${depth ? `（${depth}）` : ""}` : "单股分析"
+    const target = symbol ? `${symbol}${depth ? `（${depth}）` : ""}` : "个股分析"
     return `${target} ${task}已提交到分析队列。`
   }
   if (toolName === "stock_analysis_status") {
     const progress = typeof result.progress === "number" ? `${result.progress}%` : ""
     const step = compactPreviewText(result.current_step || result.message || result.status, maxLength)
-    const task = taskId ? `任务 ${taskId}` : "单股分析任务"
+    const task = taskId ? `任务 ${taskId}` : "个股分析任务"
     if (progress && step) return `${task}进度 ${progress}：${step}`
     if (step) return `${task}状态：${step}`
     return `${task}状态已读取。`
   }
   if (toolName === "stock_analysis_report") {
     const summary = compactPreviewText(result.summary || result.recommendation, maxLength)
-    if (summary) return `单股分析报告已生成：${summary}`
-    return "单股分析报告已生成。"
+    if (summary) return `个股分析报告已生成：${summary}`
+    return "个股分析报告已生成。"
   }
   return ""
 }

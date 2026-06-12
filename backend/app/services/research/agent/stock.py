@@ -1,30 +1,35 @@
 from __future__ import annotations
 
+import logging
 import re
 import time
 import uuid
+from asyncio import get_running_loop, run_coroutine_threadsafe, to_thread
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from datetime import datetime
 from typing import Any
 
 from app.core.database import get_postgres_db, get_postgres_db_sync
 from app.schemas.analysis import AnalysisParameters
+from app.schemas.config import UsageRecord
 from app.services.analysis.simple import (
     create_analysis_config,
     get_provider_and_url_by_model_sync,
     get_simple_analysis_service,
 )
+from app.services.usage import usage_statistics_service
 from trader.llm.clients.factory import create_llm_client
 
 from .context import ToolExecutionContext
 from .flow import StockDagParityWorkflow
 from .flow.context import build_stock_workflow_context
-from .flow.events import build_stock_workflow_stage_events
+from .flow.events import NODE_STAGE, build_stock_workflow_stage_events
 from .flow.graph import build_stock_dag_parity_plan
 from .flow.stages.reports import (
     build_stock_workflow_report,
     persist_stock_workflow_report,
 )
-from .stage import planned_stock_stages
+from .stage import planned_stock_stages, stock_stage_title
 
 
 _ANALYST_NAME_TO_ID = {
@@ -52,6 +57,9 @@ _DEPTH_TO_LABEL = {
     "深度": "深度",
     "全面": "全面",
 }
+
+logger = logging.getLogger("app.services.research.agent.stock")
+
 
 def _stock_links(task_id: str) -> dict[str, str]:
     return {
@@ -371,7 +379,7 @@ async def read_stock_analysis_status(
             "accepted": False,
             "missing": ["task_id"],
             "reason": "Missing required argument: task_id.",
-            "instruction": "请提供要查询的单股分析 task_id。",
+            "instruction": "请提供要查询的个股分析 task_id。",
         }
     status = await get_simple_analysis_service().get_task_status(
         task_id, user_id=context.principal.user_id
@@ -389,7 +397,7 @@ async def read_stock_analysis_status(
                 "status": "not_found",
                 "accepted": False,
                 "task_id": task_id,
-                "reason": "未找到当前用户可访问的单股分析任务。",
+                "reason": "未找到当前用户可访问的个股分析任务。",
             }
 
     current_step = (
@@ -426,7 +434,7 @@ async def read_stock_analysis_report(
             "accepted": False,
             "missing": ["task_id"],
             "reason": "Missing required argument: task_id.",
-            "instruction": "请提供要读取报告的单股分析 task_id。",
+            "instruction": "请提供要读取报告的个股分析 task_id。",
         }
     task_status = await get_simple_analysis_service().get_task_status(
         task_id, user_id=context.principal.user_id
@@ -446,7 +454,7 @@ async def read_stock_analysis_report(
                     or task_status.get("message")
                     or status_value
                 ),
-                "reason": "单股分析任务尚未完成，不能生成或返回最终报告摘要。",
+                "reason": "个股分析任务尚未完成，不能生成或返回最终报告摘要。",
                 "links": _stock_links(task_id),
                 "raw_status": task_status,
             }
@@ -550,8 +558,32 @@ async def run_agent_stock_workflow(
         stage_plan=stage_plan,
         task_id=task_id,
     )
+    await _emit_stock_workflow_stage(
+        context=context,
+        task_id=task_id,
+        stage="validate_input",
+        status="completed",
+        progress=8,
+        message="个股分析参数已校验。",
+    )
+    await _emit_stock_workflow_stage(
+        context=context,
+        task_id=task_id,
+        stage="prepare_state",
+        status="completed",
+        progress=12,
+        message="个股分析初始状态已准备。",
+    )
     started = time.perf_counter()
-    workflow_result = StockDagParityWorkflow(workflow_context).run()
+    workflow_result = await to_thread(
+        StockDagParityWorkflow(
+            workflow_context,
+            on_node_record=_stock_workflow_node_emitter(
+                context=context,
+                task_id=task_id,
+            ),
+        ).run
+    )
     execution_time = time.perf_counter() - started
     report = build_stock_workflow_report(
         workflow_context,
@@ -560,6 +592,12 @@ async def run_agent_stock_workflow(
         execution_time=execution_time,
     )
     await persist_stock_workflow_report(workflow_context, report)
+    await _record_stock_workflow_usage(
+        task_id=task_id,
+        symbol=symbol,
+        parameters=parameters,
+        report=report,
+    )
 
     plan = build_stock_dag_parity_plan(
         parameters.selected_analysts,
@@ -605,8 +643,175 @@ async def run_agent_stock_workflow(
         "links": links,
         "task_url": links["task"],
         "report_url": links["report"],
-        "message": "Agent 单股分析 DAG 对齐工作流已完成。",
+        "message": "Agent 个股分析 DAG 对齐工作流已完成。",
     }
+
+
+async def _emit_stock_workflow_stage(
+    *,
+    context: ToolExecutionContext,
+    task_id: str,
+    stage: str,
+    status: str,
+    progress: int,
+    message: str,
+) -> None:
+    if context.event_emitter is None:
+        return
+    await context.event_emitter(
+        {
+            "tool_name": "stock_analysis",
+            "mode": "single",
+            "stage": stage,
+            "title": stock_stage_title(stage),
+            "status": status,
+            "progress": progress,
+            "message": message,
+            "task_id": task_id,
+            "attempt_id": context.request_id,
+        }
+    )
+
+
+def _stock_workflow_node_emitter(
+    *,
+    context: ToolExecutionContext,
+    task_id: str,
+):
+    event_emitter = context.event_emitter
+    if event_emitter is None:
+        return None
+    loop = get_running_loop()
+
+    def emit(node: str, previous: str | None) -> None:
+        stage = NODE_STAGE.get(node, "agent_summary")
+        event = {
+            "tool_name": "stock_analysis",
+            "mode": "single",
+            "stage": stage,
+            "title": stock_stage_title(stage),
+            "status": "completed",
+            "progress": _stock_stage_progress(stage),
+            "message": f"{stock_stage_title(stage)}已完成。",
+            "task_id": task_id,
+            "attempt_id": context.request_id,
+            "node": node,
+            "edge_from": previous,
+            "edge_to": node,
+        }
+        try:
+            future = run_coroutine_threadsafe(event_emitter(event), loop)
+            future.result(timeout=5)
+        except FutureTimeoutError:
+            logger.warning("Timed out emitting stock workflow stage event: %s", node)
+        except Exception as exc:
+            logger.warning("Failed to emit stock workflow stage event %s: %s", node, exc)
+
+    return emit
+
+
+def _stock_stage_progress(stage: str) -> int:
+    progress_by_stage = {
+        "validate_input": 8,
+        "prepare_state": 12,
+        "market_analysis": 30,
+        "sentiment_analysis": 45,
+        "news_analysis": 55,
+        "fundamentals_analysis": 65,
+        "research_debate": 75,
+        "research_manager": 82,
+        "trader_decision": 88,
+        "risk_debate": 94,
+        "final_risk_decision": 97,
+        "report_generation": 99,
+        "agent_summary": 100,
+    }
+    return progress_by_stage.get(stage, 0)
+
+
+async def _record_stock_workflow_usage(
+    *,
+    task_id: str,
+    symbol: str,
+    parameters: AnalysisParameters,
+    report: dict[str, Any],
+) -> None:
+    model_name = parameters.deep_analysis_model or parameters.quick_analysis_model
+    if not model_name:
+        return
+
+    provider_info = _provider_info_for_model(model_name, {})
+    provider = str(provider_info.get("provider") or "unknown")
+    input_tokens, output_tokens = _usage_token_counts(report)
+    pricing = _usage_pricing_for_model(model_name)
+    cost = (
+        input_tokens / 1000 * pricing["input_price_per_1k"]
+        + output_tokens / 1000 * pricing["output_price_per_1k"]
+    )
+    record = UsageRecord(
+        timestamp=datetime.now().isoformat(),
+        provider=provider,
+        model_name=model_name,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost=cost,
+        currency=pricing["currency"],
+        session_id=task_id,
+        analysis_type="agent_stock_analysis",
+        stock_code=symbol,
+    )
+    try:
+        await usage_statistics_service.add_usage_record(record)
+    except Exception as exc:
+        logger.warning("Agent stock workflow token usage recording failed: %s", exc)
+
+
+def _usage_token_counts(report: dict[str, Any]) -> tuple[int, int]:
+    raw_tokens = report.get("tokens_used")
+    try:
+        total_tokens = int(raw_tokens or 0)
+    except (TypeError, ValueError):
+        total_tokens = 0
+    if total_tokens > 0:
+        input_tokens = max(total_tokens // 2, 1)
+        return input_tokens, max(total_tokens - input_tokens, 1)
+
+    text_parts: list[str] = [
+        str(report.get("summary") or ""),
+        str(report.get("recommendation") or ""),
+    ]
+    decision = report.get("decision")
+    if isinstance(decision, dict):
+        text_parts.append(str(decision.get("reasoning") or ""))
+    reports = report.get("reports")
+    if isinstance(reports, dict):
+        text_parts.extend(str(value) for value in reports.values())
+    output_tokens = max(sum(len(part) for part in text_parts) // 4, 1)
+    return max(output_tokens * 2, 1), output_tokens
+
+
+def _usage_pricing_for_model(model_name: str) -> dict[str, Any]:
+    config_doc = _load_active_system_config_doc()
+    for config in _enabled_llm_configs(config_doc):
+        if str(config.get("model_name") or "") != model_name:
+            continue
+        return {
+            "input_price_per_1k": _usage_float(config.get("input_price_per_1k")),
+            "output_price_per_1k": _usage_float(config.get("output_price_per_1k")),
+            "currency": str(config.get("currency") or "CNY"),
+        }
+    return {
+        "input_price_per_1k": 0.0,
+        "output_price_per_1k": 0.0,
+        "currency": "CNY",
+    }
+
+
+def _usage_float(value: Any) -> float:
+    try:
+        return float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _analysis_trade_date(parameters: AnalysisParameters) -> str:
@@ -643,7 +848,7 @@ class StockAnalysisWorkflow:
                 "status": "config_required",
                 "accepted": False,
                 "reason": "stock_analysis currently supports only mode=single.",
-                "instruction": "请使用 mode=single 提交单股分析。",
+                "instruction": "请使用 mode=single 提交个股分析。",
             }
         raw_symbol = payload.get("symbol") or payload.get("stock_code")
         symbol, market_type = _normalize_stock_symbol_for_analysis(

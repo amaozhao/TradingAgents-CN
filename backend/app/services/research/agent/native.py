@@ -213,7 +213,7 @@ def _risk_level(decision: dict[str, Any]) -> str:
 
 def _summary(symbol: str, decision: dict[str, Any], metrics: dict[str, Any]) -> str:
     return (
-        f"{symbol} Agent-native 单股分析完成。"
+        f"{symbol} Agent-native 个股分析完成。"
         f"建议：{decision['action']}；置信度：{decision['confidence']}；"
         f"区间收益：{_percent(metrics.get('total_return'))}；"
         f"最大回撤：{_percent(metrics.get('max_drawdown'))}。"
@@ -269,7 +269,7 @@ async def run_native_stock_workflow(
     analysis_id = str(uuid.uuid4())
     params = parameters.model_dump(mode="json") if hasattr(parameters, "model_dump") else {}
     selected_analysts = list(params.get("selected_analysts") or [])
-    stage_events = [_stage("validate_input", "completed", 8, "单股分析参数已校验。")]
+    stage_events = [_stage("validate_input", "completed", 8, "个股分析参数已校验。")]
 
     await _write_native_task(
         task_id=task_id,
@@ -368,7 +368,7 @@ async def run_native_stock_workflow(
         parameters=params,
         status="completed",
         progress=100,
-        message="Agent-native 单股分析已完成。",
+        message="Agent-native 个股分析已完成。",
     )
 
     return {
@@ -402,5 +402,5 @@ async def run_native_stock_workflow(
         },
         "task_url": f"/tasks?task_id={task_id}",
         "report_url": f"/reports/view/{task_id}",
-        "message": "Agent-native 单股分析已完成，未调用原 LangGraph DAG。",
+        "message": "Agent-native 个股分析已完成，未调用原 LangGraph DAG。",
     }

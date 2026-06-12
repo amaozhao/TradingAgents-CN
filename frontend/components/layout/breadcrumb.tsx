@@ -14,14 +14,17 @@ export function Breadcrumb() {
     return null
   }
 
-  const crumbs = segments.map((_, index) => {
-    const path = `/${segments.slice(0, index + 1).join("/")}`
-    const route = getRouteByPathname(path)
-    return {
-      href: path,
-      title: route?.title ?? segments[index]
-    }
-  })
+  const crumbs = segments
+    .map((_, index) => {
+      const path = `/${segments.slice(0, index + 1).join("/")}`
+      const route = getRouteByPathname(path)
+      return {
+        href: path,
+        segment: segments[index],
+        title: route?.title ?? segments[index]
+      }
+    })
+    .filter((crumb, index) => !(segments[0] === "reports" && crumb.segment === "view" && index < segments.length - 1))
 
   return (
     <nav aria-label="面包屑" className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">

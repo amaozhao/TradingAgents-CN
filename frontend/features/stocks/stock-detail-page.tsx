@@ -220,7 +220,7 @@ export function StockDetailPage({ code }: { code: string }) {
               </Table>
             </CardContent>
           </Card>
-          <Link className="block rounded-md border p-4 text-sm hover:bg-muted" href={`/analysis/single?symbol=${code}`}>进入单股分析</Link>
+          <Link className="block rounded-md border p-4 text-sm hover:bg-muted" href={`/analysis/single?symbol=${code}`}>进入个股分析</Link>
         </div>
       </div>
       <Dialog open={syncOpen} onOpenChange={setSyncOpen}>

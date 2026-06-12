@@ -6,9 +6,9 @@ class AnalysisSubmitMixin:
     async def submit_single_analysis(
         self, user_id: str, request: SingleAnalysisRequest
     ) -> Dict[str, Any]:
-        """提交单股分析任务"""
+        """提交个股分析任务"""
         try:
-            logger.info("📝 开始提交单股分析任务")
+            logger.info("📝 开始提交个股分析任务")
             logger.info(f"👤 用户ID: {user_id} (类型: {type(user_id)})")
 
             # 获取股票代码 (兼容旧字段)
@@ -88,7 +88,7 @@ class AnalysisSubmitMixin:
             await dual_write_hot_document("analysis_tasks", task_dict)
             logger.info("✅ 任务已保存到数据库")
 
-            # 单股分析：直接在后台执行（不阻塞API响应）
+            # 个股分析：直接在后台执行（不阻塞API响应）
             logger.info("🚀 开始在后台执行分析任务...")
 
             # 创建后台任务，不等待完成
@@ -98,7 +98,7 @@ class AnalysisSubmitMixin:
             # 不等待任务完成，让它在后台运行
             logger.info(f"✅ 后台任务已启动，任务ID: {task_id}")
 
-            logger.info(f"🎉 单股分析任务提交完成: {task_id} - {stock_symbol}")
+            logger.info(f"🎉 个股分析任务提交完成: {task_id} - {stock_symbol}")
 
             return {
                 "task_id": task_id,
@@ -109,7 +109,7 @@ class AnalysisSubmitMixin:
             }
 
         except Exception as e:
-            logger.error(f"提交单股分析任务失败: {e}")
+            logger.error(f"提交个股分析任务失败: {e}")
             raise
 
     async def submit_batch_analysis(

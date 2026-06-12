@@ -5,7 +5,7 @@ async def analyze_single(
     user: dict = Depends(get_current_user),
     svc: QueueService = Depends(get_queue_service),
 ):
-    """单股分析（兼容性端点）"""
+    """个股分析（兼容性端点）"""
     try:
         task_id = await svc.enqueue_task(
             user_id=user["id"], symbol=req.symbol, params=req.parameters

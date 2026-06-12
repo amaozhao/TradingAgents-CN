@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import type { ColumnDef } from "@tanstack/react-table"
 import { describe, expect, it } from "vitest"
 
@@ -40,5 +41,17 @@ describe("DataTable", () => {
     expect(screen.getByRole("columnheader", { name: "名称" })).toBeInTheDocument()
     expect(screen.getByRole("cell", { name: "600519" })).toBeInTheDocument()
     expect(screen.getByRole("cell", { name: "贵州茅台" })).toBeInTheDocument()
+  })
+
+  it("uses translated column headers in the column visibility menu", async () => {
+    const user = userEvent.setup()
+    render(<DataTable columns={columns} data={[{ code: "600519", name: "贵州茅台" }]} />)
+
+    await user.click(screen.getByRole("button", { name: "列" }))
+
+    expect(screen.getByRole("menuitemcheckbox", { name: "代码" })).toBeInTheDocument()
+    expect(screen.getByRole("menuitemcheckbox", { name: "名称" })).toBeInTheDocument()
+    expect(screen.queryByRole("menuitemcheckbox", { name: "code" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("menuitemcheckbox", { name: "name" })).not.toBeInTheDocument()
   })
 })

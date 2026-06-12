@@ -228,7 +228,7 @@ describe("researchAgentApi", () => {
     source.emit("swarm.event", { run_id: "swarm-1", event: { type: "run_completed" } }, "5")
     source.emit("stock_analysis.stage", {
       stage: "analysis_task",
-      title: "单股分析任务",
+      title: "个股分析任务",
       tool_name: "stock_analysis",
       task_id: "task-600519"
     }, "6")
@@ -258,7 +258,7 @@ describe("researchAgentApi", () => {
       event: "stock_analysis.stage",
       data: {
         stage: "analysis_task",
-        title: "单股分析任务",
+        title: "个股分析任务",
         tool_name: "stock_analysis",
         task_id: "task-600519"
       },

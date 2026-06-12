@@ -575,6 +575,7 @@ export function ToolRail({
                 const label = text.toolLabels[tool.name]
                 const preview = readableToolPreview(tool, null)
                 const expanded = expandedTools.has(tool.id)
+                const compact = !expanded && (tool.status === "ok" || tool.status === "skipped")
                 const statusClass = tool.status === "error"
                   ? "bg-destructive/10 text-destructive"
                   : tool.status === "running"
@@ -585,7 +586,7 @@ export function ToolRail({
                         ? "bg-muted text-muted-foreground"
                       : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
                 return (
-                  <div key={tool.id} className="min-w-0 rounded-md border bg-background px-3 py-2 shadow-sm">
+                  <div key={tool.id} className={`min-w-0 rounded-md border bg-background px-3 shadow-sm ${compact ? "py-1.5" : "py-2"}`}>
                     <button
                       type="button"
                       className="block w-full text-left"
@@ -598,10 +599,14 @@ export function ToolRail({
                           {statusLabel(tool.status, text)}
                         </span>
                       </div>
-                      <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground [overflow-wrap:anywhere]">{label?.desc || tool.name}</p>
-                      <p className="mt-1 text-[10px] font-medium text-primary">
-                        {expanded ? text.collapseDetails : text.expandDetails}
-                      </p>
+                      {!compact && (
+                        <>
+                          <p className="mt-1 break-words text-[11px] leading-4 text-muted-foreground [overflow-wrap:anywhere]">{label?.desc || tool.name}</p>
+                          <p className="mt-1 text-[10px] font-medium text-primary">
+                            {expanded ? text.collapseDetails : text.expandDetails}
+                          </p>
+                        </>
+                      )}
                     </button>
                     {expanded && preview && (
                       <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/40 p-2 font-mono text-[11px] leading-5 text-foreground/80 [overflow-wrap:anywhere]">

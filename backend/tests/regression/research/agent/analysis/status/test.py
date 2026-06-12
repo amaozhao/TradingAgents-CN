@@ -236,7 +236,7 @@ async def test_stock_analysis_report_refuses_processing_task_summary(monkeypatch
     assert result["status"] == "processing"
     assert result["progress"] == 40
     assert result["current_step"] == "市场分析师"
-    assert result["reason"] == "单股分析任务尚未完成，不能生成或返回最终报告摘要。"
+    assert result["reason"] == "个股分析任务尚未完成，不能生成或返回最终报告摘要。"
     assert "summary" not in result
     assert db.analysis_reports.last_query is None
 

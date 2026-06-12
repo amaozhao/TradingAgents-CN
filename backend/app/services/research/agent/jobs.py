@@ -6,7 +6,7 @@ from typing import Any
 from app.core.database import get_postgres_db
 
 from .context import ResearchPrincipal
-from .events import ResearchEventService
+from .events import ResearchEventService, json_safe
 from .models import now_utc
 
 
@@ -82,7 +82,7 @@ class ResearchAttemptService:
             user_id,
             "completed",
             "attempt.completed",
-            {"completed_at": now_utc(), "result": result},
+            {"completed_at": now_utc(), "result": json_safe(result)},
         )
 
     async def mark_failed(self, attempt_id: str, user_id: str, error: str) -> bool:
@@ -189,7 +189,7 @@ class ResearchJobService:
             "event_session_id": session_id,
             "task_type": task_type,
             "resource_id": resource_id,
-            "payload": payload,
+            "payload": json_safe(payload),
             "symbol": symbol,
             "status": "queued",
             "cancel_requested": False,
@@ -255,7 +255,7 @@ class ResearchJobService:
 
     async def mark_completed(self, job_id: str, result: dict[str, Any]) -> bool:
         return await self._transition(
-            job_id, "completed", "job_completed", {"result": result}
+            job_id, "completed", "job_completed", {"result": json_safe(result)}
         )
 
     async def mark_failed(self, job_id: str, error: str) -> bool:

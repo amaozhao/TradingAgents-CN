@@ -27,7 +27,15 @@ async def stream_events(
     last_event_id = int(after_event_id or 0)
     idle_elapsed = 0.0
     poll_interval = 0.5
-    terminal_events = {"task_completed", "task_failed"}
+    terminal_events = {
+        "task_completed",
+        "task_failed",
+        "job_completed",
+        "job_failed",
+        "attempt.completed",
+        "attempt.failed",
+        "attempt.cancelled",
+    }
 
     while idle_elapsed < idle_timeout_seconds:
         events = await event_service.list_after(

@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { useMemo, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { ColumnDef } from "@tanstack/react-table"
+import { Trash2 } from "lucide-react"
 
 import { DataTable } from "@/components/data-table/data-table"
 import { PageHeader } from "@/components/feedback/page-header"
@@ -11,10 +12,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { fetchReports, type ReportListItem } from "@/features/reports/report-api"
+import { deleteReport, fetchReports, type ReportListItem } from "@/features/reports/report-api"
 import { formatDateTime } from "@/libs/utils/datetime"
 
 export function ReportsPage() {
+  const queryClient = useQueryClient()
   const [keyword, setKeyword] = useState("")
   const [market, setMarket] = useState("")
   const params = useMemo(() => {
@@ -28,6 +30,12 @@ export function ReportsPage() {
     queryKey: ["reports", params.toString()],
     queryFn: () => fetchReports(params),
     retry: false
+  })
+  const deleteMutation = useMutation({
+    mutationFn: deleteReport,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["reports"] })
+    }
   })
 
   const columns: ColumnDef<ReportListItem>[] = [
@@ -59,6 +67,30 @@ export function ReportsPage() {
       accessorKey: "created_at",
       header: "创建时间",
       cell: ({ row }) => formatDateTime(row.original.created_at || "")
+    },
+    {
+      id: "actions",
+      header: "操作",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/reports/view/${row.original.id}`}>查看</Link>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={deleteMutation.isPending}
+            onClick={(event) => {
+              event.stopPropagation()
+              if (!window.confirm(`确认删除报告“${row.original.title}”？`)) return
+              deleteMutation.mutate(row.original.id)
+            }}
+          >
+            <Trash2 className="mr-1 size-4" />
+            删除
+          </Button>
+        </div>
+      )
     }
   ]
 
