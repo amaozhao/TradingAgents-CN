@@ -254,10 +254,11 @@ export function BatchConfigCard({
         </div>
       )}
 
-      <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <label className="grid content-start gap-1 text-xs font-medium">
+      <div className="mt-4 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr))]">
+        <label className="grid min-w-0 content-start gap-1 text-xs font-medium">
           <span>批次标题</span>
           <Input
+            className="min-w-0 max-w-full"
             aria-label="批次标题"
             value={draft.title}
             onChange={(event) => update("title", event.target.value)}
@@ -266,14 +267,14 @@ export function BatchConfigCard({
           />
           <FieldNote error={Boolean(titleError)}>{titleError}</FieldNote>
         </label>
-        <label className="grid content-start gap-1 text-xs font-medium">
+        <label className="grid min-w-0 content-start gap-1 text-xs font-medium">
           <span>股票代码列表</span>
           <textarea
             aria-label="股票代码列表"
             value={draft.symbols}
             onChange={(event) => update("symbols", event.target.value)}
             disabled={disabled}
-            className="min-h-24 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            className="min-h-24 min-w-0 max-w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
             placeholder={"每行一个，最多 10 个\n000001\n600519\nAAPL"}
           />
           <FieldNote error={Boolean(symbolError || invalidError)}>
@@ -282,16 +283,16 @@ export function BatchConfigCard({
         </label>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)]">
-        <div className="grid content-start gap-2 rounded-md border bg-muted/10 p-3">
-          <label className="grid content-start gap-1 text-xs font-medium">
+      <div className="mt-4 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr))]">
+        <div className="grid min-w-0 content-start gap-2 rounded-md border bg-muted/10 p-3">
+          <label className="grid min-w-0 content-start gap-1 text-xs font-medium">
             <span>分析深度</span>
             <Select
               value={draft.depth}
               onValueChange={(value) => update("depth", value as Depth)}
               disabled={disabled}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="min-w-0 [&>span]:truncate"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {DEPTHS.map((depth) => <SelectItem key={depth} value={depth}>{depth}</SelectItem>)}
               </SelectContent>
@@ -299,21 +300,21 @@ export function BatchConfigCard({
           </label>
           <FieldNote>每个子任务沿用 Agent 个股 workflow。</FieldNote>
         </div>
-        <fieldset className="grid gap-2 rounded-md border bg-muted/10 p-3 text-xs font-medium">
+        <fieldset className="grid min-w-0 gap-2 rounded-md border bg-muted/10 p-3 text-xs font-medium">
           <legend className="px-1">分析师团队</legend>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
             {ANALYSTS.map((analyst) => {
               const checked = draft.analysts.includes(analyst.id)
               return (
                 <label
                   key={analyst.id}
                   className={cn(
-                    "inline-flex h-11 min-w-0 items-center justify-between gap-3 rounded-md border bg-background px-3 text-sm",
+                    "grid min-h-11 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md border bg-background px-3 py-2 text-sm",
                     checked && "border-primary bg-primary/10",
                     disabled && "cursor-not-allowed opacity-55"
                   )}
                 >
-                  <span className="truncate">{analyst.label}</span>
+                  <span className="min-w-0 break-words leading-5">{analyst.label}</span>
                   <input
                     className="size-4 shrink-0 accent-primary"
                     type="checkbox"
@@ -331,9 +332,9 @@ export function BatchConfigCard({
 
       <fieldset className="mt-4 grid gap-3 rounded-md border bg-muted/10 p-3">
         <legend className="px-1 text-xs font-medium">执行选项</legend>
-        <div className="grid items-stretch gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label className="flex min-h-16 items-center justify-between gap-3 rounded-md border bg-background px-3 py-3 text-sm">
-            <span>情绪分析</span>
+        <div className="grid items-stretch gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr))]">
+          <label className="grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md border bg-background px-3 py-3 text-sm">
+            <span className="min-w-0 break-words leading-5">情绪分析</span>
             <input
               className="size-4 shrink-0 accent-primary"
               type="checkbox"
@@ -342,8 +343,8 @@ export function BatchConfigCard({
               onChange={(event) => update("sentiment", event.target.checked)}
             />
           </label>
-          <label className="flex min-h-16 items-center justify-between gap-3 rounded-md border bg-background px-3 py-3 text-sm">
-            <span>风险评估</span>
+          <label className="grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md border bg-background px-3 py-3 text-sm">
+            <span className="min-w-0 break-words leading-5">风险评估</span>
             <input
               className="size-4 shrink-0 accent-primary"
               type="checkbox"
@@ -352,8 +353,8 @@ export function BatchConfigCard({
               onChange={(event) => update("risk", event.target.checked)}
             />
           </label>
-          <label className="flex min-h-16 items-center justify-between gap-3 rounded-md border bg-background px-3 py-3 text-sm">
-            <span>严格校验股票代码</span>
+          <label className="grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md border bg-background px-3 py-3 text-sm">
+            <span className="min-w-0 break-words leading-5">严格校验股票代码</span>
             <input
               className="size-4 shrink-0 accent-primary"
               type="checkbox"
@@ -362,8 +363,8 @@ export function BatchConfigCard({
               onChange={(event) => update("strict", event.target.checked)}
             />
           </label>
-          <label className="flex min-h-16 items-center justify-between gap-3 rounded-md border bg-background px-3 py-3 text-sm">
-            <span>等待批次完成</span>
+          <label className="grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md border bg-background px-3 py-3 text-sm">
+            <span className="min-w-0 break-words leading-5">等待批次完成</span>
             <input
               className="size-4 shrink-0 accent-primary"
               type="checkbox"
@@ -375,8 +376,8 @@ export function BatchConfigCard({
         </div>
       </fieldset>
 
-      <div className="mt-3 grid gap-3 md:grid-cols-3">
-        <label className="grid content-start gap-1 text-xs font-medium">
+      <div className="mt-3 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))]">
+        <label className="grid min-w-0 content-start gap-1 text-xs font-medium">
           <span>最大并发</span>
           <Input
             type="number"
@@ -388,14 +389,14 @@ export function BatchConfigCard({
           />
           <FieldNote>后端会按系统上限再次约束。</FieldNote>
         </label>
-        <label className="grid content-start gap-1 text-xs font-medium">
+        <label className="grid min-w-0 content-start gap-1 text-xs font-medium">
           <span>快速分析模型</span>
           <Select
             value={draft.quick}
             onValueChange={(value) => update("quick", value)}
             disabled={disabled || models.length === 0}
           >
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="min-w-0 [&>span]:truncate"><SelectValue /></SelectTrigger>
             <SelectContent>
               {models.map((model) => (
                 <SelectItem key={`${model.provider}-${model.model_name}`} value={model.model_name}>
@@ -406,14 +407,14 @@ export function BatchConfigCard({
           </Select>
           <FieldNote />
         </label>
-        <label className="grid content-start gap-1 text-xs font-medium">
+        <label className="grid min-w-0 content-start gap-1 text-xs font-medium">
           <span>深度决策模型</span>
           <Select
             value={draft.deep}
             onValueChange={(value) => update("deep", value)}
             disabled={disabled || models.length === 0}
           >
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="min-w-0 [&>span]:truncate"><SelectValue /></SelectTrigger>
             <SelectContent>
               {models.map((model) => (
                 <SelectItem key={`${model.provider}-${model.model_name}`} value={model.model_name}>

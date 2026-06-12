@@ -315,16 +315,16 @@ export function StockConfigCard({
         </label>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)]">
-        <div className="grid content-start gap-2 rounded-md border bg-muted/10 p-3">
-          <label className="grid content-start gap-1 text-xs font-medium">
+      <div className="mt-4 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr))]">
+        <div className="grid min-w-0 content-start gap-2 rounded-md border bg-muted/10 p-3">
+          <label className="grid min-w-0 content-start gap-1 text-xs font-medium">
             <span>分析深度</span>
             <Select
               value={draft.depth}
               onValueChange={(value) => update("depth", value as Depth)}
               disabled={disabled}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="min-w-0 [&>span]:truncate"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {DEPTHS.map((depth) => <SelectItem key={depth} value={depth}>{depth}</SelectItem>)}
               </SelectContent>
@@ -332,9 +332,9 @@ export function StockConfigCard({
           </label>
           <FieldNote>控制分析轮次、报告细节和等待时间预期。</FieldNote>
         </div>
-        <fieldset className="grid gap-2 rounded-md border bg-muted/10 p-3 text-xs font-medium">
+        <fieldset className="grid min-w-0 gap-2 rounded-md border bg-muted/10 p-3 text-xs font-medium">
           <legend className="px-1">分析师团队</legend>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr))]">
             {ANALYSTS.map((analyst) => {
               const optionDisabled = disabled || (analyst.id === "social" && normalized.market === "A股")
               const checked = effectiveAnalysts.includes(analyst.id)
@@ -342,12 +342,12 @@ export function StockConfigCard({
                 <label
                   key={analyst.id}
                   className={cn(
-                    "inline-flex h-11 min-w-0 items-center justify-between gap-3 rounded-md border bg-background px-3 text-sm",
+                    "grid min-h-11 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md border bg-background px-3 py-2 text-sm",
                     checked && "border-primary bg-primary/10",
                     optionDisabled && "cursor-not-allowed opacity-55"
                   )}
                 >
-                  <span className="truncate">{analyst.label}</span>
+                  <span className="min-w-0 break-words leading-5">{analyst.label}</span>
                   <input
                     className="size-4 shrink-0 accent-primary"
                     type="checkbox"
@@ -367,9 +367,9 @@ export function StockConfigCard({
 
       <fieldset className="mt-4 grid gap-3 rounded-md border bg-muted/10 p-3">
         <legend className="px-1 text-xs font-medium">执行选项</legend>
-        <div className="grid items-stretch gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label className="flex min-h-16 items-center justify-between gap-3 rounded-md border bg-background px-3 py-3 text-sm">
-            <span>情绪分析</span>
+        <div className="grid items-stretch gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr))]">
+          <label className="grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md border bg-background px-3 py-3 text-sm">
+            <span className="min-w-0 break-words leading-5">情绪分析</span>
             <input
               className="size-4 shrink-0 accent-primary"
               type="checkbox"
@@ -378,8 +378,8 @@ export function StockConfigCard({
               onChange={(event) => update("sentiment", event.target.checked)}
             />
           </label>
-          <label className="flex min-h-16 items-center justify-between gap-3 rounded-md border bg-background px-3 py-3 text-sm">
-            <span>风险评估</span>
+          <label className="grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md border bg-background px-3 py-3 text-sm">
+            <span className="min-w-0 break-words leading-5">风险评估</span>
             <input
               className="size-4 shrink-0 accent-primary"
               type="checkbox"
@@ -388,8 +388,8 @@ export function StockConfigCard({
               onChange={(event) => update("risk", event.target.checked)}
             />
           </label>
-          <label className="flex min-h-16 items-center justify-between gap-3 rounded-md border bg-background px-3 py-3 text-sm">
-            <span>等待完成</span>
+          <label className="grid min-h-16 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md border bg-background px-3 py-3 text-sm">
+            <span className="min-w-0 break-words leading-5">等待完成</span>
             <input
               className="size-4 shrink-0 accent-primary"
               type="checkbox"
@@ -418,15 +418,15 @@ export function StockConfigCard({
         </div>
       </fieldset>
 
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
-        <label className="grid content-start gap-1 text-xs font-medium">
+      <div className="mt-3 grid min-w-0 gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))]">
+        <label className="grid min-w-0 content-start gap-1 text-xs font-medium">
           <span>快速分析模型</span>
           <Select
             value={draft.quick}
             onValueChange={(value) => update("quick", value)}
             disabled={disabled || models.length === 0}
           >
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="min-w-0 [&>span]:truncate"><SelectValue /></SelectTrigger>
             <SelectContent>
               {models.map((model) => (
                 <SelectItem key={`${model.provider}-${model.model_name}`} value={model.model_name}>
@@ -437,14 +437,14 @@ export function StockConfigCard({
           </Select>
           <FieldNote />
         </label>
-        <label className="grid content-start gap-1 text-xs font-medium">
+        <label className="grid min-w-0 content-start gap-1 text-xs font-medium">
           <span>深度决策模型</span>
           <Select
             value={draft.deep}
             onValueChange={(value) => update("deep", value)}
             disabled={disabled || models.length === 0}
           >
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="min-w-0 [&>span]:truncate"><SelectValue /></SelectTrigger>
             <SelectContent>
               {models.map((model) => (
                 <SelectItem key={`${model.provider}-${model.model_name}`} value={model.model_name}>
