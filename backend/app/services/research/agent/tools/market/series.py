@@ -3,10 +3,13 @@ from __future__ import annotations
 import asyncio
 import importlib
 import math
+import os
+import socket
 from collections.abc import Iterable, Mapping
 from datetime import date, timedelta
 from typing import Any
 
+import httpx
 import pandas as pd
 
 from app.core.network.proxy import ensure_cn_market_no_proxy
@@ -15,6 +18,16 @@ from app.db.stock import get_market_quote, get_stock_basic_info, list_stock_dail
 
 
 DEFAULT_HISTORY_DAYS = 252
+OKX_BASE_URL = "https://www.okx.com/api/v5"
+OKX_MAX_PER_PAGE = 300
+OKX_INTERVAL = "1D"
+OKX_TIMEOUT_SECONDS = float(os.getenv("OKX_TIMEOUT_S", "15"))
+OKX_MAX_PAGES = int(os.getenv("OKX_MAX_PAGES", "20"))
+CCXT_EXCHANGE = os.getenv("CCXT_EXCHANGE", "binance").strip().lower() or "binance"
+CCXT_TIMEOUT_MS = int(os.getenv("CCXT_TIMEOUT_MS", "15000"))
+CCXT_INTERVAL = "1d"
+DEFAULT_EXTERNAL_PROXY_HOST = "127.0.0.1"
+DEFAULT_EXTERNAL_PROXY_PORT = 7897
 
 
 def normalize_symbol(symbol: Any) -> str:
@@ -64,7 +77,9 @@ def detect_market(symbol: str) -> str:
     return "UNKNOWN"
 
 
-def default_start_date(end_date: str | None = None, days: int = DEFAULT_HISTORY_DAYS) -> str:
+def default_start_date(
+    end_date: str | None = None, days: int = DEFAULT_HISTORY_DAYS
+) -> str:
     end = _date_from_text(end_date) or date.today()
     return (end - timedelta(days=days)).isoformat()
 
@@ -97,7 +112,9 @@ async def lookup_market_snapshot(
         "status": status,
     }
     if status == "degraded":
-        snapshot["reason"] = history.get("reason") or _market_data_unavailable_reason(market, [])
+        snapshot["reason"] = history.get("reason") or _market_data_unavailable_reason(
+            market, []
+        )
         if history.get("source_diagnostics"):
             snapshot["source_diagnostics"] = history["source_diagnostics"]
     return snapshot
@@ -118,7 +135,9 @@ async def load_price_series(
     resolved_start = start_date or default_start_date(resolved_end, max(limit, 30))
     results: dict[str, dict[str, Any]] = {}
     for symbol in clean_symbols:
-        rows = await _load_from_postgres(symbol, start_date=resolved_start, end_date=resolved_end, limit=limit)
+        rows = await _load_from_postgres(
+            symbol, start_date=resolved_start, end_date=resolved_end, limit=limit
+        )
         source = "postgres"
         provider_diagnostics: list[dict[str, Any]] = []
         if not rows:
@@ -140,7 +159,9 @@ async def load_price_series(
             "returns": returns,
             "last": prices[-1] if prices else None,
             "status": status,
-            "reason": None if status == "completed" else _market_data_unavailable_reason(
+            "reason": None
+            if status == "completed"
+            else _market_data_unavailable_reason(
                 detect_market(symbol), provider_diagnostics
             ),
             "source_diagnostics": provider_diagnostics,
@@ -156,9 +177,14 @@ def _market_data_unavailable_reason(
         failed_sources = [
             str(item.get("source"))
             for item in diagnostics
-            if item.get("source") and item.get("status") in {"empty", "error", "timeout"}
+            if item.get("source")
+            and item.get("status") in {"empty", "error", "timeout"}
         ]
-        source_text = "、".join(failed_sources) if failed_sources else "本地缓存、AKShare、BaoStock"
+        source_text = (
+            "、".join(failed_sources)
+            if failed_sources
+            else "本地缓存、AKShare、BaoStock"
+        )
         return (
             f"A 股行情数据未取得可用价格序列：{source_text} 没有返回足够数据。"
             "请确认国内行情接口直连可用；如需估值/财务字段，再配置有效 TUSHARE_TOKEN。"
@@ -168,7 +194,9 @@ def _market_data_unavailable_reason(
     return "未识别的标的类型，无法从当前免费数据源获取价格序列。"
 
 
-def _provider_diagnostic(source: str, status: str, message: str, **extra: Any) -> dict[str, Any]:
+def _provider_diagnostic(
+    source: str, status: str, message: str, **extra: Any
+) -> dict[str, Any]:
     diagnostic = {"source": source, "status": status, "message": message}
     diagnostic.update({key: value for key, value in extra.items() if value is not None})
     return diagnostic
@@ -218,7 +246,9 @@ def summarize_returns(values: list[float]) -> dict[str, Any]:
         "mean_return": round(mean, 8),
         "volatility": round(volatility, 8),
         "annual_volatility": round(annual_volatility, 6),
-        "sharpe": round((mean / volatility) * math.sqrt(annual_factor), 6) if volatility > 0 else None,
+        "sharpe": round((mean / volatility) * math.sqrt(annual_factor), 6)
+        if volatility > 0
+        else None,
         "max_drawdown": round(max_drawdown, 6),
         "win_rate": round(len([value for value in clean if value > 0]) / len(clean), 6),
     }
@@ -251,7 +281,9 @@ async def _load_from_postgres(
         async with get_session_factory()() as session:
             rows = await list_stock_daily_quotes(
                 session,
-                market=detect_market(symbol) if detect_market(symbol) != "UNKNOWN" else None,
+                market=detect_market(symbol)
+                if detect_market(symbol) != "UNKNOWN"
+                else None,
                 code=symbol,
                 start_date=start_date,
                 end_date=end_date,
@@ -286,7 +318,22 @@ async def _load_from_provider(
             if rows:
                 return rows, source, diagnostics
         return [], None, diagnostics
-    if market in {"US", "CRYPTO"}:
+    if market == "CRYPTO":
+        for source, fetcher in (
+            ("okx", _fetch_okx),
+            ("ccxt", _fetch_ccxt),
+            ("yfinance", _fetch_yfinance),
+        ):
+            rows, diagnostic = await _bounded_provider(
+                source,
+                fetcher(symbol, start_date, end_date),
+                timeout=15,
+            )
+            diagnostics.append(diagnostic)
+            if rows:
+                return rows, source, diagnostics
+        return [], None, diagnostics
+    if market == "US":
         rows, diagnostic = await _bounded_provider(
             "yfinance",
             _fetch_yfinance(symbol, start_date, end_date),
@@ -313,13 +360,21 @@ async def _bounded_provider(
             timeout_seconds=timeout,
         )
     except Exception as exc:
-        return [], _provider_diagnostic(source, "error", str(exc), error_type=type(exc).__name__)
+        return [], _provider_diagnostic(
+            source, "error", str(exc), error_type=type(exc).__name__
+        )
     if rows:
-        return rows, _provider_diagnostic(source, "ok", f"{source} returned {len(rows)} rows.", rows=len(rows))
-    return [], _provider_diagnostic(source, "empty", f"{source} returned no usable rows.")
+        return rows, _provider_diagnostic(
+            source, "ok", f"{source} returned {len(rows)} rows.", rows=len(rows)
+        )
+    return [], _provider_diagnostic(
+        source, "empty", f"{source} returned no usable rows."
+    )
 
 
-async def _fetch_cn_akshare(symbol: str, start_date: str, end_date: str) -> list[dict[str, Any]]:
+async def _fetch_cn_akshare(
+    symbol: str, start_date: str, end_date: str
+) -> list[dict[str, Any]]:
     try:
         get_provider = getattr(
             importlib.import_module("trader.flows.providers.china.akshare"),
@@ -332,7 +387,9 @@ async def _fetch_cn_akshare(symbol: str, start_date: str, end_date: str) -> list
         return []
 
 
-async def _fetch_cn_baostock(symbol: str, start_date: str, end_date: str) -> list[dict[str, Any]]:
+async def _fetch_cn_baostock(
+    symbol: str, start_date: str, end_date: str
+) -> list[dict[str, Any]]:
     try:
         get_provider = getattr(
             importlib.import_module("trader.flows.providers.china.baostock"),
@@ -345,17 +402,147 @@ async def _fetch_cn_baostock(symbol: str, start_date: str, end_date: str) -> lis
         return []
 
 
-async def _fetch_yfinance(symbol: str, start_date: str, end_date: str) -> list[dict[str, Any]]:
+async def _fetch_yfinance(
+    symbol: str, start_date: str, end_date: str
+) -> list[dict[str, Any]]:
     def fetch() -> pd.DataFrame:
         yf = importlib.import_module("yfinance")
         ticker = _to_yfinance_symbol(symbol)
-        return yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=False)
+        return yf.download(
+            ticker, start=start_date, end=end_date, progress=False, auto_adjust=False
+        )
 
     try:
         frame = await asyncio.to_thread(fetch)
         return _frame_to_rows(frame, symbol=symbol, source="yfinance")
     except Exception:
         return []
+
+
+async def _fetch_okx(
+    symbol: str, start_date: str, end_date: str
+) -> list[dict[str, Any]]:
+    inst_id = _to_okx_symbol(symbol)
+    start_ts = int(pd.Timestamp(start_date).timestamp() * 1000)
+    end_ts = int((pd.Timestamp(end_date) + pd.Timedelta(days=1)).timestamp() * 1000)
+    rows: list[list[str]] = []
+    after = str(end_ts)
+
+    async with httpx.AsyncClient(
+        timeout=OKX_TIMEOUT_SECONDS,
+        proxy=_external_proxy_url(),
+    ) as client:
+        for _ in range(max(1, OKX_MAX_PAGES)):
+            response = await client.get(
+                f"{OKX_BASE_URL}/market/candles",
+                params={
+                    "instId": inst_id,
+                    "bar": OKX_INTERVAL,
+                    "limit": str(OKX_MAX_PER_PAGE),
+                    "after": after,
+                },
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if payload.get("code") != "0":
+                message = str(payload.get("msg") or "OKX request failed")
+                raise ValueError(message)
+            page_rows = [
+                item
+                for item in payload.get("data") or []
+                if isinstance(item, list) and len(item) >= 9 and item[8] == "1"
+            ]
+            if not page_rows:
+                break
+            rows.extend(page_rows)
+            oldest_ts = int(page_rows[-1][0])
+            if oldest_ts <= start_ts or len(page_rows) < OKX_MAX_PER_PAGE:
+                break
+            after = str(oldest_ts)
+
+    if not rows:
+        return []
+    frame = pd.DataFrame(
+        rows,
+        columns=[
+            "timestamp",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "volume_currency",
+            "volume_quote",
+            "confirm",
+        ],
+    )
+    frame["trade_date"] = pd.to_datetime(frame["timestamp"].astype("int64"), unit="ms")
+    frame = frame[
+        (frame["trade_date"] >= pd.Timestamp(start_ts, unit="ms"))
+        & (frame["trade_date"] < pd.Timestamp(end_ts, unit="ms"))
+    ]
+    return _frame_to_rows(
+        frame[["trade_date", "open", "high", "low", "close", "volume"]],
+        symbol=symbol,
+        source="okx",
+    )
+
+
+async def _fetch_ccxt(
+    symbol: str, start_date: str, end_date: str
+) -> list[dict[str, Any]]:
+    try:
+        ccxt = importlib.import_module("ccxt")
+    except ImportError:
+        return []
+
+    def fetch() -> pd.DataFrame:
+        exchange_cls = getattr(ccxt, CCXT_EXCHANGE, None) or getattr(ccxt, "binance")
+        exchange = exchange_cls(
+            {
+                "enableRateLimit": True,
+                "timeout": CCXT_TIMEOUT_MS,
+                **_ccxt_proxy_config(),
+            }
+        )
+        ccxt_symbol = _to_ccxt_symbol(symbol)
+        since_ms = int(pd.Timestamp(start_date).timestamp() * 1000)
+        end_ms = int((pd.Timestamp(end_date) + pd.Timedelta(days=1)).timestamp() * 1000)
+        cursor = since_ms
+        all_rows: list[list[Any]] = []
+        for _ in range(200):
+            page_rows = exchange.fetch_ohlcv(
+                ccxt_symbol,
+                CCXT_INTERVAL,
+                since=cursor,
+                limit=1000,
+            )
+            if not page_rows:
+                break
+            all_rows.extend(page_rows)
+            last_ts = int(page_rows[-1][0])
+            if last_ts >= end_ms or len(page_rows) < 1000:
+                break
+            cursor = last_ts + 1
+        if not all_rows:
+            return pd.DataFrame()
+        frame = pd.DataFrame(
+            all_rows,
+            columns=["timestamp", "open", "high", "low", "close", "volume"],
+        )
+        frame["trade_date"] = pd.to_datetime(frame["timestamp"], unit="ms")
+        start = pd.Timestamp(since_ms, unit="ms")
+        end = pd.Timestamp(end_ms, unit="ms")
+        return frame[(frame["trade_date"] >= start) & (frame["trade_date"] < end)]
+
+    frame = await asyncio.to_thread(fetch)
+    return _frame_to_rows(
+        frame[["trade_date", "open", "high", "low", "close", "volume"]]
+        if not frame.empty
+        else frame,
+        symbol=symbol,
+        source="ccxt",
+    )
 
 
 def _to_yfinance_symbol(symbol: str) -> str:
@@ -367,6 +554,66 @@ def _to_yfinance_symbol(symbol: str) -> str:
     return text
 
 
+def _to_okx_symbol(symbol: str) -> str:
+    text = normalize_symbol(symbol).replace("/", "-")
+    if text.endswith("-USD"):
+        return text[:-4] + "-USDT"
+    return text
+
+
+def _to_ccxt_symbol(symbol: str) -> str:
+    text = normalize_symbol(symbol).replace("-", "/")
+    if text.endswith("/USD"):
+        return text[:-4] + "/USDT"
+    return text
+
+
+def _ccxt_proxy_config() -> dict[str, str]:
+    proxy = _external_proxy_url()
+    return {"proxies": {"http": proxy, "https": proxy}} if proxy else {}
+
+
+def _external_proxy_url() -> str | None:
+    for key in (
+        "TRADING_AGENTS_PROXY_URL",
+        "HTTPS_PROXY",
+        "https_proxy",
+        "ALL_PROXY",
+        "all_proxy",
+        "HTTP_PROXY",
+        "http_proxy",
+    ):
+        value = os.getenv(key, "").strip()
+        if value:
+            return value
+
+    host = (
+        os.getenv("TRADING_AGENTS_PROXY_HOST")
+        or os.getenv("CLASH_PROXY_HOST")
+        or DEFAULT_EXTERNAL_PROXY_HOST
+    )
+    raw_port = (
+        os.getenv("TRADING_AGENTS_PROXY_PORT")
+        or os.getenv("CLASH_MIXED_PORT")
+        or str(DEFAULT_EXTERNAL_PROXY_PORT)
+    )
+    try:
+        port = int(raw_port)
+    except ValueError:
+        return None
+    if _tcp_port_open(host, port):
+        return f"http://{host}:{port}"
+    return None
+
+
+def _tcp_port_open(host: str, port: int) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=0.2):
+            return True
+    except OSError:
+        return False
+
+
 def _frame_to_rows(frame: Any, *, symbol: str, source: str) -> list[dict[str, Any]]:
     if frame is None or not isinstance(frame, pd.DataFrame) or frame.empty:
         return []
@@ -375,10 +622,16 @@ def _frame_to_rows(frame: Any, *, symbol: str, source: str) -> list[dict[str, An
         df.columns = [str(column[0]).lower() for column in df.columns]
     else:
         df.columns = [str(column).lower() for column in df.columns]
-    if "date" not in df.columns:
+    if "date" not in df.columns and "trade_date" not in df.columns:
         df = df.reset_index()
         df.columns = [str(column).lower() for column in df.columns]
-    date_column = "date" if "date" in df.columns else df.columns[0]
+    date_column = (
+        "date"
+        if "date" in df.columns
+        else "trade_date"
+        if "trade_date" in df.columns
+        else df.columns[0]
+    )
     close_column = _first_existing(df, ("close", "收盘", "收盘价"))
     if not close_column:
         return []
@@ -461,6 +714,8 @@ def _number(value: Any) -> float | None:
 def _date_text(value: Any) -> str | None:
     if value is None:
         return None
+    if isinstance(value, pd.Timestamp):
+        return value.date().isoformat()
     if hasattr(value, "date") and not isinstance(value, date):
         value = value.date()
     if isinstance(value, date):
