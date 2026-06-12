@@ -176,6 +176,33 @@ describe("stock analysis shared frontend logic", () => {
     expect(defaultStockModels(enabled)).toEqual({ quick: "qwen-turbo", deep: "qwen-max" })
     expect(defaultStockModels(enabled.slice(0, 1))).toEqual({ quick: "qwen-turbo", deep: "qwen-turbo" })
   })
+
+  it("keeps quick/deep model defaults on the same provider when providers differ", () => {
+    const enabled = enabledModels([
+      {
+        provider: "minimax",
+        model_name: "MiniMax-M3",
+        model_display_name: "MiniMax-M3",
+        enabled: true,
+        max_tokens: 8000,
+        temperature: 0.7,
+        timeout: 60,
+        retry_times: 2
+      },
+      {
+        provider: "zhipu",
+        model_name: "glm-4",
+        model_display_name: "glm-4",
+        enabled: true,
+        max_tokens: 8000,
+        temperature: 0.7,
+        timeout: 60,
+        retry_times: 2
+      }
+    ])
+
+    expect(defaultStockModels(enabled)).toEqual({ quick: "MiniMax-M3", deep: "MiniMax-M3" })
+  })
 })
 
 describe("ResearchAgentPage stock analysis", () => {

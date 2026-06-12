@@ -11,8 +11,12 @@ export function modelLabel(model: LLMConfig) {
 }
 
 export function defaultStockModels(models: LLMConfig[]) {
+  const quick = models[0]
+  const deep = models.find((model) => model.provider === quick?.provider && model.model_name !== quick.model_name)
+    || quick
+
   return {
-    quick: models[0]?.model_name || "",
-    deep: models[1]?.model_name || models[0]?.model_name || ""
+    quick: quick?.model_name || "",
+    deep: deep?.model_name || quick?.model_name || ""
   }
 }

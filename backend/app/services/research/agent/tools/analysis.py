@@ -99,10 +99,10 @@ def analysis_tools() -> list[ResearchTool]:
         ResearchTool(
             name="stock_analysis",
             description=(
-                "Submit an owner-scoped single-stock analysis through the Agent-facing "
-                "native workflow. The original LangGraph DAG is kept as a baseline, "
-                "but this tool executes the migrated Agent workflow directly and writes "
-                "its own compatible report."
+                "Run the owner-scoped Agent single-stock workflow. This workflow "
+                "replicates the original TradingAgents DAG nodes, tools, debates, "
+                "risk review, and report schema; it does not submit to the old "
+                "analysis queue and does not use the simplified native workflow."
             ),
             permission=SINGLE_STOCK_ANALYSIS,
             schema=stock_analysis_schema,
@@ -111,7 +111,7 @@ def analysis_tools() -> list[ResearchTool]:
         ResearchTool(
             name="single_stock_analysis",
             description=(
-                "Compatibility alias for stock_analysis. Runs the migrated Agent-native "
+                "Compatibility alias for stock_analysis. Runs the Agent DAG-parity "
                 "single-stock workflow and returns the generated compatible report. "
                 "Supports market_type, analysis_date, research_depth, selected_analysts, "
                 "include_sentiment/include_risk, and quick/deep models."

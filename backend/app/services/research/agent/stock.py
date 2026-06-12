@@ -1,17 +1,29 @@
 from __future__ import annotations
 
 import re
+import time
+import uuid
+from datetime import datetime
 from typing import Any
 
 from app.core.database import get_postgres_db, get_postgres_db_sync
 from app.schemas.analysis import AnalysisParameters
 from app.services.analysis.simple import (
+    create_analysis_config,
     get_provider_and_url_by_model_sync,
     get_simple_analysis_service,
 )
+from trader.llm.clients.factory import create_llm_client
 
 from .context import ToolExecutionContext
-from .native import run_native_stock_workflow
+from .flow import StockDagParityWorkflow
+from .flow.context import build_stock_workflow_context
+from .flow.events import build_stock_workflow_stage_events
+from .flow.graph import build_stock_dag_parity_plan
+from .flow.stages.reports import (
+    build_stock_workflow_report,
+    persist_stock_workflow_report,
+)
 from .stage import planned_stock_stages
 
 
@@ -470,6 +482,153 @@ async def read_stock_analysis_report(
     }
 
 
+def build_agent_stock_workflow_context(
+    *,
+    principal_context: ToolExecutionContext,
+    symbol: str,
+    market_type: str,
+    parameters: AnalysisParameters,
+    skipped_stages: list[dict[str, str]],
+    stage_plan: list[dict[str, str]],
+    task_id: str,
+):
+    quick_model = parameters.quick_analysis_model or "qwen-turbo"
+    deep_model = parameters.deep_analysis_model or quick_model
+    quick_provider = _provider_info_for_model(quick_model, {})
+    deep_provider = _provider_info_for_model(deep_model, {})
+    config = create_analysis_config(
+        parameters.research_depth,
+        parameters.selected_analysts,
+        quick_model,
+        deep_model,
+        str(quick_provider.get("provider") or "qwen"),
+        market_type=market_type,
+    )
+    config.update(
+        {
+            "checkpoint_enabled": False,
+            "include_sentiment": parameters.include_sentiment,
+            "include_risk": parameters.include_risk,
+            "skipped_stages": skipped_stages,
+            "stage_plan": stage_plan,
+        }
+    )
+    trade_date = _analysis_trade_date(parameters)
+    quick_llm = _create_workflow_llm(quick_model, quick_provider)
+    deep_llm = _create_workflow_llm(deep_model, deep_provider)
+    return build_stock_workflow_context(
+        symbol=symbol,
+        trade_date=trade_date,
+        asset_type="stock",
+        selected_analysts=parameters.selected_analysts,
+        config=config,
+        quick_llm=quick_llm,
+        deep_llm=deep_llm,
+        attempt_id=principal_context.request_id,
+        task_id=task_id,
+        principal=principal_context.principal,
+    )
+
+
+async def run_agent_stock_workflow(
+    context: ToolExecutionContext,
+    *,
+    tool_name: str,
+    symbol: str,
+    market_type: str,
+    parameters: AnalysisParameters,
+    skipped_stages: list[dict[str, str]],
+    stage_plan: list[dict[str, str]],
+) -> dict[str, Any]:
+    task_id = str(uuid.uuid4())
+    workflow_context = build_agent_stock_workflow_context(
+        principal_context=context,
+        symbol=symbol,
+        market_type=market_type,
+        parameters=parameters,
+        skipped_stages=skipped_stages,
+        stage_plan=stage_plan,
+        task_id=task_id,
+    )
+    started = time.perf_counter()
+    workflow_result = StockDagParityWorkflow(workflow_context).run()
+    execution_time = time.perf_counter() - started
+    report = build_stock_workflow_report(
+        workflow_context,
+        workflow_result.state,
+        workflow_result.decision,
+        execution_time=execution_time,
+    )
+    await persist_stock_workflow_report(workflow_context, report)
+
+    plan = build_stock_dag_parity_plan(
+        parameters.selected_analysts,
+        "risk_manager",
+        include_risk=parameters.include_risk,
+    )
+    stage_events = build_stock_workflow_stage_events(
+        plan=plan,
+        reports=report.get("reports", {}),
+        task_id=task_id,
+        analysis_id=str(report.get("analysis_id") or ""),
+        attempt_id=context.request_id,
+    )
+    links = _stock_links(task_id)
+    return {
+        "tool": tool_name,
+        "mode": "single",
+        "status": workflow_result.status,
+        "accepted": workflow_result.status == "completed",
+        "stage": "agent_summary",
+        "wait_status": workflow_result.status,
+        "progress": 100 if workflow_result.status == "completed" else 0,
+        "source": workflow_result.source,
+        "task_id": task_id,
+        "analysis_id": report.get("analysis_id"),
+        "symbol": symbol,
+        "market_type": market_type,
+        "analysis_date": report.get("analysis_date"),
+        "research_depth": parameters.research_depth,
+        "selected_analysts": parameters.selected_analysts,
+        "include_sentiment": parameters.include_sentiment,
+        "include_risk": parameters.include_risk,
+        "skipped_stages": skipped_stages,
+        "stage_plan": stage_plan,
+        "node_events": list(getattr(workflow_result, "node_events", []) or []),
+        "stage_events": stage_events,
+        "workflow_events": list(getattr(workflow_result, "events", []) or []),
+        "summary": report.get("summary", ""),
+        "recommendation": report.get("recommendation", ""),
+        "risk_level": report.get("risk_level"),
+        "decision": report.get("decision", {}),
+        "report": report,
+        "links": links,
+        "task_url": links["task"],
+        "report_url": links["report"],
+        "message": "Agent 单股分析 DAG 对齐工作流已完成。",
+    }
+
+
+def _analysis_trade_date(parameters: AnalysisParameters) -> str:
+    raw = parameters.analysis_date
+    if raw is None:
+        return datetime.now().strftime("%Y-%m-%d")
+    return raw.strftime("%Y-%m-%d")
+
+
+def _create_workflow_llm(model_name: str, provider_info: dict[str, Any]):
+    provider = str(provider_info.get("provider") or "qwen")
+    base_url = provider_info.get("backend_url")
+    api_key = provider_info.get("api_key")
+    client = create_llm_client(
+        provider,
+        model_name,
+        base_url,
+        api_key=api_key,
+    )
+    return client.get_llm()
+
+
 class StockAnalysisWorkflow:
     def __init__(self, *, tool_name: str):
         self.tool_name = tool_name
@@ -526,7 +685,7 @@ class StockAnalysisWorkflow:
                 ),
             }
 
-        return await run_native_stock_workflow(
+        return await run_agent_stock_workflow(
             context,
             tool_name=self.tool_name,
             symbol=symbol,

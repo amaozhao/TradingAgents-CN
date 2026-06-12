@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -54,67 +55,109 @@ def _patch_native_workflow(monkeypatch):
     calls = WorkflowCalls()
     service = FakeAnalysisService()
 
-    async def run_native_stock_workflow(
-        context,
-        *,
-        tool_name: str,
-        symbol: str,
-        market_type: str,
-        parameters,
-        skipped_stages,
-        stage_plan,
-    ):
+    async def fail_native(*args, **kwargs):
+        raise AssertionError("native workflow must not be default")
+
+    def build_context(**kwargs):
+        parameters = kwargs["parameters"]
         calls.append(
             {
-                "context": context,
-                "symbol": symbol,
-                "market_type": market_type,
+                "context": kwargs["principal_context"],
+                "symbol": kwargs["symbol"],
+                "market_type": kwargs["market_type"],
                 "parameters": parameters,
-                "skipped_stages": skipped_stages,
-                "stage_plan": stage_plan,
+                "skipped_stages": kwargs["skipped_stages"],
+                "stage_plan": kwargs["stage_plan"],
             }
         )
-        return {
-            "tool": tool_name,
-            "mode": "single",
-            "status": "completed",
-            "accepted": True,
-            "stage": "agent_summary",
-            "wait_status": "completed",
-            "progress": 100,
-            "task_id": "task-600519",
-            "analysis_id": "analysis-1",
-            "symbol": symbol,
-            "market_type": market_type,
-            "analysis_date": parameters.analysis_date.isoformat()
+        return SimpleNamespace(
+            symbol=kwargs["symbol"],
+            trade_date=parameters.analysis_date.strftime("%Y-%m-%d")
             if parameters.analysis_date
-            else None,
-            "research_depth": parameters.research_depth,
-            "selected_analysts": parameters.selected_analysts,
-            "include_sentiment": parameters.include_sentiment,
-            "include_risk": parameters.include_risk,
-            "skipped_stages": skipped_stages,
-            "stage_plan": stage_plan,
+            else "2026-06-12",
+            selected_analysts=parameters.selected_analysts,
+            config={
+                "research_depth": parameters.research_depth,
+                "include_risk": parameters.include_risk,
+            },
+            task_id=kwargs["task_id"],
+            principal=kwargs["principal_context"].principal,
+        )
+
+    class FakeWorkflow:
+        def __init__(self, workflow_context):
+            self.context = workflow_context
+
+        def run(self):
+            return SimpleNamespace(
+                status="completed",
+                source="agent_workflow_dag_parity",
+                task_id=self.context.task_id,
+                state={
+                    "market_report": "market report content",
+                    "investment_plan": "investment plan content",
+                    "trader_investment_plan": "trader plan content",
+                    "final_trade_decision": "final decision content",
+                    "performance_metrics": {"total_time": 1.0},
+                },
+                decision={
+                    "action": "HOLD",
+                    "confidence": 0.7,
+                    "risk_score": 0.3,
+                    "reasoning": "贵州茅台基本面稳健。",
+                    "model_info": "FakeWorkflow",
+                },
+                events=[],
+                node_events=[
+                    {
+                        "event_type": "stock_analysis.node",
+                        "node": "Market Analyst",
+                        "status": "completed",
+                    }
+                ],
+                stage_events=[
+                    {
+                        "event_type": "stock_analysis.stage",
+                        "stage": "market_analysis",
+                        "status": "completed",
+                    }
+                ],
+            )
+
+    def build_report(workflow_context, state, decision, *, execution_time):
+        return {
+            "analysis_id": "analysis-1",
+            "stock_code": workflow_context.symbol,
+            "stock_symbol": workflow_context.symbol,
+            "analysis_date": workflow_context.trade_date,
             "summary": "贵州茅台基本面稳健。",
             "recommendation": "持有",
+            "confidence_score": 0.7,
             "risk_level": "中",
+            "reports": {"final_trade_decision": state["final_trade_decision"]},
             "decision": {"action": "持有"},
-            "report": {"analysis_id": "analysis-1"},
-            "links": {
-                "task": "/tasks?task_id=task-600519",
-                "report": "/reports/view/task-600519",
-            },
-            "task_url": "/tasks?task_id=task-600519",
-            "report_url": "/reports/view/task-600519",
-            "message": "Agent-native 单股分析已完成，未提交原 LangGraph 队列。",
+            "source": "agent_workflow_dag_parity",
         }
 
+    async def persist_report(*args, **kwargs):
+        return {"source": "agent_workflow_dag_parity"}
+
+    class FakeUuid:
+        def __str__(self):
+            return "task-600519"
+
     monkeypatch.setattr(stock_module, "get_simple_analysis_service", lambda: service)
+    monkeypatch.setattr(stock_module.uuid, "uuid4", lambda: FakeUuid())
     monkeypatch.setattr(
         stock_module,
         "run_native_stock_workflow",
-        run_native_stock_workflow,
+        fail_native,
+        raising=False,
     )
+    monkeypatch.setattr(stock_module, "build_agent_stock_workflow_context", build_context)
+    monkeypatch.setattr(stock_module, "StockDagParityWorkflow", FakeWorkflow)
+    monkeypatch.setattr(stock_module, "build_stock_workflow_report", build_report)
+    monkeypatch.setattr(stock_module, "persist_stock_workflow_report", persist_report)
     calls.service = service
     return calls
 
@@ -162,6 +205,14 @@ async def test_single_stock_analysis_tool_runs_native_workflow(monkeypatch):
     }
     assert result["task_url"] == "/tasks?task_id=task-600519"
     assert result["report_url"] == "/reports/view/task-600519"
+    assert result["node_events"] == [
+        {
+            "event_type": "stock_analysis.node",
+            "node": "Market Analyst",
+            "status": "completed",
+        }
+    ]
+    assert result["stage_events"]
     [call] = calls
     assert call["context"].principal.user_id == "user-a"
     assert call["symbol"] == "600519"

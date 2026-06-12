@@ -61,6 +61,7 @@ export function ResearchAgentPage() {
     void researchAgentApi.listSessions().then((response) => {
       const loaded = response.data || []
       setSessions(loaded)
+      setActiveSessionId((current) => current || loaded[0]?.session_id || null)
     }).catch(() => setSessions([]))
   }, [])
 

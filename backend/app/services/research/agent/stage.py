@@ -27,13 +27,18 @@ class StockStagePlanItem:
 
 STOCK_STAGE_TITLES = {
     "validate_input": "参数校验",
+    "prepare_state": "状态准备",
     "prepare_data": "数据准备",
     "market_analysis": "市场分析师",
+    "sentiment_analysis": "情绪分析师",
     "fundamentals_analysis": "基本面分析师",
     "news_analysis": "新闻分析师",
     "social_analysis": "社媒分析师",
     "research_debate": "研究辩论",
+    "research_manager": "研究经理",
     "trader_decision": "交易决策",
+    "risk_debate": "风险辩论",
+    "final_risk_decision": "最终风险决策",
     "risk_review": "风险评估",
     "report_generation": "报告生成",
     "wait_bounded": "等待窗口",

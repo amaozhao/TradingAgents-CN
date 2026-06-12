@@ -26,6 +26,7 @@ import {
   SelectValue
 } from "@/components/ui/select"
 import { configApi, type LLMConfig } from "@/libs/api/config"
+import { cn } from "@/libs/utils/cn"
 
 export type { StockPayload, StockSubmit }
 
@@ -190,10 +191,13 @@ export function StockConfigCard({
   const error = stockSymbolError(normalized.symbol, normalized.market)
   const dateError = draft.date > localDateKey() ? "分析日期不能晚于今天。" : ""
   const analystError = effectiveAnalysts.length === 0 ? "至少选择一个分析师。" : ""
-  const modelError = modelsError
+  const modelConfigError = modelsError
     || (!modelsLoaded ? "正在加载模型配置。" : "")
     || (models.length === 0 ? "没有启用模型，请先在设置中配置模型。" : "")
-    || (!draft.quick || !draft.deep ? "请选择快速分析模型和深度决策模型。" : "")
+  const modelSelectionError = !modelConfigError && (!draft.quick || !draft.deep)
+    ? "请选择快速分析模型和深度决策模型。"
+    : ""
+  const modelError = modelConfigError || modelSelectionError
   const blockingError = error || dateError || analystError || modelError
   const disabled = running || locked
 
@@ -227,9 +231,9 @@ export function StockConfigCard({
           </div>
           <p className="mt-1 break-words text-xs text-muted-foreground">{summary}</p>
         </div>
-        {blockingError && (
+        {modelConfigError && (
           <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {blockingError}
+            {modelConfigError}
           </p>
         )}
         {locked && !blockingError && (
@@ -311,23 +315,25 @@ export function StockConfigCard({
         </label>
       </div>
 
-      <div className="mt-3 grid gap-3 lg:grid-cols-[12rem_minmax(0,1fr)]">
-        <label className="grid content-start gap-1 text-xs font-medium">
-          <span>分析深度</span>
-          <Select
-            value={draft.depth}
-            onValueChange={(value) => update("depth", value as Depth)}
-            disabled={disabled}
-          >
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {DEPTHS.map((depth) => <SelectItem key={depth} value={depth}>{depth}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <FieldNote />
-        </label>
-        <fieldset className="grid gap-2 text-xs font-medium">
-          <legend>分析师团队</legend>
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)]">
+        <div className="grid content-start gap-2 rounded-md border bg-muted/10 p-3">
+          <label className="grid content-start gap-1 text-xs font-medium">
+            <span>分析深度</span>
+            <Select
+              value={draft.depth}
+              onValueChange={(value) => update("depth", value as Depth)}
+              disabled={disabled}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {DEPTHS.map((depth) => <SelectItem key={depth} value={depth}>{depth}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </label>
+          <FieldNote>控制分析轮次、报告细节和等待时间预期。</FieldNote>
+        </div>
+        <fieldset className="grid gap-2 rounded-md border bg-muted/10 p-3 text-xs font-medium">
+          <legend className="px-1">分析师团队</legend>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {ANALYSTS.map((analyst) => {
               const optionDisabled = disabled || (analyst.id === "social" && normalized.market === "A股")
@@ -335,64 +341,82 @@ export function StockConfigCard({
               return (
                 <label
                   key={analyst.id}
-                  className="inline-flex h-9 min-w-0 items-center gap-2 rounded-md border px-3 text-sm"
+                  className={cn(
+                    "inline-flex h-11 min-w-0 items-center justify-between gap-3 rounded-md border bg-background px-3 text-sm",
+                    checked && "border-primary bg-primary/10",
+                    optionDisabled && "cursor-not-allowed opacity-55"
+                  )}
                 >
+                  <span className="truncate">{analyst.label}</span>
                   <input
+                    className="size-4 shrink-0 accent-primary"
                     type="checkbox"
                     checked={checked}
                     disabled={optionDisabled}
                     onChange={() => toggleAnalyst(analyst.id)}
                   />
-                  {analyst.label}
                 </label>
               )
             })}
           </div>
-          <FieldNote>{normalized.market === "A股" ? "A 股默认禁用社媒分析。" : ""}</FieldNote>
+          <FieldNote error={Boolean(analystError)}>
+            {analystError || (normalized.market === "A股" ? "A 股默认禁用社媒分析。" : "")}
+          </FieldNote>
         </fieldset>
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <label className="flex h-10 items-center justify-between rounded-md border px-3 text-sm">
-          情绪分析
-          <input
-            type="checkbox"
-            checked={draft.sentiment}
-            disabled={disabled}
-            onChange={(event) => update("sentiment", event.target.checked)}
-          />
-        </label>
-        <label className="flex h-10 items-center justify-between rounded-md border px-3 text-sm">
-          风险评估
-          <input
-            type="checkbox"
-            checked={draft.risk}
-            disabled={disabled}
-            onChange={(event) => update("risk", event.target.checked)}
-          />
-        </label>
-        <label className="flex h-10 items-center justify-between rounded-md border px-3 text-sm">
-          等待完成
-          <input
-            type="checkbox"
-            checked={draft.wait}
-            disabled={disabled}
-            onChange={(event) => update("wait", event.target.checked)}
-          />
-        </label>
-        <label className="grid content-start gap-1 text-xs font-medium">
-          <span>等待秒数</span>
-          <Input
-            type="number"
-            min={30}
-            max={1800}
-            value={draft.timeout}
-            disabled={disabled || !draft.wait}
-            onChange={(event) => update("timeout", Number(event.target.value) || 900)}
-          />
-          <FieldNote>{draft.wait ? "30-1800 秒" : "未启用等待完成"}</FieldNote>
-        </label>
-      </div>
+      <fieldset className="mt-4 grid gap-3 rounded-md border bg-muted/10 p-3">
+        <legend className="px-1 text-xs font-medium">执行选项</legend>
+        <div className="grid items-stretch gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <label className="flex min-h-16 items-center justify-between gap-3 rounded-md border bg-background px-3 py-3 text-sm">
+            <span>情绪分析</span>
+            <input
+              className="size-4 shrink-0 accent-primary"
+              type="checkbox"
+              checked={draft.sentiment}
+              disabled={disabled}
+              onChange={(event) => update("sentiment", event.target.checked)}
+            />
+          </label>
+          <label className="flex min-h-16 items-center justify-between gap-3 rounded-md border bg-background px-3 py-3 text-sm">
+            <span>风险评估</span>
+            <input
+              className="size-4 shrink-0 accent-primary"
+              type="checkbox"
+              checked={draft.risk}
+              disabled={disabled}
+              onChange={(event) => update("risk", event.target.checked)}
+            />
+          </label>
+          <label className="flex min-h-16 items-center justify-between gap-3 rounded-md border bg-background px-3 py-3 text-sm">
+            <span>等待完成</span>
+            <input
+              className="size-4 shrink-0 accent-primary"
+              type="checkbox"
+              checked={draft.wait}
+              disabled={disabled}
+              onChange={(event) => update("wait", event.target.checked)}
+            />
+          </label>
+          <label className="grid min-h-16 content-center gap-1 rounded-md border bg-background px-3 py-2 text-xs font-medium">
+            <span className="flex items-center gap-2 text-sm">
+              等待秒数
+              <span className="text-xs font-normal text-muted-foreground">
+                {draft.wait ? "30-1800 秒" : "未启用等待"}
+              </span>
+            </span>
+            <Input
+              className="h-9"
+              type="number"
+              min={30}
+              max={1800}
+              value={draft.timeout}
+              disabled={disabled || !draft.wait}
+              onChange={(event) => update("timeout", Number(event.target.value) || 900)}
+            />
+          </label>
+        </div>
+      </fieldset>
 
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <label className="grid content-start gap-1 text-xs font-medium">
@@ -429,7 +453,7 @@ export function StockConfigCard({
               ))}
             </SelectContent>
           </Select>
-          <FieldNote>{modelsError}</FieldNote>
+          <FieldNote error={Boolean(modelSelectionError)}>{modelSelectionError}</FieldNote>
         </label>
       </div>
 
