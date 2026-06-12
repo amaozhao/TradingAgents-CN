@@ -21,6 +21,12 @@ These instructions apply repo-wide unless a deeper `AGENTS.md` overrides them.
 
 ## Architecture
 
+- Prefer deep modules at stable boundaries: expose a small, typed, domain-oriented interface that hides non-trivial implementation.
+- Public functions, classes, hooks, components, and services must add semantic value; avoid pass-through wrappers, re-export layers, and shallow modules that only rename or forward parameters.
+- Design APIs around domain operations and invariants, not implementation steps. Hide transactions, SQLAlchemy queries, HTTP/fetch details, cache keys, env access, browser APIs, and third-party SDKs behind project-owned boundaries.
+- Keep interfaces narrower than implementations: use explicit command/query models, props, or parameter objects only when they clarify the domain; avoid catch-all option bags and boolean flags that leak internals.
+- When fixing bugs, strengthen the owning module's invariant and tests instead of spreading defensive checks across unrelated callers.
+- Deep modules are not god modules. Split code when responsibilities, reasons to change, dependencies, or test setup become unrelated.
 - Apply SOLID pragmatically. Do not add ceremony only to satisfy a pattern.
 - Prefer simple, local, explicit code. Do not add interfaces, base classes, factories, registries, containers, event buses, or generic frameworks for one known implementation unless the project already uses that pattern or the task requires it.
 - Keep modules, classes, functions, hooks, components, services, repositories, and routes focused on one primary responsibility. Split unrelated validation, authorization, orchestration, persistence, transport, rendering, formatting, and side effects.

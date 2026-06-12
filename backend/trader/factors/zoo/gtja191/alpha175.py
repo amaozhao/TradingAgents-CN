@@ -17,21 +17,7 @@ import numpy as np
 import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
-    safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
     ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "gtja191_175"
@@ -61,11 +47,11 @@ def compute(panel):
     """
     c = panel["close"]
     h = panel["high"]
-    l = panel["low"]
+    low = panel["low"]
     prev = c.shift(1)
-    a = (h - l).to_numpy(dtype=np.float64, na_value=np.nan)
+    a = (h - low).to_numpy(dtype=np.float64, na_value=np.nan)
     b = (prev - h).abs().to_numpy(dtype=np.float64, na_value=np.nan)
-    d = (prev - l).abs().to_numpy(dtype=np.float64, na_value=np.nan)
+    d = (prev - low).abs().to_numpy(dtype=np.float64, na_value=np.nan)
     tr = np.maximum(np.maximum(a, b), d)
     tr_df = pd.DataFrame(tr, index=c.index, columns=c.columns)
     out = ts_mean(tr_df, 6)

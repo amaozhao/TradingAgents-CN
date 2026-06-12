@@ -1,4 +1,6 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import logger
+from .task import get_akshare_sync_service
+
 async def run_akshare_financial_sync():
     """APScheduler任务：同步财务数据"""
     try:

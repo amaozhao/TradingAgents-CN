@@ -13,25 +13,9 @@ Notes:
 """
 from __future__ import annotations
 
-import numpy as np
-import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
     safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "gtja191_118"
@@ -39,7 +23,7 @@ ALPHA_ID = "gtja191_118"
 __alpha_meta__ = {
     'id': 'gtja191_118',
     'theme': ['reversal'],
-    'formula_latex': 'sum(h-o,20)/sum(o-l,20)*100',
+    'formula_latex': 'sum(h-o,20)/sum(o-low,20)*100',
     'columns_required': ['open', 'high', 'low', 'close'],
     'extras_required': [],
     'universe': ['equity_cn'],
@@ -61,6 +45,6 @@ def compute(panel):
     """
     o = panel["open"]
     h = panel["high"]
-    l = panel["low"]
-    out = safe_div((h - o).rolling(20).sum(), (o - l).rolling(20).sum()) * 100.0
+    low = panel["low"]
+    out = safe_div((h - o).rolling(20).sum(), (o - low).rolling(20).sum()) * 100.0
     return out

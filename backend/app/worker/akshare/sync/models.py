@@ -1,4 +1,10 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .base import _AKShareSyncServiceMixin2
+    from .common import _AKShareSyncServiceMixin1
+
+
 class AKShareSyncService(_AKShareSyncServiceMixin1, _AKShareSyncServiceMixin2):
     """
     AKShare数据同步服务

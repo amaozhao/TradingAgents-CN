@@ -1,4 +1,3 @@
-# ruff: noqa: F401,F403,F405,F821
 """
 配置管理API路由
 """
@@ -11,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 
 from app.core.response import ok
+from app.routers.account import get_current_user
 from app.schemas.config import (
     ConfigTestRequest,
     ConfigTestResponse,
@@ -35,7 +35,6 @@ from app.schemas.config import (
 from app.schemas.operations import ActionType
 from app.schemas.response import ApiResponse
 from app.schemas.user import User
-from app.routers.account import get_current_user
 from app.services.config import config_service
 from app.services.operation import log_operation
 from app.services.provider import provider as config_provider
@@ -43,3 +42,47 @@ from app.utils.timezone import now_tz
 
 router = APIRouter(prefix="/config", tags=["配置管理"])
 logger = logging.getLogger("webapi")
+
+__all__ = [
+    "APIRouter",
+    "ActionType",
+    "Any",
+    "ApiResponse",
+    "BaseModel",
+    "ConfigDict",
+    "ConfigTestRequest",
+    "ConfigTestResponse",
+    "DataSourceConfig",
+    "DataSourceConfigRequest",
+    "DataSourceGrouping",
+    "DataSourceGroupingRequest",
+    "DataSourceOrderRequest",
+    "DatabaseConfig",
+    "DatabaseConfigRequest",
+    "Depends",
+    "Dict",
+    "HTTPException",
+    "LLMConfig",
+    "LLMConfigRequest",
+    "LLMProvider",
+    "LLMProviderRequest",
+    "LLMProviderResponse",
+    "List",
+    "MarketCategory",
+    "MarketCategoryRequest",
+    "ModelCatalog",
+    "ModelInfo",
+    "SystemConfigResponse",
+    "User",
+    "config_provider",
+    "config_service",
+    "get_current_user",
+    "importlib",
+    "log_operation",
+    "logger",
+    "logging",
+    "now_tz",
+    "ok",
+    "router",
+    "status",
+]

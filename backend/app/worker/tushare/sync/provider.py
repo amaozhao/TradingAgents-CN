@@ -1,4 +1,6 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import logger
+from .route import get_tushare_sync_service
+
 async def run_tushare_news_sync(hours_back: int = 24, max_news_per_stock: int = 20):
     """APScheduler任务：同步新闻数据"""
     try:

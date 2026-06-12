@@ -15,20 +15,7 @@ import numpy as np
 import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
     safe_div,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 __alpha_meta__ = {
@@ -47,12 +34,12 @@ __alpha_meta__ = {
 
 def compute(panel: dict) -> pd.DataFrame:
     h = panel["high"]
-    l = panel["low"]
-    hl = h + l
-    phl = h.shift(1) + l.shift(1)
+    low = panel["low"]
+    hl = h + low
+    phl = h.shift(1) + low.shift(1)
     move = pd.DataFrame(
         np.maximum(np.abs(h.to_numpy() - h.shift(1).to_numpy()),
-                   np.abs(l.to_numpy() - l.shift(1).to_numpy())),
+                   np.abs(low.to_numpy() - low.shift(1).to_numpy())),
         index=h.index, columns=h.columns,
     )
     up = move.where(hl > phl, 0.0)

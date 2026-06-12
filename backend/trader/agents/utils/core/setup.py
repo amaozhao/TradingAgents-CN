@@ -1,4 +1,19 @@
-# ruff: noqa: F401,F403,F405,F821,F722
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        DEFAULT_CONFIG,
+        HumanMessage,
+        Mapping,
+        Optional,
+        RemoveMessage,
+        functools,
+        importlib,
+        logger,
+        yf,
+    )
+
 def get_language_instruction() -> str:
     """Return output-language instruction compatible with upstream agents."""
     lang = DEFAULT_CONFIG.get("output_language", "Chinese")

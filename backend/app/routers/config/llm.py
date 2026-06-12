@@ -1,4 +1,25 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import (
+    ActionType,
+    Depends,
+    HTTPException,
+    User,
+    config_service,
+    get_current_user,
+    importlib,
+    log_operation,
+    logger,
+    ok,
+    router,
+    status,
+)
+from .setup import (
+    ConfigApiResponse,
+    SetDefaultRequest,
+    _sanitize_llm_configs,
+    _sort_llm_configs_by_newest,
+    require_admin_user,
+)
+
 @router.get("/llm", response_model=ConfigApiResponse)
 async def get_llm_configs(current_user: User = Depends(get_current_user)):
     """获取所有大模型配置"""
@@ -28,20 +49,15 @@ async def get_llm_configs(current_user: User = Depends(get_current_user)):
             for llm_config in config.llm_configs
             if llm_config.enabled
             and any(
-                config_service._providers_match(llm_config.provider, provider.name)
-                for provider in active_providers
+                config_service._providers_match(llm_config.provider, provider.name) for provider in active_providers
             )
         ]
 
         sorted_configs = _sort_llm_configs_by_newest(filtered_configs)
 
-        logger.info(
-            f"✅ 过滤后的大模型配置数量: {len(sorted_configs)} (原始: {len(config.llm_configs)})"
-        )
+        logger.info(f"✅ 过滤后的大模型配置数量: {len(sorted_configs)} (原始: {len(config.llm_configs)})")
 
-        return ok(
-            data=_sanitize_llm_configs(sorted_configs), message="获取大模型配置成功"
-        )
+        return ok(data=_sanitize_llm_configs(sorted_configs), message="获取大模型配置成功")
     except Exception as e:
         logger.error(f"❌ 获取大模型配置失败: {e}")
         raise HTTPException(
@@ -51,15 +67,11 @@ async def get_llm_configs(current_user: User = Depends(get_current_user)):
 
 
 @router.delete("/llm/{provider}/{model_name}", response_model=ConfigApiResponse)
-async def delete_llm_config(
-    provider: str, model_name: str, current_user: User = Depends(get_current_user)
-):
+async def delete_llm_config(provider: str, model_name: str, current_user: User = Depends(get_current_user)):
     """删除大模型配置"""
     require_admin_user(current_user)
     try:
-        logger.info(
-            f"🗑️ 删除大模型配置请求 - provider: {provider}, model_name: {model_name}"
-        )
+        logger.info(f"🗑️ 删除大模型配置请求 - provider: {provider}, model_name: {model_name}")
         success = await config_service.delete_llm_config(provider, model_name)
 
         if success:
@@ -88,14 +100,10 @@ async def delete_llm_config(
                 )
             except Exception:
                 pass
-            return ok(
-                data={"message": "大模型配置删除成功"}, message="大模型配置删除成功"
-            )
+            return ok(data={"message": "大模型配置删除成功"}, message="大模型配置删除成功")
         else:
             logger.warning(f"⚠️ 未找到大模型配置 - {provider}/{model_name}")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="大模型配置不存在"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="大模型配置不存在")
     except HTTPException:
         raise
     except Exception as e:
@@ -107,9 +115,7 @@ async def delete_llm_config(
 
 
 @router.post("/llm/set-default", response_model=ConfigApiResponse)
-async def set_default_llm_legacy(
-    request: SetDefaultRequest, current_user: User = Depends(get_current_user)
-):
+async def set_default_llm_legacy(request: SetDefaultRequest, current_user: User = Depends(get_current_user)):
     """设置默认大模型"""
     require_admin_user(current_user)
     try:
@@ -132,9 +138,7 @@ async def set_default_llm_legacy(
                 message="默认大模型设置成功",
             )
         else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="指定的大模型不存在"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="指定的大模型不存在")
     except HTTPException:
         raise
     except Exception as e:

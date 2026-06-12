@@ -87,7 +87,7 @@ def build_verified_market_snapshot(
         try:
             stock_df[name]  # triggers stats calculation
             indicator_values[name] = _fmt(stock_df.iloc[-1][name])
-        except Exception as exc:  # noqa: BLE001 — one bad indicator shouldn't sink the snapshot
+        except Exception as exc:
             indicator_values[name] = f"N/A ({type(exc).__name__})"
 
     latest = df.iloc[-1]

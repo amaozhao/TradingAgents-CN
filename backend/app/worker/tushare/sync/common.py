@@ -1,4 +1,27 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        List,
+        Optional,
+        TushareProvider,
+        asyncio,
+        cast,
+        datetime,
+        get_historical_data_service,
+        get_news_data_service,
+        get_postgres_db,
+        get_stock_data_service,
+        get_tushare_rate_limiter,
+        importlib,
+        inspect,
+        logger,
+        settings,
+        timezone,
+    )
+
 class _TushareSyncServiceMixin1:
     def __init__(self):
         self.provider = TushareProvider()
@@ -15,15 +38,9 @@ class _TushareSyncServiceMixin1:
         self.max_retries = 3  # 最大重试次数
 
         # 速率限制器（从环境变量读取配置）
-        tushare_tier = getattr(
-            settings, "TUSHARE_TIER", "standard"
-        )  # free/basic/standard/premium/vip
-        safety_margin = float(
-            getattr(settings, "TUSHARE_RATE_LIMIT_SAFETY_MARGIN", "0.8")
-        )
-        self.rate_limiter = get_tushare_rate_limiter(
-            tier=tushare_tier, safety_margin=safety_margin
-        )
+        tushare_tier = getattr(settings, "TUSHARE_TIER", "standard")  # free/basic/standard/premium/vip
+        safety_margin = float(getattr(settings, "TUSHARE_RATE_LIMIT_SAFETY_MARGIN", "0.8"))
+        self.rate_limiter = get_tushare_rate_limiter(tier=tushare_tier, safety_margin=safety_margin)
 
     @staticmethod
     def _as_dict(value: Any) -> Dict[str, Any]:
@@ -38,10 +55,7 @@ class _TushareSyncServiceMixin1:
         success = await self.provider.connect()
         self.provider_available = bool(success)
         if not self.provider_available:
-            logger.warning(
-                "⚠️ Tushare连接失败，Tushare实时批量同步将跳过；"
-                "少量股票仍可使用 AKShare 免费源路径"
-            )
+            logger.warning("⚠️ Tushare连接失败，Tushare实时批量同步将跳过；少量股票仍可使用 AKShare 免费源路径")
 
         # 初始化历史数据服务
         try:
@@ -59,9 +73,7 @@ class _TushareSyncServiceMixin1:
 
         logger.info("✅ Tushare同步服务初始化完成")
 
-    async def sync_stock_basic_info(
-        self, force_update: bool = False, job_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def sync_stock_basic_info(self, force_update: bool = False, job_id: Optional[str] = None) -> Dict[str, Any]:
         """
         同步股票基础信息
 
@@ -132,9 +144,7 @@ class _TushareSyncServiceMixin1:
 
             # 3. 完成统计
             stats["end_time"] = datetime.now(timezone.utc).replace(tzinfo=None)
-            stats["duration"] = (
-                stats["end_time"] - stats["start_time"]
-            ).total_seconds()
+            stats["duration"] = (stats["end_time"] - stats["start_time"]).total_seconds()
 
             logger.info(
                 f"✅ 股票基础信息同步完成: "
@@ -149,14 +159,10 @@ class _TushareSyncServiceMixin1:
 
         except Exception as e:
             logger.error(f"❌ 股票基础信息同步失败: {e}")
-            stats["errors"].append(
-                {"error": str(e), "context": "sync_stock_basic_info"}
-            )
+            stats["errors"].append({"error": str(e), "context": "sync_stock_basic_info"})
             return stats
 
-    async def _process_basic_info_batch(
-        self, batch: List[Dict[str, Any]], force_update: bool
-    ) -> Dict[str, Any]:
+    async def _process_basic_info_batch(self, batch: List[Dict[str, Any]], force_update: bool) -> Dict[str, Any]:
         """处理基础信息批次"""
         batch_stats = {
             "success_count": 0,
@@ -178,27 +184,21 @@ class _TushareSyncServiceMixin1:
                     if existing:
                         # 🔥 existing 也可能是 Pydantic 模型，需要安全获取属性
                         existing_dict = self._as_dict(existing)
-                        if self._is_data_fresh(
-                            existing_dict.get("updated_at"), hours=24
-                        ):
+                        if self._is_data_fresh(existing_dict.get("updated_at"), hours=24):
                             batch_stats["skipped_count"] += 1
                             continue
 
                 # 更新到数据库（指定数据源为 tushare）
-                success = await self.stock_service.update_stock_basic_info(
-                    code, stock_data, source="tushare"
-                )
+                success = await self.stock_service.update_stock_basic_info(code, stock_data, source="tushare")
                 if success:
                     batch_stats["success_count"] += 1
                 else:
                     batch_stats["error_count"] += 1
-                    batch_stats["errors"].append(
-                        {
-                            "code": code,
-                            "error": "数据库更新失败",
-                            "context": "update_stock_basic_info",
-                        }
-                    )
+                    batch_stats["errors"].append({
+                        "code": code,
+                        "error": "数据库更新失败",
+                        "context": "update_stock_basic_info",
+                    })
 
             except Exception as e:
                 batch_stats["error_count"] += 1
@@ -212,19 +212,15 @@ class _TushareSyncServiceMixin1:
                 except Exception:
                     code = "unknown"
 
-                batch_stats["errors"].append(
-                    {
-                        "code": code,
-                        "error": str(e),
-                        "context": "_process_basic_info_batch",
-                    }
-                )
+                batch_stats["errors"].append({
+                    "code": code,
+                    "error": str(e),
+                    "context": "_process_basic_info_batch",
+                })
 
         return batch_stats
 
-    async def sync_realtime_quotes(
-        self, symbols: Optional[List[str]] = None, force: bool = False
-    ) -> Dict[str, Any]:
+    async def sync_realtime_quotes(self, symbols: Optional[List[str]] = None, force: bool = False) -> Dict[str, Any]:
         """
         同步实时行情数据
 
@@ -254,9 +250,7 @@ class _TushareSyncServiceMixin1:
         try:
             # 检查是否在交易时间（手动同步时可以跳过检查）
             if not force and not self._is_trading_time() and not self.settings.DEBUG:
-                logger.info(
-                    "⏸️ 当前不在交易时间，跳过实时行情同步（使用 force=True 可强制执行）"
-                )
+                logger.info("⏸️ 当前不在交易时间，跳过实时行情同步（使用 force=True 可强制执行）")
                 stats["skipped_non_trading_time"] = True
                 return stats
             elif not force and not self._is_trading_time():
@@ -271,9 +265,7 @@ class _TushareSyncServiceMixin1:
                     f"💡 股票数量 ≤{USE_AKSHARE_THRESHOLD} 只，自动切换到 AKShare 接口"
                     f"（避免浪费 Tushare rt_k 配额，每小时只能调用2次）"
                 )
-                logger.info(
-                    f"🎯 使用 AKShare 同步 {len(symbols)} 只股票的实时行情: {symbols}"
-                )
+                logger.info(f"🎯 使用 AKShare 同步 {len(symbols)} 只股票的实时行情: {symbols}")
 
                 # 调用 AKShare 服务
                 get_akshare_sync_service = getattr(
@@ -287,25 +279,17 @@ class _TushareSyncServiceMixin1:
                     # 回退到 Tushare 批量接口
                     quotes_map = await self.provider.get_realtime_quotes_batch()
                     if quotes_map and symbols:
-                        quotes_map = {
-                            symbol: quotes_map[symbol]
-                            for symbol in symbols
-                            if symbol in quotes_map
-                        }
+                        quotes_map = {symbol: quotes_map[symbol] for symbol in symbols if symbol in quotes_map}
                 else:
                     # 使用 AKShare 同步
-                    akshare_result = await akshare_service.sync_realtime_quotes(
-                        symbols=symbols, force=force
-                    )
+                    akshare_result = await akshare_service.sync_realtime_quotes(symbols=symbols, force=force)
                     stats["switched_to_akshare"] = True
                     stats["success_count"] = akshare_result.get("success_count", 0)
                     stats["error_count"] = akshare_result.get("error_count", 0)
                     stats["total_processed"] = akshare_result.get("total_processed", 0)
                     stats["errors"] = akshare_result.get("errors", [])
                     stats["end_time"] = datetime.now(timezone.utc).replace(tzinfo=None)
-                    stats["duration"] = (
-                        stats["end_time"] - stats["start_time"]
-                    ).total_seconds()
+                    stats["duration"] = (stats["end_time"] - stats["start_time"]).total_seconds()
 
                     logger.info(
                         f"✅ AKShare 实时行情同步完成: "
@@ -320,16 +304,12 @@ class _TushareSyncServiceMixin1:
                     logger.warning("⚠️ Tushare不可用，跳过需要 rt_k 的实时行情同步")
                     stats["skipped_tushare_unavailable"] = True
                     stats["end_time"] = datetime.now(timezone.utc).replace(tzinfo=None)
-                    stats["duration"] = (
-                        stats["end_time"] - stats["start_time"]
-                    ).total_seconds()
+                    stats["duration"] = (stats["end_time"] - stats["start_time"]).total_seconds()
                     return stats
 
                 # 使用 Tushare 批量接口一次性获取全市场行情
                 if symbols:
-                    logger.info(
-                        f"📊 使用 Tushare 批量接口同步 {len(symbols)} 只股票的实时行情（从全市场数据中筛选）"
-                    )
+                    logger.info(f"📊 使用 Tushare 批量接口同步 {len(symbols)} 只股票的实时行情（从全市场数据中筛选）")
                 else:
                     logger.info("📊 使用 Tushare 批量接口同步全市场实时行情...")
 
@@ -355,18 +335,12 @@ class _TushareSyncServiceMixin1:
                 # 🔥 如果指定了股票列表，只处理这些股票
                 if symbols:
                     # 过滤出指定的股票
-                    filtered_quotes_map = {
-                        symbol: quotes_map[symbol]
-                        for symbol in symbols
-                        if symbol in quotes_map
-                    }
+                    filtered_quotes_map = {symbol: quotes_map[symbol] for symbol in symbols if symbol in quotes_map}
 
                     # 检查是否有股票未找到
                     missing_symbols = [s for s in symbols if s not in quotes_map]
                     if missing_symbols:
-                        logger.warning(
-                            f"⚠️ 以下股票未在实时行情中找到: {missing_symbols}"
-                        )
+                        logger.warning(f"⚠️ 以下股票未在实时行情中找到: {missing_symbols}")
 
                     quotes_map = filtered_quotes_map
                     logger.info(f"🔍 过滤后保留 {len(quotes_map)} 只指定股票的行情")
@@ -384,38 +358,30 @@ class _TushareSyncServiceMixin1:
             for symbol, quote_data in quotes_map.items():
                 try:
                     # 保存到数据库
-                    result = await self.stock_service.update_market_quotes(
-                        symbol, quote_data
-                    )
+                    result = await self.stock_service.update_market_quotes(symbol, quote_data)
                     if result:
                         success_count += 1
                     else:
                         error_count += 1
-                        stats["errors"].append(
-                            {
-                                "code": symbol,
-                                "error": "更新数据库失败",
-                                "context": "sync_realtime_quotes",
-                            }
-                        )
+                        stats["errors"].append({
+                            "code": symbol,
+                            "error": "更新数据库失败",
+                            "context": "sync_realtime_quotes",
+                        })
                 except Exception as e:
                     error_count += 1
-                    stats["errors"].append(
-                        {
-                            "code": symbol,
-                            "error": str(e),
-                            "context": "sync_realtime_quotes",
-                        }
-                    )
+                    stats["errors"].append({
+                        "code": symbol,
+                        "error": str(e),
+                        "context": "sync_realtime_quotes",
+                    })
 
             stats["success_count"] = success_count
             stats["error_count"] = error_count
 
             # 完成统计
             stats["end_time"] = datetime.now(timezone.utc).replace(tzinfo=None)
-            stats["duration"] = (
-                stats["end_time"] - stats["start_time"]
-            ).total_seconds()
+            stats["duration"] = (stats["end_time"] - stats["start_time"]).total_seconds()
 
             logger.info(
                 f"✅ 实时行情同步完成: "
@@ -490,13 +456,11 @@ class _TushareSyncServiceMixin1:
             if isinstance(result, Exception):
                 error_msg = str(result)
                 batch_stats["error_count"] += 1
-                batch_stats["errors"].append(
-                    {
-                        "code": batch[i],
-                        "error": error_msg,
-                        "context": "_process_quotes_batch",
-                    }
-                )
+                batch_stats["errors"].append({
+                    "code": batch[i],
+                    "error": error_msg,
+                    "context": "_process_quotes_batch",
+                })
 
                 # 检测 API 限流错误
                 if self._is_rate_limit_error(error_msg):
@@ -507,13 +471,11 @@ class _TushareSyncServiceMixin1:
                 batch_stats["success_count"] += 1
             else:
                 batch_stats["error_count"] += 1
-                batch_stats["errors"].append(
-                    {
-                        "code": batch[i],
-                        "error": "获取行情数据失败",
-                        "context": "_process_quotes_batch",
-                    }
-                )
+                batch_stats["errors"].append({
+                    "code": batch[i],
+                    "error": "获取行情数据失败",
+                    "context": "_process_quotes_batch",
+                })
 
         return batch_stats
 
@@ -576,9 +538,7 @@ class _TushareSyncServiceMixin1:
                 # 转换为字典格式（如果是Pydantic模型）
                 quotes_data = self._as_dict(quotes)
 
-                return await self.stock_service.update_market_quotes(
-                    symbol, quotes_data
-                )
+                return await self.stock_service.update_market_quotes(symbol, quotes_data)
             return False
         except Exception as e:
             error_msg = str(e)

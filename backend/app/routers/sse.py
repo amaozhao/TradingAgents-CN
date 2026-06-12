@@ -11,9 +11,121 @@ from app.core.config import settings
 from app.core.database import get_redis_client
 from app.routers.account import get_current_user
 from app.services.queue.service import QueueService, get_queue_service
+from app.services.research.agent.batch.repository import BatchRepository
 
 router = APIRouter()
 logger = logging.getLogger("webapi.sse")
+
+
+def _batch_progress_from_repository_document(batch: dict) -> dict:
+    tasks = batch.get("tasks")
+    task_list = tasks if isinstance(tasks, list) else []
+    total_tasks = len(task_list) or int(batch.get("total_tasks") or 0)
+    completed_count = 0
+    failed_count = 0
+    cancelled_count = 0
+    processing_count = 0
+
+    for task in task_list:
+        if not isinstance(task, dict):
+            continue
+        status = str(task.get("status") or "queued")
+        if status == "completed":
+            completed_count += 1
+        elif status == "failed":
+            failed_count += 1
+        elif status == "cancelled":
+            cancelled_count += 1
+        elif status in {"processing", "running"}:
+            processing_count += 1
+
+    if not task_list:
+        completed_count = int(batch.get("completed_tasks") or 0)
+        failed_count = int(batch.get("failed_tasks") or 0)
+        cancelled_count = int(batch.get("cancelled_tasks") or 0)
+        processing_count = int(batch.get("processing_tasks") or 0)
+
+    finished_tasks = completed_count + failed_count + cancelled_count
+    progress = round((finished_tasks / total_tasks) * 100, 1) if total_tasks else 0
+    status = _repository_batch_status(
+        raw_status=str(batch.get("status") or ""),
+        total_tasks=total_tasks,
+        completed_count=completed_count,
+        failed_count=failed_count,
+        cancelled_count=cancelled_count,
+        processing_count=processing_count,
+    )
+    return {
+        "batch_id": batch.get("batch_id"),
+        "status": status,
+        "message": _batch_progress_message(
+            status=status,
+            total_tasks=total_tasks,
+            completed_count=completed_count,
+            failed_count=failed_count,
+            cancelled_count=cancelled_count,
+            processing_count=processing_count,
+        ),
+        "progress": progress,
+        "total_tasks": total_tasks,
+        "completed": completed_count,
+        "failed": failed_count,
+        "cancelled": cancelled_count,
+        "processing": processing_count,
+        "timestamp": time.time(),
+    }
+
+
+def _repository_batch_status(
+    *,
+    raw_status: str,
+    total_tasks: int,
+    completed_count: int,
+    failed_count: int,
+    cancelled_count: int,
+    processing_count: int,
+) -> str:
+    normalized = "partial" if raw_status == "partial_success" else raw_status
+    finished_tasks = completed_count + failed_count + cancelled_count
+    if total_tasks and finished_tasks == total_tasks:
+        if completed_count == total_tasks:
+            return "completed"
+        if failed_count == total_tasks:
+            return "failed"
+        if cancelled_count == total_tasks:
+            return "cancelled"
+        return "partial"
+    if processing_count > 0 or finished_tasks < total_tasks:
+        return "processing"
+    return normalized or "queued"
+
+
+def _batch_progress_message(
+    *,
+    status: str,
+    total_tasks: int,
+    completed_count: int,
+    failed_count: int,
+    cancelled_count: int,
+    processing_count: int,
+) -> str:
+    if status == "completed":
+        return f"批次完成: {completed_count}/{total_tasks} 成功"
+    if status == "failed":
+        return f"批次失败: {failed_count}/{total_tasks} 失败"
+    if status == "partial":
+        return (
+            f"批次部分成功: {completed_count} 成功, "
+            f"{failed_count} 失败, {cancelled_count} 取消"
+        )
+    if status == "cancelled":
+        return f"批次取消: {cancelled_count}/{total_tasks} 取消"
+    if status == "processing":
+        return (
+            f"批次处理中: {completed_count + failed_count + cancelled_count}/"
+            f"{total_tasks} 已完成, {processing_count} 处理中"
+        )
+    return f"批次排队中: {total_tasks} 任务待处理"
 
 
 async def task_progress_generator(task_id: str, user_id: str):
@@ -148,6 +260,28 @@ async def batch_progress_generator(batch_id: str, user_id: str):
 
         while idle_elapsed < batch_max_idle_seconds:
             try:
+                repository_batch = await BatchRepository().get_batch(batch_id, user_id)
+                if repository_batch is not None:
+                    progress_data = _batch_progress_from_repository_document(
+                        repository_batch
+                    )
+                    yield f"event: progress\ndata: {json.dumps(progress_data, ensure_ascii=False)}\n\n"
+                    if progress_data["status"] in [
+                        "completed",
+                        "failed",
+                        "partial",
+                        "cancelled",
+                    ]:
+                        yield (
+                            "event: finished\n"
+                            f'data: {{"batch_id": "{batch_id}", '
+                            f'"final_status": "{progress_data["status"]}"}}\n\n'
+                        )
+                        break
+                    await asyncio.sleep(batch_poll_interval)
+                    idle_elapsed += batch_poll_interval
+                    continue
+
                 # Get current batch status
                 batch_data = await svc.get_batch(batch_id)
                 if not batch_data:
@@ -273,10 +407,13 @@ async def stream_batch_progress(
     svc: QueueService = Depends(get_queue_service),
 ):
     """Stream real-time progress updates for a batch"""
-    # Verify batch exists and belongs to user
-    batch_data = await svc.get_batch(batch_id)
-    if not batch_data or batch_data.get("user") != user["id"]:
-        raise HTTPException(status_code=404, detail="Batch not found")
+    # Verify against the workflow repository first; fall back to the legacy queue
+    # store for batches created before the workflow migration.
+    repository_batch = await BatchRepository().get_batch(batch_id, user["id"])
+    if repository_batch is None:
+        batch_data = await svc.get_batch(batch_id)
+        if not batch_data or batch_data.get("user") != user["id"]:
+            raise HTTPException(status_code=404, detail="Batch not found")
 
     return StreamingResponse(
         batch_progress_generator(batch_id, user["id"]),

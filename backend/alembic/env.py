@@ -7,12 +7,13 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-import app.models.table  # noqa: F401
+import app.models.table as _table_models
 from alembic import context
 from app.core.config import settings
 from app.models.base import Base
 
 config = context.config
+_ = _table_models
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

@@ -1,4 +1,21 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        AIMessage,
+        ChatPromptTemplate,
+        GoogleToolCallHandler,
+        MessagesPlaceholder,
+        ToolMessage,
+        build_instrument_context,
+        create_llm_client,
+        get_risk_llm_timeout_seconds,
+        importlib,
+        invoke_with_timeout,
+        log_analyst_module,
+        logger,
+    )
+
 def _get_company_name_for_fundamentals(ticker: str, market_info: dict) -> str:
     """根据股票代码获取基本面分析展示用公司名称。"""
     try:
@@ -9,20 +26,14 @@ def _get_company_name_for_fundamentals(ticker: str, market_info: dict) -> str:
             )
             stock_info = get_china_stock_info_unified(ticker)
 
-            logger.debug(
-                f"📊 [基本面分析师] 获取股票信息返回: {stock_info[:200] if stock_info else 'None'}..."
-            )
+            logger.debug(f"📊 [基本面分析师] 获取股票信息返回: {stock_info[:200] if stock_info else 'None'}...")
 
             if stock_info and "股票名称:" in stock_info:
                 company_name = stock_info.split("股票名称:")[1].split("\n")[0].strip()
-                logger.info(
-                    f"✅ [基本面分析师] 成功获取中国股票名称: {ticker} -> {company_name}"
-                )
+                logger.info(f"✅ [基本面分析师] 成功获取中国股票名称: {ticker} -> {company_name}")
                 return company_name
 
-            logger.warning(
-                f"⚠️ [基本面分析师] 无法从统一接口解析股票名称: {ticker}，尝试降级方案"
-            )
+            logger.warning(f"⚠️ [基本面分析师] 无法从统一接口解析股票名称: {ticker}，尝试降级方案")
             try:
                 get_info_dict = getattr(
                     importlib.import_module("trader.flows.sources"),
@@ -31,9 +42,7 @@ def _get_company_name_for_fundamentals(ticker: str, market_info: dict) -> str:
                 info_dict = get_info_dict(ticker)
                 if info_dict and info_dict.get("name"):
                     company_name = info_dict["name"]
-                    logger.info(
-                        f"✅ [基本面分析师] 降级方案成功获取股票名称: {ticker} -> {company_name}"
-                    )
+                    logger.info(f"✅ [基本面分析师] 降级方案成功获取股票名称: {ticker} -> {company_name}")
                     return company_name
             except Exception as e:
                 logger.error(f"❌ [基本面分析师] 降级方案也失败: {e}")
@@ -48,9 +57,7 @@ def _get_company_name_for_fundamentals(ticker: str, market_info: dict) -> str:
                     "get_hk_company_name_improved",
                 )
                 company_name = get_hk_company_name_improved(ticker)
-                logger.debug(
-                    f"📊 [基本面分析师] 使用改进港股工具获取名称: {ticker} -> {company_name}"
-                )
+                logger.debug(f"📊 [基本面分析师] 使用改进港股工具获取名称: {ticker} -> {company_name}")
                 return company_name
             except Exception as e:
                 logger.debug(f"📊 [基本面分析师] 改进港股工具获取名称失败: {e}")
@@ -105,13 +112,9 @@ def create_fundamentals_analyst(llm, toolkit):
         # 如果有新的 ToolMessage，更新计数器
         if tool_message_count > tool_call_count:
             tool_call_count = tool_message_count
-            logger.info(
-                f"🔧 [工具调用计数] 检测到新的工具结果，更新计数器: {tool_call_count}"
-            )
+            logger.info(f"🔧 [工具调用计数] 检测到新的工具结果，更新计数器: {tool_call_count}")
 
-        logger.info(
-            f"🔧 [工具调用计数] 当前工具调用次数: {tool_call_count}/{max_tool_calls}"
-        )
+        logger.info(f"🔧 [工具调用计数] 当前工具调用次数: {tool_call_count}/{max_tool_calls}")
 
         current_date = state["trade_date"]
         ticker = state["company_of_interest"]
@@ -125,39 +128,27 @@ def create_fundamentals_analyst(llm, toolkit):
             end_date_dt = datetime.strptime(current_date, "%Y-%m-%d")
             start_date_dt = end_date_dt - timedelta(days=10)
             start_date = start_date_dt.strftime("%Y-%m-%d")
-            logger.info(
-                f"📅 [基本面分析师] 数据范围: {start_date} 至 {current_date} (固定10天)"
-            )
+            logger.info(f"📅 [基本面分析师] 数据范围: {start_date} 至 {current_date} (固定10天)")
         except Exception as e:
             # 如果日期解析失败，使用默认10天前
             logger.warning(f"⚠️ [基本面分析师] 日期解析失败，使用默认范围: {e}")
             start_date = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d")
 
         logger.debug(f"📊 [DEBUG] 输入参数: ticker={ticker}, date={current_date}")
-        logger.debug(
-            f"📊 [DEBUG] 当前状态中的消息数量: {len(state.get('messages', []))}"
-        )
-        logger.debug(
-            f"📊 [DEBUG] 现有基本面报告: {state.get('fundamentals_report', 'None')}"
-        )
+        logger.debug(f"📊 [DEBUG] 当前状态中的消息数量: {len(state.get('messages', []))}")
+        logger.debug(f"📊 [DEBUG] 现有基本面报告: {state.get('fundamentals_report', 'None')}")
 
         # 获取股票市场信息
-        StockUtils = getattr(
-            importlib.import_module("trader.utils.stocks"), "StockUtils"
-        )
+        StockUtils = getattr(importlib.import_module("trader.utils.stocks"), "StockUtils")
         logger.info(f"📊 [基本面分析师] 正在分析股票: {ticker}")
 
         # 添加详细的股票代码追踪日志
-        logger.info(
-            f"🔍 [股票代码追踪] 基本面分析师接收到的原始股票代码: '{ticker}' (类型: {type(ticker)})"
-        )
+        logger.info(f"🔍 [股票代码追踪] 基本面分析师接收到的原始股票代码: '{ticker}' (类型: {type(ticker)})")
         logger.info(f"🔍 [股票代码追踪] 股票代码长度: {len(str(ticker))}")
         logger.info(f"🔍 [股票代码追踪] 股票代码字符: {list(str(ticker))}")
 
         market_info = StockUtils.get_market_info(ticker)
-        logger.info(
-            f"🔍 [股票代码追踪] StockUtils.get_market_info 返回的市场信息: {market_info}"
-        )
+        logger.info(f"🔍 [股票代码追踪] StockUtils.get_market_info 返回的市场信息: {market_info}")
 
         logger.debug(
             f"📊 [DEBUG] 股票类型检查: {ticker} -> {market_info['market_name']} ({market_info['currency_name']}"
@@ -165,9 +156,7 @@ def create_fundamentals_analyst(llm, toolkit):
         logger.debug(
             f"📊 [DEBUG] 详细市场信息: is_china={market_info['is_china']}, is_hk={market_info['is_hk']}, is_us={market_info['is_us']}"
         )
-        logger.debug(
-            f"📊 [DEBUG] 工具配置检查: online_tools={toolkit.config['online_tools']}"
-        )
+        logger.debug(f"📊 [DEBUG] 工具配置检查: online_tools={toolkit.config['online_tools']}")
 
         # 获取公司名称
         company_name = _get_company_name_for_fundamentals(ticker, market_info)
@@ -251,12 +240,10 @@ def create_fundamentals_analyst(llm, toolkit):
         )
 
         # 创建提示模板
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", system_prompt),
-                MessagesPlaceholder(variable_name="messages"),
-            ]
-        )
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            MessagesPlaceholder(variable_name="messages"),
+        ])
 
         prompt = prompt.partial(system_message=system_message)
         # 安全地获取工具名称，处理函数和工具对象
@@ -318,16 +305,12 @@ def create_fundamentals_analyst(llm, toolkit):
 
         # 添加详细日志
         logger.info(f"📊 [基本面分析师] LLM类型: {fresh_llm.__class__.__name__}")
-        logger.info(
-            f"📊 [基本面分析师] LLM模型: {getattr(fresh_llm, 'model_name', 'unknown')}"
-        )
+        logger.info(f"📊 [基本面分析师] LLM模型: {getattr(fresh_llm, 'model_name', 'unknown')}")
         logger.info(f"📊 [基本面分析师] 消息历史数量: {len(state['messages'])}")
 
         try:
             chain = prompt | fresh_llm.bind_tools(tools)
-            logger.info(
-                f"📊 [基本面分析师] ✅ 工具绑定成功，绑定了 {len(tools)} 个工具"
-            )
+            logger.info(f"📊 [基本面分析师] ✅ 工具绑定成功，绑定了 {len(tools)} 个工具")
         except Exception as e:
             logger.error(f"📊 [基本面分析师] ❌ 工具绑定失败: {e}")
             raise e
@@ -370,9 +353,7 @@ def create_fundamentals_analyst(llm, toolkit):
                 logger.info(f"  内容长度: {len(content_full)} 字符")
                 logger.info(f"  内容: {content_full}")
             if hasattr(msg, "tool_calls") and msg.tool_calls:
-                logger.info(
-                    f"  工具调用: {[tc.get('name', 'unknown') for tc in msg.tool_calls]}"
-                )
+                logger.info(f"  工具调用: {[tc.get('name', 'unknown') for tc in msg.tool_calls]}")
             if hasattr(msg, "name"):
                 logger.info(f"  工具名称: {msg.name}")
             logger.info("-" * 40)
@@ -382,9 +363,7 @@ def create_fundamentals_analyst(llm, toolkit):
         logger.info("📋 [提示词调试] 4️⃣ 绑定的工具 (Bound Tools):")
         logger.info("-" * 80)
         for i, tool in enumerate(tools):
-            tool_name = getattr(tool, "name", None) or getattr(
-                tool, "__name__", "unknown"
-            )
+            tool_name = getattr(tool, "name", None) or getattr(tool, "__name__", "unknown")
             tool_desc = getattr(tool, "description", "No description")
             logger.info(f"工具 {i + 1}: {tool_name}")
             logger.info(f"  描述: {tool_desc}")
@@ -409,9 +388,7 @@ def create_fundamentals_analyst(llm, toolkit):
         # 🔍 [调试日志] 打印AIMessage的详细内容
         logger.info("🤖 [基本面分析师] AIMessage详细内容:")
         logger.info(f"🤖 [基本面分析师] - 消息类型: {type(result).__name__}")
-        logger.info(
-            f"🤖 [基本面分析师] - 内容长度: {len(result.content) if hasattr(result, 'content') else 0}"
-        )
+        logger.info(f"🤖 [基本面分析师] - 内容长度: {len(result.content) if hasattr(result, 'content') else 0}")
         if hasattr(result, "content") and result.content:
             # 🔥 调试模式：打印完整内容，不截断
             logger.info("🤖 [基本面分析师] - 完整内容:")
@@ -421,23 +398,17 @@ def create_fundamentals_analyst(llm, toolkit):
         # 详细记录 LLM 返回结果
         logger.info("📊 [基本面分析师] ===== LLM返回结果分析 =====")
         logger.info(f"📊 [基本面分析师] - 结果类型: {type(result).__name__}")
-        logger.info(
-            f"📊 [基本面分析师] - 是否有tool_calls属性: {hasattr(result, 'tool_calls')}"
-        )
+        logger.info(f"📊 [基本面分析师] - 是否有tool_calls属性: {hasattr(result, 'tool_calls')}")
 
         if hasattr(result, "content"):
             content_preview = str(result.content)[:200] if result.content else "None"
-            logger.info(
-                f"📊 [基本面分析师] - 内容长度: {len(str(result.content)) if result.content else 0}"
-            )
+            logger.info(f"📊 [基本面分析师] - 内容长度: {len(str(result.content)) if result.content else 0}")
             logger.info(f"📊 [基本面分析师] - 内容预览: {content_preview}...")
 
         if hasattr(result, "tool_calls"):
             logger.info(f"📊 [基本面分析师] - tool_calls数量: {len(result.tool_calls)}")
             if result.tool_calls:
-                logger.info(
-                    f"🔧 [基本面分析师] 检测到 {len(result.tool_calls)} 个工具调用:"
-                )
+                logger.info(f"🔧 [基本面分析师] 检测到 {len(result.tool_calls)} 个工具调用:")
                 for i, tc in enumerate(result.tool_calls):
                     logger.info(
                         f"🔧 [基本面分析师] - 工具调用 {i + 1}: {tc.get('name', 'unknown')} (ID: {tc.get('id', 'unknown')})"
@@ -476,18 +447,12 @@ def create_fundamentals_analyst(llm, toolkit):
             return {"fundamentals_report": report}
         else:
             # 非Google模型的处理逻辑
-            logger.debug(
-                f"📊 [DEBUG] 非Google模型 ({fresh_llm.__class__.__name__})，使用标准处理逻辑"
-            )
+            logger.debug(f"📊 [DEBUG] 非Google模型 ({fresh_llm.__class__.__name__})，使用标准处理逻辑")
 
             # 检查工具调用情况
-            current_tool_calls = (
-                len(result.tool_calls) if hasattr(result, "tool_calls") else 0
-            )
+            current_tool_calls = len(result.tool_calls) if hasattr(result, "tool_calls") else 0
             logger.debug(f"📊 [DEBUG] 当前消息的工具调用数量: {current_tool_calls}")
-            logger.debug(
-                f"📊 [DEBUG] 累计工具调用次数: {tool_call_count}/{max_tool_calls}"
-            )
+            logger.debug(f"📊 [DEBUG] 累计工具调用次数: {tool_call_count}/{max_tool_calls}")
 
             if current_tool_calls > 0:
                 # 🔧 检查是否已经调用过工具（消息历史中有 ToolMessage）
@@ -496,9 +461,7 @@ def create_fundamentals_analyst(llm, toolkit):
 
                 if has_tool_result:
                     # 已经有工具结果了，LLM 不应该再调用工具，强制生成报告
-                    logger.warning(
-                        "⚠️ [强制生成报告] 工具已返回数据，但LLM仍尝试调用工具，强制基于现有数据生成报告"
-                    )
+                    logger.warning("⚠️ [强制生成报告] 工具已返回数据，但LLM仍尝试调用工具，强制基于现有数据生成报告")
 
                     # 创建专门的强制报告提示词（不提及工具）
                     force_system_prompt = (
@@ -519,12 +482,10 @@ def create_fundamentals_analyst(llm, toolkit):
                     )
 
                     # 创建专门的提示模板（不绑定工具）
-                    force_prompt = ChatPromptTemplate.from_messages(
-                        [
-                            ("system", force_system_prompt),
-                            MessagesPlaceholder(variable_name="messages"),
-                        ]
-                    )
+                    force_prompt = ChatPromptTemplate.from_messages([
+                        ("system", force_system_prompt),
+                        MessagesPlaceholder(variable_name="messages"),
+                    ])
 
                     # 不绑定工具，强制LLM生成文本
                     force_chain = force_prompt | fresh_llm
@@ -534,19 +495,11 @@ def create_fundamentals_analyst(llm, toolkit):
                         lambda: force_chain.invoke({"messages": messages}),
                         timeout_seconds=get_risk_llm_timeout_seconds(fresh_llm),
                         operation_name="Fundamentals Forced Report",
-                        fallback_value=_fallback_fundamentals_message(
-                            ticker, company_name
-                        ),
+                        fallback_value=_fallback_fundamentals_message(ticker, company_name),
                     )
 
-                    report = (
-                        str(force_result.content)
-                        if hasattr(force_result, "content")
-                        else "基本面分析完成"
-                    )
-                    logger.info(
-                        f"✅ [强制生成报告] 成功生成报告，长度: {len(report)}字符"
-                    )
+                    report = str(force_result.content) if hasattr(force_result, "content") else "基本面分析完成"
+                    logger.info(f"✅ [强制生成报告] 成功生成报告，长度: {len(report)}字符")
 
                     return {
                         "fundamentals_report": report,
@@ -556,9 +509,7 @@ def create_fundamentals_analyst(llm, toolkit):
 
                 elif tool_call_count >= max_tool_calls:
                     # 达到最大调用次数，但还没有工具结果（不应该发生）
-                    logger.warning(
-                        f"🔧 [异常情况] 达到最大工具调用次数 {max_tool_calls}，但没有工具结果"
-                    )
+                    logger.warning(f"🔧 [异常情况] 达到最大工具调用次数 {max_tool_calls}，但没有工具结果")
                     fallback_report = f"基本面分析（股票代码：{ticker}）\n\n由于达到最大工具调用次数限制，使用简化分析模式。建议检查数据源连接或降低分析复杂度。"
                     return {
                         "messages": [result],
@@ -571,9 +522,7 @@ def create_fundamentals_analyst(llm, toolkit):
                     tool_calls_info = []
                     for tc in result.tool_calls:
                         tool_calls_info.append(tc["name"])
-                        logger.debug(
-                            f"📊 [DEBUG] 工具调用 {len(tool_calls_info)}: {tc}"
-                        )
+                        logger.debug(f"📊 [DEBUG] 工具调用 {len(tool_calls_info)}: {tc}")
 
                     logger.info(f"📊 [正常流程] LLM请求调用工具: {tool_calls_info}")
                     logger.info(f"📊 [正常流程] 工具调用数量: {len(tool_calls_info)}")
@@ -591,15 +540,9 @@ def create_fundamentals_analyst(llm, toolkit):
                 logger.info(f"🔍 [消息历史] 当前消息总数: {len(messages)}")
 
                 # 统计各类消息数量
-                ai_message_count = sum(
-                    1 for msg in messages if isinstance(msg, AIMessage)
-                )
-                tool_message_count = sum(
-                    1 for msg in messages if isinstance(msg, ToolMessage)
-                )
-                logger.info(
-                    f"🔍 [消息历史] AIMessage数量: {ai_message_count}, ToolMessage数量: {tool_message_count}"
-                )
+                ai_message_count = sum(1 for msg in messages if isinstance(msg, AIMessage))
+                tool_message_count = sum(1 for msg in messages if isinstance(msg, ToolMessage))
+                logger.info(f"🔍 [消息历史] AIMessage数量: {ai_message_count}, ToolMessage数量: {tool_message_count}")
 
                 # 记录最近几条消息的类型
                 recent_messages = messages[-5:] if len(messages) >= 5 else messages
@@ -618,20 +561,14 @@ def create_fundamentals_analyst(llm, toolkit):
                     # 如果内容长度超过500字符，认为是有效的分析内容
                     if content_length > 500:
                         has_analysis_content = True
-                        logger.info(
-                            f"✅ [内容检查] LLM已返回有效分析内容 (长度: {content_length}字符 > 500字符阈值)"
-                        )
+                        logger.info(f"✅ [内容检查] LLM已返回有效分析内容 (长度: {content_length}字符 > 500字符阈值)")
                     else:
-                        logger.info(
-                            f"⚠️ [内容检查] LLM返回内容较短 (长度: {content_length}字符 < 500字符阈值)"
-                        )
+                        logger.info(f"⚠️ [内容检查] LLM返回内容较短 (长度: {content_length}字符 < 500字符阈值)")
                 else:
                     logger.info("⚠️ [内容检查] LLM未返回内容或内容为空")
 
                 # 方案3：统计工具调用次数
-                tool_call_count = sum(
-                    1 for msg in messages if isinstance(msg, ToolMessage)
-                )
+                tool_call_count = sum(1 for msg in messages if isinstance(msg, ToolMessage))
                 logger.info(f"🔍 [统计] 历史工具调用次数: {tool_call_count}")
 
                 logger.info(
@@ -643,23 +580,13 @@ def create_fundamentals_analyst(llm, toolkit):
                 if has_tool_result or has_analysis_content:
                     logger.info("🚫 [决策] ===== 跳过强制工具调用 =====")
                     if has_tool_result:
-                        logger.info(
-                            f"⚠️ [决策原因] 检测到已有 {tool_call_count} 次工具调用结果，避免重复调用"
-                        )
+                        logger.info(f"⚠️ [决策原因] 检测到已有 {tool_call_count} 次工具调用结果，避免重复调用")
                     if has_analysis_content:
-                        logger.info(
-                            "⚠️ [决策原因] LLM已返回有效分析内容，无需强制工具调用"
-                        )
+                        logger.info("⚠️ [决策原因] LLM已返回有效分析内容，无需强制工具调用")
 
                     # 直接使用 LLM 返回的内容作为报告
-                    report = (
-                        str(result.content)
-                        if hasattr(result, "content")
-                        else "基本面分析完成"
-                    )
-                    logger.info(
-                        f"📊 [返回结果] 使用LLM返回的分析内容，报告长度: {len(report)}字符"
-                    )
+                    report = str(result.content) if hasattr(result, "content") else "基本面分析完成"
+                    logger.info(f"📊 [返回结果] 使用LLM返回的分析内容，报告长度: {len(report)}字符")
                     logger.info(f"📊 [返回结果] 报告预览(前200字符): {report[:200]}...")
                     logger.info("✅ [决策] 基本面分析完成，跳过重复调用成功")
 
@@ -672,16 +599,12 @@ def create_fundamentals_analyst(llm, toolkit):
 
                 # 如果没有工具结果且没有分析内容，才进行强制调用
                 logger.info("🔧 [决策] ===== 执行强制工具调用 =====")
-                logger.info(
-                    "🔧 [决策原因] 未检测到工具结果或分析内容，需要获取基本面数据"
-                )
+                logger.info("🔧 [决策原因] 未检测到工具结果或分析内容，需要获取基本面数据")
                 logger.info("🔧 [决策] 启用强制工具调用模式")
 
                 # 强制调用统一基本面分析工具
                 try:
-                    logger.debug(
-                        "📊 [DEBUG] 强制调用 get_stock_fundamentals_unified..."
-                    )
+                    logger.debug("📊 [DEBUG] 强制调用 get_stock_fundamentals_unified...")
                     # 安全地查找统一基本面分析工具
                     unified_tool = None
                     for tool in tools:
@@ -701,53 +624,37 @@ def create_fundamentals_analyst(llm, toolkit):
                         )
 
                         combined_data = invoke_with_timeout(
-                            lambda: unified_tool.invoke(
-                                {
-                                    "ticker": ticker,
-                                    "start_date": start_date,
-                                    "end_date": current_date,
-                                    "curr_date": current_date,
-                                }
-                            ),
+                            lambda: unified_tool.invoke({
+                                "ticker": ticker,
+                                "start_date": start_date,
+                                "end_date": current_date,
+                                "curr_date": current_date,
+                            }),
                             timeout_seconds=get_risk_llm_timeout_seconds(fresh_llm),
                             operation_name="Fundamentals Data Tool",
                             fallback_value="基本面数据工具调用超时，使用兜底基本面分析继续。",
                         )
 
                         logger.info("✅ [工具调用] 统一工具调用成功")
-                        logger.info(
-                            f"📊 [工具调用] 返回数据长度: {len(combined_data)}字符"
-                        )
-                        logger.debug(
-                            f"📊 [DEBUG] 统一工具数据获取成功，长度: {len(combined_data)}字符"
-                        )
+                        logger.info(f"📊 [工具调用] 返回数据长度: {len(combined_data)}字符")
+                        logger.debug(f"📊 [DEBUG] 统一工具数据获取成功，长度: {len(combined_data)}字符")
                         # 将统一工具返回的数据写入日志，便于排查与分析
                         try:
                             if isinstance(combined_data, (dict, list)):
                                 json = importlib.import_module("json")
-                                _preview = json.dumps(
-                                    combined_data, ensure_ascii=False, default=str
-                                )
+                                _preview = json.dumps(combined_data, ensure_ascii=False, default=str)
                                 _full = _preview
                             else:
                                 _preview = str(combined_data)
                                 _full = _preview
 
                             # 预览信息控制长度，避免日志过长
-                            _preview_truncated = _preview[:6000] + (
-                                "..." if len(_preview) > 2000 else ""
-                            )
-                            logger.info(
-                                f"📦 [基本面分析师] 统一工具返回数据预览(前6000字符):\n{_preview_truncated}"
-                            )
+                            _preview_truncated = _preview[:6000] + ("..." if len(_preview) > 2000 else "")
+                            logger.info(f"📦 [基本面分析师] 统一工具返回数据预览(前6000字符):\n{_preview_truncated}")
                             # 完整数据写入DEBUG级别
-                            logger.debug(
-                                f"🧾 [基本面分析师] 统一工具返回完整数据:\n{_full}"
-                            )
+                            logger.debug(f"🧾 [基本面分析师] 统一工具返回完整数据:\n{_full}")
                         except Exception as _log_err:
-                            logger.warning(
-                                f"⚠️ [基本面分析师] 记录统一工具数据时出错: {_log_err}"
-                            )
+                            logger.warning(f"⚠️ [基本面分析师] 记录统一工具数据时出错: {_log_err}")
                     else:
                         combined_data = "统一基本面分析工具不可用"
                         logger.debug("📊 [DEBUG] 统一工具未找到")
@@ -778,26 +685,20 @@ def create_fundamentals_analyst(llm, toolkit):
 
                 try:
                     # 创建简单的分析链
-                    analysis_prompt_template = ChatPromptTemplate.from_messages(
-                        [
-                            (
-                                "system",
-                                "你是专业的股票基本面分析师，基于提供的真实数据进行分析。",
-                            ),
-                            ("human", "{analysis_request}"),
-                        ]
-                    )
+                    analysis_prompt_template = ChatPromptTemplate.from_messages([
+                        (
+                            "system",
+                            "你是专业的股票基本面分析师，基于提供的真实数据进行分析。",
+                        ),
+                        ("human", "{analysis_request}"),
+                    ])
 
                     analysis_chain = analysis_prompt_template | fresh_llm
                     analysis_result = invoke_with_timeout(
-                        lambda: analysis_chain.invoke(
-                            {"analysis_request": analysis_prompt}
-                        ),
+                        lambda: analysis_chain.invoke({"analysis_request": analysis_prompt}),
                         timeout_seconds=get_risk_llm_timeout_seconds(fresh_llm),
                         operation_name="Fundamentals Data Analysis",
-                        fallback_value=_fallback_fundamentals_message(
-                            ticker, company_name
-                        ),
+                        fallback_value=_fallback_fundamentals_message(ticker, company_name),
                     )
 
                     if hasattr(analysis_result, "content"):
@@ -805,9 +706,7 @@ def create_fundamentals_analyst(llm, toolkit):
                     else:
                         report = str(analysis_result)
 
-                    logger.info(
-                        f"📊 [基本面分析师] 强制工具调用完成，报告长度: {len(report)}"
-                    )
+                    logger.info(f"📊 [基本面分析师] 强制工具调用完成，报告长度: {len(report)}")
 
                 except Exception as e:
                     logger.error(f"❌ [DEBUG] 强制工具调用分析失败: {e}")
@@ -826,9 +725,7 @@ def create_fundamentals_analyst(llm, toolkit):
         # 🔧 保持工具调用计数器不变（已在开始时根据ToolMessage更新）
         return {
             "messages": [result],
-            "fundamentals_report": result.content
-            if hasattr(result, "content")
-            else str(result),
+            "fundamentals_report": result.content if hasattr(result, "content") else str(result),
             "fundamentals_tool_call_count": tool_call_count,
         }
 

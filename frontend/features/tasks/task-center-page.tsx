@@ -35,6 +35,7 @@ interface TaskRow {
   start_time?: string
   error_message?: string
   message?: string
+  batch_id?: string
 }
 
 type TaskPayload = { tasks?: TaskRow[]; items?: TaskRow[]; analyses?: TaskRow[]; total?: number } | TaskRow[]
@@ -61,6 +62,7 @@ export function TaskCenterPage() {
   const queryClient = useQueryClient()
   const initialTab = normalizeTab(searchParams.get("tab"))
   const initialTaskId = searchParams.get("task_id") || ""
+  const batchId = searchParams.get("batch_id") || ""
   const [activeTab, setActiveTab] = useState<TaskTab>(initialTab)
   const [filters, setFilters] = useState({ startDate: "", endDate: "", market: "all", status: "all", stock: "" })
   const [keyword, setKeyword] = useState(initialTaskId)
@@ -70,10 +72,11 @@ export function TaskCenterPage() {
 
   const status = filters.status !== "all" ? filters.status : statusForTab(activeTab)
   const tasksQuery = useQuery({
-    queryKey: ["tasks", activeTab, filters],
+    queryKey: ["tasks", activeTab, filters, batchId],
     queryFn: async () => {
       const historyPayload = unwrapTasks(await analysisApi.getHistory({
         status,
+        batch_id: batchId || undefined,
         market_type: filters.market === "all" ? undefined : filters.market,
         stock_code: filters.stock || undefined,
         start_date: filters.startDate || undefined,
@@ -82,8 +85,8 @@ export function TaskCenterPage() {
         page_size: 100
       }))
       const historyRows = rowsFromPayload(historyPayload)
-      if (historyRows.length || hasExtraFilters(filters)) return historyPayload
-      return unwrapTasks(await analysisApi.getTaskList({ status, limit: 100, offset: 0 }))
+      if (historyRows.length || hasExtraFilters(filters) || batchId) return historyPayload
+      return unwrapTasks(await analysisApi.getTaskList({ status, batch_id: batchId || undefined, limit: 100, offset: 0 }))
     },
     refetchInterval: activeTab === "running" ? 5_000 : false,
     retry: false
@@ -158,7 +161,7 @@ export function TaskCenterPage() {
             onValueChange={(value) => {
               const tab = normalizeTab(value)
               setActiveTab(tab)
-              router.replace(tab === "running" ? "/tasks" : `/tasks?tab=${tab}`)
+              router.replace(buildTasksUrl(tab, batchId, initialTaskId))
             }}
           >
             <TabsList className="flex h-auto flex-wrap justify-start">
@@ -294,6 +297,15 @@ function statusForTab(tab: TaskTab) {
   if (tab === "all") return undefined
   if (tab === "running") return "processing"
   return tab
+}
+
+function buildTasksUrl(tab: TaskTab, batchId: string, taskId: string) {
+  const params = new URLSearchParams()
+  if (tab !== "running") params.set("tab", tab)
+  if (batchId) params.set("batch_id", batchId)
+  if (taskId) params.set("task_id", taskId)
+  const query = params.toString()
+  return query ? `/tasks?${query}` : "/tasks"
 }
 
 function taskId(row: TaskRow) {

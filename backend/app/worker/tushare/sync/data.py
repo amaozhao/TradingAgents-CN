@@ -1,4 +1,6 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import logger
+from .route import get_tushare_sync_service
+
 async def run_tushare_status_check():
     """APScheduler任务：检查同步状态"""
     try:

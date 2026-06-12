@@ -1,8 +1,17 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Dict,
+        StockDataPreparationResult,
+        datetime,
+        importlib,
+        logger,
+        timedelta,
+    )
+
 class _StockDataPreparerMixin2:
-    def _check_database_data(
-        self, stock_code: str, start_date: str, end_date: str
-    ) -> Dict:
+    def _check_database_data(self, stock_code: str, start_date: str, end_date: str) -> Dict:
         """
         检查数据库中的数据是否存在和最新
 
@@ -96,9 +105,7 @@ class _StockDataPreparerMixin2:
                 "message": f"检查失败: {str(e)}",
             }
 
-    def _trigger_data_sync_sync(
-        self, stock_code: str, start_date: str, end_date: str
-    ) -> Dict:
+    def _trigger_data_sync_sync(self, stock_code: str, start_date: str, end_date: str) -> Dict:
         """
         触发数据同步（同步包装器）
         在同步上下文中调用异步同步方法
@@ -120,9 +127,7 @@ class _StockDataPreparerMixin2:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 try:
-                    return loop.run_until_complete(
-                        self._trigger_data_sync_async(stock_code, start_date, end_date)
-                    )
+                    return loop.run_until_complete(self._trigger_data_sync_async(stock_code, start_date, end_date))
                 finally:
                     loop.run_until_complete(loop.shutdown_asyncgens())
                     loop.run_until_complete(loop.shutdown_default_executor())
@@ -144,9 +149,7 @@ class _StockDataPreparerMixin2:
 
                 # 调用异步方法
                 try:
-                    return loop.run_until_complete(
-                        self._trigger_data_sync_async(stock_code, start_date, end_date)
-                    )
+                    return loop.run_until_complete(self._trigger_data_sync_async(stock_code, start_date, end_date))
                 finally:
                     if created_loop:
                         loop.run_until_complete(loop.shutdown_asyncgens())
@@ -162,9 +165,7 @@ class _StockDataPreparerMixin2:
                 "data_source": None,
             }
 
-    async def _trigger_data_sync_async(
-        self, stock_code: str, start_date: str, end_date: str
-    ) -> Dict:
+    async def _trigger_data_sync_async(self, stock_code: str, start_date: str, end_date: str) -> Dict:
         """
         触发数据同步（异步版本，根据数据库配置的数据源优先级）
         同步内容包括：历史数据、财务数据、实时行情
@@ -181,9 +182,7 @@ class _StockDataPreparerMixin2:
             }
         """
         try:
-            logger.info(
-                f"🔄 [数据同步] 开始同步{stock_code}的数据（历史+财务+实时）..."
-            )
+            logger.info(f"🔄 [数据同步] 开始同步{stock_code}的数据（历史+财务+实时）...")
 
             # 1. 从数据库获取数据源优先级
             priority_order = self._get_data_source_priority_for_sync(stock_code)
@@ -234,14 +233,10 @@ class _StockDataPreparerMixin2:
 
                     if hist_result.get("success_count", 0) > 0:
                         historical_records = hist_result.get("total_records", 0)
-                        logger.info(
-                            f"✅ [数据同步] 历史数据同步成功: {historical_records}条"
-                        )
+                        logger.info(f"✅ [数据同步] 历史数据同步成功: {historical_records}条")
                     else:
                         errors = hist_result.get("errors", [])
-                        error_msg = (
-                            errors[0].get("error", "未知错误") if errors else "同步失败"
-                        )
+                        error_msg = errors[0].get("error", "未知错误") if errors else "同步失败"
                         logger.warning(f"⚠️ [数据同步] 历史数据同步失败: {error_msg}")
 
                     # 2.2 同步财务数据
@@ -288,9 +283,7 @@ class _StockDataPreparerMixin2:
 
                     # 检查同步结果（至少历史数据要成功）
                     if historical_records > 0:
-                        message = (
-                            f"使用{data_source}同步成功: 历史{historical_records}条"
-                        )
+                        message = f"使用{data_source}同步成功: 历史{historical_records}条"
                         if financial_synced:
                             message += ", 财务数据✓"
                         if realtime_synced:
@@ -308,9 +301,7 @@ class _StockDataPreparerMixin2:
                         }
                     else:
                         last_error = f"{data_source}: 历史数据同步失败"
-                        logger.warning(
-                            f"⚠️ [数据同步] {data_source}同步失败: 历史数据为空"
-                        )
+                        logger.warning(f"⚠️ [数据同步] {data_source}同步失败: 历史数据为空")
                         # 继续尝试下一个数据源
 
                 except Exception as e:
@@ -420,9 +411,7 @@ class _StockDataPreparerMixin2:
 
                 if stock_name and stock_name != "未知":
                     has_basic_info = True
-                    logger.info(
-                        f"✅ [港股数据] 基本信息获取成功: {formatted_code} - {stock_name}"
-                    )
+                    logger.info(f"✅ [港股数据] 基本信息获取成功: {formatted_code} - {stock_name}")
                     cache_status += "基本信息已缓存; "
                 else:
                     logger.warning(f"⚠️ [港股数据] 基本信息无效: {formatted_code}")
@@ -446,10 +435,7 @@ class _StockDataPreparerMixin2:
                     "限制",
                 ]
 
-                is_network_issue = any(
-                    indicator in str(stock_info)
-                    for indicator in network_error_indicators
-                )
+                is_network_issue = any(indicator in str(stock_info) for indicator in network_error_indicators)
 
                 if is_network_issue:
                     logger.warning(f"🌐 [港股数据] 网络限制影响: {formatted_code}")
@@ -471,23 +457,15 @@ class _StockDataPreparerMixin2:
                     )
 
             # 2. 获取历史数据
-            logger.debug(
-                f"📊 [港股数据] 获取{formatted_code}历史数据 ({start_date_str} 到 {end_date_str})..."
-            )
+            logger.debug(f"📊 [港股数据] 获取{formatted_code}历史数据 ({start_date_str} 到 {end_date_str})...")
             get_hk_stock_data_unified = getattr(
                 importlib.import_module("trader.flows.interface"),
                 "get_hk_stock_data_unified",
             )
 
-            historical_data = get_hk_stock_data_unified(
-                formatted_code, start_date_str, end_date_str
-            )
+            historical_data = get_hk_stock_data_unified(formatted_code, start_date_str, end_date_str)
 
-            if (
-                historical_data
-                and "❌" not in historical_data
-                and "获取失败" not in historical_data
-            ):
+            if historical_data and "❌" not in historical_data and "获取失败" not in historical_data:
                 # 更宽松的数据有效性检查
                 data_indicators = [
                     "开盘价",
@@ -508,22 +486,16 @@ class _StockDataPreparerMixin2:
 
                 has_valid_data = (
                     len(historical_data) > 50  # 降低长度要求
-                    and any(
-                        indicator in historical_data for indicator in data_indicators
-                    )
+                    and any(indicator in historical_data for indicator in data_indicators)
                 )
 
                 if has_valid_data:
                     has_historical_data = True
-                    logger.info(
-                        f"✅ [港股数据] 历史数据获取成功: {formatted_code} ({period_days}天)"
-                    )
+                    logger.info(f"✅ [港股数据] 历史数据获取成功: {formatted_code} ({period_days}天)")
                     cache_status += f"历史数据已缓存({period_days}天); "
                 else:
                     logger.warning(f"⚠️ [港股数据] 历史数据无效: {formatted_code}")
-                    logger.debug(
-                        f"🔍 [港股数据] 数据内容预览: {historical_data[:200]}..."
-                    )
+                    logger.debug(f"🔍 [港股数据] 数据内容预览: {historical_data[:200]}...")
                     return StockDataPreparationResult(
                         is_valid=False,
                         stock_code=formatted_code,
@@ -545,15 +517,10 @@ class _StockDataPreparerMixin2:
                     "限制",
                 ]
 
-                is_network_issue = any(
-                    indicator in str(historical_data)
-                    for indicator in network_error_indicators
-                )
+                is_network_issue = any(indicator in str(historical_data) for indicator in network_error_indicators)
 
                 if is_network_issue:
-                    logger.warning(
-                        f"🌐 [港股数据] 历史数据获取受网络限制: {formatted_code}"
-                    )
+                    logger.warning(f"🌐 [港股数据] 历史数据获取受网络限制: {formatted_code}")
                     return StockDataPreparationResult(
                         is_valid=False,
                         stock_code=formatted_code,
@@ -625,9 +592,7 @@ class _StockDataPreparerMixin2:
 
         try:
             # 1. 获取历史数据（美股通常直接通过历史数据验证股票是否存在）
-            logger.debug(
-                f"📊 [美股数据] 获取{formatted_code}历史数据 ({start_date_str} 到 {end_date_str})..."
-            )
+            logger.debug(f"📊 [美股数据] 获取{formatted_code}历史数据 ({start_date_str} 到 {end_date_str})...")
 
             # 导入美股数据提供器（支持新旧路径）
             try:
@@ -636,17 +601,13 @@ class _StockDataPreparerMixin2:
                     "OptimizedUSDataProvider",
                 )
                 provider = OptimizedUSDataProvider()
-                historical_data = provider.get_stock_data(
-                    formatted_code, start_date_str, end_date_str
-                )
+                historical_data = provider.get_stock_data(formatted_code, start_date_str, end_date_str)
             except ImportError:
                 get_us_stock_data_cached = getattr(
                     importlib.import_module("trader.flows.providers.us.optimized"),
                     "get_us_stock_data_cached",
                 )
-                historical_data = get_us_stock_data_cached(
-                    formatted_code, start_date_str, end_date_str
-                )
+                historical_data = get_us_stock_data_cached(formatted_code, start_date_str, end_date_str)
 
             if (
                 historical_data
@@ -674,17 +635,13 @@ class _StockDataPreparerMixin2:
 
                 has_valid_data = (
                     len(historical_data) > 50  # 降低长度要求
-                    and any(
-                        indicator in historical_data for indicator in data_indicators
-                    )
+                    and any(indicator in historical_data for indicator in data_indicators)
                 )
 
                 if has_valid_data:
                     has_historical_data = True
                     has_basic_info = True  # 美股通常不单独获取基本信息
-                    logger.info(
-                        f"✅ [美股数据] 历史数据获取成功: {formatted_code} ({period_days}天)"
-                    )
+                    logger.info(f"✅ [美股数据] 历史数据获取成功: {formatted_code} ({period_days}天)")
                     cache_status = f"历史数据已缓存({period_days}天)"
 
                     # 数据准备成功
@@ -701,9 +658,7 @@ class _StockDataPreparerMixin2:
                     )
                 else:
                     logger.warning(f"⚠️ [美股数据] 历史数据无效: {formatted_code}")
-                    logger.debug(
-                        f"🔍 [美股数据] 数据内容预览: {historical_data[:200]}..."
-                    )
+                    logger.debug(f"🔍 [美股数据] 数据内容预览: {historical_data[:200]}...")
                     return StockDataPreparationResult(
                         is_valid=False,
                         stock_code=formatted_code,

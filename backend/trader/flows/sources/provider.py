@@ -1,4 +1,16 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        DataSourceCode,
+        List,
+        Optional,
+        USDataSource,
+        importlib,
+        logger,
+        settings,
+    )
+
 class USDataSourceManager:
     """
     美股数据源管理器
@@ -23,22 +35,16 @@ class USDataSourceManager:
         self.current_source = self.default_source
 
         logger.info("📊 美股数据源管理器初始化完成")
-        logger.info(
-            f"   PostgreSQL缓存: {'✅ 已启用' if self.use_postgres_cache else '❌ 未启用'}"
-        )
+        logger.info(f"   PostgreSQL缓存: {'✅ 已启用' if self.use_postgres_cache else '❌ 未启用'}")
         logger.info(f"   默认数据源: {self.default_source.value}")
         logger.info(f"   可用数据源: {[s.value for s in self.available_sources]}")
 
     def _check_postgres_enabled(self) -> bool:
         """检查是否启用PostgreSQL缓存"""
-        use_app_cache_enabled = getattr(
-            importlib.import_module("trader.config.runtime"), "use_app_cache_enabled"
-        )
+        use_app_cache_enabled = getattr(importlib.import_module("trader.config.runtime"), "use_app_cache_enabled")
         return use_app_cache_enabled()
 
-    def _get_data_source_priority_order(
-        self, symbol: Optional[str] = None
-    ) -> List[USDataSource]:
+    def _get_data_source_priority_order(self, symbol: Optional[str] = None) -> List[USDataSource]:
         """
         从数据库获取美股数据源优先级顺序（用于降级）
 
@@ -50,17 +56,13 @@ class USDataSourceManager:
         """
         try:
             # 从数据库读取数据源配置
-            get_postgres_db_sync = getattr(
-                importlib.import_module("app.core.database"), "get_postgres_db_sync"
-            )
+            get_postgres_db_sync = getattr(importlib.import_module("app.core.database"), "get_postgres_db_sync")
             db = get_postgres_db_sync()
 
             # 方法1: 从 datasource_groupings 集合读取（推荐）
             groupings_collection = db.datasource_groupings
             groupings = list(
-                groupings_collection.find(
-                    {"market_category_id": "us_stocks", "enabled": True}
-                ).sort("priority", -1)
+                groupings_collection.find({"market_category_id": "us_stocks", "enabled": True}).sort("priority", -1)
             )  # 降序排序，优先级高的在前
 
             if groupings:
@@ -79,16 +81,11 @@ class USDataSourceManager:
                     if ds_name in source_mapping:
                         source = source_mapping[ds_name]
                         # 排除 PostgreSQL（PostgreSQL 是最高优先级，不参与降级）
-                        if (
-                            source != USDataSource.POSTGRES
-                            and source in self.available_sources
-                        ):
+                        if source != USDataSource.POSTGRES and source in self.available_sources:
                             result.append(source)
 
                 if result:
-                    logger.info(
-                        f"✅ [美股数据源优先级] 从数据库读取: {[s.value for s in result]}"
-                    )
+                    logger.info(f"✅ [美股数据源优先级] 从数据库读取: {[s.value for s in result]}")
                     return result
 
             logger.warning("⚠️ [美股数据源优先级] 数据库中没有配置，使用默认顺序")
@@ -112,9 +109,7 @@ class USDataSourceManager:
             return USDataSource.POSTGRES
 
         # 从 Settings 获取，默认使用 yfinance
-        env_source = settings.text_value(
-            "DEFAULT_US_DATA_SOURCE", DataSourceCode.YFINANCE.value
-        ).lower()
+        env_source = settings.text_value("DEFAULT_US_DATA_SOURCE", DataSourceCode.YFINANCE.value).lower()
 
         # 映射到枚举
         source_mapping = {
@@ -157,24 +152,13 @@ class USDataSourceManager:
         if "alpha_vantage" in enabled_sources_in_db:
             try:
                 # 优先从数据库配置读取 API Key，其次从 Settings 读取
-                api_key = (
-                    datasource_configs.get("alpha_vantage", {}).get("api_key")
-                    or settings.ALPHA_VANTAGE_API_KEY
-                )
+                api_key = datasource_configs.get("alpha_vantage", {}).get("api_key") or settings.ALPHA_VANTAGE_API_KEY
                 if api_key:
                     available.append(USDataSource.ALPHA_VANTAGE)
-                    source = (
-                        "数据库配置"
-                        if datasource_configs.get("alpha_vantage", {}).get("api_key")
-                        else "环境变量"
-                    )
-                    logger.info(
-                        f"✅ Alpha Vantage数据源可用且已启用 (API Key来源: {source})"
-                    )
+                    source = "数据库配置" if datasource_configs.get("alpha_vantage", {}).get("api_key") else "环境变量"
+                    logger.info(f"✅ Alpha Vantage数据源可用且已启用 (API Key来源: {source})")
                 else:
-                    logger.warning(
-                        "⚠️ Alpha Vantage数据源不可用: API Key未配置（数据库和环境变量均未找到）"
-                    )
+                    logger.warning("⚠️ Alpha Vantage数据源不可用: API Key未配置（数据库和环境变量均未找到）")
             except Exception as e:
                 logger.warning(f"⚠️ Alpha Vantage数据源检查失败: {e}")
         else:
@@ -184,22 +168,13 @@ class USDataSourceManager:
         if "finnhub" in enabled_sources_in_db:
             try:
                 # 优先从数据库配置读取 API Key，其次从 Settings 读取
-                api_key = (
-                    datasource_configs.get("finnhub", {}).get("api_key")
-                    or settings.FINNHUB_API_KEY
-                )
+                api_key = datasource_configs.get("finnhub", {}).get("api_key") or settings.FINNHUB_API_KEY
                 if api_key:
                     available.append(USDataSource.FINNHUB)
-                    source = (
-                        "数据库配置"
-                        if datasource_configs.get("finnhub", {}).get("api_key")
-                        else "环境变量"
-                    )
+                    source = "数据库配置" if datasource_configs.get("finnhub", {}).get("api_key") else "环境变量"
                     logger.info(f"✅ Finnhub数据源可用且已启用 (API Key来源: {source})")
                 else:
-                    logger.warning(
-                        "⚠️ Finnhub数据源不可用: API Key未配置（数据库和环境变量均未找到）"
-                    )
+                    logger.warning("⚠️ Finnhub数据源不可用: API Key未配置（数据库和环境变量均未找到）")
             except Exception as e:
                 logger.warning(f"⚠️ Finnhub数据源检查失败: {e}")
         else:
@@ -210,17 +185,11 @@ class USDataSourceManager:
     def _get_enabled_sources_from_db(self) -> List[str]:
         """从数据库读取启用的数据源列表"""
         try:
-            get_postgres_db_sync = getattr(
-                importlib.import_module("app.core.database"), "get_postgres_db_sync"
-            )
+            get_postgres_db_sync = getattr(importlib.import_module("app.core.database"), "get_postgres_db_sync")
             db = get_postgres_db_sync()
 
             # 从 datasource_groupings 集合读取
-            groupings = list(
-                db.datasource_groupings.find(
-                    {"market_category_id": "us_stocks", "enabled": True}
-                )
-            )
+            groupings = list(db.datasource_groupings.find({"market_category_id": "us_stocks", "enabled": True}))
 
             # 🔥 数据源名称映射（数据库名称 → 代码中使用的名称）
             name_mapping = {
@@ -246,9 +215,7 @@ class USDataSourceManager:
     def _get_datasource_configs_from_db(self) -> dict:
         """从数据库读取数据源配置（包括 API Key）"""
         try:
-            get_postgres_db_sync = getattr(
-                importlib.import_module("app.core.database"), "get_postgres_db_sync"
-            )
+            get_postgres_db_sync = getattr(importlib.import_module("app.core.database"), "get_postgres_db_sync")
             db = get_postgres_db_sync()
 
             # 从 system_configs 集合读取激活的配置

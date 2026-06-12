@@ -1,4 +1,3 @@
-# ruff: noqa: F722
 from typing import Annotated, Optional
 
 from langchain_core.tools import tool

@@ -1,4 +1,20 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        List,
+        Optional,
+        asyncio,
+        datetime,
+        get_historical_data_service,
+        importlib,
+        logger,
+        timedelta,
+        timezone,
+    )
+
 class _TushareSyncServiceMixin2:
     async def sync_historical_data(
         self,
@@ -25,9 +41,7 @@ class _TushareSyncServiceMixin2:
         Returns:
             同步结果统计
         """
-        period_name = {"daily": "日线", "weekly": "周线", "monthly": "月线"}.get(
-            period, period
-        )
+        period_name = {"daily": "日线", "weekly": "周线", "monthly": "月线"}.get(period, period)
         logger.info(f"🔄 开始同步{period_name}历史数据...")
 
         stats = {
@@ -67,9 +81,7 @@ class _TushareSyncServiceMixin2:
                             {
                                 "$or": [
                                     {"status": {"$ne": "D"}},  # status 不是 D（退市）
-                                    {
-                                        "status": {"$exists": False}
-                                    },  # 或者 status 字段不存在
+                                    {"status": {"$exists": False}},  # 或者 status 字段不存在
                                 ]
                             },
                         ]
@@ -77,9 +89,7 @@ class _TushareSyncServiceMixin2:
                     {"code": 1},
                 )
                 symbols = [doc["code"] async for doc in cursor]
-                logger.info(
-                    f"📋 从 stock_basic_info 获取到 {len(symbols)} 只股票（已排除退市股票）"
-                )
+                logger.info(f"📋 从 stock_basic_info 获取到 {len(symbols)} 只股票（已排除退市股票）")
 
             stats["total_processed"] = len(symbols)
 
@@ -95,9 +105,7 @@ class _TushareSyncServiceMixin2:
                 elif incremental:
                     global_start_date = "各股票最后日期"
                 else:
-                    global_start_date = (datetime.now() - timedelta(days=365)).strftime(
-                        "%Y-%m-%d"
-                    )
+                    global_start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
 
             logger.info(
                 f"📊 历史数据同步: 结束日期={end_date}, 股票数量={len(symbols)}, 模式={'增量' if incremental else '全量'}"
@@ -126,51 +134,38 @@ class _TushareSyncServiceMixin2:
                         elif incremental:
                             # 增量同步：获取该股票的最后日期
                             symbol_start_date = await self._get_last_sync_date(symbol)
-                            logger.debug(
-                                f"📅 {symbol}: 从 {symbol_start_date} 开始同步"
-                            )
+                            logger.debug(f"📅 {symbol}: 从 {symbol_start_date} 开始同步")
                         else:
-                            symbol_start_date = (
-                                datetime.now() - timedelta(days=365)
-                            ).strftime("%Y-%m-%d")
+                            symbol_start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
 
                     # 记录请求参数
                     logger.debug(
-                        f"🔍 {symbol}: 请求{period_name}数据 "
-                        f"start={symbol_start_date}, end={end_date}, period={period}"
+                        f"🔍 {symbol}: 请求{period_name}数据 start={symbol_start_date}, end={end_date}, period={period}"
                     )
 
                     # ⏱️ 性能监控：API 调用
                     api_start = datetime.now()
-                    df = await self.provider.get_historical_data(
-                        symbol, symbol_start_date, end_date, period=period
-                    )
+                    df = await self.provider.get_historical_data(symbol, symbol_start_date, end_date, period=period)
                     api_duration = (datetime.now() - api_start).total_seconds()
 
                     if df is not None and not df.empty:
                         # ⏱️ 性能监控：数据保存
                         save_start = datetime.now()
-                        records_saved = await self._save_historical_data(
-                            symbol, df, period=period
-                        )
+                        records_saved = await self._save_historical_data(symbol, df, period=period)
                         save_duration = (datetime.now() - save_start).total_seconds()
 
                         stats["success_count"] += 1
                         stats["total_records"] += records_saved
 
                         # 计算单个股票耗时
-                        stock_duration = (
-                            datetime.now() - stock_start_time
-                        ).total_seconds()
+                        stock_duration = (datetime.now() - stock_start_time).total_seconds()
                         logger.info(
                             f"✅ {symbol}: 保存 {records_saved} 条{period_name}记录，"
                             f"总耗时 {stock_duration:.2f}秒 "
                             f"(API: {api_duration:.2f}秒, 保存: {save_duration:.2f}秒)"
                         )
                     else:
-                        stock_duration = (
-                            datetime.now() - stock_start_time
-                        ).total_seconds()
+                        stock_duration = (datetime.now() - stock_start_time).total_seconds()
                         logger.warning(
                             f"⚠️ {symbol}: 无{period_name}数据 "
                             f"(start={symbol_start_date}, end={end_date})，耗时 {stock_duration:.2f}秒"
@@ -206,15 +201,13 @@ class _TushareSyncServiceMixin2:
                     traceback = importlib.import_module("traceback")
                     error_details = traceback.format_exc()
                     stats["error_count"] += 1
-                    stats["errors"].append(
-                        {
-                            "code": symbol,
-                            "error": str(e),
-                            "error_type": type(e).__name__,
-                            "context": f"sync_historical_data_{period}",
-                            "traceback": error_details,
-                        }
-                    )
+                    stats["errors"].append({
+                        "code": symbol,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                        "context": f"sync_historical_data_{period}",
+                        "traceback": error_details,
+                    })
                     logger.error(
                         f"❌ {symbol} {period_name}数据同步失败\n"
                         f"   参数: start={symbol_start_date if 'symbol_start_date' in locals() else 'N/A'}, "
@@ -226,9 +219,7 @@ class _TushareSyncServiceMixin2:
 
             # 4. 完成统计
             stats["end_time"] = datetime.now(timezone.utc).replace(tzinfo=None)
-            stats["duration"] = (
-                stats["end_time"] - stats["start_time"]
-            ).total_seconds()
+            stats["duration"] = (stats["end_time"] - stats["start_time"]).total_seconds()
 
             logger.info(
                 f"✅ {period_name}数据同步完成: "
@@ -249,19 +240,15 @@ class _TushareSyncServiceMixin2:
                 f"   错误信息: {str(e)}\n"
                 f"   堆栈跟踪:\n{error_details}"
             )
-            stats["errors"].append(
-                {
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                    "context": "sync_historical_data",
-                    "traceback": error_details,
-                }
-            )
+            stats["errors"].append({
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "context": "sync_historical_data",
+                "traceback": error_details,
+            })
             return stats
 
-    async def _save_historical_data(
-        self, symbol: str, df, period: str = "daily"
-    ) -> int:
+    async def _save_historical_data(self, symbol: str, df, period: str = "daily") -> int:
         """保存历史数据到数据库"""
         try:
             if self.historical_service is None:
@@ -298,9 +285,7 @@ class _TushareSyncServiceMixin2:
 
             if symbol:
                 # 获取特定股票的最新日期
-                latest_date = await self.historical_service.get_latest_date(
-                    symbol, "tushare"
-                )
+                latest_date = await self.historical_service.get_latest_date(symbol, "tushare")
                 if latest_date:
                     # 返回最后日期的下一天（避免重复同步）
                     try:
@@ -312,18 +297,14 @@ class _TushareSyncServiceMixin2:
                         return latest_date
                 else:
                     # 🔥 没有历史数据时，从上市日期开始全量同步
-                    stock_info = await self.db.stock_basic_info.find_one(
-                        {"code": symbol}, {"list_date": 1}
-                    )
+                    stock_info = await self.db.stock_basic_info.find_one({"code": symbol}, {"list_date": 1})
                     if stock_info and stock_info.get("list_date"):
                         list_date = stock_info["list_date"]
                         # 处理不同的日期格式
                         if isinstance(list_date, str):
                             # 格式可能是 "20100101" 或 "2010-01-01"
                             if len(list_date) == 8 and list_date.isdigit():
-                                return (
-                                    f"{list_date[:4]}-{list_date[4:6]}-{list_date[6:]}"
-                                )
+                                return f"{list_date[:4]}-{list_date[4:6]}-{list_date[6:]}"
                             else:
                                 return list_date
                         else:
@@ -373,11 +354,7 @@ class _TushareSyncServiceMixin2:
                         "$or": [
                             {"market_info.market": "CN"},  # 新数据结构
                             {"category": "stock_cn"},  # 旧数据结构
-                            {
-                                "market": {
-                                    "$in": ["主板", "创业板", "科创板", "北交所"]
-                                }
-                            },  # 按市场类型
+                            {"market": {"$in": ["主板", "创业板", "科创板", "北交所"]}},  # 按市场类型
                         ]
                     },
                     {"code": 1},
@@ -395,15 +372,11 @@ class _TushareSyncServiceMixin2:
                     await self.rate_limiter.acquire()
 
                     # 获取财务数据（指定获取期数）
-                    financial_data = await self.provider.get_financial_data(
-                        symbol, limit=limit
-                    )
+                    financial_data = await self.provider.get_financial_data(symbol, limit=limit)
 
                     if financial_data:
                         # 保存财务数据
-                        success = await self._save_financial_data(
-                            symbol, financial_data
-                        )
+                        success = await self._save_financial_data(symbol, financial_data)
                         if success:
                             stats["success_count"] += 1
                         else:
@@ -420,9 +393,7 @@ class _TushareSyncServiceMixin2:
                         )
                         # 输出速率限制器统计
                         limiter_stats = self.rate_limiter.get_stats()
-                        logger.info(
-                            f"   速率限制: {limiter_stats['current_calls']}/{limiter_stats['max_calls']}次"
-                        )
+                        logger.info(f"   速率限制: {limiter_stats['current_calls']}/{limiter_stats['max_calls']}次")
 
                         # 更新任务进度
                         if job_id:
@@ -445,34 +416,24 @@ class _TushareSyncServiceMixin2:
                                 )
                             except TaskCancelledException:
                                 # 任务被取消，记录并退出
-                                logger.warning(
-                                    f"⚠️ 财务数据同步任务被用户取消 (已处理 {i + 1}/{len(symbols)})"
-                                )
-                                stats["end_time"] = datetime.now(timezone.utc).replace(
-                                    tzinfo=None
-                                )
-                                stats["duration"] = (
-                                    stats["end_time"] - stats["start_time"]
-                                ).total_seconds()
+                                logger.warning(f"⚠️ 财务数据同步任务被用户取消 (已处理 {i + 1}/{len(symbols)})")
+                                stats["end_time"] = datetime.now(timezone.utc).replace(tzinfo=None)
+                                stats["duration"] = (stats["end_time"] - stats["start_time"]).total_seconds()
                                 stats["cancelled"] = True
                                 raise
 
                 except Exception as e:
                     stats["error_count"] += 1
-                    stats["errors"].append(
-                        {
-                            "code": symbol,
-                            "error": str(e),
-                            "context": "sync_financial_data",
-                        }
-                    )
+                    stats["errors"].append({
+                        "code": symbol,
+                        "error": str(e),
+                        "context": "sync_financial_data",
+                    })
                     logger.error(f"❌ {symbol} 财务数据同步失败: {e}")
 
             # 完成统计
             stats["end_time"] = datetime.now(timezone.utc).replace(tzinfo=None)
-            stats["duration"] = (
-                stats["end_time"] - stats["start_time"]
-            ).total_seconds()
+            stats["duration"] = (stats["end_time"] - stats["start_time"]).total_seconds()
 
             logger.info(
                 f"✅ 财务数据同步完成: "
@@ -488,9 +449,7 @@ class _TushareSyncServiceMixin2:
             stats["errors"].append({"error": str(e), "context": "sync_financial_data"})
             return stats
 
-    async def _save_financial_data(
-        self, symbol: str, financial_data: Dict[str, Any]
-    ) -> bool:
+    async def _save_financial_data(self, symbol: str, financial_data: Dict[str, Any]) -> bool:
         """保存财务数据"""
         try:
             # 使用统一的财务数据服务
@@ -524,17 +483,13 @@ class _TushareSyncServiceMixin2:
 
         if isinstance(updated_at, str):
             try:
-                updated_at = datetime.fromisoformat(
-                    updated_at.replace("Z", "+00:00")
-                ).replace(tzinfo=None)
+                updated_at = datetime.fromisoformat(updated_at.replace("Z", "+00:00")).replace(tzinfo=None)
             except ValueError:
                 return False
         if not isinstance(updated_at, datetime):
             return False
 
-        threshold = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
-            hours=hours
-        )
+        threshold = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
         return updated_at > threshold
 
     async def get_sync_status(self) -> Dict[str, Any]:
@@ -545,12 +500,8 @@ class _TushareSyncServiceMixin2:
             quotes_count = await self.db.market_quotes.count_documents({})
 
             # 获取最新更新时间
-            latest_basic = await self.db.stock_basic_info.find_one(
-                {}, sort=[("updated_at", -1)]
-            )
-            latest_quotes = await self.db.market_quotes.find_one(
-                {}, sort=[("updated_at", -1)]
-            )
+            latest_basic = await self.db.stock_basic_info.find_one({}, sort=[("updated_at", -1)])
+            latest_quotes = await self.db.market_quotes.find_one({}, sort=[("updated_at", -1)])
 
             return {
                 "provider_connected": self.provider.is_available(),
@@ -610,14 +561,8 @@ class _TushareSyncServiceMixin2:
         try:
             # 1. 获取股票列表
             if symbols is None:
-                stock_list = await self.stock_service.get_stock_list(
-                    page=1, page_size=100000
-                )
-                symbols = [
-                    stock["code"]
-                    for stock in (self._as_dict(item) for item in stock_list)
-                    if stock.get("code")
-                ]
+                stock_list = await self.stock_service.get_stock_list(page=1, page_size=100000)
+                symbols = [stock["code"] for stock in (self._as_dict(item) for item in stock_list) if stock.get("code")]
 
             if not symbols:
                 logger.warning("⚠️ 没有找到需要同步新闻的股票")
@@ -635,9 +580,7 @@ class _TushareSyncServiceMixin2:
                     break
 
                 batch = symbols[i : i + self.batch_size]
-                batch_stats = await self._process_news_batch(
-                    batch, hours_back, max_news_per_stock
-                )
+                batch_stats = await self._process_news_batch(batch, hours_back, max_news_per_stock)
 
                 # 更新统计
                 stats["success_count"] += batch_stats["success_count"]
@@ -667,9 +610,7 @@ class _TushareSyncServiceMixin2:
 
             # 3. 完成统计
             stats["end_time"] = datetime.now(timezone.utc).replace(tzinfo=None)
-            stats["duration"] = (
-                stats["end_time"] - stats["start_time"]
-            ).total_seconds()
+            stats["duration"] = (stats["end_time"] - stats["start_time"]).total_seconds()
 
             logger.info(
                 f"✅ 新闻数据同步完成: "

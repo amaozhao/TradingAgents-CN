@@ -1,4 +1,19 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        List,
+        Optional,
+        importlib,
+        json,
+        logger,
+        os,
+        settings,
+        time,
+    )
+
 def safe_serialize(obj):
     """安全序列化对象，处理不可序列化的类型"""
     # 特殊处理LangChain消息对象
@@ -101,15 +116,11 @@ class AsyncProgressTracker:
         # 保存初始状态
         self._save_progress()
 
-        logger.info(
-            f"📊 [异步进度] 初始化完成: {analysis_id}, 存储方式: {'Redis' if self.use_redis else '文件'}"
-        )
+        logger.info(f"📊 [异步进度] 初始化完成: {analysis_id}, 存储方式: {'Redis' if self.use_redis else '文件'}")
 
         # 注册到日志系统进行自动进度更新
         try:
-            register_analysis_tracker = getattr(
-                importlib.import_module("web.utils.logs"), "register_analysis_tracker"
-            )
+            register_analysis_tracker = getattr(importlib.import_module("web.utils.logs"), "register_analysis_tracker")
             threading = importlib.import_module("threading")
 
             # 使用超时机制避免死锁
@@ -121,9 +132,7 @@ class AsyncProgressTracker:
                     print(f"❌ [进度集成] 跟踪器注册失败: {e}")
 
             # 在单独线程中注册，避免阻塞主线程
-            register_thread = threading.Thread(
-                target=register_with_timeout, daemon=True
-            )
+            register_thread = threading.Thread(target=register_with_timeout, daemon=True)
             register_thread.start()
             register_thread.join(timeout=2.0)  # 2秒超时
 
@@ -165,9 +174,7 @@ class AsyncProgressTracker:
 
             # 测试连接
             self.redis_client.ping()
-            logger.info(
-                f"📊 [异步进度] Redis连接成功: {settings.REDIS_HOST}:{settings.REDIS_PORT}"
-            )
+            logger.info(f"📊 [异步进度] Redis连接成功: {settings.REDIS_HOST}:{settings.REDIS_PORT}")
             return True
         except Exception as e:
             logger.warning(f"📊 [异步进度] Redis连接失败，使用文件存储: {e}")
@@ -207,90 +214,78 @@ class AsyncProgressTracker:
         analyst_base_weight = 0.6 / len(self.analysts)  # 60%的时间用于分析师工作
         for analyst in self.analysts:
             analyst_info = self._get_analyst_step_info(analyst)
-            steps.append(
-                {
-                    "name": analyst_info["name"],
-                    "description": analyst_info["description"],
-                    "weight": analyst_base_weight,
-                }
-            )
+            steps.append({
+                "name": analyst_info["name"],
+                "description": analyst_info["description"],
+                "weight": analyst_base_weight,
+            })
 
         # 根据研究深度添加后续步骤
         if self.research_depth >= 2:
             # 标准和深度分析包含研究员辩论
-            steps.extend(
-                [
-                    {
-                        "name": "📈 多头观点",
-                        "description": "从乐观角度分析投资机会和上涨潜力",
-                        "weight": 0.06,
-                    },
-                    {
-                        "name": "📉 空头观点",
-                        "description": "从谨慎角度分析投资风险和下跌可能",
-                        "weight": 0.06,
-                    },
-                    {
-                        "name": "🤝 观点整合",
-                        "description": "综合多空观点，形成平衡的投资建议",
-                        "weight": 0.05,
-                    },
-                ]
-            )
+            steps.extend([
+                {
+                    "name": "📈 多头观点",
+                    "description": "从乐观角度分析投资机会和上涨潜力",
+                    "weight": 0.06,
+                },
+                {
+                    "name": "📉 空头观点",
+                    "description": "从谨慎角度分析投资风险和下跌可能",
+                    "weight": 0.06,
+                },
+                {
+                    "name": "🤝 观点整合",
+                    "description": "综合多空观点，形成平衡的投资建议",
+                    "weight": 0.05,
+                },
+            ])
 
         # 所有深度都包含交易决策
-        steps.append(
-            {
-                "name": "💡 投资建议",
-                "description": "基于分析结果制定具体的买卖建议",
-                "weight": 0.06,
-            }
-        )
+        steps.append({
+            "name": "💡 投资建议",
+            "description": "基于分析结果制定具体的买卖建议",
+            "weight": 0.06,
+        })
 
         if self.research_depth >= 3:
             # 深度分析包含详细风险评估
-            steps.extend(
-                [
-                    {
-                        "name": "🔥 激进策略",
-                        "description": "评估高风险高收益的投资策略",
-                        "weight": 0.03,
-                    },
-                    {
-                        "name": "🛡️ 保守策略",
-                        "description": "评估低风险稳健的投资策略",
-                        "weight": 0.03,
-                    },
-                    {
-                        "name": "⚖️ 平衡策略",
-                        "description": "评估风险收益平衡的投资策略",
-                        "weight": 0.03,
-                    },
-                    {
-                        "name": "🎯 风险控制",
-                        "description": "制定风险控制措施和止损策略",
-                        "weight": 0.04,
-                    },
-                ]
-            )
+            steps.extend([
+                {
+                    "name": "🔥 激进策略",
+                    "description": "评估高风险高收益的投资策略",
+                    "weight": 0.03,
+                },
+                {
+                    "name": "🛡️ 保守策略",
+                    "description": "评估低风险稳健的投资策略",
+                    "weight": 0.03,
+                },
+                {
+                    "name": "⚖️ 平衡策略",
+                    "description": "评估风险收益平衡的投资策略",
+                    "weight": 0.03,
+                },
+                {
+                    "name": "🎯 风险控制",
+                    "description": "制定风险控制措施和止损策略",
+                    "weight": 0.04,
+                },
+            ])
         else:
             # 快速和标准分析的简化风险评估
-            steps.append(
-                {
-                    "name": "⚠️ 风险提示",
-                    "description": "识别主要投资风险并提供风险提示",
-                    "weight": 0.05,
-                }
-            )
+            steps.append({
+                "name": "⚠️ 风险提示",
+                "description": "识别主要投资风险并提供风险提示",
+                "weight": 0.05,
+            })
 
         # 最后的整理步骤
-        steps.append(
-            {
-                "name": "📊 生成报告",
-                "description": "整理所有分析结果，生成最终投资报告",
-                "weight": 0.04,
-            }
-        )
+        steps.append({
+            "name": "📊 生成报告",
+            "description": "整理所有分析结果，生成最终投资报告",
+            "weight": 0.04,
+        })
 
         # 重新平衡权重，确保总和为1.0
         total_weight = sum(step["weight"] for step in steps)
@@ -394,9 +389,7 @@ class AsyncProgressTracker:
         # 更新步骤（防止倒退）
         if step is not None and step >= self.current_step:
             self.current_step = step
-            logger.debug(
-                f"📊 [异步进度] 步骤推进到 {self.current_step + 1}/{len(self.analysis_steps)}"
-            )
+            logger.debug(f"📊 [异步进度] 步骤推进到 {self.current_step + 1}/{len(self.analysis_steps)}")
 
         # 如果是完成消息，确保进度为100%
         if "分析完成" in message or "分析成功" in message or "✅ 分析完成" in message:
@@ -405,9 +398,7 @@ class AsyncProgressTracker:
 
         # 计算进度
         progress_percentage = self._calculate_weighted_progress() * 100
-        remaining_time = self._estimate_remaining_time(
-            progress_percentage / 100, elapsed_time
-        )
+        remaining_time = self._estimate_remaining_time(progress_percentage / 100, elapsed_time)
 
         # 更新进度数据
         current_step_info = (
@@ -435,19 +426,17 @@ class AsyncProgressTracker:
         elif "模块完成" in message:
             step_description = f"{current_step_info['name']}已完成"
 
-        self.progress_data.update(
-            {
-                "current_step": self.current_step,
-                "progress_percentage": progress_percentage,
-                "current_step_name": current_step_info["name"],
-                "current_step_description": step_description,
-                "elapsed_time": elapsed_time,
-                "remaining_time": remaining_time,
-                "last_message": message,
-                "last_update": current_time,
-                "status": "completed" if progress_percentage >= 100 else "running",
-            }
-        )
+        self.progress_data.update({
+            "current_step": self.current_step,
+            "progress_percentage": progress_percentage,
+            "current_step_name": current_step_info["name"],
+            "current_step_description": step_description,
+            "elapsed_time": elapsed_time,
+            "remaining_time": remaining_time,
+            "last_message": message,
+            "last_update": current_time,
+            "status": "completed" if progress_percentage >= 100 else "running",
+        })
 
         # 保存到存储
         self._save_progress()
@@ -519,9 +508,7 @@ class AsyncProgressTracker:
             # 模块完成时，从当前步骤推进到下一步
             # 不再依赖模块名称，而是基于当前进度推进
             next_step = min(self.current_step + 1, len(self.analysis_steps) - 1)
-            logger.debug(
-                f"📊 [步骤推进] 模块完成，从步骤{self.current_step}推进到步骤{next_step}"
-            )
+            logger.debug(f"📊 [步骤推进] 模块完成，从步骤{self.current_step}推进到步骤{next_step}")
             return next_step
 
         return None
@@ -553,9 +540,7 @@ class AsyncProgressTracker:
         if self.current_step == len(self.analysis_steps) - 1:
             return 1.0
 
-        completed_weight = sum(
-            step["weight"] for step in self.analysis_steps[: self.current_step]
-        )
+        completed_weight = sum(step["weight"] for step in self.analysis_steps[: self.current_step])
         total_weight = sum(step["weight"] for step in self.analysis_steps)
 
         return min(completed_weight / total_weight, 1.0)
@@ -589,18 +574,14 @@ class AsyncProgressTracker:
                 logger.info(
                     f"📊 [Redis写入] {self.analysis_id} -> {status} | {current_step_name} | {progress_pct:.1f}%"
                 )
-                logger.debug(
-                    f"📊 [Redis详情] 键: {key}, 数据大小: {len(data_json)} 字节"
-                )
+                logger.debug(f"📊 [Redis详情] 键: {key}, 数据大小: {len(data_json)} 字节")
             else:
                 # 保存到文件（安全序列化）
                 safe_data = safe_serialize(self.progress_data)
                 with open(self.progress_file, "w", encoding="utf-8") as f:
                     json.dump(safe_data, f, ensure_ascii=False, indent=2)
 
-                logger.info(
-                    f"📊 [文件写入] {self.analysis_id} -> {status} | {current_step_name} | {progress_pct:.1f}%"
-                )
+                logger.info(f"📊 [文件写入] {self.analysis_id} -> {status} | {current_step_name} | {progress_pct:.1f}%")
                 logger.debug(f"📊 [文件详情] 路径: {self.progress_file}")
 
         except Exception as e:
@@ -622,13 +603,9 @@ class AsyncProgressTracker:
                     simplified_data = {
                         "analysis_id": self.analysis_id,
                         "status": self.progress_data.get("status", "unknown"),
-                        "progress_percentage": self.progress_data.get(
-                            "progress_percentage", 0
-                        ),
+                        "progress_percentage": self.progress_data.get("progress_percentage", 0),
                         "last_message": str(self.progress_data.get("last_message", "")),
-                        "last_update": self.progress_data.get(
-                            "last_update", time.time()
-                        ),
+                        "last_update": self.progress_data.get("last_update", time.time()),
                     }
                     backup_file = f"./data/progress_{self.analysis_id}.json"
                     with open(backup_file, "w", encoding="utf-8") as f:
@@ -675,9 +652,7 @@ class AsyncProgressTracker:
         self.progress_data["last_message"] = f"分析失败: {error_message}"
         self.progress_data["last_update"] = time.time()
         self._save_progress()
-        logger.error(
-            f"📊 [异步进度] 分析失败: {self.analysis_id}, 错误: {error_message}"
-        )
+        logger.error(f"📊 [异步进度] 分析失败: {self.analysis_id}, 错误: {error_message}")
 
         # 从日志系统注销
         try:

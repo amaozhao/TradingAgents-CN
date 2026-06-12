@@ -1,4 +1,5 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import dataclass, datetime
+
 @dataclass
 class NewsItem:
     """新闻项目数据结构"""

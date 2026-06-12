@@ -15,20 +15,7 @@ import numpy as np
 import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
     safe_div,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 __alpha_meta__ = {
@@ -48,14 +35,14 @@ __alpha_meta__ = {
 def compute(panel: dict) -> pd.DataFrame:
     c = panel["close"]
     h = panel["high"]
-    l = panel["low"]
+    low = panel["low"]
     o = panel["open"]
     pc = c.shift(1)
     po = o.shift(1)
-    pl = l.shift(1)
+    pl = low.shift(1)
     numer = 16.0 * (c - pc + (c - o) / 2.0 + pc - po)
     a = (h - pc).abs()
-    b = (l - pc).abs()
+    b = (low - pc).abs()
     d = (pc - po).abs()
     cond1 = (a > b) & (a > (h - pl).abs())
     branch1 = a + b / 2.0 + d / 4.0

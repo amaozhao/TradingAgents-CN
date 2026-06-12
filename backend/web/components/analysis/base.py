@@ -1,4 +1,22 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import (
+    POSTGRES_AVAILABLE,
+    Dict,
+    List,
+    Path,
+    PostgreSQLReportManager,
+    datetime,
+    importlib,
+    json,
+    logger,
+    st,
+)
+
+
+def get_analysis_dir() -> Path:
+    analysis_dir = Path.cwd() / "data" / "analysis"
+    analysis_dir.mkdir(parents=True, exist_ok=True)
+    return analysis_dir
+
 def render_detailed_analysis_content(selected_result):
     """渲染详细分析结果内容"""
     st.subheader("📊 完整分析数据")
@@ -36,9 +54,7 @@ def render_detailed_analysis_content(selected_result):
         # 创建显示名称列表
         tab_names = []
         for report_key in report_tabs:
-            display_name = report_display_names.get(
-                report_key, f"📄 {report_key.replace('_', ' ').title()}"
-            )
+            display_name = report_display_names.get(report_key, f"📄 {report_key.replace('_', ' ').title()}")
             tab_names.append(display_name)
             print(f"🔍 [弹窗调试] 添加标签: {display_name}")
 
@@ -199,9 +215,7 @@ def render_detailed_analysis_content(selected_result):
             # 检查字典类型的数据是否有实际内容
             if isinstance(selected_result[module["key"]], dict):
                 # 对于字典，检查是否有非空的值
-                has_content = any(
-                    v for v in selected_result[module["key"]].values() if v
-                )
+                has_content = any(v for v in selected_result[module["key"]].values() if v)
                 if has_content:
                     available_modules.append(module)
             else:
@@ -359,10 +373,7 @@ def render_risk_debate_content(content):
         st.subheader("🔥 激进分析师观点")
         st.markdown(content["aggressive_analyst_report"])
 
-    if (
-        "conservative_analyst_report" in content
-        and content["conservative_analyst_report"]
-    ):
+    if "conservative_analyst_report" in content and content["conservative_analyst_report"]:
         st.subheader("🛡️ 保守分析师观点")
         st.markdown(content["conservative_analyst_report"])
 
@@ -370,10 +381,7 @@ def render_risk_debate_content(content):
         st.subheader("⚖️ 中性分析师观点")
         st.markdown(content["neutral_analyst_report"])
 
-    if (
-        "portfolio_manager_decision" in content
-        and content["portfolio_manager_decision"]
-    ):
+    if "portfolio_manager_decision" in content and content["portfolio_manager_decision"]:
         st.subheader("👨‍💼 投资组合经理决策")
         st.markdown(content["portfolio_manager_decision"])
 
@@ -388,9 +396,7 @@ def save_analysis_result(
 ):
     """保存分析结果"""
     try:
-        safe_serialize = getattr(
-            importlib.import_module("web.utils.progress"), "safe_serialize"
-        )
+        safe_serialize = getattr(importlib.import_module("web.utils.progress"), "safe_serialize")
 
         # 创建结果条目，使用安全序列化
         result_entry = {
@@ -424,9 +430,7 @@ def save_analysis_result(
                     "analysts": result_entry.get("analysts", []),
                     "research_depth": result_entry.get("research_depth", 1),
                     "summary": result_entry.get("summary", ""),
-                    "model_info": result_entry.get(
-                        "model_info", "Unknown"
-                    ),  # 🔥 添加模型信息字段
+                    "model_info": result_entry.get("model_info", "Unknown"),  # 🔥 添加模型信息字段
                 }
 
                 # 尝试从文件系统读取报告内容
@@ -441,14 +445,7 @@ def save_analysis_result(
 
                     # 构建报告路径
                     project_root = Path(__file__).resolve().parents[3]
-                    reports_dir = (
-                        project_root
-                        / "data"
-                        / "analysis"
-                        / stock_symbol
-                        / current_date
-                        / "reports"
-                    )
+                    reports_dir = project_root / "data" / "analysis" / stock_symbol / current_date / "reports"
 
                     # 确保路径在Windows上正确显示（避免双反斜杠）
                     reports_dir_str = os.path.normpath(str(reports_dir))
@@ -462,13 +459,9 @@ def save_analysis_result(
                                     content = f.read()
                                     report_name = report_file.stem
                                     reports[report_name] = content
-                                    print(
-                                        f"✅ [PostgreSQL保存] 读取报告: {report_name} ({len(content)} 字符)"
-                                    )
+                                    print(f"✅ [PostgreSQL保存] 读取报告: {report_name} ({len(content)} 字符)")
                             except Exception as e:
-                                print(
-                                    f"⚠️ [PostgreSQL保存] 读取报告文件失败 {report_file}: {e}"
-                                )
+                                print(f"⚠️ [PostgreSQL保存] 读取报告文件失败 {report_file}: {e}")
 
                         print(f"📊 [PostgreSQL保存] 共读取 {len(reports)} 个报告文件")
                     else:
@@ -537,18 +530,14 @@ def show_expanded_detail(result):
                     available_reports = []
                     for field_key, field_name in analysis_fields:
                         if field_key in full_data and full_data[field_key]:
-                            available_reports.append(
-                                (field_key, field_name, full_data[field_key])
-                            )
+                            available_reports.append((field_key, field_name, full_data[field_key]))
 
                     if available_reports:
                         # 创建标签页显示分析内容
                         tab_names = [name for _, name, _ in available_reports]
                         tabs = st.tabs(tab_names)
 
-                        for i, (tab, (field_key, field_name, content)) in enumerate(
-                            zip(tabs, available_reports)
-                        ):
+                        for i, (tab, (field_key, field_name, content)) in enumerate(zip(tabs, available_reports)):
                             with tab:
                                 if isinstance(content, str):
                                     st.markdown(content)
@@ -600,9 +589,7 @@ def show_expanded_detail(result):
         report_tabs = list(reports.keys())
         tab_names = []
         for report_key in report_tabs:
-            display_name = report_display_names.get(
-                report_key, f"📄 {report_key.replace('_', ' ').title()}"
-            )
+            display_name = report_display_names.get(report_key, f"📄 {report_key.replace('_', ' ').title()}")
             tab_names.append(display_name)
 
         if len(tab_names) == 1:

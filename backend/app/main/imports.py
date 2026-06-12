@@ -1,4 +1,3 @@
-# ruff: noqa: F401,F403,F405,F821,E402
 """
 AGENTrader v1.0.1 FastAPI Backend
 主应用程序入口
@@ -33,9 +32,6 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.core.network.proxy import configure_runtime_proxy
-
-configure_runtime_proxy()
-
 from app.core.config import settings
 from app.core.database import close_db, init_db
 from app.core.logs import setup_logging
@@ -81,3 +77,75 @@ from app.routers import usage as usage_statistics
 from app.services.quotes.ingestion import QuotesIngestionService
 from app.services.scheduler import set_scheduler_instance
 from app.services.sync.source import get_multi_source_sync_service
+
+configure_runtime_proxy()
+
+__all__ = [
+    "AsyncIOScheduler",
+    "BaseModel",
+    "CORSMiddleware",
+    "CronTrigger",
+    "FastAPI",
+    "IntervalTrigger",
+    "JSONResponse",
+    "OperationLogMiddleware",
+    "Path",
+    "QuotesIngestionService",
+    "Request",
+    "RequestIDMiddleware",
+    "TrustedHostMiddleware",
+    "akshare_init",
+    "alpha_zoo",
+    "analysis",
+    "asynccontextmanager",
+    "asyncio",
+    "auth",
+    "baostock_init",
+    "cache",
+    "close_db",
+    "config",
+    "configure_runtime_proxy",
+    "database",
+    "datetime",
+    "favorites",
+    "financial_data",
+    "get_multi_source_sync_service",
+    "health",
+    "historical_data",
+    "importlib",
+    "init_db",
+    "internal_messages",
+    "logging",
+    "logs",
+    "model_capabilities",
+    "multi_market_stocks_router",
+    "multi_period_sync",
+    "multi_source_sync",
+    "news_data",
+    "notifications_router",
+    "operations",
+    "paper_router",
+    "queue",
+    "reports",
+    "research_agent_router",
+    "research_matrix",
+    "scheduler_router",
+    "screening",
+    "set_scheduler_instance",
+    "settings",
+    "setup_logging",
+    "social_media",
+    "sse",
+    "stock_data_router",
+    "stock_sync_router",
+    "stocks_router",
+    "sync_router",
+    "system_config_router",
+    "tags",
+    "time",
+    "tushare_init",
+    "usage_statistics",
+    "user_model_keys_router",
+    "uvicorn",
+    "websocket_notifications_router",
+]

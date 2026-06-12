@@ -1,4 +1,22 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        List,
+        Optional,
+        cast,
+        datetime,
+        importlib,
+        logger,
+        pd,
+        run_baostock_session,
+        run_baostock_session_async,
+        timedelta,
+        timezone,
+    )
+
 class _BaoStockProviderMixin1:
     def __init__(self):
         """初始化BaoStock提供器"""
@@ -121,13 +139,11 @@ class _BaoStockProviderMixin1:
                     if stock_type == "1" and status == "1":
                         # 转换代码格式 sh.600000 -> 600000
                         clean_code = code.replace("sh.", "").replace("sz.", "")
-                        stock_list.append(
-                            {
-                                "code": clean_code,
-                                "name": str(name),
-                                "source": "baostock",
-                            }
-                        )
+                        stock_list.append({
+                            "code": clean_code,
+                            "name": str(name),
+                            "source": "baostock",
+                        })
 
             logger.info(f"✅ BaoStock股票列表获取成功: {len(stock_list)}只股票")
             return stock_list
@@ -171,9 +187,7 @@ class _BaoStockProviderMixin1:
             logger.error(f"❌ BaoStock获取{code}基础信息失败: {e}")
             return {}
 
-    async def get_valuation_data(
-        self, code: str, trade_date: Optional[str] = None
-    ) -> Dict[str, Any]:
+    async def get_valuation_data(self, code: str, trade_date: Optional[str] = None) -> Dict[str, Any]:
         """
         获取股票估值数据（PE、PB、PS、PCF等）
 
@@ -231,26 +245,14 @@ class _BaoStockProviderMixin1:
             valuation_data = {
                 "date": latest_row[0] if len(latest_row) > 0 else None,
                 "code": code,
-                "close": self._safe_float(latest_row[2])
-                if len(latest_row) > 2
-                else None,
-                "pe_ttm": self._safe_float(latest_row[3])
-                if len(latest_row) > 3
-                else None,
-                "pb_mrq": self._safe_float(latest_row[4])
-                if len(latest_row) > 4
-                else None,
-                "ps_ttm": self._safe_float(latest_row[5])
-                if len(latest_row) > 5
-                else None,
-                "pcf_ttm": self._safe_float(latest_row[6])
-                if len(latest_row) > 6
-                else None,
+                "close": self._safe_float(latest_row[2]) if len(latest_row) > 2 else None,
+                "pe_ttm": self._safe_float(latest_row[3]) if len(latest_row) > 3 else None,
+                "pb_mrq": self._safe_float(latest_row[4]) if len(latest_row) > 4 else None,
+                "ps_ttm": self._safe_float(latest_row[5]) if len(latest_row) > 5 else None,
+                "pcf_ttm": self._safe_float(latest_row[6]) if len(latest_row) > 6 else None,
             }
 
-            logger.debug(
-                f"✅ {code}估值数据获取成功: PE={valuation_data['pe_ttm']}, PB={valuation_data['pb_mrq']}"
-            )
+            logger.debug(f"✅ {code}估值数据获取成功: PE={valuation_data['pe_ttm']}, PB={valuation_data['pb_mrq']}")
             return valuation_data
 
         except Exception as e:
@@ -277,9 +279,7 @@ class _BaoStockProviderMixin1:
                 row = data_list[0]
                 return {
                     "code": code,
-                    "name": str(row[1])
-                    if len(row) > 1
-                    else f"股票{code}",  # code_name
+                    "name": str(row[1]) if len(row) > 1 else f"股票{code}",  # code_name
                     "list_date": str(row[2]) if len(row) > 2 else "",  # ipoDate
                     "industry": "未知",  # BaoStock基础信息不包含行业
                     "area": "未知",  # BaoStock基础信息不包含地区
@@ -379,8 +379,7 @@ class _BaoStockProviderMixin1:
                     "volume": self._safe_int(latest_row[7]),
                     "amount": self._safe_float(latest_row[8]),
                     "change_percent": self._safe_float(latest_row[9]),
-                    "change": self._safe_float(latest_row[5])
-                    - self._safe_float(latest_row[6]),
+                    "change": self._safe_float(latest_row[5]) - self._safe_float(latest_row[6]),
                 }
 
             return await run_baostock_session_async(fetch_latest_kline, timeout=60)
@@ -531,7 +530,9 @@ class _BaoStockProviderMixin1:
             def fetch_historical_data(bs):
                 bs_code = self._to_baostock_code(code)
                 if bs_frequency == "d":
-                    fields_str = "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,pctChg,isST"
+                    fields_str = (
+                        "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,pctChg,isST"
+                    )
                 else:
                     fields_str = "date,code,open,high,low,close,volume,amount,pctChg"
 

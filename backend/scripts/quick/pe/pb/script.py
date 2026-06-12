@@ -93,7 +93,7 @@ def main(code: str):
 
     if success:
         logger.info("\n🎉 测试通过！现在可以运行完整测试：")
-        logger.info(f"   python scripts/pe/pb/fix/test.py {code}")
+        logger.info(f"   python scripts/pe/pb/fix/script.py {code}")
     else:
         logger.error("\n❌ 测试失败，请检查日志")
 

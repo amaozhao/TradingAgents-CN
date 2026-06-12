@@ -13,25 +13,9 @@ Notes:
 """
 from __future__ import annotations
 
-import numpy as np
-import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
     safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "gtja191_171"
@@ -39,7 +23,7 @@ ALPHA_ID = "gtja191_171"
 __alpha_meta__ = {
     'id': 'gtja191_171',
     'theme': ['microstructure'],
-    'formula_latex': '-1*((l-c)*(o^5))/((c-h)*(c^5))',
+    'formula_latex': '-1*((low-c)*(o^5))/((c-h)*(c^5))',
     'columns_required': ['open', 'high', 'low', 'close'],
     'extras_required': [],
     'universe': ['equity_cn'],
@@ -62,6 +46,6 @@ def compute(panel):
     c = panel["close"]
     o = panel["open"]
     h = panel["high"]
-    l = panel["low"]
-    out = safe_div(-1.0 * ((l - c) * (o ** 5)), (c - h) * (c ** 5))
+    low = panel["low"]
+    out = safe_div(-1.0 * ((low - c) * (o ** 5)), (c - h) * (c ** 5))
     return out

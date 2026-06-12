@@ -1,4 +1,3 @@
-# ruff: noqa: F722
 import json
 import os
 import re

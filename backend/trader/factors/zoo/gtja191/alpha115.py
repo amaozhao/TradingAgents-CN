@@ -17,21 +17,10 @@ import numpy as np
 import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
     rank,
-    safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
     ts_corr,
-    ts_cov,
-    ts_max,
     ts_mean,
-    ts_min,
     ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "gtja191_115"
@@ -39,7 +28,7 @@ ALPHA_ID = "gtja191_115"
 __alpha_meta__ = {
     'id': 'gtja191_115',
     'theme': ['volume'],
-    'formula_latex': 'rank(corr(0.9h+0.1c,mean(v,30),10))^rank(corr(tsrank((h+l)/2,4),tsrank(v,10),7))',
+    'formula_latex': 'rank(corr(0.9h+0.1c,mean(v,30),10))^rank(corr(tsrank((h+low)/2,4),tsrank(v,10),7))',
     'columns_required': ['open', 'high', 'low', 'close', 'volume'],
     'extras_required': [],
     'universe': ['equity_cn'],
@@ -61,10 +50,10 @@ def compute(panel):
     """
     c = panel["close"]
     h = panel["high"]
-    l = panel["low"]
+    low = panel["low"]
     v = panel["volume"]
     left = rank(ts_corr(h * 0.9 + c * 0.1, ts_mean(v, 30), 10))
-    right = rank(ts_corr(ts_rank((h + l) / 2.0, 4), ts_rank(v, 10), 7))
+    right = rank(ts_corr(ts_rank((h + low) / 2.0, 4), ts_rank(v, 10), 7))
     arr = np.power(left.to_numpy(dtype=np.float64, na_value=np.nan),
                    right.to_numpy(dtype=np.float64, na_value=np.nan))
     out = pd.DataFrame(arr, index=left.index, columns=left.columns)

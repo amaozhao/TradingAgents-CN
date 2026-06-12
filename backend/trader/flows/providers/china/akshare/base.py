@@ -1,8 +1,23 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        List,
+        Optional,
+        asyncio,
+        cast,
+        datetime,
+        importlib,
+        logger,
+        pd,
+        timedelta,
+        timezone,
+    )
+
 class _AKShareProviderMixin2:
-    async def get_batch_stock_quotes(
-        self, codes: List[str]
-    ) -> Dict[str, Dict[str, Any]]:
+    async def get_batch_stock_quotes(self, codes: List[str]) -> Dict[str, Dict[str, Any]]:
         """
         批量获取股票实时行情（优化版：一次获取全市场快照）
 
@@ -23,9 +38,7 @@ class _AKShareProviderMixin2:
 
         for attempt in range(max_retries):
             try:
-                logger.debug(
-                    f"📊 批量获取 {len(codes)} 只股票的实时行情... (尝试 {attempt + 1}/{max_retries})"
-                )
+                logger.debug(f"📊 批量获取 {len(codes)} 只股票的实时行情... (尝试 {attempt + 1}/{max_retries})")
 
                 # 优先使用新浪财经接口（更稳定，不容易被封）
                 def fetch_spot_data_sina():
@@ -91,22 +104,12 @@ class _AKShareProviderMixin2:
                             "low": self._safe_float(row.get("最低", 0)),
                             "pre_close": self._safe_float(row.get("昨收", 0)),
                             # 🔥 新增：财务指标字段
-                            "turnover_rate": self._safe_float(
-                                row.get("换手率", None)
-                            ),  # 换手率（%）
-                            "volume_ratio": self._safe_float(
-                                row.get("量比", None)
-                            ),  # 量比
-                            "pe": self._safe_float(
-                                row.get("市盈率-动态", None)
-                            ),  # 动态市盈率
+                            "turnover_rate": self._safe_float(row.get("换手率", None)),  # 换手率（%）
+                            "volume_ratio": self._safe_float(row.get("量比", None)),  # 量比
+                            "pe": self._safe_float(row.get("市盈率-动态", None)),  # 动态市盈率
                             "pb": self._safe_float(row.get("市净率", None)),  # 市净率
-                            "total_mv": self._safe_float(
-                                row.get("总市值", None)
-                            ),  # 总市值（元）
-                            "circ_mv": self._safe_float(
-                                row.get("流通市值", None)
-                            ),  # 流通市值（元）
+                            "total_mv": self._safe_float(row.get("总市值", None)),  # 总市值（元）
+                            "circ_mv": self._safe_float(row.get("流通市值", None)),  # 流通市值（元）
                         }
 
                         # 转换为标准化字典（使用匹配后的代码）
@@ -116,9 +119,7 @@ class _AKShareProviderMixin2:
                             "name": quotes_data.get("name", f"股票{matched_code}"),
                             "price": float(quotes_data.get("price", 0)),
                             "change": float(quotes_data.get("change", 0)),
-                            "change_percent": float(
-                                quotes_data.get("change_percent", 0)
-                            ),
+                            "change_percent": float(quotes_data.get("change_percent", 0)),
                             "volume": int(quotes_data.get("volume", 0)),
                             "amount": float(quotes_data.get("amount", 0)),
                             "open_price": float(quotes_data.get("open", 0)),
@@ -126,14 +127,10 @@ class _AKShareProviderMixin2:
                             "low_price": float(quotes_data.get("low", 0)),
                             "pre_close": float(quotes_data.get("pre_close", 0)),
                             # 🔥 新增：财务指标字段
-                            "turnover_rate": quotes_data.get(
-                                "turnover_rate"
-                            ),  # 换手率（%）
+                            "turnover_rate": quotes_data.get("turnover_rate"),  # 换手率（%）
                             "volume_ratio": quotes_data.get("volume_ratio"),  # 量比
                             "pe": quotes_data.get("pe"),  # 动态市盈率
-                            "pe_ttm": quotes_data.get(
-                                "pe"
-                            ),  # TTM市盈率（与动态市盈率相同）
+                            "pe_ttm": quotes_data.get("pe"),  # TTM市盈率（与动态市盈率相同）
                             "pb": quotes_data.get("pb"),  # 市净率
                             "total_mv": float(quotes_data["total_mv"]) / 1e8
                             if quotes_data.get("total_mv") is not None
@@ -151,9 +148,7 @@ class _AKShareProviderMixin2:
 
                 found_count = len(quotes_map)
                 missing_count = len(codes) - found_count
-                logger.debug(
-                    f"✅ 批量获取完成: 找到 {found_count} 只, 未找到 {missing_count} 只"
-                )
+                logger.debug(f"✅ 批量获取完成: 找到 {found_count} 只, 未找到 {missing_count} 只")
 
                 # 记录未找到的股票
                 if missing_count > 0:
@@ -161,16 +156,12 @@ class _AKShareProviderMixin2:
                     if missing_count <= 10:
                         logger.debug(f"⚠️ 未找到行情的股票: {list(missing_codes)}")
                     else:
-                        logger.debug(
-                            f"⚠️ 未找到行情的股票: {list(missing_codes)[:10]}... (共{missing_count}只)"
-                        )
+                        logger.debug(f"⚠️ 未找到行情的股票: {list(missing_codes)[:10]}... (共{missing_count}只)")
 
                 return quotes_map
 
             except Exception as e:
-                logger.warning(
-                    f"⚠️ 批量获取实时行情失败 (尝试 {attempt + 1}/{max_retries}): {e}"
-                )
+                logger.warning(f"⚠️ 批量获取实时行情失败 (尝试 {attempt + 1}/{max_retries}): {e}")
                 if attempt < max_retries - 1:
                     await asyncio.sleep(retry_delay)
                 else:
@@ -221,13 +212,9 @@ class _AKShareProviderMixin2:
                     )
                     return quotes
 
-                logger.warning(
-                    f"⚠️ stock_bid_ask_em 未返回 {code} 的行情数据，尝试备份接口"
-                )
+                logger.warning(f"⚠️ stock_bid_ask_em 未返回 {code} 的行情数据，尝试备份接口")
             except Exception as primary_error:
-                logger.warning(
-                    f"⚠️ stock_bid_ask_em 获取 {code} 失败，尝试备份接口: {primary_error}"
-                )
+                logger.warning(f"⚠️ stock_bid_ask_em 获取 {code} 失败，尝试备份接口: {primary_error}")
 
             fallback_quotes = await self._get_realtime_quotes_data(code)
             if fallback_quotes:
@@ -275,22 +262,12 @@ class _AKShareProviderMixin2:
                             "low": self._safe_float(row.get("最低", 0)),
                             "pre_close": self._safe_float(row.get("昨收", 0)),
                             # 🔥 新增：财务指标字段
-                            "turnover_rate": self._safe_float(
-                                row.get("换手率", None)
-                            ),  # 换手率（%）
-                            "volume_ratio": self._safe_float(
-                                row.get("量比", None)
-                            ),  # 量比
-                            "pe": self._safe_float(
-                                row.get("市盈率-动态", None)
-                            ),  # 动态市盈率
+                            "turnover_rate": self._safe_float(row.get("换手率", None)),  # 换手率（%）
+                            "volume_ratio": self._safe_float(row.get("量比", None)),  # 量比
+                            "pe": self._safe_float(row.get("市盈率-动态", None)),  # 动态市盈率
                             "pb": self._safe_float(row.get("市净率", None)),  # 市净率
-                            "total_mv": self._safe_float(
-                                row.get("总市值", None)
-                            ),  # 总市值（元）
-                            "circ_mv": self._safe_float(
-                                row.get("流通市值", None)
-                            ),  # 流通市值（元）
+                            "total_mv": self._safe_float(row.get("总市值", None)),  # 总市值（元）
+                            "circ_mv": self._safe_float(row.get("流通市值", None)),  # 流通市值（元）
                             "quote_source": "stock_zh_a_spot",
                         }
             except Exception as e:
@@ -361,9 +338,7 @@ class _AKShareProviderMixin2:
             logger.debug(f"获取{code}实时行情数据失败: {e}")
             return {}
 
-    def _build_bid_ask_quotes(
-        self, code: str, data_dict: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _build_bid_ask_quotes(self, code: str, data_dict: Dict[str, Any]) -> Dict[str, Any]:
         """将 stock_bid_ask_em 数据转换为标准行情结构"""
         cn_tz = timezone(timedelta(hours=8))
         now_cn = datetime.now(cn_tz)
@@ -405,9 +380,7 @@ class _AKShareProviderMixin2:
             "sync_status": "success",
         }
 
-    def _build_standard_quotes(
-        self, code: str, quote_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _build_standard_quotes(self, code: str, quote_data: Dict[str, Any]) -> Dict[str, Any]:
         """将备份接口返回的数据转换为统一行情结构"""
         cn_tz = timezone(timedelta(hours=8))
         now_cn = datetime.now(cn_tz)
@@ -434,12 +407,8 @@ class _AKShareProviderMixin2:
             "pe": quote_data.get("pe"),
             "pe_ttm": quote_data.get("pe"),
             "pb": quote_data.get("pb"),
-            "total_mv": float(quote_data["total_mv"]) / 1e8
-            if quote_data.get("total_mv") is not None
-            else None,
-            "circ_mv": float(quote_data["circ_mv"]) / 1e8
-            if quote_data.get("circ_mv") is not None
-            else None,
+            "total_mv": float(quote_data["total_mv"]) / 1e8 if quote_data.get("total_mv") is not None else None,
+            "circ_mv": float(quote_data["circ_mv"]) / 1e8 if quote_data.get("circ_mv") is not None else None,
             "trade_date": trade_date,
             "updated_at": now_cn.isoformat(),
             "full_symbol": self._get_full_symbol(code),
@@ -572,9 +541,7 @@ class _AKShareProviderMixin2:
             logger.error(f"❌ 获取{code}历史数据失败: {e}")
             return None
 
-    def _standardize_historical_columns(
-        self, df: pd.DataFrame, code: str
-    ) -> pd.DataFrame:
+    def _standardize_historical_columns(self, df: pd.DataFrame, code: str) -> pd.DataFrame:
         """标准化历史数据列名"""
         try:
             # 标准化列名映射
@@ -607,9 +574,7 @@ class _AKShareProviderMixin2:
             numeric_columns = ["open", "close", "high", "low", "volume", "amount"]
             for col in numeric_columns:
                 if col in df.columns:
-                    df[col] = cast(Any, pd.to_numeric(df[col], errors="coerce")).fillna(
-                        0
-                    )
+                    df[col] = cast(Any, pd.to_numeric(df[col], errors="coerce")).fillna(0)
 
             return df
 
@@ -643,9 +608,7 @@ class _AKShareProviderMixin2:
 
                 main_indicators = await asyncio.to_thread(fetch_financial_abstract)
                 if main_indicators is not None and not main_indicators.empty:
-                    financial_data["main_indicators"] = main_indicators.to_dict(
-                        "records"
-                    )
+                    financial_data["main_indicators"] = main_indicators.to_dict("records")
                     logger.debug(f"✅ {code}主要财务指标获取成功")
             except Exception as e:
                 logger.debug(f"获取{code}主要财务指标失败: {e}")
@@ -671,9 +634,7 @@ class _AKShareProviderMixin2:
 
                 income_statement = await asyncio.to_thread(fetch_income_statement)
                 if income_statement is not None and not income_statement.empty:
-                    financial_data["income_statement"] = income_statement.to_dict(
-                        "records"
-                    )
+                    financial_data["income_statement"] = income_statement.to_dict("records")
                     logger.debug(f"✅ {code}利润表获取成功")
             except Exception as e:
                 logger.debug(f"获取{code}利润表失败: {e}")
@@ -692,9 +653,7 @@ class _AKShareProviderMixin2:
                 logger.debug(f"获取{code}现金流量表失败: {e}")
 
             if financial_data:
-                logger.debug(
-                    f"✅ {code}财务数据获取完成: {len(financial_data)}个数据集"
-                )
+                logger.debug(f"✅ {code}财务数据获取完成: {len(financial_data)}个数据集")
             else:
                 logger.warning(f"⚠️ {code}未获取到任何财务数据")
 

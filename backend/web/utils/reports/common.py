@@ -1,7 +1,30 @@
-# ruff: noqa: F401,F403,F405,F821
-def save_modular_reports_to_results_dir(
-    results: Dict[str, Any], stock_symbol: str
-) -> Dict[str, str]:
+from app.utils.reports import reports
+
+from .imports import (
+    DOCKER_ADAPTER_AVAILABLE,
+    POSTGRES_REPORT_AVAILABLE,
+    Any,
+    Dict,
+    datetime,
+    get_docker_status_info,
+    importlib,
+    json,
+    logger,
+    postgres_report_manager,
+    settings,
+    st,
+)
+
+
+def _format_team_decision_content(content: Dict[str, Any], module_key: str) -> str:
+    title = "研究团队决策" if module_key == "investment_debate_state" else "风险管理团队决策"
+    lines = [f"## {title}", ""]
+    for key, value in content.items():
+        heading = key.replace("_", " ").title()
+        lines.extend([f"### {heading}", "", str(value), ""])
+    return "\n".join(lines)
+
+def save_modular_reports_to_results_dir(results: Dict[str, Any], stock_symbol: str) -> Dict[str, str]:
     """保存分模块报告到results目录（CLI版本格式）"""
     try:
         os = importlib.import_module("os")
@@ -100,9 +123,7 @@ def save_modular_reports_to_results_dir(
                     report_content = f"# {module_info['title']}\n\n"
                     # 特殊处理团队决策报告的字典结构
                     if module_key in ["investment_debate_state", "risk_debate_state"]:
-                        report_content += _format_team_decision_content(
-                            content, module_key
-                        )
+                        report_content += _format_team_decision_content(content, module_key)
                     else:
                         for sub_key, sub_value in content.items():
                             report_content += f"## {sub_key.replace('_', ' ').title()}\n\n{sub_value}\n\n"
@@ -125,18 +146,10 @@ def save_modular_reports_to_results_dir(
             if isinstance(decision, dict):
                 decision_content += "## 投资建议\n\n"
                 decision_content += f"**行动**: {decision.get('action', 'N/A')}\n\n"
-                decision_content += (
-                    f"**置信度**: {decision.get('confidence', 0):.1%}\n\n"
-                )
-                decision_content += (
-                    f"**风险评分**: {decision.get('risk_score', 0):.1%}\n\n"
-                )
-                decision_content += (
-                    f"**目标价位**: {decision.get('target_price', 'N/A')}\n\n"
-                )
-                decision_content += (
-                    f"## 分析推理\n\n{decision.get('reasoning', '暂无分析推理')}\n\n"
-                )
+                decision_content += f"**置信度**: {decision.get('confidence', 0):.1%}\n\n"
+                decision_content += f"**风险评分**: {decision.get('risk_score', 0):.1%}\n\n"
+                decision_content += f"**目标价位**: {decision.get('target_price', 'N/A')}\n\n"
+                decision_content += f"## 分析推理\n\n{decision.get('reasoning', '暂无分析推理')}\n\n"
             else:
                 decision_content += f"{str(decision)}\n\n"
 
@@ -169,33 +182,23 @@ def save_modular_reports_to_results_dir(
 
         # 同时保存到PostgreSQL document store
         logger.info("🔍 [PostgreSQL调试] 开始PostgreSQL保存流程")
-        logger.info(
-            f"🔍 [PostgreSQL调试] POSTGRES_REPORT_AVAILABLE: {POSTGRES_REPORT_AVAILABLE}"
-        )
-        logger.info(
-            f"🔍 [PostgreSQL调试] postgres_report_manager存在: {postgres_report_manager is not None}"
-        )
+        logger.info(f"🔍 [PostgreSQL调试] POSTGRES_REPORT_AVAILABLE: {POSTGRES_REPORT_AVAILABLE}")
+        logger.info(f"🔍 [PostgreSQL调试] postgres_report_manager存在: {postgres_report_manager is not None}")
 
         if POSTGRES_REPORT_AVAILABLE and postgres_report_manager:
-            logger.info(
-                f"🔍 [PostgreSQL调试] PostgreSQL报告管理器连接状态: {postgres_report_manager.connected}"
-            )
+            logger.info(f"🔍 [PostgreSQL调试] PostgreSQL报告管理器连接状态: {postgres_report_manager.connected}")
             try:
                 # 收集所有报告内容
                 reports_content = {}
 
-                logger.info(
-                    f"🔍 [PostgreSQL调试] 开始读取 {len(saved_files)} 个报告文件"
-                )
+                logger.info(f"🔍 [PostgreSQL调试] 开始读取 {len(saved_files)} 个报告文件")
                 # 读取已保存的文件内容
                 for module_key, file_path in saved_files.items():
                     try:
                         with open(file_path, "r", encoding="utf-8") as f:
                             content = f.read()
                             reports_content[module_key] = content
-                            logger.info(
-                                f"🔍 [PostgreSQL调试] 成功读取 {module_key}: {len(content)} 字符"
-                            )
+                            logger.info(f"🔍 [PostgreSQL调试] 成功读取 {module_key}: {len(content)} 字符")
                     except Exception as e:
                         logger.warning(f"⚠️ 读取报告文件失败 {file_path}: {e}")
 
@@ -204,9 +207,7 @@ def save_modular_reports_to_results_dir(
                     logger.info(
                         f"🔍 [PostgreSQL调试] 准备保存到PostgreSQL document store，报告数量: {len(reports_content)}"
                     )
-                    logger.info(
-                        f"🔍 [PostgreSQL调试] 报告类型: {list(reports_content.keys())}"
-                    )
+                    logger.info(f"🔍 [PostgreSQL调试] 报告类型: {list(reports_content.keys())}")
 
                     success = postgres_report_manager.save_analysis_report(
                         stock_symbol=stock_symbol,
@@ -248,9 +249,7 @@ def save_report_to_results_dir(content: bytes, filename: str, stock_symbol: str)
 
         # 获取项目根目录（Web应用在web/子目录中运行）
         current_file = Path(__file__)
-        project_root = (
-            current_file.parent.parent.parent
-        )  # web/utils/reports.py -> 项目根目录
+        project_root = current_file.parent.parent.parent  # web/utils/reports.py -> 项目根目录
 
         # 获取results目录配置
         results_dir_env = settings.TRADING_AGENTS_RESULTS_DIR
@@ -315,9 +314,7 @@ def render_export_buttons(results: Dict[str, Any]):
             if docker_status["dependencies_ok"] and docker_status["pdf_test_ok"]:
                 st.success("🐳 Docker环境PDF支持已启用")
             else:
-                st.warning(
-                    f"🐳 Docker环境PDF支持异常: {docker_status['dependency_message']}"
-                )
+                st.warning(f"🐳 Docker环境PDF支持异常: {docker_status['dependency_message']}")
         else:
             st.warning("🐳 Docker环境检测到，但适配器不可用")
 
@@ -369,9 +366,7 @@ def render_export_buttons(results: Dict[str, Any]):
 
                 # 4. 显示保存结果
                 if modular_files and saved_path:
-                    st.success(
-                        f"✅ 已保存 {len(modular_files)} 个分模块报告 + 1个汇总报告"
-                    )
+                    st.success(f"✅ 已保存 {len(modular_files)} 个分模块报告 + 1个汇总报告")
                     with st.expander("📁 查看保存的文件"):
                         st.write("**分模块报告:**")
                         for module, path in modular_files.items():
@@ -402,31 +397,21 @@ def render_export_buttons(results: Dict[str, Any]):
 
                     # 1. 保存分模块报告（CLI格式）
                     logger.info("📁 开始保存分模块报告（CLI格式）...")
-                    modular_files = save_modular_reports_to_results_dir(
-                        results, stock_symbol
-                    )
+                    modular_files = save_modular_reports_to_results_dir(results, stock_symbol)
 
                     # 2. 生成Word汇总报告
                     content = reports.export_report(results, "docx")
                     if content:
                         filename = f"{stock_symbol}_analysis_{timestamp}.docx"
-                        logger.info(
-                            f"✅ [EXPORT] Word导出成功，文件名: {filename}, 大小: {len(content)} 字节"
-                        )
-                        logger.info(
-                            f"✅ Word导出成功，文件名: {filename}, 大小: {len(content)} 字节"
-                        )
+                        logger.info(f"✅ [EXPORT] Word导出成功，文件名: {filename}, 大小: {len(content)} 字节")
+                        logger.info(f"✅ Word导出成功，文件名: {filename}, 大小: {len(content)} 字节")
 
                         # 3. 保存Word汇总报告到results目录
-                        saved_path = save_report_to_results_dir(
-                            content, filename, stock_symbol
-                        )
+                        saved_path = save_report_to_results_dir(content, filename, stock_symbol)
 
                         # 4. 显示保存结果
                         if modular_files and saved_path:
-                            st.success(
-                                f"✅ 已保存 {len(modular_files)} 个分模块报告 + 1个Word汇总报告"
-                            )
+                            st.success(f"✅ 已保存 {len(modular_files)} 个分模块报告 + 1个Word汇总报告")
                             with st.expander("📁 查看保存的文件"):
                                 st.write("**分模块报告:**")
                                 for module, path in modular_files.items():
@@ -487,28 +472,20 @@ def render_export_buttons(results: Dict[str, Any]):
 
                     # 1. 保存分模块报告（CLI格式）
                     logger.info("📁 开始保存分模块报告（CLI格式）...")
-                    modular_files = save_modular_reports_to_results_dir(
-                        results, stock_symbol
-                    )
+                    modular_files = save_modular_reports_to_results_dir(results, stock_symbol)
 
                     # 2. 生成PDF汇总报告
                     content = reports.export_report(results, "pdf")
                     if content:
                         filename = f"{stock_symbol}_analysis_{timestamp}.pdf"
-                        logger.info(
-                            f"✅ PDF导出成功，文件名: {filename}, 大小: {len(content)} 字节"
-                        )
+                        logger.info(f"✅ PDF导出成功，文件名: {filename}, 大小: {len(content)} 字节")
 
                         # 3. 保存PDF汇总报告到results目录
-                        saved_path = save_report_to_results_dir(
-                            content, filename, stock_symbol
-                        )
+                        saved_path = save_report_to_results_dir(content, filename, stock_symbol)
 
                         # 4. 显示保存结果
                         if modular_files and saved_path:
-                            st.success(
-                                f"✅ 已保存 {len(modular_files)} 个分模块报告 + 1个PDF汇总报告"
-                            )
+                            st.success(f"✅ 已保存 {len(modular_files)} 个分模块报告 + 1个PDF汇总报告")
                             with st.expander("📁 查看保存的文件"):
                                 st.write("**分模块报告:**")
                                 for module, path in modular_files.items():
@@ -572,14 +549,10 @@ def render_export_buttons(results: Dict[str, Any]):
                         """)
 
                     # 建议使用其他格式
-                    st.info(
-                        "💡 建议：您可以先使用Markdown或Word格式导出，然后使用其他工具转换为PDF"
-                    )
+                    st.info("💡 建议：您可以先使用Markdown或Word格式导出，然后使用其他工具转换为PDF")
 
 
-def save_analysis_report(
-    stock_symbol: str, analysis: Dict[str, Any], report_content: str = None
-) -> bool:
+def save_analysis_report(stock_symbol: str, analysis: Dict[str, Any], report_content: str = None) -> bool:
     """
     保存分析报告到PostgreSQL document store
 
@@ -612,18 +585,12 @@ def save_analysis_report(
         )
 
         if success:
-            logger.info(
-                f"✅ 分析报告已成功保存到PostgreSQL document store - 股票: {stock_symbol}"
-            )
+            logger.info(f"✅ 分析报告已成功保存到PostgreSQL document store - 股票: {stock_symbol}")
         else:
-            logger.error(
-                f"❌ 分析报告保存到PostgreSQL document store失败 - 股票: {stock_symbol}"
-            )
+            logger.error(f"❌ 分析报告保存到PostgreSQL document store失败 - 股票: {stock_symbol}")
 
         return success
 
     except Exception as e:
-        logger.error(
-            f"❌ 保存分析报告到PostgreSQL document store时发生异常 - 股票: {stock_symbol}, 错误: {str(e)}"
-        )
+        logger.error(f"❌ 保存分析报告到PostgreSQL document store时发生异常 - 股票: {stock_symbol}, 错误: {str(e)}")
         return False

@@ -1,11 +1,26 @@
-# ruff: noqa: F401,F403,F405,F821,F722
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Annotated,
+        Doc,
+        cast,
+        datetime,
+        get_data_in_range,
+        logger,
+        os,
+        pd,
+        relativedelta,
+    )
+    from .setup import DATA_DIR
+
 def get_finnhub_news(
     ticker: Annotated[
         str,
-        "Search query of a company's, e.g. 'AAPL, TSM, etc.",
+        Doc("Search query of a company's, e.g. 'AAPL, TSM, etc."),
     ],
-    curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
-    look_back_days: Annotated[int, "how many days to look back"],
+    curr_date: Annotated[str, Doc("Current date in yyyy-mm-dd format")],
+    look_back_days: Annotated[int, Doc("how many days to look back")],
 ):
     """
     Retrieve news about a company within a time frame
@@ -49,12 +64,12 @@ def get_finnhub_news(
 
 
 def get_finnhub_company_insider_sentiment(
-    ticker: Annotated[str, "ticker symbol for the company"],
+    ticker: Annotated[str, Doc("ticker symbol for the company")],
     curr_date: Annotated[
         str,
-        "current date of you are trading at, yyyy-mm-dd",
+        Doc("current date of you are trading at, yyyy-mm-dd"),
     ],
-    look_back_days: Annotated[int, "number of days to look back"],
+    look_back_days: Annotated[int, Doc("number of days to look back")],
 ):
     """
     Retrieve insider sentiment about a company (retrieved from public SEC information) for the past 15 days
@@ -90,12 +105,12 @@ def get_finnhub_company_insider_sentiment(
 
 
 def get_finnhub_company_insider_transactions(
-    ticker: Annotated[str, "ticker symbol"],
+    ticker: Annotated[str, Doc("ticker symbol")],
     curr_date: Annotated[
         str,
-        "current date you are trading at, yyyy-mm-dd",
+        Doc("current date you are trading at, yyyy-mm-dd"),
     ],
-    look_back_days: Annotated[int, "how many days to look back"],
+    look_back_days: Annotated[int, Doc("how many days to look back")],
 ):
     """
     Retrieve insider transcaction information about a company (retrieved from public SEC information) for the past 15 days
@@ -132,12 +147,12 @@ def get_finnhub_company_insider_transactions(
 
 
 def get_simfin_balance_sheet(
-    ticker: Annotated[str, "ticker symbol"],
+    ticker: Annotated[str, Doc("ticker symbol")],
     freq: Annotated[
         str,
-        "reporting frequency of the company's financial history: annual / quarterly",
+        Doc("reporting frequency of the company's financial history: annual / quarterly"),
     ],
-    curr_date: Annotated[str, "current date you are trading at, yyyy-mm-dd"],
+    curr_date: Annotated[str, Doc("current date you are trading at, yyyy-mm-dd")],
 ):
     data_path = os.path.join(
         DATA_DIR,
@@ -181,12 +196,12 @@ def get_simfin_balance_sheet(
 
 
 def get_simfin_cashflow(
-    ticker: Annotated[str, "ticker symbol"],
+    ticker: Annotated[str, Doc("ticker symbol")],
     freq: Annotated[
         str,
-        "reporting frequency of the company's financial history: annual / quarterly",
+        Doc("reporting frequency of the company's financial history: annual / quarterly"),
     ],
-    curr_date: Annotated[str, "current date you are trading at, yyyy-mm-dd"],
+    curr_date: Annotated[str, Doc("current date you are trading at, yyyy-mm-dd")],
 ):
     data_path = os.path.join(
         DATA_DIR,

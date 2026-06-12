@@ -238,7 +238,7 @@ class Registry:
             module = self._load_module(alpha)
             compute_fn = getattr(module, "compute")
             result = compute_fn(panel)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise RegistryError(f"{alpha_id}: compute failed: {exc}") from exc
 
         return self._validate_output(alpha_id, result, panel, strict_nan_ratio=strict_nan_ratio)

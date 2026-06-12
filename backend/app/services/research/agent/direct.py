@@ -49,6 +49,38 @@ def _is_failed_direct_tool_result(result: dict[str, Any]) -> bool:
     return bool(result.get("error") or result.get("error_message"))
 
 
+def _linked_task_ids(result: dict[str, Any]) -> list[str]:
+    values: list[Any] = [result.get("task_id"), result.get("job_id")]
+    raw_task_ids = result.get("task_ids")
+    if isinstance(raw_task_ids, list):
+        values.extend(raw_task_ids)
+    elif raw_task_ids:
+        values.append(raw_task_ids)
+    return _dedupe_nonempty_strings(values)
+
+
+def _linked_batch_id(result: dict[str, Any]) -> str | None:
+    batch_id = result.get("batch_id")
+    if batch_id is None:
+        return None
+    value = str(batch_id).strip()
+    return value or None
+
+
+def _dedupe_nonempty_strings(values: list[Any]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        if value is None:
+            continue
+        text = str(value).strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        result.append(text)
+    return result
+
+
 class DirectToolMixin:
     async def _append_stock_stage_event(
         self,
@@ -247,11 +279,8 @@ class DirectToolMixin:
             },
             context=context,
         )
-        linked_task_ids = [
-            str(task_id)
-            for task_id in [tool_result.get("task_id") or tool_result.get("job_id")]
-            if task_id
-        ]
+        linked_task_ids = _linked_task_ids(tool_result)
+        linked_batch_id = _linked_batch_id(tool_result)
         linked_artifact_ids = [
             str(artifact_id)
             for artifact_id in [tool_result.get("artifact_id")]
@@ -270,6 +299,7 @@ class DirectToolMixin:
                 "tool_result": tool_result,
                 "artifact_ids": linked_artifact_ids,
                 "task_ids": linked_task_ids,
+                "batch_id": linked_batch_id,
                 "attempt_id": attempt_id,
             },
             linked_attempt_id=attempt_id,
@@ -283,6 +313,7 @@ class DirectToolMixin:
                 "content": final_content,
                 "artifact_ids": linked_artifact_ids,
                 "task_ids": linked_task_ids,
+                "batch_id": linked_batch_id,
                 "attempt_id": attempt_id,
             },
         )
@@ -295,6 +326,7 @@ class DirectToolMixin:
                     "finish_reason": "direct_tool_failed" if tool_failed else "direct_tool",
                     "artifact_ids": linked_artifact_ids,
                     "task_ids": linked_task_ids,
+                    "batch_id": linked_batch_id,
                     "attempt_id": attempt_id,
                     "error": tool_result.get("error") or tool_result.get("error_message"),
                 },
@@ -306,5 +338,6 @@ class DirectToolMixin:
             "finish_reason": "direct_tool_failed" if tool_failed else "direct_tool",
             "artifact_ids": linked_artifact_ids,
             "task_ids": linked_task_ids,
+            "batch_id": linked_batch_id,
             "tool_result": tool_result,
         }

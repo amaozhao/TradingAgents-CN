@@ -1,4 +1,6 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import List, ZoneInfo, datetime, get_timezone_name, logger
+from .setup import NewsItem
+
 class _RealtimeNewsAggregatorMixin2:
     def _deduplicate_news(self, news_items: List[NewsItem]) -> List[NewsItem]:
         """去重新闻"""
@@ -16,17 +18,13 @@ class _RealtimeNewsAggregatorMixin2:
 
             # 检查标题长度
             if len(title_key) <= 10:
-                logger.debug(
-                    f"[新闻去重] 跳过标题过短的新闻: '{item.title}'，来源: {item.source}"
-                )
+                logger.debug(f"[新闻去重] 跳过标题过短的新闻: '{item.title}'，来源: {item.source}")
                 short_title_count += 1
                 continue
 
             # 检查是否重复
             if title_key in seen_titles:
-                logger.debug(
-                    f"[新闻去重] 检测到重复新闻: '{item.title[:50]}...'，来源: {item.source}"
-                )
+                logger.debug(f"[新闻去重] 检测到重复新闻: '{item.title[:50]}...'，来源: {item.source}")
                 duplicate_count += 1
                 continue
 
@@ -35,12 +33,8 @@ class _RealtimeNewsAggregatorMixin2:
             unique_news.append(item)
 
         # 记录去重结果
-        time_taken = (
-            datetime.now(ZoneInfo(get_timezone_name())) - start_time
-        ).total_seconds()
-        logger.info(
-            f"[新闻去重] 去重完成，原始新闻: {len(news_items)}条，去重后: {len(unique_news)}条，"
-        )
+        time_taken = (datetime.now(ZoneInfo(get_timezone_name())) - start_time).total_seconds()
+        logger.info(f"[新闻去重] 去重完成，原始新闻: {len(news_items)}条，去重后: {len(unique_news)}条，")
         logger.info(
             f"[新闻去重] 去除重复: {duplicate_count}条，标题过短: {short_title_count}条，耗时: {time_taken:.2f}秒"
         )
@@ -75,9 +69,7 @@ class _RealtimeNewsAggregatorMixin2:
             else:
                 news_sources[source] = 1
 
-        sources_info = ", ".join(
-            [f"{source}: {count}条" for source, count in news_sources.items()]
-        )
+        sources_info = ", ".join([f"{source}: {count}条" for source, count in news_sources.items()])
         logger.info(f"[新闻报告] {ticker} 新闻来源分布: {sources_info}")
 
         report = f"# {ticker} 实时新闻分析报告\n\n"
@@ -100,9 +92,7 @@ class _RealtimeNewsAggregatorMixin2:
 
         # 添加时效性说明
         latest_news = max(news_items, key=lambda x: x.publish_time)
-        time_diff = (
-            datetime.now(ZoneInfo(get_timezone_name())) - latest_news.publish_time
-        )
+        time_diff = datetime.now(ZoneInfo(get_timezone_name())) - latest_news.publish_time
 
         report += "\n## ⏰ 数据时效性\n"
         report += f"最新新闻发布于: {time_diff.total_seconds() / 60:.0f}分钟前\n"
@@ -119,14 +109,10 @@ class _RealtimeNewsAggregatorMixin2:
         time_taken = (end_time - start_time).total_seconds()
         report_length = len(report)
 
-        logger.info(
-            f"[新闻报告] {ticker} 新闻报告生成完成，耗时: {time_taken:.2f}秒，报告长度: {report_length}字符"
-        )
+        logger.info(f"[新闻报告] {ticker} 新闻报告生成完成，耗时: {time_taken:.2f}秒，报告长度: {report_length}字符")
 
         # 记录时效性信息
         time_diff_minutes = time_diff.total_seconds() / 60
-        logger.info(
-            f"[新闻报告] {ticker} 新闻时效性: 最新新闻发布于 {time_diff_minutes:.1f}分钟前"
-        )
+        logger.info(f"[新闻报告] {ticker} 新闻时效性: 最新新闻发布于 {time_diff_minutes:.1f}分钟前")
 
         return report

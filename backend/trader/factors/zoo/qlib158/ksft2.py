@@ -25,7 +25,6 @@ __alpha_meta__ = {
 
 def compute(panel: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """Return qlib158 KSFT2 on the supplied OHLCV panel."""
-    o = panel['open']
     c = panel['close']
     h = panel['high']
     lo = panel['low']

@@ -1,4 +1,20 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        List,
+        Optional,
+        asyncio,
+        datetime,
+        get_historical_data_service,
+        importlib,
+        logger,
+        timedelta,
+        utcnow_naive,
+    )
+
 class _AKShareSyncServiceMixin2:
     async def _process_historical_batch(
         self,
@@ -27,14 +43,10 @@ class _AKShareSyncServiceMixin2:
                         logger.debug(f"📅 {symbol}: 从 {symbol_start_date} 开始同步")
                     else:
                         # 全量同步：最近1年
-                        symbol_start_date = (
-                            datetime.now() - timedelta(days=365)
-                        ).strftime("%Y-%m-%d")
+                        symbol_start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
 
                 # 获取历史数据
-                hist_data = await self.provider.get_historical_data(
-                    symbol, symbol_start_date, end_date, period
-                )
+                hist_data = await self.provider.get_historical_data(symbol, symbol_start_date, end_date, period)
 
                 if hist_data is not None and not hist_data.empty:
                     # 保存到统一历史数据集合
@@ -54,23 +66,19 @@ class _AKShareSyncServiceMixin2:
                     logger.debug(f"✅ {symbol}历史数据同步成功: {saved_count}条记录")
                 else:
                     batch_stats["error_count"] += 1
-                    batch_stats["errors"].append(
-                        {
-                            "code": symbol,
-                            "error": "历史数据为空",
-                            "context": "_process_historical_batch",
-                        }
-                    )
+                    batch_stats["errors"].append({
+                        "code": symbol,
+                        "error": "历史数据为空",
+                        "context": "_process_historical_batch",
+                    })
 
             except Exception as e:
                 batch_stats["error_count"] += 1
-                batch_stats["errors"].append(
-                    {
-                        "code": symbol,
-                        "error": str(e),
-                        "context": "_process_historical_batch",
-                    }
-                )
+                batch_stats["errors"].append({
+                    "code": symbol,
+                    "error": str(e),
+                    "context": "_process_historical_batch",
+                })
 
         return batch_stats
 
@@ -90,9 +98,7 @@ class _AKShareSyncServiceMixin2:
 
             if symbol:
                 # 获取特定股票的最新日期
-                latest_date = await self.historical_service.get_latest_date(
-                    symbol, "akshare"
-                )
+                latest_date = await self.historical_service.get_latest_date(symbol, "akshare")
                 if latest_date:
                     # 返回最后日期的下一天（避免重复同步）
                     try:
@@ -104,18 +110,14 @@ class _AKShareSyncServiceMixin2:
                         return latest_date
                 else:
                     # 🔥 没有历史数据时，从上市日期开始全量同步
-                    stock_info = await self.db.stock_basic_info.find_one(
-                        {"code": symbol}, {"list_date": 1}
-                    )
+                    stock_info = await self.db.stock_basic_info.find_one({"code": symbol}, {"list_date": 1})
                     if stock_info and stock_info.get("list_date"):
                         list_date = stock_info["list_date"]
                         # 处理不同的日期格式
                         if isinstance(list_date, str):
                             # 格式可能是 "20100101" 或 "2010-01-01"
                             if len(list_date) == 8 and list_date.isdigit():
-                                return (
-                                    f"{list_date[:4]}-{list_date[4:6]}-{list_date[6:]}"
-                                )
+                                return f"{list_date[:4]}-{list_date[4:6]}-{list_date[6:]}"
                             else:
                                 return list_date
                         else:
@@ -133,9 +135,7 @@ class _AKShareSyncServiceMixin2:
             # 出错时返回30天前，确保不漏数据
             return (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
 
-    async def sync_financial_data(
-        self, symbols: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+    async def sync_financial_data(self, symbols: Optional[List[str]] = None) -> Dict[str, Any]:
         """
         同步财务数据
 
@@ -165,11 +165,7 @@ class _AKShareSyncServiceMixin2:
                         "$or": [
                             {"market_info.market": "CN"},  # 新数据结构
                             {"category": "stock_cn"},  # 旧数据结构
-                            {
-                                "market": {
-                                    "$in": ["主板", "创业板", "科创板", "北交所"]
-                                }
-                            },  # 按市场类型
+                            {"market": {"$in": ["主板", "创业板", "科创板", "北交所"]}},  # 按市场类型
                         ]
                     },
                     {"code": 1},
@@ -207,9 +203,7 @@ class _AKShareSyncServiceMixin2:
 
             # 3. 完成统计
             stats["end_time"] = utcnow_naive()
-            stats["duration"] = (
-                stats["end_time"] - stats["start_time"]
-            ).total_seconds()
+            stats["duration"] = (stats["end_time"] - stats["start_time"]).total_seconds()
 
             logger.info("🎉 财务数据同步完成！")
             logger.info(
@@ -243,38 +237,30 @@ class _AKShareSyncServiceMixin2:
                         logger.debug(f"✅ {symbol}财务数据保存成功")
                     else:
                         batch_stats["error_count"] += 1
-                        batch_stats["errors"].append(
-                            {
-                                "code": symbol,
-                                "error": "财务数据保存失败",
-                                "context": "_process_financial_batch",
-                            }
-                        )
+                        batch_stats["errors"].append({
+                            "code": symbol,
+                            "error": "财务数据保存失败",
+                            "context": "_process_financial_batch",
+                        })
                 else:
                     batch_stats["error_count"] += 1
-                    batch_stats["errors"].append(
-                        {
-                            "code": symbol,
-                            "error": "财务数据为空",
-                            "context": "_process_financial_batch",
-                        }
-                    )
+                    batch_stats["errors"].append({
+                        "code": symbol,
+                        "error": "财务数据为空",
+                        "context": "_process_financial_batch",
+                    })
 
             except Exception as e:
                 batch_stats["error_count"] += 1
-                batch_stats["errors"].append(
-                    {
-                        "code": symbol,
-                        "error": str(e),
-                        "context": "_process_financial_batch",
-                    }
-                )
+                batch_stats["errors"].append({
+                    "code": symbol,
+                    "error": str(e),
+                    "context": "_process_financial_batch",
+                })
 
         return batch_stats
 
-    async def _save_financial_data(
-        self, symbol: str, financial_data: Dict[str, Any]
-    ) -> bool:
+    async def _save_financial_data(self, symbol: str, financial_data: Dict[str, Any]) -> bool:
         """保存财务数据"""
         try:
             # 使用统一的财务数据服务
@@ -313,26 +299,18 @@ class _AKShareSyncServiceMixin2:
 
             # 检查基础信息集合
             basic_count = await self.db.stock_basic_info.count_documents({})
-            latest_basic = await self.db.stock_basic_info.find_one(
-                {}, sort=[("updated_at", -1)]
-            )
+            latest_basic = await self.db.stock_basic_info.find_one({}, sort=[("updated_at", -1)])
             collections_status["stock_basic_info"] = {
                 "count": basic_count,
-                "latest_update": latest_basic.get("updated_at")
-                if latest_basic
-                else None,
+                "latest_update": latest_basic.get("updated_at") if latest_basic else None,
             }
 
             # 检查行情数据集合
             quotes_count = await self.db.market_quotes.count_documents({})
-            latest_quotes = await self.db.market_quotes.find_one(
-                {}, sort=[("updated_at", -1)]
-            )
+            latest_quotes = await self.db.market_quotes.find_one({}, sort=[("updated_at", -1)])
             collections_status["market_quotes"] = {
                 "count": quotes_count,
-                "latest_update": latest_quotes.get("updated_at")
-                if latest_quotes
-                else None,
+                "latest_update": latest_quotes.get("updated_at") if latest_quotes else None,
             }
 
             status_result = {
@@ -438,12 +416,8 @@ class _AKShareSyncServiceMixin2:
                     logger.info(f"📌 只同步自选股，共 {len(symbols)} 只")
                 else:
                     # 获取所有股票（不限制数据源）
-                    stock_list = await self.db.stock_basic_info.find(
-                        {}, {"code": 1, "_id": 0}
-                    ).to_list(None)
-                    symbols = [
-                        stock["code"] for stock in stock_list if stock.get("code")
-                    ]
+                    stock_list = await self.db.stock_basic_info.find({}, {"code": 1, "_id": 0}).to_list(None)
+                    symbols = [stock["code"] for stock in stock_list if stock.get("code")]
                     logger.info(f"📊 同步所有股票，共 {len(symbols)} 只")
 
             if not symbols:
@@ -477,9 +451,7 @@ class _AKShareSyncServiceMixin2:
 
             # 3. 完成统计
             stats["end_time"] = utcnow_naive()
-            stats["duration"] = (
-                stats["end_time"] - stats["start_time"]
-            ).total_seconds()
+            stats["duration"] = (stats["end_time"] - stats["start_time"]).total_seconds()
 
             logger.info(
                 f"✅ AKShare新闻数据同步完成: "
@@ -497,9 +469,7 @@ class _AKShareSyncServiceMixin2:
             stats["errors"].append({"error": str(e), "context": "sync_news_data"})
             return stats
 
-    async def _process_news_batch(
-        self, batch: List[str], max_news_per_stock: int
-    ) -> Dict[str, Any]:
+    async def _process_news_batch(self, batch: List[str], max_news_per_stock: int) -> Dict[str, Any]:
         """处理新闻批次"""
         batch_stats = {
             "success_count": 0,
@@ -511,9 +481,7 @@ class _AKShareSyncServiceMixin2:
         for symbol in batch:
             try:
                 # 从AKShare获取新闻数据
-                news_data = await self.provider.get_stock_news(
-                    symbol=symbol, limit=max_news_per_stock
-                )
+                news_data = await self.provider.get_stock_news(symbol=symbol, limit=max_news_per_stock)
 
                 if news_data:
                     # 保存新闻数据

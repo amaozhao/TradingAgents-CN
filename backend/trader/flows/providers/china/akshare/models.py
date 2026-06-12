@@ -1,8 +1,20 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        List,
+        Optional,
+        asyncio,
+        datetime,
+        importlib,
+        pd,
+        settings,
+    )
+
 class _AKShareProviderMixin3:
-    def get_stock_news_sync(
-        self, symbol: Optional[str] = None, limit: int = 10
-    ) -> Optional[pd.DataFrame]:
+    def get_stock_news_sync(self, symbol: Optional[str] = None, limit: int = 10) -> Optional[pd.DataFrame]:
         """
         获取股票新闻（同步版本，返回原始 DataFrame）
 
@@ -45,9 +57,7 @@ class _AKShareProviderMixin3:
                             time.sleep(retry_delay)
                             retry_delay *= 2  # 指数退避
                         else:
-                            self.logger.error(
-                                f"❌ {symbol} 获取新闻失败(JSON解析错误): {e}"
-                            )
+                            self.logger.error(f"❌ {symbol} 获取新闻失败(JSON解析错误): {e}")
                             return None
                     except Exception as e:
                         if attempt < max_retries - 1:
@@ -60,9 +70,7 @@ class _AKShareProviderMixin3:
                             raise
 
                 if news_df is not None and not news_df.empty:
-                    self.logger.info(
-                        f"✅ {symbol} AKShare新闻获取成功: {len(news_df)} 条"
-                    )
+                    self.logger.info(f"✅ {symbol} AKShare新闻获取成功: {len(news_df)} 条")
                     return news_df.head(limit) if limit else news_df
                 else:
                     self.logger.warning(f"⚠️ {symbol} 未获取到AKShare新闻数据")
@@ -83,9 +91,7 @@ class _AKShareProviderMixin3:
             self.logger.error(f"❌ AKShare新闻获取失败: {e}")
             return None
 
-    async def get_stock_news(
-        self, symbol: Optional[str] = None, limit: int = 10
-    ) -> Optional[List[Dict[str, Any]]]:
+    async def get_stock_news(self, symbol: Optional[str] = None, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
         """
         获取股票新闻（异步版本，返回结构化列表）
 
@@ -123,37 +129,25 @@ class _AKShareProviderMixin3:
                 if is_docker:
                     try:
                         getattr(importlib.import_module("curl_cffi"), "requests")
-                        self.logger.debug(
-                            "🐳 检测到 Docker 环境，使用 curl_cffi 直接调用 API"
-                        )
-                        news_df = await asyncio.to_thread(
-                            self._get_stock_news_direct, symbol=symbol_6, limit=limit
-                        )
+                        self.logger.debug("🐳 检测到 Docker 环境，使用 curl_cffi 直接调用 API")
+                        news_df = await asyncio.to_thread(self._get_stock_news_direct, symbol=symbol_6, limit=limit)
                         if news_df is not None and not news_df.empty:
-                            self.logger.info(
-                                f"✅ {symbol} Docker 环境直接调用 API 成功"
-                            )
+                            self.logger.info(f"✅ {symbol} Docker 环境直接调用 API 成功")
                         else:
-                            self.logger.warning(
-                                f"⚠️ {symbol} Docker 环境直接调用 API 失败，回退到 AKShare"
-                            )
+                            self.logger.warning(f"⚠️ {symbol} Docker 环境直接调用 API 失败，回退到 AKShare")
                             news_df = None  # 回退到 AKShare
                     except ImportError:
                         self.logger.warning("⚠️ curl_cffi 未安装，回退到 AKShare")
                         news_df = None
                     except Exception as e:
-                        self.logger.warning(
-                            f"⚠️ {symbol} Docker 环境直接调用 API 异常: {e}，回退到 AKShare"
-                        )
+                        self.logger.warning(f"⚠️ {symbol} Docker 环境直接调用 API 异常: {e}，回退到 AKShare")
                         news_df = None
 
                 # 如果直接调用失败或不在 Docker 环境，使用 AKShare
                 if news_df is None:
                     for attempt in range(max_retries):
                         try:
-                            news_df = await asyncio.to_thread(
-                                ak.stock_news_em, symbol=symbol_6
-                            )
+                            news_df = await asyncio.to_thread(ak.stock_news_em, symbol=symbol_6)
                             break  # 成功则跳出重试循环
                         except json.JSONDecodeError as e:
                             if attempt < max_retries - 1:
@@ -163,9 +157,7 @@ class _AKShareProviderMixin3:
                                 await asyncio.sleep(retry_delay)
                                 retry_delay *= 2  # 指数退避
                             else:
-                                self.logger.error(
-                                    f"❌ {symbol} 获取新闻失败(JSON解析错误): {e}"
-                                )
+                                self.logger.error(f"❌ {symbol} 获取新闻失败(JSON解析错误): {e}")
                                 return []
                         except KeyError as e:
                             # 东方财富网接口变更或反爬虫拦截，返回的字段结构改变
@@ -173,12 +165,8 @@ class _AKShareProviderMixin3:
                                 self.logger.error(
                                     f"❌ {symbol} AKShare新闻接口返回数据结构异常: 缺少 'cmsArticleWebOld' 字段"
                                 )
-                                self.logger.error(
-                                    "   这通常是因为：1) 反爬虫拦截 2) 接口变更 3) 网络问题"
-                                )
-                                self.logger.error(
-                                    "   建议：检查 AKShare 版本是否为最新 (当前要求 >=1.17.86)"
-                                )
+                                self.logger.error("   这通常是因为：1) 反爬虫拦截 2) 接口变更 3) 网络问题")
+                                self.logger.error("   建议：检查 AKShare 版本是否为最新 (当前要求 >=1.17.86)")
                                 # 返回空列表，避免程序崩溃
                                 return []
                             else:
@@ -189,9 +177,7 @@ class _AKShareProviderMixin3:
                                     await asyncio.sleep(retry_delay)
                                     retry_delay *= 2
                                 else:
-                                    self.logger.error(
-                                        f"❌ {symbol} 获取新闻失败(字段错误): {e}"
-                                    )
+                                    self.logger.error(f"❌ {symbol} 获取新闻失败(字段错误): {e}")
                                     return []
                         except Exception as e:
                             if attempt < max_retries - 1:
@@ -217,22 +203,14 @@ class _AKShareProviderMixin3:
                             "content": content,
                             "summary": summary,
                             "url": str(row.get("新闻链接", "") or row.get("链接", "")),
-                            "source": str(
-                                row.get("文章来源", "")
-                                or row.get("来源", "")
-                                or "东方财富"
-                            ),
+                            "source": str(row.get("文章来源", "") or row.get("来源", "") or "东方财富"),
                             "author": str(row.get("作者", "") or ""),
                             "publish_time": self._parse_news_time(
-                                str(
-                                    row.get("发布时间", "") or row.get("时间", "") or ""
-                                )
+                                str(row.get("发布时间", "") or row.get("时间", "") or "")
                             ),
                             "category": self._classify_news(content, title),
                             "sentiment": self._analyze_news_sentiment(content, title),
-                            "sentiment_score": self._calculate_sentiment_score(
-                                content, title
-                            ),
+                            "sentiment_score": self._calculate_sentiment_score(content, title),
                             "keywords": self._extract_keywords(content, title),
                             "importance": self._assess_news_importance(content, title),
                             "data_source": "akshare",
@@ -242,9 +220,7 @@ class _AKShareProviderMixin3:
                         if news_item["title"]:
                             news_list.append(news_item)
 
-                    self.logger.info(
-                        f"✅ {symbol} AKShare新闻获取成功: {len(news_list)} 条"
-                    )
+                    self.logger.info(f"✅ {symbol} AKShare新闻获取成功: {len(news_list)} 条")
                     return news_list
                 else:
                     self.logger.warning(f"⚠️ {symbol} 未获取到AKShare新闻数据")
@@ -270,37 +246,23 @@ class _AKShareProviderMixin3:
                                 "content": content,
                                 "summary": summary,
                                 "url": str(row.get("url", "") or row.get("链接", "")),
-                                "source": str(
-                                    row.get("source", "")
-                                    or row.get("来源", "")
-                                    or "CCTV财经"
-                                ),
+                                "source": str(row.get("source", "") or row.get("来源", "") or "CCTV财经"),
                                 "author": str(row.get("author", "") or ""),
                                 "publish_time": self._parse_news_time(
-                                    str(
-                                        row.get("time", "") or row.get("时间", "") or ""
-                                    )
+                                    str(row.get("time", "") or row.get("时间", "") or "")
                                 ),
                                 "category": self._classify_news(content, title),
-                                "sentiment": self._analyze_news_sentiment(
-                                    content, title
-                                ),
-                                "sentiment_score": self._calculate_sentiment_score(
-                                    content, title
-                                ),
+                                "sentiment": self._analyze_news_sentiment(content, title),
+                                "sentiment_score": self._calculate_sentiment_score(content, title),
                                 "keywords": self._extract_keywords(content, title),
-                                "importance": self._assess_news_importance(
-                                    content, title
-                                ),
+                                "importance": self._assess_news_importance(content, title),
                                 "data_source": "akshare",
                             }
 
                             if news_item["title"]:
                                 news_list.append(news_item)
 
-                        self.logger.info(
-                            f"✅ AKShare市场新闻获取成功: {len(news_list)} 条"
-                        )
+                        self.logger.info(f"✅ AKShare市场新闻获取成功: {len(news_list)} 条")
                         return news_list
 
                 except Exception as e:
@@ -655,9 +617,7 @@ class _AKShareProviderMixin3:
             return "company_announcement"
 
         # 政策新闻
-        if any(
-            keyword in text for keyword in ["政策", "监管", "央行", "证监会", "国务院"]
-        ):
+        if any(keyword in text for keyword in ["政策", "监管", "央行", "证监会", "国务院"]):
             return "policy_news"
 
         # 行业新闻
@@ -665,15 +625,11 @@ class _AKShareProviderMixin3:
             return "industry_news"
 
         # 市场新闻
-        if any(
-            keyword in text for keyword in ["市场", "指数", "大盘", "沪指", "深成指"]
-        ):
+        if any(keyword in text for keyword in ["市场", "指数", "大盘", "沪指", "深成指"]):
             return "market_news"
 
         # 研究报告
-        if any(
-            keyword in text for keyword in ["研报", "分析", "评级", "目标价", "机构"]
-        ):
+        if any(keyword in text for keyword in ["研报", "分析", "评级", "目标价", "机构"]):
             return "research_report"
 
         return "general"

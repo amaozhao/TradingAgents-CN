@@ -1,4 +1,73 @@
-# ruff: noqa: F401,F403,F405,F821
+from .base import render_detailed_analysis_content
+from .imports import Any, Dict, List, datetime, go, importlib, json, pd, px, st
+
+
+def safe_timestamp_to_datetime(value: object) -> datetime:
+    """将历史记录中的时间戳兼容转换为 datetime。"""
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, (int, float)):
+        try:
+            return datetime.fromtimestamp(value)
+        except (OSError, OverflowError, ValueError):
+            return datetime.fromtimestamp(0)
+    if isinstance(value, str):
+        try:
+            normalized = value.replace("Z", "+00:00")
+            return datetime.fromisoformat(normalized)
+        except ValueError:
+            return datetime.fromtimestamp(0)
+    return datetime.fromtimestamp(0)
+
+
+def _tags_path():
+    Path = getattr(importlib.import_module("pathlib"), "Path")
+    return Path.cwd() / "data" / "analysis_tags.json"
+
+
+def load_tags() -> Dict[str, List[str]]:
+    path = _tags_path()
+    if not path.exists():
+        return {}
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(loaded, dict):
+        return {}
+    result: Dict[str, List[str]] = {}
+    for key, value in loaded.items():
+        if isinstance(key, str) and isinstance(value, list):
+            result[key] = [str(item) for item in value]
+    return result
+
+
+def _save_tags(tags: Dict[str, List[str]]) -> None:
+    path = _tags_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(tags, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def add_tag_to_analysis(analysis_id: str, tag: str) -> None:
+    tags = load_tags()
+    values = tags.setdefault(analysis_id, [])
+    if tag not in values:
+        values.append(tag)
+        _save_tags(tags)
+
+
+def remove_tag_from_analysis(analysis_id: str, tag: str) -> None:
+    tags = load_tags()
+    values = tags.get(analysis_id)
+    if not values or tag not in values:
+        return
+    values.remove(tag)
+    if values:
+        tags[analysis_id] = values
+    else:
+        tags.pop(analysis_id, None)
+    _save_tags(tags)
+
 def _render_results_comparison_legacy(results: List[Dict[str, Any]]):
     """渲染结果对比功能"""
 
@@ -18,16 +87,12 @@ def _render_results_comparison_legacy(results: List[Dict[str, Any]]):
 
     with col1:
         st.write("**选择结果A**")
-        selected_a = st.selectbox(
-            "结果A", result_options, format_func=lambda x: x[0], key="compare_a"
-        )
+        selected_a = st.selectbox("结果A", result_options, format_func=lambda x: x[0], key="compare_a")
         result_a = results[selected_a[1]]
 
     with col2:
         st.write("**选择结果B**")
-        selected_b = st.selectbox(
-            "结果B", result_options, format_func=lambda x: x[0], key="compare_b"
-        )
+        selected_b = st.selectbox("结果B", result_options, format_func=lambda x: x[0], key="compare_b")
         result_b = results[selected_b[1]]
 
     if selected_a[1] == selected_b[1]:
@@ -44,18 +109,14 @@ def _render_results_comparison_legacy(results: List[Dict[str, Any]]):
         "项目": ["股票代码", "分析时间", "分析师", "研究深度", "状态"],
         "结果A": [
             result_a.get("stock_symbol", "unknown"),
-            safe_timestamp_to_datetime(result_a.get("timestamp", 0)).strftime(
-                "%Y-%m-%d %H:%M"
-            ),
+            safe_timestamp_to_datetime(result_a.get("timestamp", 0)).strftime("%Y-%m-%d %H:%M"),
             ", ".join(result_a.get("analysts", [])),
             str(result_a.get("research_depth", "unknown")),
             "完成" if result_a.get("status") == "completed" else "失败",
         ],
         "结果B": [
             result_b.get("stock_symbol", "unknown"),
-            safe_timestamp_to_datetime(result_b.get("timestamp", 0)).strftime(
-                "%Y-%m-%d %H:%M"
-            ),
+            safe_timestamp_to_datetime(result_b.get("timestamp", 0)).strftime("%Y-%m-%d %H:%M"),
             ", ".join(result_b.get("analysts", [])),
             str(result_b.get("research_depth", "unknown")),
             "完成" if result_b.get("status") == "completed" else "失败",
@@ -147,9 +208,7 @@ def render_results_charts(results: List[Dict[str, Any]]):
     st.subheader("📅 每日分析趋势")
     daily_results = {}
     for result in results:
-        date_str = safe_timestamp_to_datetime(result.get("timestamp", 0)).strftime(
-            "%Y-%m-%d"
-        )
+        date_str = safe_timestamp_to_datetime(result.get("timestamp", 0)).strftime("%Y-%m-%d")
         daily_results[date_str] = daily_results.get(date_str, 0) + 1
 
     if daily_results:
@@ -273,9 +332,7 @@ def render_tags_management(results: List[Dict[str, Any]]):
 
         with col2:
             st.write("**标签列表**")
-            for tag, count in sorted(
-                tag_counts.items(), key=lambda x: x[1], reverse=True
-            ):
+            for tag, count in sorted(tag_counts.items(), key=lambda x: x[1], reverse=True):
                 st.write(f"• {tag} ({count})")
 
     # 批量标签操作
@@ -304,9 +361,7 @@ def render_tags_management(results: List[Dict[str, Any]]):
                         analysis_id = results[idx].get("analysis_id", "")
                         if analysis_id:
                             add_tag_to_analysis(analysis_id, new_tag)
-                    st.success(
-                        f"已为 {len(selected_results)} 个结果添加标签: {new_tag}"
-                    )
+                    st.success(f"已为 {len(selected_results)} 个结果添加标签: {new_tag}")
                     st.rerun()
 
             with col2:
@@ -318,9 +373,7 @@ def render_tags_management(results: List[Dict[str, Any]]):
                             analysis_id = results[idx].get("analysis_id", "")
                             if analysis_id:
                                 remove_tag_from_analysis(analysis_id, remove_tag)
-                        st.success(
-                            f"已从 {len(selected_results)} 个结果移除标签: {remove_tag}"
-                        )
+                        st.success(f"已从 {len(selected_results)} 个结果移除标签: {remove_tag}")
                         st.rerun()
 
 
@@ -343,20 +396,18 @@ def render_results_export(results: List[Dict[str, Any]]):
                 # 导出摘要信息
                 summary_data = []
                 for result in results:
-                    summary_data.append(
-                        {
-                            "分析时间": safe_timestamp_to_datetime(
-                                result.get("timestamp", 0)
-                            ).strftime("%Y-%m-%d %H:%M:%S"),
-                            "股票代码": result.get("stock_symbol", "unknown"),
-                            "分析师": ", ".join(result.get("analysts", [])),
-                            "研究深度": result.get("research_depth", "unknown"),
-                            "状态": result.get("status", "unknown"),
-                            "摘要": result.get("summary", "")[:100] + "..."
-                            if len(result.get("summary", "")) > 100
-                            else result.get("summary", ""),
-                        }
-                    )
+                    summary_data.append({
+                        "分析时间": safe_timestamp_to_datetime(result.get("timestamp", 0)).strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        ),
+                        "股票代码": result.get("stock_symbol", "unknown"),
+                        "分析师": ", ".join(result.get("analysts", [])),
+                        "研究深度": result.get("research_depth", "unknown"),
+                        "状态": result.get("status", "unknown"),
+                        "摘要": result.get("summary", "")[:100] + "..."
+                        if len(result.get("summary", "")) > 100
+                        else result.get("summary", ""),
+                    })
 
                 if export_format == "CSV":
                     df = pd.DataFrame(summary_data)
@@ -466,9 +517,7 @@ def render_results_comparison(results: List[Dict[str, Any]]):
         "项目": ["股票代码", "分析时间", "分析师数量", "研究深度", "状态", "标签数量"],
         "分析结果 A": [
             result_a.get("stock_symbol", "unknown"),
-            safe_timestamp_to_datetime(result_a.get("timestamp", 0)).strftime(
-                "%Y-%m-%d %H:%M"
-            ),
+            safe_timestamp_to_datetime(result_a.get("timestamp", 0)).strftime("%Y-%m-%d %H:%M"),
             len(result_a.get("analysts", [])),
             result_a.get("research_depth", "unknown"),
             "✅ 完成" if result_a.get("status") == "completed" else "❌ 失败",
@@ -476,9 +525,7 @@ def render_results_comparison(results: List[Dict[str, Any]]):
         ],
         "分析结果 B": [
             result_b.get("stock_symbol", "unknown"),
-            safe_timestamp_to_datetime(result_b.get("timestamp", 0)).strftime(
-                "%Y-%m-%d %H:%M"
-            ),
+            safe_timestamp_to_datetime(result_b.get("timestamp", 0)).strftime("%Y-%m-%d %H:%M"),
             len(result_b.get("analysts", [])),
             result_b.get("research_depth", "unknown"),
             "✅ 完成" if result_b.get("status") == "completed" else "❌ 失败",
@@ -586,9 +633,7 @@ def render_results_comparison(results: List[Dict[str, Any]]):
     # 创建对比标签页
     available_fields = []
     for field_key, field_name in comparison_fields:
-        if (field_key in result_a and result_a[field_key]) or (
-            field_key in result_b and result_b[field_key]
-        ):
+        if (field_key in result_a and result_a[field_key]) or (field_key in result_b and result_b[field_key]):
             available_fields.append((field_key, field_name))
 
     if available_fields:
@@ -637,9 +682,7 @@ def render_detailed_analysis(results: List[Dict[str, Any]]):
         result_options.append((option, i))
 
     if result_options:
-        selected_option = st.selectbox(
-            "选择分析结果", result_options, format_func=lambda x: x[0]
-        )
+        selected_option = st.selectbox("选择分析结果", result_options, format_func=lambda x: x[0])
         selected_result = results[selected_option[1]]
 
         # 显示基本信息
@@ -650,13 +693,9 @@ def render_detailed_analysis(results: List[Dict[str, Any]]):
             st.metric("分析师数量", len(selected_result.get("analysts", [])))
 
         with col2:
-            analysis_time = safe_timestamp_to_datetime(
-                selected_result.get("timestamp", 0)
-            )
+            analysis_time = safe_timestamp_to_datetime(selected_result.get("timestamp", 0))
             st.metric("分析时间", analysis_time.strftime("%m-%d %H:%M"))
-            status = (
-                "✅ 完成" if selected_result.get("status") == "completed" else "❌ 失败"
-            )
+            status = "✅ 完成" if selected_result.get("status") == "completed" else "❌ 失败"
             st.metric("状态", status)
 
         with col3:
@@ -686,9 +725,7 @@ def render_detailed_analysis(results: List[Dict[str, Any]]):
                 with perf_cols[i]:
                     st.metric(
                         key.replace("_", " ").title(),
-                        f"{value:.2f}"
-                        if isinstance(value, (int, float))
-                        else str(value),
+                        f"{value:.2f}" if isinstance(value, (int, float)) else str(value),
                     )
 
         # 显示完整分析结果

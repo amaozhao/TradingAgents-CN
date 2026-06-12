@@ -16,21 +16,11 @@ import numpy as np
 import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
     delta,
     rank,
-    safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
     ts_corr,
-    ts_cov,
-    ts_max,
     ts_mean,
-    ts_min,
     ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "alpha101_079"
@@ -88,7 +78,6 @@ def compute(panel: dict) -> pd.DataFrame:
     open_ = panel["open"]
     volume = panel["volume"]
     vwap = panel["vwap"]
-    adv15 = ts_mean(volume, 15)
     adv150 = ts_mean(volume, 150)
 
     # Helper aliases (local closures keep the file standalone & purity-safe).

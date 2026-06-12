@@ -1,8 +1,20 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        Optional,
+        ZoneInfo,
+        cast,
+        datetime,
+        get_timezone_name,
+        importlib,
+        logger,
+    )
+
 class _OptimizedChinaDataProviderMixin2:
-    def _generate_fundamentals_report(
-        self, symbol: str, stock_data: str, analysis_modules: str = "standard"
-    ) -> str:
+    def _generate_fundamentals_report(self, symbol: str, stock_data: str, analysis_modules: str = "standard") -> str:
         """基于股票数据生成真实的基本面分析报告
 
         Args:
@@ -17,9 +29,7 @@ class _OptimizedChinaDataProviderMixin2:
         )
         logger.debug(f"🔍 [股票代码追踪] 股票代码长度: {len(str(symbol))}")
         logger.debug(f"🔍 [股票代码追踪] 股票代码字符: {list(str(symbol))}")
-        logger.debug(
-            f"🔍 [股票代码追踪] 接收到的股票数据前200字符: {stock_data[:200] if stock_data else 'None'}"
-        )
+        logger.debug(f"🔍 [股票代码追踪] 接收到的股票数据前200字符: {stock_data[:200] if stock_data else 'None'}")
 
         # 从股票数据中提取信息
         company_name = "未知公司"
@@ -42,9 +52,7 @@ class _OptimizedChinaDataProviderMixin2:
                 for line in lines:
                     if "股票名称:" in line:
                         company_name = line.split(":")[1].strip()
-                        logger.debug(
-                            f"🔍 [股票代码追踪] 从统一接口获取到股票名称: {company_name}"
-                        )
+                        logger.debug(f"🔍 [股票代码追踪] 从统一接口获取到股票名称: {company_name}")
                         break
         except Exception as e:
             logger.warning(f"⚠️ 获取股票基本信息失败: {e}")
@@ -66,22 +74,16 @@ class _OptimizedChinaDataProviderMixin2:
                         row_q = df_q.iloc[-1]
                         if current_price == "N/A" and row_q.get("close") is not None:
                             current_price = str(row_q.get("close"))
-                            logger.debug(
-                                f"🔍 [股票代码追踪] 从market_quotes补齐当前价格: {current_price}"
-                            )
+                            logger.debug(f"🔍 [股票代码追踪] 从market_quotes补齐当前价格: {current_price}")
                         if change_pct == "N/A" and row_q.get("pct_chg") is not None:
                             try:
                                 change_pct = f"{float(row_q.get('pct_chg')):+.2f}%"
                             except Exception:
                                 change_pct = str(row_q.get("pct_chg"))
-                            logger.debug(
-                                f"🔍 [股票代码追踪] 从market_quotes补齐涨跌幅: {change_pct}"
-                            )
+                            logger.debug(f"🔍 [股票代码追踪] 从market_quotes补齐涨跌幅: {change_pct}")
                         if volume == "N/A" and row_q.get("volume") is not None:
                             volume = str(row_q.get("volume"))
-                            logger.debug(
-                                f"🔍 [股票代码追踪] 从market_quotes补齐成交量: {volume}"
-                            )
+                            logger.debug(f"🔍 [股票代码追踪] 从market_quotes补齐成交量: {volume}")
         except Exception as _qe:
             logger.debug(f"🔍 [股票代码追踪] 读取market_quotes失败（忽略）: {_qe}")
 
@@ -96,9 +98,7 @@ class _OptimizedChinaDataProviderMixin2:
                 elif "最新价格:" in line or "💰 最新价格:" in line:
                     # 兼容另一种模板输出
                     try:
-                        current_price = (
-                            line.split(":", 1)[1].strip().lstrip("¥").strip()
-                        )
+                        current_price = line.split(":", 1)[1].strip().lstrip("¥").strip()
                     except Exception:
                         current_price = line.split(":")[-1].strip()
                 elif "涨跌幅:" in line:
@@ -115,20 +115,14 @@ class _OptimizedChinaDataProviderMixin2:
                         # 查找数据行
                         for j in range(i + 1, min(i + 5, len(lines))):
                             data_line = lines[j].strip()
-                            if (
-                                data_line
-                                and not data_line.startswith("日期")
-                                and not data_line.startswith("-")
-                            ):
+                            if data_line and not data_line.startswith("日期") and not data_line.startswith("-"):
                                 # 尝试解析数据行
                                 parts = data_line.split()
                                 if len(parts) >= 4:
                                     try:
                                         # 假设格式: 日期 股票代码 开盘 收盘 最高 最低 成交量 成交额...
                                         current_price = parts[3]  # 收盘价
-                                        logger.debug(
-                                            f"🔍 [股票代码追踪] 从数据表格提取到收盘价: {current_price}"
-                                        )
+                                        logger.debug(f"🔍 [股票代码追踪] 从数据表格提取到收盘价: {current_price}")
                                         break
                                     except (IndexError, ValueError):
                                         continue
@@ -142,16 +136,10 @@ class _OptimizedChinaDataProviderMixin2:
         logger.debug(f"🔍 [股票代码追踪] _get_industry_info 返回结果: {industry_info}")
 
         # 尝试获取财务指标，如果失败则返回简化的基本面报告
-        logger.debug(
-            f"🔍 [股票代码追踪] 调用 _estimate_financial_metrics，传入参数: '{symbol}'"
-        )
+        logger.debug(f"🔍 [股票代码追踪] 调用 _estimate_financial_metrics，传入参数: '{symbol}'")
         try:
-            financial_estimates = self._estimate_financial_metrics(
-                symbol, current_price
-            )
-            logger.debug(
-                f"🔍 [股票代码追踪] _estimate_financial_metrics 返回结果: {financial_estimates}"
-            )
+            financial_estimates = self._estimate_financial_metrics(symbol, current_price)
+            logger.debug(f"🔍 [股票代码追踪] _estimate_financial_metrics 返回结果: {financial_estimates}")
         except Exception as e:
             logger.warning(f"⚠️ [基本面分析] 无法获取财务指标: {e}")
             logger.info("📊 [基本面分析] 返回简化的基本面报告（无财务指标）")
@@ -189,14 +177,8 @@ class _OptimizedChinaDataProviderMixin2:
         data_source_note = ""
         data_source = financial_estimates.get("data_source", "")
 
-        if any(
-            "（估算值）" in str(v)
-            for v in financial_estimates.values()
-            if isinstance(v, str)
-        ):
-            data_source_note = (
-                "\n⚠️ **数据说明**: 部分财务指标为估算值，建议结合最新财报数据进行分析"
-            )
+        if any("（估算值）" in str(v) for v in financial_estimates.values() if isinstance(v, str)):
+            data_source_note = "\n⚠️ **数据说明**: 部分财务指标为估算值，建议结合最新财报数据进行分析"
         elif data_source == "AKShare":
             data_source_note = "\n✅ **数据说明**: 财务指标基于AKShare真实财务数据计算"
         elif data_source == "Tushare":
@@ -411,9 +393,7 @@ class _OptimizedChinaDataProviderMixin2:
         """根据股票代码获取行业信息（优先使用数据库真实数据）"""
 
         # 添加详细的股票代码追踪日志
-        logger.debug(
-            f"🔍 [股票代码追踪] _get_industry_info 接收到的股票代码: '{symbol}' (类型: {type(symbol)})"
-        )
+        logger.debug(f"🔍 [股票代码追踪] _get_industry_info 接收到的股票代码: '{symbol}' (类型: {type(symbol)})")
         logger.debug(f"🔍 [股票代码追踪] 股票代码长度: {len(str(symbol))}")
         logger.debug(f"🔍 [股票代码追踪] 股票代码字符: {list(str(symbol))}")
 
@@ -435,9 +415,7 @@ class _OptimizedChinaDataProviderMixin2:
 
                 # 规范化行业与板块（避免把"中小板/创业板"等板块值误作行业）
                 board_labels = {"主板", "中小板", "创业板", "科创板"}
-                raw_industry = (
-                    doc.get("industry") or doc.get("industry_name") or ""
-                ).strip()
+                raw_industry = (doc.get("industry") or doc.get("industry_name") or "").strip()
                 sec_or_cat = (doc.get("sec") or doc.get("category") or "").strip()
                 market_val = (doc.get("market") or "").strip()
                 industry_val = raw_industry or sec_or_cat or "未知"
@@ -465,14 +443,12 @@ class _OptimizedChinaDataProviderMixin2:
                 if symbol in self._get_special_stocks():
                     info.update(self._get_special_stocks()[symbol])
                 else:
-                    info.update(
-                        {
-                            "analysis": f"该股票属于{info['industry']}行业，在{info['market']}上市交易。",
-                            "market_share": "待分析",
-                            "brand_value": "待评估",
-                            "tech_advantage": "待分析",
-                        }
-                    )
+                    info.update({
+                        "analysis": f"该股票属于{info['industry']}行业，在{info['market']}上市交易。",
+                        "market_share": "待分析",
+                        "brand_value": "待评估",
+                        "tech_advantage": "待分析",
+                    })
 
                 return info
 
@@ -521,14 +497,12 @@ class _OptimizedChinaDataProviderMixin2:
         if symbol in special_stocks:
             info.update(special_stocks[symbol])
         else:
-            info.update(
-                {
-                    "analysis": f"该股票在{info['market']}上市交易，具体行业信息需要进一步查询。",
-                    "market_share": "待分析",
-                    "brand_value": "待评估",
-                    "tech_advantage": "待分析",
-                }
-            )
+            info.update({
+                "analysis": f"该股票在{info['market']}上市交易，具体行业信息需要进一步查询。",
+                "market_share": "待分析",
+                "brand_value": "待评估",
+                "tech_advantage": "待分析",
+            })
 
         return info
 

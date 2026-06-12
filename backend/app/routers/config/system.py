@@ -1,13 +1,31 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import (
+    Depends,
+    HTTPException,
+    LLMProviderResponse,
+    SystemConfigResponse,
+    User,
+    config_service,
+    get_current_user,
+    importlib,
+    ok,
+    router,
+    status,
+)
+from .setup import (
+    ConfigApiResponse,
+    _sanitize_database_configs,
+    _sanitize_datasource_configs,
+    _sanitize_kv,
+    _sanitize_llm_configs,
+)
+
 @router.get("/system", response_model=ConfigApiResponse)
 async def get_system_config(current_user: User = Depends(get_current_user)):
     """获取系统配置"""
     try:
         config = await config_service.get_system_config()
         if not config:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="系统配置不存在"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="系统配置不存在")
 
         return ok(
             data=SystemConfigResponse(
@@ -15,9 +33,7 @@ async def get_system_config(current_user: User = Depends(get_current_user)):
                 config_type=config.config_type,
                 llm_configs=_sanitize_llm_configs(config.llm_configs),
                 default_llm=config.default_llm,
-                data_source_configs=_sanitize_datasource_configs(
-                    config.data_source_configs
-                ),
+                data_source_configs=_sanitize_datasource_configs(config.data_source_configs),
                 default_data_source=config.default_data_source,
                 database_configs=_sanitize_database_configs(config.database_configs),
                 system_settings=_sanitize_kv(config.system_settings),
@@ -42,12 +58,8 @@ async def get_system_config(current_user: User = Depends(get_current_user)):
 async def get_llm_providers(current_user: User = Depends(get_current_user)):
     """获取所有大模型厂家"""
     try:
-        is_valid_api_key = getattr(
-            importlib.import_module("app.utils.keys"), "is_valid_api_key"
-        )
-        truncate_api_key = getattr(
-            importlib.import_module("app.utils.keys"), "truncate_api_key"
-        )
+        is_valid_api_key = getattr(importlib.import_module("app.utils.keys"), "is_valid_api_key")
+        truncate_api_key = getattr(importlib.import_module("app.utils.keys"), "truncate_api_key")
         get_env_api_key_for_provider = getattr(
             importlib.import_module("app.utils.keys"), "get_env_api_key_for_provider"
         )

@@ -1,4 +1,37 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import (
+    Any,
+    ConditionalLogic,
+    DEFAULT_CONFIG,
+    Dict,
+    FinancialSituationMemory,
+    GraphSetup,
+    Optional,
+    Propagator,
+    Reflector,
+    SignalProcessor,
+    ToolNode,
+    Toolkit,
+    TradingMemoryLog,
+    Tuple,
+    _configured_provider_kwargs,
+    _create_provider_pair,
+    build_instrument_context,
+    cast,
+    create_llm_by_provider,
+    datetime,
+    env_key_for_provider,
+    importlib,
+    logger,
+    normalize_provider_key,
+    os,
+    resolve_instrument_identity,
+    set_dataflows_config,
+    set_interface_config,
+    settings,
+    thread_id,
+    timedelta,
+)
+
 class _GraphMixin1:
     def _get_provider_kwargs(self) -> Dict[str, Any]:
         provider_kwargs: Dict[str, Any] = {}
@@ -45,11 +78,7 @@ class _GraphMixin1:
         deep_config = self.config.get("deep_model_config", {})
 
         configured_temperature = self.config.get("temperature")
-        default_temperature = (
-            0.7
-            if configured_temperature in (None, "")
-            else float(configured_temperature)
-        )
+        default_temperature = 0.7 if configured_temperature in (None, "") else float(configured_temperature)
 
         # 读取快速模型参数
         quick_max_tokens = quick_config.get("max_tokens", 4000)
@@ -64,12 +93,8 @@ class _GraphMixin1:
         # 🔧 检查是否为混合模式（快速模型和深度模型来自不同厂家）
         quick_provider = self.config.get("quick_provider")
         deep_provider = self.config.get("deep_provider")
-        normalized_quick_provider = (
-            normalize_provider_key(quick_provider) if quick_provider else None
-        )
-        normalized_deep_provider = (
-            normalize_provider_key(deep_provider) if deep_provider else None
-        )
+        normalized_quick_provider = normalize_provider_key(quick_provider) if quick_provider else None
+        normalized_deep_provider = normalize_provider_key(deep_provider) if deep_provider else None
         quick_backend_url = self.config.get("quick_backend_url")
         deep_backend_url = self.config.get("deep_backend_url")
         normalized_provider = normalize_provider_key(self.config["llm_provider"])
@@ -81,12 +106,8 @@ class _GraphMixin1:
         ):
             # 混合模式：快速模型和深度模型来自不同厂家
             logger.info("🔀 [混合模式] 检测到不同厂家的模型组合")
-            logger.info(
-                f"   快速模型: {self.config['quick_think_llm']} ({normalized_quick_provider})"
-            )
-            logger.info(
-                f"   深度模型: {self.config['deep_think_llm']} ({normalized_deep_provider})"
-            )
+            logger.info(f"   快速模型: {self.config['quick_think_llm']} ({normalized_quick_provider})")
+            logger.info(f"   深度模型: {self.config['deep_think_llm']} ({normalized_deep_provider})")
 
             # 使用统一的函数创建 LLM 实例
             self.quick_thinking_llm = create_llm_by_provider(
@@ -136,9 +157,7 @@ class _GraphMixin1:
             elif provider == "openrouter":
                 api_key = settings.OPENROUTER_API_KEY or settings.OPENAI_API_KEY
                 if not api_key:
-                    raise ValueError(
-                        "使用OpenRouter需要配置OPENROUTER_API_KEY或OPENAI_API_KEY"
-                    )
+                    raise ValueError("使用OpenRouter需要配置OPENROUTER_API_KEY或OPENAI_API_KEY")
             elif provider == "aihubmix":
                 api_key = settings.AIHUBMIX_API_KEY
                 if not api_key:
@@ -184,20 +203,14 @@ class _GraphMixin1:
             )
         elif normalized_provider == "google":
             # 使用统一 llm_clients 入口，但底层仍返回 ChatGoogleOpenAI 兼容适配器
-            logger.info(
-                "🔧 使用统一 llm_clients 路径初始化 Google AI（保留工具调用兼容行为）"
-            )
+            logger.info("🔧 使用统一 llm_clients 路径初始化 Google AI（保留工具调用兼容行为）")
 
             # 🔥 优先使用数据库配置的 API Key，否则从环境变量读取
             google_api_key = (
-                self.config.get("quick_api_key")
-                or self.config.get("deep_api_key")
-                or settings.GOOGLE_API_KEY
+                self.config.get("quick_api_key") or self.config.get("deep_api_key") or settings.GOOGLE_API_KEY
             )
             if not google_api_key:
-                raise ValueError(
-                    "使用Google AI需要在数据库中配置API Key或设置GOOGLE_API_KEY环境变量"
-                )
+                raise ValueError("使用Google AI需要在数据库中配置API Key或设置GOOGLE_API_KEY环境变量")
 
             logger.info(
                 f"🔑 [Google AI] API Key 来源: {'数据库配置' if self.config.get('quick_api_key') or self.config.get('deep_api_key') else '环境变量'}"
@@ -231,9 +244,7 @@ class _GraphMixin1:
                 quick_extra_kwargs={"transport": "rest"},
             )
 
-            logger.info(
-                "✅ [Google AI] 已启用优化的工具调用和内容格式处理并应用用户配置的模型参数"
-            )
+            logger.info("✅ [Google AI] 已启用优化的工具调用和内容格式处理并应用用户配置的模型参数")
         elif normalized_provider == "qwen":
             logger.info("🔧 使用统一 llm_clients 路径初始化阿里百炼/通义千问")
             self.deep_thinking_llm, self.quick_thinking_llm = _create_provider_pair(
@@ -247,21 +258,15 @@ class _GraphMixin1:
                 deep_timeout=deep_timeout,
                 backend_url=self.config.get("backend_url"),
             )
-            logger.info(
-                "✅ [阿里百炼] 已通过 llm_clients 初始化成功并应用用户配置的模型参数"
-            )
+            logger.info("✅ [阿里百炼] 已通过 llm_clients 初始化成功并应用用户配置的模型参数")
         elif normalized_provider == "deepseek":
             deepseek_api_key = (
-                self.config.get("quick_api_key")
-                or self.config.get("deep_api_key")
-                or settings.DEEPSEEK_API_KEY
+                self.config.get("quick_api_key") or self.config.get("deep_api_key") or settings.DEEPSEEK_API_KEY
             )
             if not deepseek_api_key:
                 raise ValueError("使用DeepSeek需要配置DEEPSEEK_API_KEY")
 
-            deepseek_base_url = (
-                self.config.get("backend_url") or settings.DEEPSEEK_BASE_URL
-            )
+            deepseek_base_url = self.config.get("backend_url") or settings.DEEPSEEK_BASE_URL
             self.deep_thinking_llm, self.quick_thinking_llm = _create_provider_pair(
                 provider="deepseek",
                 config=self.config,
@@ -274,17 +279,13 @@ class _GraphMixin1:
                 backend_url=deepseek_base_url,
                 api_key=deepseek_api_key,
             )
-            logger.info(
-                "✅ [DeepSeek] 已通过 llm_clients 初始化成功并应用用户配置的模型参数"
-            )
+            logger.info("✅ [DeepSeek] 已通过 llm_clients 初始化成功并应用用户配置的模型参数")
         elif normalized_provider == "custom_openai":
             custom_api_key = settings.CUSTOM_OPENAI_API_KEY
             if not custom_api_key:
                 raise ValueError("使用自定义OpenAI端点需要配置CUSTOM_OPENAI_API_KEY")
 
-            custom_base_url = self.config.get(
-                "custom_openai_base_url", "https://api.openai.com/v1"
-            )
+            custom_base_url = self.config.get("custom_openai_base_url", "https://api.openai.com/v1")
             logger.info(f"🔧 [自定义OpenAI] 使用端点: {custom_base_url}")
             self.deep_thinking_llm, self.quick_thinking_llm = _create_provider_pair(
                 provider="custom_openai",
@@ -298,9 +299,7 @@ class _GraphMixin1:
                 backend_url=custom_base_url,
                 api_key=custom_api_key,
             )
-            logger.info(
-                "✅ [自定义OpenAI] 已通过 llm_clients 初始化成功并应用用户配置的模型参数"
-            )
+            logger.info("✅ [自定义OpenAI] 已通过 llm_clients 初始化成功并应用用户配置的模型参数")
         elif normalized_provider == "qianfan":
             # 百度千帆（文心一言）配置 - 统一由适配器内部读取与校验 QIANFAN_API_KEY
             logger.info(
@@ -323,18 +322,14 @@ class _GraphMixin1:
         elif normalized_provider == "glm":
             # 🔥 优先使用数据库配置的 API Key，否则从环境变量读取
             zhipu_api_key = (
-                self.config.get("quick_api_key")
-                or self.config.get("deep_api_key")
-                or settings.ZHIPU_API_KEY
+                self.config.get("quick_api_key") or self.config.get("deep_api_key") or settings.ZHIPU_API_KEY
             )
             logger.info(
                 f"🔑 [智谱AI] API Key 来源: {'数据库配置' if self.config.get('quick_api_key') or self.config.get('deep_api_key') else '环境变量'}"
             )
 
             if not zhipu_api_key:
-                raise ValueError(
-                    "使用智谱AI需要在数据库中配置API Key或设置ZHIPU_API_KEY环境变量"
-                )
+                raise ValueError("使用智谱AI需要在数据库中配置API Key或设置ZHIPU_API_KEY环境变量")
 
             # 🔧 从配置中读取模型参数（优先使用用户配置，否则使用默认值）
             quick_config = self.config.get("quick_model_config", {})
@@ -374,9 +369,7 @@ class _GraphMixin1:
                 api_key=zhipu_api_key,
             )
 
-            logger.info(
-                "✅ [智谱AI] 已通过 llm_clients 初始化成功并应用用户配置的模型参数"
-            )
+            logger.info("✅ [智谱AI] 已通过 llm_clients 初始化成功并应用用户配置的模型参数")
         else:
             provider_name = self.config["llm_provider"]
             logger.info(f"🔧 使用统一 llm_clients 路径处理自定义厂家: {provider_name}")
@@ -403,9 +396,7 @@ class _GraphMixin1:
             # 获取 backend_url（从配置中获取）
             backend_url = self.config.get("backend_url")
             if not backend_url:
-                raise ValueError(
-                    f"使用自定义厂家 {provider_name} 需要在数据库配置中设置 default_base_url"
-                )
+                raise ValueError(f"使用自定义厂家 {provider_name} 需要在数据库配置中设置 default_base_url")
 
             logger.info(f"🔧 [自定义厂家 {provider_name}] 使用端点: {backend_url}")
 
@@ -441,9 +432,7 @@ class _GraphMixin1:
                 api_key=custom_api_key,
             )
 
-            logger.info(
-                f"✅ [自定义厂家 {provider_name}] 已配置自定义端点并应用用户配置的模型参数"
-            )
+            logger.info(f"✅ [自定义厂家 {provider_name}] 已配置自定义端点并应用用户配置的模型参数")
 
         self.toolkit = Toolkit(config=self.config)
 
@@ -453,12 +442,8 @@ class _GraphMixin1:
             self.bull_memory = FinancialSituationMemory("bull_memory", self.config)
             self.bear_memory = FinancialSituationMemory("bear_memory", self.config)
             self.trader_memory = FinancialSituationMemory("trader_memory", self.config)
-            self.invest_judge_memory = FinancialSituationMemory(
-                "invest_judge_memory", self.config
-            )
-            self.risk_manager_memory = FinancialSituationMemory(
-                "risk_manager_memory", self.config
-            )
+            self.invest_judge_memory = FinancialSituationMemory("invest_judge_memory", self.config)
+            self.risk_manager_memory = FinancialSituationMemory("risk_manager_memory", self.config)
         else:
             self.bull_memory = None
             self.bear_memory = None
@@ -476,12 +461,8 @@ class _GraphMixin1:
             max_risk_discuss_rounds=self.config.get("max_risk_discuss_rounds", 1),
         )
         logger.info("🔧 [ConditionalLogic] 初始化完成:")
-        logger.info(
-            f"   - max_debate_rounds: {self.conditional_logic.max_debate_rounds}"
-        )
-        logger.info(
-            f"   - max_risk_discuss_rounds: {self.conditional_logic.max_risk_discuss_rounds}"
-        )
+        logger.info(f"   - max_debate_rounds: {self.conditional_logic.max_debate_rounds}")
+        logger.info(f"   - max_risk_discuss_rounds: {self.conditional_logic.max_risk_discuss_rounds}")
 
         self.graph_setup = GraphSetup(
             self.quick_thinking_llm,
@@ -520,55 +501,47 @@ class _GraphMixin1:
         ToolNode 的作用是执行 LLM 生成的 tool_calls，而不是限制 LLM 可以调用哪些工具。
         """
         return {
-            "market": ToolNode(
-                [
-                    # 统一工具（推荐）
-                    self.toolkit.get_stock_market_data_unified,
-                    # 在线工具（备用）
-                    self.toolkit.get_yfin_data_online,
-                    self.toolkit.get_stockstats_indicators_report_online,
-                    # 离线工具（备用）
-                    self.toolkit.get_yfin_data,
-                    self.toolkit.get_stockstats_indicators_report,
-                ]
-            ),
-            "social": ToolNode(
-                [
-                    # 统一工具（推荐）
-                    self.toolkit.get_stock_sentiment_unified,
-                    # 在线工具（备用）
-                    self.toolkit.get_stock_news_openai,
-                    # 离线工具（备用）
-                    self.toolkit.get_reddit_stock_info,
-                ]
-            ),
-            "news": ToolNode(
-                [
-                    # 统一工具（推荐）
-                    self.toolkit.get_stock_news_unified,
-                    # 在线工具（备用）
-                    self.toolkit.get_global_news_openai,
-                    self.toolkit.get_google_news,
-                    # 离线工具（备用）
-                    self.toolkit.get_finnhub_news,
-                    self.toolkit.get_reddit_news,
-                ]
-            ),
-            "fundamentals": ToolNode(
-                [
-                    # 统一工具（推荐）
-                    self.toolkit.get_stock_fundamentals_unified,
-                    # 离线工具（备用）
-                    self.toolkit.get_finnhub_company_insider_sentiment,
-                    self.toolkit.get_finnhub_company_insider_transactions,
-                    self.toolkit.get_simfin_balance_sheet,
-                    self.toolkit.get_simfin_cashflow,
-                    self.toolkit.get_simfin_income_stmt,
-                    # 中国市场工具（备用）
-                    self.toolkit.get_china_stock_data,
-                    self.toolkit.get_china_fundamentals,
-                ]
-            ),
+            "market": ToolNode([
+                # 统一工具（推荐）
+                self.toolkit.get_stock_market_data_unified,
+                # 在线工具（备用）
+                self.toolkit.get_yfin_data_online,
+                self.toolkit.get_stockstats_indicators_report_online,
+                # 离线工具（备用）
+                self.toolkit.get_yfin_data,
+                self.toolkit.get_stockstats_indicators_report,
+            ]),
+            "social": ToolNode([
+                # 统一工具（推荐）
+                self.toolkit.get_stock_sentiment_unified,
+                # 在线工具（备用）
+                self.toolkit.get_stock_news_openai,
+                # 离线工具（备用）
+                self.toolkit.get_reddit_stock_info,
+            ]),
+            "news": ToolNode([
+                # 统一工具（推荐）
+                self.toolkit.get_stock_news_unified,
+                # 在线工具（备用）
+                self.toolkit.get_global_news_openai,
+                self.toolkit.get_google_news,
+                # 离线工具（备用）
+                self.toolkit.get_finnhub_news,
+                self.toolkit.get_reddit_news,
+            ]),
+            "fundamentals": ToolNode([
+                # 统一工具（推荐）
+                self.toolkit.get_stock_fundamentals_unified,
+                # 离线工具（备用）
+                self.toolkit.get_finnhub_company_insider_sentiment,
+                self.toolkit.get_finnhub_company_insider_transactions,
+                self.toolkit.get_simfin_balance_sheet,
+                self.toolkit.get_simfin_cashflow,
+                self.toolkit.get_simfin_income_stmt,
+                # 中国市场工具（备用）
+                self.toolkit.get_china_stock_data,
+                self.toolkit.get_china_fundamentals,
+            ]),
         }
 
     def resolve_instrument_context(self, ticker: str, asset_type: str = "stock") -> str:
@@ -604,14 +577,8 @@ class _GraphMixin1:
             if len(stock) < 2 or len(bench) < 2:
                 return None, None, None
             actual_days = min(holding_days, len(stock) - 1, len(bench) - 1)
-            raw = float(
-                (stock["Close"].iloc[actual_days] - stock["Close"].iloc[0])
-                / stock["Close"].iloc[0]
-            )
-            bench_ret = float(
-                (bench["Close"].iloc[actual_days] - bench["Close"].iloc[0])
-                / bench["Close"].iloc[0]
-            )
+            raw = float((stock["Close"].iloc[actual_days] - stock["Close"].iloc[0]) / stock["Close"].iloc[0])
+            bench_ret = float((bench["Close"].iloc[actual_days] - bench["Close"].iloc[0]) / bench["Close"].iloc[0])
             return raw, raw - bench_ret, actual_days
         except Exception as exc:
             logger.warning(
@@ -624,17 +591,13 @@ class _GraphMixin1:
             return None, None, None
 
     def _resolve_pending_entries(self, ticker: str) -> None:
-        pending = [
-            e for e in self.memory_log.get_pending_entries() if e["ticker"] == ticker
-        ]
+        pending = [e for e in self.memory_log.get_pending_entries() if e["ticker"] == ticker]
         if not pending:
             return
         benchmark = self._resolve_benchmark(ticker)
         updates = []
         for entry in pending:
-            raw, alpha, days = self._fetch_returns(
-                ticker, entry["date"], benchmark=benchmark
-            )
+            raw, alpha, days = self._fetch_returns(ticker, entry["date"], benchmark=benchmark)
             if raw is None or alpha is None:
                 continue
             reflection = self.reflector.reflect_on_final_decision(
@@ -643,16 +606,14 @@ class _GraphMixin1:
                 alpha_return=alpha,
                 benchmark_name=benchmark,
             )
-            updates.append(
-                {
-                    "ticker": ticker,
-                    "trade_date": entry["date"],
-                    "raw_return": raw,
-                    "alpha_return": alpha,
-                    "holding_days": days,
-                    "reflection": reflection,
-                }
-            )
+            updates.append({
+                "ticker": ticker,
+                "trade_date": entry["date"],
+                "raw_return": raw,
+                "alpha_return": alpha,
+                "holding_days": days,
+                "reflection": reflection,
+            })
         if updates:
             self.memory_log.batch_update_with_outcomes(updates)
 
@@ -669,9 +630,9 @@ class _GraphMixin1:
         )
         args = self.propagator.get_graph_args()
         if self.config.get("checkpoint_enabled"):
-            args.setdefault("config", {}).setdefault("configurable", {})[
-                "thread_id"
-            ] = thread_id(company_name, str(trade_date))
+            args.setdefault("config", {}).setdefault("configurable", {})["thread_id"] = thread_id(
+                company_name, str(trade_date)
+            )
         final_state = cast(Any, self.graph).invoke(init_agent_state, **args)
         self.curr_state = final_state
         self._log_state(trade_date, final_state)
@@ -680,6 +641,4 @@ class _GraphMixin1:
             trade_date=str(trade_date),
             final_trade_decision=final_state["final_trade_decision"],
         )
-        return final_state, self.process_signal(
-            final_state["final_trade_decision"], company_name
-        )
+        return final_state, self.process_signal(final_state["final_trade_decision"], company_name)

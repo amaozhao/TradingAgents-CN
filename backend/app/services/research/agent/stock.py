@@ -18,17 +18,8 @@ from app.services.analysis.simple import (
     get_simple_analysis_service,
 )
 from app.services.usage import usage_statistics_service
-from trader.llm.clients.factory import create_llm_client
 
 from .context import ToolExecutionContext
-from .flow import StockDagParityWorkflow
-from .flow.context import build_stock_workflow_context
-from .flow.events import NODE_STAGE, build_stock_workflow_stage_events
-from .flow.graph import build_stock_dag_parity_plan
-from .flow.stages.reports import (
-    build_stock_workflow_report,
-    persist_stock_workflow_report,
-)
 from .stage import planned_stock_stages, stock_stage_title
 
 
@@ -56,6 +47,31 @@ _DEPTH_TO_LABEL = {
     "标准": "标准",
     "深度": "深度",
     "全面": "全面",
+}
+
+_NODE_STAGE = {
+    "Market Analyst": "market_analysis",
+    "tools_market": "market_analysis",
+    "Msg Clear Market": "market_analysis",
+    "Sentiment Analyst": "sentiment_analysis",
+    "tools_social": "sentiment_analysis",
+    "Msg Clear Social": "sentiment_analysis",
+    "News Analyst": "news_analysis",
+    "tools_news": "news_analysis",
+    "Msg Clear News": "news_analysis",
+    "Fundamentals Analyst": "fundamentals_analysis",
+    "tools_fundamentals": "fundamentals_analysis",
+    "Msg Clear Fundamentals": "fundamentals_analysis",
+    "Bull Researcher": "research_debate",
+    "Bear Researcher": "research_debate",
+    "Research Manager": "research_manager",
+    "Trader": "trader_decision",
+    "Risky Analyst": "risk_debate",
+    "Safe Analyst": "risk_debate",
+    "Neutral Analyst": "risk_debate",
+    "Risk Judge": "final_risk_decision",
+    "Portfolio Manager": "final_risk_decision",
+    "END": "agent_summary",
 }
 
 logger = logging.getLogger("app.services.research.agent.stock")
@@ -500,6 +516,8 @@ def build_agent_stock_workflow_context(
     stage_plan: list[dict[str, str]],
     task_id: str,
 ):
+    from .flow.context import build_stock_workflow_context
+
     quick_model = parameters.quick_analysis_model or "qwen-turbo"
     deep_model = parameters.deep_analysis_model or quick_model
     quick_provider = _provider_info_for_model(quick_model, {})
@@ -547,7 +565,16 @@ async def run_agent_stock_workflow(
     parameters: AnalysisParameters,
     skipped_stages: list[dict[str, str]],
     stage_plan: list[dict[str, str]],
+    batch_id: str | None = None,
 ) -> dict[str, Any]:
+    from .flow import StockDagParityWorkflow
+    from .flow.events import build_stock_workflow_stage_events
+    from .flow.graph import build_stock_dag_parity_plan
+    from .flow.stages.reports import (
+        build_stock_workflow_report,
+        persist_stock_workflow_report,
+    )
+
     task_id = str(uuid.uuid4())
     workflow_context = build_agent_stock_workflow_context(
         principal_context=context,
@@ -565,6 +592,7 @@ async def run_agent_stock_workflow(
         status="completed",
         progress=8,
         message="个股分析参数已校验。",
+        batch_id=batch_id,
     )
     await _emit_stock_workflow_stage(
         context=context,
@@ -573,6 +601,7 @@ async def run_agent_stock_workflow(
         status="completed",
         progress=12,
         message="个股分析初始状态已准备。",
+        batch_id=batch_id,
     )
     started = time.perf_counter()
     workflow_result = await to_thread(
@@ -581,6 +610,7 @@ async def run_agent_stock_workflow(
             on_node_record=_stock_workflow_node_emitter(
                 context=context,
                 task_id=task_id,
+                batch_id=batch_id,
             ),
         ).run
     )
@@ -655,28 +685,31 @@ async def _emit_stock_workflow_stage(
     status: str,
     progress: int,
     message: str,
+    batch_id: str | None = None,
 ) -> None:
     if context.event_emitter is None:
         return
-    await context.event_emitter(
-        {
-            "tool_name": "stock_analysis",
-            "mode": "single",
-            "stage": stage,
-            "title": stock_stage_title(stage),
-            "status": status,
-            "progress": progress,
-            "message": message,
-            "task_id": task_id,
-            "attempt_id": context.request_id,
-        }
-    )
+    event = {
+        "tool_name": "stock_analysis",
+        "mode": "single",
+        "stage": stage,
+        "title": stock_stage_title(stage),
+        "status": status,
+        "progress": progress,
+        "message": message,
+        "task_id": task_id,
+        "attempt_id": context.request_id,
+    }
+    if batch_id:
+        event["batch_id"] = batch_id
+    await context.event_emitter(event)
 
 
 def _stock_workflow_node_emitter(
     *,
     context: ToolExecutionContext,
     task_id: str,
+    batch_id: str | None = None,
 ):
     event_emitter = context.event_emitter
     if event_emitter is None:
@@ -684,7 +717,7 @@ def _stock_workflow_node_emitter(
     loop = get_running_loop()
 
     def emit(node: str, previous: str | None) -> None:
-        stage = NODE_STAGE.get(node, "agent_summary")
+        stage = _NODE_STAGE.get(node, "agent_summary")
         event = {
             "tool_name": "stock_analysis",
             "mode": "single",
@@ -699,6 +732,8 @@ def _stock_workflow_node_emitter(
             "edge_from": previous,
             "edge_to": node,
         }
+        if batch_id:
+            event["batch_id"] = batch_id
         try:
             future = run_coroutine_threadsafe(event_emitter(event), loop)
             future.result(timeout=5)
@@ -822,6 +857,8 @@ def _analysis_trade_date(parameters: AnalysisParameters) -> str:
 
 
 def _create_workflow_llm(model_name: str, provider_info: dict[str, Any]):
+    from trader.llm.clients import create_llm_client
+
     provider = str(provider_info.get("provider") or "qwen")
     base_url = provider_info.get("backend_url")
     api_key = provider_info.get("api_key")

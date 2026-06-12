@@ -1,4 +1,6 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import Optional, StockDataPreparationResult, datetime, logger
+from .task import get_stock_preparer
+
 async def prepare_stock_data_async(
     stock_code: str,
     market_type: str = "auto",
@@ -27,9 +29,7 @@ async def prepare_stock_data_async(
 
     analysis_date_value = analysis_date or datetime.now().strftime("%Y-%m-%d")
 
-    logger.info(
-        f"📊 [数据准备-异步] 开始准备股票数据: {stock_code} (市场: {market_type}, 时长: {period_days}天)"
-    )
+    logger.info(f"📊 [数据准备-异步] 开始准备股票数据: {stock_code} (市场: {market_type}, 时长: {period_days}天)")
 
     # 1. 基本格式验证（同步操作）
     format_result = preparer._validate_format(stock_code, market_type)
@@ -42,6 +42,4 @@ async def prepare_stock_data_async(
         logger.debug(f"📊 [数据准备-异步] 自动检测市场类型: {market_type}")
 
     # 3. 预获取数据并验证（使用异步版本）
-    return await preparer._prepare_data_by_market_async(
-        stock_code, market_type, period_days, analysis_date_value
-    )
+    return await preparer._prepare_data_by_market_async(stock_code, market_type, period_days, analysis_date_value)

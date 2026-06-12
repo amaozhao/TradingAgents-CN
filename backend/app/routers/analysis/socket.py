@@ -1,4 +1,15 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        WebSocket,
+        WebSocketDisconnect,
+        get_websocket_manager,
+        importlib,
+        logger,
+        router,
+    )
+
 @router.websocket("/ws/task/{task_id}")
 async def websocket_task_progress(websocket: WebSocket, task_id: str):
     """WebSocket 端点：实时获取任务进度"""
@@ -10,13 +21,11 @@ async def websocket_task_progress(websocket: WebSocket, task_id: str):
 
         # 发送连接确认消息
         await websocket.send_text(
-            json.dumps(
-                {
-                    "type": "connection_established",
-                    "task_id": task_id,
-                    "message": "WebSocket 连接已建立",
-                }
-            )
+            json.dumps({
+                "type": "connection_established",
+                "task_id": task_id,
+                "message": "WebSocket 连接已建立",
+            })
         )
 
         # 保持连接活跃

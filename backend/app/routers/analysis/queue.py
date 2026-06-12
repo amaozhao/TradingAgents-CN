@@ -1,4 +1,26 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import (
+    BatchRepository,
+    Depends,
+    HTTPException,
+    Optional,
+    Query,
+    QueueService,
+    get_current_user,
+    get_queue_service,
+    get_simple_analysis_service,
+    importlib,
+    router,
+)
+from .setup import (
+    AnalysisDataResponse,
+    AnalysisLooseObjectResponse,
+    AnalysisOperationResponse,
+    AnalysisQueueBatchResponse,
+    AnalysisQueueTaskResponse,
+    BatchAnalyzeRequest,
+    SingleAnalyzeRequest,
+)
+
 @router.post("/analyze", response_model=AnalysisQueueTaskResponse)
 async def analyze_single(
     req: SingleAnalyzeRequest,
@@ -7,9 +29,7 @@ async def analyze_single(
 ):
     """个股分析（兼容性端点）"""
     try:
-        task_id = await svc.enqueue_task(
-            user_id=user["id"], symbol=req.symbol, params=req.parameters
-        )
+        task_id = await svc.enqueue_task(user_id=user["id"], symbol=req.symbol, params=req.parameters)
         return {"task_id": task_id, "status": "queued"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -23,9 +43,7 @@ async def analyze_batch(
 ):
     """批量分析（兼容性端点）"""
     try:
-        batch_id, submitted = await svc.create_batch(
-            user_id=user["id"], symbols=req.symbols, params=req.parameters
-        )
+        batch_id, submitted = await svc.create_batch(user_id=user["id"], symbols=req.symbols, params=req.parameters)
         return {"batch_id": batch_id, "submitted": submitted}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -37,6 +55,9 @@ async def get_batch(
     user: dict = Depends(get_current_user),
     svc: QueueService = Depends(get_queue_service),
 ):
+    batch = await BatchRepository().get_batch(batch_id, user["id"])
+    if batch is not None:
+        return batch
     b = await svc.get_batch(batch_id)
     if not b or b.get("user") != user["id"]:
         raise HTTPException(status_code=404, detail="batch not found")
@@ -119,6 +140,7 @@ async def get_user_analysis_history(
     end_date: Optional[str] = Query(None, description="结束日期，YYYY-MM-DD"),
     symbol: Optional[str] = Query(None, description="股票代码"),
     stock_code: Optional[str] = Query(None, description="股票代码(已废弃,使用symbol)"),
+    batch_id: Optional[str] = Query(None, description="批次ID"),
     market_type: Optional[str] = Query(None, description="市场类型"),
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页大小"),
@@ -131,6 +153,7 @@ async def get_user_analysis_history(
             status=status,
             limit=page_size,
             offset=(page - 1) * page_size,
+            batch_id=batch_id,
         )
 
         # 进行基础筛选
@@ -140,11 +163,7 @@ async def get_user_analysis_history(
             if not t:
                 return True
             try:
-                dt = (
-                    datetime.fromisoformat(t.replace("Z", "+00:00"))
-                    if "Z" in t
-                    else datetime.fromisoformat(t)
-                )
+                dt = datetime.fromisoformat(t.replace("Z", "+00:00")) if "Z" in t else datetime.fromisoformat(t)
             except Exception:
                 return True
             ok = True
@@ -166,9 +185,7 @@ async def get_user_analysis_history(
         filtered = []
         for x in raw_tasks:
             if query_symbol:
-                task_symbol = (
-                    x.get("symbol") or x.get("stock_code") or x.get("stock_symbol")
-                )
+                task_symbol = x.get("symbol") or x.get("stock_code") or x.get("stock_symbol")
                 if task_symbol not in [query_symbol]:
                     continue
             # 市场类型暂时从参数内判断（如有）

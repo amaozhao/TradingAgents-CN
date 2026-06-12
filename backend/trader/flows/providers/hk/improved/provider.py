@@ -1,4 +1,20 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        Path,
+        get_cache_dir,
+        get_int,
+        importlib,
+        json,
+        logger,
+        os,
+        pd,
+        time,
+    )
+
 class ImprovedHKStockProvider:
     """改进的港股数据提供器"""
 
@@ -10,12 +26,8 @@ class ImprovedHKStockProvider:
         else:
             self.cache_file = os.path.join(hk_cache_dir, "hk_stock_cache.json")
 
-        self.cache_ttl = get_int(
-            "TA_HK_CACHE_TTL_SECONDS", "ta_hk_cache_ttl_seconds", 3600 * 24
-        )
-        self.rate_limit_wait = get_int(
-            "TA_HK_RATE_LIMIT_WAIT_SECONDS", "ta_hk_rate_limit_wait_seconds", 5
-        )
+        self.cache_ttl = get_int("TA_HK_CACHE_TTL_SECONDS", "ta_hk_cache_ttl_seconds", 3600 * 24)
+        self.rate_limit_wait = get_int("TA_HK_RATE_LIMIT_WAIT_SECONDS", "ta_hk_rate_limit_wait_seconds", 5)
         self.last_request_time = 0
 
         # 内置港股名称映射（避免API调用）
@@ -201,9 +213,7 @@ class ImprovedHKStockProvider:
             cache_key = f"name_{symbol}"
             if self._is_cache_valid(cache_key):
                 cached_name = self.cache[cache_key]["data"]
-                logger.debug(
-                    f"📊 [港股缓存] 从缓存获取公司名称: {symbol} -> {cached_name}"
-                )
+                logger.debug(f"📊 [港股缓存] 从缓存获取公司名称: {symbol} -> {cached_name}")
                 return cached_name
 
             # 方案1：使用内置映射
@@ -222,9 +232,7 @@ class ImprovedHKStockProvider:
                     }
                     self._save_cache()
 
-                    logger.debug(
-                        f"📊 [港股映射] 获取公司名称: {symbol} -> {company_name}"
-                    )
+                    logger.debug(f"📊 [港股映射] 获取公司名称: {symbol} -> {company_name}")
                     return company_name
 
             # 方案2：优先尝试AKShare API获取（有速率限制保护）
@@ -232,9 +240,7 @@ class ImprovedHKStockProvider:
                 # 速率限制保护
                 current_time = time.time()
                 if current_time - self.last_request_time < self.rate_limit_wait:
-                    wait_time = self.rate_limit_wait - (
-                        current_time - self.last_request_time
-                    )
+                    wait_time = self.rate_limit_wait - (current_time - self.last_request_time)
                     logger.debug(f"📊 [港股API] 速率限制保护，等待 {wait_time:.1f} 秒")
                     time.sleep(wait_time)
 
@@ -259,9 +265,7 @@ class ImprovedHKStockProvider:
                             if not matched.empty:
                                 # 新浪接口返回的列名是 '中文名称'
                                 akshare_name = matched.iloc[0]["中文名称"]
-                                if akshare_name and not str(akshare_name).startswith(
-                                    "港股"
-                                ):
+                                if akshare_name and not str(akshare_name).startswith("港股"):
                                     # 缓存AKShare结果
                                     self.cache[cache_key] = {
                                         "data": akshare_name,
@@ -270,9 +274,7 @@ class ImprovedHKStockProvider:
                                     }
                                     self._save_cache()
 
-                                    logger.debug(
-                                        f"📊 [港股AKShare-新浪] 获取公司名称: {symbol} -> {akshare_name}"
-                                    )
+                                    logger.debug(f"📊 [港股AKShare-新浪] 获取公司名称: {symbol} -> {akshare_name}")
                                     return akshare_name
                     except Exception as e:
                         logger.debug(f"📊 [港股AKShare-新浪] 获取实时行情失败: {e}")
@@ -298,9 +300,7 @@ class ImprovedHKStockProvider:
                         }
                         self._save_cache()
 
-                        logger.debug(
-                            f"📊 [港股统一API] 获取公司名称: {symbol} -> {api_name}"
-                        )
+                        logger.debug(f"📊 [港股统一API] 获取公司名称: {symbol} -> {api_name}")
                         return api_name
 
             except Exception as e:
@@ -372,34 +372,18 @@ class ImprovedHKStockProvider:
                 "report_date": str(latest.get("REPORT_DATE", "")),
                 "fiscal_year": str(latest.get("FISCAL_YEAR", "")),
                 # 每股指标
-                "eps_basic": float(latest.get("BASIC_EPS", 0))
-                if pd.notna(latest.get("BASIC_EPS"))
-                else None,
-                "eps_diluted": float(latest.get("DILUTED_EPS", 0))
-                if pd.notna(latest.get("DILUTED_EPS"))
-                else None,
-                "eps_ttm": float(latest.get("EPS_TTM", 0))
-                if pd.notna(latest.get("EPS_TTM"))
-                else None,
-                "bps": float(latest.get("BPS", 0))
-                if pd.notna(latest.get("BPS"))
-                else None,
+                "eps_basic": float(latest.get("BASIC_EPS", 0)) if pd.notna(latest.get("BASIC_EPS")) else None,
+                "eps_diluted": float(latest.get("DILUTED_EPS", 0)) if pd.notna(latest.get("DILUTED_EPS")) else None,
+                "eps_ttm": float(latest.get("EPS_TTM", 0)) if pd.notna(latest.get("EPS_TTM")) else None,
+                "bps": float(latest.get("BPS", 0)) if pd.notna(latest.get("BPS")) else None,
                 "per_netcash_operate": float(latest.get("PER_NETCASH_OPERATE", 0))
                 if pd.notna(latest.get("PER_NETCASH_OPERATE"))
                 else None,
                 # 盈利能力指标
-                "roe_avg": float(latest.get("ROE_AVG", 0))
-                if pd.notna(latest.get("ROE_AVG"))
-                else None,
-                "roe_yearly": float(latest.get("ROE_YEARLY", 0))
-                if pd.notna(latest.get("ROE_YEARLY"))
-                else None,
-                "roa": float(latest.get("ROA", 0))
-                if pd.notna(latest.get("ROA"))
-                else None,
-                "roic_yearly": float(latest.get("ROIC_YEARLY", 0))
-                if pd.notna(latest.get("ROIC_YEARLY"))
-                else None,
+                "roe_avg": float(latest.get("ROE_AVG", 0)) if pd.notna(latest.get("ROE_AVG")) else None,
+                "roe_yearly": float(latest.get("ROE_YEARLY", 0)) if pd.notna(latest.get("ROE_YEARLY")) else None,
+                "roa": float(latest.get("ROA", 0)) if pd.notna(latest.get("ROA")) else None,
+                "roic_yearly": float(latest.get("ROIC_YEARLY", 0)) if pd.notna(latest.get("ROIC_YEARLY")) else None,
                 "net_profit_ratio": float(latest.get("NET_PROFIT_RATIO", 0))
                 if pd.notna(latest.get("NET_PROFIT_RATIO"))
                 else None,
@@ -416,9 +400,7 @@ class ImprovedHKStockProvider:
                 "operate_income_qoq": float(latest.get("OPERATE_INCOME_QOQ", 0))
                 if pd.notna(latest.get("OPERATE_INCOME_QOQ"))
                 else None,
-                "gross_profit": float(latest.get("GROSS_PROFIT", 0))
-                if pd.notna(latest.get("GROSS_PROFIT"))
-                else None,
+                "gross_profit": float(latest.get("GROSS_PROFIT", 0)) if pd.notna(latest.get("GROSS_PROFIT")) else None,
                 "gross_profit_yoy": float(latest.get("GROSS_PROFIT_YOY", 0))
                 if pd.notna(latest.get("GROSS_PROFIT_YOY"))
                 else None,
@@ -436,9 +418,7 @@ class ImprovedHKStockProvider:
                 if pd.notna(latest.get("CURRENT_RATIO"))
                 else None,
                 # 现金流指标
-                "ocf_sales": float(latest.get("OCF_SALES", 0))
-                if pd.notna(latest.get("OCF_SALES"))
-                else None,
+                "ocf_sales": float(latest.get("OCF_SALES", 0)) if pd.notna(latest.get("OCF_SALES")) else None,
                 # 数据源
                 "source": "akshare_eastmoney",
                 "data_count": len(df),
@@ -448,9 +428,7 @@ class ImprovedHKStockProvider:
             self.cache[cache_key] = {"data": indicators, "timestamp": time.time()}
             self._save_cache()
 
-            logger.info(
-                f"✅ [港股财务指标] 成功获取: {normalized_symbol}, 报告期: {indicators['report_date']}"
-            )
+            logger.info(f"✅ [港股财务指标] 成功获取: {normalized_symbol}, 报告期: {indicators['report_date']}")
             return indicators
 
         except Exception as e:

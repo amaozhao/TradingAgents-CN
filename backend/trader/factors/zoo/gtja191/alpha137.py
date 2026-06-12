@@ -7,7 +7,7 @@
 """GTJA Alpha 137 (国泰君安 191 短周期交易型 alpha 因子, 2014).
 
 Formula (verbatim from the report):
-    16*((c-dc1+(c-o)/2+dc1-do1)/MAX_term) * MAX(abs(h-dc1), abs(l-dc1))
+    16*((c-dc1+(c-o)/2+dc1-do1)/MAX_term) * MAX(abs(h-dc1), abs(low-dc1))
 
 Notes: Transcribed from the standard 137 implementation; piecewise denominator.
 """
@@ -17,21 +17,7 @@ import numpy as np
 import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
     safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "gtja191_137"
@@ -62,13 +48,12 @@ def compute(panel):
     c = panel["close"]
     o = panel["open"]
     h = panel["high"]
-    l = panel["low"]
+    low = panel["low"]
     dc1 = c.shift(1)
     do1 = o.shift(1)
-    dl1 = l.shift(1)
-    dh1 = h.shift(1)
+    dl1 = low.shift(1)
     abs_hdc = (h - dc1).abs()
-    abs_ldc = (l - dc1).abs()
+    abs_ldc = (low - dc1).abs()
     abs_hdl1 = (h - dl1).abs()
     # Three candidate denominators per report
     cond1 = (abs_hdc > abs_ldc) & (abs_hdc > abs_hdl1)

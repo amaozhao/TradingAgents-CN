@@ -1,4 +1,9 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import logger
+    from .query import TushareProvider
+
 def get_tushare_provider() -> TushareProvider:
     """获取全局Tushare提供器实例"""
     global _tushare_provider, _tushare_provider_initialized

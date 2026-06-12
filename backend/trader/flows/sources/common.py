@@ -1,4 +1,20 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        ChinaDataSource,
+        DataSourceCode,
+        Dict,
+        List,
+        Optional,
+        importlib,
+        logger,
+        pd,
+        settings,
+        time,
+    )
+
 class _DataSourceManagerMixin1:
     def __init__(self):
         """初始化数据源管理器"""
@@ -13,9 +29,7 @@ class _DataSourceManagerMixin1:
         self.cache_manager = None
         self.cache_enabled = False
         try:
-            get_cache = getattr(
-                importlib.import_module("trader.flows.cache"), "get_cache"
-            )
+            get_cache = getattr(importlib.import_module("trader.flows.cache"), "get_cache")
             self.cache_manager = get_cache()
             self.cache_enabled = True
             logger.info("✅ 统一缓存管理器已启用")
@@ -23,25 +37,17 @@ class _DataSourceManagerMixin1:
             logger.warning(f"⚠️ 统一缓存管理器初始化失败: {e}")
 
         logger.info("📊 数据源管理器初始化完成")
-        logger.info(
-            f"   PostgreSQL缓存: {'✅ 已启用' if self.use_postgres_cache else '❌ 未启用'}"
-        )
-        logger.info(
-            f"   统一缓存: {'✅ 已启用' if self.cache_enabled else '❌ 未启用'}"
-        )
+        logger.info(f"   PostgreSQL缓存: {'✅ 已启用' if self.use_postgres_cache else '❌ 未启用'}")
+        logger.info(f"   统一缓存: {'✅ 已启用' if self.cache_enabled else '❌ 未启用'}")
         logger.info(f"   默认数据源: {self.default_source.value}")
         logger.info(f"   可用数据源: {[s.value for s in self.available_sources]}")
 
     def _check_postgres_enabled(self) -> bool:
         """检查是否启用PostgreSQL缓存"""
-        use_app_cache_enabled = getattr(
-            importlib.import_module("trader.config.runtime"), "use_app_cache_enabled"
-        )
+        use_app_cache_enabled = getattr(importlib.import_module("trader.config.runtime"), "use_app_cache_enabled")
         return use_app_cache_enabled()
 
-    def _get_data_source_priority_order(
-        self, symbol: Optional[str] = None
-    ) -> List[ChinaDataSource]:
+    def _get_data_source_priority_order(self, symbol: Optional[str] = None) -> List[ChinaDataSource]:
         """
         从数据库获取数据源优先级顺序（用于降级）
 
@@ -56,16 +62,12 @@ class _DataSourceManagerMixin1:
 
         try:
             # 🔥 从数据库读取数据源配置（使用同步客户端）
-            get_postgres_db_sync = getattr(
-                importlib.import_module("app.core.database"), "get_postgres_db_sync"
-            )
+            get_postgres_db_sync = getattr(importlib.import_module("app.core.database"), "get_postgres_db_sync")
             db = get_postgres_db_sync()
             config_collection = db.system_configs
 
             # 获取最新的激活配置
-            config_data = config_collection.find_one(
-                {"is_active": True}, sort=[("version", -1)]
-            )
+            config_data = config_collection.find_one({"is_active": True}, sort=[("version", -1)])
 
             if config_data and config_data.get("data_source_configs"):
                 data_source_configs = config_data.get("data_source_configs", [])
@@ -101,10 +103,7 @@ class _DataSourceManagerMixin1:
                     if ds_type in source_mapping:
                         source = source_mapping[ds_type]
                         # 排除 PostgreSQL（PostgreSQL 是最高优先级，不参与降级）
-                        if (
-                            source != ChinaDataSource.POSTGRES
-                            and source in self.available_sources
-                        ):
+                        if source != ChinaDataSource.POSTGRES and source in self.available_sources:
                             result.append(source)
 
                 if result:
@@ -145,12 +144,8 @@ class _DataSourceManagerMixin1:
             return None
 
         try:
-            StockUtils = getattr(
-                importlib.import_module("trader.utils.stocks"), "StockUtils"
-            )
-            StockMarket = getattr(
-                importlib.import_module("trader.utils.stocks"), "StockMarket"
-            )
+            StockUtils = getattr(importlib.import_module("trader.utils.stocks"), "StockUtils")
+            StockMarket = getattr(importlib.import_module("trader.utils.stocks"), "StockMarket")
 
             market = StockUtils.identify_stock_market(symbol)
 
@@ -176,9 +171,7 @@ class _DataSourceManagerMixin1:
             return ChinaDataSource.POSTGRES
 
         # 从 Settings 获取，默认使用AKShare作为第一优先级数据源
-        env_source = settings.text_value(
-            "DEFAULT_CHINA_DATA_SOURCE", DataSourceCode.AKSHARE.value
-        ).lower()
+        env_source = settings.text_value("DEFAULT_CHINA_DATA_SOURCE", DataSourceCode.AKSHARE.value).lower()
 
         # 映射到枚举（使用统一编码）
         source_mapping = {
@@ -189,9 +182,7 @@ class _DataSourceManagerMixin1:
 
         return source_mapping.get(env_source, ChinaDataSource.AKSHARE)
 
-    def get_china_stock_data_tushare(
-        self, symbol: str, start_date: str, end_date: str
-    ) -> str:
+    def get_china_stock_data_tushare(self, symbol: str, start_date: str, end_date: str) -> str:
         """
         使用Tushare获取中国A股历史数据
 
@@ -404,16 +395,12 @@ class _DataSourceManagerMixin1:
         # 🔥 从数据库读取数据源配置，获取启用状态
         enabled_sources_in_db = set()
         try:
-            get_postgres_db_sync = getattr(
-                importlib.import_module("app.core.database"), "get_postgres_db_sync"
-            )
+            get_postgres_db_sync = getattr(importlib.import_module("app.core.database"), "get_postgres_db_sync")
             db = get_postgres_db_sync()
             config_collection = db.system_configs
 
             # 获取最新的激活配置
-            config_data = config_collection.find_one(
-                {"is_active": True}, sort=[("version", -1)]
-            )
+            config_data = config_collection.find_one({"is_active": True}, sort=[("version", -1)])
 
             if config_data and config_data.get("data_source_configs"):
                 data_source_configs = config_data.get("data_source_configs", [])
@@ -424,19 +411,13 @@ class _DataSourceManagerMixin1:
                         ds_type = ds.get("type", "").lower()
                         enabled_sources_in_db.add(ds_type)
 
-                logger.info(
-                    f"✅ [数据源配置] 从数据库读取到已启用的数据源: {enabled_sources_in_db}"
-                )
+                logger.info(f"✅ [数据源配置] 从数据库读取到已启用的数据源: {enabled_sources_in_db}")
             else:
-                logger.warning(
-                    "⚠️ [数据源配置] 数据库中没有数据源配置，将检查所有已安装的数据源"
-                )
+                logger.warning("⚠️ [数据源配置] 数据库中没有数据源配置，将检查所有已安装的数据源")
                 # 如果数据库中没有配置，默认所有数据源都启用
                 enabled_sources_in_db = {"postgres", "tushare", "akshare", "baostock"}
         except Exception as e:
-            logger.warning(
-                f"⚠️ [数据源配置] 从数据库读取失败: {e}，将检查所有已安装的数据源"
-            )
+            logger.warning(f"⚠️ [数据源配置] 从数据库读取失败: {e}，将检查所有已安装的数据源")
             # 如果读取失败，默认所有数据源都启用
             enabled_sources_in_db = {"postgres", "tushare", "akshare", "baostock"}
 
@@ -466,22 +447,13 @@ class _DataSourceManagerMixin1:
             try:
                 importlib.import_module("tushare")
                 # 优先从数据库配置读取 API Key，其次从 Settings 读取
-                token = (
-                    datasource_configs.get("tushare", {}).get("api_key")
-                    or settings.TUSHARE_TOKEN
-                )
+                token = datasource_configs.get("tushare", {}).get("api_key") or settings.TUSHARE_TOKEN
                 if token:
                     available.append(ChinaDataSource.TUSHARE)
-                    source = (
-                        "数据库配置"
-                        if datasource_configs.get("tushare", {}).get("api_key")
-                        else "环境变量"
-                    )
+                    source = "数据库配置" if datasource_configs.get("tushare", {}).get("api_key") else "环境变量"
                     logger.info(f"✅ Tushare数据源可用且已启用 (API Key来源: {source})")
                 else:
-                    logger.warning(
-                        "⚠️ Tushare数据源不可用: API Key未配置（数据库和环境变量均未找到）"
-                    )
+                    logger.warning("⚠️ Tushare数据源不可用: API Key未配置（数据库和环境变量均未找到）")
             except ImportError:
                 logger.warning("⚠️ Tushare数据源不可用: 库未安装")
         else:
@@ -517,9 +489,7 @@ class _DataSourceManagerMixin1:
     def _get_datasource_configs_from_db(self) -> dict:
         """从数据库读取数据源配置（包括 API Key）"""
         try:
-            get_postgres_db_sync = getattr(
-                importlib.import_module("app.core.database"), "get_postgres_db_sync"
-            )
+            get_postgres_db_sync = getattr(importlib.import_module("app.core.database"), "get_postgres_db_sync")
             db = get_postgres_db_sync()
 
             # 从 system_configs 集合读取激活的配置
@@ -653,11 +623,7 @@ class _DataSourceManagerMixin1:
 
             if cache_key:
                 cached_data = self.cache_manager.load_stock_data(cache_key)
-                if (
-                    cached_data is not None
-                    and hasattr(cached_data, "empty")
-                    and not cached_data.empty
-                ):
+                if cached_data is not None and hasattr(cached_data, "empty") and not cached_data.empty:
                     logger.debug(f"📦 从缓存获取{symbol}数据: {len(cached_data)}条")
                     return cached_data
         except Exception as e:

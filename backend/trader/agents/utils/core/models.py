@@ -1,11 +1,23 @@
-# ruff: noqa: F401,F403,F405,F821,F722
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Annotated,
+        Doc,
+        importlib,
+        interface,
+        log_tool_call,
+        logger,
+        tool,
+    )
+
 class _ToolkitMixin3:
     @tool
     @staticmethod
     @log_tool_call(tool_name="get_stock_news_unified", log_args=True)
     def get_stock_news_unified(
-        ticker: Annotated[str, "股票代码（支持A股、港股、美股）"],
-        curr_date: Annotated[str, "当前日期，格式：YYYY-MM-DD"],
+        ticker: Annotated[str, Doc("股票代码（支持A股、港股、美股）")],
+        curr_date: Annotated[str, Doc("当前日期，格式：YYYY-MM-DD")],
     ) -> str:
         """
         统一的股票新闻工具
@@ -175,8 +187,8 @@ class _ToolkitMixin3:
     @staticmethod
     @log_tool_call(tool_name="get_stock_sentiment_unified", log_args=True)
     def get_stock_sentiment_unified(
-        ticker: Annotated[str, "股票代码（支持A股、港股、美股）"],
-        curr_date: Annotated[str, "当前日期，格式：YYYY-MM-DD"],
+        ticker: Annotated[str, Doc("股票代码（支持A股、港股、美股）")],
+        curr_date: Annotated[str, Doc("当前日期，格式：YYYY-MM-DD")],
     ) -> str:
         """
         统一的股票情绪分析工具

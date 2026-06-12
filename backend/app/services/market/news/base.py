@@ -1,5 +1,4 @@
-# ruff: noqa: F403,F405
-from .common import *
+from .common import get_database, logging
 
 
 class NewsBaseMixin:

@@ -1,4 +1,16 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Optional,
+        StockDataPreparationResult,
+        datetime,
+        importlib,
+        logger,
+        re,
+        timedelta,
+    )
+
 class _StockDataPreparerMixin1:
     def __init__(self, default_period_days: int = 30):
         self.timeout_seconds = 15  # 数据获取超时时间
@@ -29,9 +41,7 @@ class _StockDataPreparerMixin1:
         if analysis_date is None:
             analysis_date = datetime.now().strftime("%Y-%m-%d")
 
-        logger.info(
-            f"📊 [数据准备] 开始准备股票数据: {stock_code} (市场: {market_type}, 时长: {period_days}天)"
-        )
+        logger.info(f"📊 [数据准备] 开始准备股票数据: {stock_code} (市场: {market_type}, 时长: {period_days}天)")
 
         # 1. 基本格式验证
         format_result = self._validate_format(stock_code, market_type)
@@ -44,13 +54,9 @@ class _StockDataPreparerMixin1:
             logger.debug(f"📊 [数据准备] 自动检测市场类型: {market_type}")
 
         # 3. 预获取数据并验证
-        return self._prepare_data_by_market(
-            stock_code, market_type, period_days, analysis_date
-        )
+        return self._prepare_data_by_market(stock_code, market_type, period_days, analysis_date)
 
-    def _validate_format(
-        self, stock_code: str, market_type: str
-    ) -> StockDataPreparationResult:
+    def _validate_format(self, stock_code: str, market_type: str) -> StockDataPreparationResult:
         """验证股票代码格式"""
         stock_code = stock_code.strip()
 
@@ -103,9 +109,7 @@ class _StockDataPreparerMixin1:
                     suggestion="请输入1-5位字母的美股代码，如：AAPL、TSLA",
                 )
 
-        return StockDataPreparationResult(
-            is_valid=True, stock_code=stock_code, market_type=market_type
-        )
+        return StockDataPreparationResult(is_valid=True, stock_code=stock_code, market_type=market_type)
 
     def _detect_market_type(self, stock_code: str) -> str:
         """自动检测市场类型"""
@@ -255,17 +259,11 @@ class _StockDataPreparerMixin1:
 
         try:
             if market_type == "A股":
-                return self._prepare_china_stock_data(
-                    stock_code, period_days, analysis_date
-                )
+                return self._prepare_china_stock_data(stock_code, period_days, analysis_date)
             elif market_type == "港股":
-                return self._prepare_hk_stock_data(
-                    stock_code, period_days, analysis_date
-                )
+                return self._prepare_hk_stock_data(stock_code, period_days, analysis_date)
             elif market_type == "美股":
-                return self._prepare_us_stock_data(
-                    stock_code, period_days, analysis_date
-                )
+                return self._prepare_us_stock_data(stock_code, period_days, analysis_date)
             else:
                 return StockDataPreparationResult(
                     is_valid=False,
@@ -292,17 +290,11 @@ class _StockDataPreparerMixin1:
 
         try:
             if market_type == "A股":
-                return await self._prepare_china_stock_data_async(
-                    stock_code, period_days, analysis_date
-                )
+                return await self._prepare_china_stock_data_async(stock_code, period_days, analysis_date)
             elif market_type == "港股":
-                return self._prepare_hk_stock_data(
-                    stock_code, period_days, analysis_date
-                )
+                return self._prepare_hk_stock_data(stock_code, period_days, analysis_date)
             elif market_type == "美股":
-                return self._prepare_us_stock_data(
-                    stock_code, period_days, analysis_date
-                )
+                return self._prepare_us_stock_data(stock_code, period_days, analysis_date)
             else:
                 return StockDataPreparationResult(
                     is_valid=False,
@@ -339,9 +331,7 @@ class _StockDataPreparerMixin1:
         extended_start_date_str = extended_start_date.strftime("%Y-%m-%d")
         end_date_str = end_date.strftime("%Y-%m-%d")
 
-        logger.info(
-            f"📅 [A股数据] 实际数据范围: {extended_start_date_str} 到 {end_date_str} ({lookback_days}天)"
-        )
+        logger.info(f"📅 [A股数据] 实际数据范围: {extended_start_date_str} 到 {end_date_str} ({lookback_days}天)")
 
         has_historical_data = False
         has_basic_info = False
@@ -351,33 +341,23 @@ class _StockDataPreparerMixin1:
         try:
             # 1. 检查数据库中的数据是否存在和最新
             logger.debug(f"📊 [A股数据] 检查数据库中{stock_code}的数据...")
-            db_check_result = self._check_database_data(
-                stock_code, extended_start_date_str, end_date_str
-            )
+            db_check_result = self._check_database_data(stock_code, extended_start_date_str, end_date_str)
 
             # 2. 如果数据不存在或不是最新，自动触发同步
             if not db_check_result["has_data"] or not db_check_result["is_latest"]:
-                logger.warning(
-                    f"⚠️ [A股数据] 数据库数据不完整: {db_check_result['message']}"
-                )
+                logger.warning(f"⚠️ [A股数据] 数据库数据不完整: {db_check_result['message']}")
                 logger.info(f"🔄 [A股数据] 自动触发数据同步: {stock_code}")
 
                 # 使用扩展后的日期范围进行同步
-                sync_result = self._trigger_data_sync_sync(
-                    stock_code, extended_start_date_str, end_date_str
-                )
+                sync_result = self._trigger_data_sync_sync(stock_code, extended_start_date_str, end_date_str)
                 if sync_result["success"]:
                     logger.info(f"✅ [A股数据] 数据同步成功: {sync_result['message']}")
                     cache_status += "数据已同步; "
                 else:
-                    logger.warning(
-                        f"⚠️ [A股数据] 数据同步失败: {sync_result['message']}"
-                    )
+                    logger.warning(f"⚠️ [A股数据] 数据同步失败: {sync_result['message']}")
                     # 继续尝试从API获取数据
             else:
-                logger.info(
-                    f"✅ [A股数据] 数据库数据检查通过: {db_check_result['message']}"
-                )
+                logger.info(f"✅ [A股数据] 数据库数据检查通过: {db_check_result['message']}")
                 cache_status += "数据库数据最新; "
 
             # 3. 获取基本信息
@@ -399,13 +379,9 @@ class _StockDataPreparerMixin1:
                             break
 
                 # 检查是否为有效的股票名称
-                if stock_name != "未知" and not stock_name.startswith(
-                    f"股票{stock_code}"
-                ):
+                if stock_name != "未知" and not stock_name.startswith(f"股票{stock_code}"):
                     has_basic_info = True
-                    logger.info(
-                        f"✅ [A股数据] 基本信息获取成功: {stock_code} - {stock_name}"
-                    )
+                    logger.info(f"✅ [A股数据] 基本信息获取成功: {stock_code} - {stock_name}")
                     cache_status += "基本信息已缓存; "
                 else:
                     logger.warning(f"⚠️ [A股数据] 基本信息无效: {stock_code}")
@@ -427,23 +403,15 @@ class _StockDataPreparerMixin1:
                 )
 
             # 4. 获取历史数据（使用扩展后的日期范围）
-            logger.debug(
-                f"📊 [A股数据] 获取{stock_code}历史数据 ({extended_start_date_str} 到 {end_date_str})..."
-            )
+            logger.debug(f"📊 [A股数据] 获取{stock_code}历史数据 ({extended_start_date_str} 到 {end_date_str})...")
             get_china_stock_data_unified = getattr(
                 importlib.import_module("trader.flows.interface"),
                 "get_china_stock_data_unified",
             )
 
-            historical_data = get_china_stock_data_unified(
-                stock_code, extended_start_date_str, end_date_str
-            )
+            historical_data = get_china_stock_data_unified(stock_code, extended_start_date_str, end_date_str)
 
-            if (
-                historical_data
-                and "❌" not in historical_data
-                and "获取失败" not in historical_data
-            ):
+            if historical_data and "❌" not in historical_data and "获取失败" not in historical_data:
                 # 更宽松的数据有效性检查
                 data_indicators = [
                     "开盘价",
@@ -464,22 +432,16 @@ class _StockDataPreparerMixin1:
 
                 has_valid_data = (
                     len(historical_data) > 50  # 降低长度要求
-                    and any(
-                        indicator in historical_data for indicator in data_indicators
-                    )
+                    and any(indicator in historical_data for indicator in data_indicators)
                 )
 
                 if has_valid_data:
                     has_historical_data = True
-                    logger.info(
-                        f"✅ [A股数据] 历史数据获取成功: {stock_code} ({lookback_days}天)"
-                    )
+                    logger.info(f"✅ [A股数据] 历史数据获取成功: {stock_code} ({lookback_days}天)")
                     cache_status += f"历史数据已缓存({lookback_days}天); "
                 else:
                     logger.warning(f"⚠️ [A股数据] 历史数据无效: {stock_code}")
-                    logger.debug(
-                        f"🔍 [A股数据] 数据内容预览: {historical_data[:200]}..."
-                    )
+                    logger.debug(f"🔍 [A股数据] 数据内容预览: {historical_data[:200]}...")
                     return StockDataPreparationResult(
                         is_valid=False,
                         stock_code=stock_code,
@@ -537,9 +499,7 @@ class _StockDataPreparerMixin1:
         self, stock_code: str, period_days: int, analysis_date: str
     ) -> StockDataPreparationResult:
         """预获取A股数据（异步版本），包含数据库检查和自动同步"""
-        logger.info(
-            f"📊 [A股数据-异步] 开始准备{stock_code}的数据 (时长: {period_days}天)"
-        )
+        logger.info(f"📊 [A股数据-异步] 开始准备{stock_code}的数据 (时长: {period_days}天)")
 
         # 计算日期范围
         end_date = datetime.strptime(analysis_date, "%Y-%m-%d")
@@ -549,9 +509,7 @@ class _StockDataPreparerMixin1:
         extended_start_date_str = extended_start_date.strftime("%Y-%m-%d")
         end_date_str = end_date.strftime("%Y-%m-%d")
 
-        logger.info(
-            f"📅 [A股数据-异步] 实际数据范围: {extended_start_date_str} 到 {end_date_str} ({lookback_days}天)"
-        )
+        logger.info(f"📅 [A股数据-异步] 实际数据范围: {extended_start_date_str} 到 {end_date_str} ({lookback_days}天)")
 
         has_historical_data = False
         has_basic_info = False
@@ -561,34 +519,22 @@ class _StockDataPreparerMixin1:
         try:
             # 1. 检查数据库中的数据是否存在和最新
             logger.debug(f"📊 [A股数据-异步] 检查数据库中{stock_code}的数据...")
-            db_check_result = self._check_database_data(
-                stock_code, extended_start_date_str, end_date_str
-            )
+            db_check_result = self._check_database_data(stock_code, extended_start_date_str, end_date_str)
 
             # 2. 如果数据不存在或不是最新，自动触发同步（使用异步方法）
             if not db_check_result["has_data"] or not db_check_result["is_latest"]:
-                logger.warning(
-                    f"⚠️ [A股数据-异步] 数据库数据不完整: {db_check_result['message']}"
-                )
+                logger.warning(f"⚠️ [A股数据-异步] 数据库数据不完整: {db_check_result['message']}")
                 logger.info(f"🔄 [A股数据-异步] 自动触发数据同步: {stock_code}")
 
                 # 🔥 使用异步方法同步数据
-                sync_result = await self._trigger_data_sync_async(
-                    stock_code, extended_start_date_str, end_date_str
-                )
+                sync_result = await self._trigger_data_sync_async(stock_code, extended_start_date_str, end_date_str)
                 if sync_result["success"]:
-                    logger.info(
-                        f"✅ [A股数据-异步] 数据同步成功: {sync_result['message']}"
-                    )
+                    logger.info(f"✅ [A股数据-异步] 数据同步成功: {sync_result['message']}")
                     cache_status += "数据已同步; "
                 else:
-                    logger.warning(
-                        f"⚠️ [A股数据-异步] 数据同步失败: {sync_result['message']}"
-                    )
+                    logger.warning(f"⚠️ [A股数据-异步] 数据同步失败: {sync_result['message']}")
             else:
-                logger.info(
-                    f"✅ [A股数据-异步] 数据库数据检查通过: {db_check_result['message']}"
-                )
+                logger.info(f"✅ [A股数据-异步] 数据库数据检查通过: {db_check_result['message']}")
                 cache_status += "数据库数据最新; "
 
             # 3. 获取基本信息（同步操作）
@@ -607,13 +553,9 @@ class _StockDataPreparerMixin1:
                             stock_name = line.split(":")[1].strip()
                             break
 
-                if stock_name != "未知" and not stock_name.startswith(
-                    f"股票{stock_code}"
-                ):
+                if stock_name != "未知" and not stock_name.startswith(f"股票{stock_code}"):
                     has_basic_info = True
-                    logger.info(
-                        f"✅ [A股数据-异步] 基本信息获取成功: {stock_code} - {stock_name}"
-                    )
+                    logger.info(f"✅ [A股数据-异步] 基本信息获取成功: {stock_code} - {stock_name}")
                     cache_status += "基本信息已缓存; "
 
             # 4. 获取历史数据（同步操作）
@@ -622,15 +564,9 @@ class _StockDataPreparerMixin1:
                 importlib.import_module("trader.flows.interface"),
                 "get_china_stock_data_unified",
             )
-            historical_data = get_china_stock_data_unified(
-                stock_code, extended_start_date_str, end_date_str
-            )
+            historical_data = get_china_stock_data_unified(stock_code, extended_start_date_str, end_date_str)
 
-            if (
-                historical_data
-                and "❌" not in historical_data
-                and "获取失败" not in historical_data
-            ):
+            if historical_data and "❌" not in historical_data and "获取失败" not in historical_data:
                 data_indicators = ["开盘价", "收盘价", "最高价", "最低价", "成交量"]
                 has_valid_data = len(historical_data) > 50 and any(
                     indicator in historical_data for indicator in data_indicators

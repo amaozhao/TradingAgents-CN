@@ -1,4 +1,3 @@
-# ruff: noqa: F401,F403,F405,F821
 #!/usr/bin/env python3
 """
 股票数据预获取和验证模块
@@ -31,3 +30,11 @@ class StockDataPreparationResult:
     cache_status: str = ""
     error_message: Optional[str] = None
     suggestion: Optional[str] = None
+
+__all__ = [
+    "Dict",
+    "datetime",
+    "importlib",
+    "re",
+    "timedelta",
+]

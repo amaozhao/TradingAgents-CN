@@ -19,16 +19,8 @@ from trader.factors.base import (
     delta,
     rank,
     safe_div,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
     ts_corr,
-    ts_cov,
-    ts_max,
     ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 __alpha_meta__ = {
@@ -48,8 +40,8 @@ __alpha_meta__ = {
 def compute(panel: dict) -> pd.DataFrame:
     v = panel["volume"]
     vw = safe_div(panel["amount"], v * 100.0 + 1.0)
-    l = panel["low"]
+    low = panel["low"]
     p1 = rank(decay_linear(delta(vw, 1), 12))
-    p2 = rank(decay_linear(rank(ts_corr(l, ts_mean(v, 30), 8)), 17))
+    p2 = rank(decay_linear(rank(ts_corr(low, ts_mean(v, 30), 8)), 17))
     return -1.0 * pd.DataFrame(np.maximum(p1.to_numpy(), p2.to_numpy()),
                                index=v.index, columns=v.columns)

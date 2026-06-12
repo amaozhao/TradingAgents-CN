@@ -21,17 +21,6 @@ from trader.factors.base import (
     delta,
     rank,
     safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
     vwap,
 )
 
@@ -61,11 +50,11 @@ def compute(panel):
         pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
     """
     o = panel["open"]
-    l = panel["low"]
+    low = panel["low"]
     vw = vwap(panel, "equity_cn")
 
     a = rank(decay_linear(delta(vw, 5), 3))
-    mix = o * 0.15 + l * 0.85
+    mix = o * 0.15 + low * 0.85
     b_inner = -1.0 * safe_div(delta(mix, 2), mix)
     b = rank(decay_linear(b_inner, 3))
     arr = np.maximum(a.to_numpy(dtype=np.float64, na_value=np.nan),

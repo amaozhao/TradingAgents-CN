@@ -13,25 +13,9 @@ Notes:
 """
 from __future__ import annotations
 
-import numpy as np
-import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
     safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "gtja191_188"
@@ -39,7 +23,7 @@ ALPHA_ID = "gtja191_188"
 __alpha_meta__ = {
     'id': 'gtja191_188',
     'theme': ['volatility'],
-    'formula_latex': '(h-l-sma(h-l,11,2))/sma(h-l,11,2)*100',
+    'formula_latex': '(h-low-sma(h-low,11,2))/sma(h-low,11,2)*100',
     'columns_required': ['close', 'high', 'low'],
     'extras_required': [],
     'universe': ['equity_cn'],
@@ -63,8 +47,8 @@ def compute(panel):
         """SMA(x, n, m) per GTJA convention -> ewm with alpha = m/n."""
         return x.ewm(alpha=m / n, adjust=False).mean()
     h = panel["high"]
-    l = panel["low"]
-    hl = h - l
+    low = panel["low"]
+    hl = h - low
     s = _sma(hl, 11, 2)
     out = safe_div(hl - s, s) * 100.0
     return out

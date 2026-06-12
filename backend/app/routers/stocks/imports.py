@@ -1,4 +1,3 @@
-# ruff: noqa: F401,F403,F405,F821
 """
 股票详情相关API
 - 统一响应包: {success, data, message, timestamp}
@@ -18,8 +17,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.core.config import settings
 from app.core.database import get_postgres_db
 from app.core.response import ok
-from app.schemas.response import ApiResponse
 from app.routers.account import get_current_user
+from app.schemas.response import ApiResponse
 from app.services.market.financial import FinancialDataService
 from app.services.stocks.service import StockDataService
 from app.services.stocks.unified import UnifiedStockService
@@ -27,3 +26,27 @@ from app.services.stocks.unified import UnifiedStockService
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/stocks", tags=["stocks"])
+
+__all__ = [
+    "Any",
+    "ApiResponse",
+    "Depends",
+    "Dict",
+    "FinancialDataService",
+    "HTTPException",
+    "Optional",
+    "Query",
+    "StockDataService",
+    "Tuple",
+    "UnifiedStockService",
+    "asyncio",
+    "datetime",
+    "get_current_user",
+    "get_postgres_db",
+    "importlib",
+    "ok",
+    "re",
+    "settings",
+    "status",
+    "timedelta",
+]

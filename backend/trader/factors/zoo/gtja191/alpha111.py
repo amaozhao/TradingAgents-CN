@@ -13,25 +13,9 @@ Notes:
 """
 from __future__ import annotations
 
-import numpy as np
-import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
     safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "gtja191_111"
@@ -39,7 +23,7 @@ ALPHA_ID = "gtja191_111"
 __alpha_meta__ = {
     'id': 'gtja191_111',
     'theme': ['volume', 'microstructure'],
-    'formula_latex': 'sma(v*((c-l)-(h-c))/(h-l),11,2)-sma(v*((c-l)-(h-c))/(h-l),4,2)',
+    'formula_latex': 'sma(v*((c-low)-(h-c))/(h-low),11,2)-sma(v*((c-low)-(h-c))/(h-low),4,2)',
     'columns_required': ['open', 'high', 'low', 'close', 'volume'],
     'extras_required': [],
     'universe': ['equity_cn'],
@@ -64,8 +48,8 @@ def compute(panel):
         return x.ewm(alpha=m / n, adjust=False).mean()
     c = panel["close"]
     h = panel["high"]
-    l = panel["low"]
+    low = panel["low"]
     v = panel["volume"]
-    ratio = safe_div(v * ((c - l) - (h - c)), h - l)
+    ratio = safe_div(v * ((c - low) - (h - c)), h - low)
     out = _sma(ratio, 11, 2) - _sma(ratio, 4, 2)
     return out

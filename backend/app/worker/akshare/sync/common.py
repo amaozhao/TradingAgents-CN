@@ -1,4 +1,24 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        List,
+        Optional,
+        asyncio,
+        cast,
+        datetime,
+        dual_write_hot_document,
+        get_akshare_provider,
+        get_historical_data_service,
+        get_news_data_service,
+        get_postgres_db,
+        logger,
+        timedelta,
+        utcnow_naive,
+    )
+
 class _AKShareSyncServiceMixin1:
     def __init__(self):
         self.provider: Any = None
@@ -98,9 +118,7 @@ class _AKShareSyncServiceMixin1:
 
             # 3. 完成统计
             stats["end_time"] = utcnow_naive()
-            stats["duration"] = (
-                stats["end_time"] - stats["start_time"]
-            ).total_seconds()
+            stats["duration"] = (stats["end_time"] - stats["start_time"]).total_seconds()
 
             logger.info("🎉 股票基础信息同步完成！")
             logger.info(
@@ -115,14 +133,10 @@ class _AKShareSyncServiceMixin1:
 
         except Exception as e:
             logger.error(f"❌ 股票基础信息同步失败: {e}")
-            stats["errors"].append(
-                {"error": str(e), "context": "sync_stock_basic_info"}
-            )
+            stats["errors"].append({"error": str(e), "context": "sync_stock_basic_info"})
             return stats
 
-    async def _process_basic_info_batch(
-        self, batch: List[Dict[str, Any]], force_update: bool
-    ) -> Dict[str, Any]:
+    async def _process_basic_info_batch(self, batch: List[Dict[str, Any]], force_update: bool) -> Dict[str, Any]:
         """处理基础信息批次"""
         batch_stats = {
             "success_count": 0,
@@ -138,9 +152,7 @@ class _AKShareSyncServiceMixin1:
                 # 检查是否需要更新
                 if not force_update:
                     existing = await self.db.stock_basic_info.find_one({"code": code})
-                    if existing and self._is_data_fresh(
-                        existing.get("updated_at"), hours=24
-                    ):
+                    if existing and self._is_data_fresh(existing.get("updated_at"), hours=24):
                         batch_stats["skipped_count"] += 1
                         continue
 
@@ -173,32 +185,26 @@ class _AKShareSyncServiceMixin1:
                         batch_stats["success_count"] += 1
                     except Exception as e:
                         batch_stats["error_count"] += 1
-                        batch_stats["errors"].append(
-                            {
-                                "code": code,
-                                "error": f"数据库更新失败: {str(e)}",
-                                "context": "update_stock_basic_info",
-                            }
-                        )
+                        batch_stats["errors"].append({
+                            "code": code,
+                            "error": f"数据库更新失败: {str(e)}",
+                            "context": "update_stock_basic_info",
+                        })
                 else:
                     batch_stats["error_count"] += 1
-                    batch_stats["errors"].append(
-                        {
-                            "code": code,
-                            "error": "获取基础信息失败",
-                            "context": "get_stock_basic_info",
-                        }
-                    )
+                    batch_stats["errors"].append({
+                        "code": code,
+                        "error": "获取基础信息失败",
+                        "context": "get_stock_basic_info",
+                    })
 
             except Exception as e:
                 batch_stats["error_count"] += 1
-                batch_stats["errors"].append(
-                    {
-                        "code": stock_info.get("code", "unknown"),
-                        "error": str(e),
-                        "context": "_process_basic_info_batch",
-                    }
-                )
+                batch_stats["errors"].append({
+                    "code": stock_info.get("code", "unknown"),
+                    "error": str(e),
+                    "context": "_process_basic_info_batch",
+                })
 
         return batch_stats
 
@@ -230,9 +236,7 @@ class _AKShareSyncServiceMixin1:
             logger.debug(f"检查数据新鲜度失败: {e}")
             return False
 
-    async def sync_realtime_quotes(
-        self, symbols: Optional[List[str]] = None, force: bool = False
-    ) -> Dict[str, Any]:
+    async def sync_realtime_quotes(self, symbols: Optional[List[str]] = None, force: bool = False) -> Dict[str, Any]:
         """
         同步实时行情数据
 
@@ -245,9 +249,7 @@ class _AKShareSyncServiceMixin1:
         """
         # 🔥 如果指定了股票列表，记录日志
         if symbols:
-            logger.info(
-                f"🔄 开始同步指定股票的实时行情（共 {len(symbols)} 只）: {symbols}"
-            )
+            logger.info(f"🔄 开始同步指定股票的实时行情（共 {len(symbols)} 只）: {symbols}")
         else:
             logger.info("🔄 开始同步全市场实时行情...")
 
@@ -287,17 +289,13 @@ class _AKShareSyncServiceMixin1:
                     stats["success_count"] = 1
                 else:
                     stats["error_count"] = 1
-                    stats["errors"].append(
-                        {
-                            "code": symbol,
-                            "error": "获取行情失败",
-                            "context": "sync_realtime_quotes_single",
-                        }
-                    )
+                    stats["errors"].append({
+                        "code": symbol,
+                        "error": "获取行情失败",
+                        "context": "sync_realtime_quotes_single",
+                    })
 
-                logger.info(
-                    f"📈 行情同步进度: 1/1 (成功: {stats['success_count']}, 错误: {stats['error_count']})"
-                )
+                logger.info(f"📈 行情同步进度: 1/1 (成功: {stats['success_count']}, 错误: {stats['error_count']})")
             else:
                 # 2. 批量同步：一次性获取全市场快照（避免多次调用接口被限流）
                 logger.info("📡 获取全市场实时行情快照...")
@@ -327,9 +325,7 @@ class _AKShareSyncServiceMixin1:
                             await asyncio.sleep(self.rate_limit_delay)
                 else:
                     # 3. 使用获取到的全市场数据，分批保存到数据库
-                    logger.info(
-                        f"✅ 获取到 {len(quotes_map)} 只股票的行情数据，开始保存..."
-                    )
+                    logger.info(f"✅ 获取到 {len(quotes_map)} 只股票的行情数据，开始保存...")
 
                     for i in range(0, len(symbols), self.batch_size):
                         batch = symbols[i : i + self.batch_size]
@@ -356,28 +352,22 @@ class _AKShareSyncServiceMixin1:
                                         {"$set": quotes_data},
                                         upsert=True,
                                     )
-                                    await dual_write_hot_document(
-                                        "market_quotes", quotes_data
-                                    )
+                                    await dual_write_hot_document("market_quotes", quotes_data)
                                     stats["success_count"] += 1
                                 else:
                                     stats["error_count"] += 1
-                                    stats["errors"].append(
-                                        {
-                                            "code": symbol,
-                                            "error": "未找到行情数据",
-                                            "context": "sync_realtime_quotes",
-                                        }
-                                    )
+                                    stats["errors"].append({
+                                        "code": symbol,
+                                        "error": "未找到行情数据",
+                                        "context": "sync_realtime_quotes",
+                                    })
                             except Exception as e:
                                 stats["error_count"] += 1
-                                stats["errors"].append(
-                                    {
-                                        "code": symbol,
-                                        "error": str(e),
-                                        "context": "sync_realtime_quotes",
-                                    }
-                                )
+                                stats["errors"].append({
+                                    "code": symbol,
+                                    "error": str(e),
+                                    "context": "sync_realtime_quotes",
+                                })
 
                         # 进度日志
                         progress = min(i + self.batch_size, len(symbols))
@@ -388,9 +378,7 @@ class _AKShareSyncServiceMixin1:
 
             # 4. 完成统计
             stats["end_time"] = utcnow_naive()
-            stats["duration"] = (
-                stats["end_time"] - stats["start_time"]
-            ).total_seconds()
+            stats["duration"] = (stats["end_time"] - stats["start_time"]).total_seconds()
 
             logger.info("🎉 实时行情同步完成！")
             logger.info(
@@ -438,29 +426,23 @@ class _AKShareSyncServiceMixin1:
                             quotes_data["source"] = "akshare"
 
                         # 更新到数据库
-                        await self.db.market_quotes.update_one(
-                            {"code": symbol}, {"$set": quotes_data}, upsert=True
-                        )
+                        await self.db.market_quotes.update_one({"code": symbol}, {"$set": quotes_data}, upsert=True)
                         await dual_write_hot_document("market_quotes", quotes_data)
                         batch_stats["success_count"] += 1
                     else:
                         batch_stats["error_count"] += 1
-                        batch_stats["errors"].append(
-                            {
-                                "code": symbol,
-                                "error": "未找到行情数据",
-                                "context": "_process_quotes_batch",
-                            }
-                        )
+                        batch_stats["errors"].append({
+                            "code": symbol,
+                            "error": "未找到行情数据",
+                            "context": "_process_quotes_batch",
+                        })
                 except Exception as e:
                     batch_stats["error_count"] += 1
-                    batch_stats["errors"].append(
-                        {
-                            "code": symbol,
-                            "error": str(e),
-                            "context": "_process_quotes_batch",
-                        }
-                    )
+                    batch_stats["errors"].append({
+                        "code": symbol,
+                        "error": str(e),
+                        "context": "_process_quotes_batch",
+                    })
 
             return batch_stats
 
@@ -481,26 +463,22 @@ class _AKShareSyncServiceMixin1:
                     batch_stats["success_count"] += 1
                 else:
                     batch_stats["error_count"] += 1
-                    batch_stats["errors"].append(
-                        {
-                            "code": symbol,
-                            "error": "获取行情数据失败",
-                            "context": "_process_quotes_batch_fallback",
-                        }
-                    )
+                    batch_stats["errors"].append({
+                        "code": symbol,
+                        "error": "获取行情数据失败",
+                        "context": "_process_quotes_batch_fallback",
+                    })
 
                 # 添加延迟避免频率限制
                 await asyncio.sleep(0.1)
 
             except Exception as e:
                 batch_stats["error_count"] += 1
-                batch_stats["errors"].append(
-                    {
-                        "code": symbol,
-                        "error": str(e),
-                        "context": "_process_quotes_batch_fallback",
-                    }
-                )
+                batch_stats["errors"].append({
+                    "code": symbol,
+                    "error": str(e),
+                    "context": "_process_quotes_batch_fallback",
+                })
 
         return batch_stats
 
@@ -529,14 +507,10 @@ class _AKShareSyncServiceMixin1:
                 logger.info(f"   - 昨收价(pre_close): {quotes_data.get('pre_close')}")
                 logger.info(f"   - 成交量(volume): {quotes_data.get('volume')}")
                 logger.info(f"   - 成交额(amount): {quotes_data.get('amount')}")
-                logger.info(
-                    f"   - 涨跌幅(change_percent): {quotes_data.get('change_percent')}%"
-                )
+                logger.info(f"   - 涨跌幅(change_percent): {quotes_data.get('change_percent')}%")
 
                 # 更新到数据库
-                result = await self.db.market_quotes.update_one(
-                    {"code": symbol}, {"$set": quotes_data}, upsert=True
-                )
+                result = await self.db.market_quotes.update_one({"code": symbol}, {"$set": quotes_data}, upsert=True)
                 await dual_write_hot_document("market_quotes", quotes_data)
 
                 logger.info(
@@ -569,9 +543,7 @@ class _AKShareSyncServiceMixin1:
         Returns:
             同步结果统计
         """
-        period_name = {"daily": "日线", "weekly": "周线", "monthly": "月线"}.get(
-            period, "日线"
-        )
+        period_name = {"daily": "日线", "weekly": "周线", "monthly": "月线"}.get(period, "日线")
         logger.info(f"🔄 开始同步{period_name}历史数据...")
 
         stats = {
@@ -607,9 +579,7 @@ class _AKShareSyncServiceMixin1:
                 if incremental:
                     global_start_date = "各股票最后日期"
                 else:
-                    global_start_date = (datetime.now() - timedelta(days=365)).strftime(
-                        "%Y-%m-%d"
-                    )
+                    global_start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
 
             logger.info(
                 f"📊 历史数据同步: 结束日期={end_date}, 股票数量={len(symbols)}, 模式={'增量' if incremental else '全量'}"
@@ -618,9 +588,7 @@ class _AKShareSyncServiceMixin1:
             # 4. 批量处理
             for i in range(0, len(symbols), self.batch_size):
                 batch = symbols[i : i + self.batch_size]
-                batch_stats = await self._process_historical_batch(
-                    batch, start_date, end_date, period, incremental
-                )
+                batch_stats = await self._process_historical_batch(batch, start_date, end_date, period, incremental)
 
                 # 更新统计
                 stats["success_count"] += batch_stats["success_count"]
@@ -641,9 +609,7 @@ class _AKShareSyncServiceMixin1:
 
             # 4. 完成统计
             stats["end_time"] = utcnow_naive()
-            stats["duration"] = (
-                stats["end_time"] - stats["start_time"]
-            ).total_seconds()
+            stats["duration"] = (stats["end_time"] - stats["start_time"]).total_seconds()
 
             logger.info("🎉 历史数据同步完成！")
             logger.info(

@@ -12,7 +12,6 @@ Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 39.
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 from trader.factors.base import (
@@ -20,17 +19,7 @@ from trader.factors.base import (
     delta,
     rank,
     safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
     ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "alpha101_039"

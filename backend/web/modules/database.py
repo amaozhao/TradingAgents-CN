@@ -46,7 +46,7 @@ def main():
 
         3. 测试连接：
         ```bash
-        python -m pytest backend/tests/test_database_integration.py
+        python -m pytest backend/tests/integration/app/test_database.py
         ```
         """)
         return

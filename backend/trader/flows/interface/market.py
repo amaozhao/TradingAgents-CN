@@ -1,11 +1,26 @@
-# ruff: noqa: F401,F403,F405,F821,F722
+from .imports import (
+    Annotated,
+    Any,
+    Doc,
+    OpenAI,
+    cast,
+    datetime,
+    importlib,
+    logger,
+    os,
+    pd,
+    relativedelta,
+    settings,
+)
+from .setup import DATA_DIR, StockstatsUtils, YF_AVAILABLE, _openai_response_text, get_config, yf
+
 def get_stockstats_indicator(
-    symbol: Annotated[str, "ticker symbol of the company"],
-    indicator: Annotated[str, "technical indicator to get the analysis and report of"],
+    symbol: Annotated[str, Doc("ticker symbol of the company")],
+    indicator: Annotated[str, Doc("technical indicator to get the analysis and report of")],
     curr_date: Annotated[
-        str, "The current trading date you are trading on, YYYY-mm-dd"
+        str, Doc("The current trading date you are trading on, YYYY-mm-dd")
     ],
-    online: Annotated[bool, "to fetch data online or offline"],
+    online: Annotated[bool, Doc("to fetch data online or offline")],
 ) -> str:
 
     curr_dt = datetime.strptime(curr_date, "%Y-%m-%d")
@@ -31,9 +46,9 @@ def get_stockstats_indicator(
 
 
 def get_yfin_data_window(
-    symbol: Annotated[str, "ticker symbol of the company"],
-    curr_date: Annotated[str, "Start date in yyyy-mm-dd format"],
-    look_back_days: Annotated[int, "how many days to look back"],
+    symbol: Annotated[str, Doc("ticker symbol of the company")],
+    curr_date: Annotated[str, Doc("Start date in yyyy-mm-dd format")],
+    look_back_days: Annotated[int, Doc("how many days to look back")],
 ) -> str:
     # calculate past days
     date_obj = datetime.strptime(curr_date, "%Y-%m-%d")
@@ -72,9 +87,9 @@ def get_yfin_data_window(
 
 
 def get_yfin_data_online(
-    symbol: Annotated[str, "ticker symbol of the company"],
-    start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
-    end_date: Annotated[str, "End date in yyyy-mm-dd format"],
+    symbol: Annotated[str, Doc("ticker symbol of the company")],
+    start_date: Annotated[str, Doc("Start date in yyyy-mm-dd format")],
+    end_date: Annotated[str, Doc("End date in yyyy-mm-dd format")],
 ):
     # 检查yfinance是否可用
     if not YF_AVAILABLE or yf is None:
@@ -118,9 +133,9 @@ def get_yfin_data_online(
 
 
 def get_yfin_data(
-    symbol: Annotated[str, "ticker symbol of the company"],
-    start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
-    end_date: Annotated[str, "End date in yyyy-mm-dd format"],
+    symbol: Annotated[str, Doc("ticker symbol of the company")],
+    start_date: Annotated[str, Doc("Start date in yyyy-mm-dd format")],
+    end_date: Annotated[str, Doc("End date in yyyy-mm-dd format")],
 ) -> pd.DataFrame:
     # read in data
     data = pd.read_csv(

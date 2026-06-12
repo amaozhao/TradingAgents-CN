@@ -1,4 +1,15 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        Optional,
+        UTC,
+        datetime,
+        pd,
+    )
+
 class _TushareProviderMixin3:
     def _standardize_historical_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """标准化历史数据"""
@@ -16,9 +27,7 @@ class _TushareProviderMixin3:
 
         return df
 
-    def _standardize_tushare_financial_data(
-        self, financial_data: Dict[str, Any], ts_code: str
-    ) -> Dict[str, Any]:
+    def _standardize_tushare_financial_data(self, financial_data: Dict[str, Any], ts_code: str) -> Dict[str, Any]:
         """
         标准化Tushare财务数据
 
@@ -32,19 +41,11 @@ class _TushareProviderMixin3:
         try:
             # 获取最新的数据记录（第一条记录通常是最新的）
             latest_income = (
-                financial_data.get("income_statement", [{}])[0]
-                if financial_data.get("income_statement")
-                else {}
+                financial_data.get("income_statement", [{}])[0] if financial_data.get("income_statement") else {}
             )
-            latest_balance = (
-                financial_data.get("balance_sheet", [{}])[0]
-                if financial_data.get("balance_sheet")
-                else {}
-            )
+            latest_balance = financial_data.get("balance_sheet", [{}])[0] if financial_data.get("balance_sheet") else {}
             latest_cashflow = (
-                financial_data.get("cashflow_statement", [{}])[0]
-                if financial_data.get("cashflow_statement")
-                else {}
+                financial_data.get("cashflow_statement", [{}])[0] if financial_data.get("cashflow_statement") else {}
             )
             latest_indicator = (
                 financial_data.get("financial_indicators", [{}])[0]
@@ -55,23 +56,16 @@ class _TushareProviderMixin3:
             # 提取基础信息
             symbol = ts_code.split(".")[0] if "." in ts_code else ts_code
             report_period = str(
-                latest_income.get("end_date")
-                or latest_balance.get("end_date")
-                or latest_cashflow.get("end_date")
-                or ""
+                latest_income.get("end_date") or latest_balance.get("end_date") or latest_cashflow.get("end_date") or ""
             )
             ann_date = (
-                latest_income.get("ann_date")
-                or latest_balance.get("ann_date")
-                or latest_cashflow.get("ann_date")
+                latest_income.get("ann_date") or latest_balance.get("ann_date") or latest_cashflow.get("ann_date")
             )
 
             # 计算 TTM 数据
             income_statements = financial_data.get("income_statement", [])
             revenue_ttm = self._calculate_ttm_from_tushare(income_statements, "revenue")
-            net_profit_ttm = self._calculate_ttm_from_tushare(
-                income_statements, "n_income_attr_p"
-            )
+            net_profit_ttm = self._calculate_ttm_from_tushare(income_statements, "n_income_attr_p")
 
             standardized_data = {
                 # 基础信息
@@ -81,151 +75,67 @@ class _TushareProviderMixin3:
                 "ann_date": ann_date,
                 "report_type": self._determine_report_type(report_period),
                 # 利润表核心指标
-                "revenue": self._safe_float(
-                    latest_income.get("revenue")
-                ),  # 营业收入（单期）
+                "revenue": self._safe_float(latest_income.get("revenue")),  # 营业收入（单期）
                 "revenue_ttm": revenue_ttm,  # 营业收入（TTM）
                 "oper_rev": self._safe_float(latest_income.get("oper_rev")),  # 营业收入
-                "net_income": self._safe_float(
-                    latest_income.get("n_income")
-                ),  # 净利润（单期）
-                "net_profit": self._safe_float(
-                    latest_income.get("n_income_attr_p")
-                ),  # 归属母公司净利润（单期）
+                "net_income": self._safe_float(latest_income.get("n_income")),  # 净利润（单期）
+                "net_profit": self._safe_float(latest_income.get("n_income_attr_p")),  # 归属母公司净利润（单期）
                 "net_profit_ttm": net_profit_ttm,  # 归属母公司净利润（TTM）
-                "oper_profit": self._safe_float(
-                    latest_income.get("oper_profit")
-                ),  # 营业利润
-                "total_profit": self._safe_float(
-                    latest_income.get("total_profit")
-                ),  # 利润总额
-                "oper_cost": self._safe_float(
-                    latest_income.get("oper_cost")
-                ),  # 营业成本
+                "oper_profit": self._safe_float(latest_income.get("oper_profit")),  # 营业利润
+                "total_profit": self._safe_float(latest_income.get("total_profit")),  # 利润总额
+                "oper_cost": self._safe_float(latest_income.get("oper_cost")),  # 营业成本
                 "oper_exp": self._safe_float(latest_income.get("oper_exp")),  # 营业费用
-                "admin_exp": self._safe_float(
-                    latest_income.get("admin_exp")
-                ),  # 管理费用
+                "admin_exp": self._safe_float(latest_income.get("admin_exp")),  # 管理费用
                 "fin_exp": self._safe_float(latest_income.get("fin_exp")),  # 财务费用
                 "rd_exp": self._safe_float(latest_income.get("rd_exp")),  # 研发费用
                 # 资产负债表核心指标
-                "total_assets": self._safe_float(
-                    latest_balance.get("total_assets")
-                ),  # 总资产
-                "total_liab": self._safe_float(
-                    latest_balance.get("total_liab")
-                ),  # 总负债
-                "total_equity": self._safe_float(
-                    latest_balance.get("total_hldr_eqy_exc_min_int")
-                ),  # 股东权益
-                "total_cur_assets": self._safe_float(
-                    latest_balance.get("total_cur_assets")
-                ),  # 流动资产
-                "total_nca": self._safe_float(
-                    latest_balance.get("total_nca")
-                ),  # 非流动资产
-                "total_cur_liab": self._safe_float(
-                    latest_balance.get("total_cur_liab")
-                ),  # 流动负债
-                "total_ncl": self._safe_float(
-                    latest_balance.get("total_ncl")
-                ),  # 非流动负债
-                "money_cap": self._safe_float(
-                    latest_balance.get("money_cap")
-                ),  # 货币资金
-                "accounts_receiv": self._safe_float(
-                    latest_balance.get("accounts_receiv")
-                ),  # 应收账款
-                "inventories": self._safe_float(
-                    latest_balance.get("inventories")
-                ),  # 存货
-                "fix_assets": self._safe_float(
-                    latest_balance.get("fix_assets")
-                ),  # 固定资产
+                "total_assets": self._safe_float(latest_balance.get("total_assets")),  # 总资产
+                "total_liab": self._safe_float(latest_balance.get("total_liab")),  # 总负债
+                "total_equity": self._safe_float(latest_balance.get("total_hldr_eqy_exc_min_int")),  # 股东权益
+                "total_cur_assets": self._safe_float(latest_balance.get("total_cur_assets")),  # 流动资产
+                "total_nca": self._safe_float(latest_balance.get("total_nca")),  # 非流动资产
+                "total_cur_liab": self._safe_float(latest_balance.get("total_cur_liab")),  # 流动负债
+                "total_ncl": self._safe_float(latest_balance.get("total_ncl")),  # 非流动负债
+                "money_cap": self._safe_float(latest_balance.get("money_cap")),  # 货币资金
+                "accounts_receiv": self._safe_float(latest_balance.get("accounts_receiv")),  # 应收账款
+                "inventories": self._safe_float(latest_balance.get("inventories")),  # 存货
+                "fix_assets": self._safe_float(latest_balance.get("fix_assets")),  # 固定资产
                 # 现金流量表核心指标
-                "n_cashflow_act": self._safe_float(
-                    latest_cashflow.get("n_cashflow_act")
-                ),  # 经营活动现金流
-                "n_cashflow_inv_act": self._safe_float(
-                    latest_cashflow.get("n_cashflow_inv_act")
-                ),  # 投资活动现金流
-                "n_cashflow_fin_act": self._safe_float(
-                    latest_cashflow.get("n_cashflow_fin_act")
-                ),  # 筹资活动现金流
-                "c_cash_equ_end_period": self._safe_float(
-                    latest_cashflow.get("c_cash_equ_end_period")
-                ),  # 期末现金
-                "c_cash_equ_beg_period": self._safe_float(
-                    latest_cashflow.get("c_cash_equ_beg_period")
-                ),  # 期初现金
+                "n_cashflow_act": self._safe_float(latest_cashflow.get("n_cashflow_act")),  # 经营活动现金流
+                "n_cashflow_inv_act": self._safe_float(latest_cashflow.get("n_cashflow_inv_act")),  # 投资活动现金流
+                "n_cashflow_fin_act": self._safe_float(latest_cashflow.get("n_cashflow_fin_act")),  # 筹资活动现金流
+                "c_cash_equ_end_period": self._safe_float(latest_cashflow.get("c_cash_equ_end_period")),  # 期末现金
+                "c_cash_equ_beg_period": self._safe_float(latest_cashflow.get("c_cash_equ_beg_period")),  # 期初现金
                 # 财务指标
                 "roe": self._safe_float(latest_indicator.get("roe")),  # 净资产收益率
                 "roa": self._safe_float(latest_indicator.get("roa")),  # 总资产收益率
-                "roe_waa": self._safe_float(
-                    latest_indicator.get("roe_waa")
-                ),  # 加权平均净资产收益率
-                "roe_dt": self._safe_float(
-                    latest_indicator.get("roe_dt")
-                ),  # 净资产收益率(扣除非经常损益)
-                "roa2": self._safe_float(
-                    latest_indicator.get("roa2")
-                ),  # 总资产收益率(扣除非经常损益)
+                "roe_waa": self._safe_float(latest_indicator.get("roe_waa")),  # 加权平均净资产收益率
+                "roe_dt": self._safe_float(latest_indicator.get("roe_dt")),  # 净资产收益率(扣除非经常损益)
+                "roa2": self._safe_float(latest_indicator.get("roa2")),  # 总资产收益率(扣除非经常损益)
                 "gross_margin": self._safe_float(
                     latest_indicator.get("grossprofit_margin")
                 ),  # 🔥 修复：使用 grossprofit_margin（销售毛利率%）而不是 gross_margin（毛利绝对值）
-                "netprofit_margin": self._safe_float(
-                    latest_indicator.get("netprofit_margin")
-                ),  # 销售净利率
-                "cogs_of_sales": self._safe_float(
-                    latest_indicator.get("cogs_of_sales")
-                ),  # 销售成本率
-                "expense_of_sales": self._safe_float(
-                    latest_indicator.get("expense_of_sales")
-                ),  # 销售期间费用率
-                "profit_to_gr": self._safe_float(
-                    latest_indicator.get("profit_to_gr")
-                ),  # 净利润/营业总收入
-                "saleexp_to_gr": self._safe_float(
-                    latest_indicator.get("saleexp_to_gr")
-                ),  # 销售费用/营业总收入
-                "adminexp_of_gr": self._safe_float(
-                    latest_indicator.get("adminexp_of_gr")
-                ),  # 管理费用/营业总收入
-                "finaexp_of_gr": self._safe_float(
-                    latest_indicator.get("finaexp_of_gr")
-                ),  # 财务费用/营业总收入
-                "debt_to_assets": self._safe_float(
-                    latest_indicator.get("debt_to_assets")
-                ),  # 资产负债率
-                "assets_to_eqt": self._safe_float(
-                    latest_indicator.get("assets_to_eqt")
-                ),  # 权益乘数
-                "dp_assets_to_eqt": self._safe_float(
-                    latest_indicator.get("dp_assets_to_eqt")
-                ),  # 权益乘数(杜邦分析)
-                "ca_to_assets": self._safe_float(
-                    latest_indicator.get("ca_to_assets")
-                ),  # 流动资产/总资产
-                "nca_to_assets": self._safe_float(
-                    latest_indicator.get("nca_to_assets")
-                ),  # 非流动资产/总资产
-                "current_ratio": self._safe_float(
-                    latest_indicator.get("current_ratio")
-                ),  # 流动比率
-                "quick_ratio": self._safe_float(
-                    latest_indicator.get("quick_ratio")
-                ),  # 速动比率
-                "cash_ratio": self._safe_float(
-                    latest_indicator.get("cash_ratio")
-                ),  # 现金比率
+                "netprofit_margin": self._safe_float(latest_indicator.get("netprofit_margin")),  # 销售净利率
+                "cogs_of_sales": self._safe_float(latest_indicator.get("cogs_of_sales")),  # 销售成本率
+                "expense_of_sales": self._safe_float(latest_indicator.get("expense_of_sales")),  # 销售期间费用率
+                "profit_to_gr": self._safe_float(latest_indicator.get("profit_to_gr")),  # 净利润/营业总收入
+                "saleexp_to_gr": self._safe_float(latest_indicator.get("saleexp_to_gr")),  # 销售费用/营业总收入
+                "adminexp_of_gr": self._safe_float(latest_indicator.get("adminexp_of_gr")),  # 管理费用/营业总收入
+                "finaexp_of_gr": self._safe_float(latest_indicator.get("finaexp_of_gr")),  # 财务费用/营业总收入
+                "debt_to_assets": self._safe_float(latest_indicator.get("debt_to_assets")),  # 资产负债率
+                "assets_to_eqt": self._safe_float(latest_indicator.get("assets_to_eqt")),  # 权益乘数
+                "dp_assets_to_eqt": self._safe_float(latest_indicator.get("dp_assets_to_eqt")),  # 权益乘数(杜邦分析)
+                "ca_to_assets": self._safe_float(latest_indicator.get("ca_to_assets")),  # 流动资产/总资产
+                "nca_to_assets": self._safe_float(latest_indicator.get("nca_to_assets")),  # 非流动资产/总资产
+                "current_ratio": self._safe_float(latest_indicator.get("current_ratio")),  # 流动比率
+                "quick_ratio": self._safe_float(latest_indicator.get("quick_ratio")),  # 速动比率
+                "cash_ratio": self._safe_float(latest_indicator.get("cash_ratio")),  # 现金比率
                 # 原始数据保留（用于详细分析）
                 "raw_data": {
                     "income_statement": financial_data.get("income_statement", []),
                     "balance_sheet": financial_data.get("balance_sheet", []),
                     "cashflow_statement": financial_data.get("cashflow_statement", []),
-                    "financial_indicators": financial_data.get(
-                        "financial_indicators", []
-                    ),
+                    "financial_indicators": financial_data.get("financial_indicators", []),
                     "main_business": financial_data.get("main_business", []),
                 },
                 # 元数据
@@ -244,9 +154,7 @@ class _TushareProviderMixin3:
                 "error": str(e),
             }
 
-    def _calculate_ttm_from_tushare(
-        self, income_statements: list, field: str
-    ) -> Optional[float]:
+    def _calculate_ttm_from_tushare(self, income_statements: list, field: str) -> Optional[float]:
         """
         从 Tushare 利润表数据计算 TTM（最近12个月）
 
@@ -287,9 +195,7 @@ class _TushareProviderMixin3:
 
             # 如果最新期是年报（1231），直接使用
             if month_day == "1231":
-                self.logger.debug(
-                    f"✅ TTM计算: 使用年报数据 {latest_period} = {latest_value:.2f}"
-                )
+                self.logger.debug(f"✅ TTM计算: 使用年报数据 {latest_period} = {latest_value:.2f}")
                 return latest_value
 
             # 如果是季报/半年报，需要计算 TTM = 基准期 + (本期累计 - 去年同期累计)
@@ -314,9 +220,7 @@ class _TushareProviderMixin3:
 
             last_year_value = self._safe_float(last_year_same.get(field))
             if last_year_value is None:
-                self.logger.warning(
-                    f"⚠️ TTM计算失败: 去年同期数据值为空（{last_year_same_period}）"
-                )
+                self.logger.warning(f"⚠️ TTM计算失败: 去年同期数据值为空（{last_year_same_period}）")
                 return None
 
             # 2. 查找"去年同期之后的最近年报"作为基准期
@@ -339,9 +243,7 @@ class _TushareProviderMixin3:
 
             base_value = self._safe_float(base_period.get(field))
             if base_value is None:
-                self.logger.warning(
-                    f"⚠️ TTM计算失败: 基准年报数据值为空（{base_period.get('end_date')}）"
-                )
+                self.logger.warning(f"⚠️ TTM计算失败: 基准年报数据值为空（{base_period.get('end_date')}）")
                 return None
 
             # 3. 计算 TTM = 基准年报 + (本期累计 - 去年同期累计)

@@ -1,13 +1,26 @@
-# ruff: noqa: F401,F403,F405,F821,F722
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Annotated,
+        Doc,
+        Optional,
+        importlib,
+        log_tool_call,
+        logger,
+        tool,
+    )
+    from .query import Toolkit
+
 class _ToolkitMixin2:
     @tool
     @staticmethod
     @log_tool_call(tool_name="get_stock_fundamentals_unified", log_args=True)
     def get_stock_fundamentals_unified(
-        ticker: Annotated[str, "股票代码（支持A股、港股、美股）"],
-        start_date: Annotated[Optional[str], "开始日期，格式：YYYY-MM-DD"] = None,
-        end_date: Annotated[Optional[str], "结束日期，格式：YYYY-MM-DD"] = None,
-        curr_date: Annotated[Optional[str], "当前日期，格式：YYYY-MM-DD"] = None,
+        ticker: Annotated[str, Doc("股票代码（支持A股、港股、美股）")],
+        start_date: Annotated[Optional[str], Doc("开始日期，格式：YYYY-MM-DD")] = None,
+        end_date: Annotated[Optional[str], Doc("结束日期，格式：YYYY-MM-DD")] = None,
+        curr_date: Annotated[Optional[str], Doc("当前日期，格式：YYYY-MM-DD")] = None,
     ) -> str:
         """
         统一的股票基本面分析工具
@@ -424,14 +437,14 @@ class _ToolkitMixin2:
     @staticmethod
     @log_tool_call(tool_name="get_stock_market_data_unified", log_args=True)
     def get_stock_market_data_unified(
-        ticker: Annotated[str, "股票代码（支持A股、港股、美股）"],
+        ticker: Annotated[str, Doc("股票代码（支持A股、港股、美股）")],
         start_date: Annotated[
             str,
-            "开始日期，格式：YYYY-MM-DD。注意：系统会自动扩展到配置的回溯天数（通常为365天），你只需要传递分析日期即可",
+            Doc("开始日期，格式：YYYY-MM-DD。注意：系统会自动扩展到配置的回溯天数（通常为365天），你只需要传递分析日期即可"),
         ],
         end_date: Annotated[
             str,
-            "结束日期，格式：YYYY-MM-DD。通常与start_date相同，传递当前分析日期即可",
+            Doc("结束日期，格式：YYYY-MM-DD。通常与start_date相同，传递当前分析日期即可"),
         ],
     ) -> str:
         """

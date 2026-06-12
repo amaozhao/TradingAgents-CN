@@ -1,4 +1,6 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import logger
+from .task import get_akshare_sync_service
+
 async def run_akshare_news_sync(max_news_per_stock: int = 20):
     """APScheduler任务：同步新闻数据"""
     try:

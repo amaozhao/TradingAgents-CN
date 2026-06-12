@@ -19,6 +19,8 @@
     "**/.pytest_cache"
   ],
   "pythonVersion": "3.13",
+  "venvPath": "/home/amaozhao/miniconda3/envs",
+  "venv": "trader",
   "typeCheckingMode": "off",
   "reportMissingModuleSource": "warning"
 }

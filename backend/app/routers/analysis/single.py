@@ -1,9 +1,31 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from .imports import (
+        ApiResponse,
+        BackgroundTasks,
+        Depends,
+        HTTPException,
+        SingleAnalysisRequest,
+        _analysis_request_queue_params,
+        datetime,
+        get_current_user,
+        get_queue_service,
+        get_simple_analysis_service,
+        importlib,
+        logger,
+        router,
+        time,
+        timezone,
+    )
+    from .setup import (
+        AnalysisTestRouteResponse,
+        _coerce_datetime,
+        _get_analysis_report_by_task_id_for_read,
+        _get_analysis_task_for_read,
+    )
 
-def _status_message_from_task_result(
-    task_result: dict, status: str, error_message: str | None
-) -> str:
+def _status_message_from_task_result(task_result: dict, status: str, error_message: str | None) -> str:
     stored_message = task_result.get("message")
     if stored_message:
         return stored_message
@@ -48,9 +70,7 @@ async def submit_single_analysis(
                 continue
             provider_info = get_provider_and_url_by_model_sync(model_name)
             if not provider_info.get("api_key"):
-                missing_key_models.append(
-                    f"{role_name} {model_name} ({provider_info.get('provider')})"
-                )
+                missing_key_models.append(f"{role_name} {model_name} ({provider_info.get('provider')})")
 
         if missing_key_models:
             missing_models = "、".join(missing_key_models)
@@ -113,14 +133,10 @@ async def get_task_status_new(task_id: str, user: dict = Depends(get_current_use
             return {"success": True, "data": result, "message": "任务状态获取成功"}
         else:
             # 内存中没有找到，尝试从 PostgreSQL document store 中查找
-            logger.info(
-                f"📊 [STATUS] 内存中未找到，尝试从 PostgreSQL document store 查找: {task_id}"
-            )
+            logger.info(f"📊 [STATUS] 内存中未找到，尝试从 PostgreSQL document store 查找: {task_id}")
 
             # 首先从analysis_tasks集合中查找（正在进行的任务）
-            task_result = await _get_analysis_task_for_read(
-                task_id, user_id=current_user_id
-            )
+            task_result = await _get_analysis_task_for_read(task_id, user_id=current_user_id)
 
             if task_result:
                 logger.info(f"✅ [STATUS] 从analysis_tasks找到任务: {task_id}")
@@ -130,30 +146,20 @@ async def get_task_status_new(task_id: str, user: dict = Depends(get_current_use
                 progress = task_result.get("progress", 0)
 
                 # 计算时间信息
-                start_time = _coerce_datetime(
-                    task_result.get("started_at") or task_result.get("created_at")
-                )
-                end_time = _coerce_datetime(
-                    task_result.get("completed_at") or task_result.get("updated_at")
-                )
+                start_time = _coerce_datetime(task_result.get("started_at") or task_result.get("created_at"))
+                end_time = _coerce_datetime(task_result.get("completed_at") or task_result.get("updated_at"))
                 is_terminal_status = status in {"completed", "failed", "cancelled"}
                 current_time = (
-                    end_time
-                    if is_terminal_status and end_time
-                    else datetime.now(timezone.utc).replace(tzinfo=None)
+                    end_time if is_terminal_status and end_time else datetime.now(timezone.utc).replace(tzinfo=None)
                 )
                 elapsed_time = 0
                 if start_time:
                     elapsed_time = (current_time - start_time).total_seconds()
 
                 error_message = (
-                    task_result.get("error_message")
-                    or task_result.get("last_error")
-                    or task_result.get("error")
+                    task_result.get("error_message") or task_result.get("last_error") or task_result.get("error")
                 )
-                status_message = _status_message_from_task_result(
-                    task_result, status, error_message
-                )
+                status_message = _status_message_from_task_result(task_result, status, error_message)
                 current_step = _status_step_from_task_result(task_result, status)
 
                 status_data = {
@@ -167,12 +173,9 @@ async def get_task_status_new(task_id: str, user: dict = Depends(get_current_use
                     "elapsed_time": elapsed_time,
                     "remaining_time": 0,  # 无法准确估算
                     "estimated_total_time": 0,
-                    "symbol": task_result.get("symbol")
-                    or task_result.get("stock_code"),
-                    "stock_code": task_result.get("symbol")
-                    or task_result.get("stock_code"),  # 兼容字段
-                    "stock_symbol": task_result.get("symbol")
-                    or task_result.get("stock_code"),
+                    "symbol": task_result.get("symbol") or task_result.get("stock_code"),
+                    "stock_code": task_result.get("symbol") or task_result.get("stock_code"),  # 兼容字段
+                    "stock_symbol": task_result.get("symbol") or task_result.get("stock_code"),
                     "source": "postgres_tasks",  # 标记数据来源
                 }
                 if error_message:
@@ -186,9 +189,7 @@ async def get_task_status_new(task_id: str, user: dict = Depends(get_current_use
                 }
 
             # 如果analysis_tasks中没有找到，再从analysis_reports集合中查找（已完成的任务）
-            postgres_result = await _get_analysis_report_by_task_id_for_read(
-                task_id, user_id=current_user_id
-            )
+            postgres_result = await _get_analysis_report_by_task_id_for_read(task_id, user_id=current_user_id)
 
             if postgres_result:
                 logger.info(f"✅ [STATUS] 从analysis_reports找到任务: {task_id}")
@@ -225,9 +226,7 @@ async def get_task_status_new(task_id: str, user: dict = Depends(get_current_use
                     "message": "任务状态获取成功（从历史记录恢复）",
                 }
             else:
-                logger.warning(
-                    f"❌ [STATUS] PostgreSQL中也未找到: {task_id} trace={task_id}"
-                )
+                logger.warning(f"❌ [STATUS] PostgreSQL中也未找到: {task_id} trace={task_id}")
                 raise HTTPException(status_code=404, detail="任务不存在")
 
     except HTTPException:

@@ -1,4 +1,20 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        List,
+        Optional,
+        asyncio,
+        cast,
+        datetime,
+        importlib,
+        logger,
+        pd,
+        timezone,
+    )
+
 class _AKShareProviderMixin1:
     def __init__(self):
         super().__init__("AKShare")
@@ -17,24 +33,18 @@ class _AKShareProviderMixin1:
 
             # 尝试导入 curl_cffi，如果可用则使用它来绕过反爬虫
             try:
-                curl_requests = getattr(
-                    importlib.import_module("curl_cffi"), "requests"
-                )
+                curl_requests = getattr(importlib.import_module("curl_cffi"), "requests")
                 use_curl_cffi = True
                 logger.info("🔧 检测到 curl_cffi，将使用它来模拟真实浏览器 TLS 指纹")
             except ImportError:
                 use_curl_cffi = False
-                logger.warning(
-                    "⚠️ curl_cffi 未安装，将使用标准 requests（可能被反爬虫拦截）"
-                )
+                logger.warning("⚠️ curl_cffi 未安装，将使用标准 requests（可能被反爬虫拦截）")
                 logger.warning("   建议安装: pip install curl-cffi")
 
             # 修复AKShare的bug：设置requests的默认headers，并添加请求延迟
             # AKShare的stock_news_em()函数没有设置必要的headers，导致API返回空响应
             if not hasattr(requests, "_akshare_headers_patched"):
-                last_request_time: Dict[str, float] = {
-                    "time": 0.0
-                }  # 使用字典以便在闭包中修改
+                last_request_time: Dict[str, float] = {"time": 0.0}  # 使用字典以便在闭包中修改
 
                 def patched_get(url, **kwargs):
                     """
@@ -47,9 +57,7 @@ class _AKShareProviderMixin1:
                     # 只对东方财富网的请求添加延迟
                     if is_eastmoney_request:
                         current_time = time.time()
-                        time_since_last_request = (
-                            current_time - last_request_time["time"]
-                        )
+                        time_since_last_request = current_time - last_request_time["time"]
                         if time_since_last_request < 0.5:  # 至少间隔0.5秒
                             time.sleep(0.5 - time_since_last_request)
                         last_request_time["time"] = time.time()
@@ -81,13 +89,8 @@ class _AKShareProviderMixin1:
                             # curl_cffi 失败，回退到标准 requests
                             error_msg = str(e)
                             # 忽略 TLS 库错误和 400 错误的详细日志（这是 Docker 环境的已知问题）
-                            if (
-                                "invalid library" not in error_msg
-                                and "400" not in error_msg
-                            ):
-                                logger.warning(
-                                    f"⚠️ curl_cffi 请求失败，回退到标准 requests: {e}"
-                                )
+                            if "invalid library" not in error_msg and "400" not in error_msg:
+                                logger.warning(f"⚠️ curl_cffi 请求失败，回退到标准 requests: {e}")
 
                     # 标准 requests 请求（非东方财富网，或 curl_cffi 不可用/失败）
                     # 本地 A 股数据请求不要继承终端/系统代理，避免 7897 等代理影响国内数据源。
@@ -115,9 +118,7 @@ class _AKShareProviderMixin1:
                                 "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
                             )
                         if "Accept-Language" not in kwargs["headers"]:
-                            kwargs["headers"]["Accept-Language"] = (
-                                "zh-CN,zh;q=0.9,en;q=0.8"
-                            )
+                            kwargs["headers"]["Accept-Language"] = "zh-CN,zh;q=0.9,en;q=0.8"
 
                     # 添加重试机制（最多3次）
                     max_retries = 3
@@ -130,9 +131,7 @@ class _AKShareProviderMixin1:
                             # 检查是否是SSL错误
                             error_str = str(e)
                             is_ssl_error = (
-                                "SSL" in error_str
-                                or "ssl" in error_str
-                                or "UNEXPECTED_EOF_WHILE_READING" in error_str
+                                "SSL" in error_str or "ssl" in error_str or "UNEXPECTED_EOF_WHILE_READING" in error_str
                             )
 
                             if is_ssl_error and attempt < max_retries - 1:
@@ -149,13 +148,9 @@ class _AKShareProviderMixin1:
                 setattr(requests, "_akshare_headers_patched", True)
 
                 if use_curl_cffi:
-                    logger.info(
-                        "🔧 已修复AKShare的headers问题，使用 curl_cffi 模拟真实浏览器（Chrome 120）"
-                    )
+                    logger.info("🔧 已修复AKShare的headers问题，使用 curl_cffi 模拟真实浏览器（Chrome 120）")
                 else:
-                    logger.info(
-                        "🔧 已修复AKShare的headers问题，并添加请求延迟（0.5秒）"
-                    )
+                    logger.info("🔧 已修复AKShare的headers问题，并添加请求延迟（0.5秒）")
 
             self.ak = ak
             self.connected = True
@@ -171,9 +166,7 @@ class _AKShareProviderMixin1:
             logger.error(f"❌ AKShare初始化失败: {e}")
             self.connected = False
 
-    def _get_stock_news_direct(
-        self, symbol: str, limit: int = 10
-    ) -> Optional[pd.DataFrame]:
+    def _get_stock_news_direct(self, symbol: str, limit: int = 10) -> Optional[pd.DataFrame]:
         """
         直接调用东方财富网新闻 API（绕过 AKShare）
         使用 curl_cffi 模拟真实浏览器，适用于 Docker 环境
@@ -231,9 +224,7 @@ class _AKShareProviderMixin1:
             )
 
             if response.status_code != 200:
-                self.logger.error(
-                    f"❌ {symbol} 东方财富网 API 返回错误: {response.status_code}"
-                )
+                self.logger.error(f"❌ {symbol} 东方财富网 API 返回错误: {response.status_code}")
                 return None
 
             # 解析 JSONP 响应
@@ -257,17 +248,15 @@ class _AKShareProviderMixin1:
             # 转换为 DataFrame（与 AKShare 格式兼容）
             news_data = []
             for article in articles:
-                news_data.append(
-                    {
-                        "新闻标题": article.get("title", ""),
-                        "新闻内容": article.get("content", ""),
-                        "发布时间": article.get("date", ""),
-                        "新闻链接": article.get("url", ""),
-                        "关键词": article.get("keywords", ""),
-                        "新闻来源": article.get("source", "东方财富网"),
-                        "新闻类型": article.get("type", ""),
-                    }
-                )
+                news_data.append({
+                    "新闻标题": article.get("title", ""),
+                    "新闻内容": article.get("content", ""),
+                    "发布时间": article.get("date", ""),
+                    "新闻链接": article.get("url", ""),
+                    "关键词": article.get("keywords", ""),
+                    "新闻来源": article.get("source", "东方财富网"),
+                    "新闻类型": article.get("type", ""),
+                })
 
             df = pd.DataFrame(news_data)
             self.logger.info(f"✅ {symbol} 直接调用 API 获取新闻成功: {len(df)} 条")
@@ -347,13 +336,11 @@ class _AKShareProviderMixin1:
             # 转换为标准格式
             stock_list = []
             for _, row in stock_df.iterrows():
-                stock_list.append(
-                    {
-                        "code": str(row.get("code", "")),
-                        "name": str(row.get("name", "")),
-                        "source": "akshare",
-                    }
-                )
+                stock_list.append({
+                    "code": str(row.get("code", "")),
+                    "name": str(row.get("name", "")),
+                    "source": "akshare",
+                })
 
             logger.info(f"✅ AKShare股票列表获取成功: {len(stock_list)}只股票")
             return stock_list

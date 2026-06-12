@@ -1,4 +1,27 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import (
+    ActionType,
+    Any,
+    ApiResponse,
+    BaseModel,
+    ConfigDict,
+    DataSourceConfig,
+    DatabaseConfig,
+    Depends,
+    Dict,
+    HTTPException,
+    LLMConfig,
+    List,
+    User,
+    get_current_user,
+    importlib,
+    log_operation,
+    logger,
+    now_tz,
+    ok,
+    router,
+    status,
+)
+
 class ConfigApiResponse(ApiResponse):
     """配置接口响应模型；允许 /settings 保留历史顶层透传字段。"""
 
@@ -16,9 +39,7 @@ async def reload_config(current_user: dict = Depends(get_current_user)):
     用于配置更新后立即生效，无需重启服务
     """
     try:
-        reload_bridged_config = getattr(
-            importlib.import_module("app.core.bridge"), "reload_bridged_config"
-        )
+        reload_bridged_config = getattr(importlib.import_module("app.core.bridge"), "reload_bridged_config")
 
         success = reload_bridged_config()
 
@@ -69,9 +90,7 @@ def _sort_llm_configs_by_newest(items):
 
     def get_sort_key(indexed_item):
         index, item = indexed_item
-        time_value = getattr(item, "created_at", None) or getattr(
-            item, "updated_at", None
-        )
+        time_value = getattr(item, "created_at", None) or getattr(item, "updated_at", None)
         if not time_value:
             return (0, index)
 
@@ -93,12 +112,8 @@ def _sanitize_datasource_configs(items):
     3. 如果都没有，返回 None
     """
     try:
-        is_valid_api_key = getattr(
-            importlib.import_module("app.utils.keys"), "is_valid_api_key"
-        )
-        truncate_api_key = getattr(
-            importlib.import_module("app.utils.keys"), "truncate_api_key"
-        )
+        is_valid_api_key = getattr(importlib.import_module("app.utils.keys"), "is_valid_api_key")
+        truncate_api_key = getattr(importlib.import_module("app.utils.keys"), "truncate_api_key")
         get_env_api_key_for_datasource = getattr(
             importlib.import_module("app.utils.keys"), "get_env_api_key_for_datasource"
         )
@@ -207,9 +222,7 @@ def require_admin_user(current_user: dict | User) -> None:
     if is_admin or "admin" in set(roles) or username == "admin" or user_id == "admin":
         return
 
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN, detail="需要管理员权限"
-    )
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要管理员权限")
 
 
 class MarketCategoryUpdateRequest(BaseModel):

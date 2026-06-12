@@ -13,25 +13,10 @@ Notes:
 """
 from __future__ import annotations
 
-import numpy as np
-import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
     rank,
     safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
     vwap,
 )
 
@@ -62,11 +47,11 @@ def compute(panel):
     """
     c = panel["close"]
     h = panel["high"]
-    l = panel["low"]
+    low = panel["low"]
     v = panel["volume"]
     vw = vwap(panel, "equity_cn")
 
-    hl_ratio = safe_div(h - l, c.rolling(5).sum() / 5.0)
+    hl_ratio = safe_div(h - low, c.rolling(5).sum() / 5.0)
     num = rank(hl_ratio.shift(2)) * rank(rank(v))
     den = safe_div(hl_ratio, vw - c)
     out = safe_div(num, den)

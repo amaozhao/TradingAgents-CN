@@ -1,4 +1,6 @@
-# ruff: noqa: F401,F403,F405,F821
+from .common import _handler
+from .imports import AIMessage, Any, HumanMessage, List, ToolMessage, importlib, logger, traceback
+
 class _GoogleToolCallHandlerMixin2:
     @staticmethod
     def generate_final_analysis_report(llm, messages: List, analyst_name: str) -> str:
@@ -13,7 +15,7 @@ class _GoogleToolCallHandlerMixin2:
         Returns:
             str: 分析报告
         """
-        if not GoogleToolCallHandler.is_google_model(llm):
+        if not _handler().is_google_model(llm):
             logger.warning(f"⚠️ [{analyst_name}] 非Google模型，跳过Google工具处理器")
             return ""
 
@@ -23,13 +25,9 @@ class _GoogleToolCallHandlerMixin2:
 
         for attempt in range(max_retries):
             try:
-                logger.debug(
-                    f"🔍 [{analyst_name}] ===== 最终分析报告生成开始 (尝试 {attempt + 1}/{max_retries}) ====="
-                )
+                logger.debug(f"🔍 [{analyst_name}] ===== 最终分析报告生成开始 (尝试 {attempt + 1}/{max_retries}) =====")
                 logger.debug(f"🔍 [{analyst_name}] LLM类型: {type(llm).__name__}")
-                logger.debug(
-                    f"🔍 [{analyst_name}] LLM模型: {getattr(llm, 'model', 'unknown')}"
-                )
+                logger.debug(f"🔍 [{analyst_name}] LLM模型: {getattr(llm, 'model', 'unknown')}")
                 logger.debug(f"🔍 [{analyst_name}] 消息数量: {len(messages)}")
 
                 # 记录消息类型和长度
@@ -37,13 +35,9 @@ class _GoogleToolCallHandlerMixin2:
                     msg_type = type(msg).__name__
                     if hasattr(msg, "content"):
                         content_length = len(str(msg.content)) if msg.content else 0
-                        logger.debug(
-                            f"🔍 [{analyst_name}] 消息{i + 1}: {msg_type}, 长度: {content_length}"
-                        )
+                        logger.debug(f"🔍 [{analyst_name}] 消息{i + 1}: {msg_type}, 长度: {content_length}")
                     else:
-                        logger.debug(
-                            f"🔍 [{analyst_name}] 消息{i + 1}: {msg_type}, 无content属性"
-                        )
+                        logger.debug(f"🔍 [{analyst_name}] 消息{i + 1}: {msg_type}, 无content属性")
 
                 # 构建分析提示 - 根据尝试次数调整
                 if attempt == 0:
@@ -68,18 +62,12 @@ class _GoogleToolCallHandlerMixin2:
                     请为{analyst_name}提供一个简短的分析总结。
                     """
 
-                logger.debug(
-                    f"🔍 [{analyst_name}] 分析提示预览: {analysis_prompt[:100]}..."
-                )
+                logger.debug(f"🔍 [{analyst_name}] 分析提示预览: {analysis_prompt[:100]}...")
 
                 # 优化消息序列
-                optimized_messages = GoogleToolCallHandler._optimize_message_sequence(
-                    messages, analysis_prompt
-                )
+                optimized_messages = _handler()._optimize_message_sequence(messages, analysis_prompt)
 
-                logger.info(
-                    f"[{analyst_name}] 🚀 正在调用LLM.invoke() (尝试 {attempt + 1}/{max_retries})..."
-                )
+                logger.info(f"[{analyst_name}] 🚀 正在调用LLM.invoke() (尝试 {attempt + 1}/{max_retries})...")
 
                 # 调用LLM生成报告
                 time = importlib.import_module("time")
@@ -87,81 +75,49 @@ class _GoogleToolCallHandlerMixin2:
                 result = llm.invoke(optimized_messages)
                 end_time = time.time()
 
-                logger.info(
-                    f"[{analyst_name}] ✅ LLM.invoke()调用完成 (耗时: {end_time - start_time:.2f}秒)"
-                )
+                logger.info(f"[{analyst_name}] ✅ LLM.invoke()调用完成 (耗时: {end_time - start_time:.2f}秒)")
 
                 # 详细检查返回结果
-                logger.debug(
-                    f"🔍 [{analyst_name}] 返回结果类型: {type(result).__name__}"
-                )
+                logger.debug(f"🔍 [{analyst_name}] 返回结果类型: {type(result).__name__}")
                 logger.debug(f"🔍 [{analyst_name}] 返回结果属性: {dir(result)}")
 
                 if hasattr(result, "content"):
                     content = result.content
                     logger.debug(f"🔍 [{analyst_name}] 内容类型: {type(content)}")
-                    logger.debug(
-                        f"🔍 [{analyst_name}] 内容长度: {len(content) if content else 0}"
-                    )
+                    logger.debug(f"🔍 [{analyst_name}] 内容长度: {len(content) if content else 0}")
 
                     if not content or len(content.strip()) == 0:
-                        logger.warning(
-                            f"[{analyst_name}] ⚠️ Google模型返回内容为空 (尝试 {attempt + 1}/{max_retries})"
-                        )
+                        logger.warning(f"[{analyst_name}] ⚠️ Google模型返回内容为空 (尝试 {attempt + 1}/{max_retries})")
 
                         if attempt < max_retries - 1:
-                            logger.info(
-                                f"[{analyst_name}] 🔄 等待{retry_delay}秒后重试..."
-                            )
+                            logger.info(f"[{analyst_name}] 🔄 等待{retry_delay}秒后重试...")
                             time.sleep(retry_delay)
                             continue
                         else:
-                            logger.warning(
-                                f"[{analyst_name}] ⚠️ Google模型最终分析报告生成失败 - 所有重试均返回空内容"
-                            )
+                            logger.warning(f"[{analyst_name}] ⚠️ Google模型最终分析报告生成失败 - 所有重试均返回空内容")
                             # 使用降级报告
-                            fallback_report = (
-                                GoogleToolCallHandler._generate_fallback_report(
-                                    messages, analyst_name
-                                )
-                            )
-                            logger.info(
-                                f"[{analyst_name}] 🔄 使用降级报告，长度: {len(fallback_report)} 字符"
-                            )
+                            fallback_report = _handler()._generate_fallback_report(messages, analyst_name)
+                            logger.info(f"[{analyst_name}] 🔄 使用降级报告，长度: {len(fallback_report)} 字符")
                             return fallback_report
                     else:
-                        logger.info(
-                            f"[{analyst_name}] ✅ 成功生成分析报告，长度: {len(content)} 字符"
-                        )
+                        logger.info(f"[{analyst_name}] ✅ 成功生成分析报告，长度: {len(content)} 字符")
                         return content
                 else:
-                    logger.error(
-                        f"[{analyst_name}] ❌ 返回结果没有content属性 (尝试 {attempt + 1}/{max_retries})"
-                    )
+                    logger.error(f"[{analyst_name}] ❌ 返回结果没有content属性 (尝试 {attempt + 1}/{max_retries})")
 
                     if attempt < max_retries - 1:
                         logger.info(f"[{analyst_name}] 🔄 等待{retry_delay}秒后重试...")
                         time.sleep(retry_delay)
                         continue
                     else:
-                        fallback_report = (
-                            GoogleToolCallHandler._generate_fallback_report(
-                                messages, analyst_name
-                            )
-                        )
-                        logger.info(
-                            f"[{analyst_name}] 🔄 使用降级报告，长度: {len(fallback_report)} 字符"
-                        )
+                        fallback_report = _handler()._generate_fallback_report(messages, analyst_name)
+                        logger.info(f"[{analyst_name}] 🔄 使用降级报告，长度: {len(fallback_report)} 字符")
                         return fallback_report
 
             except Exception as e:
-                logger.error(
-                    f"[{analyst_name}] ❌ LLM调用异常 (尝试 {attempt + 1}/{max_retries}): {e}"
-                )
+                logger.error(f"[{analyst_name}] ❌ LLM调用异常 (尝试 {attempt + 1}/{max_retries}): {e}")
                 logger.error(f"[{analyst_name}] ❌ 异常类型: {type(e).__name__}")
-                logger.error(
-                    f"[{analyst_name}] ❌ 完整异常信息:\n{traceback.format_exc()}"
-                )
+                logger.error(f"[{analyst_name}] ❌ 完整异常信息:\n{traceback.format_exc()}")
 
                 if attempt < max_retries - 1:
                     logger.info(f"[{analyst_name}] 🔄 等待{retry_delay}秒后重试...")
@@ -169,21 +125,13 @@ class _GoogleToolCallHandlerMixin2:
                     continue
                 else:
                     # 使用降级报告
-                    fallback_report = GoogleToolCallHandler._generate_fallback_report(
-                        messages, analyst_name
-                    )
-                    logger.info(
-                        f"[{analyst_name}] 🔄 使用降级报告，长度: {len(fallback_report)} 字符"
-                    )
+                    fallback_report = _handler()._generate_fallback_report(messages, analyst_name)
+                    logger.info(f"[{analyst_name}] 🔄 使用降级报告，长度: {len(fallback_report)} 字符")
                     return fallback_report
 
         # 如果所有重试都失败，返回降级报告
-        fallback_report = GoogleToolCallHandler._generate_fallback_report(
-            messages, analyst_name
-        )
-        logger.info(
-            f"[{analyst_name}] 🔄 所有重试失败，使用降级报告，长度: {len(fallback_report)} 字符"
-        )
+        fallback_report = _handler()._generate_fallback_report(messages, analyst_name)
+        logger.info(f"[{analyst_name}] 🔄 所有重试失败，使用降级报告，长度: {len(fallback_report)} 字符")
         return fallback_report
 
     @staticmethod
@@ -199,9 +147,7 @@ class _GoogleToolCallHandlerMixin2:
             List: 优化后的消息列表
         """
         # 计算总长度
-        total_length = sum(
-            len(str(msg.content)) for msg in messages if hasattr(msg, "content")
-        )
+        total_length = sum(len(str(msg.content)) for msg in messages if hasattr(msg, "content"))
         total_length += len(analysis_prompt)
 
         if total_length <= 50000:
@@ -222,9 +168,7 @@ class _GoogleToolCallHandlerMixin2:
             if isinstance(msg, (AIMessage, ToolMessage)):
                 if hasattr(msg, "content") and len(str(msg.content)) > 5000:
                     # 截断过长内容
-                    truncated_content = (
-                        str(msg.content)[:5000] + "\n\n[注：数据已截断以确保处理效率]"
-                    )
+                    truncated_content = str(msg.content)[:5000] + "\n\n[注：数据已截断以确保处理效率]"
                     if isinstance(msg, AIMessage):
                         optimized_msg = AIMessage(content=truncated_content)
                     else:
@@ -253,9 +197,7 @@ class _GoogleToolCallHandlerMixin2:
         Returns:
             str: 降级报告
         """
-        ToolMessage = getattr(
-            importlib.import_module("langchain_core.messages"), "ToolMessage"
-        )
+        ToolMessage = getattr(importlib.import_module("langchain_core.messages"), "ToolMessage")
 
         # 提取工具结果
         tool_results = []
@@ -267,12 +209,7 @@ class _GoogleToolCallHandlerMixin2:
                 tool_results.append(content)
 
         if tool_results:
-            tool_summary = "\n\n".join(
-                [
-                    f"工具结果 {i + 1}:\n{result}"
-                    for i, result in enumerate(tool_results)
-                ]
-            )
+            tool_summary = "\n\n".join([f"工具结果 {i + 1}:\n{result}" for i, result in enumerate(tool_results)])
             report = f"{analyst_name}工具调用完成，获得以下数据：\n\n{tool_summary}\n\n注：由于模型响应异常，此为基于工具数据的简化报告。"
         else:
             report = f"{analyst_name}分析完成，但未能获取到有效的工具数据。建议检查数据源或重新尝试分析。"

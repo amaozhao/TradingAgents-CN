@@ -1,8 +1,19 @@
-# ruff: noqa: F401,F403,F405,F821,F722
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Annotated,
+        Doc,
+        datetime,
+        importlib,
+        logger,
+        time,
+    )
+
 def get_china_stock_data_tushare(
-    ticker: Annotated[str, "中国股票代码，如：000001、600036等"],
-    start_date: Annotated[str, "开始日期，格式：YYYY-MM-DD"],
-    end_date: Annotated[str, "结束日期，格式：YYYY-MM-DD"],
+    ticker: Annotated[str, Doc("中国股票代码，如：000001、600036等")],
+    start_date: Annotated[str, Doc("开始日期，格式：YYYY-MM-DD")],
+    end_date: Annotated[str, Doc("结束日期，格式：YYYY-MM-DD")],
 ) -> str:
     """
     使用Tushare获取中国A股历史数据
@@ -38,7 +49,7 @@ def get_china_stock_data_tushare(
 
 
 def get_china_stock_info_tushare(
-    ticker: Annotated[str, "中国股票代码，如：000001、600036等"],
+    ticker: Annotated[str, Doc("中国股票代码，如：000001、600036等")],
 ) -> str:
     """
     使用Tushare获取中国A股基本信息
@@ -83,7 +94,7 @@ def get_china_stock_info_tushare(
 
 
 def get_china_stock_fundamentals_tushare(
-    ticker: Annotated[str, "中国股票代码，如：000001、600036等"],
+    ticker: Annotated[str, Doc("中国股票代码，如：000001、600036等")],
 ) -> str:
     """
     获取中国A股基本面数据（统一接口）
@@ -118,9 +129,9 @@ def get_china_stock_fundamentals_tushare(
 
 
 def get_china_stock_data_unified(
-    ticker: Annotated[str, "中国股票代码，如：000001、600036等"],
-    start_date: Annotated[str, "开始日期，格式：YYYY-MM-DD"],
-    end_date: Annotated[str, "结束日期，格式：YYYY-MM-DD"],
+    ticker: Annotated[str, Doc("中国股票代码，如：000001、600036等")],
+    start_date: Annotated[str, Doc("开始日期，格式：YYYY-MM-DD")],
+    end_date: Annotated[str, Doc("结束日期，格式：YYYY-MM-DD")],
 ) -> str:
     """
     统一的中国A股数据获取接口
@@ -258,7 +269,7 @@ def get_china_stock_data_unified(
 
 
 def get_china_stock_info_unified(
-    ticker: Annotated[str, "中国股票代码，如：000001、600036等"],
+    ticker: Annotated[str, Doc("中国股票代码，如：000001、600036等")],
 ) -> str:
     """
     统一的中国A股基本信息获取接口
@@ -313,7 +324,7 @@ def get_china_stock_info_unified(
 
 
 def switch_china_data_source(
-    source: Annotated[str, "数据源名称：tushare, akshare, baostock"],
+    source: Annotated[str, Doc("数据源名称：tushare, akshare, baostock")],
 ) -> str:
     """
     切换中国股票数据源

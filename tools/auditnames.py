@@ -23,9 +23,18 @@ TEST_ROOTS = (
     Path("backend/support"),
 )
 TEST_MIRROR_ROOTS = {
-    Path("backend/tests/app"): Path("backend/app"),
-    Path("backend/tests/cli"): Path("backend/cli"),
-    Path("backend/tests/trader"): Path("backend/trader"),
+    Path("backend/tests/unit/app"): Path("backend/app"),
+    Path("backend/tests/unit/cli"): Path("backend/cli"),
+    Path("backend/tests/unit/support"): Path("backend/support"),
+    Path("backend/tests/unit/trader"): Path("backend/trader"),
+    Path("backend/tests/integration/app"): Path("backend/app"),
+    Path("backend/tests/integration/cli"): Path("backend/cli"),
+    Path("backend/tests/integration/support"): Path("backend/support"),
+    Path("backend/tests/integration/trader"): Path("backend/trader"),
+    Path("backend/tests/e2e/app"): Path("backend/app"),
+    Path("backend/tests/e2e/cli"): Path("backend/cli"),
+    Path("backend/tests/e2e/support"): Path("backend/support"),
+    Path("backend/tests/e2e/trader"): Path("backend/trader"),
 }
 
 MAGIC_PYTHON_FILES = {"__init__.py", "__main__.py", "conftest.py"}
@@ -103,12 +112,14 @@ FORBIDDEN_DIRECTORIES = {
     Path("backend/trader/agents") / SNAKE_RISK_MANAGEMENT: Path(
         "backend/trader/agents/risk/management"
     ),
-    Path("backend/tests/trader") / GLUED_DATA_FLOWS: Path("backend/tests/trader/flows"),
-    Path("backend/tests/trader") / GLUED_LLM_CLIENTS: Path(
-        "backend/tests/trader/llm/clients"
+    Path("backend/tests/unit/trader") / GLUED_DATA_FLOWS: Path(
+        "backend/tests/unit/trader/flows"
     ),
-    Path("backend/tests/trader") / GLUED_LLM_ADAPTERS: Path(
-        "backend/tests/trader/llm/adapters"
+    Path("backend/tests/unit/trader") / GLUED_LLM_CLIENTS: Path(
+        "backend/tests/unit/trader/llm/clients"
+    ),
+    Path("backend/tests/unit/trader") / GLUED_LLM_ADAPTERS: Path(
+        "backend/tests/unit/trader/llm/adapters"
     ),
     Path("backend/support") / GLUED_TRADING_AGENTS: Path(
         "backend/support/trading/agents"

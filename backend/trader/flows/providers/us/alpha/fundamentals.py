@@ -1,4 +1,3 @@
-# ruff: noqa: F722
 """
 Alpha Vantage 基本面数据提供者
 

@@ -1,5 +1,27 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        ApiResponse,
+        Depends,
+        Dict,
+        HTTPException,
+        Optional,
+        Query,
+        StockDataService,
+        Tuple,
+        UnifiedStockService,
+        datetime,
+        get_current_user,
+        get_postgres_db,
+        importlib,
+        logger,
+        ok,
+        re,
+        router,
+        timedelta,
+    )
 
 def _detect_market_and_code(code: str) -> Tuple[str, str]:
     code = code.strip().upper()
@@ -24,9 +46,7 @@ def _dump_model(value: Any) -> Dict[str, Any]:
     return dict(value) if isinstance(value, dict) else {}
 
 
-def _build_quote_payload(
-    code: str, data: Dict[str, Any], source: str
-) -> Dict[str, Any]:
+def _build_quote_payload(code: str, data: Dict[str, Any], source: str) -> Dict[str, Any]:
     price = data.get("price") or data.get("current_price") or data.get("close")
     prev_close = data.get("prev_close") or data.get("pre_close")
     return {
@@ -105,9 +125,7 @@ def _trade_date_value(row: Dict[str, Any]) -> str:
     return str(value)
 
 
-async def _enrich_quote_from_daily_quotes(
-    code: str, quote: Dict[str, Any]
-) -> Dict[str, Any]:
+async def _enrich_quote_from_daily_quotes(code: str, quote: Dict[str, Any]) -> Dict[str, Any]:
     try:
         db = get_postgres_db()
         service = UnifiedStockService(db)
@@ -125,9 +143,7 @@ async def _enrich_quote_from_daily_quotes(
     previous = dated_rows[-2] if len(dated_rows) >= 2 else {}
 
     latest_close = _as_float(latest.get("close"))
-    previous_close = _as_float(previous.get("close")) or _as_float(
-        quote.get("prev_close") or quote.get("pre_close")
-    )
+    previous_close = _as_float(previous.get("close")) or _as_float(quote.get("prev_close") or quote.get("pre_close"))
     high = _as_float(latest.get("high"))
     low = _as_float(latest.get("low"))
 
@@ -139,9 +155,7 @@ async def _enrich_quote_from_daily_quotes(
     quote.setdefault("amount", latest.get("amount"))
 
     if quote.get("change_percent") in (None, "") and latest_close and previous_close:
-        quote["change_percent"] = round(
-            (latest_close - previous_close) / previous_close * 100, 3
-        )
+        quote["change_percent"] = round((latest_close - previous_close) / previous_close * 100, 3)
     if quote.get("amplitude") in (None, "") and high and low and previous_close:
         quote["amplitude"] = round((high - low) / previous_close * 100, 3)
 
@@ -193,15 +207,13 @@ async def get_quote(code: str, current_user: dict = Depends(get_current_user)):
 async def get_fundamentals(code: str, current_user: dict = Depends(get_current_user)):
     market, normalized_code = _detect_market_and_code(code)
     if market != "CN":
-        return ok(
-            {
-                "symbol": normalized_code,
-                "code": normalized_code,
-                "market": market,
-                "name": normalized_code,
-                "source": "none",
-            }
-        )
+        return ok({
+            "symbol": normalized_code,
+            "code": normalized_code,
+            "market": market,
+            "name": normalized_code,
+            "source": "none",
+        })
 
     service = StockDataService()
     basic = _dump_model(await service.get_stock_basic_info(normalized_code))
@@ -213,9 +225,7 @@ async def get_fundamentals(code: str, current_user: dict = Depends(get_current_u
         if not basic:
             basic = await provider.get_stock_basic_info(normalized_code) or {}
             if basic:
-                await service.update_stock_basic_info(
-                    normalized_code, basic, source="akshare"
-                )
+                await service.update_stock_basic_info(normalized_code, basic, source="akshare")
         if not quote:
             quote = await provider.get_stock_quotes(normalized_code) or {}
             if quote:
@@ -253,9 +263,7 @@ async def get_kline(
         if not items:
             provider = await _get_akshare_provider()
             end_date = datetime.now().strftime("%Y-%m-%d")
-            start_date = (
-                datetime.now() - timedelta(days=max(limit * 2, 180))
-            ).strftime("%Y-%m-%d")
+            start_date = (datetime.now() - timedelta(days=max(limit * 2, 180))).strftime("%Y-%m-%d")
             df = await provider.get_historical_data(
                 code=normalized_code,
                 start_date=start_date,
@@ -271,23 +279,19 @@ async def get_kline(
             importlib.import_module("app.services.stocks.foreign"),
             "ForeignStockService",
         )
-        rows = await ForeignStockService().get_kline(
-            market, normalized_code, period=period, limit=limit
-        )
+        rows = await ForeignStockService().get_kline(market, normalized_code, period=period, limit=limit)
         items = [_format_kline_item(row) for row in rows or []]
         data_source = "foreign"
 
-    return ok(
-        {
-            "symbol": normalized_code,
-            "code": normalized_code,
-            "period": period,
-            "limit": limit,
-            "adj": adj,
-            "source": data_source,
-            "items": items,
-        }
-    )
+    return ok({
+        "symbol": normalized_code,
+        "code": normalized_code,
+        "period": period,
+        "limit": limit,
+        "adj": adj,
+        "source": data_source,
+        "items": items,
+    })
 
 
 @router.get("/{code}/news", response_model=ApiResponse)
@@ -299,15 +303,9 @@ async def get_news(
     current_user: dict = Depends(get_current_user),
 ):
     """获取新闻与公告（支持A股、港股、美股）"""
-    ForeignStockService = getattr(
-        importlib.import_module("app.services.stocks.foreign"), "ForeignStockService"
-    )
-    get_news_data_service = getattr(
-        importlib.import_module("app.services.market.news"), "get_news_data_service"
-    )
-    NewsQueryParams = getattr(
-        importlib.import_module("app.services.market.news"), "NewsQueryParams"
-    )
+    ForeignStockService = getattr(importlib.import_module("app.services.stocks.foreign"), "ForeignStockService")
+    get_news_data_service = getattr(importlib.import_module("app.services.market.news"), "get_news_data_service")
+    NewsQueryParams = getattr(importlib.import_module("app.services.market.news"), "NewsQueryParams")
 
     # 检测股票类型
     market, normalized_code = _detect_market_and_code(code)
@@ -331,18 +329,14 @@ async def get_news(
         # A股：直接调用同步服务的查询方法（包含智能回退逻辑）
         try:
             logger.info("=" * 80)
-            logger.info(
-                f"📰 开始获取新闻: code={code}, normalized_code={normalized_code}, days={days}, limit={limit}"
-            )
+            logger.info(f"📰 开始获取新闻: code={code}, normalized_code={normalized_code}, days={days}, limit={limit}")
 
             # 直接使用 news_data 路由的查询逻辑
             get_news_data_service = getattr(
                 importlib.import_module("app.services.market.news"),
                 "get_news_data_service",
             )
-            NewsQueryParams = getattr(
-                importlib.import_module("app.services.market.news"), "NewsQueryParams"
-            )
+            NewsQueryParams = getattr(importlib.import_module("app.services.market.news"), "NewsQueryParams")
             datetime = getattr(importlib.import_module("datetime"), "datetime")
             get_akshare_sync_service = getattr(
                 importlib.import_module("app.worker.akshare.sync"),
@@ -361,9 +355,7 @@ async def get_news(
                 sort_order=-1,
             )
 
-            logger.info(
-                f"🔍 查询参数: symbol={params.symbol}, limit={params.limit} (不限制时间范围)"
-            )
+            logger.info(f"🔍 查询参数: symbol={params.symbol}, limit={params.limit} (不限制时间范围)")
 
             # 1. 先从数据库查询
             logger.info("📊 步骤1: 从数据库查询新闻...")
@@ -403,48 +395,38 @@ async def get_news(
                 if isinstance(publish_time, datetime):
                     publish_time = publish_time.isoformat()
 
-                items.append(
-                    {
-                        "title": news.get("title", ""),
-                        "source": news.get("source", ""),
-                        "time": publish_time,
-                        "url": news.get("url", ""),
-                        "type": "news",
-                        "content": news.get("content", ""),
-                        "summary": news.get("summary", ""),
-                    }
-                )
+                items.append({
+                    "title": news.get("title", ""),
+                    "source": news.get("source", ""),
+                    "time": publish_time,
+                    "url": news.get("url", ""),
+                    "type": "news",
+                    "content": news.get("content", ""),
+                    "summary": news.get("summary", ""),
+                })
 
             logger.info(f"✅ 转换完成: {len(items)} 条新闻")
 
             if not items:
-                logger.info(
-                    f"🔄 数据库/同步服务无新闻，尝试统一数据源兜底: {normalized_code}"
-                )
+                logger.info(f"🔄 数据库/同步服务无新闻，尝试统一数据源兜底: {normalized_code}")
                 try:
                     DataSourceManager = getattr(
                         importlib.import_module("app.services.sources.manager"),
                         "DataSourceManager",
                     )
 
-                    fallback_items, fallback_source = (
-                        DataSourceManager().get_news_with_fallback(
-                            normalized_code,
-                            days=days,
-                            limit=limit,
-                            include_announcements=include_announcements,
-                        )
+                    fallback_items, fallback_source = DataSourceManager().get_news_with_fallback(
+                        normalized_code,
+                        days=days,
+                        limit=limit,
+                        include_announcements=include_announcements,
                     )
                     if fallback_items:
                         items = fallback_items
                         data_source = fallback_source
-                        logger.info(
-                            f"✅ 统一数据源兜底成功: source={fallback_source}, items={len(items)}"
-                        )
+                        logger.info(f"✅ 统一数据源兜底成功: source={fallback_source}, items={len(items)}")
                 except Exception as fallback_error:
-                    logger.error(
-                        f"❌ 统一数据源兜底失败: {fallback_error}", exc_info=True
-                    )
+                    logger.error(f"❌ 统一数据源兜底失败: {fallback_error}", exc_info=True)
 
             data = {
                 "code": normalized_code,
@@ -467,13 +449,11 @@ async def get_news(
                     "DataSourceManager",
                 )
 
-                fallback_items, fallback_source = (
-                    DataSourceManager().get_news_with_fallback(
-                        normalized_code,
-                        days=days,
-                        limit=limit,
-                        include_announcements=include_announcements,
-                    )
+                fallback_items, fallback_source = DataSourceManager().get_news_with_fallback(
+                    normalized_code,
+                    days=days,
+                    limit=limit,
+                    include_announcements=include_announcements,
                 )
                 data = {
                     "code": normalized_code,
@@ -485,9 +465,7 @@ async def get_news(
                 }
                 return ok(data)
             except Exception as fallback_error:
-                logger.error(
-                    f"❌ 新闻备用数据源也失败: {fallback_error}", exc_info=True
-                )
+                logger.error(f"❌ 新闻备用数据源也失败: {fallback_error}", exc_info=True)
             data = {
                 "code": normalized_code,
                 "days": days,

@@ -227,7 +227,7 @@ if __name__ == "__main__":
             print("   下一步: python -m cli.main")
         else:
             print("🔧 需要修复配置后再次测试。")
-            print("   重新测试: python backend/tests/test_data_sources_simple.py")
+            print("   重新测试: python -m pytest backend/tests/unit/trader/flows/sources/test_init.py")
 
     except Exception as e:
         print(f"❌ 测试程序异常: {e}")

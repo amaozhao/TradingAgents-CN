@@ -15,20 +15,7 @@ import numpy as np
 import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
     safe_div,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 __alpha_meta__ = {
@@ -48,13 +35,13 @@ __alpha_meta__ = {
 def compute(panel: dict) -> pd.DataFrame:
     o = panel["open"]
     h = panel["high"]
-    l = panel["low"]
+    low = panel["low"]
     po = o.shift(1)
     dtm = pd.DataFrame(np.where(o <= po, 0.0,
                                 np.maximum((h - o).to_numpy(), (o - po).to_numpy())),
                        index=o.index, columns=o.columns)
     dbm = pd.DataFrame(np.where(o >= po, 0.0,
-                                np.maximum((o - l).to_numpy(), (o - po).to_numpy())),
+                                np.maximum((o - low).to_numpy(), (o - po).to_numpy())),
                        index=o.index, columns=o.columns)
     sd = dtm.rolling(20, min_periods=20).sum()
     sb = dbm.rolling(20, min_periods=20).sum()

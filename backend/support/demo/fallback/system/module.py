@@ -253,7 +253,7 @@ def main():
             "backend/trader/flows/dataflowstockservice.py - 股票数据服务",
             "backend/trader/api/stockapiendpoint.py - 便捷API接口",
             "backend/examples/stock/query/examples/example.py - 使用示例",
-            "backend/tests/test_stock_data_service.py - 测试程序",
+            "backend/tests/unit/trader/api/test_stocks.py - 测试程序",
             ".env - 数据库配置文件",
         ]
 

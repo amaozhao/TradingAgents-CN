@@ -13,25 +13,9 @@ Notes: SMA -> ewm(alpha=2/10).
 """
 from __future__ import annotations
 
-import numpy as np
-import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
     safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "gtja191_109"
@@ -63,8 +47,8 @@ def compute(panel):
         """SMA(x, n, m) per GTJA convention -> ewm with alpha = m/n."""
         return x.ewm(alpha=m / n, adjust=False).mean()
     h = panel["high"]
-    l = panel["low"]
-    hl = h - l
+    low = panel["low"]
+    hl = h - low
     num = _sma(hl, 10, 2)
     den = _sma(num, 10, 2)
     out = safe_div(num, den)

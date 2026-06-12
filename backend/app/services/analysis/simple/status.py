@@ -1,7 +1,21 @@
-# ruff: noqa: F403,F405
 from datetime import UTC
 
-from .common import *
+from .common import (
+    AnalysisStatus,
+    Any,
+    Dict,
+    List,
+    Optional,
+    TaskStatus,
+    cast,
+    datetime,
+    get_memory_state_manager,
+    get_postgres_db,
+    get_progress_by_id,
+    importlib,
+    logger,
+    settings,
+)
 
 
 class AnalysisStatusMixin:
@@ -235,6 +249,7 @@ class AnalysisStatusMixin:
         status: Optional[str],
         limit: int,
         offset: int,
+        batch_id: Optional[str] = None,
     ) -> Optional[List[Dict[str, Any]]]:
         if not settings.POSTGRES_READ_ENABLED:
             return None
@@ -251,12 +266,14 @@ class AnalysisStatusMixin:
                     session,
                     user_id,
                     status=status,
+                    batch_id=batch_id,
                     limit=limit,
                     offset=offset,
                 )
-            return [
+            tasks = [
                 self._analysis_task_document_to_history_item(doc) for doc in documents
             ]
+            return tasks
         except Exception as e:
             logger.warning("PostgreSQL结构化任务表查询失败，回退文档存储: %s", e)
             return None
@@ -267,6 +284,7 @@ class AnalysisStatusMixin:
         user_id: str,
         task_status: Optional[TaskStatus],
         limit: int,
+        batch_id: Optional[str] = None,
     ) -> tuple[List[Dict[str, Any]], int]:
         db = get_postgres_db()
 
@@ -305,6 +323,9 @@ class AnalysisStatusMixin:
         if task_status:
             query["status"] = task_status.value
             logger.info(f"📋 [Tasks] 添加状态过滤: {task_status.value}")
+        if batch_id:
+            query["batch_id"] = batch_id
+            logger.info(f"📋 [Tasks] 添加批次过滤: {batch_id}")
 
         logger.info(f"📋 [Tasks] PostgreSQL 查询条件: {query}")
         cursor = db.analysis_tasks.find(query).sort("created_at", -1).limit(limit * 2)
@@ -324,6 +345,7 @@ class AnalysisStatusMixin:
         )
         item = {
             "task_id": doc.get("task_id"),
+            "batch_id": doc.get("batch_id"),
             "user_id": str(user_field_val) if user_field_val is not None else None,
             "symbol": stock_code_value,
             "stock_code": stock_code_value,
@@ -365,6 +387,7 @@ class AnalysisStatusMixin:
         status: Optional[str] = None,
         limit: int = 20,
         offset: int = 0,
+        batch_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """获取用户任务列表
         - 对于 processing 状态：优先从内存读取（实时进度）
@@ -391,7 +414,7 @@ class AnalysisStatusMixin:
 
             # 1) 从内存读取任务
             logger.info(
-                f"📋 [Tasks] 准备从内存读取任务: user_id={user_id}, status={status} (mapped to {task_status}), limit={limit}, offset={offset}"
+                f"📋 [Tasks] 准备从内存读取任务: user_id={user_id}, status={status} (mapped to {task_status}), batch_id={batch_id}, limit={limit}, offset={offset}"
             )
             tasks_in_mem = await self.memory_manager.list_user_tasks(
                 user_id=user_id,
@@ -414,6 +437,7 @@ class AnalysisStatusMixin:
                     status=task_status.value if task_status else None,
                     limit=limit * 2,
                     offset=0,
+                    batch_id=batch_id,
                 )
                 if table_tasks:
                     postgres_tasks = table_tasks
@@ -427,6 +451,7 @@ class AnalysisStatusMixin:
                         user_id=user_id,
                         task_status=task_status,
                         limit=limit,
+                        batch_id=batch_id,
                     )
 
                 logger.info(f"📋 [Tasks] PostgreSQL 返回数量: {count}")
@@ -480,6 +505,10 @@ class AnalysisStatusMixin:
 
             # 转换为列表并按时间排序
             merged_tasks = list(task_dict.values())
+            if batch_id:
+                merged_tasks = [
+                    task for task in merged_tasks if task.get("batch_id") == batch_id
+                ]
             merged_tasks.sort(key=lambda x: x.get("start_time", ""), reverse=True)
 
             # 分页

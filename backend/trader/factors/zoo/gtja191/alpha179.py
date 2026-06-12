@@ -13,25 +13,11 @@ Notes:
 """
 from __future__ import annotations
 
-import numpy as np
-import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
     rank,
-    safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
     ts_corr,
-    ts_cov,
-    ts_max,
     ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
     vwap,
 )
 
@@ -60,9 +46,9 @@ def compute(panel):
     Returns:
         pd.DataFrame with index = panel["close"].index, columns = panel["close"].columns.
     """
-    l = panel["low"]
+    low = panel["low"]
     v = panel["volume"]
     vw = vwap(panel, "equity_cn")
 
-    out = rank(ts_corr(vw, v, 4)) * rank(ts_corr(rank(l), rank(ts_mean(v, 50)), 12))
+    out = rank(ts_corr(vw, v, 4)) * rank(ts_corr(rank(low), rank(ts_mean(v, 50)), 12))
     return out

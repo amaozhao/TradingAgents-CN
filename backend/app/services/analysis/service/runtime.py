@@ -1,5 +1,4 @@
-# ruff: noqa: F403,F405
-from .common import *
+from .common import Optional
 from .service import AnalysisService
 
 # 全局分析服务实例（延迟初始化）

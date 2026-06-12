@@ -1,4 +1,20 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Columns,
+        Markdown,
+        Panel,
+        console,
+        datetime,
+        importlib,
+        logger,
+        message_buffer,
+        normalize_ticker_symbol,
+        settings,
+        typer,
+    )
+
 def select_market():
     """选择股票市场"""
     markets = {
@@ -31,9 +47,7 @@ def select_market():
         },
     }
 
-    console.print(
-        "\n[bold cyan]请选择股票市场 | Please select stock market:[/bold cyan]"
-    )
+    console.print("\n[bold cyan]请选择股票市场 | Please select stock market:[/bold cyan]")
     for key, market in markets.items():
         examples_str = ", ".join(market["examples"][:3])
         console.print(f"[cyan]{key}[/cyan]. 🌍 {market['name']} | {market['name_en']}")
@@ -47,22 +61,16 @@ def select_market():
                 f"[green]✅ 已选择: {selected_market['name']} | Selected: {selected_market['name_en']}[/green]"
             )
             # 记录系统日志（只写入文件）
-            logger.info(
-                f"用户选择市场: {selected_market['name']} ({selected_market['name_en']})"
-            )
+            logger.info(f"用户选择市场: {selected_market['name']} ({selected_market['name_en']})")
             return selected_market
         else:
-            console.print(
-                "[red]❌ 无效选择，请输入 1、2 或 3 | Invalid choice, please enter 1, 2, or 3[/red]"
-            )
+            console.print("[red]❌ 无效选择，请输入 1、2 或 3 | Invalid choice, please enter 1, 2, or 3[/red]")
             logger.warning(f"用户输入无效选择: {choice}")
 
 
 def get_ticker(market):
     """根据选定市场获取股票代码"""
-    console.print(
-        f"\n[bold cyan]{market['name']}股票示例 | {market['name_en']} Examples:[/bold cyan]"
-    )
+    console.print(f"\n[bold cyan]{market['name']}股票示例 | {market['name_en']} Examples:[/bold cyan]")
     for example in market["examples"]:
         console.print(f"  • {example}")
 
@@ -92,9 +100,7 @@ def get_ticker(market):
         if re.match(market["pattern"], ticker_to_check):
             # 对于A股，返回纯数字代码
             if market["data_source"] == "china_stock":
-                console.print(
-                    f"[green]✅ A股代码有效: {ticker} (将使用中国股票数据源)[/green]"
-                )
+                console.print(f"[green]✅ A股代码有效: {ticker} (将使用中国股票数据源)[/green]")
                 logger.info(f"A股代码验证成功: {ticker}")
                 return ticker
             else:
@@ -118,9 +124,7 @@ def get_analysis_date():
             # Validate date format and ensure it's not in the future
             analysis_date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
             if analysis_date.date() > datetime.datetime.now().date():
-                console.print(
-                    "[red]错误：分析日期不能是未来日期 | Error: Analysis date cannot be in the future[/red]"
-                )
+                console.print("[red]错误：分析日期不能是未来日期 | Error: Analysis date cannot be in the future[/red]")
                 logger.warning(f"用户输入未来日期: {date_str}")
                 continue
             return date_str

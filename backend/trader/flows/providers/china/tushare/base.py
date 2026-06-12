@@ -1,4 +1,20 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        List,
+        Optional,
+        UTC,
+        Union,
+        asyncio,
+        date,
+        datetime,
+        importlib,
+        pd,
+    )
+
 class _TushareProviderMixin2:
     async def get_financial_data(
         self,
@@ -40,9 +56,7 @@ class _TushareProviderMixin2:
                 income_df = await asyncio.to_thread(self.api.income, **query_params)
                 if income_df is not None and not income_df.empty:
                     financial_data["income_statement"] = income_df.to_dict("records")
-                    self.logger.debug(
-                        f"✅ {ts_code} 利润表数据获取成功: {len(income_df)} 条记录"
-                    )
+                    self.logger.debug(f"✅ {ts_code} 利润表数据获取成功: {len(income_df)} 条记录")
                 else:
                     self.logger.debug(f"⚠️ {ts_code} 利润表数据为空")
             except Exception as e:
@@ -50,14 +64,10 @@ class _TushareProviderMixin2:
 
             # 2. 获取资产负债表数据 (balance sheet)
             try:
-                balance_df = await asyncio.to_thread(
-                    self.api.balancesheet, **query_params
-                )
+                balance_df = await asyncio.to_thread(self.api.balancesheet, **query_params)
                 if balance_df is not None and not balance_df.empty:
                     financial_data["balance_sheet"] = balance_df.to_dict("records")
-                    self.logger.debug(
-                        f"✅ {ts_code} 资产负债表数据获取成功: {len(balance_df)} 条记录"
-                    )
+                    self.logger.debug(f"✅ {ts_code} 资产负债表数据获取成功: {len(balance_df)} 条记录")
                 else:
                     self.logger.debug(f"⚠️ {ts_code} 资产负债表数据为空")
             except Exception as e:
@@ -67,12 +77,8 @@ class _TushareProviderMixin2:
             try:
                 cashflow_df = await asyncio.to_thread(self.api.cashflow, **query_params)
                 if cashflow_df is not None and not cashflow_df.empty:
-                    financial_data["cashflow_statement"] = cashflow_df.to_dict(
-                        "records"
-                    )
-                    self.logger.debug(
-                        f"✅ {ts_code} 现金流量表数据获取成功: {len(cashflow_df)} 条记录"
-                    )
+                    financial_data["cashflow_statement"] = cashflow_df.to_dict("records")
+                    self.logger.debug(f"✅ {ts_code} 现金流量表数据获取成功: {len(cashflow_df)} 条记录")
                 else:
                     self.logger.debug(f"⚠️ {ts_code} 现金流量表数据为空")
             except Exception as e:
@@ -80,16 +86,10 @@ class _TushareProviderMixin2:
 
             # 4. 获取财务指标数据 (financial indicators)
             try:
-                indicator_df = await asyncio.to_thread(
-                    self.api.fina_indicator, **query_params
-                )
+                indicator_df = await asyncio.to_thread(self.api.fina_indicator, **query_params)
                 if indicator_df is not None and not indicator_df.empty:
-                    financial_data["financial_indicators"] = indicator_df.to_dict(
-                        "records"
-                    )
-                    self.logger.debug(
-                        f"✅ {ts_code} 财务指标数据获取成功: {len(indicator_df)} 条记录"
-                    )
+                    financial_data["financial_indicators"] = indicator_df.to_dict("records")
+                    self.logger.debug(f"✅ {ts_code} 财务指标数据获取成功: {len(indicator_df)} 条记录")
                 else:
                     self.logger.debug(f"⚠️ {ts_code} 财务指标数据为空")
             except Exception as e:
@@ -97,29 +97,19 @@ class _TushareProviderMixin2:
 
             # 5. 获取主营业务构成数据 (可选)
             try:
-                mainbz_df = await asyncio.to_thread(
-                    self.api.fina_mainbz, **query_params
-                )
+                mainbz_df = await asyncio.to_thread(self.api.fina_mainbz, **query_params)
                 if mainbz_df is not None and not mainbz_df.empty:
                     financial_data["main_business"] = mainbz_df.to_dict("records")
-                    self.logger.debug(
-                        f"✅ {ts_code} 主营业务构成数据获取成功: {len(mainbz_df)} 条记录"
-                    )
+                    self.logger.debug(f"✅ {ts_code} 主营业务构成数据获取成功: {len(mainbz_df)} 条记录")
                 else:
                     self.logger.debug(f"⚠️ {ts_code} 主营业务构成数据为空")
             except Exception as e:
-                self.logger.debug(
-                    f"获取{ts_code}主营业务构成数据失败: {e}"
-                )  # 主营业务数据不是必需的，保持debug级别
+                self.logger.debug(f"获取{ts_code}主营业务构成数据失败: {e}")  # 主营业务数据不是必需的，保持debug级别
 
             if financial_data:
                 # 标准化财务数据
-                standardized_data = self._standardize_tushare_financial_data(
-                    financial_data, ts_code
-                )
-                self.logger.info(
-                    f"✅ {ts_code} Tushare财务数据获取完成: {len(financial_data)} 个数据集"
-                )
+                standardized_data = self._standardize_tushare_financial_data(financial_data, ts_code)
+                self.logger.info(f"✅ {ts_code} Tushare财务数据获取完成: {len(financial_data)} 个数据集")
                 return standardized_data
             else:
                 self.logger.warning(f"⚠️ {ts_code} 未获取到任何Tushare财务数据")
@@ -162,9 +152,7 @@ class _TushareProviderMixin2:
             start_date = start_time.strftime("%Y-%m-%d %H:%M:%S")
             end_date = end_time.strftime("%Y-%m-%d %H:%M:%S")
 
-            self.logger.debug(
-                f"📰 获取Tushare新闻: symbol={symbol}, 时间范围={start_date} 到 {end_date}"
-            )
+            self.logger.debug(f"📰 获取Tushare新闻: symbol={symbol}, 时间范围={start_date} 到 {end_date}")
 
             # 支持的新闻源列表（按优先级排序）
             news_sources = [
@@ -200,14 +188,10 @@ class _TushareProviderMixin2:
                     )
 
                     if news_df is not None and not news_df.empty:
-                        source_news = self._process_tushare_news(
-                            news_df, source, symbol, limit
-                        )
+                        source_news = self._process_tushare_news(news_df, source, symbol, limit)
                         all_news.extend(source_news)
 
-                        self.logger.info(
-                            f"✅ 从 {source} 获取到 {len(source_news)} 条新闻"
-                        )
+                        self.logger.info(f"✅ 从 {source} 获取到 {len(source_news)} 条新闻")
 
                         # 如果已经获取足够的新闻，停止尝试其他源
                         if len(all_news) >= limit:
@@ -235,9 +219,7 @@ class _TushareProviderMixin2:
                 # 限制返回数量
                 final_news = sorted_news[:limit]
 
-                self.logger.info(
-                    f"✅ Tushare新闻获取成功: {len(final_news)} 条（去重后）"
-                )
+                self.logger.info(f"✅ Tushare新闻获取成功: {len(final_news)} 条（去重后）")
                 return final_news
             else:
                 self.logger.warning("⚠️ 未获取到任何Tushare新闻数据")
@@ -245,13 +227,8 @@ class _TushareProviderMixin2:
 
         except Exception as e:
             # 如果是权限问题，给出明确提示
-            if any(
-                keyword in str(e).lower()
-                for keyword in ["权限", "permission", "unauthorized", "access denied"]
-            ):
-                self.logger.warning(
-                    f"⚠️ Tushare新闻接口需要单独开通权限（付费功能）: {e}"
-                )
+            if any(keyword in str(e).lower() for keyword in ["权限", "permission", "unauthorized", "access denied"]):
+                self.logger.warning(f"⚠️ Tushare新闻接口需要单独开通权限（付费功能）: {e}")
             elif "积分" in str(e) or "point" in str(e).lower():
                 self.logger.warning(f"⚠️ Tushare积分不足，无法获取新闻数据: {e}")
             else:
@@ -328,9 +305,7 @@ class _TushareProviderMixin2:
         # 简单的摘要生成：取前200个字符
         return content_str[:200] + "..."
 
-    def _is_news_relevant_to_symbol(
-        self, news_item: Dict[str, Any], symbol: str
-    ) -> bool:
+    def _is_news_relevant_to_symbol(self, news_item: Dict[str, Any], symbol: str) -> bool:
         """判断新闻是否与股票相关"""
         content = news_item.get("content", "").lower()
         title = news_item.get("title", "").lower()
@@ -339,18 +314,14 @@ class _TushareProviderMixin2:
         symbol_clean = symbol.replace(".SH", "").replace(".SZ", "").zfill(6)
 
         # 关键词匹配
-        return any(
-            [
-                symbol_clean in content,
-                symbol_clean in title,
-                symbol in content,
-                symbol in title,
-            ]
-        )
+        return any([
+            symbol_clean in content,
+            symbol_clean in title,
+            symbol in content,
+            symbol in title,
+        ])
 
-    def _deduplicate_news(
-        self, news_list: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    def _deduplicate_news(self, news_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """新闻去重"""
         seen_titles = set()
         unique_news = []
@@ -464,24 +435,13 @@ class _TushareProviderMixin2:
         content = str(content).lower()
 
         # 根据频道和内容关键词分类
-        if any(
-            keyword in channels or keyword in content
-            for keyword in ["公告", "业绩", "财报"]
-        ):
+        if any(keyword in channels or keyword in content for keyword in ["公告", "业绩", "财报"]):
             return "company_announcement"
-        elif any(
-            keyword in channels or keyword in content
-            for keyword in ["政策", "监管", "央行"]
-        ):
+        elif any(keyword in channels or keyword in content for keyword in ["政策", "监管", "央行"]):
             return "policy_news"
-        elif any(
-            keyword in channels or keyword in content for keyword in ["行业", "板块"]
-        ):
+        elif any(keyword in channels or keyword in content for keyword in ["行业", "板块"]):
             return "industry_news"
-        elif any(
-            keyword in channels or keyword in content
-            for keyword in ["市场", "指数", "大盘"]
-        ):
+        elif any(keyword in channels or keyword in content for keyword in ["市场", "指数", "大盘"]):
             return "market_news"
         else:
             return "other"
@@ -510,9 +470,7 @@ class _TushareProviderMixin2:
 
         try:
             ts_code = self._normalize_ts_code(symbol)
-            self.logger.debug(
-                f"📊 按期间获取Tushare财务数据: {ts_code}, {start_period} - {end_period}"
-            )
+            self.logger.debug(f"📊 按期间获取Tushare财务数据: {ts_code}, {start_period} - {end_period}")
 
             # 构建查询参数
             query_params = {"ts_code": ts_code}
@@ -536,9 +494,7 @@ class _TushareProviderMixin2:
                 period = income_row["end_date"]
 
                 # 获取该期间的完整财务数据
-                period_data = await self.get_financial_data(
-                    symbol=symbol, period=period, limit=1
-                )
+                period_data = await self.get_financial_data(symbol=symbol, period=period, limit=1)
 
                 if period_data:
                     financial_data_list.append(period_data)
@@ -546,18 +502,14 @@ class _TushareProviderMixin2:
                 # API限流
                 await asyncio.sleep(0.1)
 
-            self.logger.info(
-                f"✅ {ts_code} 按期间获取财务数据完成: {len(financial_data_list)} 个报告期"
-            )
+            self.logger.info(f"✅ {ts_code} 按期间获取财务数据完成: {len(financial_data_list)} 个报告期")
             return financial_data_list
 
         except Exception as e:
             self.logger.error(f"❌ 按期间获取Tushare财务数据失败 symbol={symbol}: {e}")
             return None
 
-    async def get_financial_indicators_only(
-        self, symbol: str, limit: int = 4
-    ) -> Optional[Dict[str, Any]]:
+    async def get_financial_indicators_only(self, symbol: str, limit: int = 4) -> Optional[Dict[str, Any]]:
         """
         仅获取财务指标数据（轻量级接口）
 
@@ -575,9 +527,7 @@ class _TushareProviderMixin2:
             ts_code = self._normalize_ts_code(symbol)
 
             # 仅获取财务指标
-            indicator_df = await asyncio.to_thread(
-                self.api.fina_indicator, ts_code=ts_code, limit=limit
-            )
+            indicator_df = await asyncio.to_thread(self.api.fina_indicator, ts_code=ts_code, limit=limit)
 
             if indicator_df is not None and not indicator_df.empty:
                 indicators = indicator_df.to_dict("records")
@@ -599,9 +549,7 @@ class _TushareProviderMixin2:
     def standardize_basic_info(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """标准化股票基础信息"""
         ts_code = raw_data.get("ts_code", "")
-        symbol = raw_data.get(
-            "symbol", ts_code.split(".")[0] if "." in ts_code else ts_code
-        )
+        symbol = raw_data.get("symbol", ts_code.split(".")[0] if "." in ts_code else ts_code)
 
         return {
             # 基础字段
@@ -650,9 +598,7 @@ class _TushareProviderMixin2:
             "pct_chg": self._convert_to_float(raw_data.get("pct_chg")),
             # 成交数据。历史K线的单位转换在 historical path 完成；这里保持
             # quote 标准化为调用方传入的当前行情单位，兼容旧接口。
-            "volume": self._convert_to_float(
-                raw_data.get("volume", raw_data.get("vol"))
-            ),
+            "volume": self._convert_to_float(raw_data.get("volume", raw_data.get("vol"))),
             "amount": self._convert_to_float(raw_data.get("amount")),
             # 财务指标
             "total_mv": self._convert_to_float(raw_data.get("total_mv")),

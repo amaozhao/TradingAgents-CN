@@ -1,8 +1,28 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import (
+    ActionType,
+    Depends,
+    HTTPException,
+    User,
+    config_provider,
+    config_service,
+    get_current_user,
+    log_operation,
+    logger,
+    now_tz,
+    ok,
+    router,
+    status,
+)
+from .setup import (
+    ConfigApiResponse,
+    ImportConfigRequest,
+    SetDefaultRequest,
+    SystemSettingsUpdateRequest,
+    _sanitize_kv,
+)
+
 @router.post("/datasource/set-default", response_model=ConfigApiResponse)
-async def set_default_data_source_legacy(
-    request: SetDefaultRequest, current_user: User = Depends(get_current_user)
-):
+async def set_default_data_source_legacy(request: SetDefaultRequest, current_user: User = Depends(get_current_user)):
     """设置默认数据源"""
     try:
         success = await config_service.set_default_data_source(request.name)
@@ -27,9 +47,7 @@ async def set_default_data_source_legacy(
                 message="默认数据源设置成功",
             )
         else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="指定的数据源不存在"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="指定的数据源不存在")
     except HTTPException:
         raise
     except Exception as e:
@@ -85,15 +103,11 @@ async def update_system_settings(
         # 打印接收到的设置（用于调试）
         logger.info(f"📝 接收到的系统设置更新请求，包含 {len(settings_data)} 项")
         if "quick_analysis_model" in settings_data:
-            logger.info(
-                f"  ✓ quick_analysis_model: {settings_data['quick_analysis_model']}"
-            )
+            logger.info(f"  ✓ quick_analysis_model: {settings_data['quick_analysis_model']}")
         else:
             logger.warning("  ⚠️  未包含 quick_analysis_model")
         if "deep_analysis_model" in settings_data:
-            logger.info(
-                f"  ✓ deep_analysis_model: {settings_data['deep_analysis_model']}"
-            )
+            logger.info(f"  ✓ deep_analysis_model: {settings_data['deep_analysis_model']}")
         else:
             logger.warning("  ⚠️  未包含 deep_analysis_model")
 
@@ -177,9 +191,7 @@ async def export_config(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/import", response_model=ConfigApiResponse)
-async def import_config(
-    config_data: ImportConfigRequest, current_user: User = Depends(get_current_user)
-):
+async def import_config(config_data: ImportConfigRequest, current_user: User = Depends(get_current_user)):
     """导入配置"""
     try:
         import_data = config_data.model_dump()
@@ -199,9 +211,7 @@ async def import_config(
                 pass
             return ok(data={"message": "配置导入成功"}, message="配置导入成功")
         else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="配置导入失败"
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="配置导入失败")
     except HTTPException:
         raise
     except Exception as e:

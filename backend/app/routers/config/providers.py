@@ -1,7 +1,32 @@
-# ruff: noqa: F401,F403,F405,F821
-def _normalize_provider_secret_fields(
-    data: Dict[str, Any], *, preserve_existing_on_blank: bool
-) -> Dict[str, Any]:
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        ActionType,
+        Any,
+        Depends,
+        Dict,
+        HTTPException,
+        LLMProvider,
+        LLMProviderRequest,
+        User,
+        config_service,
+        get_current_user,
+        importlib,
+        log_operation,
+        logger,
+        ok,
+        router,
+        status,
+    )
+    from .setup import (
+        ConfigApiResponse,
+        FetchProviderModelsRequest,
+        ToggleProviderRequest,
+        require_admin_user,
+    )
+
+def _normalize_provider_secret_fields(data: Dict[str, Any], *, preserve_existing_on_blank: bool) -> Dict[str, Any]:
     """Validate provider secrets without logging or echoing their values."""
     keys_module = importlib.import_module("app.utils.keys")
     is_valid_api_key = getattr(keys_module, "is_valid_api_key")
@@ -39,9 +64,7 @@ def _normalize_provider_secret_fields(
 
 
 @router.post("/llm/providers", response_model=ConfigApiResponse)
-async def add_llm_provider(
-    request: LLMProviderRequest, current_user: User = Depends(get_current_user)
-):
+async def add_llm_provider(request: LLMProviderRequest, current_user: User = Depends(get_current_user)):
     """添加大模型厂家"""
     require_admin_user(current_user)
     try:
@@ -109,9 +132,7 @@ async def update_llm_provider(
                 pass
             return ok(data={"message": "厂家更新成功"}, message="厂家更新成功")
         else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="厂家不存在"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="厂家不存在")
     except HTTPException:
         raise
     except Exception as e:
@@ -122,9 +143,7 @@ async def update_llm_provider(
 
 
 @router.delete("/llm/providers/{provider_id}", response_model=ConfigApiResponse)
-async def delete_llm_provider(
-    provider_id: str, current_user: User = Depends(get_current_user)
-):
+async def delete_llm_provider(provider_id: str, current_user: User = Depends(get_current_user)):
     """删除大模型厂家"""
     require_admin_user(current_user)
     try:
@@ -145,9 +164,7 @@ async def delete_llm_provider(
                 pass
             return ok(data={"message": "厂家删除成功"}, message="厂家删除成功")
         else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="厂家不存在"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="厂家不存在")
     except HTTPException:
         raise
     except Exception as e:
@@ -187,9 +204,7 @@ async def toggle_llm_provider(
                 message=f"厂家已{'启用' if is_active else '禁用'}",
             )
         else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="厂家不存在"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="厂家不存在")
     except HTTPException:
         raise
     except Exception as e:
@@ -199,9 +214,7 @@ async def toggle_llm_provider(
         )
 
 
-@router.post(
-    "/llm/providers/{provider_id}/fetch-models", response_model=ConfigApiResponse
-)
+@router.post("/llm/providers/{provider_id}/fetch-models", response_model=ConfigApiResponse)
 async def fetch_provider_models(
     provider_id: str,
     request: FetchProviderModelsRequest | None = None,
@@ -319,9 +332,7 @@ async def init_aggregator_providers(current_user: User = Depends(get_current_use
 
 
 @router.post("/llm/providers/{provider_id}/test", response_model=ConfigApiResponse)
-async def test_provider_api(
-    provider_id: str, current_user: User = Depends(get_current_user)
-):
+async def test_provider_api(provider_id: str, current_user: User = Depends(get_current_user)):
     """测试厂家API密钥"""
     try:
         logger.info(f"🧪 收到API测试请求 - provider_id: {provider_id}")

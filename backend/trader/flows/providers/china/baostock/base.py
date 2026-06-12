@@ -1,4 +1,16 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        Optional,
+        datetime,
+        logger,
+        pd,
+        run_baostock_session_async,
+    )
+
 class _BaoStockProviderMixin2:
     async def get_financial_data(
         self, code: str, year: Optional[int] = None, quarter: Optional[int] = None
@@ -75,9 +87,7 @@ class _BaoStockProviderMixin2:
                 logger.debug(f"获取{code}现金流量数据失败: {e}")
 
             if financial_data:
-                logger.info(
-                    f"✅ BaoStock财务数据获取成功: {code}, {len(financial_data)}个数据集"
-                )
+                logger.info(f"✅ BaoStock财务数据获取成功: {code}, {len(financial_data)}个数据集")
             else:
                 logger.warning(f"⚠️ BaoStock财务数据为空: {code}")
 
@@ -87,9 +97,7 @@ class _BaoStockProviderMixin2:
             logger.error(f"❌ BaoStock获取{code}财务数据失败: {e}")
             return {}
 
-    async def _get_profit_data(
-        self, code: str, year: int, quarter: int
-    ) -> Optional[Dict[str, Any]]:
+    async def _get_profit_data(self, code: str, year: int, quarter: int) -> Optional[Dict[str, Any]]:
         """获取盈利能力数据"""
         try:
 
@@ -117,9 +125,7 @@ class _BaoStockProviderMixin2:
             logger.debug(f"获取{code}盈利能力数据失败: {e}")
             return None
 
-    async def _get_operation_data(
-        self, code: str, year: int, quarter: int
-    ) -> Optional[Dict[str, Any]]:
+    async def _get_operation_data(self, code: str, year: int, quarter: int) -> Optional[Dict[str, Any]]:
         """获取营运能力数据"""
         try:
 
@@ -147,9 +153,7 @@ class _BaoStockProviderMixin2:
             logger.debug(f"获取{code}营运能力数据失败: {e}")
             return None
 
-    async def _get_growth_data(
-        self, code: str, year: int, quarter: int
-    ) -> Optional[Dict[str, Any]]:
+    async def _get_growth_data(self, code: str, year: int, quarter: int) -> Optional[Dict[str, Any]]:
         """获取成长能力数据"""
         try:
 
@@ -177,9 +181,7 @@ class _BaoStockProviderMixin2:
             logger.debug(f"获取{code}成长能力数据失败: {e}")
             return None
 
-    async def _get_balance_data(
-        self, code: str, year: int, quarter: int
-    ) -> Optional[Dict[str, Any]]:
+    async def _get_balance_data(self, code: str, year: int, quarter: int) -> Optional[Dict[str, Any]]:
         """获取偿债能力数据"""
         try:
 
@@ -207,9 +209,7 @@ class _BaoStockProviderMixin2:
             logger.debug(f"获取{code}偿债能力数据失败: {e}")
             return None
 
-    async def _get_cash_flow_data(
-        self, code: str, year: int, quarter: int
-    ) -> Optional[Dict[str, Any]]:
+    async def _get_cash_flow_data(self, code: str, year: int, quarter: int) -> Optional[Dict[str, Any]]:
         """获取现金流量数据"""
         try:
 

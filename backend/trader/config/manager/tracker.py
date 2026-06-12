@@ -1,13 +1,19 @@
-# ruff: noqa: F403,F405
 from __future__ import annotations
 
-from .common import *
+from .common import (
+    Any,
+    Optional,
+    ZoneInfo,
+    datetime,
+    get_timezone_name,
+    logger,
+)
 
 
 class TokenTracker:
     """Token使用跟踪器"""
 
-    def __init__(self, config_manager: ConfigManager):
+    def __init__(self, config_manager: Any):
         self.config_manager = config_manager
 
     def track_usage(

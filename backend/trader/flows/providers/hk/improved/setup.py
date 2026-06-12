@@ -1,4 +1,9 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import Any, Dict
+    from .provider import ImprovedHKStockProvider
+
 # 全局实例
 _improved_hk_provider = None
 

@@ -1,2 +1,7 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    pass
+
+
 _akshare_provider = None

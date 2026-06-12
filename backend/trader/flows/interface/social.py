@@ -1,11 +1,27 @@
-# ruff: noqa: F401,F403,F405,F821,F722
+from .imports import (
+    Annotated,
+    Doc,
+    cast,
+    datetime,
+    fetch_top_from_category,
+    get_news_data,
+    importlib,
+    logger,
+    os,
+    pd,
+    relativedelta,
+    tqdm,
+)
+from .market import get_stockstats_indicator
+from .setup import DATA_DIR
+
 def get_simfin_income_statements(
-    ticker: Annotated[str, "ticker symbol"],
+    ticker: Annotated[str, Doc("ticker symbol")],
     freq: Annotated[
         str,
-        "reporting frequency of the company's financial history: annual / quarterly",
+        Doc("reporting frequency of the company's financial history: annual / quarterly"),
     ],
-    curr_date: Annotated[str, "current date you are trading at, yyyy-mm-dd"],
+    curr_date: Annotated[str, Doc("current date you are trading at, yyyy-mm-dd")],
 ):
     data_path = os.path.join(
         DATA_DIR,
@@ -49,9 +65,9 @@ def get_simfin_income_statements(
 
 
 def get_google_news(
-    query: Annotated[str, "Query to search with"],
-    curr_date: Annotated[str, "Curr date in yyyy-mm-dd format"],
-    look_back_days: Annotated[int, "how many days to look back"] = 7,
+    query: Annotated[str, Doc("Query to search with")],
+    curr_date: Annotated[str, Doc("Curr date in yyyy-mm-dd format")],
+    look_back_days: Annotated[int, Doc("how many days to look back")] = 7,
 ) -> str:
     # 判断是否为A股查询
     is_china_stock = False
@@ -107,9 +123,9 @@ def get_google_news(
 
 
 def get_reddit_global_news(
-    start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
-    look_back_days: Annotated[int, "how many days to look back"],
-    max_limit_per_day: Annotated[int, "Maximum number of news per day"],
+    start_date: Annotated[str, Doc("Start date in yyyy-mm-dd format")],
+    look_back_days: Annotated[int, Doc("how many days to look back")],
+    max_limit_per_day: Annotated[int, Doc("Maximum number of news per day")],
 ) -> str:
     """
     Retrieve the latest top reddit news
@@ -159,10 +175,10 @@ def get_reddit_global_news(
 
 
 def get_reddit_company_news(
-    ticker: Annotated[str, "ticker symbol of the company"],
-    start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
-    look_back_days: Annotated[int, "how many days to look back"],
-    max_limit_per_day: Annotated[int, "Maximum number of news per day"],
+    ticker: Annotated[str, Doc("ticker symbol of the company")],
+    start_date: Annotated[str, Doc("Start date in yyyy-mm-dd format")],
+    look_back_days: Annotated[int, Doc("how many days to look back")],
+    max_limit_per_day: Annotated[int, Doc("Maximum number of news per day")],
 ) -> str:
     """
     Retrieve the latest top reddit news
@@ -218,13 +234,13 @@ def get_reddit_company_news(
 
 
 def get_stock_stats_indicators_window(
-    symbol: Annotated[str, "ticker symbol of the company"],
-    indicator: Annotated[str, "technical indicator to get the analysis and report of"],
+    symbol: Annotated[str, Doc("ticker symbol of the company")],
+    indicator: Annotated[str, Doc("technical indicator to get the analysis and report of")],
     curr_date: Annotated[
-        str, "The current trading date you are trading on, YYYY-mm-dd"
+        str, Doc("The current trading date you are trading on, YYYY-mm-dd")
     ],
-    look_back_days: Annotated[int, "how many days to look back"],
-    online: Annotated[bool, "to fetch data online or offline"],
+    look_back_days: Annotated[int, Doc("how many days to look back")],
+    online: Annotated[bool, Doc("to fetch data online or offline")],
 ) -> str:
 
     best_ind_params = {

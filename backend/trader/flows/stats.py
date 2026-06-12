@@ -1,4 +1,3 @@
-# ruff: noqa: F722
 import logging
 import os
 import time

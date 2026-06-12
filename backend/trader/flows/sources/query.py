@@ -1,4 +1,18 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        ChinaDataSource,
+        Dict,
+        List,
+        cast,
+        get_database_manager,
+        importlib,
+        logger,
+        run_baostock_session,
+    )
+
 class _DataSourceManagerMixin4:
     def _get_baostock_stock_info(self, symbol: str) -> Dict:
         """使用BaoStock获取股票基本信息"""
@@ -104,40 +118,28 @@ class _DataSourceManagerMixin4:
                         # 格式化财务数据为报告
                         return self._format_financial_data(symbol, financial_dict_list)
                     else:
-                        logger.warning(
-                            f"⚠️ [数据来源: PostgreSQL] 财务数据为空: {symbol}，降级到其他数据源"
-                        )
+                        logger.warning(f"⚠️ [数据来源: PostgreSQL] 财务数据为空: {symbol}，降级到其他数据源")
                         return self._try_fallback_fundamentals(symbol)
                 # 如果是列表
                 elif isinstance(financial_data, list) and len(financial_data) > 0:
-                    logger.info(
-                        f"✅ [数据来源: PostgreSQL-财务数据] 成功获取: {symbol} ({len(financial_data)}条记录)"
-                    )
+                    logger.info(f"✅ [数据来源: PostgreSQL-财务数据] 成功获取: {symbol} ({len(financial_data)}条记录)")
                     return self._format_financial_data(symbol, financial_data)
                 # 如果是单个字典（这是PostgreSQL实际返回的格式）
                 elif isinstance(financial_data, dict):
-                    logger.info(
-                        f"✅ [数据来源: PostgreSQL-财务数据] 成功获取: {symbol} (单条记录)"
-                    )
+                    logger.info(f"✅ [数据来源: PostgreSQL-财务数据] 成功获取: {symbol} (单条记录)")
                     # 将单个字典包装成列表
                     financial_dict_list = [financial_data]
                     return self._format_financial_data(symbol, financial_dict_list)
                 else:
-                    logger.warning(
-                        f"⚠️ [数据来源: PostgreSQL] 未找到财务数据: {symbol}，降级到其他数据源"
-                    )
+                    logger.warning(f"⚠️ [数据来源: PostgreSQL] 未找到财务数据: {symbol}，降级到其他数据源")
                     return self._try_fallback_fundamentals(symbol)
             else:
-                logger.warning(
-                    f"⚠️ [数据来源: PostgreSQL] 未找到财务数据: {symbol}，降级到其他数据源"
-                )
+                logger.warning(f"⚠️ [数据来源: PostgreSQL] 未找到财务数据: {symbol}，降级到其他数据源")
                 # PostgreSQL 没有数据，降级到其他数据源
                 return self._try_fallback_fundamentals(symbol)
 
         except Exception as e:
-            logger.error(
-                f"❌ [数据来源: PostgreSQL异常] 获取财务数据失败: {e}", exc_info=True
-            )
+            logger.error(f"❌ [数据来源: PostgreSQL异常] 获取财务数据失败: {e}", exc_info=True)
             # PostgreSQL 异常，降级到其他数据源
             return self._try_fallback_fundamentals(symbol)
 
@@ -279,9 +281,7 @@ class _DataSourceManagerMixin4:
             if gross_margin is not None:
                 report += f"   毛利率: {gross_margin:.2f}%\n"
 
-            netprofit_margin = latest.get("netprofit_margin") or latest.get(
-                "net_margin"
-            )
+            netprofit_margin = latest.get("netprofit_margin") or latest.get("net_margin")
             if netprofit_margin is not None:
                 report += f"   净利率: {netprofit_margin:.2f}%\n"
 
@@ -350,9 +350,7 @@ class _DataSourceManagerMixin4:
                         continue
 
                     if result and "❌" not in result:
-                        logger.info(
-                            f"✅ [数据来源: 备用数据源] 降级成功获取基本面: {source.value}"
-                        )
+                        logger.info(f"✅ [数据来源: 备用数据源] 降级成功获取基本面: {source.value}")
                         return result
                     else:
                         logger.warning(f"⚠️ 备用数据源{source.value}返回错误结果")
@@ -365,9 +363,7 @@ class _DataSourceManagerMixin4:
         logger.warning(f"⚠️ [数据来源: 生成分析] 所有数据源失败，生成基本分析: {symbol}")
         return self._generate_fundamentals_analysis(symbol)
 
-    def _get_postgres_news(
-        self, symbol: str, hours_back: int, limit: int
-    ) -> List[Dict[str, Any]]:
+    def _get_postgres_news(self, symbol: str, hours_back: int, limit: int) -> List[Dict[str, Any]]:
         """从PostgreSQL获取新闻数据"""
         try:
             get_postgres_cache_adapter = getattr(
@@ -377,28 +373,20 @@ class _DataSourceManagerMixin4:
             adapter = get_postgres_cache_adapter()
 
             # 从PostgreSQL获取新闻数据
-            news_data = adapter.get_news_data(
-                symbol, hours_back=hours_back, limit=limit
-            )
+            news_data = adapter.get_news_data(symbol, hours_back=hours_back, limit=limit)
 
             if news_data and len(news_data) > 0:
-                logger.info(
-                    f"✅ [数据来源: PostgreSQL-新闻] 成功获取: {symbol or '市场新闻'} ({len(news_data)}条)"
-                )
+                logger.info(f"✅ [数据来源: PostgreSQL-新闻] 成功获取: {symbol or '市场新闻'} ({len(news_data)}条)")
                 return news_data
             else:
-                logger.warning(
-                    f"⚠️ [数据来源: PostgreSQL] 未找到新闻: {symbol or '市场新闻'}，降级到其他数据源"
-                )
+                logger.warning(f"⚠️ [数据来源: PostgreSQL] 未找到新闻: {symbol or '市场新闻'}，降级到其他数据源")
                 return self._try_fallback_news(symbol, hours_back, limit)
 
         except Exception as e:
             logger.error(f"❌ [数据来源: PostgreSQL] 获取新闻失败: {e}")
             return self._try_fallback_news(symbol, hours_back, limit)
 
-    def _get_tushare_news(
-        self, symbol: str, hours_back: int, limit: int
-    ) -> List[Dict[str, Any]]:
+    def _get_tushare_news(self, symbol: str, hours_back: int, limit: int) -> List[Dict[str, Any]]:
         """从Tushare获取新闻数据"""
         try:
             # Tushare新闻功能暂时不可用，返回空列表
@@ -409,9 +397,7 @@ class _DataSourceManagerMixin4:
             logger.error(f"❌ [数据来源: Tushare] 获取新闻失败: {e}")
             return []
 
-    def _get_akshare_news(
-        self, symbol: str, hours_back: int, limit: int
-    ) -> List[Dict[str, Any]]:
+    def _get_akshare_news(self, symbol: str, hours_back: int, limit: int) -> List[Dict[str, Any]]:
         """从AKShare获取新闻数据"""
         try:
             # AKShare新闻功能暂时不可用，返回空列表
@@ -422,9 +408,7 @@ class _DataSourceManagerMixin4:
             logger.error(f"❌ [数据来源: AKShare] 获取新闻失败: {e}")
             return []
 
-    def _try_fallback_news(
-        self, symbol: str, hours_back: int, limit: int
-    ) -> List[Dict[str, Any]]:
+    def _try_fallback_news(self, symbol: str, hours_back: int, limit: int) -> List[Dict[str, Any]]:
         """新闻数据降级处理"""
         logger.error(f"🔄 {self.current_source.value}失败，尝试备用数据源获取新闻...")
 
@@ -445,9 +429,7 @@ class _DataSourceManagerMixin4:
                         continue
 
                     if result and len(result) > 0:
-                        logger.info(
-                            f"✅ [数据来源: 备用数据源] 降级成功获取新闻: {source.value}"
-                        )
+                        logger.info(f"✅ [数据来源: 备用数据源] 降级成功获取新闻: {source.value}")
                         return result
                     else:
                         logger.warning(f"⚠️ 备用数据源{source.value}未返回新闻")
@@ -457,7 +439,5 @@ class _DataSourceManagerMixin4:
                     continue
 
         # 所有数据源都失败
-        logger.warning(
-            f"⚠️ [数据来源: 所有数据源失败] 无法获取新闻: {symbol or '市场新闻'}"
-        )
+        logger.warning(f"⚠️ [数据来源: 所有数据源失败] 无法获取新闻: {symbol or '市场新闻'}")
         return []

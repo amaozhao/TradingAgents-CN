@@ -1,6 +1,7 @@
-# ruff: noqa: F403,F405
+import streamlit as st
+
 from .assets import render_sidebar_assets
-from .common import *
+from .common import logger
 from .dispatch import render_model_options
 from .settings import (
     render_advanced_settings,

@@ -13,25 +13,10 @@ Notes:
 """
 from __future__ import annotations
 
-import numpy as np
-import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
-    safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
     ts_corr,
-    ts_cov,
-    ts_max,
     ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "gtja191_191"
@@ -61,7 +46,7 @@ def compute(panel):
     """
     c = panel["close"]
     h = panel["high"]
-    l = panel["low"]
+    low = panel["low"]
     v = panel["volume"]
-    out = (ts_corr(ts_mean(v, 20), l, 5) + (h + l) / 2.0) - c
+    out = (ts_corr(ts_mean(v, 20), low, 5) + (h + low) / 2.0) - c
     return out

@@ -1,4 +1,22 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        ActionType,
+        DatabaseConfig,
+        DatabaseConfigRequest,
+        Depends,
+        HTTPException,
+        config_service,
+        get_current_user,
+        log_operation,
+        logger,
+        ok,
+        router,
+        status,
+    )
+    from .setup import ConfigApiResponse
+
 @router.get("/database", response_model=ConfigApiResponse)
 async def get_database_configs(current_user: dict = Depends(get_current_user)):
     """获取所有数据库配置"""
@@ -16,9 +34,7 @@ async def get_database_configs(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/database/{db_name}", response_model=ConfigApiResponse)
-async def get_database_config(
-    db_name: str, current_user: dict = Depends(get_current_user)
-):
+async def get_database_config(db_name: str, current_user: dict = Depends(get_current_user)):
     """获取指定的数据库配置"""
     try:
         logger.info(f"🔄 获取数据库配置: {db_name}")
@@ -41,12 +57,8 @@ async def get_database_config(
         )
 
 
-@router.post(
-    "/database", response_model=ConfigApiResponse, operation_id="add_database_config"
-)
-async def add_database_config(
-    request: DatabaseConfigRequest, current_user: dict = Depends(get_current_user)
-):
+@router.post("/database", response_model=ConfigApiResponse, operation_id="add_database_config")
+async def add_database_config(request: DatabaseConfigRequest, current_user: dict = Depends(get_current_user)):
     """添加数据库配置"""
     try:
         logger.info(f"➕ 添加数据库配置: {request.name}")
@@ -151,9 +163,7 @@ async def update_database_config(
 
 
 @router.delete("/database/{db_name}", response_model=ConfigApiResponse)
-async def delete_database_config(
-    db_name: str, current_user: dict = Depends(get_current_user)
-):
+async def delete_database_config(db_name: str, current_user: dict = Depends(get_current_user)):
     """删除数据库配置"""
     try:
         logger.info(f"🗑️ 删除数据库配置: {db_name}")

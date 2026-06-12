@@ -1,4 +1,18 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        Optional,
+        Path,
+        importlib,
+        json,
+        logger,
+        os,
+        settings,
+    )
+
 def get_progress_by_id(analysis_id: str) -> Optional[Dict[str, Any]]:
     """根据分析ID获取进度"""
     try:

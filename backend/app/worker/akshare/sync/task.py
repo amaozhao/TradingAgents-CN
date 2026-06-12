@@ -1,4 +1,10 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .models import AKShareSyncService
+    from .service import _akshare_sync_service
+
+
 async def get_akshare_sync_service() -> AKShareSyncService:
     """获取AKShare同步服务实例"""
     global _akshare_sync_service

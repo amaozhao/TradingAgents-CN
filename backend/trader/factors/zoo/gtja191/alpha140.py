@@ -18,20 +18,10 @@ import pandas as pd
 
 from trader.factors.base import (
     decay_linear,
-    delta,
     rank,
-    safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
     ts_corr,
-    ts_cov,
-    ts_max,
     ts_mean,
-    ts_min,
     ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "gtja191_140"
@@ -62,9 +52,9 @@ def compute(panel):
     c = panel["close"]
     o = panel["open"]
     h = panel["high"]
-    l = panel["low"]
+    low = panel["low"]
     v = panel["volume"]
-    left = rank(decay_linear((rank(o) + rank(l)) - (rank(h) + rank(c)), 8))
+    left = rank(decay_linear((rank(o) + rank(low)) - (rank(h) + rank(c)), 8))
     inner = ts_corr(ts_rank(c, 8), ts_rank(ts_mean(v, 60), 20), 8)
     right = ts_rank(decay_linear(ts_rank(inner, 7), 7), 3)
     arr = np.minimum(left.to_numpy(dtype=np.float64, na_value=np.nan),

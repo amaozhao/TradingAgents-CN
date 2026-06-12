@@ -1,4 +1,18 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        ChinaDataSource,
+        Optional,
+        cast,
+        importlib,
+        logger,
+        np,
+        pd,
+        time,
+    )
+
 class _DataSourceManagerMixin2:
     def _format_stock_data_response(
         self,
@@ -23,9 +37,7 @@ class _DataSourceManagerMixin2:
         """
         try:
             original_data_count = len(data)
-            logger.info(
-                f"📊 [技术指标] 开始计算技术指标，原始数据: {original_data_count}条"
-            )
+            logger.info(f"📊 [技术指标] 开始计算技术指标，原始数据: {original_data_count}条")
 
             # 🔧 计算技术指标（使用完整数据）
             # 确保数据按日期排序
@@ -114,11 +126,7 @@ class _DataSourceManagerMixin2:
 
             # 计算最新价格和涨跌幅
             latest_price = latest_data.get("close", 0)
-            prev_close = (
-                data.iloc[-2].get("close", latest_price)
-                if len(data) > 1
-                else latest_price
-            )
+            prev_close = data.iloc[-2].get("close", latest_price) if len(data) > 1 else latest_price
             change = latest_price - prev_close
             change_pct = (change / prev_close * 100) if prev_close != 0 else 0
 
@@ -274,9 +282,7 @@ class _DataSourceManagerMixin2:
         Returns:
             pd.DataFrame: 股票数据 DataFrame，列标准：open, high, low, close, vol, amount, date
         """
-        logger.info(
-            f"📊 [DataFrame接口] 获取股票数据: {symbol} ({start_date} 到 {end_date})"
-        )
+        logger.info(f"📊 [DataFrame接口] 获取股票数据: {symbol} ({start_date} 到 {end_date})")
         resolved_start_date = start_date or "1990-01-01"
         resolved_end_date = end_date or pd.Timestamp.today().strftime("%Y-%m-%d")
 
@@ -289,9 +295,7 @@ class _DataSourceManagerMixin2:
                     "get_postgres_cache_adapter",
                 )
                 adapter = get_postgres_cache_adapter()
-                df = adapter.get_historical_data(
-                    symbol, resolved_start_date, resolved_end_date, period=period
-                )
+                df = adapter.get_historical_data(symbol, resolved_start_date, resolved_end_date, period=period)
             elif self.current_source == ChinaDataSource.TUSHARE:
                 get_tushare_provider = getattr(
                     importlib.import_module("trader.flows.providers.china.tushare"),
@@ -321,15 +325,11 @@ class _DataSourceManagerMixin2:
                 )
 
             if df is not None and not df.empty:
-                logger.info(
-                    f"✅ [DataFrame接口] 从 {self.current_source.value} 获取成功: {len(df)}条"
-                )
+                logger.info(f"✅ [DataFrame接口] 从 {self.current_source.value} 获取成功: {len(df)}条")
                 return self._standardize_dataframe(df)
 
             # 降级到其他数据源
-            logger.warning(
-                f"⚠️ [DataFrame接口] {self.current_source.value} 失败，尝试降级"
-            )
+            logger.warning(f"⚠️ [DataFrame接口] {self.current_source.value} 失败，尝试降级")
             for source in self.available_sources:
                 if source == self.current_source:
                     continue
@@ -348,42 +348,34 @@ class _DataSourceManagerMixin2:
                         )
                     elif source == ChinaDataSource.TUSHARE:
                         get_tushare_provider = getattr(
-                            importlib.import_module(
-                                "trader.flows.providers.china.tushare"
-                            ),
+                            importlib.import_module("trader.flows.providers.china.tushare"),
                             "get_tushare_provider",
                         )
                         provider = cast(Any, get_tushare_provider())
-                        df = getattr(
-                            provider, "get_daily_data", provider.get_historical_data
-                        )(symbol, resolved_start_date, resolved_end_date)
+                        df = getattr(provider, "get_daily_data", provider.get_historical_data)(
+                            symbol, resolved_start_date, resolved_end_date
+                        )
                     elif source == ChinaDataSource.AKSHARE:
                         get_akshare_provider = getattr(
-                            importlib.import_module(
-                                "trader.flows.providers.china.akshare"
-                            ),
+                            importlib.import_module("trader.flows.providers.china.akshare"),
                             "get_akshare_provider",
                         )
                         provider = cast(Any, get_akshare_provider())
-                        df = getattr(
-                            provider, "get_stock_data", provider.get_historical_data
-                        )(symbol, resolved_start_date, resolved_end_date)
+                        df = getattr(provider, "get_stock_data", provider.get_historical_data)(
+                            symbol, resolved_start_date, resolved_end_date
+                        )
                     elif source == ChinaDataSource.BAOSTOCK:
                         get_baostock_provider = getattr(
-                            importlib.import_module(
-                                "trader.flows.providers.china.baostock"
-                            ),
+                            importlib.import_module("trader.flows.providers.china.baostock"),
                             "get_baostock_provider",
                         )
                         provider = cast(Any, get_baostock_provider())
-                        df = getattr(
-                            provider, "get_stock_data", provider.get_historical_data
-                        )(symbol, resolved_start_date, resolved_end_date)
+                        df = getattr(provider, "get_stock_data", provider.get_historical_data)(
+                            symbol, resolved_start_date, resolved_end_date
+                        )
 
                     if df is not None and not df.empty:
-                        logger.info(
-                            f"✅ [DataFrame接口] 降级到 {source.value} 成功: {len(df)}条"
-                        )
+                        logger.info(f"✅ [DataFrame接口] 降级到 {source.value} 成功: {len(df)}条")
                         return self._standardize_dataframe(df)
                 except Exception as e:
                     logger.warning(f"⚠️ [DataFrame接口] {source.value} 失败: {e}")
@@ -509,26 +501,16 @@ class _DataSourceManagerMixin2:
             actual_source = None  # 实际使用的数据源
 
             if self.current_source == ChinaDataSource.POSTGRES:
-                result, actual_source = self._get_postgres_data(
-                    symbol, resolved_start_date, resolved_end_date, period
-                )
+                result, actual_source = self._get_postgres_data(symbol, resolved_start_date, resolved_end_date, period)
             elif self.current_source == ChinaDataSource.TUSHARE:
-                logger.info(
-                    f"🔍 [股票代码追踪] 调用 Tushare 数据源，传入参数: symbol='{symbol}', period='{period}'"
-                )
-                result = self._get_tushare_data(
-                    symbol, resolved_start_date, resolved_end_date, period
-                )
+                logger.info(f"🔍 [股票代码追踪] 调用 Tushare 数据源，传入参数: symbol='{symbol}', period='{period}'")
+                result = self._get_tushare_data(symbol, resolved_start_date, resolved_end_date, period)
                 actual_source = "tushare"
             elif self.current_source == ChinaDataSource.AKSHARE:
-                result = self._get_akshare_data(
-                    symbol, resolved_start_date, resolved_end_date, period
-                )
+                result = self._get_akshare_data(symbol, resolved_start_date, resolved_end_date, period)
                 actual_source = "akshare"
             elif self.current_source == ChinaDataSource.BAOSTOCK:
-                result = self._get_baostock_data(
-                    symbol, resolved_start_date, resolved_end_date, period
-                )
+                result = self._get_baostock_data(symbol, resolved_start_date, resolved_end_date, period)
                 actual_source = "baostock"
             # TDX 已移除
             else:
@@ -555,9 +537,7 @@ class _DataSourceManagerMixin2:
                         "requested_source": self.current_source.value,
                         "duration": duration,
                         "result_length": result_length,
-                        "result_preview": result[:200] + "..."
-                        if result_length > 200
-                        else result,
+                        "result_preview": result[:200] + "..." if result_length > 200 else result,
                         "event_type": "data_fetch_success",
                     },
                 )
@@ -572,9 +552,7 @@ class _DataSourceManagerMixin2:
                         "data_source": self.current_source.value,
                         "duration": duration,
                         "result_length": result_length,
-                        "result_preview": result[:200] + "..."
-                        if result_length > 200
-                        else result,
+                        "result_preview": result[:200] + "..." if result_length > 200 else result,
                         "event_type": "data_fetch_warning",
                     },
                 )
@@ -583,17 +561,11 @@ class _DataSourceManagerMixin2:
                 fallback_result, _fallback_source = self._try_fallback_sources(
                     symbol, resolved_start_date, resolved_end_date
                 )
-                if (
-                    fallback_result
-                    and "❌" not in fallback_result
-                    and "错误" not in fallback_result
-                ):
+                if fallback_result and "❌" not in fallback_result and "错误" not in fallback_result:
                     logger.info(f"✅ [数据来源: 备用数据源] 降级成功获取数据: {symbol}")
                     return fallback_result
                 else:
-                    logger.error(
-                        f"❌ [数据来源: 所有数据源失败] 所有数据源都无法获取有效数据: {symbol}"
-                    )
+                    logger.error(f"❌ [数据来源: 所有数据源失败] 所有数据源都无法获取有效数据: {symbol}")
                     return result  # 返回原始结果（包含错误信息）
 
         except Exception as e:
@@ -637,14 +609,10 @@ class _DataSourceManagerMixin2:
             adapter = get_postgres_cache_adapter()
 
             # 从PostgreSQL获取指定周期的历史数据
-            df = adapter.get_historical_data(
-                symbol, start_date, end_date, period=period
-            )
+            df = adapter.get_historical_data(symbol, start_date, end_date, period=period)
 
             if df is not None and not df.empty:
-                logger.info(
-                    f"✅ [数据来源: PostgreSQL缓存] 成功获取{period}数据: {symbol} ({len(df)}条记录)"
-                )
+                logger.info(f"✅ [数据来源: PostgreSQL缓存] 成功获取{period}数据: {symbol} ({len(df)}条记录)")
 
                 # 🔧 修复：使用统一的格式化方法，包含技术指标计算
                 # 获取股票名称（从DataFrame中提取或使用默认值）
@@ -653,24 +621,16 @@ class _DataSourceManagerMixin2:
                     stock_name = df["name"].iloc[0]
 
                 # 调用统一的格式化方法（包含技术指标计算）
-                result = self._format_stock_data_response(
-                    df, symbol, stock_name, start_date, end_date
-                )
+                result = self._format_stock_data_response(df, symbol, stock_name, start_date, end_date)
 
-                logger.info(
-                    "✅ [PostgreSQL] 已计算技术指标: MA5/10/20/60, MACD, RSI, BOLL"
-                )
+                logger.info("✅ [PostgreSQL] 已计算技术指标: MA5/10/20/60, MACD, RSI, BOLL")
                 return result, "postgres"
             else:
                 # PostgreSQL没有数据（adapter内部已记录详细的数据源信息），降级到其他数据源
-                logger.info(
-                    f"🔄 [PostgreSQL] 未找到{period}数据: {symbol}，开始尝试备用数据源"
-                )
+                logger.info(f"🔄 [PostgreSQL] 未找到{period}数据: {symbol}，开始尝试备用数据源")
                 return self._try_fallback_sources(symbol, start_date, end_date, period)
 
         except Exception as e:
-            logger.error(
-                f"❌ [数据来源: PostgreSQL异常] 获取{period}数据失败: {symbol}, 错误: {e}"
-            )
+            logger.error(f"❌ [数据来源: PostgreSQL异常] 获取{period}数据失败: {symbol}, 错误: {e}")
             # PostgreSQL异常，降级到其他数据源
             return self._try_fallback_sources(symbol, start_date, end_date, period)

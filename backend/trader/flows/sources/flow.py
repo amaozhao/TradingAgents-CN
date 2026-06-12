@@ -1,4 +1,10 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .cache import get_data_source_manager
+    from .service import DataSourceManager
+
+
 def get_stock_data_service() -> DataSourceManager:
     """
     获取股票数据服务实例（兼容 stock_data_service 接口）

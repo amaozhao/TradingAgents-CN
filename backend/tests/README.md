@@ -6,15 +6,13 @@
 
 ```text
 backend/tests/
-  app/          FastAPI、服务层、schemas、数据库访问层和运行时行为测试
-  cli/          后端 CLI 入口和命令行为测试
-  regression/   已修复问题的回归测试
-  tools/        代码结构和审计类测试
-  trader/       核心交易分析包测试
+  unit/         纯函数、schema、配置、tool、状态聚合和单模块行为测试
+  integration/  FastAPI route、service + repository、数据库访问层和跨模块行为测试
+  e2e/          HTTP 用户流程、worker/队列等端到端边界测试
   conftest.py   pytest 夹具、事件循环和运行后清理逻辑
 ```
 
-部分历史测试辅助代码保留在 `backend/support/`，当前 pytest 入口以 `backend/tests/` 下的 wrapper 和回归测试为准。
+部分历史测试辅助代码保留在 `backend/support/`，当前 pytest 入口以 `backend/tests/unit`、`backend/tests/integration` 和 `backend/tests/e2e` 为准。
 
 ## 推荐命令
 
@@ -34,8 +32,8 @@ conda run --no-capture-output -n trader ruff format --check backend
 只在定位问题时运行子集：
 
 ```bash
-conda run --no-capture-output -n trader python -m pytest -c backend/pyproject.toml backend/tests/app -vv
-conda run --no-capture-output -n trader python -m pytest -c backend/pyproject.toml backend/tests/regression -vv
+conda run --no-capture-output -n trader python -m pytest -c backend/pyproject.toml backend/tests/unit -vv
+conda run --no-capture-output -n trader python -m pytest -c backend/pyproject.toml backend/tests/integration -vv
 ```
 
 如果要对外声明“全量测试通过”，必须运行完整 `backend` 测试范围，不使用 `-k`、`--ignore`、`--deselect` 或只跑某个子目录。测试自身定义的 `skipped` 不等同于手动 deselect。
@@ -68,7 +66,8 @@ docker compose --env-file backend/.env -f deploy/docker/compose/docker-compose.y
 - 异步网络和数据库逻辑使用异步客户端或 pytest 异步测试，不新增同步阻塞请求。
 - 涉及请求/响应结构时，优先校验 `app.schemas` 中的 Pydantic DTO。
 - 涉及数据库表结构时，优先校验 `app.models` 中的 SQLAlchemy ORM 模型。
-- 回归测试放在 `backend/tests/regression/`，文件名说明修复过的问题。
+- 新增测试必须放在 `backend/tests/unit`、`backend/tests/integration` 或 `backend/tests/e2e`，并镜像源码边界。
+- 后端测试文件名使用 `test_<模块名>.py`；不要新增目录内统一 `test.py`。
 
 ## 故障排除
 

@@ -14,22 +14,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
-    safe_div,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
-)
 
 __alpha_meta__ = {
     "id": "gtja191_059",
@@ -48,11 +32,11 @@ __alpha_meta__ = {
 def compute(panel: dict) -> pd.DataFrame:
     c = panel["close"]
     h = panel["high"]
-    l = panel["low"]
+    low = panel["low"]
     pc = c.shift(1)
     up = c > pc
     dn = c < pc
-    ref = pd.DataFrame(np.where(up, np.minimum(l, pc), np.where(dn, np.maximum(h, pc), c)),
+    ref = pd.DataFrame(np.where(up, np.minimum(low, pc), np.where(dn, np.maximum(h, pc), c)),
                        index=c.index, columns=c.columns)
     move = (c - ref).where(up | dn, 0.0)
     return move.rolling(20, min_periods=20).sum()

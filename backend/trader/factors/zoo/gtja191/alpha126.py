@@ -13,33 +13,14 @@ Notes:
 """
 from __future__ import annotations
 
-import numpy as np
-import pandas as pd
 
-from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
-    safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
-)
 
 ALPHA_ID = "gtja191_126"
 
 __alpha_meta__ = {
     'id': 'gtja191_126',
     'theme': ['reversal'],
-    'formula_latex': '(c+h+l)/3',
+    'formula_latex': '(c+h+low)/3',
     'columns_required': ['close', 'high', 'low'],
     'extras_required': [],
     'universe': ['equity_cn'],
@@ -61,6 +42,6 @@ def compute(panel):
     """
     c = panel["close"]
     h = panel["high"]
-    l = panel["low"]
-    out = (c + h + l) / 3.0
+    low = panel["low"]
+    out = (c + h + low) / 3.0
     return out

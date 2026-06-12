@@ -1,4 +1,20 @@
-# ruff: noqa: F401,F403,F405,F821
+from .base import run_analysis
+from .imports import (
+    DEFAULT_API_KEY_DISPLAY_LENGTH,
+    Optional,
+    Table,
+    app,
+    console,
+    get_close_matches,
+    importlib,
+    logger,
+    os,
+    settings,
+    subprocess,
+    sys,
+    typer,
+)
+
 @app.command(name="config", help="配置设置 | Configuration settings")
 def config():
     """
@@ -59,37 +75,27 @@ def config():
     api_keys_table.add_row(
         "DASHSCOPE_API_KEY",
         "✅ 已配置" if dashscope_key else "❌ 未配置",
-        f"阿里百炼 | {dashscope_key[:DEFAULT_API_KEY_DISPLAY_LENGTH]}..."
-        if dashscope_key
-        else "阿里百炼API密钥",
+        f"阿里百炼 | {dashscope_key[:DEFAULT_API_KEY_DISPLAY_LENGTH]}..." if dashscope_key else "阿里百炼API密钥",
     )
     api_keys_table.add_row(
         "FINNHUB_API_KEY",
         "✅ 已配置" if finnhub_key else "❌ 未配置",
-        f"金融数据 | {finnhub_key[:DEFAULT_API_KEY_DISPLAY_LENGTH]}..."
-        if finnhub_key
-        else "金融数据API密钥",
+        f"金融数据 | {finnhub_key[:DEFAULT_API_KEY_DISPLAY_LENGTH]}..." if finnhub_key else "金融数据API密钥",
     )
     api_keys_table.add_row(
         "OPENAI_API_KEY",
         "✅ 已配置" if openai_key else "❌ 未配置",
-        f"OpenAI | {openai_key[:DEFAULT_API_KEY_DISPLAY_LENGTH]}..."
-        if openai_key
-        else "OpenAI API密钥",
+        f"OpenAI | {openai_key[:DEFAULT_API_KEY_DISPLAY_LENGTH]}..." if openai_key else "OpenAI API密钥",
     )
     api_keys_table.add_row(
         "ANTHROPIC_API_KEY",
         "✅ 已配置" if anthropic_key else "❌ 未配置",
-        f"Anthropic | {anthropic_key[:DEFAULT_API_KEY_DISPLAY_LENGTH]}..."
-        if anthropic_key
-        else "Anthropic API密钥",
+        f"Anthropic | {anthropic_key[:DEFAULT_API_KEY_DISPLAY_LENGTH]}..." if anthropic_key else "Anthropic API密钥",
     )
     api_keys_table.add_row(
         "GOOGLE_API_KEY",
         "✅ 已配置" if google_key else "❌ 未配置",
-        f"Google AI | {google_key[:DEFAULT_API_KEY_DISPLAY_LENGTH]}..."
-        if google_key
-        else "Google AI API密钥",
+        f"Google AI | {google_key[:DEFAULT_API_KEY_DISPLAY_LENGTH]}..." if google_key else "Google AI API密钥",
     )
 
     console.print(api_keys_table)
@@ -128,26 +134,14 @@ def version():
     except FileNotFoundError:
         version = "1.0.0"
 
-    logger.info(
-        "\n[bold blue]📊 TradingAgents 版本信息 | Version Information[/bold blue]"
-    )
-    logger.info(
-        f"[green]版本 | Version:[/green] {version} [yellow](预览版 | Preview)[/yellow]"
-    )
+    logger.info("\n[bold blue]📊 TradingAgents 版本信息 | Version Information[/bold blue]")
+    logger.info(f"[green]版本 | Version:[/green] {version} [yellow](预览版 | Preview)[/yellow]")
     logger.info("[green]发布日期 | Release Date:[/green] 2025-06-26")
-    logger.info(
-        "[green]框架 | Framework:[/green] 多智能体金融交易分析 | Multi-Agent Financial Trading Analysis"
-    )
+    logger.info("[green]框架 | Framework:[/green] 多智能体金融交易分析 | Multi-Agent Financial Trading Analysis")
     logger.info("[green]支持的语言 | Languages:[/green] 中文 | English")
-    logger.info(
-        "[green]开发状态 | Development Status:[/green] [yellow]早期预览版，功能持续完善中[/yellow]"
-    )
-    logger.info(
-        "[green]基于项目 | Based on:[/green] [blue]TauricResearch/TradingAgents[/blue]"
-    )
-    logger.info(
-        "[green]创建目的 | Purpose:[/green] [cyan]更好地在中国推广TradingAgents[/cyan]"
-    )
+    logger.info("[green]开发状态 | Development Status:[/green] [yellow]早期预览版，功能持续完善中[/yellow]")
+    logger.info("[green]基于项目 | Based on:[/green] [blue]TauricResearch/TradingAgents[/blue]")
+    logger.info("[green]创建目的 | Purpose:[/green] [cyan]更好地在中国推广TradingAgents[/cyan]")
     logger.info("[green]主要功能 | Features:[/green]")
     logger.info("  • 🤖 多智能体协作分析 | Multi-agent collaborative analysis")
     logger.info("  • 🇨🇳 阿里百炼大模型支持 | Alibaba DashScope support")
@@ -171,37 +165,25 @@ def version():
 
 @app.command(name="data-config", help="数据目录配置 | Data directory configuration")
 def data_config(
-    show: bool = typer.Option(
-        False, "--show", "-s", help="显示当前配置 | Show current configuration"
-    ),
-    set_dir: Optional[str] = typer.Option(
-        None, "--set", "-d", help="设置数据目录 | Set data directory"
-    ),
-    reset: bool = typer.Option(
-        False, "--reset", "-r", help="重置为默认配置 | Reset to default configuration"
-    ),
+    show: bool = typer.Option(False, "--show", "-s", help="显示当前配置 | Show current configuration"),
+    set_dir: Optional[str] = typer.Option(None, "--set", "-d", help="设置数据目录 | Set data directory"),
+    reset: bool = typer.Option(False, "--reset", "-r", help="重置为默认配置 | Reset to default configuration"),
 ):
     """
     配置数据目录路径
     Configure data directory paths
     """
-    config_manager = getattr(
-        importlib.import_module("trader.config.manager"), "config_manager"
-    )
+    config_manager = getattr(importlib.import_module("trader.config.manager"), "config_manager")
 
     # 使用 config_manager 的方法
     get_data_dir = config_manager.get_data_dir
     set_data_dir = config_manager.set_data_dir
 
-    logger.info(
-        "\n[bold blue]📁 数据目录配置 | Data Directory Configuration[/bold blue]"
-    )
+    logger.info("\n[bold blue]📁 数据目录配置 | Data Directory Configuration[/bold blue]")
 
     if reset:
         # 重置为默认配置
-        default_data_dir = os.path.join(
-            os.path.expanduser("~"), "Documents", "TradingAgents", "data"
-        )
+        default_data_dir = os.path.join(os.path.expanduser("~"), "Documents", "TradingAgents", "data")
         set_data_dir(default_data_dir)
         logger.info(f"[green]✅ 已重置数据目录为默认路径: {default_data_dir}[/green]")
         return
@@ -379,21 +361,11 @@ def help_chinese():
     commands_table.add_column("功能 | Function", style="green")
     commands_table.add_column("说明 | Description")
 
-    commands_table.add_row(
-        "analyze", "股票分析 | Stock Analysis", "启动交互式多智能体股票分析工具"
-    )
-    commands_table.add_row(
-        "config", "配置设置 | Configuration", "查看和配置LLM提供商、API密钥等设置"
-    )
-    commands_table.add_row(
-        "examples", "示例程序 | Examples", "查看可用的演示程序和使用说明"
-    )
-    commands_table.add_row(
-        "test", "运行测试 | Run Tests", "执行系统集成测试，验证功能正常"
-    )
-    commands_table.add_row(
-        "version", "版本信息 | Version", "显示软件版本和功能特性信息"
-    )
+    commands_table.add_row("analyze", "股票分析 | Stock Analysis", "启动交互式多智能体股票分析工具")
+    commands_table.add_row("config", "配置设置 | Configuration", "查看和配置LLM提供商、API密钥等设置")
+    commands_table.add_row("examples", "示例程序 | Examples", "查看可用的演示程序和使用说明")
+    commands_table.add_row("test", "运行测试 | Run Tests", "执行系统集成测试，验证功能正常")
+    commands_table.add_row("version", "版本信息 | Version", "显示软件版本和功能特性信息")
 
     console.print(commands_table)
 
@@ -435,25 +407,17 @@ def main():
                 ]
 
                 # 使用difflib找到最相似的命令
-                suggestions = get_close_matches(
-                    unknown_command, available_commands, n=3, cutoff=0.6
-                )
+                suggestions = get_close_matches(unknown_command, available_commands, n=3, cutoff=0.6)
 
                 if suggestions:
                     logger.error(f"\n[red]❌ 未知命令: '{unknown_command}'[/red]")
                     logger.info("[yellow]💡 您是否想要使用以下命令之一？[/yellow]")
                     for suggestion in suggestions:
-                        logger.info(
-                            f"   • [cyan]python -m cli.main {suggestion}[/cyan]"
-                        )
-                    logger.info(
-                        "\n[dim]使用 [cyan]python -m cli.main help[/cyan] 查看所有可用命令[/dim]"
-                    )
+                        logger.info(f"   • [cyan]python -m cli.main {suggestion}[/cyan]")
+                    logger.info("\n[dim]使用 [cyan]python -m cli.main help[/cyan] 查看所有可用命令[/dim]")
                 else:
                     logger.error(f"\n[red]❌ 未知命令: '{unknown_command}'[/red]")
-                    logger.info(
-                        "[yellow]使用 [cyan]python -m cli.main help[/cyan] 查看所有可用命令[/yellow]"
-                    )
+                    logger.info("[yellow]使用 [cyan]python -m cli.main help[/cyan] 查看所有可用命令[/yellow]")
             raise e
 
 

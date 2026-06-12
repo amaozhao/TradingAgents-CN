@@ -23,12 +23,17 @@ def build_user_analysis_tasks_select(
     user_id: str,
     *,
     status: str | None = None,
+    batch_id: str | None = None,
     limit: int,
     offset: int = 0,
 ) -> Select:
     statement = select(AnalysisTask).where(AnalysisTask.user_id == user_id)
     if status:
         statement = statement.where(AnalysisTask.status == status)
+    if batch_id:
+        statement = statement.where(
+            AnalysisTask.payload["batch_id"].as_string() == batch_id
+        )
     return statement.order_by(desc(AnalysisTask.created_at)).offset(offset).limit(limit)
 
 
@@ -61,12 +66,13 @@ async def list_user_analysis_tasks(
     user_id: str,
     *,
     status: str | None = None,
+    batch_id: str | None = None,
     limit: int,
     offset: int = 0,
 ) -> list[dict[str, Any]]:
     result = await session.execute(
         build_user_analysis_tasks_select(
-            user_id, status=status, limit=limit, offset=offset
+            user_id, status=status, batch_id=batch_id, limit=limit, offset=offset
         )
     )
     return [_task_to_dict(row) for row in result.scalars()]
@@ -78,6 +84,7 @@ def _task_to_dict(row: AnalysisTask) -> dict[str, Any]:
         **payload,
         "legacy_id": row.legacy_id,
         "task_id": row.task_id,
+        "batch_id": payload.get("batch_id"),
         "user_id": row.user_id,
         "stock_symbol": row.stock_symbol,
         "symbol": payload.get("symbol") or row.stock_symbol,

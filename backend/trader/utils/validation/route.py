@@ -1,4 +1,6 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import Optional, StockDataPreparationResult
+from .task import get_stock_preparer
+
 def prepare_stock_data(
     stock_code: str,
     market_type: str = "auto",
@@ -18,6 +20,4 @@ def prepare_stock_data(
         StockDataPreparationResult: 数据准备结果
     """
     preparer = get_stock_preparer()
-    return preparer.prepare_stock_data(
-        stock_code, market_type, period_days, analysis_date
-    )
+    return preparer.prepare_stock_data(stock_code, market_type, period_days, analysis_date)

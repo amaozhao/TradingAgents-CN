@@ -1,8 +1,33 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        ActionType,
+        ConfigTestRequest,
+        ConfigTestResponse,
+        DataSourceConfig,
+        DataSourceConfigRequest,
+        DataSourceGrouping,
+        DatabaseConfig,
+        DatabaseConfigRequest,
+        Depends,
+        HTTPException,
+        LLMConfig,
+        LLMConfigRequest,
+        User,
+        config_service,
+        get_current_user,
+        importlib,
+        log_operation,
+        logger,
+        ok,
+        router,
+        status,
+    )
+    from .setup import ConfigApiResponse, require_admin_user
+
 @router.post("/llm", response_model=ConfigApiResponse)
-async def add_llm_config(
-    request: LLMConfigRequest, current_user: User = Depends(get_current_user)
-):
+async def add_llm_config(request: LLMConfigRequest, current_user: User = Depends(get_current_user)):
     """添加或更新大模型配置"""
     require_admin_user(current_user)
     try:
@@ -25,17 +50,13 @@ async def add_llm_config(
             for p in providers:
                 logger.info(f"   - 厂家: {p.name}, 有API密钥: {bool(p.api_key)}")
 
-            provider_config = next(
-                (p for p in providers if p.name == request.provider), None
-            )
+            provider_config = next((p for p in providers if p.name == request.provider), None)
 
             if provider_config:
                 logger.info(f"✅ 找到厂家配置: {provider_config.name}")
                 if provider_config.api_key:
                     llm_config_data["api_key"] = provider_config.api_key
-                    logger.info(
-                        f"✅ 成功获取厂家API密钥 (长度: {len(provider_config.api_key)})"
-                    )
+                    logger.info(f"✅ 成功获取厂家API密钥 (长度: {len(provider_config.api_key)})")
                 else:
                     logger.warning(f"⚠️ 厂家 {request.provider} 没有配置API密钥")
                     llm_config_data["api_key"] = ""
@@ -43,9 +64,7 @@ async def add_llm_config(
                 logger.warning(f"⚠️ 未找到厂家 {request.provider} 的配置")
                 llm_config_data["api_key"] = ""
         else:
-            logger.info(
-                f"🔑 使用提供的API密钥 (长度: {len(llm_config_data.get('api_key', ''))})"
-            )
+            logger.info(f"🔑 使用提供的API密钥 (长度: {len(llm_config_data.get('api_key', ''))})")
 
         logger.info(f"📋 最终配置数据: {llm_config_data}")
         # 🔥 修改：允许通过 REST 写入密钥，但如果是无效的密钥则清空
@@ -53,12 +72,7 @@ async def add_llm_config(
         if "api_key" in llm_config_data:
             api_key = llm_config_data.get("api_key", "")
             # 如果是无效的 Key，则清空（让系统使用环境变量）
-            if (
-                not api_key
-                or api_key.startswith("your_")
-                or api_key.startswith("your-")
-                or len(api_key) <= 10
-            ):
+            if not api_key or api_key.startswith("your_") or api_key.startswith("your-") or len(api_key) <= 10:
                 llm_config_data["api_key"] = ""
 
         # 尝试创建LLMConfig对象
@@ -77,9 +91,7 @@ async def add_llm_config(
         success = await config_service.update_llm_config(llm_config)
 
         if success:
-            logger.info(
-                f"✅ 大模型配置更新成功: {llm_config.provider}/{llm_config.model_name}"
-            )
+            logger.info(f"✅ 大模型配置更新成功: {llm_config.provider}/{llm_config.model_name}")
 
             # 同步定价配置到 trading_agents
             try:
@@ -133,9 +145,7 @@ async def add_llm_config(
 
 
 @router.post("/datasource", response_model=ConfigApiResponse)
-async def add_data_source_config(
-    request: DataSourceConfigRequest, current_user: User = Depends(get_current_user)
-):
+async def add_data_source_config(request: DataSourceConfigRequest, current_user: User = Depends(get_current_user)):
     """添加数据源配置"""
     try:
         # 开源版本：所有用户都可以修改配置
@@ -143,18 +153,12 @@ async def add_data_source_config(
         # 获取当前配置
         config = await config_service.get_system_config()
         if not config:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="系统配置不存在"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="系统配置不存在")
 
         # 添加新的数据源配置
         # 🔥 修改：支持保存 API Key（与大模型厂家管理逻辑一致）
-        should_skip_api_key_update = getattr(
-            importlib.import_module("app.utils.keys"), "should_skip_api_key_update"
-        )
-        is_valid_api_key = getattr(
-            importlib.import_module("app.utils.keys"), "is_valid_api_key"
-        )
+        should_skip_api_key_update = getattr(importlib.import_module("app.utils.keys"), "should_skip_api_key_update")
+        is_valid_api_key = getattr(importlib.import_module("app.utils.keys"), "is_valid_api_key")
 
         _req = request.model_dump()
 
@@ -249,9 +253,7 @@ async def add_data_source_config(
     response_model=ConfigApiResponse,
     operation_id="add_database_config_legacy",
 )
-async def add_database_config_legacy(
-    request: DatabaseConfigRequest, current_user: User = Depends(get_current_user)
-):
+async def add_database_config_legacy(request: DatabaseConfigRequest, current_user: User = Depends(get_current_user)):
     """添加数据库配置"""
     try:
         # 开源版本：所有用户都可以修改配置
@@ -259,9 +261,7 @@ async def add_database_config_legacy(
         # 获取当前配置
         config = await config_service.get_system_config()
         if not config:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="系统配置不存在"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="系统配置不存在")
 
         # 添加新的数据库配置（方案A：清洗敏感字段）
         _req = request.model_dump()
@@ -306,9 +306,7 @@ async def add_database_config_legacy(
 
 
 @router.post("/test", response_model=ConfigApiResponse)
-async def test_config(
-    request: ConfigTestRequest, current_user: User = Depends(get_current_user)
-):
+async def test_config(request: ConfigTestRequest, current_user: User = Depends(get_current_user)):
     """测试配置连接"""
     try:
         if request.config_type == "llm":
@@ -321,9 +319,7 @@ async def test_config(
             db_config = DatabaseConfig(**request.config_data)
             result = await config_service.test_database_config(db_config)
         else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="不支持的配置类型"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不支持的配置类型")
 
         response = ConfigTestResponse(**result)
         return ok(data=response.model_dump(), message=response.message)
@@ -337,9 +333,7 @@ async def test_config(
 
 
 @router.post("/database/{db_name}/test", response_model=ConfigApiResponse)
-async def test_saved_database_config(
-    db_name: str, current_user: dict = Depends(get_current_user)
-):
+async def test_saved_database_config(db_name: str, current_user: dict = Depends(get_current_user)):
     """测试已保存的数据库配置（从数据库中获取完整配置包括密码）"""
     try:
         logger.info(f"🧪 测试已保存的数据库配置: {db_name}")
@@ -347,9 +341,7 @@ async def test_saved_database_config(
         # 从数据库获取完整的系统配置
         config = await config_service.get_system_config()
         if not config:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="系统配置不存在"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="系统配置不存在")
 
         # 查找指定的数据库配置
         db_config = None

@@ -1,4 +1,10 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .report import _data_source_manager
+    from .service import DataSourceManager
+
+
 def get_data_source_manager() -> DataSourceManager:
     """获取全局数据源管理器实例"""
     global _data_source_manager

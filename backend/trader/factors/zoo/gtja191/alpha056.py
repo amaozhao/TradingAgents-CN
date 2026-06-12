@@ -11,24 +11,13 @@ Source: 国泰君安 191 alpha 研报 (2014), alpha 56."""
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
     rank,
-    safe_div,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
     ts_corr,
-    ts_cov,
-    ts_max,
     ts_mean,
     ts_min,
-    ts_rank,
-    ts_std,
 )
 
 __alpha_meta__ = {
@@ -48,10 +37,10 @@ __alpha_meta__ = {
 def compute(panel: dict) -> pd.DataFrame:
     o = panel["open"]
     h = panel["high"]
-    l = panel["low"]
+    low = panel["low"]
     v = panel["volume"]
     lhs = rank(o - ts_min(o, 12))
-    mid = (h + l) / 2.0
+    mid = (h + low) / 2.0
     sumA = mid.rolling(19, min_periods=19).sum()
     sumB = ts_mean(v, 30).rolling(19, min_periods=19).sum()
     rhs = rank(rank(ts_corr(sumA, sumB, 13)) ** 5)

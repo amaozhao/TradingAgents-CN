@@ -1,4 +1,11 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .base import _TushareProviderMixin2
+    from .common import _TushareProviderMixin1
+    from .imports import BaseStockDataProvider
+    from .models import _TushareProviderMixin3
+
 class TushareProvider(
     _TushareProviderMixin1,
     _TushareProviderMixin2,

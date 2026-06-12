@@ -1,30 +1,36 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        ChinaDataSource,
+        Dict,
+        Optional,
+        cast,
+        importlib,
+        logger,
+        run_async_provider_call,
+        time,
+    )
+
 class _DataSourceManagerMixin3:
-    def _get_tushare_data(
-        self, symbol: str, start_date: str, end_date: str, period: str = "daily"
-    ) -> str:
+    def _get_tushare_data(self, symbol: str, start_date: str, end_date: str, period: str = "daily") -> str:
         """使用Tushare获取多周期数据 - 使用provider + 统一缓存"""
         logger.debug(
             f"📊 [Tushare] 调用参数: symbol={symbol}, start_date={start_date}, end_date={end_date}, period={period}"
         )
 
         # 添加详细的股票代码追踪日志
-        logger.info(
-            f"🔍 [股票代码追踪] _get_tushare_data 接收到的股票代码: '{symbol}' (类型: {type(symbol)})"
-        )
+        logger.info(f"🔍 [股票代码追踪] _get_tushare_data 接收到的股票代码: '{symbol}' (类型: {type(symbol)})")
         logger.info(f"🔍 [股票代码追踪] 股票代码长度: {len(str(symbol))}")
         logger.info(f"🔍 [股票代码追踪] 股票代码字符: {list(str(symbol))}")
         logger.info("🔍 [DataSourceManager详细日志] _get_tushare_data 开始执行")
-        logger.info(
-            f"🔍 [DataSourceManager详细日志] 当前数据源: {self.current_source.value}"
-        )
+        logger.info(f"🔍 [DataSourceManager详细日志] 当前数据源: {self.current_source.value}")
 
         start_time = time.time()
         try:
             # 1. 先尝试从缓存获取
-            cached_data = self._get_cached_data(
-                symbol, start_date, end_date, max_age_hours=24
-            )
+            cached_data = self._get_cached_data(symbol, start_date, end_date, max_age_hours=24)
             if cached_data is not None and not cached_data.empty:
                 logger.info(f"✅ [缓存命中] 从缓存获取{symbol}数据")
                 # 获取股票基本信息
@@ -32,37 +38,24 @@ class _DataSourceManagerMixin3:
                 if provider:
                     stock_info = cast(
                         Dict[str, Any],
-                        run_async_provider_call(
-                            lambda: provider.get_stock_basic_info(symbol)
-                        )
-                        or {},
+                        run_async_provider_call(lambda: provider.get_stock_basic_info(symbol)) or {},
                     )
-                    stock_name = (
-                        stock_info.get("name", f"股票{symbol}")
-                        if stock_info
-                        else f"股票{symbol}"
-                    )
+                    stock_name = stock_info.get("name", f"股票{symbol}") if stock_info else f"股票{symbol}"
                 else:
                     stock_name = f"股票{symbol}"
 
                 # 格式化返回
-                return self._format_stock_data_response(
-                    cached_data, symbol, stock_name, start_date, end_date
-                )
+                return self._format_stock_data_response(cached_data, symbol, stock_name, start_date, end_date)
 
             # 2. 缓存未命中，从provider获取
-            logger.info(
-                f"🔍 [股票代码追踪] 调用 tushare_provider，传入参数: symbol='{symbol}'"
-            )
+            logger.info(f"🔍 [股票代码追踪] 调用 tushare_provider，传入参数: symbol='{symbol}'")
             logger.info("🔍 [DataSourceManager详细日志] 开始调用tushare_provider...")
 
             provider = self._get_tushare_adapter()
             if not provider:
                 return "❌ Tushare提供器不可用"
 
-            data = run_async_provider_call(
-                lambda: provider.get_historical_data(symbol, start_date, end_date)
-            )
+            data = run_async_provider_call(lambda: provider.get_historical_data(symbol, start_date, end_date))
 
             if data is not None and not data.empty:
                 # 保存到缓存
@@ -71,32 +64,17 @@ class _DataSourceManagerMixin3:
                 # 获取股票基本信息（异步）
                 stock_info = cast(
                     Dict[str, Any],
-                    run_async_provider_call(
-                        lambda: provider.get_stock_basic_info(symbol)
-                    )
-                    or {},
+                    run_async_provider_call(lambda: provider.get_stock_basic_info(symbol)) or {},
                 )
-                stock_name = (
-                    stock_info.get("name", f"股票{symbol}")
-                    if stock_info
-                    else f"股票{symbol}"
-                )
+                stock_name = stock_info.get("name", f"股票{symbol}") if stock_info else f"股票{symbol}"
 
                 # 格式化返回
-                result = self._format_stock_data_response(
-                    data, symbol, stock_name, start_date, end_date
-                )
+                result = self._format_stock_data_response(data, symbol, stock_name, start_date, end_date)
 
                 duration = time.time() - start_time
-                logger.info(
-                    f"🔍 [DataSourceManager详细日志] 调用完成，耗时: {duration:.3f}秒"
-                )
-                logger.info(
-                    f"🔍 [股票代码追踪] 返回结果前200字符: {result[:200] if result else 'None'}"
-                )
-                logger.debug(
-                    f"📊 [Tushare] 调用完成: 耗时={duration:.2f}s, 结果长度={len(result) if result else 0}"
-                )
+                logger.info(f"🔍 [DataSourceManager详细日志] 调用完成，耗时: {duration:.3f}秒")
+                logger.info(f"🔍 [股票代码追踪] 返回结果前200字符: {result[:200] if result else 'None'}")
+                logger.debug(f"📊 [Tushare] 调用完成: 耗时={duration:.2f}s, 结果长度={len(result) if result else 0}")
 
                 return result
             else:
@@ -106,20 +84,14 @@ class _DataSourceManagerMixin3:
                 return result
         except Exception as e:
             duration = time.time() - start_time
-            logger.error(
-                f"❌ [Tushare] 调用失败: {e}, 耗时={duration:.2f}s", exc_info=True
-            )
+            logger.error(f"❌ [Tushare] 调用失败: {e}, 耗时={duration:.2f}s", exc_info=True)
             logger.error(f"❌ [DataSourceManager详细日志] 异常类型: {type(e).__name__}")
             logger.error(f"❌ [DataSourceManager详细日志] 异常信息: {str(e)}")
             traceback = importlib.import_module("traceback")
-            logger.error(
-                f"❌ [DataSourceManager详细日志] 异常堆栈: {traceback.format_exc()}"
-            )
+            logger.error(f"❌ [DataSourceManager详细日志] 异常堆栈: {traceback.format_exc()}")
             raise
 
-    def _get_akshare_data(
-        self, symbol: str, start_date: str, end_date: str, period: str = "daily"
-    ) -> str:
+    def _get_akshare_data(self, symbol: str, start_date: str, end_date: str, period: str = "daily") -> str:
         """使用AKShare获取多周期数据 - 包含技术指标计算"""
         logger.debug(
             f"📊 [AKShare] 调用参数: symbol={symbol}, start_date={start_date}, end_date={end_date}, period={period}"
@@ -134,37 +106,23 @@ class _DataSourceManagerMixin3:
             )
             provider = get_akshare_provider()
 
-            data = run_async_provider_call(
-                lambda: provider.get_historical_data(
-                    symbol, start_date, end_date, period
-                )
-            )
+            data = run_async_provider_call(lambda: provider.get_historical_data(symbol, start_date, end_date, period))
 
             duration = time.time() - start_time
 
             if data is not None and not data.empty:
                 # 🔧 修复：使用统一的格式化方法，包含技术指标计算
                 # 获取股票基本信息
-                stock_info = run_async_provider_call(
-                    lambda: provider.get_stock_basic_info(symbol)
-                )
-                stock_name = (
-                    stock_info.get("name", f"股票{symbol}")
-                    if stock_info
-                    else f"股票{symbol}"
-                )
+                stock_info = run_async_provider_call(lambda: provider.get_stock_basic_info(symbol))
+                stock_name = stock_info.get("name", f"股票{symbol}") if stock_info else f"股票{symbol}"
 
                 # 调用统一的格式化方法（包含技术指标计算）
-                result = self._format_stock_data_response(
-                    data, symbol, stock_name, start_date, end_date
-                )
+                result = self._format_stock_data_response(data, symbol, stock_name, start_date, end_date)
 
                 logger.debug(
                     f"📊 [AKShare] 调用成功: 耗时={duration:.2f}s, 数据条数={len(data)}, 结果长度={len(result)}"
                 )
-                logger.info(
-                    "✅ [AKShare] 已计算技术指标: MA5/10/20/60, MACD, RSI, BOLL"
-                )
+                logger.info("✅ [AKShare] 已计算技术指标: MA5/10/20/60, MACD, RSI, BOLL")
                 return result
             else:
                 result = f"❌ 未能获取{symbol}的股票数据"
@@ -173,14 +131,10 @@ class _DataSourceManagerMixin3:
 
         except Exception as e:
             duration = time.time() - start_time
-            logger.error(
-                f"❌ [AKShare] 调用失败: {e}, 耗时={duration:.2f}s", exc_info=True
-            )
+            logger.error(f"❌ [AKShare] 调用失败: {e}, 耗时={duration:.2f}s", exc_info=True)
             return f"❌ AKShare获取{symbol}数据失败: {e}"
 
-    def _get_baostock_data(
-        self, symbol: str, start_date: str, end_date: str, period: str = "daily"
-    ) -> str:
+    def _get_baostock_data(self, symbol: str, start_date: str, end_date: str, period: str = "daily") -> str:
         """使用BaoStock获取多周期数据 - 包含技术指标计算"""
         # 使用BaoStock的统一接口
         get_baostock_provider = getattr(
@@ -189,26 +143,16 @@ class _DataSourceManagerMixin3:
         )
         provider = get_baostock_provider()
 
-        data = run_async_provider_call(
-            lambda: provider.get_historical_data(symbol, start_date, end_date, period)
-        )
+        data = run_async_provider_call(lambda: provider.get_historical_data(symbol, start_date, end_date, period))
 
         if data is not None and not data.empty:
             # 🔧 修复：使用统一的格式化方法，包含技术指标计算
             # 获取股票基本信息
-            stock_info = run_async_provider_call(
-                lambda: provider.get_stock_basic_info(symbol)
-            )
-            stock_name = (
-                stock_info.get("name", f"股票{symbol}")
-                if stock_info
-                else f"股票{symbol}"
-            )
+            stock_info = run_async_provider_call(lambda: provider.get_stock_basic_info(symbol))
+            stock_name = stock_info.get("name", f"股票{symbol}") if stock_info else f"股票{symbol}"
 
             # 调用统一的格式化方法（包含技术指标计算）
-            result = self._format_stock_data_response(
-                data, symbol, stock_name, start_date, end_date
-            )
+            result = self._format_stock_data_response(data, symbol, stock_name, start_date, end_date)
 
             logger.info("✅ [BaoStock] 已计算技术指标: MA5/10/20/60, MACD, RSI, BOLL")
             return result
@@ -243,9 +187,7 @@ class _DataSourceManagerMixin3:
         Returns:
             tuple[str, str | None]: (结果字符串, 实际使用的数据源名称)
         """
-        logger.info(
-            f"🔄 [{self.current_source.value}] 失败，尝试备用数据源获取{period}数据: {symbol}"
-        )
+        logger.info(f"🔄 [{self.current_source.value}] 失败，尝试备用数据源获取{period}数据: {symbol}")
 
         # 🔥 从数据库获取数据源优先级顺序（根据股票代码识别市场）
         # 注意：不包含PostgreSQL，因为PostgreSQL是最高优先级，如果失败了就不再尝试
@@ -254,42 +196,28 @@ class _DataSourceManagerMixin3:
         for source in fallback_order:
             if source != self.current_source and source in self.available_sources:
                 try:
-                    logger.info(
-                        f"🔄 [备用数据源] 尝试 {source.value} 获取{period}数据: {symbol}"
-                    )
+                    logger.info(f"🔄 [备用数据源] 尝试 {source.value} 获取{period}数据: {symbol}")
 
                     # 直接调用具体的数据源方法，避免递归
                     if source == ChinaDataSource.TUSHARE:
-                        result = self._get_tushare_data(
-                            symbol, start_date, end_date, period
-                        )
+                        result = self._get_tushare_data(symbol, start_date, end_date, period)
                     elif source == ChinaDataSource.AKSHARE:
-                        result = self._get_akshare_data(
-                            symbol, start_date, end_date, period
-                        )
+                        result = self._get_akshare_data(symbol, start_date, end_date, period)
                     elif source == ChinaDataSource.BAOSTOCK:
-                        result = self._get_baostock_data(
-                            symbol, start_date, end_date, period
-                        )
+                        result = self._get_baostock_data(symbol, start_date, end_date, period)
                     # TDX 已移除
                     else:
                         logger.warning(f"⚠️ 未知数据源: {source.value}")
                         continue
 
                     if "❌" not in result:
-                        logger.info(
-                            f"✅ [备用数据源-{source.value}] 成功获取{period}数据: {symbol}"
-                        )
+                        logger.info(f"✅ [备用数据源-{source.value}] 成功获取{period}数据: {symbol}")
                         return result, source.value  # 返回结果和实际使用的数据源
                     else:
-                        logger.warning(
-                            f"⚠️ [备用数据源-{source.value}] 返回错误结果: {symbol}"
-                        )
+                        logger.warning(f"⚠️ [备用数据源-{source.value}] 返回错误结果: {symbol}")
 
                 except Exception as e:
-                    logger.error(
-                        f"❌ [备用数据源-{source.value}] 获取失败: {symbol}, 错误: {e}"
-                    )
+                    logger.error(f"❌ [备用数据源-{source.value}] 获取失败: {symbol}, 错误: {e}")
                     continue
 
         logger.error(f"❌ [所有数据源失败] 无法获取{period}数据: {symbol}")
@@ -300,9 +228,7 @@ class _DataSourceManagerMixin3:
         获取股票基本信息，支持多数据源和自动降级
         优先级：PostgreSQL → Tushare → AKShare → BaoStock
         """
-        logger.info(
-            f"📊 [数据来源: {self.current_source.value}] 开始获取股票信息: {symbol}"
-        )
+        logger.info(f"📊 [数据来源: {self.current_source.value}] 开始获取股票信息: {symbol}")
 
         # 优先使用 App PostgreSQL 文档缓存（当 ta_use_app_cache=True）
         try:
@@ -313,14 +239,10 @@ class _DataSourceManagerMixin3:
             use_cache = use_app_cache_enabled(False)
             logger.info(f"🔧 [配置检查] use_app_cache_enabled() 返回值: {use_cache}")
         except Exception as e:
-            logger.error(
-                f"❌ [配置检查] use_app_cache_enabled() 调用失败: {e}", exc_info=True
-            )
+            logger.error(f"❌ [配置检查] use_app_cache_enabled() 调用失败: {e}", exc_info=True)
             use_cache = False
 
-        logger.info(
-            f"🔧 [配置] ta_use_app_cache={use_cache}, current_source={self.current_source.value}"
-        )
+        logger.info(f"🔧 [配置] ta_use_app_cache={use_cache}, current_source={self.current_source.value}")
 
         if use_cache:
             try:
@@ -337,9 +259,7 @@ class _DataSourceManagerMixin3:
                     name = doc.get("name") or doc.get("stock_name") or ""
                     # 规范化行业与板块（避免把“中小板/创业板”等板块值误作行业）
                     board_labels = {"主板", "中小板", "创业板", "科创板"}
-                    raw_industry = (
-                        doc.get("industry") or doc.get("industry_name") or ""
-                    ).strip()
+                    raw_industry = (doc.get("industry") or doc.get("industry_name") or "").strip()
                     sec_or_cat = (doc.get("sec") or doc.get("category") or "").strip()
                     market_val = (doc.get("market") or "").strip()
                     industry_val = raw_industry or sec_or_cat or "未知"
@@ -386,14 +306,10 @@ class _DataSourceManagerMixin3:
                         logger.debug(f"附加行情失败（忽略）：{_e}")
 
                     if name:
-                        logger.info(
-                            f"✅ [数据来源: PostgreSQL-stock_basic_info] 成功获取: {symbol}"
-                        )
+                        logger.info(f"✅ [数据来源: PostgreSQL-stock_basic_info] 成功获取: {symbol}")
                         return result
                     else:
-                        logger.warning(
-                            f"⚠️ [数据来源: PostgreSQL] 未找到有效名称: {symbol}，降级到其他数据源"
-                        )
+                        logger.warning(f"⚠️ [数据来源: PostgreSQL] 未找到有效名称: {symbol}，降级到其他数据源")
             except Exception as e:
                 logger.error(
                     f"❌ [数据来源: PostgreSQL异常] 获取股票信息失败: {e}",
@@ -415,9 +331,7 @@ class _DataSourceManagerMixin3:
                     logger.info(f"✅ [数据来源: Tushare-股票信息] 成功获取: {symbol}")
                     return result
                 else:
-                    logger.warning(
-                        f"⚠️ [数据来源: Tushare失败] 返回无效信息，尝试降级: {symbol}"
-                    )
+                    logger.warning(f"⚠️ [数据来源: Tushare失败] 返回无效信息，尝试降级: {symbol}")
                     return self._try_fallback_stock_info(symbol)
             else:
                 adapter = self.get_data_adapter()
@@ -427,9 +341,7 @@ class _DataSourceManagerMixin3:
                         getattr(cast(Any, adapter), "get_stock_info")(symbol),
                     )
                     if result.get("name") and result["name"] != f"股票{symbol}":
-                        logger.info(
-                            f"✅ [数据来源: {self.current_source.value}-股票信息] 成功获取: {symbol}"
-                        )
+                        logger.info(f"✅ [数据来源: {self.current_source.value}-股票信息] 成功获取: {symbol}")
                         return result
                     else:
                         logger.warning(
@@ -437,9 +349,7 @@ class _DataSourceManagerMixin3:
                         )
                         return self._try_fallback_stock_info(symbol)
                 else:
-                    logger.warning(
-                        f"⚠️ [数据来源: {self.current_source.value}] 不支持股票信息获取，尝试降级: {symbol}"
-                    )
+                    logger.warning(f"⚠️ [数据来源: {self.current_source.value}] 不支持股票信息获取，尝试降级: {symbol}")
                     return self._try_fallback_stock_info(symbol)
 
         except Exception as e:
@@ -492,9 +402,7 @@ class _DataSourceManagerMixin3:
             logger.error(f"❌ 获取股票信息失败: {e}")
             return {"error": str(e)}
 
-    def get_stock_data_with_fallback(
-        self, stock_code: str, start_date: str, end_date: str
-    ) -> str:
+    def get_stock_data_with_fallback(self, stock_code: str, start_date: str, end_date: str) -> str:
         """
         获取股票数据（兼容 stock_data_service 接口）
 
@@ -517,9 +425,7 @@ class _DataSourceManagerMixin3:
 
     def _try_fallback_stock_info(self, symbol: str) -> Dict:
         """尝试使用备用数据源获取股票基本信息"""
-        logger.error(
-            f"🔄 {self.current_source.value}失败，尝试备用数据源获取股票信息..."
-        )
+        logger.error(f"🔄 {self.current_source.value}失败，尝试备用数据源获取股票信息...")
 
         # 获取所有可用数据源
         available_sources = self.available_sources.copy()
@@ -541,9 +447,7 @@ class _DataSourceManagerMixin3:
                         importlib.import_module("trader.flows.interface"),
                         "get_china_stock_info_tushare",
                     )
-                    result = self._parse_stock_info_string(
-                        get_china_stock_info_tushare(symbol), symbol
-                    )
+                    result = self._parse_stock_info_string(get_china_stock_info_tushare(symbol), symbol)
                 elif source == ChinaDataSource.AKSHARE:
                     result = self._get_akshare_stock_info(symbol)
                 elif source == ChinaDataSource.BAOSTOCK:
@@ -566,9 +470,7 @@ class _DataSourceManagerMixin3:
 
                 # 检查是否获取到有效信息
                 if result.get("name") and result["name"] != f"股票{symbol}":
-                    logger.info(
-                        f"✅ [数据来源: 备用数据源] 降级成功获取股票信息: {source_name}"
-                    )
+                    logger.info(f"✅ [数据来源: 备用数据源] 降级成功获取股票信息: {source_name}")
                     return result
                 else:
                     logger.warning(f"⚠️ [数据来源: {source_name}] 返回无效信息")
@@ -606,9 +508,7 @@ class _DataSourceManagerMixin3:
                 # 其他情况，直接使用原始代码
                 akshare_symbol = symbol
 
-            logger.debug(
-                f"📊 [AKShare股票信息] 原始代码: {symbol}, AKShare格式: {akshare_symbol}"
-            )
+            logger.debug(f"📊 [AKShare股票信息] 原始代码: {symbol}, AKShare格式: {akshare_symbol}")
 
             # 尝试获取个股信息
             stock_info = ak.stock_individual_info_em(symbol=akshare_symbol)

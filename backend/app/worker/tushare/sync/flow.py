@@ -1,4 +1,6 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import logger
+from .route import get_tushare_sync_service
+
 async def run_tushare_financial_sync():
     """APScheduler任务：同步财务数据（获取最近20期，约5年）"""
     try:

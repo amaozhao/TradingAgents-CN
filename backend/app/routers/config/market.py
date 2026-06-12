@@ -1,4 +1,25 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        ActionType,
+        DataSourceGrouping,
+        DataSourceGroupingRequest,
+        DataSourceOrderRequest,
+        Depends,
+        HTTPException,
+        MarketCategory,
+        MarketCategoryRequest,
+        User,
+        config_service,
+        get_current_user,
+        log_operation,
+        ok,
+        router,
+        status,
+    )
+    from .setup import ConfigApiResponse, DataSourceGroupingUpdateRequest, MarketCategoryUpdateRequest
+
 @router.get("/market-categories", response_model=ConfigApiResponse)
 async def get_market_categories(current_user: User = Depends(get_current_user)):
     """获取所有市场分类"""
@@ -13,9 +34,7 @@ async def get_market_categories(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/market-categories", response_model=ConfigApiResponse)
-async def add_market_category(
-    request: MarketCategoryRequest, current_user: User = Depends(get_current_user)
-):
+async def add_market_category(request: MarketCategoryRequest, current_user: User = Depends(get_current_user)):
     """添加市场分类"""
     try:
         category = MarketCategory(**request.model_dump())
@@ -39,9 +58,7 @@ async def add_market_category(
                 message="市场分类添加成功",
             )
         else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="市场分类ID已存在"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="市场分类ID已存在")
     except HTTPException:
         raise
     except Exception as e:
@@ -80,9 +97,7 @@ async def update_market_category(
                 pass
             return ok(data={"message": "市场分类更新成功"}, message="市场分类更新成功")
         else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="市场分类不存在"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="市场分类不存在")
     except HTTPException:
         raise
     except Exception as e:
@@ -93,9 +108,7 @@ async def update_market_category(
 
 
 @router.delete("/market-categories/{category_id}", response_model=ConfigApiResponse)
-async def delete_market_category(
-    category_id: str, current_user: User = Depends(get_current_user)
-):
+async def delete_market_category(category_id: str, current_user: User = Depends(get_current_user)):
     """删除市场分类"""
     try:
         success = await config_service.delete_market_category(category_id)
@@ -169,13 +182,9 @@ async def add_datasource_to_category(
                 )
             except Exception:
                 pass
-            return ok(
-                data={"message": "数据源添加到分类成功"}, message="数据源添加到分类成功"
-            )
+            return ok(data={"message": "数据源添加到分类成功"}, message="数据源添加到分类成功")
         else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="数据源已在该分类中"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="数据源已在该分类中")
     except HTTPException:
         raise
     except Exception as e:
@@ -196,9 +205,7 @@ async def remove_datasource_from_category(
 ):
     """从分类中移除数据源"""
     try:
-        success = await config_service.remove_datasource_from_category(
-            data_source_name, category_id
-        )
+        success = await config_service.remove_datasource_from_category(data_source_name, category_id)
 
         if success:
             # 审计日志（忽略异常）
@@ -221,9 +228,7 @@ async def remove_datasource_from_category(
                 message="数据源从分类中移除成功",
             )
         else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="数据源分组关系不存在"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="数据源分组关系不存在")
     except HTTPException:
         raise
     except Exception as e:
@@ -246,9 +251,7 @@ async def update_datasource_grouping(
     """更新数据源分组关系"""
     try:
         request_data = request.model_dump(exclude_unset=True)
-        success = await config_service.update_datasource_grouping(
-            data_source_name, category_id, request_data
-        )
+        success = await config_service.update_datasource_grouping(data_source_name, category_id, request_data)
 
         if success:
             # 审计日志（忽略异常）
@@ -272,9 +275,7 @@ async def update_datasource_grouping(
                 message="数据源分组关系更新成功",
             )
         else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="数据源分组关系不存在"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="数据源分组关系不存在")
     except HTTPException:
         raise
     except Exception as e:
@@ -295,9 +296,7 @@ async def update_category_datasource_order(
 ):
     """更新分类中数据源的排序"""
     try:
-        success = await config_service.update_category_datasource_order(
-            category_id, request.data_sources
-        )
+        success = await config_service.update_category_datasource_order(category_id, request.data_sources)
 
         if success:
             # 审计日志（忽略异常）
@@ -315,9 +314,7 @@ async def update_category_datasource_order(
                 )
             except Exception:
                 pass
-            return ok(
-                data={"message": "数据源排序更新成功"}, message="数据源排序更新成功"
-            )
+            return ok(data={"message": "数据源排序更新成功"}, message="数据源排序更新成功")
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

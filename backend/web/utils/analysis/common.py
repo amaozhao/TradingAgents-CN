@@ -1,4 +1,9 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import importlib, logger
+    from .setup import extract_risk_assessment, translate_analyst_labels
+
 def format_analysis(results):
     """格式化分析结果用于显示"""
 
@@ -37,17 +42,8 @@ def format_analysis(results):
                 # 尝试转换为浮点数
                 if isinstance(target_price, str):
                     # 移除货币符号和空格
-                    clean_price = (
-                        target_price.replace("$", "")
-                        .replace("¥", "")
-                        .replace("￥", "")
-                        .strip()
-                    )
-                    target_price = (
-                        float(clean_price)
-                        if clean_price and clean_price != "None"
-                        else None
-                    )
+                    clean_price = target_price.replace("$", "").replace("¥", "").replace("￥", "").strip()
+                    target_price = float(clean_price) if clean_price and clean_price != "None" else None
                 elif isinstance(target_price, (int, float)):
                     target_price = float(target_price)
                 else:
@@ -110,9 +106,7 @@ def format_analysis(results):
         if isinstance(state[key], str):
             logger.debug(f"🔍 [格式化调试] {key}: 字符串长度 {len(state[key])}")
         elif isinstance(state[key], dict):
-            logger.debug(
-                f"🔍 [格式化调试] {key}: 字典，包含键 {list(state[key].keys())}"
-            )
+            logger.debug(f"🔍 [格式化调试] {key}: 字典，包含键 {list(state[key].keys())}")
         else:
             logger.debug(f"🔍 [格式化调试] {key}: {type(state[key])}")
 
@@ -122,13 +116,9 @@ def format_analysis(results):
             content = state[key]
             if isinstance(content, str):
                 content = translate_analyst_labels(content)
-                logger.debug(
-                    f"🔍 [格式化调试] 处理字符串字段 {key}: 长度 {len(content)}"
-                )
+                logger.debug(f"🔍 [格式化调试] 处理字符串字段 {key}: 长度 {len(content)}")
             elif isinstance(content, dict):
-                logger.debug(
-                    f"🔍 [格式化调试] 处理字典字段 {key}: 包含键 {list(content.keys())}"
-                )
+                logger.debug(f"🔍 [格式化调试] 处理字典字段 {key}: 包含键 {list(content.keys())}")
             formatted_state[key] = content
         elif key == "risk_assessment":
             # 特殊处理：从 risk_debate_state 生成 risk_assessment
@@ -159,9 +149,7 @@ def format_analysis(results):
     }
 
 
-def validate_analysis_params(
-    stock_symbol, analysis_date, analysts, research_depth, market_type="美股"
-):
+def validate_analysis_params(stock_symbol, analysis_date, analysts, research_depth, market_type="美股"):
     """验证分析参数"""
 
     errors = []
@@ -189,9 +177,7 @@ def validate_analysis_params(
             digit_format = re.match(r"^\d{4,5}$", symbol)
 
             if not (hk_format or digit_format):
-                errors.append(
-                    "港股代码格式错误，应为4位数字.HK（如：0700.HK）或4位数字（如：0700）"
-                )
+                errors.append("港股代码格式错误，应为4位数字.HK（如：0700.HK）或4位数字（如：0700）")
         elif market_type == "美股":
             # 美股：1-5位字母
             re = importlib.import_module("re")

@@ -12,25 +12,12 @@ Source: Kakushadze (2015), "101 Formulaic Alphas", arXiv:1601.00991, eq. 75.
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
     rank,
-    safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
     ts_corr,
-    ts_cov,
-    ts_max,
     ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "alpha101_075"
@@ -56,7 +43,6 @@ def compute(panel: dict) -> pd.DataFrame:
     low = panel["low"]
     volume = panel["volume"]
     vwap = panel["vwap"]
-    adv5 = ts_mean(volume, 5)
     adv50 = ts_mean(volume, 50)
 
     # Helper aliases (local closures keep the file standalone & purity-safe).

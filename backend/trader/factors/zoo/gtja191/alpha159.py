@@ -17,21 +17,7 @@ import numpy as np
 import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
     safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "gtja191_159"
@@ -61,10 +47,10 @@ def compute(panel):
     """
     c = panel["close"]
     h = panel["high"]
-    l = panel["low"]
+    low = panel["low"]
     prev = c.shift(1)
     lo = pd.DataFrame(
-        np.minimum(l.to_numpy(dtype=np.float64, na_value=np.nan),
+        np.minimum(low.to_numpy(dtype=np.float64, na_value=np.nan),
                    prev.to_numpy(dtype=np.float64, na_value=np.nan)),
         index=c.index, columns=c.columns,
     )

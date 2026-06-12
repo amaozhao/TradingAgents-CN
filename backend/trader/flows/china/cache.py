@@ -1,7 +1,10 @@
-# ruff: noqa: F401,F403,F405,F821
-def get_china_stock_data_cached(
-    symbol: str, start_date: str, end_date: str, force_refresh: bool = False
-) -> str:
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .report import get_optimized_china_data_provider
+
+
+def get_china_stock_data_cached(symbol: str, start_date: str, end_date: str, force_refresh: bool = False) -> str:
     """
     获取A股数据的便捷函数
 

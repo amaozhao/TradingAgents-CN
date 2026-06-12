@@ -1,4 +1,3 @@
-# ruff: noqa: F722
 from typing import Annotated
 
 from langgraph.graph import MessagesState

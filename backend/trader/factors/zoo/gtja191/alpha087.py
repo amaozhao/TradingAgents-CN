@@ -11,7 +11,6 @@ Source: 国泰君安 191 alpha 研报 (2014), alpha 87."""
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 from trader.factors.base import (
@@ -19,16 +18,7 @@ from trader.factors.base import (
     delta,
     rank,
     safe_div,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
     ts_rank,
-    ts_std,
 )
 
 __alpha_meta__ = {
@@ -48,11 +38,11 @@ __alpha_meta__ = {
 def compute(panel: dict) -> pd.DataFrame:
     o = panel["open"]
     h = panel["high"]
-    l = panel["low"]
+    low = panel["low"]
     v = panel["volume"]
     vw = safe_div(panel["amount"], v * 100.0 + 1.0)
     p1 = rank(decay_linear(delta(vw, 4), 7))
-    numer = (l * 0.9 + l * 0.1) - vw
-    denom = o - (h + l) / 2.0
+    numer = (low * 0.9 + low * 0.1) - vw
+    denom = o - (h + low) / 2.0
     p2 = ts_rank(decay_linear(safe_div(numer, denom), 11), 7)
     return -1.0 * (p1 + p2)

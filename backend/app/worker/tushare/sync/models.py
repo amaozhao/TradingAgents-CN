@@ -1,8 +1,19 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Any,
+        Dict,
+        List,
+        asyncio,
+        dual_write_hot_document,
+        get_utc8_now,
+        importlib,
+        logger,
+    )
+
 class _TushareSyncServiceMixin3:
-    async def _process_news_batch(
-        self, batch: List[str], hours_back: int, max_news_per_stock: int
-    ) -> Dict[str, Any]:
+    async def _process_news_batch(self, batch: List[str], hours_back: int, max_news_per_stock: int) -> Dict[str, Any]:
         """处理新闻批次"""
         batch_stats = {
             "success_count": 0,
@@ -86,13 +97,9 @@ class _TushareSyncServiceMixin3:
                 importlib.import_module("app.services.scheduler"),
                 "TaskCancelledException",
             )
-            get_postgres_db_sync = getattr(
-                importlib.import_module("app.core.database"), "get_postgres_db_sync"
-            )
+            get_postgres_db_sync = getattr(importlib.import_module("app.core.database"), "get_postgres_db_sync")
 
-            logger.info(
-                f"📊 [进度更新] 开始更新任务 {job_id} 进度: {progress}% - {message}"
-            )
+            logger.info(f"📊 [进度更新] 开始更新任务 {job_id} 进度: {progress}% - {message}")
 
             sync_db = get_postgres_db_sync()
 
@@ -105,9 +112,7 @@ class _TushareSyncServiceMixin3:
                 logger.warning(f"⚠️ 未找到任务 {job_id} 的执行记录")
                 return
 
-            logger.info(
-                f"📊 [进度更新] 找到执行记录: _id={execution['_id']}, 当前进度={execution.get('progress', 0)}%"
-            )
+            logger.info(f"📊 [进度更新] 找到执行记录: _id={execution['_id']}, 当前进度={execution.get('progress', 0)}%")
 
             # 检查是否收到取消请求
             if execution.get("cancel_requested"):
@@ -134,9 +139,7 @@ class _TushareSyncServiceMixin3:
                 },
             )
 
-            logger.info(
-                f"📊 [进度更新] 更新结果: matched={result.matched_count}, modified={result.modified_count}"
-            )
+            logger.info(f"📊 [进度更新] 更新结果: matched={result.matched_count}, modified={result.modified_count}")
             logger.info(f"✅ 任务 {job_id} 进度更新成功: {progress}% - {message}")
 
         except Exception as e:

@@ -1,4 +1,6 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import logger
+from .task import get_akshare_sync_service
+
 async def run_akshare_quotes_sync(force: bool = False):
     """
     APScheduler任务：同步实时行情

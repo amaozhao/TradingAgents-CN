@@ -1,4 +1,16 @@
-# ruff: noqa: F401,F403,F405,F821,F722
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        Annotated,
+        Doc,
+        datetime,
+        importlib,
+        interface,
+        logger,
+        tool,
+    )
+
 class _ToolkitMixin1:
     def update_config(cls, config):
         """Update the class-level configuration."""
@@ -16,7 +28,7 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_reddit_news(
-        curr_date: Annotated[str, "Date you want to get news for in yyyy-mm-dd format"],
+        curr_date: Annotated[str, Doc("Date you want to get news for in yyyy-mm-dd format")],
     ) -> str:
         """
         Retrieve global news from Reddit within a specified time frame.
@@ -35,10 +47,10 @@ class _ToolkitMixin1:
     def get_finnhub_news(
         ticker: Annotated[
             str,
-            "Search query of a company, e.g. 'AAPL, TSM, etc.",
+            Doc("Search query of a company, e.g. 'AAPL, TSM, etc."),
         ],
-        start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
-        end_date: Annotated[str, "End date in yyyy-mm-dd format"],
+        start_date: Annotated[str, Doc("Start date in yyyy-mm-dd format")],
+        end_date: Annotated[str, Doc("End date in yyyy-mm-dd format")],
     ):
         """
         Retrieve the latest news about a given stock from Finnhub within a date range
@@ -67,9 +79,9 @@ class _ToolkitMixin1:
     def get_reddit_stock_info(
         ticker: Annotated[
             str,
-            "Ticker of a company. e.g. AAPL, TSM",
+            Doc("Ticker of a company. e.g. AAPL, TSM"),
         ],
-        curr_date: Annotated[str, "Current date you want to get news for"],
+        curr_date: Annotated[str, Doc("Current date you want to get news for")],
     ) -> str:
         """
         Retrieve the latest news about a given stock from Reddit, given the current date.
@@ -87,8 +99,8 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_chinese_social_sentiment(
-        ticker: Annotated[str, "Ticker of a company. e.g. AAPL, TSM"],
-        curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
+        ticker: Annotated[str, Doc("Ticker of a company. e.g. AAPL, TSM")],
+        curr_date: Annotated[str, Doc("Current date in yyyy-mm-dd format")],
     ) -> str:
         """
         获取中国社交媒体和财经平台上关于特定股票的情绪分析和讨论热度。
@@ -113,10 +125,10 @@ class _ToolkitMixin1:
     # @tool  # 已移除：请使用 get_stock_fundamentals_unified 或 get_stock_market_data_unified
     def get_china_stock_data(
         stock_code: Annotated[
-            str, "中国股票代码，如 000001(平安银行), 600519(贵州茅台)"
+            str, Doc("中国股票代码，如 000001(平安银行), 600519(贵州茅台)")
         ],
-        start_date: Annotated[str, "开始日期，格式 yyyy-mm-dd"],
-        end_date: Annotated[str, "结束日期，格式 yyyy-mm-dd"],
+        start_date: Annotated[str, Doc("开始日期，格式 yyyy-mm-dd")],
+        end_date: Annotated[str, Doc("结束日期，格式 yyyy-mm-dd")],
     ) -> str:
         """
         获取中国A股实时和历史数据，通过Tushare等高质量数据源提供专业的股票数据。
@@ -168,7 +180,7 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_china_market_overview(
-        curr_date: Annotated[str, "当前日期，格式 yyyy-mm-dd"],
+        curr_date: Annotated[str, Doc("当前日期，格式 yyyy-mm-dd")],
     ) -> str:
         """
         获取中国股市整体概览，包括主要指数的实时行情。
@@ -203,9 +215,9 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_yfin_data(
-        symbol: Annotated[str, "ticker symbol of the company"],
-        start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
-        end_date: Annotated[str, "End date in yyyy-mm-dd format"],
+        symbol: Annotated[str, Doc("ticker symbol of the company")],
+        start_date: Annotated[str, Doc("Start date in yyyy-mm-dd format")],
+        end_date: Annotated[str, Doc("End date in yyyy-mm-dd format")],
     ) -> str:
         """
         Retrieve the stock price data for a given ticker symbol from Yahoo Finance.
@@ -228,9 +240,9 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_yfin_data_online(
-        symbol: Annotated[str, "ticker symbol of the company"],
-        start_date: Annotated[str, "Start date in yyyy-mm-dd format"],
-        end_date: Annotated[str, "End date in yyyy-mm-dd format"],
+        symbol: Annotated[str, Doc("ticker symbol of the company")],
+        start_date: Annotated[str, Doc("Start date in yyyy-mm-dd format")],
+        end_date: Annotated[str, Doc("End date in yyyy-mm-dd format")],
     ) -> str:
         """
         Retrieve the stock price data for a given ticker symbol from Yahoo Finance.
@@ -249,14 +261,14 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_stockstats_indicators_report(
-        symbol: Annotated[str, "ticker symbol of the company"],
+        symbol: Annotated[str, Doc("ticker symbol of the company")],
         indicator: Annotated[
-            str, "technical indicator to get the analysis and report of"
+            str, Doc("technical indicator to get the analysis and report of")
         ],
         curr_date: Annotated[
-            str, "The current trading date you are trading on, YYYY-mm-dd"
+            str, Doc("The current trading date you are trading on, YYYY-mm-dd")
         ],
-        look_back_days: Annotated[int, "how many days to look back"] = 30,
+        look_back_days: Annotated[int, Doc("how many days to look back")] = 30,
     ) -> str:
         """
         Retrieve stock stats indicators for a given ticker symbol and indicator.
@@ -278,14 +290,14 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_stockstats_indicators_report_online(
-        symbol: Annotated[str, "ticker symbol of the company"],
+        symbol: Annotated[str, Doc("ticker symbol of the company")],
         indicator: Annotated[
-            str, "technical indicator to get the analysis and report of"
+            str, Doc("technical indicator to get the analysis and report of")
         ],
         curr_date: Annotated[
-            str, "The current trading date you are trading on, YYYY-mm-dd"
+            str, Doc("The current trading date you are trading on, YYYY-mm-dd")
         ],
-        look_back_days: Annotated[int, "how many days to look back"] = 30,
+        look_back_days: Annotated[int, Doc("how many days to look back")] = 30,
     ) -> str:
         """
         Retrieve stock stats indicators for a given ticker symbol and indicator.
@@ -307,10 +319,10 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_finnhub_company_insider_sentiment(
-        ticker: Annotated[str, "ticker symbol for the company"],
+        ticker: Annotated[str, Doc("ticker symbol for the company")],
         curr_date: Annotated[
             str,
-            "current date of you are trading at, yyyy-mm-dd",
+            Doc("current date of you are trading at, yyyy-mm-dd"),
         ],
     ):
         """
@@ -331,10 +343,10 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_finnhub_company_insider_transactions(
-        ticker: Annotated[str, "ticker symbol"],
+        ticker: Annotated[str, Doc("ticker symbol")],
         curr_date: Annotated[
             str,
-            "current date you are trading at, yyyy-mm-dd",
+            Doc("current date you are trading at, yyyy-mm-dd"),
         ],
     ):
         """
@@ -355,12 +367,12 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_simfin_balance_sheet(
-        ticker: Annotated[str, "ticker symbol"],
+        ticker: Annotated[str, Doc("ticker symbol")],
         freq: Annotated[
             str,
-            "reporting frequency of the company's financial history: annual/quarterly",
+            Doc("reporting frequency of the company's financial history: annual/quarterly"),
         ],
-        curr_date: Annotated[str, "current date you are trading at, yyyy-mm-dd"],
+        curr_date: Annotated[str, Doc("current date you are trading at, yyyy-mm-dd")],
     ):
         """
         Retrieve the most recent balance sheet of a company
@@ -379,12 +391,12 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_simfin_cashflow(
-        ticker: Annotated[str, "ticker symbol"],
+        ticker: Annotated[str, Doc("ticker symbol")],
         freq: Annotated[
             str,
-            "reporting frequency of the company's financial history: annual/quarterly",
+            Doc("reporting frequency of the company's financial history: annual/quarterly"),
         ],
-        curr_date: Annotated[str, "current date you are trading at, yyyy-mm-dd"],
+        curr_date: Annotated[str, Doc("current date you are trading at, yyyy-mm-dd")],
     ):
         """
         Retrieve the most recent cash flow statement of a company
@@ -403,12 +415,12 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_simfin_income_stmt(
-        ticker: Annotated[str, "ticker symbol"],
+        ticker: Annotated[str, Doc("ticker symbol")],
         freq: Annotated[
             str,
-            "reporting frequency of the company's financial history: annual/quarterly",
+            Doc("reporting frequency of the company's financial history: annual/quarterly"),
         ],
-        curr_date: Annotated[str, "current date you are trading at, yyyy-mm-dd"],
+        curr_date: Annotated[str, Doc("current date you are trading at, yyyy-mm-dd")],
     ):
         """
         Retrieve the most recent income statement of a company
@@ -429,8 +441,8 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_google_news(
-        query: Annotated[str, "Query to search with"],
-        curr_date: Annotated[str, "Curr date in yyyy-mm-dd format"],
+        query: Annotated[str, Doc("Query to search with")],
+        curr_date: Annotated[str, Doc("Curr date in yyyy-mm-dd format")],
     ):
         """
         Retrieve the latest news from Google News based on a query and date range.
@@ -449,8 +461,8 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_realtime_stock_news(
-        ticker: Annotated[str, "Ticker of a company. e.g. AAPL, TSM"],
-        curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
+        ticker: Annotated[str, Doc("Ticker of a company. e.g. AAPL, TSM")],
+        curr_date: Annotated[str, Doc("Current date in yyyy-mm-dd format")],
     ) -> str:
         """
         获取股票的实时新闻分析，解决传统新闻源的滞后性问题。
@@ -472,8 +484,8 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_stock_news_openai(
-        ticker: Annotated[str, "the company's ticker"],
-        curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
+        ticker: Annotated[str, Doc("the company's ticker")],
+        curr_date: Annotated[str, Doc("Current date in yyyy-mm-dd format")],
     ):
         """
         Retrieve the latest news about a given stock by using OpenAI's news API.
@@ -491,7 +503,7 @@ class _ToolkitMixin1:
     @tool
     @staticmethod
     def get_global_news_openai(
-        curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
+        curr_date: Annotated[str, Doc("Current date in yyyy-mm-dd format")],
     ):
         """
         Retrieve the latest macroeconomics news on a given date using OpenAI's macroeconomics news API.
@@ -508,8 +520,8 @@ class _ToolkitMixin1:
     @staticmethod
     # @tool  # 已移除：请使用 get_stock_fundamentals_unified
     def get_fundamentals_openai(
-        ticker: Annotated[str, "the company's ticker"],
-        curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
+        ticker: Annotated[str, Doc("the company's ticker")],
+        curr_date: Annotated[str, Doc("Current date in yyyy-mm-dd format")],
     ):
         """
         Retrieve the latest fundamental information about a given stock on a given date by using OpenAI's news API.
@@ -570,8 +582,8 @@ class _ToolkitMixin1:
     @staticmethod
     # @tool  # 已移除：请使用 get_stock_fundamentals_unified
     def get_china_fundamentals(
-        ticker: Annotated[str, "中国A股股票代码，如600036"],
-        curr_date: Annotated[str, "当前日期，格式为yyyy-mm-dd"],
+        ticker: Annotated[str, Doc("中国A股股票代码，如600036")],
+        curr_date: Annotated[str, Doc("当前日期，格式为yyyy-mm-dd")],
     ):
         """
         获取中国A股股票的基本面信息，使用中国股票数据源。
@@ -647,9 +659,9 @@ class _ToolkitMixin1:
     @staticmethod
     # @tool  # 已移除：请使用 get_stock_fundamentals_unified 或 get_stock_market_data_unified
     def get_hk_stock_data_unified(
-        symbol: Annotated[str, "港股代码，如：0700.HK、9988.HK等"],
-        start_date: Annotated[str, "开始日期，格式：YYYY-MM-DD"],
-        end_date: Annotated[str, "结束日期，格式：YYYY-MM-DD"],
+        symbol: Annotated[str, Doc("港股代码，如：0700.HK、9988.HK等")],
+        start_date: Annotated[str, Doc("开始日期，格式：YYYY-MM-DD")],
+        end_date: Annotated[str, Doc("结束日期，格式：YYYY-MM-DD")],
     ) -> str:
         """
         获取港股数据的统一接口，优先使用AKShare数据源，备用Yahoo Finance

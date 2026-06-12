@@ -1,8 +1,29 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .imports import (
+        ActionType,
+        Any,
+        BaseModel,
+        Depends,
+        Dict,
+        HTTPException,
+        List,
+        ModelCatalog,
+        ModelInfo,
+        User,
+        config_service,
+        get_current_user,
+        log_operation,
+        logger,
+        ok,
+        router,
+        status,
+    )
+    from .setup import ConfigApiResponse, SetDefaultRequest, require_admin_user
+
 @router.post("/default/llm", response_model=ConfigApiResponse)
-async def set_default_llm(
-    request: SetDefaultRequest, current_user: User = Depends(get_current_user)
-):
+async def set_default_llm(request: SetDefaultRequest, current_user: User = Depends(get_current_user)):
     """设置默认大模型"""
     require_admin_user(current_user)
     try:
@@ -39,9 +60,7 @@ async def set_default_llm(
 
 
 @router.post("/default/datasource", response_model=ConfigApiResponse)
-async def set_default_data_source(
-    request: SetDefaultRequest, current_user: User = Depends(get_current_user)
-):
+async def set_default_data_source(request: SetDefaultRequest, current_user: User = Depends(get_current_user)):
     """设置默认数据源"""
     try:
         # 开源版本：所有用户都可以修改配置
@@ -117,9 +136,7 @@ async def get_model_catalog(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/model-catalog/{provider}", response_model=ConfigApiResponse)
-async def get_provider_model_catalog(
-    provider: str, current_user: User = Depends(get_current_user)
-):
+async def get_provider_model_catalog(provider: str, current_user: User = Depends(get_current_user)):
     """获取指定厂家的模型目录"""
     try:
         catalog = await config_service.get_provider_models(provider)
@@ -147,15 +164,11 @@ class ModelCatalogRequest(BaseModel):
 
 
 @router.post("/model-catalog", response_model=ConfigApiResponse)
-async def save_model_catalog(
-    request: ModelCatalogRequest, current_user: User = Depends(get_current_user)
-):
+async def save_model_catalog(request: ModelCatalogRequest, current_user: User = Depends(get_current_user)):
     """保存或更新模型目录"""
     require_admin_user(current_user)
     try:
-        logger.info(
-            f"📝 收到保存模型目录请求: provider={request.provider}, models数量={len(request.models)}"
-        )
+        logger.info(f"📝 收到保存模型目录请求: provider={request.provider}, models数量={len(request.models)}")
         logger.info(f"📝 请求数据: {request.model_dump()}")
 
         # 转换为 ModelInfo 列表
@@ -210,9 +223,7 @@ async def save_model_catalog(
 
 
 @router.delete("/model-catalog/{provider}", response_model=ConfigApiResponse)
-async def delete_model_catalog(
-    provider: str, current_user: User = Depends(get_current_user)
-):
+async def delete_model_catalog(provider: str, current_user: User = Depends(get_current_user)):
     """删除模型目录"""
     require_admin_user(current_user)
     try:

@@ -1,4 +1,18 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import (
+    Any,
+    BaseModel,
+    ConfigDict,
+    Dict,
+    Field,
+    List,
+    Optional,
+    datetime,
+    importlib,
+    logger,
+    settings,
+    timezone,
+)
+
 def _coerce_datetime(value: Any) -> Optional[datetime]:
     if value is None or value == "":
         return None
@@ -24,9 +38,7 @@ def _document_owner(document: Dict[str, Any]) -> Any:
     return document.get("user_id") or document.get("user")
 
 
-def _document_belongs_to_user(
-    document: Optional[Dict[str, Any]], user_id: str | None
-) -> bool:
+def _document_belongs_to_user(document: Optional[Dict[str, Any]], user_id: str | None) -> bool:
     if document is None:
         return False
     if user_id is None:
@@ -35,9 +47,7 @@ def _document_belongs_to_user(
     return owner is not None and str(owner) == str(user_id)
 
 
-def _with_user_owner_query(
-    query: Dict[str, Any], user_id: str | None
-) -> Dict[str, Any]:
+def _with_user_owner_query(query: Dict[str, Any], user_id: str | None) -> Dict[str, Any]:
     if user_id is None:
         return query
     return {
@@ -53,18 +63,14 @@ def _with_user_owner_query(
     }
 
 
-async def _get_analysis_task_for_read(
-    task_id: str, user_id: str | None = None
-) -> Optional[Dict[str, Any]]:
+async def _get_analysis_task_for_read(task_id: str, user_id: str | None = None) -> Optional[Dict[str, Any]]:
     if settings.POSTGRES_READ_ENABLED:
         try:
             get_analysis_task_by_task_id = getattr(
                 importlib.import_module("app.db.analysis"),
                 "get_analysis_task_by_task_id",
             )
-            get_session_factory = getattr(
-                importlib.import_module("app.core.session"), "get_session_factory"
-            )
+            get_session_factory = getattr(importlib.import_module("app.core.session"), "get_session_factory")
 
             async with get_session_factory()() as session:
                 document = await get_analysis_task_by_task_id(session, task_id)
@@ -73,9 +79,7 @@ async def _get_analysis_task_for_read(
         except Exception as e:
             logger.warning("PostgreSQL分析任务查询失败，回退PostgreSQL: %s", e)
 
-    get_postgres_db = getattr(
-        importlib.import_module("app.core.database"), "get_postgres_db"
-    )
+    get_postgres_db = getattr(importlib.import_module("app.core.database"), "get_postgres_db")
     db = get_postgres_db()
     query = _with_user_owner_query({"task_id": task_id}, user_id)
     return await db.analysis_tasks.find_one(query)
@@ -90,9 +94,7 @@ async def _get_analysis_report_by_task_id_for_read(
                 importlib.import_module("app.db.analysis"),
                 "get_analysis_report_by_task_id",
             )
-            get_session_factory = getattr(
-                importlib.import_module("app.core.session"), "get_session_factory"
-            )
+            get_session_factory = getattr(importlib.import_module("app.core.session"), "get_session_factory")
 
             async with get_session_factory()() as session:
                 document = await get_analysis_report_by_task_id(session, task_id)
@@ -101,9 +103,7 @@ async def _get_analysis_report_by_task_id_for_read(
         except Exception as e:
             logger.warning("PostgreSQL分析报告按task_id查询失败，回退PostgreSQL: %s", e)
 
-    get_postgres_db = getattr(
-        importlib.import_module("app.core.database"), "get_postgres_db"
-    )
+    get_postgres_db = getattr(importlib.import_module("app.core.database"), "get_postgres_db")
     db = get_postgres_db()
     query = _with_user_owner_query({"task_id": task_id}, user_id)
     return await db.analysis_reports.find_one(query)
@@ -118,24 +118,16 @@ async def _get_analysis_report_by_analysis_id_for_read(
                 importlib.import_module("app.db.analysis"),
                 "get_analysis_report_by_analysis_id",
             )
-            get_session_factory = getattr(
-                importlib.import_module("app.core.session"), "get_session_factory"
-            )
+            get_session_factory = getattr(importlib.import_module("app.core.session"), "get_session_factory")
 
             async with get_session_factory()() as session:
-                document = await get_analysis_report_by_analysis_id(
-                    session, analysis_id
-                )
+                document = await get_analysis_report_by_analysis_id(session, analysis_id)
             if _document_belongs_to_user(document, user_id):
                 return document
         except Exception as e:
-            logger.warning(
-                "PostgreSQL分析报告按analysis_id查询失败，回退PostgreSQL: %s", e
-            )
+            logger.warning("PostgreSQL分析报告按analysis_id查询失败，回退PostgreSQL: %s", e)
 
-    get_postgres_db = getattr(
-        importlib.import_module("app.core.database"), "get_postgres_db"
-    )
+    get_postgres_db = getattr(importlib.import_module("app.core.database"), "get_postgres_db")
     db = get_postgres_db()
     query = _with_user_owner_query({"analysis_id": analysis_id}, user_id)
     return await db.analysis_reports.find_one(query)

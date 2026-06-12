@@ -1,4 +1,17 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import (
+    PROJECT_ROOT,
+    TOKEN_TRACKING_ENABLED,
+    datetime,
+    get_logger_manager,
+    importlib,
+    logger,
+    os,
+    settings,
+    st,
+    token_tracker,
+    uuid,
+)
+
 def translate_analyst_labels(text):
     """将分析师的英文标签转换为中文"""
     if not text:
@@ -33,18 +46,10 @@ def extract_risk_assessment(state):
             return None
 
         # 提取各个风险分析师的观点并进行中文化
-        risky_analysis = translate_analyst_labels(
-            risk_debate_state.get("risky_history", "")
-        )
-        safe_analysis = translate_analyst_labels(
-            risk_debate_state.get("safe_history", "")
-        )
-        neutral_analysis = translate_analyst_labels(
-            risk_debate_state.get("neutral_history", "")
-        )
-        judge_decision = translate_analyst_labels(
-            risk_debate_state.get("judge_decision", "")
-        )
+        risky_analysis = translate_analyst_labels(risk_debate_state.get("risky_history", ""))
+        safe_analysis = translate_analyst_labels(risk_debate_state.get("safe_history", ""))
+        neutral_analysis = translate_analyst_labels(risk_debate_state.get("neutral_history", ""))
+        judge_decision = translate_analyst_labels(risk_debate_state.get("judge_decision", ""))
 
         # 格式化风险评估报告
         risk_assessment = f"""
@@ -102,17 +107,13 @@ def run_stock_analysis(
         logger.info(f"[进度] {message}")
 
     # 生成会话ID用于Token跟踪和日志关联
-    session_id = (
-        f"analysis_{uuid.uuid4().hex[:8]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    )
+    session_id = f"analysis_{uuid.uuid4().hex[:8]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
     # 1. 数据预获取和验证阶段
     update_progress("🔍 验证股票代码并预获取数据...", 1, 10)
 
     try:
-        prepare_stock_data = getattr(
-            importlib.import_module("trader.utils.validation"), "prepare_stock_data"
-        )
+        prepare_stock_data = getattr(importlib.import_module("trader.utils.validation"), "prepare_stock_data")
 
         # 预获取股票数据（默认30天历史数据）
         preparation_result = prepare_stock_data(
@@ -161,9 +162,7 @@ def run_stock_analysis(
     time = importlib.import_module("time")
     analysis_start_time = time.time()
 
-    logger_manager.log_analysis_start(
-        logger, stock_symbol, "comprehensive_analysis", session_id
-    )
+    logger_manager.log_analysis_start(logger, stock_symbol, "comprehensive_analysis", session_id)
 
     logger.info(
         "🚀 [分析开始] 股票分析启动",
@@ -186,9 +185,7 @@ def run_stock_analysis(
     if TOKEN_TRACKING_ENABLED:
         estimated_input = 2000 * len(analysts)  # 估算每个分析师2000个输入token
         estimated_output = 1000 * len(analysts)  # 估算每个分析师1000个输出token
-        estimated_cost_result = token_tracker.estimate_cost(
-            llm_provider, llm_model, estimated_input, estimated_output
-        )
+        estimated_cost_result = token_tracker.estimate_cost(llm_provider, llm_model, estimated_input, estimated_output)
 
         # estimate_cost 返回 tuple (cost, currency)
         if isinstance(estimated_cost_result, tuple):
@@ -216,12 +213,8 @@ def run_stock_analysis(
 
     try:
         # 导入必要的模块
-        TradingAgentsGraph = getattr(
-            importlib.import_module("trader.graph.trading"), "TradingAgentsGraph"
-        )
-        DEFAULT_CONFIG = getattr(
-            importlib.import_module("trader.default"), "DEFAULT_CONFIG"
-        )
+        TradingAgentsGraph = getattr(importlib.import_module("trader.graph.trading"), "TradingAgentsGraph")
+        DEFAULT_CONFIG = getattr(importlib.import_module("trader.default"), "DEFAULT_CONFIG")
 
         # 创建配置
         update_progress("配置分析参数...")
@@ -238,9 +231,7 @@ def run_stock_analysis(
 
             # 统一使用在线工具，避免离线工具的各种问题
             config["online_tools"] = True  # 所有市场都使用统一工具
-            logger.info(
-                f"🔧 [快速分析] {market_type}使用统一工具，确保数据源正确和稳定性"
-            )
+            logger.info(f"🔧 [快速分析] {market_type}使用统一工具，确保数据源正确和稳定性")
             if llm_provider == "dashscope":
                 config["quick_think_llm"] = "qwen-turbo"  # 使用最快模型
                 config["deep_think_llm"] = "qwen-plus"
@@ -334,9 +325,7 @@ def run_stock_analysis(
 
             # 根据研究深度优化Google模型选择
             if research_depth == 1:  # 快速分析 - 使用最快模型
-                config["quick_think_llm"] = (
-                    "gemini-2.5-flash-lite-preview-06-17"  # 1.45s
-                )
+                config["quick_think_llm"] = "gemini-2.5-flash-lite-preview-06-17"  # 1.45s
                 config["deep_think_llm"] = "gemini-2.0-flash"  # 1.87s
             elif research_depth == 2:  # 基础分析 - 使用快速模型
                 config["quick_think_llm"] = "gemini-2.0-flash"  # 1.87s
@@ -369,9 +358,7 @@ def run_stock_analysis(
             logger.info("🌐 [SiliconFlow] API端点: https://api.siliconflow.cn/v1")
         elif llm_provider == "custom_openai":
             # 自定义OpenAI端点
-            custom_base_url = st.session_state.get(
-                "custom_openai_base_url", "https://api.openai.com/v1"
-            )
+            custom_base_url = st.session_state.get("custom_openai_base_url", "https://api.openai.com/v1")
             config["backend_url"] = custom_base_url
             config["custom_openai_base_url"] = custom_base_url
             logger.info(f"🔧 [自定义OpenAI] 使用模型: {llm_model}")
@@ -412,9 +399,7 @@ def run_stock_analysis(
                 else:
                     config["data_cache_dir"] = env_cache_dir
             else:
-                config["data_cache_dir"] = str(
-                    PROJECT_ROOT / "trader" / "dataflows" / "data_cache"
-                )
+                config["data_cache_dir"] = str(PROJECT_ROOT / "trader" / "dataflows" / "data_cache")
 
         # 确保目录存在
         update_progress("📁 创建必要的目录...")
@@ -426,9 +411,7 @@ def run_stock_analysis(
         logger.info(f"  - 数据目录: {config['data_dir']}")
         logger.info(f"  - 结果目录: {config['results_dir']}")
         logger.info(f"  - 缓存目录: {config['data_cache_dir']}")
-        logger.info(
-            f"  - Settings TRADING_AGENTS_RESULTS_DIR: {settings.TRADING_AGENTS_RESULTS_DIR or '未设置'}"
-        )
+        logger.info(f"  - Settings TRADING_AGENTS_RESULTS_DIR: {settings.TRADING_AGENTS_RESULTS_DIR or '未设置'}")
 
         logger.info(f"使用配置: {config}")
         logger.info(f"分析师列表: {analysts}")
@@ -456,14 +439,10 @@ def run_stock_analysis(
         else:
             # 美股代码转为大写
             formatted_symbol = stock_symbol.upper()
-            logger.debug(
-                f"🔍 [RUNNER DEBUG] 美股代码转大写: '{stock_symbol}' -> '{formatted_symbol}'"
-            )
+            logger.debug(f"🔍 [RUNNER DEBUG] 美股代码转大写: '{stock_symbol}' -> '{formatted_symbol}'")
             update_progress(f"🇺🇸 准备分析美股: {formatted_symbol}")
 
-        logger.debug(
-            f"🔍 [RUNNER DEBUG] 最终传递给分析引擎的股票代码: '{formatted_symbol}'"
-        )
+        logger.debug(f"🔍 [RUNNER DEBUG] 最终传递给分析引擎的股票代码: '{formatted_symbol}'")
 
         # 初始化交易图
         update_progress("🔧 初始化分析引擎...")
@@ -497,18 +476,10 @@ def run_stock_analysis(
             # 在实际应用中，这些值应该从LLM响应中获取
             # 这里使用基于分析师数量和研究深度的估算
             actual_input_tokens = len(analysts) * (
-                1500
-                if research_depth == "快速"
-                else 2500
-                if research_depth == "标准"
-                else 4000
+                1500 if research_depth == "快速" else 2500 if research_depth == "标准" else 4000
             )
             actual_output_tokens = len(analysts) * (
-                800
-                if research_depth == "快速"
-                else 1200
-                if research_depth == "标准"
-                else 2000
+                800 if research_depth == "快速" else 1200 if research_depth == "标准" else 2000
             )
 
             usage_record = token_tracker.track_usage(
@@ -524,11 +495,7 @@ def run_stock_analysis(
                 update_progress(f"💰 记录使用成本: ¥{usage_record.cost:.4f}")
 
         # 从决策中提取模型信息
-        model_info = (
-            decision.get("model_info", "Unknown")
-            if isinstance(decision, dict)
-            else "Unknown"
-        )
+        model_info = decision.get("model_info", "Unknown") if isinstance(decision, dict) else "Unknown"
 
         results = {
             "stock_symbol": stock_symbol,
@@ -581,9 +548,7 @@ def run_stock_analysis(
         # 保存分析报告到本地和PostgreSQL
         try:
             update_progress("💾 正在保存分析报告...")
-            save_analysis_report = getattr(
-                importlib.import_module("web.utils.reports"), "save_analysis_report"
-            )
+            save_analysis_report = getattr(importlib.import_module("web.utils.reports"), "save_analysis_report")
             save_modular_reports_to_results_dir = getattr(
                 importlib.import_module("web.utils.reports"),
                 "save_modular_reports_to_results_dir",
@@ -601,9 +566,7 @@ def run_stock_analysis(
 
             # 2. 保存分析报告到PostgreSQL
             logger.info("🗄️ [PostgreSQL保存] 开始保存分析报告到PostgreSQL")
-            save_success = save_analysis_report(
-                stock_symbol=stock_symbol, analysis=results
-            )
+            save_success = save_analysis_report(stock_symbol=stock_symbol, analysis=results)
 
             if save_success:
                 logger.info("✅ [PostgreSQL保存] 分析报告已成功保存到PostgreSQL")

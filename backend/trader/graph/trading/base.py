@@ -1,4 +1,19 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import (
+    Any,
+    Dict,
+    List,
+    Path,
+    Tuple,
+    cast,
+    checkpoint_step,
+    get_checkpointer,
+    json,
+    logger,
+    safe_ticker_component,
+    thread_id,
+    time,
+)
+
 class _GraphMixin2:
     def propagate(
         self,
@@ -18,20 +33,12 @@ class _GraphMixin2:
         """
 
         # 添加详细的接收日志
-        logger.debug(
-            "🔍 [GRAPH DEBUG] ===== TradingAgentsGraph.propagate 接收参数 ====="
-        )
-        logger.debug(
-            f"🔍 [GRAPH DEBUG] 接收到的company_name: '{company_name}' (类型: {type(company_name)})"
-        )
-        logger.debug(
-            f"🔍 [GRAPH DEBUG] 接收到的trade_date: '{trade_date}' (类型: {type(trade_date)})"
-        )
+        logger.debug("🔍 [GRAPH DEBUG] ===== TradingAgentsGraph.propagate 接收参数 =====")
+        logger.debug(f"🔍 [GRAPH DEBUG] 接收到的company_name: '{company_name}' (类型: {type(company_name)})")
+        logger.debug(f"🔍 [GRAPH DEBUG] 接收到的trade_date: '{trade_date}' (类型: {type(trade_date)})")
         logger.debug(f"🔍 [GRAPH DEBUG] 接收到的task_id: '{task_id}'")
 
-        if not isinstance(self, TradingAgentsGraph) and callable(
-            getattr(self, "_run_graph", None)
-        ):
+        if self.__class__.__name__ != "TradingAgentsGraph" and callable(getattr(self, "_run_graph", None)):
             return self._run_graph(company_name, trade_date, asset_type=asset_type)
 
         self.ticker = company_name
@@ -42,22 +49,14 @@ class _GraphMixin2:
         instrument_context = self.resolve_instrument_context(company_name, asset_type)
 
         if self.config.get("checkpoint_enabled"):
-            self._checkpointer_ctx = get_checkpointer(
-                self.config["data_cache_dir"], company_name
-            )
+            self._checkpointer_ctx = get_checkpointer(self.config["data_cache_dir"], company_name)
             saver = self._checkpointer_ctx.__enter__()
             self.graph = self.workflow.compile(checkpointer=saver)
-            step = checkpoint_step(
-                self.config["data_cache_dir"], company_name, str(trade_date)
-            )
+            step = checkpoint_step(self.config["data_cache_dir"], company_name, str(trade_date))
             if step is not None:
-                logger.info(
-                    f"🔄 [Checkpoint] 从步骤 {step} 恢复: {company_name} {trade_date}"
-                )
+                logger.info(f"🔄 [Checkpoint] 从步骤 {step} 恢复: {company_name} {trade_date}")
             else:
-                logger.info(
-                    f"🆕 [Checkpoint] 开始新的分析: {company_name} {trade_date}"
-                )
+                logger.info(f"🆕 [Checkpoint] 开始新的分析: {company_name} {trade_date}")
 
         # Initialize state
         logger.debug(
@@ -73,9 +72,7 @@ class _GraphMixin2:
         logger.debug(
             f"🔍 [GRAPH DEBUG] 初始状态中的company_of_interest: '{init_agent_state.get('company_of_interest', 'NOT_FOUND')}'"
         )
-        logger.debug(
-            f"🔍 [GRAPH DEBUG] 初始状态中的trade_date: '{init_agent_state.get('trade_date', 'NOT_FOUND')}'"
-        )
+        logger.debug(f"🔍 [GRAPH DEBUG] 初始状态中的trade_date: '{init_agent_state.get('trade_date', 'NOT_FOUND')}'")
 
         # 初始化计时器
         node_timings = {}  # 记录每个节点的执行时间
@@ -87,13 +84,11 @@ class _GraphMixin2:
         self._current_task_id = task_id
 
         # 根据是否有进度回调选择不同的stream_mode
-        args = self.propagator.get_graph_args(
-            use_progress_callback=bool(progress_callback)
-        )
+        args = self.propagator.get_graph_args(use_progress_callback=bool(progress_callback))
         if self.config.get("checkpoint_enabled"):
-            args.setdefault("config", {}).setdefault("configurable", {})[
-                "thread_id"
-            ] = thread_id(company_name, str(trade_date))
+            args.setdefault("config", {}).setdefault("configurable", {})["thread_id"] = thread_id(
+                company_name, str(trade_date)
+            )
 
         try:
             if self.debug:
@@ -105,9 +100,7 @@ class _GraphMixin2:
                             if current_node_name and current_node_start:
                                 elapsed = time.time() - current_node_start
                                 node_timings[current_node_name] = elapsed
-                                logger.info(
-                                    f"⏱️ [{current_node_name}] 耗时: {elapsed:.2f}秒"
-                                )
+                                logger.info(f"⏱️ [{current_node_name}] 耗时: {elapsed:.2f}秒")
 
                             current_node_name = node_name
                             current_node_start = time.time()
@@ -136,12 +129,8 @@ class _GraphMixin2:
                             if current_node_name and current_node_start:
                                 elapsed = time.time() - current_node_start
                                 node_timings[current_node_name] = elapsed
-                                logger.info(
-                                    f"⏱️ [{current_node_name}] 耗时: {elapsed:.2f}秒"
-                                )
-                                logger.info(
-                                    f"🔍 [TIMING] 节点切换: {current_node_name} → {node_name}"
-                                )
+                                logger.info(f"⏱️ [{current_node_name}] 耗时: {elapsed:.2f}秒")
+                                logger.info(f"🔍 [TIMING] 节点切换: {current_node_name} → {node_name}")
 
                             current_node_name = node_name
                             current_node_start = time.time()
@@ -222,9 +211,7 @@ class _GraphMixin2:
             model_info = "Unknown"
 
         # 处理决策并添加模型信息
-        decision = self.process_signal(
-            final_state["final_trade_decision"], company_name
-        )
+        decision = self.process_signal(final_state["final_trade_decision"], company_name)
         decision["model_info"] = model_info
 
         # Return decision and processed signal
@@ -316,9 +303,7 @@ class _GraphMixin2:
         except Exception as e:
             logger.error(f"❌ 进度更新失败: {e}", exc_info=True)
 
-    def _build_performance_data(
-        self, node_timings: Dict[str, float], total_elapsed: float
-    ) -> Dict[str, Any]:
+    def _build_performance_data(self, node_timings: Dict[str, float], total_elapsed: float) -> Dict[str, Any]:
         """构建性能数据结构
 
         Args:
@@ -367,12 +352,8 @@ class _GraphMixin2:
                 other_nodes[node_name] = elapsed
 
         # 计算统计数据
-        slowest_node = (
-            max(node_timings.items(), key=lambda x: x[1]) if node_timings else (None, 0)
-        )
-        fastest_node = (
-            min(node_timings.items(), key=lambda x: x[1]) if node_timings else (None, 0)
-        )
+        slowest_node = max(node_timings.items(), key=lambda x: x[1]) if node_timings else (None, 0)
+        fastest_node = min(node_timings.items(), key=lambda x: x[1]) if node_timings else (None, 0)
         avg_time = sum(node_timings.values()) / len(node_timings) if node_timings else 0
 
         return {
@@ -380,76 +361,52 @@ class _GraphMixin2:
             "total_time_minutes": round(total_elapsed / 60, 2),
             "node_count": len(node_timings),
             "average_node_time": round(avg_time, 2),
-            "slowest_node": {"name": slowest_node[0], "time": round(slowest_node[1], 2)}
-            if slowest_node[0]
-            else None,
-            "fastest_node": {"name": fastest_node[0], "time": round(fastest_node[1], 2)}
-            if fastest_node[0]
-            else None,
+            "slowest_node": {"name": slowest_node[0], "time": round(slowest_node[1], 2)} if slowest_node[0] else None,
+            "fastest_node": {"name": fastest_node[0], "time": round(fastest_node[1], 2)} if fastest_node[0] else None,
             "node_timings": {k: round(v, 2) for k, v in node_timings.items()},
             "category_timings": {
                 "analyst_team": {
                     "nodes": {k: round(v, 2) for k, v in analyst_nodes.items()},
                     "total": round(sum(analyst_nodes.values()), 2),
-                    "percentage": round(
-                        sum(analyst_nodes.values()) / total_elapsed * 100, 1
-                    )
+                    "percentage": round(sum(analyst_nodes.values()) / total_elapsed * 100, 1)
                     if total_elapsed > 0
                     else 0,
                 },
                 "tool_calls": {
                     "nodes": {k: round(v, 2) for k, v in tool_nodes.items()},
                     "total": round(sum(tool_nodes.values()), 2),
-                    "percentage": round(
-                        sum(tool_nodes.values()) / total_elapsed * 100, 1
-                    )
-                    if total_elapsed > 0
-                    else 0,
+                    "percentage": round(sum(tool_nodes.values()) / total_elapsed * 100, 1) if total_elapsed > 0 else 0,
                 },
                 "message_clearing": {
                     "nodes": {k: round(v, 2) for k, v in msg_clear_nodes.items()},
                     "total": round(sum(msg_clear_nodes.values()), 2),
-                    "percentage": round(
-                        sum(msg_clear_nodes.values()) / total_elapsed * 100, 1
-                    )
+                    "percentage": round(sum(msg_clear_nodes.values()) / total_elapsed * 100, 1)
                     if total_elapsed > 0
                     else 0,
                 },
                 "research_team": {
                     "nodes": {k: round(v, 2) for k, v in research_nodes.items()},
                     "total": round(sum(research_nodes.values()), 2),
-                    "percentage": round(
-                        sum(research_nodes.values()) / total_elapsed * 100, 1
-                    )
+                    "percentage": round(sum(research_nodes.values()) / total_elapsed * 100, 1)
                     if total_elapsed > 0
                     else 0,
                 },
                 "trader_team": {
                     "nodes": {k: round(v, 2) for k, v in trader_nodes.items()},
                     "total": round(sum(trader_nodes.values()), 2),
-                    "percentage": round(
-                        sum(trader_nodes.values()) / total_elapsed * 100, 1
-                    )
+                    "percentage": round(sum(trader_nodes.values()) / total_elapsed * 100, 1)
                     if total_elapsed > 0
                     else 0,
                 },
                 "risk_management_team": {
                     "nodes": {k: round(v, 2) for k, v in risk_nodes.items()},
                     "total": round(sum(risk_nodes.values()), 2),
-                    "percentage": round(
-                        sum(risk_nodes.values()) / total_elapsed * 100, 1
-                    )
-                    if total_elapsed > 0
-                    else 0,
+                    "percentage": round(sum(risk_nodes.values()) / total_elapsed * 100, 1) if total_elapsed > 0 else 0,
                 },
                 "other": {
                     "nodes": {k: round(v, 2) for k, v in other_nodes.items()},
                     "total": round(sum(other_nodes.values()), 2),
-                    "percentage": round(
-                        sum(other_nodes.values()) / total_elapsed * 100, 1
-                    )
-                    if total_elapsed > 0
-                    else 0,
+                    "percentage": round(sum(other_nodes.values()) / total_elapsed * 100, 1) if total_elapsed > 0 else 0,
                 },
             },
             "llm_config": {
@@ -459,9 +416,7 @@ class _GraphMixin2:
             },
         }
 
-    def _print_timing_summary(
-        self, node_timings: Dict[str, float], total_elapsed: float
-    ):
+    def _print_timing_summary(self, node_timings: Dict[str, float], total_elapsed: float):
         """打印详细的时间统计报告
 
         Args:
@@ -469,9 +424,7 @@ class _GraphMixin2:
             total_elapsed: 总执行时间
         """
         logger.info("🔍 [_print_timing_summary] 方法被调用")
-        logger.info(
-            "🔍 [_print_timing_summary] node_timings 数量: " + str(len(node_timings))
-        )
+        logger.info("🔍 [_print_timing_summary] node_timings 数量: " + str(len(node_timings)))
         logger.info("🔍 [_print_timing_summary] total_elapsed: " + str(total_elapsed))
 
         logger.info("=" * 80)
@@ -525,9 +478,7 @@ class _GraphMixin2:
             total_category_time = sum(t for _, t in nodes)
             for node_name, elapsed in sorted(nodes, key=lambda x: x[1], reverse=True):
                 percentage = (elapsed / total_elapsed * 100) if total_elapsed > 0 else 0
-                logger.info(
-                    f"  • {node_name:40s} {elapsed:8.2f}秒  ({percentage:5.1f}%)"
-                )
+                logger.info(f"  • {node_name:40s} {elapsed:8.2f}秒  ({percentage:5.1f}%)")
             logger.info(
                 f"  {'小计':40s} {total_category_time:8.2f}秒  ({total_category_time / total_elapsed * 100:5.1f}%)"
             )
@@ -542,9 +493,7 @@ class _GraphMixin2:
 
         # 打印总体统计
         logger.info("\n" + "=" * 80)
-        logger.info(
-            f"🎯 总执行时间: {total_elapsed:.2f}秒 ({total_elapsed / 60:.2f}分钟)"
-        )
+        logger.info(f"🎯 总执行时间: {total_elapsed:.2f}秒 ({total_elapsed / 60:.2f}分钟)")
         logger.info(f"📈 节点总数: {len(node_timings)}")
         if node_timings:
             avg_time = sum(node_timings.values()) / len(node_timings)
@@ -558,9 +507,7 @@ class _GraphMixin2:
         logger.info("\n🤖 LLM配置:")
         logger.info(f"  • 提供商: {self.config.get('llm_provider', 'unknown')}")
         logger.info(f"  • 深度思考模型: {self.config.get('deep_think_llm', 'unknown')}")
-        logger.info(
-            f"  • 快速思考模型: {self.config.get('quick_think_llm', 'unknown')}"
-        )
+        logger.info(f"  • 快速思考模型: {self.config.get('quick_think_llm', 'unknown')}")
         logger.info("=" * 80)
 
     def _log_state(self, trade_date, final_state):
@@ -576,12 +523,8 @@ class _GraphMixin2:
                 "bull_history": final_state["investment_debate_state"]["bull_history"],
                 "bear_history": final_state["investment_debate_state"]["bear_history"],
                 "history": final_state["investment_debate_state"]["history"],
-                "current_response": final_state["investment_debate_state"][
-                    "current_response"
-                ],
-                "judge_decision": final_state["investment_debate_state"][
-                    "judge_decision"
-                ],
+                "current_response": final_state["investment_debate_state"]["current_response"],
+                "judge_decision": final_state["investment_debate_state"]["judge_decision"],
             },
             "trader_investment_decision": final_state["trader_investment_plan"],
             "risk_debate_state": {
@@ -606,25 +549,15 @@ class _GraphMixin2:
     def reflect_and_remember(self, returns_losses):
         """Reflect on decisions and update existing CN role memories."""
         if self.bull_memory is not None:
-            self.reflector.reflect_bull_researcher(
-                self.curr_state, returns_losses, self.bull_memory
-            )
+            self.reflector.reflect_bull_researcher(self.curr_state, returns_losses, self.bull_memory)
         if self.bear_memory is not None:
-            self.reflector.reflect_bear_researcher(
-                self.curr_state, returns_losses, self.bear_memory
-            )
+            self.reflector.reflect_bear_researcher(self.curr_state, returns_losses, self.bear_memory)
         if self.trader_memory is not None:
-            self.reflector.reflect_trader(
-                self.curr_state, returns_losses, self.trader_memory
-            )
+            self.reflector.reflect_trader(self.curr_state, returns_losses, self.trader_memory)
         if self.invest_judge_memory is not None:
-            self.reflector.reflect_invest_judge(
-                self.curr_state, returns_losses, self.invest_judge_memory
-            )
+            self.reflector.reflect_invest_judge(self.curr_state, returns_losses, self.invest_judge_memory)
         if self.risk_manager_memory is not None:
-            self.reflector.reflect_risk_manager(
-                self.curr_state, returns_losses, self.risk_manager_memory
-            )
+            self.reflector.reflect_risk_manager(self.curr_state, returns_losses, self.risk_manager_memory)
 
     def process_signal(self, full_signal, stock_symbol=None):
         """Process a signal to extract the core decision."""

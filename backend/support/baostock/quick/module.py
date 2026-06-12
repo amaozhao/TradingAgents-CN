@@ -151,7 +151,7 @@ if __name__ == "__main__":
     if success:
         print("\n🎯 下一步:")
         print("1. 重新运行完整数据源测试")
-        print("2. python backend/tests/test_data_sources_comprehensive.py")
+        print("2. python -m pytest backend/tests/integration/app/routers/baostock")
     else:
         print("\n🔧 故障排除:")
         print("1. 检查网络连接")

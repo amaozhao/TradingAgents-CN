@@ -1,4 +1,9 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .report import get_optimized_china_data_provider
+
+
 def get_china_fundamentals_cached(symbol: str, force_refresh: bool = False) -> str:
     """
     获取A股基本面数据的便捷函数

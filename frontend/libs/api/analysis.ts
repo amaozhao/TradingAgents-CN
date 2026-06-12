@@ -157,6 +157,7 @@ export const analysisApi = {
     start_date?: string
     end_date?: string
     status?: string
+    batch_id?: string
   }): Promise<unknown> {
     return request.get('/api/analysis/user/history', { params })
   },
@@ -196,7 +197,7 @@ export const analysisApi = {
   },
 
   // 获取任务列表（新版 simple service）
-  getTaskList(params?: { status?: string; limit?: number; offset?: number }): Promise<unknown>{
+  getTaskList(params?: { status?: string; batch_id?: string; limit?: number; offset?: number }): Promise<unknown>{
     return request.get('/api/analysis/tasks', { params })
   },
 

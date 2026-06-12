@@ -1,4 +1,6 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import Optional
+from .route import prepare_stock_data
+
 def get_stock_preparation_message(
     stock_code: str,
     market_type: str = "auto",

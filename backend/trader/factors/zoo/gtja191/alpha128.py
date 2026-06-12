@@ -13,25 +13,9 @@ Notes:
 """
 from __future__ import annotations
 
-import numpy as np
-import pandas as pd
 
 from trader.factors.base import (
-    decay_linear,
-    delta,
-    rank,
     safe_div,
-    scale,
-    signed_power,
-    ts_argmax,
-    ts_argmin,
-    ts_corr,
-    ts_cov,
-    ts_max,
-    ts_mean,
-    ts_min,
-    ts_rank,
-    ts_std,
 )
 
 ALPHA_ID = "gtja191_128"
@@ -61,9 +45,9 @@ def compute(panel):
     """
     c = panel["close"]
     h = panel["high"]
-    l = panel["low"]
+    low = panel["low"]
     v = panel["volume"]
-    tp = (h + l + c) / 3.0
+    tp = (h + low + c) / 3.0
     dtp = tp - tp.shift(1)
     up = (tp * v).where(dtp > 0, 0.0).rolling(14).sum()
     down = (tp * v).where(dtp < 0, 0.0).rolling(14).sum()

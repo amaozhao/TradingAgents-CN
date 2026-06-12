@@ -1,4 +1,3 @@
-# ruff: noqa: F401,F403,F405,F821
 """Tests for TradingMemoryLog plus preserved CN role memory compatibility."""
 
 import importlib
@@ -6,7 +5,6 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-
 from trader.agents.managers.portfolio import create_portfolio_manager
 from trader.agents.schemas import PortfolioDecision, PortfolioRating
 from trader.agents.utils.log import TradingMemoryLog
@@ -32,3 +30,22 @@ DECISION_NO_RATING = (
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
+__all__ = [
+    "DECISION_BUY",
+    "DECISION_NO_RATING",
+    "DECISION_OVERWEIGHT",
+    "DECISION_SELL",
+    "MagicMock",
+    "PortfolioDecision",
+    "PortfolioRating",
+    "Propagator",
+    "Reflector",
+    "TradingAgentsGraph",
+    "TradingMemoryLog",
+    "create_portfolio_manager",
+    "importlib",
+    "patch",
+    "pd",
+    "pytest",
+]

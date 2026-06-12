@@ -1,4 +1,6 @@
-# ruff: noqa: F401,F403,F405,F821
+from .imports import logger
+from .task import get_akshare_sync_service
+
 async def run_akshare_historical_sync(incremental: bool = True):
     """APScheduler任务：同步历史数据"""
     try:

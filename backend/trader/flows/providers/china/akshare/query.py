@@ -1,4 +1,12 @@
-# ruff: noqa: F401,F403,F405,F821
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .base import _AKShareProviderMixin2
+    from .common import _AKShareProviderMixin1
+    from .imports import BaseStockDataProvider
+    from .models import _AKShareProviderMixin3
+
+
 class AKShareProvider(
     _AKShareProviderMixin1,
     _AKShareProviderMixin2,
