@@ -11,8 +11,12 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy import or_, select
 
+from app.core.session import get_session_factory
+from app.db.analysis import list_user_analysis_reports
 from app.db.ids import DocumentId
+from app.models.table import StockBasicInfo
 from trader.utils.stocks import StockUtils
 
 from ..core.database import get_postgres_db, get_postgres_db_sync
@@ -88,6 +92,77 @@ def get_stock_name(stock_code: str) -> str:
     except Exception as e:
         logger.warning(f"⚠️ 获取股票名称失败 {stock_code}: {e}")
         return stock_code
+
+
+async def get_stock_names(stock_codes: List[str]) -> Dict[str, str]:
+    unique_codes = [code for code in dict.fromkeys(stock_codes) if code]
+    result = {
+        code: _stock_name_cache[code]
+        for code in unique_codes
+        if code in _stock_name_cache
+    }
+    missing_codes = [code for code in unique_codes if code not in result]
+    if not missing_codes:
+        return result
+
+    try:
+        config = UnifiedConfigManager()
+        data_source_configs = config.get_data_source_configs()
+        enabled_sources = [
+            ds.type.lower()
+            for ds in data_source_configs
+            if ds.enabled and ds.type.lower() in {"tushare", "akshare", "baostock"}
+        ]
+        if not enabled_sources:
+            enabled_sources = ["tushare", "akshare", "baostock"]
+
+        query_values, value_to_code = _stock_name_query_values(missing_codes)
+        session_factory = get_session_factory()
+        async with session_factory() as session:
+            rows = await session.execute(
+                select(
+                    StockBasicInfo.code,
+                    StockBasicInfo.name,
+                    StockBasicInfo.source,
+                    StockBasicInfo.payload["symbol"].astext.label("symbol"),
+                ).where(
+                    or_(
+                        StockBasicInfo.code.in_(query_values),
+                        StockBasicInfo.payload["symbol"].astext.in_(query_values),
+                    )
+                )
+            )
+            priority = {source: index for index, source in enumerate(enabled_sources)}
+            for row in sorted(
+                rows.mappings(),
+                key=lambda item: priority.get(str(item.get("source") or ""), 999),
+            ):
+                name = row.get("name")
+                if not name:
+                    continue
+                for key in (row.get("code"), row.get("symbol")):
+                    code = value_to_code.get(str(key or ""))
+                    if code and code not in result:
+                        result[code] = str(name)
+                        _stock_name_cache[code] = str(name)
+    except Exception as e:
+        logger.warning(f"⚠️ 批量获取股票名称失败: {e}")
+
+    for code in missing_codes:
+        result.setdefault(code, code)
+        _stock_name_cache[code] = result[code]
+    return result
+
+
+def _stock_name_query_values(
+    stock_codes: List[str],
+) -> tuple[List[str], Dict[str, str]]:
+    value_to_code: Dict[str, str] = {}
+    for code in stock_codes:
+        value_to_code[code] = code
+        if code.isdigit():
+            value_to_code[code.zfill(6)] = code
+    return list(value_to_code), value_to_code
 
 
 # 统一构建报告查询：支持 _id(DocumentId) / analysis_id / task_id 三种
@@ -209,8 +284,6 @@ async def get_reports_list(
             f"🔍 获取报告列表: 用户={user['id']}, 页码={page}, 每页={page_size}, 市场={effective_market_filter}"
         )
 
-        db = get_postgres_db()
-
         # 构建查询条件
         query = {}
 
@@ -241,26 +314,38 @@ async def get_reports_list(
 
         logger.info(f"📊 查询条件: {query}")
 
-        scoped_query = _scope_private_report_query(query, user)
-        all_reports = (
-            await db.analysis_reports.find(scoped_query)
-            .sort("created_at", -1)
-            .to_list(None)
-        )
-        deduped_reports = _dedupe_report_documents(all_reports)
-        total = len(deduped_reports)
-
         skip = (page - 1) * page_size
-        page_reports = deduped_reports[skip : skip + page_size]
+        session_factory = get_session_factory()
+        async with session_factory() as session:
+            page_reports, total = await list_user_analysis_reports(
+                session,
+                user_id=None if _is_admin_user(user) else _current_user_id(user),
+                is_admin=_is_admin_user(user),
+                keyword=effective_search_keyword,
+                market=effective_market_filter,
+                stock_code=stock_code,
+                start_date=start_date,
+                end_date=end_date,
+                limit=page_size,
+                offset=skip,
+            )
+
+        codes_requiring_names = []
+        for doc in page_reports:
+            stock_code = str(doc.get("stock_symbol") or "")
+            stock_name = doc.get("stock_name")
+            if not stock_name or stock_name in {stock_code, f"股票{stock_code}"}:
+                codes_requiring_names.append(stock_code)
+        stock_names = await get_stock_names(codes_requiring_names)
 
         reports = []
         for doc in page_reports:
             # 转换为前端需要的格式
             stock_code = str(doc.get("stock_symbol") or "")
-            # 🔥 优先使用PostgreSQL中保存的股票名称，如果没有则查询
+            # 🔥 优先使用PostgreSQL中保存的股票名称，如果没有则批量查询
             stock_name = doc.get("stock_name")
             if not stock_name or stock_name in {stock_code, f"股票{stock_code}"}:
-                stock_name = get_stock_name(stock_code)
+                stock_name = stock_names.get(stock_code, stock_code)
 
             # 🔥 获取市场类型，如果没有则根据股票代码推断
             market_type = doc.get("market_type")
@@ -279,7 +364,7 @@ async def get_reports_list(
             created_at = doc.get("created_at") or datetime.now(timezone.utc)
 
             report = {
-                "id": str(doc["_id"]),
+                "id": str(doc.get("analysis_id") or doc.get("id") or doc.get("_id")),
                 "analysis_id": doc.get("analysis_id", ""),
                 "title": f"{stock_name}({stock_code}) 分析报告",
                 "stock_code": stock_code,
@@ -294,7 +379,7 @@ async def get_reports_list(
                 "analysts": doc.get("analysts", []),
                 "research_depth": doc.get("research_depth", 1),
                 "summary": doc.get("summary", ""),
-                "file_size": len(str(doc.get("reports", {}))),  # 估算大小
+                "file_size": 0,
                 "source": doc.get("source", "unknown"),
                 "task_id": doc.get("task_id", ""),
             }

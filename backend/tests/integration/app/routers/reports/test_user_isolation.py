@@ -85,7 +85,9 @@ class FakeReportCollection:
     async def delete_one(self, query: dict[str, Any]):
         self.last_delete_query = query
         before = len(self.documents)
-        self.documents = [doc for doc in self.documents if not _matches_query(doc, query)]
+        self.documents = [
+            doc for doc in self.documents if not _matches_query(doc, query)
+        ]
         return FakeDeleteResult(before - len(self.documents))
 
 
@@ -134,14 +136,50 @@ def _report(report_id: str, user_id: str, stock_symbol: str) -> dict[str, Any]:
 
 @pytest.mark.asyncio
 async def test_report_list_returns_only_current_user_reports(monkeypatch):
-    db = FakeReportDb(
-        [
-            _report("report-a", USER_A["id"], "300750.SZ"),
-            _report("report-b", USER_B["id"], "002594.SZ"),
-        ]
+    captured: dict[str, Any] = {}
+    requested_names: list[str] = []
+
+    class FakeSession:
+        pass
+
+    class FakeSessionFactory:
+        async def __aenter__(self):
+            return FakeSession()
+
+        async def __aexit__(self, *_args):
+            return None
+
+    async def fake_list_user_analysis_reports(_session, **kwargs):
+        captured.update(kwargs)
+        return (
+            [
+                {
+                    "id": "report-a",
+                    "analysis_id": "analysis-report-a",
+                    "task_id": "task-report-a",
+                    "user_id": USER_A["id"],
+                    "stock_symbol": "300750.SZ",
+                    "stock_name": "300750.SZ",
+                    "summary": "300750.SZ report",
+                    "created_at": "2026-06-08T00:00:00",
+                    "analysis_date": "2026-06-08",
+                }
+            ],
+            1,
+        )
+
+    monkeypatch.setattr(
+        reports_router, "get_session_factory", lambda: FakeSessionFactory
     )
-    monkeypatch.setattr(reports_router, "get_postgres_db", lambda: db)
-    monkeypatch.setattr(reports_router, "get_stock_name", lambda code: code)
+    monkeypatch.setattr(
+        reports_router, "list_user_analysis_reports", fake_list_user_analysis_reports
+    )
+
+    async def fake_get_stock_names(codes: list[str]):
+        requested_names.extend(codes)
+        return {code: code for code in codes}
+
+    monkeypatch.setattr(reports_router, "get_stock_names", fake_get_stock_names)
 
     response = await reports_router.get_reports_list(
         page=1,
@@ -157,9 +195,14 @@ async def test_report_list_returns_only_current_user_reports(monkeypatch):
     )
 
     assert response["success"] is True
+    assert response["data"]["reports"][0]["id"] == "analysis-report-a"
     ids = {item["analysis_id"] for item in response["data"]["reports"]}
     assert ids == {"analysis-report-a"}
-    assert db.analysis_reports.last_find_query["user_id"] == USER_A["id"]
+    assert captured["user_id"] == USER_A["id"]
+    assert captured["is_admin"] is False
+    assert captured["limit"] == 20
+    assert captured["offset"] == 0
+    assert requested_names == ["300750.SZ"]
 
 
 @pytest.mark.asyncio
@@ -218,7 +261,9 @@ async def test_report_download_rejects_other_users_report(monkeypatch):
     monkeypatch.setattr(reports_router, "get_postgres_db", lambda: db)
 
     with pytest.raises(HTTPException) as exc:
-        await reports_router.download_report("analysis-report-b", format="json", user=USER_A)
+        await reports_router.download_report(
+            "analysis-report-b", format="json", user=USER_A
+        )
 
     assert exc.value.status_code == 404
 
@@ -246,7 +291,9 @@ async def test_web_style_report_save_persists_task_owner(monkeypatch):
         ]
     )
     monkeypatch.setattr(report_service_module, "get_postgres_db", lambda: db)
-    monkeypatch.setattr(report_service_module, "dual_write_hot_document", _noop_dual_write)
+    monkeypatch.setattr(
+        report_service_module, "dual_write_hot_document", _noop_dual_write
+    )
 
     await AnalysisReportMixin()._save_analysis_result_web_style(
         "task-a",
