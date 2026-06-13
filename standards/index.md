@@ -10,6 +10,26 @@ This directory contains engineering standards that agents and maintainers should
 4. Apply the most specific standard when rules overlap.
 5. Keep final reports grounded in what changed and what verification actually ran.
 
+## Selection Guide
+
+Read the smallest set of standards that covers the change:
+
+| Task touches | Read |
+| --- | --- |
+| services, repositories, adapters, API clients, hooks, feature boundaries, shared contracts | `modules.md` |
+| tests, fixtures, mocks, test layout, verification commands | `testing.md` |
+| Python or TypeScript types, schemas, DTOs, boundary models, untrusted data | `typing.md` |
+| `try`/`except`/`catch`, fallbacks, retries, logging, exception mapping | `errors.md` |
+| API routes, frontend API clients, request/response shapes, status codes, pagination | `contracts.md` |
+| SQLAlchemy, transactions, repositories, migrations, database tests | `database.md` |
+| Next.js, React, forms, hooks, Tailwind, accessibility, UI state | `frontend.md` |
+| auth, authorization, secrets, uploads, redirects, webhooks, SSRF, XSS | `security.md` |
+| dependencies, lockfiles, env vars, runtime config, feature flags, logs, background work | `operations.md` |
+| query cost, payload size, caching, external calls, async throughput, rendering, bundle size | `performance.md` |
+| review, final self-review, diff scope, verification reporting | `review.md` |
+
+If a task spans multiple areas, read each relevant standard. If two standards overlap, follow the more specific rule for the touched code.
+
 ## File Map
 
 - `modules.md`: deep modules, SOLID-compatible boundaries, invariant ownership, shallow wrappers, god modules.
@@ -43,7 +63,7 @@ Each standard should normally include:
 # <Area> Standard
 ## Scope
 ## Core Rules
-## Area-Specific Rules
+## Targeted Rules
 ## Tests Or Verification
 ## Review Checklist
 ```
