@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from app.services.research.agent import stock as stock_module
+from app.services.research.agent import emitter as emitter_module
 from app.services.research.agent.batch.events import (
     build_batch_child_event,
     build_batch_completion_event,
@@ -259,7 +259,7 @@ async def test_stock_node_event_adds_batch_id_only_when_provided(monkeypatch) ->
         return FakeFuture()
 
     monkeypatch.setattr(
-        stock_module,
+        emitter_module,
         "run_coroutine_threadsafe",
         fake_run_coroutine_threadsafe,
     )

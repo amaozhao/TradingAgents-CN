@@ -42,7 +42,7 @@ async def list_all_tasks(
 
     except Exception as e:
         logger.error(f"❌ 获取任务列表失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="获取任务列表失败")
 
 
 @router.get("/tasks", response_model=ApiResponse)
@@ -78,4 +78,4 @@ async def list_user_tasks(
 
     except Exception as e:
         logger.error(f"❌ 获取任务列表失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="获取任务列表失败")

@@ -34,7 +34,7 @@ class FakeResponse:
                                 "type": "function",
                                 "function": {
                                     "name": "market_data_lookup",
-                                    "arguments": "{\"symbol\":\"600519\"}",
+                                    "arguments": '{"symbol":"600519"}',
                                 },
                             }
                         ],
@@ -97,7 +97,13 @@ class FakeStreamingAsyncClient(FakeAsyncClient):
             FakeStreamResponse(
                 [
                     "data: "
-                    + json.dumps({"choices": [{"delta": {"content": "先"}, "finish_reason": None}]}),
+                    + json.dumps(
+                        {
+                            "choices": [
+                                {"delta": {"content": "先"}, "finish_reason": None}
+                            ]
+                        }
+                    ),
                     "data: "
                     + json.dumps(
                         {
@@ -126,7 +132,7 @@ class FakeStreamingAsyncClient(FakeAsyncClient):
                                                 "thought_signature": "sig-1",
                                                 "function": {
                                                     "name": "market_data_lookup",
-                                                    "arguments": "{\"sym",
+                                                    "arguments": '{"sym',
                                                 },
                                             }
                                         ]
@@ -146,7 +152,7 @@ class FakeStreamingAsyncClient(FakeAsyncClient):
                                             {
                                                 "index": 0,
                                                 "function": {
-                                                    "arguments": "bol\":\"600519\"}",
+                                                    "arguments": 'bol":"600519"}',
                                                 },
                                             }
                                         ]
@@ -173,10 +179,16 @@ def _principal() -> ResearchPrincipal:
 
 @pytest.mark.asyncio
 async def test_missing_default_model_fails_visibly(monkeypatch):
-    monkeypatch.setattr(provider_module, "_default_agent_model", lambda: "")
-    monkeypatch.setattr(provider_module, "_fallback_configured_model", lambda: None)
+    monkeypatch.setattr(
+        provider_module._provider_resolver, "default_agent_model", lambda: ""
+    )
+    monkeypatch.setattr(
+        provider_module._provider_resolver, "fallback_configured_model", lambda: None
+    )
 
-    with pytest.raises(AgentModelConfigurationError, match="未配置可用的 Agent 模型 API Key"):
+    with pytest.raises(
+        AgentModelConfigurationError, match="未配置可用的 Agent 模型 API Key"
+    ):
         await provider_module.resolve_agent_model_config(_principal())
 
 
@@ -190,9 +202,15 @@ async def test_openai_compatible_client_maps_tool_calls(monkeypatch):
         "resolve_key_for_agent",
         no_user_key,
     )
-    monkeypatch.setattr(provider_module.settings, "TRADING_AGENTS_DEFAULT_MODEL", "openai/gpt-test")
-    monkeypatch.setattr(provider_module.settings, "OPENAI_API_KEY", "sk-test-valid-123456")
-    monkeypatch.setattr(provider_module.settings, "OPENAI_BASE_URL", "https://example.test/v1")
+    monkeypatch.setattr(
+        provider_module.settings, "TRADING_AGENTS_DEFAULT_MODEL", "openai/gpt-test"
+    )
+    monkeypatch.setattr(
+        provider_module.settings, "OPENAI_API_KEY", "sk-test-valid-123456"
+    )
+    monkeypatch.setattr(
+        provider_module.settings, "OPENAI_BASE_URL", "https://example.test/v1"
+    )
     monkeypatch.setattr(provider_module.httpx, "AsyncClient", FakeAsyncClient)
 
     chunks = [
@@ -219,7 +237,10 @@ async def test_openai_compatible_client_maps_tool_calls(monkeypatch):
     assert FakeAsyncClient.last_payload["messages"] == [
         {"role": "user", "content": "查 600519"}
     ]
-    assert FakeAsyncClient.last_payload["tools"][0]["function"]["name"] == "market_data_lookup"
+    assert (
+        FakeAsyncClient.last_payload["tools"][0]["function"]["name"]
+        == "market_data_lookup"
+    )
     assert chunks[0].delta == "先读取数据。"
     assert chunks[1].tool_call == {
         "id": "call-1",
@@ -239,9 +260,15 @@ async def test_openai_compatible_client_streams_sse_chunks(monkeypatch):
         "resolve_key_for_agent",
         no_user_key,
     )
-    monkeypatch.setattr(provider_module.settings, "TRADING_AGENTS_DEFAULT_MODEL", "openai/gpt-test")
-    monkeypatch.setattr(provider_module.settings, "OPENAI_API_KEY", "sk-test-valid-123456")
-    monkeypatch.setattr(provider_module.settings, "OPENAI_BASE_URL", "https://example.test/v1")
+    monkeypatch.setattr(
+        provider_module.settings, "TRADING_AGENTS_DEFAULT_MODEL", "openai/gpt-test"
+    )
+    monkeypatch.setattr(
+        provider_module.settings, "OPENAI_API_KEY", "sk-test-valid-123456"
+    )
+    monkeypatch.setattr(
+        provider_module.settings, "OPENAI_BASE_URL", "https://example.test/v1"
+    )
     monkeypatch.setattr(provider_module.httpx, "AsyncClient", FakeStreamingAsyncClient)
 
     chunks = [
@@ -282,9 +309,15 @@ async def test_streaming_failure_before_output_falls_back_to_complete(monkeypatc
         "resolve_key_for_agent",
         no_user_key,
     )
-    monkeypatch.setattr(provider_module.settings, "TRADING_AGENTS_DEFAULT_MODEL", "openai/gpt-test")
-    monkeypatch.setattr(provider_module.settings, "OPENAI_API_KEY", "sk-test-valid-123456")
-    monkeypatch.setattr(provider_module.settings, "OPENAI_BASE_URL", "https://example.test/v1")
+    monkeypatch.setattr(
+        provider_module.settings, "TRADING_AGENTS_DEFAULT_MODEL", "openai/gpt-test"
+    )
+    monkeypatch.setattr(
+        provider_module.settings, "OPENAI_API_KEY", "sk-test-valid-123456"
+    )
+    monkeypatch.setattr(
+        provider_module.settings, "OPENAI_BASE_URL", "https://example.test/v1"
+    )
     monkeypatch.setattr(provider_module.httpx, "AsyncClient", FakeFallbackAsyncClient)
 
     chunks = [

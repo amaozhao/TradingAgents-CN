@@ -1,7 +1,7 @@
 import importlib
 import logging
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -13,6 +13,7 @@ from app.core.response import ok
 from app.db.dual import dual_write_hot_document
 from app.schemas.response import ApiResponse
 from app.routers.account import get_current_user
+from app.services.paper import PaperOrderError, PaperOrderService
 
 router = APIRouter(prefix="/paper", tags=["paper"])
 logger = logging.getLogger("webapi")
@@ -84,7 +85,7 @@ async def _get_or_create_account(user_id: str) -> Dict[str, Any]:
     db = get_postgres_db()
     acc = await db["paper_accounts"].find_one({"user_id": user_id})
     if not acc:
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         acc = {
             "user_id": user_id,
             # 多货币现金账户
@@ -118,7 +119,7 @@ async def _get_or_create_account(user_id: str) -> Dict[str, Any]:
                 updates["realized_pnl"] = {"CNY": base_pnl, "HKD": 0.0, "USD": 0.0}
 
             if updates:
-                updates["updated_at"] = datetime.utcnow().isoformat()
+                updates["updated_at"] = datetime.now(UTC).isoformat()
                 await db["paper_accounts"].update_one(
                     {"user_id": user_id}, {"$set": updates}
                 )
@@ -274,7 +275,7 @@ async def _get_available_quantity(user_id: str, code: str, market: str) -> int:
         rules = await _get_market_rules(market)
         if rules and rules.get("t_plus", 0) > 0:
             # 查询今天的买入数量
-            today = datetime.utcnow().date().isoformat()
+            today = datetime.now(UTC).date().isoformat()
             pipeline = [
                 {
                     "$match": {
@@ -475,8 +476,7 @@ async def place_order(
     analysis_id = getattr(payload, "analysis_id", None)
 
     # 2. 确定货币
-    currency_map = {"CN": "CNY", "HK": "HKD", "US": "USD"}
-    currency = currency_map.get(market, "CNY")
+    currency = PaperOrderService.currency_for_market(market)
 
     # 3. 获取账户
     acc = await _get_or_create_account(current_user["id"])
@@ -502,33 +502,25 @@ async def place_order(
         {"user_id": current_user["id"], "code": normalized_code}
     )
 
-    now_iso = datetime.utcnow().isoformat()
+    now_iso = datetime.now(UTC).isoformat()
     realized_pnl_delta = 0.0
 
     # 8. 执行买卖逻辑
     if side == "buy":
-        # 资金检查（使用对应货币的账户）
-        cash = acc.get("cash", {})
-        if isinstance(cash, dict):
-            available_cash = float(cash.get(currency, 0.0))
-        else:
-            # 兼容旧格式
-            available_cash = float(cash) if currency == "CNY" else 0.0
-
-        if available_cash < total_cost:
+        try:
+            account_cash = PaperOrderService.require_buying_power(
+                cash=acc.get("cash", {}),
+                currency=currency,
+                total_cost=total_cost,
+            )
+        except PaperOrderError as exc:
             raise HTTPException(
                 status_code=400,
-                detail=f"可用{currency}不足：需要 {total_cost:.2f}，可用 {available_cash:.2f}",
-            )
+                detail=str(exc),
+            ) from exc
 
         # 扣除资金（从对应货币账户）
-        new_cash = round(available_cash - total_cost, 2)
-        account_cash = (
-            cash.copy()
-            if isinstance(cash, dict)
-            else {"CNY": float(cash), "HKD": 0.0, "USD": 0.0}
-        )
-        account_cash[currency] = new_cash
+        new_cash = account_cash[currency]
         await db["paper_accounts"].update_one(
             {"user_id": current_user["id"]},
             {"$set": {f"cash.{currency}": new_cash, "updated_at": now_iso}},
@@ -557,17 +549,19 @@ async def place_order(
             old_qty = int(pos.get("quantity", 0))
             old_cost = float(pos.get("avg_cost", 0.0))
             new_qty = old_qty + qty
-            new_avg = (
-                round((old_cost * old_qty + price * qty) / new_qty, 4)
-                if new_qty > 0
-                else price
+            new_avg = PaperOrderService.weighted_average_cost(
+                old_quantity=old_qty,
+                old_cost=old_cost,
+                buy_quantity=qty,
+                buy_price=price,
             )
 
             # A股T+1：新买入的不可用
-            if market == "CN":
-                new_available = pos.get("available_qty", old_qty)  # 保持原有可用数量
-            else:
-                new_available = new_qty  # 港股/美股T+0，全部可用
+            new_available = PaperOrderService.available_after_buy(
+                market=market,
+                current_available=pos.get("available_qty", old_qty),
+                new_quantity=new_qty,
+            )
 
             position_update = {
                 "quantity": new_qty,
@@ -601,21 +595,11 @@ async def place_order(
 
         # 卖出收入（加到对应货币账户，扣除手续费）
         net_proceeds = notional - commission
-        account_cash = (
-            acc.get("cash", {}).copy()
-            if isinstance(acc.get("cash"), dict)
-            else {"CNY": float(acc.get("cash", 0.0)), "HKD": 0.0, "USD": 0.0}
-        )
-        account_pnl = (
-            acc.get("realized_pnl", {}).copy()
-            if isinstance(acc.get("realized_pnl"), dict)
-            else {"CNY": float(acc.get("realized_pnl", 0.0)), "HKD": 0.0, "USD": 0.0}
-        )
-        account_cash[currency] = round(
-            float(account_cash.get(currency, 0.0)) + net_proceeds, 2
-        )
-        account_pnl[currency] = round(
-            float(account_pnl.get(currency, 0.0)) + realized_pnl_delta, 2
+        account_totals = PaperOrderService.apply_sell_proceeds(
+            account=acc,
+            currency=currency,
+            net_proceeds=net_proceeds,
+            realized_pnl_delta=realized_pnl_delta,
         )
         await db["paper_accounts"].update_one(
             {"user_id": current_user["id"]},
@@ -631,8 +615,8 @@ async def place_order(
             "paper_accounts",
             {
                 **acc,
-                "cash": account_cash,
-                "realized_pnl": account_pnl,
+                "cash": account_totals.cash,
+                "realized_pnl": account_totals.realized_pnl,
                 "updated_at": now_iso,
             },
         )
@@ -764,7 +748,7 @@ async def reset_account(
     await db["paper_positions"].delete_many({"user_id": current_user["id"]})
     await db["paper_orders"].delete_many({"user_id": current_user["id"]})
     await db["paper_trades"].delete_many({"user_id": current_user["id"]})
-    reset_at = datetime.utcnow().isoformat()
+    reset_at = datetime.now(UTC).isoformat()
     for account in existing_accounts:
         await _dual_write_paper(
             "paper_accounts", {**account, "deleted": True, "updated_at": reset_at}

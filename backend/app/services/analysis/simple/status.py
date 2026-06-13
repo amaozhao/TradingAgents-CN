@@ -16,9 +16,14 @@ from .common import (
     logger,
     settings,
 )
+from .tasks import degraded_task_list_result
 
 
 class AnalysisStatusMixin:
+    @staticmethod
+    def _naive_utc_now():
+        return datetime.now(UTC).replace(tzinfo=None)
+
     def _task_status_belongs_to_user(
         self, result: Dict[str, Any], user_id: str | None
     ) -> bool:
@@ -240,7 +245,10 @@ class AnalysisStatusMixin:
             return results
         except Exception as outer_e:
             logger.error(f"❌ list_all_tasks 外层异常: {outer_e}", exc_info=True)
-            return []
+            return degraded_task_list_result(
+                user_id="all",
+                warnings=["task_status_unavailable"],
+            )
 
     async def _list_user_tasks_from_postgres_tables(
         self,
@@ -416,12 +424,18 @@ class AnalysisStatusMixin:
             logger.info(
                 f"📋 [Tasks] 准备从内存读取任务: user_id={user_id}, status={status} (mapped to {task_status}), batch_id={batch_id}, limit={limit}, offset={offset}"
             )
-            tasks_in_mem = await self.memory_manager.list_user_tasks(
-                user_id=user_id,
-                status=task_status,
-                limit=limit * 2,  # 多读一些，后面合并去重
-                offset=0,  # 内存中的任务不多，全部读取
-            )
+            warnings: List[str] = []
+            try:
+                tasks_in_mem = await self.memory_manager.list_user_tasks(
+                    user_id=user_id,
+                    status=task_status,
+                    limit=limit * 2,  # 多读一些，后面合并去重
+                    offset=0,  # 内存中的任务不多，全部读取
+                )
+            except Exception as memory_e:
+                logger.error("❌ 内存任务列表读取失败: %s", memory_e, exc_info=True)
+                tasks_in_mem = []
+                warnings.append("memory_task_status_unavailable")
             logger.info(f"📋 [Tasks] 内存返回数量: {len(tasks_in_mem)}")
 
             # 2) 🔧 对于 processing/running 状态，需要合并 PostgreSQL 数据以获取最新进度
@@ -459,7 +473,7 @@ class AnalysisStatusMixin:
                 logger.error(
                     f"❌ PostgreSQL 查询任务列表失败: {postgres_e}", exc_info=True
                 )
-                # PostgreSQL 查询失败，继续使用内存数据
+                warnings.append("postgres_task_status_unavailable")
 
             # 4) 合并内存和 PostgreSQL 数据，去重
             # 🔧 对于 processing/running 状态，优先使用 PostgreSQL 中的进度数据
@@ -513,6 +527,12 @@ class AnalysisStatusMixin:
 
             # 分页
             results = merged_tasks[offset : offset + limit]
+            if not results and warnings:
+                return degraded_task_list_result(
+                    user_id=user_id,
+                    batch_id=batch_id,
+                    warnings=warnings,
+                )
 
             # 🔥 统一处理时区信息（确保所有时间字段都有时区标识）
             timezone = getattr(importlib.import_module("datetime"), "timezone")
@@ -553,7 +573,11 @@ class AnalysisStatusMixin:
             return results
         except Exception as outer_e:
             logger.error(f"❌ list_user_tasks 外层异常: {outer_e}", exc_info=True)
-            return []
+            return degraded_task_list_result(
+                user_id=user_id,
+                batch_id=batch_id,
+                warnings=["task_status_unavailable"],
+            )
 
     async def cleanup_zombie_tasks(self, max_running_hours: int = 2) -> Dict[str, Any]:
         """清理僵尸任务（长时间处于 processing/running 状态的任务）
@@ -573,7 +597,7 @@ class AnalysisStatusMixin:
             # 2) 清理 PostgreSQL 中的僵尸任务
             db = get_postgres_db()
             timedelta = getattr(importlib.import_module("datetime"), "timedelta")
-            cutoff_time = datetime.utcnow() - timedelta(hours=max_running_hours)
+            cutoff_time = self._naive_utc_now() - timedelta(hours=max_running_hours)
 
             # 查找长时间处于 processing 状态的任务
             zombie_filter = {
@@ -591,8 +615,8 @@ class AnalysisStatusMixin:
                     "$set": {
                         "status": "failed",
                         "last_error": f"任务超时（运行时间超过 {max_running_hours} 小时）",
-                        "completed_at": datetime.utcnow(),
-                        "updated_at": datetime.utcnow(),
+                        "completed_at": self._naive_utc_now(),
+                        "updated_at": self._naive_utc_now(),
                     }
                 },
             )
@@ -613,13 +637,7 @@ class AnalysisStatusMixin:
 
         except Exception as e:
             logger.error(f"❌ 清理僵尸任务失败: {e}", exc_info=True)
-            return {
-                "success": False,
-                "error": str(e),
-                "memory_cleaned": 0,
-                "postgres_cleaned": 0,
-                "total_cleaned": 0,
-            }
+            raise RuntimeError("zombie_task_cleanup_unavailable") from e
 
     async def get_zombie_tasks(
         self, max_running_hours: int = 2
@@ -635,7 +653,7 @@ class AnalysisStatusMixin:
         try:
             db = get_postgres_db()
             timedelta = getattr(importlib.import_module("datetime"), "timedelta")
-            cutoff_time = datetime.utcnow() - timedelta(hours=max_running_hours)
+            cutoff_time = self._naive_utc_now() - timedelta(hours=max_running_hours)
 
             # 查找长时间处于 processing 状态的任务
             zombie_filter = {
@@ -668,7 +686,9 @@ class AnalysisStatusMixin:
                 # 计算运行时长
                 start_time = doc.get("started_at") or doc.get("created_at")
                 if start_time:
-                    running_seconds = (datetime.utcnow() - start_time).total_seconds()
+                    running_seconds = (
+                        self._naive_utc_now() - start_time
+                    ).total_seconds()
                     task["running_hours"] = round(running_seconds / 3600, 2)
 
                 zombie_tasks.append(task)
@@ -678,7 +698,7 @@ class AnalysisStatusMixin:
 
         except Exception as e:
             logger.error(f"❌ 查询僵尸任务失败: {e}", exc_info=True)
-            return []
+            raise RuntimeError("zombie_task_status_unavailable") from e
 
     async def _update_task_status(
         self,

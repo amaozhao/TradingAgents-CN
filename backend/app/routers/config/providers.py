@@ -26,7 +26,10 @@ if TYPE_CHECKING:
         require_admin_user,
     )
 
-def _normalize_provider_secret_fields(data: Dict[str, Any], *, preserve_existing_on_blank: bool) -> Dict[str, Any]:
+
+def _normalize_provider_secret_fields(
+    data: Dict[str, Any], *, preserve_existing_on_blank: bool
+) -> Dict[str, Any]:
     """Validate provider secrets without logging or echoing their values."""
     keys_module = importlib.import_module("app.utils.keys")
     is_valid_api_key = getattr(keys_module, "is_valid_api_key")
@@ -64,7 +67,9 @@ def _normalize_provider_secret_fields(data: Dict[str, Any], *, preserve_existing
 
 
 @router.post("/llm/providers", response_model=ConfigApiResponse)
-async def add_llm_provider(request: LLMProviderRequest, current_user: User = Depends(get_current_user)):
+async def add_llm_provider(
+    request: LLMProviderRequest, current_user: User = Depends(get_current_user)
+):
     """添加大模型厂家"""
     require_admin_user(current_user)
     try:
@@ -92,10 +97,12 @@ async def add_llm_provider(request: LLMProviderRequest, current_user: User = Dep
             data={"message": "厂家添加成功", "id": str(provider_id)},
             message="厂家添加成功",
         )
-    except Exception as e:
+    except HTTPException:
+        raise
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"添加厂家失败: {str(e)}",
+            detail="添加厂家失败",
         )
 
 
@@ -132,18 +139,22 @@ async def update_llm_provider(
                 pass
             return ok(data={"message": "厂家更新成功"}, message="厂家更新成功")
         else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="厂家不存在")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="厂家不存在"
+            )
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"更新厂家失败: {str(e)}",
+            detail="更新厂家失败",
         )
 
 
 @router.delete("/llm/providers/{provider_id}", response_model=ConfigApiResponse)
-async def delete_llm_provider(provider_id: str, current_user: User = Depends(get_current_user)):
+async def delete_llm_provider(
+    provider_id: str, current_user: User = Depends(get_current_user)
+):
     """删除大模型厂家"""
     require_admin_user(current_user)
     try:
@@ -164,13 +175,15 @@ async def delete_llm_provider(provider_id: str, current_user: User = Depends(get
                 pass
             return ok(data={"message": "厂家删除成功"}, message="厂家删除成功")
         else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="厂家不存在")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="厂家不存在"
+            )
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"删除厂家失败: {str(e)}",
+            detail="删除厂家失败",
         )
 
 
@@ -204,17 +217,21 @@ async def toggle_llm_provider(
                 message=f"厂家已{'启用' if is_active else '禁用'}",
             )
         else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="厂家不存在")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="厂家不存在"
+            )
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"切换厂家状态失败: {str(e)}",
+            detail="切换厂家状态失败",
         )
 
 
-@router.post("/llm/providers/{provider_id}/fetch-models", response_model=ConfigApiResponse)
+@router.post(
+    "/llm/providers/{provider_id}/fetch-models", response_model=ConfigApiResponse
+)
 async def fetch_provider_models(
     provider_id: str,
     request: FetchProviderModelsRequest | None = None,
@@ -242,12 +259,10 @@ async def fetch_provider_models(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"获取模型列表失败: {e}")
-        traceback = importlib.import_module("traceback")
-        traceback.print_exc()
+        logger.error("获取模型列表失败: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取模型列表失败: {str(e)}",
+            detail="获取模型列表失败",
         )
 
 
@@ -283,10 +298,12 @@ async def migrate_env_to_providers(current_user: User = Depends(get_current_user
             },
             message=result["message"],
         )
-    except Exception as e:
+    except HTTPException:
+        raise
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"环境变量迁移失败: {str(e)}",
+            detail="环境变量迁移失败",
         )
 
 
@@ -324,24 +341,30 @@ async def init_aggregator_providers(current_user: User = Depends(get_current_use
             },
             message=result["message"],
         )
-    except Exception as e:
+    except HTTPException:
+        raise
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"初始化聚合渠道失败: {str(e)}",
+            detail="初始化聚合渠道失败",
         )
 
 
 @router.post("/llm/providers/{provider_id}/test", response_model=ConfigApiResponse)
-async def test_provider_api(provider_id: str, current_user: User = Depends(get_current_user)):
+async def test_provider_api(
+    provider_id: str, current_user: User = Depends(get_current_user)
+):
     """测试厂家API密钥"""
     try:
         logger.info(f"🧪 收到API测试请求 - provider_id: {provider_id}")
         result = await config_service.test_provider_api(provider_id)
         logger.info(f"🧪 API测试结果: {result}")
         return ok(data=result, message=result.get("message", "测试厂家API完成"))
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"测试厂家API失败: {e}")
-        raise HTTPException(status_code=500, detail=f"测试厂家API失败: {str(e)}")
+        logger.error("测试厂家API失败: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="测试厂家API失败")
 
 
 # ========== 大模型配置管理 ==========

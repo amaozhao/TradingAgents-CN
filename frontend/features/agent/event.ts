@@ -5,38 +5,48 @@ import type { AppLanguage } from "@/stores/app-store"
 import { AGENT_TEXT } from "./text"
 import type { AgentMessage, ToolState } from "./types"
 
-export function stockStageId(data: Record<string, unknown>) {
+export type AgentEventData = Readonly<Record<string, unknown>>
+
+function isRecordValue(value: unknown): value is AgentEventData {
+  return value != null && typeof value === "object" && !Array.isArray(value)
+}
+
+function recordValue(value: unknown): AgentEventData {
+  return isRecordValue(value) ? value : {}
+}
+
+function isStockPayload(value: unknown): value is StockPayload {
+  const payload = recordValue(value)
+  return payload.mode === "single" && typeof payload.symbol === "string" && typeof payload.market_type === "string"
+}
+
+function isBatchPayload(value: unknown): value is BatchPayload {
+  const payload = recordValue(value)
+  return typeof payload.title === "string" && Array.isArray(payload.symbols) && payload.symbols.length > 0
+}
+
+export function stockStageId(data: AgentEventData) {
   const toolName = String(data.tool_name || data.tool || "stock_analysis")
   const stage = String(data.stage || "stage")
   return `${toolName}:${stage}`
 }
 
-export function stockStageTitle(data: Record<string, unknown>) {
+export function stockStageTitle(data: AgentEventData) {
   return stringField(data.title) || stringField(data.stage)
 }
 
-export function stockPayloadFromMetadata(metadata?: Record<string, unknown>) {
+export function stockPayloadFromMetadata(metadata?: AgentEventData) {
   if (metadata?.tool_name !== "stock_analysis") return null
-  const value = metadata.tool_arguments
-  if (!value || typeof value !== "object") return null
-  const payload = value as Partial<StockPayload>
-  if (payload.mode !== "single" || !payload.symbol || !payload.market_type) return null
-  return payload as StockPayload
+  return isStockPayload(metadata.tool_arguments) ? metadata.tool_arguments : null
 }
 
-export function batchPayloadFromMetadata(metadata?: Record<string, unknown>) {
+export function batchPayloadFromMetadata(metadata?: AgentEventData) {
   if (metadata?.tool_name !== "batch_stock_analysis") return null
-  const value = metadata.tool_arguments
-  if (!value || typeof value !== "object") return null
-  const payload = value as Partial<BatchPayload>
-  if (!payload.title || !Array.isArray(payload.symbols) || payload.symbols.length === 0) return null
-  return payload as BatchPayload
+  return isBatchPayload(metadata.tool_arguments) ? metadata.tool_arguments : null
 }
 
 export function initialStockWorkflowTools(value: unknown): ToolState[] {
-  if (!value || typeof value !== "object") return []
-  const payload = value as Partial<StockPayload>
-  if (payload.mode !== "single") return []
+  if (!isStockPayload(value)) return []
   return [{
     id: "stock_analysis:validate_input",
     name: "stock_analysis",
@@ -47,9 +57,7 @@ export function initialStockWorkflowTools(value: unknown): ToolState[] {
 }
 
 export function initialBatchWorkflowTools(value: unknown): ToolState[] {
-  if (!value || typeof value !== "object") return []
-  const payload = value as Partial<BatchPayload>
-  if (!Array.isArray(payload.symbols) || payload.symbols.length === 0) return []
+  if (!isBatchPayload(value)) return []
   return [{
     id: "batch_stock_analysis:submit",
     name: "batch_stock_analysis",
@@ -67,12 +75,11 @@ export function toolMessageId(toolName: string) {
   return `tool-${toolName || "tool"}`
 }
 
-export function eventContent(data: Record<string, unknown>) {
+export function eventContent(data: AgentEventData) {
   const direct = data.content || data.text || data.delta || data.summary
   if (direct) return readableContentString(String(direct))
-  const result = data.result
-  if (result && typeof result === "object") {
-    const nested = result as Record<string, unknown>
+  const nested = recordValue(data.result)
+  if (Object.keys(nested).length) {
     const preview = readableParsedToolPreview(String(nested.tool || data.tool_name || data.tool || ""), nested, null)
     if (preview) return preview
     return readableContentString(String(nested.content || nested.text || nested.delta || nested.summary || ""))
@@ -89,7 +96,7 @@ export function humanizeAgentError(raw: string) {
   return message
 }
 
-export function eventFailureContent(data: Record<string, unknown>) {
+export function eventFailureContent(data: AgentEventData) {
   return humanizeAgentError(eventContent(data) || String(data.error || ""))
 }
 
@@ -102,8 +109,7 @@ export function eventToolStatus(event: ParsedResearchStreamEvent): ToolState["st
     if (stageStatus === "running" || stageStatus === "pending") return "running"
     return "ok"
   }
-  const result = event.data.result
-  const resultStatus = result && typeof result === "object" ? (result as Record<string, unknown>).status : ""
+  const resultStatus = recordValue(event.data.result).status
   const status = String(event.data.status || resultStatus || "")
   if (status === "error" || status === "failed") return "error"
   if (status === "queued" || status === "pending" || status === "processing" || status === "running") return "running"
@@ -135,7 +141,7 @@ export function formatEventValue(value: unknown) {
   }
 }
 
-export function previewFromEventData(data: Record<string, unknown>) {
+export function previewFromEventData(data: AgentEventData) {
   const stage = formatEventValue(data.stage)
   const message = formatEventValue(data.message)
   const progress = typeof data.progress === "number" ? `${data.progress}%` : ""
@@ -156,12 +162,11 @@ export function stringField(value: unknown) {
   return value == null || value === "" ? undefined : String(value)
 }
 
-export function resultData(data: Record<string, unknown>) {
-  const result = data.result
-  return result && typeof result === "object" ? result as Record<string, unknown> : {}
+export function resultData(data: AgentEventData) {
+  return recordValue(data.result)
 }
 
-export function stockLinksFromEventData(data: Record<string, unknown>) {
+export function stockLinksFromEventData(data: AgentEventData) {
   const result = resultData(data)
   return {
     taskId: stringField(data.task_id) || stringField(result.task_id) || stringField(result.job_id),
@@ -183,7 +188,7 @@ export function createGoalDraft(raw: string, text: typeof AGENT_TEXT[AppLanguage
   }
 }
 
-export function mergeGoalEvent(current: ResearchGoal | null, eventName: string, data: Record<string, unknown>): ResearchGoal | null {
+export function mergeGoalEvent(current: ResearchGoal | null, eventName: string, data: AgentEventData): ResearchGoal | null {
   if (eventName === "goal.created") {
     return {
       ...(current || {}),
@@ -194,7 +199,7 @@ export function mergeGoalEvent(current: ResearchGoal | null, eventName: string, 
     }
   }
   if (eventName === "goal.updated") {
-    const updates = data.updates && typeof data.updates === "object" ? data.updates as Record<string, unknown> : data
+    const updates = isRecordValue(data.updates) ? data.updates : data
     return {
       ...(current || {}),
       goal_id: textValue(data.goal_id) || current?.goal_id || "current-goal",
@@ -206,7 +211,7 @@ export function mergeGoalEvent(current: ResearchGoal | null, eventName: string, 
     }
   }
   if (eventName === "goal.evidence") {
-    const evidence = data.evidence && typeof data.evidence === "object" ? data.evidence as Record<string, unknown> : data
+    const evidence = isRecordValue(data.evidence) ? data.evidence : data
     return {
       ...(current || {}),
       goal_id: textValue(data.goal_id) || current?.goal_id || "current-goal",
@@ -228,12 +233,10 @@ export function mergeGoalEvent(current: ResearchGoal | null, eventName: string, 
   return current
 }
 
-export function parseJsonPreview(value: string): Record<string, unknown> | null {
+export function parseJsonPreview(value: string): AgentEventData | null {
   try {
     const parsed = JSON.parse(value)
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? parsed as Record<string, unknown>
-      : null
+    return isRecordValue(parsed) ? parsed : null
   } catch {
     return null
   }
@@ -313,7 +316,7 @@ export function skillPreview(content: string, maxLength: number | null = 220) {
   return body ? `${prefix}: ${body}` : prefix
 }
 
-export function bashPreview(result: Record<string, unknown>, maxLength: number | null = 220) {
+export function bashPreview(result: AgentEventData, maxLength: number | null = 220) {
   const exitCode = result.exit_code ?? result.code
   const stdout = compactPreviewText(result.stdout, maxLength)
   const stderr = compactPreviewText(result.stderr || result.error, maxLength)
@@ -327,10 +330,9 @@ export function bashPreview(result: Record<string, unknown>, maxLength: number |
   return prefix
 }
 
-export function evidencePreview(result: Record<string, unknown>, maxLength: number | null = 220) {
-  const evidence = result.evidence
-  if (evidence && typeof evidence === "object") {
-    const record = evidence as Record<string, unknown>
+export function evidencePreview(result: AgentEventData, maxLength: number | null = 220) {
+  const record = recordValue(result.evidence)
+  if (Object.keys(record).length) {
     const text = compactPreviewText(record.summary || record.text || record.content, maxLength)
     if (text) return `证据已写入：${text}`
   }
@@ -339,18 +341,18 @@ export function evidencePreview(result: Record<string, unknown>, maxLength: numb
   return result.status === "ok" ? "证据已写入 goal ledger" : compactPreviewText(result.error || result, maxLength)
 }
 
-export function goalStatusPreview(result: Record<string, unknown>, maxLength: number | null = 220) {
+export function goalStatusPreview(result: AgentEventData, maxLength: number | null = 220) {
   const directStatus = compactPreviewText(result.status, maxLength)
   const directTitle = compactPreviewText(result.title || result.objective, maxLength)
   if (directStatus && directTitle) return `目标状态已更新为 ${directStatus}：${directTitle}`
   if (directStatus) return `目标状态已更新为 ${directStatus}`
 
-  const snapshot = result.snapshot
-  if (snapshot && typeof snapshot === "object") {
-    const goal = (snapshot as Record<string, unknown>).goal
-    if (goal && typeof goal === "object") {
-      const status = compactPreviewText((goal as Record<string, unknown>).status, maxLength)
-      const objective = compactPreviewText((goal as Record<string, unknown>).objective, maxLength)
+  const snapshot = recordValue(result.snapshot)
+  if (Object.keys(snapshot).length) {
+    const goal = recordValue(snapshot.goal)
+    if (Object.keys(goal).length) {
+      const status = compactPreviewText(goal.status, maxLength)
+      const objective = compactPreviewText(goal.objective, maxLength)
       if (status && objective) return `目标状态已更新为 ${status}：${objective}`
       if (status) return `目标状态已更新为 ${status}`
     }
@@ -358,7 +360,7 @@ export function goalStatusPreview(result: Record<string, unknown>, maxLength: nu
   return result.status === "ok" ? "目标状态已更新" : compactPreviewText(result.error || result, maxLength)
 }
 
-export function configRequiredPreview(toolName: string, result: Record<string, unknown>, maxLength: number | null = 220) {
+export function configRequiredPreview(toolName: string, result: AgentEventData, maxLength: number | null = 220) {
   const instruction = compactPreviewText(result.instruction, maxLength)
   if (instruction) return `需要补充数据：${instruction}`
 
@@ -380,7 +382,7 @@ export function configRequiredPreview(toolName: string, result: Record<string, u
   return `需要补充数据：${reason || "缺少该工具必需的用户数据或配置，请先补充后再运行。"}`
 }
 
-export function stockAnalysisPreview(toolName: string, result: Record<string, unknown>, maxLength: number | null = 220) {
+export function stockAnalysisPreview(toolName: string, result: AgentEventData, maxLength: number | null = 220) {
   const taskId = compactPreviewText(result.task_id, maxLength)
   if (toolName === "single_stock_analysis") {
     const symbol = compactPreviewText(result.symbol || result.stock_code, maxLength)
@@ -405,7 +407,7 @@ export function stockAnalysisPreview(toolName: string, result: Record<string, un
   return ""
 }
 
-export function batchAnalysisPreview(result: Record<string, unknown>, maxLength: number | null = 220) {
+export function batchAnalysisPreview(result: AgentEventData, maxLength: number | null = 220) {
   const message = compactPreviewText(result.message, null)
   const summary = compactPreviewText(result.summary, null)
   const status = compactPreviewText(result.status, maxLength)
@@ -422,7 +424,7 @@ export function batchAnalysisPreview(result: Record<string, unknown>, maxLength:
     parts.push(status ? `批量分析状态：${status}` : "批量分析任务已更新。")
   }
 
-  const links = result.links && typeof result.links === "object" ? result.links as Record<string, unknown> : null
+  const links = recordValue(result.links)
   const batchLink = compactPreviewText(links?.batch, null)
   const batchId = compactPreviewText(result.batch_id, null)
   if (batchLink) {
@@ -434,7 +436,7 @@ export function batchAnalysisPreview(result: Record<string, unknown>, maxLength:
   return compactPreviewText(parts.join("\n"), maxLength)
 }
 
-export function readableParsedToolPreview(toolName: string, parsed: Record<string, unknown>, maxLength: number | null = 220) {
+export function readableParsedToolPreview(toolName: string, parsed: AgentEventData, maxLength: number | null = 220) {
   const resolvedToolName = toolName || String(parsed.tool || "")
   if (resolvedToolName === "load_skill") {
     return skillPreview(formatEventValue(parsed.content || parsed.text || parsed.preview), maxLength)
@@ -456,11 +458,9 @@ export function readableParsedToolPreview(toolName: string, parsed: Record<strin
   }
   if (parsed.status === "config_required") return configRequiredPreview(resolvedToolName, parsed, maxLength)
   if (parsed.status === "degraded") {
-    const history = parsed.history && typeof parsed.history === "object"
-      ? parsed.history as Record<string, unknown>
-      : null
+    const history = recordValue(parsed.history)
     const reason = compactPreviewText(
-      parsed.error || parsed.message || parsed.reason || history?.reason || parsed.error_type,
+      parsed.error || parsed.message || parsed.reason || history.reason || parsed.error_type,
       maxLength
     )
     return reason ? `数据受限：${reason}` : "数据或外部服务受限，Agent 已使用可用证据继续。"
@@ -474,8 +474,8 @@ export function readableParsedToolPreview(toolName: string, parsed: Record<strin
 
 export function readableResultValuePreview(toolName: string, value: unknown, maxLength: number | null = 220) {
   if (!value) return ""
-  if (typeof value === "object" && !Array.isArray(value)) {
-    return readableParsedToolPreview(toolName, value as Record<string, unknown>, maxLength)
+  if (isRecordValue(value)) {
+    return readableParsedToolPreview(toolName, value, maxLength)
   }
   if (typeof value !== "string") return ""
   const trimmed = value.trim()

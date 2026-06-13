@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import logging
-import re
 import time
 import uuid
-from asyncio import get_running_loop, run_coroutine_threadsafe, to_thread
-from concurrent.futures import TimeoutError as FutureTimeoutError
+from asyncio import to_thread
 from datetime import datetime
 from typing import Any
 
 from app.core.database import get_postgres_db, get_postgres_db_sync
 from app.schemas.analysis import AnalysisParameters
-from app.schemas.config import UsageRecord
 from app.services.analysis.simple import (
     create_analysis_config,
     get_provider_and_url_by_model_sync,
@@ -19,7 +16,17 @@ from app.services.analysis.simple import (
 )
 from app.services.usage import usage_statistics_service
 
+from .command import (
+    StockAnalysisCommand,
+    analysis_parameters,
+    normalize_analysts,
+    normalize_depth,
+    normalize_requested_market,
+    normalize_stock_symbol_for_analysis,
+    stock_symbol_format_error,
+)
 from .context import ToolExecutionContext
+from .emitter import StockWorkflowEventAdapter, stock_stage_progress
 from .flow import StockDagParityWorkflow
 from .flow.events import build_stock_workflow_stage_events
 from .flow.graph import build_stock_dag_parity_plan
@@ -27,59 +34,7 @@ from .flow.stages.reports import (
     build_stock_workflow_report,
     persist_stock_workflow_report,
 )
-from .stage import planned_stock_stages, stock_stage_title
-
-
-_ANALYST_NAME_TO_ID = {
-    "市场分析师": "market",
-    "基本面分析师": "fundamentals",
-    "新闻分析师": "news",
-    "社媒分析师": "social",
-    "社交媒体分析师": "social",
-}
-
-_DEPTH_TO_LABEL = {
-    1: "快速",
-    2: "基础",
-    3: "标准",
-    4: "深度",
-    5: "全面",
-    "1": "快速",
-    "2": "基础",
-    "3": "标准",
-    "4": "深度",
-    "5": "全面",
-    "快速": "快速",
-    "基础": "基础",
-    "标准": "标准",
-    "深度": "深度",
-    "全面": "全面",
-}
-
-_NODE_STAGE = {
-    "Market Analyst": "market_analysis",
-    "tools_market": "market_analysis",
-    "Msg Clear Market": "market_analysis",
-    "Sentiment Analyst": "sentiment_analysis",
-    "tools_social": "sentiment_analysis",
-    "Msg Clear Social": "sentiment_analysis",
-    "News Analyst": "news_analysis",
-    "tools_news": "news_analysis",
-    "Msg Clear News": "news_analysis",
-    "Fundamentals Analyst": "fundamentals_analysis",
-    "tools_fundamentals": "fundamentals_analysis",
-    "Msg Clear Fundamentals": "fundamentals_analysis",
-    "Bull Researcher": "research_debate",
-    "Bear Researcher": "research_debate",
-    "Research Manager": "research_manager",
-    "Trader": "trader_decision",
-    "Risky Analyst": "risk_debate",
-    "Safe Analyst": "risk_debate",
-    "Neutral Analyst": "risk_debate",
-    "Risk Judge": "final_risk_decision",
-    "Portfolio Manager": "final_risk_decision",
-    "END": "agent_summary",
-}
+from .usage import StockUsageRecorder
 
 logger = logging.getLogger("app.services.research.agent.stock")
 
@@ -99,8 +54,12 @@ def _clean_model_name(raw: Any) -> str | None:
 
 
 def _load_active_system_config_doc() -> dict[str, Any] | None:
-    db = get_postgres_db_sync()
-    doc = db.system_configs.find_one({"is_active": True}, sort=[("version", -1)])
+    try:
+        db = get_postgres_db_sync()
+        doc = db.system_configs.find_one({"is_active": True}, sort=[("version", -1)])
+    except Exception as exc:
+        logger.warning("Agent stock model config lookup failed: %s", exc)
+        return None
     return doc if isinstance(doc, dict) else None
 
 
@@ -179,68 +138,19 @@ def _dedupe_model_names(names: list[str | None]) -> list[str]:
 
 
 def _normalize_requested_market(raw: Any) -> str | None:
-    value = str(raw or "").strip().upper()
-    if not value:
-        return None
-    if raw == "港股" or value in {"HK", "HKEX", "HKG"}:
-        return "港股"
-    if raw == "美股" or value in {"US", "USA", "NASDAQ", "NYSE", "AMEX"}:
-        return "美股"
-    if raw == "A股" or value in {"A", "ASHARE", "A-SHARE", "CN", "CHINA"}:
-        return "A股"
-    return None
+    return normalize_requested_market(raw)
 
 
 def _normalize_stock_symbol_for_analysis(
     raw: Any, market_type: str | None
 ) -> tuple[str, str]:
-    symbol = str(raw or "").strip().upper()
-    if not symbol:
-        return "", _normalize_requested_market(market_type) or "A股"
-
-    requested_market = _normalize_requested_market(market_type)
-
-    a_share_prefix_match = re.match(r"^(SH|SZ|BJ|SSE|SZSE|BSE)(\d{6})$", symbol)
-    if a_share_prefix_match:
-        return a_share_prefix_match.group(2), "A股"
-    a_share_suffix_match = re.match(r"^(\d{6})\.(SH|SZ|BJ|SSE|SZSE|BSE)$", symbol)
-    if a_share_suffix_match:
-        return a_share_suffix_match.group(1), "A股"
-    if re.match(r"^\d{6}$", symbol):
-        return symbol, requested_market or "A股"
-
-    hk_prefix_match = re.match(r"^HK(\d{1,5})$", symbol)
-    if hk_prefix_match:
-        return hk_prefix_match.group(1), "港股"
-    hk_suffix_match = re.match(r"^(\d{1,5})\.HK$", symbol)
-    if hk_suffix_match:
-        return hk_suffix_match.group(1), "港股"
-    if re.match(r"^\d{1,5}$", symbol):
-        return symbol, requested_market or "港股"
-
-    us_suffix_match = re.match(r"^([A-Z]{1,5})\.(US|NASDAQ|NYSE|AMEX)$", symbol)
-    if us_suffix_match:
-        return us_suffix_match.group(1), "美股"
-    if re.match(r"^[A-Z]{1,5}$", symbol):
-        return symbol, requested_market or "美股"
-
-    return symbol, requested_market or "A股"
+    return normalize_stock_symbol_for_analysis(raw, market_type)
 
 
 def _stock_symbol_format_error(
     raw_symbol: Any, symbol: str, market_type: str
 ) -> str | None:
-    if market_type == "A股" and not re.match(r"^\d{6}$", symbol):
-        return f"A股代码格式错误：{raw_symbol}。Agent 已支持 600519、600519.SH、SH600519 格式。"
-    if market_type == "港股" and not re.match(r"^\d{1,5}$", symbol):
-        return (
-            f"港股代码格式错误：{raw_symbol}。Agent 已支持 700、0700.HK、HK09988 格式。"
-        )
-    if market_type == "美股" and not re.match(r"^[A-Z]{1,5}$", symbol):
-        return (
-            f"美股代码格式错误：{raw_symbol}。Agent 已支持 AAPL、TSLA、AAPL.US 格式。"
-        )
-    return None
+    return stock_symbol_format_error(raw_symbol, symbol, market_type)
 
 
 def _configured_model_for_role(
@@ -289,14 +199,16 @@ def _resolve_analysis_models(payload: dict[str, Any]) -> tuple[str | None, str |
         doc=doc,
         role="quick_analysis",
         configured_default=_clean_model_name(settings.get("quick_analysis_model"))
-        or default_model,
+        or default_model
+        or "qwen-turbo",
         provider_cache=provider_cache,
     )
     deep_model = explicit_deep_model or _configured_model_for_role(
         doc=doc,
         role="deep_analysis",
         configured_default=_clean_model_name(settings.get("deep_analysis_model"))
-        or default_model,
+        or default_model
+        or "qwen-max",
         provider_cache=provider_cache,
     )
     return quick_model, deep_model
@@ -305,73 +217,17 @@ def _resolve_analysis_models(payload: dict[str, Any]) -> tuple[str | None, str |
 def _normalize_analysts(
     raw: Any, *, market_type: str
 ) -> tuple[list[str], list[dict[str, str]]]:
-    if not raw:
-        return ["market", "fundamentals"], []
-    values = raw if isinstance(raw, list) else [raw]
-    analysts: list[str] = []
-    skipped: list[dict[str, str]] = []
-    for value in values:
-        key = str(value).strip()
-        normalized = _ANALYST_NAME_TO_ID.get(key, key)
-        if normalized == "social" and market_type == "A股":
-            skipped.append(
-                {
-                    "stage": "social_analysis",
-                    "reason": "A 股默认禁用社媒分析。",
-                }
-            )
-            continue
-        if normalized in {"market", "fundamentals", "news", "social"}:
-            analysts.append(normalized)
-    return analysts or ["market", "fundamentals"], skipped
+    return normalize_analysts(raw, market_type=market_type)
 
 
 def _normalize_depth(raw: Any) -> str:
-    if raw is None:
-        return "标准"
-    return _DEPTH_TO_LABEL.get(raw, _DEPTH_TO_LABEL.get(str(raw).strip(), "标准"))
+    return normalize_depth(raw)
 
 
 def _analysis_parameters(
     payload: dict[str, Any],
 ) -> tuple[AnalysisParameters, list[dict[str, str]], list[dict[str, str]]]:
-    quick_model, deep_model = _resolve_analysis_models(payload)
-    market_type = str(payload.get("market_type") or "A股")
-    analysts, skipped_stages = _normalize_analysts(
-        payload.get("selected_analysts") or payload.get("analysts"),
-        market_type=market_type,
-    )
-    include_risk = bool(payload.get("include_risk", True))
-    stage_plan = planned_stock_stages(
-        selected_analysts=analysts,
-        include_risk=include_risk,
-        initial_skipped=skipped_stages,
-    )
-    skipped_stages = [
-        {"stage": item["stage"], "reason": item["reason"]}
-        for item in stage_plan
-        if item.get("status") == "skipped" and item.get("reason")
-    ]
-    return (
-        AnalysisParameters.model_validate(
-            {
-                "market_type": market_type,
-                "analysis_date": payload.get("analysis_date"),
-                "research_depth": _normalize_depth(
-                    payload.get("research_depth") or payload.get("depth")
-                ),
-                "selected_analysts": analysts,
-                "custom_prompt": payload.get("custom_prompt"),
-                "include_sentiment": bool(payload.get("include_sentiment", True)),
-                "include_risk": include_risk,
-                "language": payload.get("language") or "zh-CN",
-                "quick_analysis_model": quick_model,
-                "deep_analysis_model": deep_model,
-            }
-        ),
-        skipped_stages,
-        stage_plan,
-    )
+    return analysis_parameters(payload, resolve_models=_resolve_analysis_models)
 
 
 def _missing_model_keys(parameters: AnalysisParameters) -> list[str]:
@@ -686,22 +542,15 @@ async def _emit_stock_workflow_stage(
     message: str,
     batch_id: str | None = None,
 ) -> None:
-    if context.event_emitter is None:
-        return
-    event = {
-        "tool_name": "stock_analysis",
-        "mode": "single",
-        "stage": stage,
-        "title": stock_stage_title(stage),
-        "status": status,
-        "progress": progress,
-        "message": message,
-        "task_id": task_id,
-        "attempt_id": context.request_id,
-    }
-    if batch_id:
-        event["batch_id"] = batch_id
-    await context.event_emitter(event)
+    await StockWorkflowEventAdapter.emit_stage(
+        context=context,
+        task_id=task_id,
+        stage=stage,
+        status=status,
+        progress=progress,
+        message=message,
+        batch_id=batch_id,
+    )
 
 
 def _stock_workflow_node_emitter(
@@ -710,59 +559,15 @@ def _stock_workflow_node_emitter(
     task_id: str,
     batch_id: str | None = None,
 ):
-    event_emitter = context.event_emitter
-    if event_emitter is None:
-        return None
-    loop = get_running_loop()
-
-    def emit(node: str, previous: str | None) -> None:
-        stage = _NODE_STAGE.get(node, "agent_summary")
-        event = {
-            "tool_name": "stock_analysis",
-            "mode": "single",
-            "stage": stage,
-            "title": stock_stage_title(stage),
-            "status": "completed",
-            "progress": _stock_stage_progress(stage),
-            "message": f"{stock_stage_title(stage)}已完成。",
-            "task_id": task_id,
-            "attempt_id": context.request_id,
-            "node": node,
-            "edge_from": previous,
-            "edge_to": node,
-        }
-        if batch_id:
-            event["batch_id"] = batch_id
-        try:
-            future = run_coroutine_threadsafe(event_emitter(event), loop)
-            future.result(timeout=5)
-        except FutureTimeoutError:
-            logger.warning("Timed out emitting stock workflow stage event: %s", node)
-        except Exception as exc:
-            logger.warning(
-                "Failed to emit stock workflow stage event %s: %s", node, exc
-            )
-
-    return emit
+    return StockWorkflowEventAdapter.node_emitter(
+        context=context,
+        task_id=task_id,
+        batch_id=batch_id,
+    )
 
 
 def _stock_stage_progress(stage: str) -> int:
-    progress_by_stage = {
-        "validate_input": 8,
-        "prepare_state": 12,
-        "market_analysis": 30,
-        "sentiment_analysis": 45,
-        "news_analysis": 55,
-        "fundamentals_analysis": 65,
-        "research_debate": 75,
-        "research_manager": 82,
-        "trader_decision": 88,
-        "risk_debate": 94,
-        "final_risk_decision": 97,
-        "report_generation": 99,
-        "agent_summary": 100,
-    }
-    return progress_by_stage.get(stage, 0)
+    return stock_stage_progress(stage)
 
 
 async def _record_stock_workflow_usage(
@@ -772,82 +577,17 @@ async def _record_stock_workflow_usage(
     parameters: AnalysisParameters,
     report: dict[str, Any],
 ) -> None:
-    model_name = parameters.deep_analysis_model or parameters.quick_analysis_model
-    if not model_name:
-        return
-
-    provider_info = _provider_info_for_model(model_name, {})
-    provider = str(provider_info.get("provider") or "unknown")
-    input_tokens, output_tokens = _usage_token_counts(report)
-    pricing = _usage_pricing_for_model(model_name)
-    cost = (
-        input_tokens / 1000 * pricing["input_price_per_1k"]
-        + output_tokens / 1000 * pricing["output_price_per_1k"]
+    await StockUsageRecorder(
+        provider_info_for_model=_provider_info_for_model,
+        load_config_doc=_load_active_system_config_doc,
+        enabled_llm_configs=_enabled_llm_configs,
+        usage_service=usage_statistics_service,
+    ).record(
+        task_id=task_id,
+        symbol=symbol,
+        parameters=parameters,
+        report=report,
     )
-    record = UsageRecord(
-        timestamp=datetime.now().isoformat(),
-        provider=provider,
-        model_name=model_name,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cost=cost,
-        currency=pricing["currency"],
-        session_id=task_id,
-        analysis_type="agent_stock_analysis",
-        stock_code=symbol,
-    )
-    try:
-        await usage_statistics_service.add_usage_record(record)
-    except Exception as exc:
-        logger.warning("Agent stock workflow token usage recording failed: %s", exc)
-
-
-def _usage_token_counts(report: dict[str, Any]) -> tuple[int, int]:
-    raw_tokens = report.get("tokens_used")
-    try:
-        total_tokens = int(raw_tokens or 0)
-    except (TypeError, ValueError):
-        total_tokens = 0
-    if total_tokens > 0:
-        input_tokens = max(total_tokens // 2, 1)
-        return input_tokens, max(total_tokens - input_tokens, 1)
-
-    text_parts: list[str] = [
-        str(report.get("summary") or ""),
-        str(report.get("recommendation") or ""),
-    ]
-    decision = report.get("decision")
-    if isinstance(decision, dict):
-        text_parts.append(str(decision.get("reasoning") or ""))
-    reports = report.get("reports")
-    if isinstance(reports, dict):
-        text_parts.extend(str(value) for value in reports.values())
-    output_tokens = max(sum(len(part) for part in text_parts) // 4, 1)
-    return max(output_tokens * 2, 1), output_tokens
-
-
-def _usage_pricing_for_model(model_name: str) -> dict[str, Any]:
-    config_doc = _load_active_system_config_doc()
-    for config in _enabled_llm_configs(config_doc):
-        if str(config.get("model_name") or "") != model_name:
-            continue
-        return {
-            "input_price_per_1k": _usage_float(config.get("input_price_per_1k")),
-            "output_price_per_1k": _usage_float(config.get("output_price_per_1k")),
-            "currency": str(config.get("currency") or "CNY"),
-        }
-    return {
-        "input_price_per_1k": 0.0,
-        "output_price_per_1k": 0.0,
-        "currency": "CNY",
-    }
-
-
-def _usage_float(value: Any) -> float:
-    try:
-        return float(value or 0.0)
-    except (TypeError, ValueError):
-        return 0.0
 
 
 def _analysis_trade_date(parameters: AnalysisParameters) -> str:
@@ -888,13 +628,11 @@ class StockAnalysisWorkflow:
                 "reason": "stock_analysis currently supports only mode=single.",
                 "instruction": "请使用 mode=single 提交个股分析。",
             }
-        raw_symbol = payload.get("symbol") or payload.get("stock_code")
-        symbol, market_type = _normalize_stock_symbol_for_analysis(
-            raw_symbol, payload.get("market_type")
+        command = StockAnalysisCommand.from_payload(
+            payload,
+            resolve_models=_resolve_analysis_models,
         )
-        parameter_payload = {**payload, "market_type": market_type}
-        parameters, skipped_stages, stage_plan = _analysis_parameters(parameter_payload)
-        if not symbol:
+        if not command.symbol:
             return {
                 "tool": self.tool_name,
                 "status": "config_required",
@@ -905,9 +643,7 @@ class StockAnalysisWorkflow:
                     "请提供要分析的股票代码，例如 600519、000001、AAPL 或 00700。"
                 ),
             }
-        format_error = _stock_symbol_format_error(
-            raw_symbol, symbol, parameters.market_type
-        )
+        format_error = command.symbol_format_error()
         if format_error:
             return {
                 "tool": self.tool_name,
@@ -916,7 +652,7 @@ class StockAnalysisWorkflow:
                 "reason": format_error,
                 "instruction": "请提供可识别的 A 股、港股或美股代码。",
             }
-        missing_keys = _missing_model_keys(parameters)
+        missing_keys = _missing_model_keys(command.parameters)
         if missing_keys:
             return {
                 "tool": self.tool_name,
@@ -931,9 +667,9 @@ class StockAnalysisWorkflow:
         return await run_agent_stock_workflow(
             context,
             tool_name=self.tool_name,
-            symbol=symbol,
-            market_type=parameters.market_type,
-            parameters=parameters,
-            skipped_stages=skipped_stages,
-            stage_plan=stage_plan,
+            symbol=command.symbol,
+            market_type=command.parameters.market_type,
+            parameters=command.parameters,
+            skipped_stages=command.skipped_stages,
+            stage_plan=command.stage_plan,
         )

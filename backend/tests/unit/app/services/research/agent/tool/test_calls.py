@@ -334,6 +334,11 @@ def deterministic_external_boundaries(monkeypatch):
     monkeypatch.setattr(
         stock_module, "get_simple_analysis_service", lambda: FakeAnalysisService()
     )
+    monkeypatch.setattr(
+        stock_module,
+        "_resolve_analysis_models",
+        lambda _payload: ("qwen-turbo", "qwen-max"),
+    )
     monkeypatch.setattr(stock_module, "run_agent_stock_workflow", fake_agent_workflow)
     monkeypatch.setattr(
         stock_module,

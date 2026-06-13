@@ -153,7 +153,17 @@ Avoid mocks that:
 
 Run the narrowest useful command first. Broaden when a change touches shared behavior, public contracts, test infrastructure, or framework configuration.
 
-Backend common commands:
+The commands below are common gates, not a requirement to format or test unrelated files on every small change. Prefer scoped commands for touched files when the tool supports them; run the full gate when the change affects shared behavior or when scoped verification is not meaningful.
+
+Backend scoped examples:
+
+```bash
+cd backend && ruff format path/to/file.py
+cd backend && ruff check path/to/file.py
+cd backend && pytest path/to/test_file.py
+```
+
+Backend full gate:
 
 ```bash
 cd backend && ruff format .
@@ -162,20 +172,20 @@ cd backend && pyright
 cd backend && pytest
 ```
 
-Frontend common commands:
+Frontend scoped examples:
+
+```bash
+cd frontend && pnpm vitest run path/to/test_file.test.tsx
+cd frontend && pnpm exec eslint path/to/file.tsx
+```
+
+Frontend full gate:
 
 ```bash
 cd frontend && pnpm lint
 cd frontend && pnpm type-check
 cd frontend && pnpm test
 cd frontend && pnpm build
-```
-
-Targeted examples:
-
-```bash
-cd backend && pytest path/to/test_file.py
-cd frontend && pnpm vitest run path/to/test_file.test.tsx
 ```
 
 ## Review Checklist

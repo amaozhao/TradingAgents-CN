@@ -1,7 +1,10 @@
 from ..common import Optional, importlib, logger
+from app.services.research.agent.provider.resolver import ProviderCatalog
 
 
 class ProviderApiTestMixin:
+    _provider_catalog = ProviderCatalog()
+
     async def test_provider_api(self, provider_id: str) -> dict:
         """测试厂家API密钥"""
         try:
@@ -37,7 +40,9 @@ class ProviderApiTestMixin:
             # 🔥 判断数据库中的 API Key 是否有效
             if not self._is_valid_api_key(api_key):
                 # 数据库中的 Key 无效，尝试从环境变量读取
-                env_api_key = self._get_env_api_key(provider_name)
+                env_api_key = self._provider_catalog.provider_env_key(
+                    provider_name
+                ) or self._get_env_api_key(provider_name)
                 if env_api_key:
                     api_key = env_api_key
                     print(
@@ -62,6 +67,16 @@ class ProviderApiTestMixin:
             print(f"测试厂家API失败: {e}")
             return {"success": False, "message": f"测试失败: {str(e)}"}
 
+    async def _provider_base_url(self, provider_name: str) -> str:
+        db = await self._get_db()
+        providers_collection = db.llm_providers
+        provider_data = await providers_collection.find_one({"name": provider_name})
+        configured = str((provider_data or {}).get("default_base_url") or "")
+        try:
+            return self._provider_catalog.provider_base_url(provider_name, configured)
+        except Exception:
+            return configured
+
     async def _test_provider_connection(
         self, provider_name: str, api_key: str, display_name: str
     ) -> dict:
@@ -77,15 +92,7 @@ class ProviderApiTestMixin:
                 "newapi",
                 "custom_aggregator",
             ]:
-                # 获取厂家的 base_url
-                db = await self._get_db()
-                providers_collection = db.llm_providers
-                provider_data = await providers_collection.find_one(
-                    {"name": provider_name}
-                )
-                base_url = (
-                    provider_data.get("default_base_url") if provider_data else None
-                )
+                base_url = await self._provider_base_url(provider_name)
                 return await asyncio.get_event_loop().run_in_executor(
                     None,
                     lambda: self._test_openai_compatible_api(
@@ -93,15 +100,7 @@ class ProviderApiTestMixin:
                     ),
                 )
             elif provider_name == "google":
-                # 获取厂家的 base_url
-                db = await self._get_db()
-                providers_collection = db.llm_providers
-                provider_data = await providers_collection.find_one(
-                    {"name": provider_name}
-                )
-                base_url = (
-                    provider_data.get("default_base_url") if provider_data else None
-                )
+                base_url = await self._provider_base_url(provider_name)
                 return await asyncio.get_event_loop().run_in_executor(
                     None,
                     lambda: self._test_google_api(api_key, display_name, base_url),
@@ -125,16 +124,7 @@ class ProviderApiTestMixin:
             elif provider_name in {"anthropic", "minimax-token-plan"}:
                 base_url = None
                 if provider_name == "minimax-token-plan":
-                    db = await self._get_db()
-                    providers_collection = db.llm_providers
-                    provider_data = await providers_collection.find_one(
-                        {"name": provider_name}
-                    )
-                    base_url = (
-                        provider_data.get("default_base_url")
-                        if provider_data
-                        else "https://api.minimaxi.com/anthropic"
-                    )
+                    base_url = await self._provider_base_url(provider_name)
                 return await asyncio.get_event_loop().run_in_executor(
                     None, self._test_anthropic_api, api_key, display_name, base_url
                 )
@@ -145,15 +135,7 @@ class ProviderApiTestMixin:
             else:
                 # 🔧 对于未知的自定义厂家，使用 OpenAI 兼容 API 测试
                 logger.info(f"🔍 使用 OpenAI 兼容 API 测试自定义厂家: {provider_name}")
-                # 获取厂家的 base_url
-                db = await self._get_db()
-                providers_collection = db.llm_providers
-                provider_data = await providers_collection.find_one(
-                    {"name": provider_name}
-                )
-                base_url = (
-                    provider_data.get("default_base_url") if provider_data else None
-                )
+                base_url = await self._provider_base_url(provider_name)
 
                 if not base_url:
                     return {

@@ -741,6 +741,56 @@ describe("ResearchAgentPage", () => {
     expect(screen.queryByText("智能体正在工作...")).not.toBeInTheDocument()
   })
 
+  it("stops the active stream before loading another persisted session", async () => {
+    const stopSessionOne = vi.fn()
+    vi.mocked(researchAgentApi.listMessages).mockImplementation(async (sessionId) => ({
+      success: true,
+      data: sessionId === "session-2"
+        ? [{ message_id: "session-2-user", role: "user", content: "白酒研究内容", metadata: {} }]
+        : [],
+      message: "ok"
+    }))
+    vi.mocked(researchAgentApi.listEvents).mockImplementation(async (sessionId) => ({
+      success: true,
+      data: sessionId === "session-2"
+        ? [{ event_id: 1, event_type: "tool_completed", payload: { tool_name: "alpha_bench", preview: "Coverage ok" } }]
+        : [],
+      message: "ok"
+    }))
+    vi.mocked(researchAgentApi.listAttempts).mockImplementation(async (sessionId) => ({
+      success: true,
+      data: sessionId === "session-1"
+        ? [{
+            attempt_id: "attempt-running",
+            session_id: "session-1",
+            status: "running",
+            created_at: "2026-06-09T12:00:00Z",
+            started_at: "2026-06-09T12:00:01Z"
+          }]
+        : [],
+      message: "ok"
+    }))
+    vi.mocked(researchAgentApi.subscribeEvents).mockImplementation((sessionId) => (
+      sessionId === "session-1" ? stopSessionOne : vi.fn()
+    ))
+
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    await openSession("储能验证")
+    await waitFor(() => expect(researchAgentApi.subscribeEvents).toHaveBeenCalledWith(
+      "session-1",
+      expect.any(Object),
+      ""
+    ))
+
+    await user.click(await screen.findByText("白酒研究"))
+
+    expect(stopSessionOne).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText("白酒研究内容")).toBeInTheDocument()
+    expect(await screen.findByText("Alpha 覆盖检查")).toBeInTheDocument()
+  })
+
   it("restores the running indicator when opening a persisted running session", async () => {
     vi.mocked(researchAgentApi.listMessages).mockResolvedValue({
       success: true,
@@ -780,6 +830,7 @@ describe("ResearchAgentPage", () => {
 
   it("renders a restored running session's completed assistant reply", async () => {
     let streamHandlers: Parameters<typeof researchAgentApi.subscribeEvents>[1] | undefined
+    const clearIntervalSpy = vi.spyOn(window, "clearInterval")
     let messageCallCount = 0
     vi.mocked(researchAgentApi.listMessages).mockImplementation(async () => {
       messageCallCount += 1
@@ -836,6 +887,7 @@ describe("ResearchAgentPage", () => {
 
     expect(await screen.findByRole("heading", { name: "分析完成" })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText("就绪")).toBeInTheDocument())
+    expect(clearIntervalSpy).toHaveBeenCalled()
   })
 
   it("shows a loading state while switching sessions and ignores stale responses", async () => {

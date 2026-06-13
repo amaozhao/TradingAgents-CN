@@ -379,6 +379,27 @@ describe("ResearchAgentPage stock analysis", () => {
     expect(researchAgentApi.appendMessage).not.toHaveBeenCalled()
   })
 
+  it("keeps single-stock and batch configuration cards mutually exclusive", async () => {
+    const user = userEvent.setup()
+    render(<ResearchAgentPage />)
+
+    await user.click(await screen.findByRole("button", { name: "更多选项" }))
+    await user.click(screen.getByRole("button", { name: /个股分析/ }))
+    expect(await screen.findByLabelText("个股分析配置")).toBeInTheDocument()
+    expect(screen.queryByLabelText("批量分析配置")).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "更多选项" }))
+    await user.click(screen.getByRole("button", { name: "批量分析" }))
+    expect(await screen.findByLabelText("批量分析配置")).toBeInTheDocument()
+    expect(screen.queryByLabelText("个股分析配置")).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "更多选项" }))
+    await user.click(screen.getByRole("button", { name: /个股分析/ }))
+    expect(await screen.findByLabelText("个股分析配置")).toBeInTheDocument()
+    expect(screen.queryByLabelText("批量分析配置")).not.toBeInTheDocument()
+    expect(researchAgentApi.appendMessage).not.toHaveBeenCalled()
+  })
+
   it("saves single-stock summary to the composer without calling the tool", async () => {
     const user = userEvent.setup()
     render(<ResearchAgentPage />)

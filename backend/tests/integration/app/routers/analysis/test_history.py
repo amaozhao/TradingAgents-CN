@@ -122,3 +122,32 @@ async def test_list_user_tasks_filters_batch_id_after_owner_scoped_lookup(monkey
 
     assert [task["task_id"] for task in tasks] == ["task-1"]
     assert tasks[0]["batch_id"] == "batch-1"
+
+
+@pytest.mark.asyncio
+async def test_list_user_tasks_dependency_failure_is_not_silent_empty_success(
+    monkeypatch,
+):
+    class FailingMemoryManager:
+        async def list_user_tasks(self, **_kwargs):
+            raise RuntimeError("memory unavailable")
+
+    service = SimpleAnalysisService.__new__(SimpleAnalysisService)
+    service.memory_manager = FailingMemoryManager()
+    service._enrich_stock_names = lambda tasks: tasks
+
+    async def postgres_table_tasks(**_kwargs):
+        raise RuntimeError("postgres unavailable")
+
+    monkeypatch.setattr(
+        service, "_list_user_tasks_from_postgres_tables", postgres_table_tasks
+    )
+
+    tasks = await service.list_user_tasks("user-1", limit=20, offset=0)
+
+    assert tasks != []
+    assert tasks[0]["degraded"] is True
+    assert tasks[0]["warnings"] == [
+        "memory_task_status_unavailable",
+        "postgres_task_status_unavailable",
+    ]

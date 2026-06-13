@@ -18,7 +18,12 @@ if TYPE_CHECKING:
         router,
         timezone,
     )
-    from .setup import AnalysisLooseObjectResponse, AnalysisOperationResponse, ZombieTasksResponse
+    from .setup import (
+        AnalysisLooseObjectResponse,
+        AnalysisOperationResponse,
+        ZombieTasksResponse,
+    )
+
 
 @router.get("/tasks/{task_id}/details", response_model=AnalysisLooseObjectResponse)
 async def get_task_details(
@@ -37,8 +42,12 @@ async def get_task_details(
 
 
 async def _delete_analysis_task_structured_rows(task_id: str) -> int:
-    init_postgres = getattr(importlib.import_module("app.core.session"), "init_postgres")
-    get_session_factory = getattr(importlib.import_module("app.core.session"), "get_session_factory")
+    init_postgres = getattr(
+        importlib.import_module("app.core.session"), "init_postgres"
+    )
+    get_session_factory = getattr(
+        importlib.import_module("app.core.session"), "get_session_factory"
+    )
     text = getattr(importlib.import_module("sqlalchemy"), "text")
 
     await init_postgres()
@@ -59,7 +68,9 @@ async def _delete_analysis_task_structured_rows(task_id: str) -> int:
 
 @router.get("/admin/zombie-tasks", response_model=ZombieTasksResponse)
 async def get_zombie_tasks(
-    max_running_hours: int = Query(default=2, ge=1, le=72, description="最大运行时长（小时）"),
+    max_running_hours: int = Query(
+        default=2, ge=1, le=72, description="最大运行时长（小时）"
+    ),
     user: dict = Depends(get_current_user),
 ):
     """获取僵尸任务列表（仅管理员）
@@ -82,12 +93,14 @@ async def get_zombie_tasks(
         }
     except Exception as e:
         logger.error(f"❌ 获取僵尸任务失败: {e}")
-        raise HTTPException(status_code=500, detail=f"获取僵尸任务失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="获取僵尸任务失败")
 
 
 @router.post("/admin/cleanup-zombie-tasks", response_model=ApiResponse)
 async def cleanup_zombie_tasks(
-    max_running_hours: int = Query(default=2, ge=1, le=72, description="最大运行时长（小时）"),
+    max_running_hours: int = Query(
+        default=2, ge=1, le=72, description="最大运行时长（小时）"
+    ),
     user: dict = Depends(get_current_user),
 ):
     """清理僵尸任务（仅管理员）
@@ -109,7 +122,7 @@ async def cleanup_zombie_tasks(
         }
     except Exception as e:
         logger.error(f"❌ 清理僵尸任务失败: {e}")
-        raise HTTPException(status_code=500, detail=f"清理僵尸任务失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="清理僵尸任务失败")
 
 
 @router.post("/tasks/{task_id}/mark-failed", response_model=AnalysisOperationResponse)
@@ -122,7 +135,9 @@ async def mark_task_as_failed(task_id: str, user: dict = Depends(get_current_use
         svc = get_simple_analysis_service()
 
         # 更新内存中的任务状态
-        TaskStatus = getattr(importlib.import_module("app.services.memory"), "TaskStatus")
+        TaskStatus = getattr(
+            importlib.import_module("app.services.memory"), "TaskStatus"
+        )
         await svc.memory_manager.update_task_status(
             task_id=task_id,
             status=TaskStatus.FAILED,
@@ -141,7 +156,9 @@ async def mark_task_as_failed(task_id: str, user: dict = Depends(get_current_use
             "updated_at": now,
         }
 
-        result = await db.analysis_tasks.update_one({"task_id": task_id}, {"$set": update_data})
+        result = await db.analysis_tasks.update_one(
+            {"task_id": task_id}, {"$set": update_data}
+        )
         if result.modified_count > 0:
             await dual_write_hot_document("analysis_tasks", update_data)
 
@@ -153,7 +170,7 @@ async def mark_task_as_failed(task_id: str, user: dict = Depends(get_current_use
             return {"success": True, "message": "任务未找到或已是失败状态"}
     except Exception as e:
         logger.error(f"❌ 标记任务失败: {e}")
-        raise HTTPException(status_code=500, detail=f"标记任务失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="标记任务失败")
 
 
 @router.delete("/tasks/{task_id}", response_model=AnalysisOperationResponse)
@@ -187,4 +204,4 @@ async def delete_task(task_id: str, user: dict = Depends(get_current_user)):
             return {"success": True, "message": "任务未找到"}
     except Exception as e:
         logger.error(f"❌ 删除任务失败: {e}")
-        raise HTTPException(status_code=500, detail=f"删除任务失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="删除任务失败")

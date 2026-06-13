@@ -132,6 +132,11 @@ async def test_tool_run_accepts_authorized_principal(monkeypatch):
     monkeypatch.setattr(
         stock_module, "get_simple_analysis_service", lambda: FakeAnalysisService()
     )
+    monkeypatch.setattr(
+        stock_module,
+        "_resolve_analysis_models",
+        lambda _payload: ("qwen-turbo", "qwen-max"),
+    )
 
     async def fake_agent_workflow(_context, **kwargs: Any):
         return {

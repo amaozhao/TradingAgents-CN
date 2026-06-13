@@ -21,8 +21,11 @@ from .setup import (
     _sanitize_kv,
 )
 
+
 @router.post("/datasource/set-default", response_model=ConfigApiResponse)
-async def set_default_data_source_legacy(request: SetDefaultRequest, current_user: User = Depends(get_current_user)):
+async def set_default_data_source_legacy(
+    request: SetDefaultRequest, current_user: User = Depends(get_current_user)
+):
     """设置默认数据源"""
     try:
         success = await config_service.set_default_data_source(request.name)
@@ -47,13 +50,15 @@ async def set_default_data_source_legacy(request: SetDefaultRequest, current_use
                 message="默认数据源设置成功",
             )
         else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="指定的数据源不存在")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="指定的数据源不存在"
+            )
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"设置默认数据源失败: {str(e)}",
+            detail="设置默认数据源失败",
         )
 
 
@@ -69,10 +74,10 @@ async def get_system_settings(current_user: User = Depends(get_current_user)):
                 if key not in response:
                     response[key] = value
         return response
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取系统设置失败: {str(e)}",
+            detail="获取系统设置失败",
         )
 
 
@@ -85,10 +90,10 @@ async def get_system_settings_meta(current_user: User = Depends(get_current_user
         meta_map = await config_provider.get_system_settings_meta()
         items = [{"key": k, **v} for k, v in meta_map.items()]
         return ok(data={"items": items}, message="获取系统设置元数据成功")
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"获取系统设置元数据失败: {str(e)}",
+            detail="获取系统设置元数据失败",
         )
 
 
@@ -103,11 +108,15 @@ async def update_system_settings(
         # 打印接收到的设置（用于调试）
         logger.info(f"📝 接收到的系统设置更新请求，包含 {len(settings_data)} 项")
         if "quick_analysis_model" in settings_data:
-            logger.info(f"  ✓ quick_analysis_model: {settings_data['quick_analysis_model']}")
+            logger.info(
+                f"  ✓ quick_analysis_model: {settings_data['quick_analysis_model']}"
+            )
         else:
             logger.warning("  ⚠️  未包含 quick_analysis_model")
         if "deep_analysis_model" in settings_data:
-            logger.info(f"  ✓ deep_analysis_model: {settings_data['deep_analysis_model']}")
+            logger.info(
+                f"  ✓ deep_analysis_model: {settings_data['deep_analysis_model']}"
+            )
         else:
             logger.warning("  ⚠️  未包含 deep_analysis_model")
 
@@ -154,7 +163,7 @@ async def update_system_settings(
             pass
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"更新系统设置失败: {str(e)}",
+            detail="更新系统设置失败",
         )
 
 
@@ -183,15 +192,17 @@ async def export_config(current_user: User = Depends(get_current_user)):
             },
             message="配置导出成功",
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"导出配置失败: {str(e)}",
+            detail="导出配置失败",
         )
 
 
 @router.post("/import", response_model=ConfigApiResponse)
-async def import_config(config_data: ImportConfigRequest, current_user: User = Depends(get_current_user)):
+async def import_config(
+    config_data: ImportConfigRequest, current_user: User = Depends(get_current_user)
+):
     """导入配置"""
     try:
         import_data = config_data.model_dump()
@@ -211,13 +222,15 @@ async def import_config(config_data: ImportConfigRequest, current_user: User = D
                 pass
             return ok(data={"message": "配置导入成功"}, message="配置导入成功")
         else:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="配置导入失败")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="配置导入失败"
+            )
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"导入配置失败: {str(e)}",
+            detail="导入配置失败",
         )
 
 
@@ -247,8 +260,8 @@ async def migrate_legacy_config(current_user: User = Depends(get_current_user)):
             )
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"迁移传统配置失败: {str(e)}",
+            detail="迁移传统配置失败",
         )

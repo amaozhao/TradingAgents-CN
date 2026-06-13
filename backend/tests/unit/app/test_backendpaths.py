@@ -66,5 +66,5 @@ def _singleword_path_violations() -> list[str]:
 def test_backend_code_path_audit_has_actionable_findings():
     violations = _singleword_path_violations()
 
-    assert "app/services/alpha_zoo" in violations
+    assert "tests/integration/app/routers/akshare/test_direct_requests.py" in violations
     assert all(str(path).startswith(BACKEND_CODE_ROOTS) for path in violations)

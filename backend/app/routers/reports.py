@@ -3,7 +3,6 @@
 """
 
 import importlib
-import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -15,8 +14,12 @@ from sqlalchemy import or_, select
 
 from app.core.session import get_session_factory
 from app.db.analysis import list_user_analysis_reports
-from app.db.ids import DocumentId
 from app.models.table import StockBasicInfo
+from app.services.reports import (
+    ReportExportService,
+    ReportLookupService,
+    ReportScopePolicy,
+)
 from trader.utils.stocks import StockUtils
 
 from ..core.database import get_postgres_db, get_postgres_db_sync
@@ -165,44 +168,24 @@ def _stock_name_query_values(
     return list(value_to_code), value_to_code
 
 
-# 统一构建报告查询：支持 _id(DocumentId) / analysis_id / task_id 三种
 def _build_report_query(report_id: str) -> Dict[str, Any]:
-    ors: List[Dict[str, Any]] = [
-        {"analysis_id": report_id},
-        {"task_id": report_id},
-    ]
-    try:
-        ors.append({"_id": DocumentId(report_id)})
-    except Exception:
-        pass
-    return {"$or": ors}
+    return ReportLookupService.build_query(report_id)
 
 
 def _current_user_id(user: dict) -> str:
-    return str(user.get("id") or "")
+    return ReportScopePolicy.current_user_id(user)
 
 
 def _is_admin_user(user: dict) -> bool:
-    return bool(user.get("is_admin")) or "admin" in set(user.get("roles") or [])
+    return ReportScopePolicy.is_admin_user(user)
 
 
 def _scope_private_report_query(query: Dict[str, Any], user: dict) -> Dict[str, Any]:
-    if _is_admin_user(user):
-        return query
-    user_id = _current_user_id(user)
-    if not query:
-        return {"user_id": user_id}
-    return {"$and": [query, {"user_id": user_id}]}
+    return ReportScopePolicy.private_report_query(query, user)
 
 
 def _scope_private_task_query(query: Dict[str, Any], user: dict) -> Dict[str, Any]:
-    if _is_admin_user(user):
-        return query
-    user_id = _current_user_id(user)
-    owner_query = {"$or": [{"user_id": user_id}, {"user": user_id}]}
-    if not query:
-        return owner_query
-    return {"$and": [query, owner_query]}
+    return ReportScopePolicy.private_task_query(query, user)
 
 
 def _to_report_datetime(value: Any) -> Any:
@@ -224,19 +207,7 @@ def _to_report_iso(value: Any) -> str:
 
 
 def _dedupe_report_documents(documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    deduped: List[Dict[str, Any]] = []
-    seen: set[str] = set()
-    for document in documents:
-        key = (
-            document.get("analysis_id")
-            or document.get("task_id")
-            or str(document.get("_id"))
-        )
-        if key in seen:
-            continue
-        seen.add(key)
-        deduped.append(document)
-    return deduped
+    return ReportLookupService.dedupe_documents(documents)
 
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -400,7 +371,7 @@ async def get_reports_list(
 
     except Exception as e:
         logger.error(f"❌ 获取报告列表失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="报告列表获取失败") from e
 
 
 @router.get("/{report_id}/detail", response_model=ApiResponse)
@@ -518,7 +489,7 @@ async def get_report_detail(report_id: str, user: dict = Depends(get_current_use
         raise
     except Exception as e:
         logger.error(f"❌ 获取报告详情失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="报告详情获取失败") from e
 
 
 @router.get("/{report_id}/content/{module}", response_model=ApiResponse)
@@ -559,7 +530,7 @@ async def get_report_module_content(
         raise
     except Exception as e:
         logger.error(f"❌ 获取报告模块内容失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="报告模块内容获取失败") from e
 
 
 @router.delete("/{report_id}", response_model=ApiResponse)
@@ -595,7 +566,7 @@ async def delete_report(report_id: str, user: dict = Depends(get_current_user)):
         raise
     except Exception as e:
         logger.error(f"❌ 删除报告失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="报告删除失败") from e
 
 
 @router.get("/{report_id}/download", response_model=None)
@@ -629,13 +600,13 @@ async def download_report(
 
         if format == "json":
             # JSON格式下载
-            content = json.dumps(doc, ensure_ascii=False, indent=2, default=str)
+            content = ReportExportService.json_content(doc)
             filename = f"{stock_symbol}_{analysis_date}_report.json"
             media_type = "application/json"
 
             # 返回文件流
             def generate_json_report():
-                yield content.encode("utf-8")
+                yield content
 
             return StreamingResponse(
                 generate_json_report(),
@@ -645,36 +616,17 @@ async def download_report(
 
         elif format == "markdown":
             # Markdown格式下载
-            reports = doc.get("reports", {})
-            content_parts = []
-
-            # 添加标题
-            content_parts.append(f"# {stock_symbol} 分析报告")
-            content_parts.append(f"**分析日期**: {analysis_date}")
-            content_parts.append(f"**分析师**: {', '.join(doc.get('analysts', []))}")
-            content_parts.append(f"**研究深度**: {doc.get('research_depth', 1)}")
-            content_parts.append("")
-
-            # 添加摘要
-            if doc.get("summary"):
-                content_parts.append("## 执行摘要")
-                content_parts.append(doc["summary"])
-                content_parts.append("")
-
-            # 添加各模块内容
-            for module_name, module_content in reports.items():
-                if isinstance(module_content, str) and module_content.strip():
-                    content_parts.append(f"## {module_name}")
-                    content_parts.append(module_content)
-                    content_parts.append("")
-
-            content = "\n".join(content_parts)
+            content = ReportExportService.markdown_content(
+                doc,
+                stock_symbol=stock_symbol,
+                analysis_date=analysis_date,
+            )
             filename = f"{stock_symbol}_{analysis_date}_report.md"
             media_type = "text/markdown"
 
             # 返回文件流
             def generate_markdown_report():
-                yield content.encode("utf-8")
+                yield content
 
             return StreamingResponse(
                 generate_markdown_report(),
@@ -708,9 +660,7 @@ async def download_report(
                 )
             except Exception as e:
                 logger.error(f"❌ Word 文档生成失败: {e}")
-                raise HTTPException(
-                    status_code=500, detail=f"Word 文档生成失败: {str(e)}"
-                )
+                raise HTTPException(status_code=500, detail="Word 文档生成失败") from e
 
         elif format == "pdf":
             # PDF 格式下载
@@ -738,9 +688,7 @@ async def download_report(
                 )
             except Exception as e:
                 logger.error(f"❌ PDF 文档生成失败: {e}")
-                raise HTTPException(
-                    status_code=500, detail=f"PDF 文档生成失败: {str(e)}"
-                )
+                raise HTTPException(status_code=500, detail="PDF 文档生成失败") from e
 
         else:
             raise HTTPException(status_code=400, detail=f"不支持的下载格式: {format}")
@@ -749,4 +697,4 @@ async def download_report(
         raise
     except Exception as e:
         logger.error(f"❌ 下载报告失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="报告下载失败") from e

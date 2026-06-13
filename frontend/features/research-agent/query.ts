@@ -1,24 +1,16 @@
 "use client"
 
 import { useEffect } from "react"
+import type { Dispatch } from "react"
 import { useSearchParams } from "next/navigation"
 
 import { MARKETS, type Market } from "@/features/research/options"
-
-type ComposerMode = "chat" | "goal"
+import type { ResearchUiAction } from "@/features/research-agent/mode"
 
 export function useAgentRouteMode({
-  setBatchConfigSubmitted,
-  setComposerMode,
-  setShowBatchConfig,
-  setShowStockConfig,
-  setStockConfigSubmitted
+  dispatchUi
 }: {
-  setBatchConfigSubmitted: (value: boolean) => void
-  setComposerMode: (value: ComposerMode) => void
-  setShowBatchConfig: (value: boolean) => void
-  setShowStockConfig: (value: boolean) => void
-  setStockConfigSubmitted: (value: boolean) => void
+  dispatchUi: Dispatch<ResearchUiAction>
 }) {
   const searchParams = useSearchParams()
   const searchKey = searchParams?.toString() || ""
@@ -30,20 +22,8 @@ export function useAgentRouteMode({
   useEffect(() => {
     const mode = searchParams?.get("mode")
     if (mode !== "stock" && mode !== "batch") return
-    setShowStockConfig(mode === "stock")
-    setShowBatchConfig(mode === "batch")
-    setStockConfigSubmitted(false)
-    setBatchConfigSubmitted(false)
-    setComposerMode("chat")
-  }, [
-    searchKey,
-    searchParams,
-    setBatchConfigSubmitted,
-    setComposerMode,
-    setShowBatchConfig,
-    setShowStockConfig,
-    setStockConfigSubmitted
-  ])
+    dispatchUi({ type: mode === "stock" ? "openStock" : "openBatch" })
+  }, [dispatchUi, searchKey, searchParams])
 
   return {
     batchInitialSymbols,
