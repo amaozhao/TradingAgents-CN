@@ -1,88 +1,115 @@
 # Project Agent Instructions
 
-These instructions apply repo-wide unless a deeper `AGENTS.md` overrides them.
+These instructions apply to the whole repository unless a deeper `AGENTS.md` overrides them for files under its directory.
 
-## Core Rules
+## General
 
-- Do not commit or push unless the user explicitly asks in the current task.
-- Keep changes small, scoped, and reviewable. Prefer existing project patterns over new abstractions.
-- Inspect current implementation and configuration before changing architecture, dependencies, test layout, build tooling, or public contracts.
-- Do not edit generated, vendored, cache, runtime, log, build, coverage, or dependency output unless the task targets it.
-- Fix root causes. Do not hide bugs behind broad fallbacks, broad exception handling, weak types, or silent defaults.
-- Avoid unrelated formatting churn; format only touched files unless asked for a larger cleanup.
-- Keep specs, tests, implementation, and docs consistent.
+- Do not commit or push changes unless the user explicitly asks for it in the current task.
+- Keep changes small, reviewable, and scoped to the user's request.
+- Prefer existing project patterns over new abstractions.
+- Inspect existing implementation, configuration, tests, and public contracts before changing architecture, dependencies, test layout, build tooling, or API behavior.
+- Do not edit generated, vendored, cache, runtime, log, build, coverage, or dependency output unless the task explicitly targets it.
+- Avoid unrelated formatting churn. Format only files affected by the task unless the user asks for broader cleanup.
+- Keep specifications, tests, implementation, and documentation consistent.
+- When fixing a bug, identify the owning invariant and root cause first. Do not hide the failure behind broad fallback logic.
+
+## Standards
+
+Read the relevant standard before changing affected code:
+
+- `standards/modules.md`: services, repositories, adapters, API clients, hooks, feature boundaries, shared contracts, or substantial component boundaries.
+- `standards/testing.md`: tests, fixtures, mocks, test layout, test data, or verification strategy.
+- `standards/typing.md`: Python typing, TypeScript typing, schemas, DTOs, API types, React props, or untrusted data.
+- `standards/errors.md`: error handling, `try`/`except`/`catch`, logging, fallbacks, retries, or exception mapping.
+- `standards/contracts.md`: backend API routes, frontend API clients, request/response schemas, status codes, pagination, or error response formats.
+- `standards/database.md`: SQLAlchemy models, queries, sessions, transactions, migrations, or database tests.
+- `standards/frontend.md`: React components, hooks, forms, state, Next.js server/client boundaries, UI behavior, Tailwind, or accessibility.
+- `standards/security.md`: authentication, authorization, secrets, tenant isolation, uploads, redirects, SSRF, XSS, or untrusted input.
+- `standards/operations.md`: dependencies, package changes, lockfiles, environment variables, runtime configuration, feature flags, logging, metrics, tracing, background work, or operational diagnostics.
+- `standards/performance.md`: query performance, payload size, caching, external calls, async throughput, rendering, bundle size, or latency-sensitive paths.
+- `standards/review.md`: code review, final self-review, diff review, or change risk assessment.
+
+If standards conflict, follow the more specific standard for the touched code. If a deeper `AGENTS.md` conflicts with these root rules, follow the deeper file for its subtree.
 
 ## Naming
 
-- New or renamed project-owned files and directories must be one real word, lowercase ASCII by default.
-- Do not create fake compounds or multiword names joined by hyphen, underscore, camelCase, or PascalCase.
-- Allowed exceptions: framework filenames such as `page.tsx`, `layout.tsx`, `loading.tsx`, `route.ts`, `__init__.py`; migration filenames; conventional test filenames; `unit`, `integration`, and `e2e` test tier directories; existing public routes, generated files, dependencies, and third-party conventions.
-- For multiword concepts, prefer an existing appropriate single-word directory and clear symbol names inside the file.
+- Project-owned file and directory names must be a single real word.
+- Use lowercase ASCII words by default.
+- Do not create fake compound words such as `loaddata`, `runagent`, `fetchreport`, or verb-plus-noun concatenations.
+- Avoid new multiword names joined by hyphen, underscore, camelCase, or PascalCase.
+- Framework-required filenames are allowed, for example `page.tsx`, `layout.tsx`, `loading.tsx`, `route.ts`, `__init__.py`, and migration filenames.
+- Conventional test filenames are allowed, for example `test_user.py`, `user.test.ts`, `user.test.tsx`, and `page.test.tsx`.
+- Conventional test tier directories `unit`, `integration`, and `e2e` are allowed.
+- Existing public routes, database migrations, generated files, dependency folders, and third-party conventions are exempt unless the task explicitly renames them.
+- If a concept needs several words, place code in an existing appropriate single-word directory and use clear symbol names inside the file.
 
 ## Architecture
 
-- Prefer deep modules at stable boundaries: expose a small, typed, domain-oriented interface that hides non-trivial implementation.
-- Public functions, classes, hooks, components, and services must add semantic value; avoid pass-through wrappers, re-export layers, and shallow modules that only rename or forward parameters.
-- Design APIs around domain operations and invariants, not implementation steps. Hide transactions, SQLAlchemy queries, HTTP/fetch details, cache keys, env access, browser APIs, and third-party SDKs behind project-owned boundaries.
-- Keep interfaces narrower than implementations: use explicit command/query models, props, or parameter objects only when they clarify the domain; avoid catch-all option bags and boolean flags that leak internals.
-- When fixing bugs, strengthen the owning module's invariant and tests instead of spreading defensive checks across unrelated callers.
-- Deep modules are not god modules. Split code when responsibilities, reasons to change, dependencies, or test setup become unrelated.
-- Apply SOLID pragmatically. Do not add ceremony only to satisfy a pattern.
-- Prefer simple, local, explicit code. Do not add interfaces, base classes, factories, registries, containers, event buses, or generic frameworks for one known implementation unless the project already uses that pattern or the task requires it.
-- Keep modules, classes, functions, hooks, components, services, repositories, and routes focused on one primary responsibility. Split unrelated validation, authorization, orchestration, persistence, transport, rendering, formatting, and side effects.
-- Extend through existing stable seams, small collaborators, validators, handlers, or components when variation exists; do not rewrite unrelated callers for a focused change.
-- Implementations, wrappers, and adapters must preserve their contracts: accepted inputs, outputs, errors, async behavior, and side effects.
-- Prefer narrow protocols, interfaces, props, hooks, service methods, repository methods, and API clients over god interfaces, large contexts, or catch-all option bags.
-- Keep dependency direction explicit. Entry points call application logic; application logic calls infrastructure; lower layers must not import routes, pages, or UI.
-- Avoid circular dependencies, hidden global state, mutable singletons, god services, catch-all utility files, and broad manager modules.
-- Business and UI logic should not directly construct volatile external clients or depend on DB, HTTP, browser APIs, env, or third-party SDKs; use project-owned boundaries, injection, or existing framework dependency mechanisms.
-- Share code only when the abstraction is stable or the move clarifies a real boundary. Do not perform broad architecture rewrites unless asked.
+- Prefer deep modules at stable boundaries: small typed domain interfaces that hide non-trivial implementation.
+- Avoid shallow wrappers that only rename, forward, re-export, or add indirection without owning an invariant, policy, type boundary, or useful abstraction.
+- Public APIs should express domain operations and invariants, not implementation steps.
+- Keep entry points thin. Put business rules, persistence details, external SDK details, fetch details, and cache keys behind project-owned boundaries.
+- SOLID is a maintenance constraint, not a reason for speculative abstraction. Do not add layers, factories, registries, event buses, or plugin systems unless the task or existing project pattern justifies them.
+- Deep modules are not god modules. Split code when responsibilities, dependencies, reasons to change, or test setup become unrelated.
 
-## Error Handling And `try`
+## Error Handling
 
-- Use `try`/`catch` only around the expected failure boundary, with the smallest practical block.
-- Catch the most specific error available. Do not use bare `except`, `BaseException`, `KeyboardInterrupt`, `SystemExit`, empty `catch`, empty callbacks, or `pass` to ignore errors.
-- Avoid broad `except Exception` or catch-all handlers. If unavoidable at an application boundary, log useful context and return or raise a structured error.
-- Do not return success, `None`, empty collections, or default objects after unexpected errors unless that fallback is an explicit documented contract.
-- Preserve causes when translating errors, for example `raise NewError(...) from exc` in Python and retaining the original JS/TS error in logs.
-- Use `finally` only for cleanup, and never let cleanup suppress the original failure.
-- Tests must not hide assertion failures in `try`; use `pytest.raises` or `await expect(...).rejects`.
+- Do not add `try` blocks merely to make a bug disappear.
+- Keep each `try` block as narrow as possible and catch the most specific error type available.
+- Do not use bare `except`, catch `BaseException`, use empty `catch` blocks, or silently ignore errors.
+- Avoid broad `except Exception` or broad `catch` unless it is at an application boundary and returns or raises a structured error.
+- Do not return `None`, an empty collection, a default object, or a success response after an unexpected error unless that fallback is an explicit documented contract.
+- Preserve causes when translating errors, for example `raise NewError(...) from exc` in Python.
+- Tests must not hide assertion failures inside `try` blocks. Use `pytest.raises` or `await expect(...).rejects`.
 
 ## Backend
 
-- Backend code lives under `backend/`. Keep backend source files at or below 800 lines.
-- Python imports must be at module top after docstring and `from __future__` imports; local imports require a documented cycle, optional dependency, or cold-path reason.
-- Use Ruff, Pyright, and pytest. Touched backend code must not leave Pyright errors or warnings.
-- Use precise real types: Pydantic models, dataclasses, `TypedDict`, `Protocol`, enums, literals, and narrow aliases. Avoid `Any`, incorrect optionality, unnecessary `cast`, `# type: ignore`, and loose dictionaries across module boundaries.
-- Keep async paths async through request, service, repository, and DB layers. Do not use blocking I/O, `asyncio.run()`, manual event loops, unmanaged fire-and-forget tasks, or `time.sleep()` in async code.
-- FastAPI routes should stay thin. Put business rules in services and persistence in repositories or the existing project boundary.
-- Use explicit request/response models and validate external input at the boundary.
+- Backend code lives under `backend/`.
+- Python imports must be at module top, after the module docstring and `from __future__` imports.
+- Do not add imports inside functions, methods, or branches except for a documented cycle, optional dependency, or cold-path performance reason.
+- Keep each backend source file at or below 800 lines.
+- Use pytest for tests, Ruff for formatting and lint-compatible style, and Pyright for backend type checking.
+- Backend changes must not leave Pyright errors or warnings in touched code.
+- Type hints must describe real values. Do not silence type issues with incorrect annotations, unnecessary casts, or broad `Any`.
+- Prefer explicit Pydantic models, dataclasses, typed dicts, protocols, or narrow dictionaries over unstructured `dict[str, Any]` at boundaries.
+- Use async all the way through async request, service, repository, and database paths.
+- Do not call blocking I/O, `time.sleep()`, or `asyncio.run()` from async application code.
+- Do not leave fire-and-forget tasks unmanaged. Background work needs ownership, error logging, cancellation behavior, and lifecycle boundaries.
+- FastAPI route handlers should stay thin. Put business rules in services and persistence logic in repositories or the existing project boundary.
+- Use explicit request and response models for API boundaries.
+- Validate external input at the boundary before it reaches business logic.
 - Do not leak ORM objects, internal exceptions, stack traces, secrets, or implementation details in public API responses.
-- Use existing exception mapping, `HTTPException`, or the existing error response model for expected failures. Never convert unexpected server errors into `200`, empty payloads, or silent no-ops.
-- Follow existing SQLAlchemy `AsyncSession`, relationship, eager-loading, and transaction patterns.
-- Keep transaction ownership explicit. Helpers should not `commit()` or `rollback()` unless they own the transaction. Use `flush()` for generated IDs inside an active transaction.
-- Catch DB errors narrowly, avoid raw SQL interpolation, and avoid N+1 query patterns.
-- Schema changes require a focused Alembic migration. Do not add destructive or data-losing migrations unless explicitly requested and documented.
+- Use SQLAlchemy patterns already present in the project, especially around `AsyncSession`, relationships, eager loading, and transaction ownership.
+- Keep transaction ownership explicit. Helpers should not call `commit()` unless their contract clearly owns the transaction.
+- Prefer `flush()` when code needs generated IDs inside an existing transaction.
+- Avoid raw SQL string interpolation. Use SQLAlchemy expressions or bound parameters.
+- Schema changes require an Alembic migration unless the user explicitly requests implementation-only work.
+- Do not include destructive or data-losing migrations unless the task explicitly asks for them and the behavior is documented.
 
-## Backend Tests
+### Backend Tests
 
-Backend tests live under `backend/tests/{unit,integration,e2e}/` and mirror implementation paths:
+Backend tests live under `backend/tests/` and are split by tier:
 
 ```text
-backend/<path>/a.py -> backend/tests/unit/<path>/test_a.py
-backend/<path>/a.py -> backend/tests/integration/<path>/test_a.py
-backend/<path>/a.py -> backend/tests/e2e/<path>/test_a.py
+backend/tests/unit/
+backend/tests/integration/
+backend/tests/e2e/
 ```
 
-- Unit tests isolate one module, function, class, or small service; no real DB, network, external service, or filesystem state outside `tmp_path`.
-- Integration tests validate real internal boundaries such as service plus repository, route plus dependencies, or SQLAlchemy plus test DB, using isolated test resources.
-- E2E tests validate user-observable application boundaries, usually HTTP or the configured runner; avoid internal mocks except unsafe, slow, paid, flaky, or unavailable external services.
-- If no single source module owns the behavior, place tests under the nearest mirrored public boundary or feature path.
-- Shared fixtures belong in the nearest `conftest.py`; tier-neutral helpers may live in shared support code. Do not import helpers across tiers unless tier-neutral.
-- Bug fixes need the narrowest regression test that would have failed before the fix. Add broader coverage when the bug crosses boundaries.
-- Do not use arbitrary sleeps. Use deterministic synchronization, explicit awaits, polling with timeouts, or test client utilities. Configure pytest markers before use.
+Mirror implementation paths when a test targets a source module:
 
-## Backend Verification
+```text
+backend/<relative/path>/a.py
+backend/tests/unit/<relative/path>/test_a.py
+backend/tests/integration/<relative/path>/test_a.py
+backend/tests/e2e/<relative/path>/test_a.py
+```
+
+Unit tests must isolate one module or small behavior. Integration tests validate real internal collaboration. E2E tests validate user-observable behavior through the application boundary. Bug fixes should include the narrowest test that would have failed before the fix.
+
+### Backend Verification
+
+Run the narrowest useful verification, then broaden when shared behavior changes:
 
 ```bash
 cd backend && ruff format .
@@ -91,60 +118,58 @@ cd backend && pyright
 cd backend && pytest
 ```
 
-Targeted:
+For targeted tests, prefer:
 
 ```bash
 cd backend && pytest path/to/test_file.py
-cd backend && pytest tests/unit
-cd backend && pytest tests/integration
-cd backend && pytest tests/e2e
 ```
 
 ## Frontend
 
-- Primary frontend lives under `frontend/`. Keep frontend source files at or below 900 lines.
-- Use the configured Next.js, React, TypeScript, Tailwind, and package manager setup. Do not downgrade framework packages unless asked.
-- Keep components focused. Extract reusable logic into existing `components`, `features`, `hooks`, `libs`, or `types` boundaries.
-- Do not edit `.next/`, `dist/`, `node_modules/`, coverage, or generated build output.
-- Keep server components server-side by default. Add `use client` only for client React features or browser APIs.
-- Do not access `window`, `document`, `localStorage`, or browser APIs from server components or shared module scope.
-- Prefer existing data-fetching, caching, routing, mutation, styling, and class-composition patterns.
-- Async UI that can fail needs intentional loading, empty, and error behavior.
-- Preserve accessibility with semantic HTML, labels, keyboard access, useful alt text, and ARIA only when native semantics are insufficient.
+- The primary frontend lives under `frontend/`.
+- Use the Next.js, React, TypeScript, Tailwind, and Vitest stack already configured in `frontend/package.json`.
+- Do not downgrade Next.js, React, TypeScript, or related framework packages unless the user explicitly asks.
+- Keep each frontend source file at or below 900 lines.
+- Keep React components focused. Extract reusable logic into existing `components`, `features`, `hooks`, `libs`, or `types` boundaries instead of growing large files.
+- Use TypeScript strict types. Do not add explicit `any`, `as any`, `Record<string, any>`, unsafe double assertions, or `@ts-ignore`.
+- Use `unknown` for untrusted external data and narrow it before use.
+- Avoid non-null assertions. Prefer guards, early returns, invariant checks, or more accurate types.
+- Keep server components server-side by default. Add `use client` only when client-only React features or browser APIs are genuinely needed.
+- Do not access `window`, `document`, `localStorage`, cookies, or other browser-only APIs from server components or shared module scope.
+- Do not duplicate backend API contract types manually when shared or generated types already exist.
+- Every async UI state that can fail should have intentional loading, empty, and error behavior.
+- Preserve accessibility with semantic HTML, form labels, keyboard-reachable interactions, useful alt text, and ARIA only when native semantics are insufficient.
+- Use Tailwind and existing class composition utilities. Avoid one-off styling systems unless the task targets styling infrastructure.
+- Do not edit `.next/`, `dist/`, `node_modules/`, coverage output, or generated build output.
 
-## Frontend TypeScript
+### Frontend Tests
 
-- Strict TypeScript is required. Do not introduce explicit or implicit `any`, `as any`, `Array<any>`, `Record<string, any>`, or generic escape hatches.
-- Use `unknown` for untrusted or untyped values, then narrow with checks, type guards, schema validation, discriminated unions, or existing validators.
-- Rare `any` is allowed only in the smallest documented adapter for unavoidable third-party, generated, or legacy boundaries; narrow it immediately.
-- Do not use `@ts-ignore`. Use `@ts-expect-error` only for intentional negative tests or documented external typing defects.
-- Avoid unsafe assertions, double assertions, non-null `!`, broad `object`/`Function`/`Record<string, unknown>`/`string` replacements, and weakened compiler options.
-- Exported functions, hooks, API clients, context providers, shared utilities, and non-trivial component props need clear parameter and return types when inference is not obvious.
-- Prefer domain types, interfaces, aliases, discriminated unions, and schema-derived, shared, or generated contract types.
-- Validate or narrow runtime data from APIs, forms, storage, URL params, cookies, and third-party libraries before trusting it.
-- Use `satisfies` for typed config or lookup tables when helpful, and `import type`/`export type` for type-only imports.
-- Type React props, events, refs, and context values precisely. Do not mutate props, React state, cached data, or caller-owned objects unless mutation is the explicit contract.
-- Verify types with `pnpm type-check`; do not add fake runtime tests to compensate for weak types.
-
-## Frontend Tests
-
-Frontend tests live under `frontend/tests/{unit,integration,e2e}/` and mirror implementation paths:
+Frontend tests live under `frontend/tests/` and are split by tier:
 
 ```text
-frontend/<path>/a.ts(x) -> frontend/tests/unit/<path>/a.test.ts(x)
-frontend/<path>/a.ts(x) -> frontend/tests/integration/<path>/a.test.ts(x)
-frontend/<path>/a.ts(x) -> frontend/tests/e2e/<path>/a.test.ts(x)
+frontend/tests/unit/
+frontend/tests/integration/
+frontend/tests/e2e/
 ```
 
-- Unit tests isolate pure functions, hooks, components, or modules; mock network, router, time, storage, and browser globals when they are not the behavior under test.
-- Integration tests validate collaboration across components, hooks, providers, routing, forms, and API clients with the existing Vitest and Testing Library setup or configured equivalent.
-- E2E tests validate user-visible flows through a real route or browser-like boundary using the configured runner. Do not add a new E2E framework unless asked or already configured.
-- If no source file owns the behavior, place tests under the nearest mirrored route, public component boundary, or feature path.
-- Shared setup belongs in the existing setup file or nearest support module. Avoid broad global mocks when local mocks suffice.
-- Prefer user-visible queries and interactions over implementation details. Snapshots are only for stable, intentionally reviewed output.
-- Bug fixes need the narrowest regression test that would have failed before the fix. Add broader coverage when UI, routing, or API boundaries are crossed.
+Mirror implementation paths when a test targets a source file:
 
-## Frontend Verification
+```text
+frontend/<relative/path>/a.ts
+frontend/<relative/path>/a.tsx
+frontend/tests/unit/<relative/path>/a.test.ts
+frontend/tests/unit/<relative/path>/a.test.tsx
+frontend/tests/integration/<relative/path>/a.test.ts
+frontend/tests/integration/<relative/path>/a.test.tsx
+frontend/tests/e2e/<relative/path>/a.test.ts
+frontend/tests/e2e/<relative/path>/a.test.tsx
+```
+
+Unit tests isolate pure functions, hooks, components, or small modules. Integration tests validate collaboration across components, hooks, providers, routing, forms, and API clients. E2E tests validate user-observable flows through a real route or browser-like boundary. Do not introduce a new E2E framework unless the user explicitly asks or the repository already has it configured.
+
+### Frontend Verification
+
+Run the narrowest useful verification, then broaden when shared behavior changes:
 
 ```bash
 cd frontend && pnpm lint
@@ -153,30 +178,37 @@ cd frontend && pnpm test
 cd frontend && pnpm build
 ```
 
-Targeted:
+For targeted tests, prefer:
 
 ```bash
 cd frontend && pnpm vitest run path/to/test_file.test.tsx
-cd frontend && pnpm vitest run tests/unit
-cd frontend && pnpm vitest run tests/integration
 ```
 
-Run E2E only with the repository's existing configured command.
+## Configuration, Dependencies, Security
 
-## Config, Dependencies, Security
-
-- Do not hardcode secrets, tokens, passwords, private keys, account IDs, or environment-specific credentials. Keep sample env files secret-free.
-- Use existing config loading and validation. Do not add a dependency when the standard library, existing dependency, or small local helper is sufficient. Update lockfiles and explain necessary dependency changes.
-- Keep backend and frontend contracts synchronized: paths, payloads, validation, auth, and error formats.
-- Backend authentication and authorization are authoritative. Do not trust client-provided identity, role, ownership, price, status, or permission fields.
+- Do not hardcode secrets, tokens, passwords, private keys, account IDs, or environment-specific credentials.
+- Use existing configuration loading and validation patterns.
+- Keep `.env.example` and sample environment files free of real secrets.
+- Do not add a runtime dependency when the standard library, existing dependency, or small local helper is sufficient.
+- When a dependency change is necessary, update the appropriate lockfile and report why the dependency was needed.
+- Keep backend and frontend contracts synchronized when API paths, payloads, validation, authentication, authorization, or error formats change.
+- Enforce authentication and authorization at the backend boundary for protected resources.
+- Do not trust client-provided identity, role, ownership, price, status, or permission fields.
 - Validate and normalize external input before persistence or sensitive operations.
 - Do not log secrets, credentials, session tokens, authorization headers, personal data, or large request bodies.
-- Avoid SQL injection, command injection, path traversal, SSRF, XSS, open redirects, and unsafe deserialization. Use parameterized DB access and safe URL/path construction.
+- Avoid SQL injection, command injection, path traversal, SSRF, XSS, open redirects, and unsafe deserialization.
 
-## Docs And Completion
+## Documentation And Specs
 
-- Keep specs aligned with implementation. Mark future phases as future work and do not mix phase-one requirements with later ambitions.
+- Keep specifications consistent with the current implementation baseline.
+- Mark future phases clearly as future work.
+- Do not mix first-phase requirements with later-phase ambitions in the same acceptance criteria.
+- When replacing specs, delete superseded files only when the replacement preserves the original intent and clearly states what it replaces.
 - Update relevant README, API notes, environment examples, or developer docs when behavior, setup, commands, or contracts change.
-- Before reporting completion, inspect the relevant git diff and verify no unrelated files changed.
-- Report what changed, what verification ran, what verification was skipped, and known risks or follow-up work.
-- Never claim a tool, test, type check, or build passed unless it was actually run and checked.
+
+## Completion Expectations
+
+- Before reporting completion, check the relevant git diff and verify no unrelated files were changed.
+- Report what changed, what was verified, and any verification intentionally skipped.
+- Do not claim a tool, test, type check, or build passed unless it was actually run and the output was checked.
+- Mention known risks, follow-up work, or repository assumptions when they affect the result.
