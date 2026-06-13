@@ -1,5 +1,0 @@
-from support.registry import export_module as _export_module
-
-_export_module(globals(), "support.data.sources.comprehensive.module")
-_export_module(globals(), "support.llm.tool.call.module")
-del _export_module

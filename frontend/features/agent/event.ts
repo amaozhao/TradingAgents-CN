@@ -69,11 +69,13 @@ export function toolMessageId(toolName: string) {
 
 export function eventContent(data: Record<string, unknown>) {
   const direct = data.content || data.text || data.delta || data.summary
-  if (direct) return String(direct)
+  if (direct) return readableContentString(String(direct))
   const result = data.result
   if (result && typeof result === "object") {
     const nested = result as Record<string, unknown>
-    return String(nested.content || nested.text || nested.delta || nested.summary || "")
+    const preview = readableParsedToolPreview(String(nested.tool || data.tool_name || data.tool || ""), nested, null)
+    if (preview) return preview
+    return readableContentString(String(nested.content || nested.text || nested.delta || nested.summary || ""))
   }
   return ""
 }
@@ -140,9 +142,12 @@ export function previewFromEventData(data: Record<string, unknown>) {
   if (stage || message || progress) {
     return [stage, progress, message].filter(Boolean).join(" · ")
   }
+  const toolName = String(data.tool_name || data.tool || "")
+  const resultPreview = readableResultValuePreview(toolName, data.result)
+  if (resultPreview) return resultPreview
   for (const key of ["preview", "result", "error", "content", "text", "summary"] as const) {
     const formatted = formatEventValue(data[key])
-    if (formatted) return formatted
+    if (formatted) return key === "content" || key === "text" ? readableContentString(formatted) : formatted
   }
   return ""
 }
@@ -232,6 +237,16 @@ export function parseJsonPreview(value: string): Record<string, unknown> | null 
   } catch {
     return null
   }
+}
+
+export function readableContentString(value: string) {
+  const trimmed = value.trim()
+  const parsed = parseJsonPreview(trimmed)
+  if (parsed?.tool === "batch_stock_analysis" || parsed?.mode === "batch") {
+    const preview = batchAnalysisPreview(parsed, null)
+    if (preview) return preview
+  }
+  return value
 }
 
 export function compactPreviewText(value: unknown, maxLength: number | null = 220) {
@@ -390,32 +405,56 @@ export function stockAnalysisPreview(toolName: string, result: Record<string, un
   return ""
 }
 
-export function readableToolPreview(tool: ToolState, maxLength: number | null = 220) {
-  if (!tool.preview) return ""
-  const parsed = parseJsonPreview(tool.preview)
-  if (!parsed) {
-    const trimmed = tool.preview.trim()
-    return trimmed.startsWith("{")
-      ? jsonFragmentPreview(tool.name, trimmed, maxLength)
-      : compactPreviewText(tool.preview, maxLength)
+export function batchAnalysisPreview(result: Record<string, unknown>, maxLength: number | null = 220) {
+  const message = compactPreviewText(result.message, null)
+  const summary = compactPreviewText(result.summary, null)
+  const status = compactPreviewText(result.status, maxLength)
+  const total = typeof result.total_tasks === "number" ? result.total_tasks : undefined
+  const completed = typeof result.completed_tasks === "number" ? result.completed_tasks : undefined
+  const failed = typeof result.failed_tasks === "number" ? result.failed_tasks : undefined
+  const cancelled = typeof result.cancelled_tasks === "number" ? result.cancelled_tasks : undefined
+  const parts = [message, summary].filter((part, index, all) => part && all.indexOf(part) === index)
+
+  if (parts.length === 0 && total != null) {
+    parts.push(`批量分析状态：${completed ?? 0}/${total} 成功，${failed ?? 0} 失败，${cancelled ?? 0} 取消。`)
+  }
+  if (parts.length === 0) {
+    parts.push(status ? `批量分析状态：${status}` : "批量分析任务已更新。")
   }
 
-  if (tool.name === "load_skill") {
+  const links = result.links && typeof result.links === "object" ? result.links as Record<string, unknown> : null
+  const batchLink = compactPreviewText(links?.batch, null)
+  const batchId = compactPreviewText(result.batch_id, null)
+  if (batchLink) {
+    parts.push(`批次链接：${batchLink}`)
+  } else if (batchId) {
+    parts.push(`批次 ID：${batchId}`)
+  }
+
+  return compactPreviewText(parts.join("\n"), maxLength)
+}
+
+export function readableParsedToolPreview(toolName: string, parsed: Record<string, unknown>, maxLength: number | null = 220) {
+  const resolvedToolName = toolName || String(parsed.tool || "")
+  if (resolvedToolName === "load_skill") {
     return skillPreview(formatEventValue(parsed.content || parsed.text || parsed.preview), maxLength)
   }
-  if (tool.name === "bash") return bashPreview(parsed, maxLength)
-  if (tool.name === "add_goal_evidence") return evidencePreview(parsed, maxLength)
-  if (tool.name === "update_research_goal_status") return goalStatusPreview(parsed, maxLength)
+  if (resolvedToolName === "bash") return bashPreview(parsed, maxLength)
+  if (resolvedToolName === "add_goal_evidence") return evidencePreview(parsed, maxLength)
+  if (resolvedToolName === "update_research_goal_status") return goalStatusPreview(parsed, maxLength)
+  if (resolvedToolName === "batch_stock_analysis" || parsed.tool === "batch_stock_analysis" || parsed.mode === "batch") {
+    return batchAnalysisPreview(parsed, maxLength)
+  }
   if (
-    tool.name === "stock_analysis"
-    || tool.name === "single_stock_analysis"
-    || tool.name === "stock_analysis_status"
-    || tool.name === "stock_analysis_report"
+    resolvedToolName === "stock_analysis"
+    || resolvedToolName === "single_stock_analysis"
+    || resolvedToolName === "stock_analysis_status"
+    || resolvedToolName === "stock_analysis_report"
   ) {
-    const preview = stockAnalysisPreview(tool.name, parsed, maxLength)
+    const preview = stockAnalysisPreview(resolvedToolName, parsed, maxLength)
     if (preview) return preview
   }
-  if (parsed.status === "config_required") return configRequiredPreview(tool.name, parsed, maxLength)
+  if (parsed.status === "config_required") return configRequiredPreview(resolvedToolName, parsed, maxLength)
   if (parsed.status === "degraded") {
     const history = parsed.history && typeof parsed.history === "object"
       ? parsed.history as Record<string, unknown>
@@ -430,6 +469,33 @@ export function readableToolPreview(tool: ToolState, maxLength: number | null = 
   const content = parsed.content || parsed.text || parsed.summary || parsed.stdout || parsed.error || parsed.preview
   if (content) return compactPreviewText(content, maxLength)
   if (parsed.status === "ok") return "工具执行完成"
+  return ""
+}
+
+export function readableResultValuePreview(toolName: string, value: unknown, maxLength: number | null = 220) {
+  if (!value) return ""
+  if (typeof value === "object" && !Array.isArray(value)) {
+    return readableParsedToolPreview(toolName, value as Record<string, unknown>, maxLength)
+  }
+  if (typeof value !== "string") return ""
+  const trimmed = value.trim()
+  const parsed = parseJsonPreview(trimmed)
+  if (parsed) return readableParsedToolPreview(toolName, parsed, maxLength)
+  return trimmed.startsWith("{") ? jsonFragmentPreview(toolName, trimmed, maxLength) : compactPreviewText(trimmed, maxLength)
+}
+
+export function readableToolPreview(tool: ToolState, maxLength: number | null = 220) {
+  if (!tool.preview) return ""
+  const parsed = parseJsonPreview(tool.preview)
+  if (!parsed) {
+    const trimmed = tool.preview.trim()
+    return trimmed.startsWith("{")
+      ? jsonFragmentPreview(tool.name, trimmed, maxLength)
+      : compactPreviewText(tool.preview, maxLength)
+  }
+
+  const parsedPreview = readableParsedToolPreview(tool.name, parsed, maxLength)
+  if (parsedPreview) return parsedPreview
   return compactPreviewText(parsed, maxLength)
 }
 
@@ -461,7 +527,7 @@ export function messagesFromApi(messages: ResearchMessage[]): AgentMessage[] {
     .map((message) => ({
       id: message.message_id,
       type: message.role === "user" ? "user" : "answer",
-      content: message.content,
+      content: message.role === "assistant" ? readableContentString(message.content) : message.content,
       timestamp: messageTimestamp(message),
       metadata: message.metadata
     }))
@@ -480,7 +546,7 @@ export function attemptResultContent(attempt: ResearchAttempt) {
   const result = attempt.result
   if (!result || typeof result !== "object") return ""
   const content = result.content
-  return typeof content === "string" ? content.trim() : ""
+  return typeof content === "string" ? readableContentString(content).trim() : ""
 }
 
 export function attemptTimestamp(attempt: ResearchAttempt) {

@@ -6,7 +6,6 @@
 
 import importlib
 
-from support.registry import export_module as _export_module
 from trader.agents.analysts.news import create_news_analyst
 from trader.agents.utils.utils import Toolkit
 from trader.llm.adapters.deepseek import ChatDeepSeek
@@ -108,7 +107,3 @@ def test_unified_news_tool():
 
 if __name__ == "__main__":
     test_unified_news_tool()
-
-_export_module(globals(), "support.final.integration.module")
-_export_module(globals(), "support.tool.binding.fi.module")
-del _export_module

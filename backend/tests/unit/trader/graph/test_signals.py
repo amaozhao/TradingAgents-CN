@@ -12,7 +12,6 @@ import importlib
 
 import pytest
 
-from support.registry import export_module as _export_module
 from trader.agents.utils.rating import RATINGS_5_TIER, parse_rating
 from trader.graph.signals import SignalProcessor
 
@@ -93,8 +92,3 @@ class TestSignalProcessor:
         sp = SignalProcessor()
         result = sp.process_signal("Plain prose without a recommendation.")
         assert result["action"] == "持有"
-
-
-_export_module(globals(), "support.chinese.output.module")
-_export_module(globals(), "support.signal.processor.debug.module")
-del _export_module

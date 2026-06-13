@@ -4,7 +4,6 @@ import unittest
 
 import pytest
 
-from support.registry import export_module as _export_module
 from trader.flows.symbols import (
     NoMarketDataError,
     is_yahoo_safe,
@@ -80,6 +79,3 @@ class TestIsYahooSafe(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-_export_module(globals(), "support.no.data.handling.module")
-del _export_module

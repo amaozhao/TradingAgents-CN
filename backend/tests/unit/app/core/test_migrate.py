@@ -4,7 +4,6 @@ from app.core.migrate import (
     HOT_COLLECTIONS,
     migrate_hot_collections,
 )
-from support.registry import export_module as _export_module
 
 
 @pytest.mark.asyncio
@@ -183,8 +182,3 @@ class FakeSession:
 
     async def __aexit__(self, *_args):
         return None
-
-
-_export_module(globals(), "support.migration.docs.integrity.module")
-_export_module(globals(), "support.postgres.local.cutover.verify.module")
-del _export_module

@@ -724,6 +724,39 @@ describe("ResearchAgentPage stock analysis", () => {
   })
 
   it("renders readable execution step summaries instead of raw tool JSON", async () => {
+    const batchResult = {
+      mode: "batch",
+      tool: "batch_stock_analysis",
+      links: { batch: "/tasks?batch_id=batch-1" },
+      status: "completed",
+      message: "批量分析已完成。",
+      summary: "批量分析状态：2/2 成功，0 失败，0 取消。",
+      accepted: true,
+      batch_id: "batch-1",
+      children: [
+        {
+          status: "completed",
+          symbol: "000002",
+          task_id: "task-000002",
+          progress: 100,
+          report_url: "/reports/view/report-000002"
+        },
+        {
+          status: "completed",
+          symbol: "000338",
+          task_id: "task-000338",
+          progress: 100,
+          report_url: "/reports/view/report-000338"
+        }
+      ],
+      progress: 100,
+      task_ids: ["task-000002", "task-000338"],
+      total_tasks: 2,
+      failed_tasks: 0,
+      cancelled_tasks: 0,
+      completed_tasks: 2
+    }
+
     vi.mocked(researchAgentApi.listSessions).mockResolvedValue({
       success: true,
       data: [{ session_id: "session-stock", title: "贵州茅台", updated_at: "2026-06-11T10:00:00Z" }],
@@ -805,6 +838,21 @@ describe("ResearchAgentPage stock analysis", () => {
               summary: "贵州茅台基本面稳健。"
             }
           }
+        },
+        {
+          event_id: 7,
+          event_type: "tool_completed",
+          payload: {
+            tool_name: "batch_stock_analysis",
+            result: batchResult
+          }
+        },
+        {
+          event_id: 8,
+          event_type: "message_completed",
+          payload: {
+            content: JSON.stringify(batchResult)
+          }
         }
       ],
       message: "ok"
@@ -837,5 +885,11 @@ describe("ResearchAgentPage stock analysis", () => {
     await user.click(screen.getByRole("button", { name: /个股分析报告/ }))
     expect(screen.getByText(/个股分析报告已生成：贵州茅台基本面稳健/)).toBeInTheDocument()
     expect(screen.queryByText(/"task_id": "task-600519"/)).not.toBeInTheDocument()
+
+    expect(screen.getAllByText(/批量分析已完成/).length).toBeGreaterThan(0)
+    await user.click(screen.getByRole("button", { name: /批量分析/ }))
+    expect(screen.getAllByText(/批量分析状态：2\/2 成功，0 失败，0 取消/).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/"children"/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/"task_ids"/)).not.toBeInTheDocument()
   })
 })

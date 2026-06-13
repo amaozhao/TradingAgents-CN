@@ -10,6 +10,8 @@ from .stage import stock_stage_title
 def _direct_tool_content(result: dict[str, Any]) -> str:
     status = str(result.get("status") or "unknown")
     tool_name = str(result.get("tool") or "tool")
+    if tool_name == "batch_stock_analysis":
+        return _batch_tool_content(result, status)
     if status == "error":
         message = result.get("error") or result.get("error_message") or "工具调用失败。"
         return f"{tool_name} 调用失败：{message}"
@@ -40,6 +42,39 @@ def _direct_tool_content(result: dict[str, Any]) -> str:
     if result.get("task_id"):
         return f"{tool_name} 已提交，当前状态：{status}。任务 ID：{result['task_id']}"
     return str(result.get("message") or f"{tool_name} 已返回状态：{status}。")
+
+
+def _batch_tool_content(result: dict[str, Any], status: str) -> str:
+    if status == "error":
+        message = result.get("error") or result.get("error_message") or "批量分析失败。"
+        return f"批量分析调用失败：{message}"
+
+    message = str(result.get("message") or "").strip()
+    summary = str(result.get("summary") or "").strip()
+    batch_id = str(result.get("batch_id") or "").strip()
+    links = result.get("links") if isinstance(result.get("links"), dict) else {}
+    batch_link = str(links.get("batch") or "").strip()
+    parts = [part for part in [message, summary] if part]
+
+    if not parts:
+        completed = result.get("completed_tasks")
+        total = result.get("total_tasks")
+        failed = result.get("failed_tasks")
+        cancelled = result.get("cancelled_tasks")
+        if total is not None:
+            parts.append(
+                f"批量分析状态：{completed or 0}/{total} 成功，{failed or 0} 失败，{cancelled or 0} 取消。"
+            )
+        elif status in {"queued", "pending", "processing", "running"}:
+            parts.append("批量分析任务处理中。")
+        else:
+            parts.append(f"批量分析已返回状态：{status}。")
+
+    if batch_link:
+        parts.append(f"批次链接：{batch_link}")
+    elif batch_id:
+        parts.append(f"批次 ID：{batch_id}")
+    return "\n".join(parts)
 
 
 def _is_failed_direct_tool_result(result: dict[str, Any]) -> bool:
@@ -133,7 +168,9 @@ class DirectToolMixin:
                     stage=str(stage.get("stage") or "analysis_task"),
                     status=str(stage.get("status") or "completed"),
                     progress=int(stage.get("progress") or result.get("progress") or 0),
-                    message=str(stage.get("message") or "Agent-native 单股阶段已更新。"),
+                    message=str(
+                        stage.get("message") or "Agent-native 单股阶段已更新。"
+                    ),
                     result=result,
                 )
         stage_plan = result.get("stage_plan")
@@ -323,12 +360,15 @@ class DirectToolMixin:
                 user_id=principal.user_id,
                 event_type="task_failed" if tool_failed else "task_completed",
                 payload={
-                    "finish_reason": "direct_tool_failed" if tool_failed else "direct_tool",
+                    "finish_reason": "direct_tool_failed"
+                    if tool_failed
+                    else "direct_tool",
                     "artifact_ids": linked_artifact_ids,
                     "task_ids": linked_task_ids,
                     "batch_id": linked_batch_id,
                     "attempt_id": attempt_id,
-                    "error": tool_result.get("error") or tool_result.get("error_message"),
+                    "error": tool_result.get("error")
+                    or tool_result.get("error_message"),
                 },
             )
         return {

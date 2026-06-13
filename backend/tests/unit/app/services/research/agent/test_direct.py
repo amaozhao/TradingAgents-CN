@@ -72,6 +72,46 @@ async def test_direct_tool_records_batch_task_ids_and_batch_id() -> None:
 
 
 @pytest.mark.asyncio
+async def test_direct_batch_tool_message_uses_readable_summary() -> None:
+    harness = DirectHarness(
+        {
+            "tool": "batch_stock_analysis",
+            "status": "completed",
+            "batch_id": "batch-1",
+            "total_tasks": 2,
+            "completed_tasks": 2,
+            "failed_tasks": 0,
+            "cancelled_tasks": 0,
+            "task_ids": ["task-1", "task-2"],
+            "children": [
+                {"symbol": "000002", "task_id": "task-1", "status": "completed"},
+                {"symbol": "000338", "task_id": "task-2", "status": "completed"},
+            ],
+            "summary": "批量分析状态：2/2 成功，0 失败，0 取消。",
+            "message": "批量分析已完成。",
+            "links": {"batch": "/tasks?batch_id=batch-1"},
+        }
+    )
+
+    result = await harness.run_direct_tool(
+        principal=_principal(),
+        session_id="session-1",
+        user_message="分析这两个股票",
+        tool_name="batch_stock_analysis",
+        tool_arguments={"symbols": ["000002", "000338"]},
+        attempt_id="attempt-1",
+    )
+
+    assert result["content"] == (
+        "批量分析已完成。\n"
+        "批量分析状态：2/2 成功，0 失败，0 取消。\n"
+        "批次链接：/tasks?batch_id=batch-1"
+    )
+    assert '"children"' not in result["content"]
+    assert harness.messages[-1]["content"] == result["content"]
+
+
+@pytest.mark.asyncio
 async def test_direct_tool_preserves_single_task_and_job_id_metadata() -> None:
     harness = DirectHarness(
         {
