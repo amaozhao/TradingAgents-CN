@@ -23,6 +23,8 @@ def legacy_id_from_document(document: Mapping[str, Any]) -> str:
 def normalize_payload(value: Any) -> Any:
     if _is_document_id(value):
         return str(value)
+    if _is_langchain_message(value):
+        return _langchain_message_payload(value)
     if isinstance(value, datetime):
         return value.isoformat()
     if isinstance(value, date):
@@ -36,6 +38,32 @@ def normalize_payload(value: Any) -> Any:
     if isinstance(value, list | tuple):
         return [normalize_payload(item) for item in value]
     return value
+
+
+def _is_langchain_message(value: Any) -> bool:
+    return type(value).__module__.startswith("langchain_core.messages") and hasattr(
+        value, "content"
+    )
+
+
+def _langchain_message_payload(value: Any) -> dict[str, Any]:
+    payload = {
+        "type": str(getattr(value, "type", type(value).__name__.lower())),
+        "content": normalize_payload(getattr(value, "content", "")),
+    }
+    for attr in (
+        "name",
+        "id",
+        "additional_kwargs",
+        "response_metadata",
+        "tool_calls",
+        "invalid_tool_calls",
+        "usage_metadata",
+    ):
+        attr_value = getattr(value, attr, None)
+        if attr_value:
+            payload[attr] = normalize_payload(attr_value)
+    return payload
 
 
 def map_stock_basic_info(document: Mapping[str, Any]) -> dict[str, Any]:

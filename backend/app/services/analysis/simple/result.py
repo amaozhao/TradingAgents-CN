@@ -5,6 +5,7 @@ from .common import (
     logger,
     uuid,
 )
+from app.db.document import normalize_payload
 
 
 def build_analysis_result(
@@ -324,6 +325,8 @@ def build_analysis_result(
         if isinstance(decision, dict)
         else "Unknown"
     )
+    serializable_decision = normalize_payload(decision)
+    serializable_state = normalize_payload(state)
 
     # 构建结果
     result = {
@@ -338,12 +341,12 @@ def build_analysis_result(
         else 0.0,
         "risk_level": "中等",  # 可以根据risk_score计算
         "key_points": [],  # 可以从reasoning中提取关键点
-        "detailed_analysis": decision,
+        "detailed_analysis": serializable_decision,
         "execution_time": execution_time,
         "tokens_used": decision.get("tokens_used", 0)
         if isinstance(decision, dict)
         else 0,
-        "state": state,
+        "state": serializable_state,
         # 添加分析师信息
         "analysts": request.parameters.selected_analysts if request.parameters else [],
         "research_depth": request.parameters.research_depth
@@ -356,8 +359,8 @@ def build_analysis_result(
         # 🔥 添加模型信息字段
         "model_info": model_info,
         # 🆕 性能指标数据
-        "performance_metrics": state.get("performance_metrics", {})
-        if isinstance(state, dict)
+        "performance_metrics": serializable_state.get("performance_metrics", {})
+        if isinstance(serializable_state, dict)
         else {},
     }
 

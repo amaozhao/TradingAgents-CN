@@ -1,6 +1,8 @@
+import json
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
+from langchain_core.messages import HumanMessage
 from sqlalchemy.dialects import postgresql
 
 from app.db.document import (
@@ -56,6 +58,13 @@ def test_legacy_id_uses_postgres_document_id_and_payload_keeps_string_id():
         "code": "000001",
         "updated_at": "2026-06-03T00:00:00+00:00",
     }
+
+
+def test_normalize_payload_serializes_langchain_messages():
+    payload = normalize_payload({"messages": [HumanMessage(content="Analyze 600519")]})
+
+    json.dumps(payload)
+    assert payload == {"messages": [{"type": "human", "content": "Analyze 600519"}]}
 
 
 def test_legacy_id_falls_back_to_existing_legacy_id():
