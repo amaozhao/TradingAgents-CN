@@ -72,21 +72,26 @@ if TYPE_CHECKING:
         TestLogResponse,
         _print_config_summary,
         get_version,
-        run_akshare_basic_info_sync,
-        run_akshare_financial_sync,
-        run_akshare_historical_sync,
-        run_akshare_quotes_sync,
-        run_akshare_status_check,
-        run_baostock_basic_info_sync,
-        run_baostock_daily_quotes_sync,
-        run_baostock_historical_sync,
-        run_baostock_status_check,
-        run_tushare_basic_info_sync,
-        run_tushare_financial_sync,
-        run_tushare_historical_sync,
-        run_tushare_quotes_sync,
-        run_tushare_status_check,
     )
+
+
+async def _run_worker_coroutine_job(
+    scheduler_gate,
+    module_name: str,
+    function_name: str,
+    *,
+    gate_name: str = "heavy_data_sync",
+    **kwargs,
+):
+    worker = getattr(importlib.import_module(module_name), function_name)
+    context = (
+        scheduler_gate.light_status()
+        if gate_name == "light_status"
+        else scheduler_gate.heavy_data_sync()
+    )
+    async with context:
+        return await worker(**kwargs)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -107,8 +112,10 @@ async def lifespan(app: FastAPI):
 
     #  配置桥接：将统一配置写入环境变量，供 AGENTrader 核心库使用
     try:
-        bridge_config_to_env = getattr(importlib.import_module("app.core.bridge"), "bridge_config_to_env")
-        bridge_config_to_env()
+        bridge_config_to_env_async = getattr(
+            importlib.import_module("app.core.bridge"), "bridge_config_to_env_async"
+        )
+        await bridge_config_to_env_async()
     except Exception as e:
         logger.warning(f"⚠️  配置桥接失败: {e}")
         logger.warning("⚠️  AGENTrader 将使用 .env 文件中的配置")
@@ -153,6 +160,10 @@ async def lifespan(app: FastAPI):
             timezone=settings.TIMEZONE,
             job_defaults={"coalesce": True, "max_instances": 1},
         )
+        SchedulerGate = getattr(
+            importlib.import_module("app.services.scheduler.gate"), "SchedulerGate"
+        )
+        scheduler_gate = SchedulerGate()
 
         # 使用多数据源同步服务（支持自动切换）
         multi_source_service = get_multi_source_sync_service()
@@ -231,11 +242,16 @@ async def lifespan(app: FastAPI):
 
         # 基础信息同步任务
         scheduler.add_job(
-            run_tushare_basic_info_sync,
+            _run_worker_coroutine_job,
             CronTrigger.from_crontab(settings.TUSHARE_BASIC_INFO_SYNC_CRON, timezone=settings.TIMEZONE),
             id="tushare_basic_info_sync",
             name="股票基础信息同步（Tushare）",
-            kwargs={"force_update": False},
+            kwargs={
+                "scheduler_gate": scheduler_gate,
+                "module_name": "app.worker.tushare.sync",
+                "function_name": "run_tushare_basic_info_sync",
+                "force_update": False,
+            },
         )
         if not (settings.TUSHARE_UNIFIED_ENABLED and settings.TUSHARE_BASIC_INFO_SYNC_ENABLED):
             scheduler.pause_job("tushare_basic_info_sync")
@@ -245,10 +261,15 @@ async def lifespan(app: FastAPI):
 
         # 实时行情同步任务
         scheduler.add_job(
-            run_tushare_quotes_sync,
+            _run_worker_coroutine_job,
             CronTrigger.from_crontab(settings.TUSHARE_QUOTES_SYNC_CRON, timezone=settings.TIMEZONE),
             id="tushare_quotes_sync",
             name="实时行情同步（Tushare）",
+            kwargs={
+                "scheduler_gate": scheduler_gate,
+                "module_name": "app.worker.tushare.sync",
+                "function_name": "run_tushare_quotes_sync",
+            },
         )
         if not (settings.TUSHARE_UNIFIED_ENABLED and settings.TUSHARE_QUOTES_SYNC_ENABLED):
             scheduler.pause_job("tushare_quotes_sync")
@@ -258,11 +279,16 @@ async def lifespan(app: FastAPI):
 
         # 历史数据同步任务
         scheduler.add_job(
-            run_tushare_historical_sync,
+            _run_worker_coroutine_job,
             CronTrigger.from_crontab(settings.TUSHARE_HISTORICAL_SYNC_CRON, timezone=settings.TIMEZONE),
             id="tushare_historical_sync",
             name="历史数据同步（Tushare）",
-            kwargs={"incremental": True},
+            kwargs={
+                "scheduler_gate": scheduler_gate,
+                "module_name": "app.worker.tushare.sync",
+                "function_name": "run_tushare_historical_sync",
+                "incremental": True,
+            },
         )
         if not (settings.TUSHARE_UNIFIED_ENABLED and settings.TUSHARE_HISTORICAL_SYNC_ENABLED):
             scheduler.pause_job("tushare_historical_sync")
@@ -272,10 +298,15 @@ async def lifespan(app: FastAPI):
 
         # 财务数据同步任务
         scheduler.add_job(
-            run_tushare_financial_sync,
+            _run_worker_coroutine_job,
             CronTrigger.from_crontab(settings.TUSHARE_FINANCIAL_SYNC_CRON, timezone=settings.TIMEZONE),
             id="tushare_financial_sync",
             name="财务数据同步（Tushare）",
+            kwargs={
+                "scheduler_gate": scheduler_gate,
+                "module_name": "app.worker.tushare.sync",
+                "function_name": "run_tushare_financial_sync",
+            },
         )
         if not (settings.TUSHARE_UNIFIED_ENABLED and settings.TUSHARE_FINANCIAL_SYNC_ENABLED):
             scheduler.pause_job("tushare_financial_sync")
@@ -285,10 +316,16 @@ async def lifespan(app: FastAPI):
 
         # 状态检查任务
         scheduler.add_job(
-            run_tushare_status_check,
+            _run_worker_coroutine_job,
             CronTrigger.from_crontab(settings.TUSHARE_STATUS_CHECK_CRON, timezone=settings.TIMEZONE),
             id="tushare_status_check",
             name="数据源状态检查（Tushare）",
+            kwargs={
+                "scheduler_gate": scheduler_gate,
+                "module_name": "app.worker.tushare.sync",
+                "function_name": "run_tushare_status_check",
+                "gate_name": "light_status",
+            },
         )
         if not (settings.TUSHARE_UNIFIED_ENABLED and settings.TUSHARE_STATUS_CHECK_ENABLED):
             scheduler.pause_job("tushare_status_check")
@@ -301,11 +338,16 @@ async def lifespan(app: FastAPI):
 
         # 基础信息同步任务
         scheduler.add_job(
-            run_akshare_basic_info_sync,
+            _run_worker_coroutine_job,
             CronTrigger.from_crontab(settings.AKSHARE_BASIC_INFO_SYNC_CRON, timezone=settings.TIMEZONE),
             id="akshare_basic_info_sync",
             name="股票基础信息同步（AKShare）",
-            kwargs={"force_update": False},
+            kwargs={
+                "scheduler_gate": scheduler_gate,
+                "module_name": "app.worker.akshare.sync",
+                "function_name": "run_akshare_basic_info_sync",
+                "force_update": False,
+            },
         )
         if not (settings.AKSHARE_UNIFIED_ENABLED and settings.AKSHARE_BASIC_INFO_SYNC_ENABLED):
             scheduler.pause_job("akshare_basic_info_sync")
@@ -315,10 +357,15 @@ async def lifespan(app: FastAPI):
 
         # 实时行情同步任务
         scheduler.add_job(
-            run_akshare_quotes_sync,
+            _run_worker_coroutine_job,
             CronTrigger.from_crontab(settings.AKSHARE_QUOTES_SYNC_CRON, timezone=settings.TIMEZONE),
             id="akshare_quotes_sync",
             name="实时行情同步（AKShare）",
+            kwargs={
+                "scheduler_gate": scheduler_gate,
+                "module_name": "app.worker.akshare.sync",
+                "function_name": "run_akshare_quotes_sync",
+            },
         )
         if not (settings.AKSHARE_UNIFIED_ENABLED and settings.AKSHARE_QUOTES_SYNC_ENABLED):
             scheduler.pause_job("akshare_quotes_sync")
@@ -328,11 +375,16 @@ async def lifespan(app: FastAPI):
 
         # 历史数据同步任务
         scheduler.add_job(
-            run_akshare_historical_sync,
+            _run_worker_coroutine_job,
             CronTrigger.from_crontab(settings.AKSHARE_HISTORICAL_SYNC_CRON, timezone=settings.TIMEZONE),
             id="akshare_historical_sync",
             name="历史数据同步（AKShare）",
-            kwargs={"incremental": True},
+            kwargs={
+                "scheduler_gate": scheduler_gate,
+                "module_name": "app.worker.akshare.sync",
+                "function_name": "run_akshare_historical_sync",
+                "incremental": True,
+            },
         )
         if not (settings.AKSHARE_UNIFIED_ENABLED and settings.AKSHARE_HISTORICAL_SYNC_ENABLED):
             scheduler.pause_job("akshare_historical_sync")
@@ -342,10 +394,15 @@ async def lifespan(app: FastAPI):
 
         # 财务数据同步任务
         scheduler.add_job(
-            run_akshare_financial_sync,
+            _run_worker_coroutine_job,
             CronTrigger.from_crontab(settings.AKSHARE_FINANCIAL_SYNC_CRON, timezone=settings.TIMEZONE),
             id="akshare_financial_sync",
             name="财务数据同步（AKShare）",
+            kwargs={
+                "scheduler_gate": scheduler_gate,
+                "module_name": "app.worker.akshare.sync",
+                "function_name": "run_akshare_financial_sync",
+            },
         )
         if not (settings.AKSHARE_UNIFIED_ENABLED and settings.AKSHARE_FINANCIAL_SYNC_ENABLED):
             scheduler.pause_job("akshare_financial_sync")
@@ -355,10 +412,16 @@ async def lifespan(app: FastAPI):
 
         # 状态检查任务
         scheduler.add_job(
-            run_akshare_status_check,
+            _run_worker_coroutine_job,
             CronTrigger.from_crontab(settings.AKSHARE_STATUS_CHECK_CRON, timezone=settings.TIMEZONE),
             id="akshare_status_check",
             name="数据源状态检查（AKShare）",
+            kwargs={
+                "scheduler_gate": scheduler_gate,
+                "module_name": "app.worker.akshare.sync",
+                "function_name": "run_akshare_status_check",
+                "gate_name": "light_status",
+            },
         )
         if not (settings.AKSHARE_UNIFIED_ENABLED and settings.AKSHARE_STATUS_CHECK_ENABLED):
             scheduler.pause_job("akshare_status_check")
@@ -371,10 +434,15 @@ async def lifespan(app: FastAPI):
 
         # 基础信息同步任务
         scheduler.add_job(
-            run_baostock_basic_info_sync,
+            _run_worker_coroutine_job,
             CronTrigger.from_crontab(settings.BAOSTOCK_BASIC_INFO_SYNC_CRON, timezone=settings.TIMEZONE),
             id="baostock_basic_info_sync",
             name="股票基础信息同步（BaoStock）",
+            kwargs={
+                "scheduler_gate": scheduler_gate,
+                "module_name": "app.worker.baostock.sync",
+                "function_name": "run_baostock_basic_info_sync",
+            },
         )
         if not (settings.BAOSTOCK_UNIFIED_ENABLED and settings.BAOSTOCK_BASIC_INFO_SYNC_ENABLED):
             scheduler.pause_job("baostock_basic_info_sync")
@@ -384,10 +452,15 @@ async def lifespan(app: FastAPI):
 
         # 日K线同步任务（注意：BaoStock不支持实时行情）
         scheduler.add_job(
-            run_baostock_daily_quotes_sync,
+            _run_worker_coroutine_job,
             CronTrigger.from_crontab(settings.BAOSTOCK_DAILY_QUOTES_SYNC_CRON, timezone=settings.TIMEZONE),
             id="baostock_daily_quotes_sync",
             name="日K线数据同步（BaoStock）",
+            kwargs={
+                "scheduler_gate": scheduler_gate,
+                "module_name": "app.worker.baostock.sync",
+                "function_name": "run_baostock_daily_quotes_sync",
+            },
         )
         if not (settings.BAOSTOCK_UNIFIED_ENABLED and settings.BAOSTOCK_DAILY_QUOTES_SYNC_ENABLED):
             scheduler.pause_job("baostock_daily_quotes_sync")
@@ -399,10 +472,15 @@ async def lifespan(app: FastAPI):
 
         # 历史数据同步任务
         scheduler.add_job(
-            run_baostock_historical_sync,
+            _run_worker_coroutine_job,
             CronTrigger.from_crontab(settings.BAOSTOCK_HISTORICAL_SYNC_CRON, timezone=settings.TIMEZONE),
             id="baostock_historical_sync",
             name="历史数据同步（BaoStock）",
+            kwargs={
+                "scheduler_gate": scheduler_gate,
+                "module_name": "app.worker.baostock.sync",
+                "function_name": "run_baostock_historical_sync",
+            },
         )
         if not (settings.BAOSTOCK_UNIFIED_ENABLED and settings.BAOSTOCK_HISTORICAL_SYNC_ENABLED):
             scheduler.pause_job("baostock_historical_sync")
@@ -412,10 +490,16 @@ async def lifespan(app: FastAPI):
 
         # 状态检查任务
         scheduler.add_job(
-            run_baostock_status_check,
+            _run_worker_coroutine_job,
             CronTrigger.from_crontab(settings.BAOSTOCK_STATUS_CHECK_CRON, timezone=settings.TIMEZONE),
             id="baostock_status_check",
             name="数据源状态检查（BaoStock）",
+            kwargs={
+                "scheduler_gate": scheduler_gate,
+                "module_name": "app.worker.baostock.sync",
+                "function_name": "run_baostock_status_check",
+                "gate_name": "light_status",
+            },
         )
         if not (settings.BAOSTOCK_UNIFIED_ENABLED and settings.BAOSTOCK_STATUS_CHECK_ENABLED):
             scheduler.pause_job("baostock_status_check")
@@ -434,13 +518,14 @@ async def lifespan(app: FastAPI):
         async def run_news_sync():
             """运行新闻同步任务 - 使用AKShare同步自选股新闻"""
             try:
-                logger.info("📰 开始新闻数据同步（AKShare - 仅自选股）...")
-                service = await get_akshare_sync_service()
-                result = await service.sync_news_data(
-                    symbols=None,  # None + favorites_only=True 表示只同步自选股
-                    max_news_per_stock=settings.NEWS_SYNC_MAX_PER_SOURCE,
-                    favorites_only=True,  # 只同步自选股
-                )
+                async with scheduler_gate.heavy_data_sync():
+                    logger.info("📰 开始新闻数据同步（AKShare - 仅自选股）...")
+                    service = await get_akshare_sync_service()
+                    result = await service.sync_news_data(
+                        symbols=None,  # None + favorites_only=True 表示只同步自选股
+                        max_news_per_stock=settings.NEWS_SYNC_MAX_PER_SOURCE,
+                        favorites_only=True,  # 只同步自选股
+                    )
                 logger.info(
                     f"✅ 新闻同步完成: "
                     f"处理{result['total_processed']}只自选股, "

@@ -46,8 +46,8 @@ POSTGRES_PORT=5432
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=trading_agents_cn
-POSTGRES_POOL_SIZE=10
-POSTGRES_MAX_OVERFLOW=20
+POSTGRES_POOL_SIZE=3
+POSTGRES_MAX_OVERFLOW=2
 POSTGRES_POOL_TIMEOUT=30
 POSTGRES_POOL_RECYCLE=1800
 POSTGRES_ECHO=false
@@ -61,6 +61,26 @@ REDIS_PORT=6379
 REDIS_PASSWORD=trading_agents123
 REDIS_DB=0
 ```
+
+### PostgreSQL 连接池 sizing
+
+本地开发推荐从较小连接池开始：
+
+```env
+POSTGRES_POOL_SIZE=3
+POSTGRES_MAX_OVERFLOW=2
+POSTGRES_POOL_TIMEOUT=30
+```
+
+这些值不是全局上限，而是每个后端进程、worker 进程和 event loop 对应 SQLAlchemy async engine 的上限。按默认 `pool_size + max_overflow` 计算，上面的本地配置是每个 engine 最多 5 个连接。
+
+生产或压测环境需要按实际部署计算：
+
+```text
+总连接预算 >= (后端进程数 + worker 进程数 + 其他长驻进程数) * (POSTGRES_POOL_SIZE + POSTGRES_MAX_OVERFLOW) + 运维/迁移保留连接
+```
+
+不要只通过调大 PostgreSQL `max_connections` 掩盖应用侧连接池放大问题。长驻 Web/Worker 运行时应优先使用 async DB 路径，并避免通过同步 facade 创建额外 event loop 和连接池。
 
 如果后端也运行在 Docker Compose 容器内，应把连接主机名改为服务名：
 

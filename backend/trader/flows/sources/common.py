@@ -22,7 +22,11 @@ class _DataSourceManagerMixin1:
         self.use_postgres_cache = self._check_postgres_enabled()
 
         self.default_source = self._get_default_source()
-        self.available_sources = self._check_available_sources()
+        self.available_sources = self._check_available_sources_from_config(
+            self._default_enabled_source_names(),
+            {},
+            validate_postgres_adapter=False,
+        )
         self.current_source = self.default_source
 
         # 初始化统一缓存管理器
@@ -129,6 +133,171 @@ class _DataSourceManagerMixin1:
         ]
         # 只返回可用的数据源
         return [s for s in default_order if s in self.available_sources]
+
+    async def get_data_source_priority_order_async(
+        self, symbol: Optional[str] = None
+    ) -> List[ChinaDataSource]:
+        """从异步数据库读取中国市场数据源优先级顺序。"""
+        market_category = self._identify_market_category(symbol)
+
+        try:
+            get_postgres_db = globals().get("get_postgres_db")
+            if get_postgres_db is None:
+                get_postgres_db = getattr(
+                    importlib.import_module("app.core.database"), "get_postgres_db"
+                )
+            db = get_postgres_db()
+
+            groupings_collection = getattr(db, "datasource_groupings", None)
+            if groupings_collection is not None:
+                query = {"enabled": True}
+                if market_category:
+                    query["market_category_id"] = market_category
+
+                cursor = groupings_collection.find(query)
+                sorter = getattr(cursor, "sort", None)
+                if callable(sorter):
+                    cursor = sorter("priority", -1)
+                groupings = await cursor.to_list(None)
+                result = self._priority_order_from_groupings(groupings)
+                if result:
+                    logger.info(
+                        f"✅ [数据源优先级] 市场={market_category or '全部'}, 从异步分组读取: {[s.value for s in result]}"
+                    )
+                    return result
+
+            config_collection = db.system_configs
+            config_data = await config_collection.find_one(
+                {"is_active": True}, sort=[("version", -1)]
+            )
+            if config_data and config_data.get("data_source_configs"):
+                result = self._priority_order_from_configs(
+                    config_data.get("data_source_configs", []),
+                    market_category,
+                )
+                if result:
+                    logger.info(
+                        f"✅ [数据源优先级] 市场={market_category or '全部'}, 从异步配置读取: {[s.value for s in result]}"
+                    )
+                    return result
+
+            logger.warning("⚠️ [数据源优先级] 异步数据库中没有数据源配置，使用默认顺序")
+        except Exception as e:
+            logger.warning(f"⚠️ [数据源优先级] 异步数据库读取失败: {e}，使用默认顺序")
+
+        return self._default_priority_order()
+
+    def _default_priority_order(self) -> List[ChinaDataSource]:
+        default_order = [
+            ChinaDataSource.AKSHARE,
+            ChinaDataSource.TUSHARE,
+            ChinaDataSource.BAOSTOCK,
+        ]
+        return [s for s in default_order if s in self.available_sources]
+
+    async def load_available_sources_async(self) -> None:
+        """Load enabled China data sources from the async application database."""
+        enabled_sources = self._default_enabled_source_names()
+        datasource_configs: dict = {}
+
+        try:
+            get_postgres_db = globals().get("get_postgres_db")
+            if get_postgres_db is None:
+                get_postgres_db = getattr(
+                    importlib.import_module("app.core.database"), "get_postgres_db"
+                )
+            db = get_postgres_db()
+            config_data = await db.system_configs.find_one(
+                {"is_active": True}, sort=[("version", -1)]
+            )
+
+            if config_data and config_data.get("data_source_configs"):
+                data_source_configs = config_data.get("data_source_configs", [])
+                enabled_sources = {
+                    self._data_source_config_name(config)
+                    for config in data_source_configs
+                    if config.get("enabled", True)
+                }
+                enabled_sources.discard("")
+                datasource_configs = self._datasource_config_map(data_source_configs)
+                logger.info(
+                    f"✅ [数据源配置] 从异步数据库读取到已启用的数据源: {enabled_sources}"
+                )
+            else:
+                logger.warning("⚠️ [数据源配置] 异步数据库中没有数据源配置，将检查所有已安装的数据源")
+        except Exception as e:
+            logger.warning(f"⚠️ [数据源配置] 异步数据库读取失败: {e}，将检查所有已安装的数据源")
+
+        self.available_sources = self._check_available_sources_from_config(
+            enabled_sources,
+            datasource_configs,
+            validate_postgres_adapter=False,
+        )
+        if self.current_source not in self.available_sources and self.available_sources:
+            self.current_source = self.available_sources[0]
+
+    def _data_source_config_name(self, config) -> str:
+        return str(config.get("type") or config.get("name") or "").lower()
+
+    def _datasource_config_map(self, data_source_configs) -> dict:
+        result = {}
+        for ds_config in data_source_configs:
+            name = str(ds_config.get("name") or ds_config.get("type") or "").lower()
+            if not name:
+                continue
+            result[name] = {
+                "api_key": ds_config.get("api_key", ""),
+                "api_secret": ds_config.get("api_secret", ""),
+                "config_params": ds_config.get("config_params", {}),
+            }
+        return result
+
+    def _priority_order_from_groupings(self, groupings) -> List[ChinaDataSource]:
+        source_mapping = {
+            "tushare": ChinaDataSource.TUSHARE,
+            "akshare": ChinaDataSource.AKSHARE,
+            "baostock": ChinaDataSource.BAOSTOCK,
+        }
+        result = []
+        for grouping in sorted(
+            groupings or [], key=lambda item: item.get("priority", 0), reverse=True
+        ):
+            ds_name = str(grouping.get("data_source_name", "")).lower()
+            source = source_mapping.get(ds_name)
+            if source and source != ChinaDataSource.POSTGRES and source in self.available_sources:
+                result.append(source)
+        return result
+
+    def _priority_order_from_configs(
+        self, data_source_configs, market_category: Optional[str]
+    ) -> List[ChinaDataSource]:
+        enabled_sources = []
+        for ds in data_source_configs:
+            if not ds.get("enabled", True):
+                continue
+
+            market_categories = ds.get("market_categories", [])
+            if market_categories and market_category and market_category not in market_categories:
+                continue
+
+            enabled_sources.append(ds)
+
+        enabled_sources.sort(key=lambda x: x.get("priority", 0), reverse=True)
+        source_mapping = {
+            DataSourceCode.TUSHARE: ChinaDataSource.TUSHARE,
+            DataSourceCode.AKSHARE: ChinaDataSource.AKSHARE,
+            DataSourceCode.BAOSTOCK: ChinaDataSource.BAOSTOCK,
+            DataSourceCode.TUSHARE.value: ChinaDataSource.TUSHARE,
+            DataSourceCode.AKSHARE.value: ChinaDataSource.AKSHARE,
+            DataSourceCode.BAOSTOCK.value: ChinaDataSource.BAOSTOCK,
+        }
+        result = []
+        for ds in enabled_sources:
+            ds_type = ds.get("type", "").lower()
+            source = source_mapping.get(ds_type)
+            if source and source != ChinaDataSource.POSTGRES and source in self.available_sources:
+                result.append(source)
+        return result
 
     def _identify_market_category(self, symbol: Optional[str]) -> Optional[str]:
         """
@@ -390,8 +559,6 @@ class _DataSourceManagerMixin1:
         Returns:
             可用且已启用的数据源列表
         """
-        available = []
-
         # 🔥 从数据库读取数据源配置，获取启用状态
         enabled_sources_in_db = set()
         try:
@@ -421,26 +588,47 @@ class _DataSourceManagerMixin1:
             # 如果读取失败，默认所有数据源都启用
             enabled_sources_in_db = {"postgres", "tushare", "akshare", "baostock"}
 
-        # 检查PostgreSQL（最高优先级）
-        if self.use_postgres_cache and "postgres" in enabled_sources_in_db:
-            try:
-                get_postgres_cache_adapter = getattr(
-                    importlib.import_module("trader.flows.cache.postgres"),
-                    "get_postgres_cache_adapter",
-                )
-                adapter = get_postgres_cache_adapter()
-                if adapter.use_app_cache and adapter.db is not None:
-                    available.append(ChinaDataSource.POSTGRES)
-                    logger.info("✅ PostgreSQL数据源可用且已启用（最高优先级）")
-                else:
-                    logger.warning("⚠️ PostgreSQL数据源不可用: 数据库未连接")
-            except Exception as e:
-                logger.warning(f"⚠️ PostgreSQL数据源不可用: {e}")
-        elif self.use_postgres_cache and "postgres" not in enabled_sources_in_db:
-            logger.info("ℹ️ PostgreSQL数据源已在数据库中禁用")
-
         # 从数据库读取数据源配置
         datasource_configs = self._get_datasource_configs_from_db()
+        return self._check_available_sources_from_config(
+            enabled_sources_in_db,
+            datasource_configs,
+            validate_postgres_adapter=True,
+        )
+
+    def _default_enabled_source_names(self) -> set[str]:
+        return {"postgres", "tushare", "akshare", "baostock"}
+
+    def _check_available_sources_from_config(
+        self,
+        enabled_sources_in_db,
+        datasource_configs: dict,
+        *,
+        validate_postgres_adapter: bool,
+    ) -> List[ChinaDataSource]:
+        available = []
+
+        # 检查PostgreSQL（最高优先级）
+        if self.use_postgres_cache and "postgres" in enabled_sources_in_db:
+            if validate_postgres_adapter:
+                try:
+                    get_postgres_cache_adapter = getattr(
+                        importlib.import_module("trader.flows.cache.postgres"),
+                        "get_postgres_cache_adapter",
+                    )
+                    adapter = get_postgres_cache_adapter()
+                    if adapter.use_app_cache and adapter.db is not None:
+                        available.append(ChinaDataSource.POSTGRES)
+                        logger.info("✅ PostgreSQL数据源可用且已启用（最高优先级）")
+                    else:
+                        logger.warning("⚠️ PostgreSQL数据源不可用: 数据库未连接")
+                except Exception as e:
+                    logger.warning(f"⚠️ PostgreSQL数据源不可用: {e}")
+            else:
+                available.append(ChinaDataSource.POSTGRES)
+                logger.info("✅ PostgreSQL数据源按配置启用（延迟验证连接）")
+        elif self.use_postgres_cache and "postgres" not in enabled_sources_in_db:
+            logger.info("ℹ️ PostgreSQL数据源已在数据库中禁用")
 
         # 检查Tushare
         if "tushare" in enabled_sources_in_db:
@@ -497,20 +685,7 @@ class _DataSourceManagerMixin1:
             if not config:
                 return {}
 
-            # 提取数据源配置
-            datasource_configs = config.get("data_source_configs", [])
-
-            # 构建配置字典 {数据源名称: {api_key, api_secret, ...}}
-            result = {}
-            for ds_config in datasource_configs:
-                name = ds_config.get("name", "").lower()
-                result[name] = {
-                    "api_key": ds_config.get("api_key", ""),
-                    "api_secret": ds_config.get("api_secret", ""),
-                    "config_params": ds_config.get("config_params", {}),
-                }
-
-            return result
+            return self._datasource_config_map(config.get("data_source_configs", []))
         except Exception as e:
             logger.warning(f"⚠️ 从数据库读取数据源配置失败: {e}")
             return {}

@@ -78,6 +78,15 @@ class MultiSourceBasicsSyncService:
         self._running = False
         self._last_status: Optional[Dict[str, Any]] = None
 
+    async def _new_data_source_manager_async(self):
+        DataSourceManager = getattr(
+            importlib.import_module("app.services.sources.manager"),
+            "DataSourceManager",
+        )
+        manager = DataSourceManager()
+        await manager.load_priority_from_database_async()
+        return manager
+
     async def get_status(self) -> Dict[str, Any]:
         """获取同步状态"""
         if self._last_status:
@@ -209,12 +218,8 @@ class MultiSourceBasicsSyncService:
 
         try:
             # Step 1: 获取数据源管理器
-            DataSourceManager = getattr(
-                importlib.import_module("app.services.sources.manager"),
-                "DataSourceManager",
-            )
-            manager = DataSourceManager()
-            available_adapters = manager.get_available_adapters()
+            manager = await self._new_data_source_manager_async()
+            available_adapters = await manager.get_available_adapters_async()
 
             if not available_adapters:
                 raise RuntimeError("No available data sources found")

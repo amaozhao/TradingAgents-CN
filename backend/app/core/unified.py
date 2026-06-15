@@ -507,7 +507,7 @@ class UnifiedConfigManager:
                 config_type="unified",
                 llm_configs=self.get_llm_configs(),
                 default_llm=self.get_default_model(),
-                data_source_configs=self.get_data_source_configs(),
+                data_source_configs=await self.get_data_source_configs_async(),
                 default_data_source="AKShare",
                 database_configs=self.get_database_configs(),
                 system_settings=self.get_system_settings(),

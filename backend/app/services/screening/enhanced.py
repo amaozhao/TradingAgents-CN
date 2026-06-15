@@ -211,7 +211,7 @@ class EnhancedScreeningService:
         )
 
         # 执行传统筛选
-        result = self.traditional_service.run(traditional_conditions, params)
+        result = await self.traditional_service.run_async(traditional_conditions, params)
 
         return result
 

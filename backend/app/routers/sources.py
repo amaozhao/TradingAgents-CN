@@ -21,6 +21,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/sync/multi-source", tags=["Multi-Source Sync"])
 
 
+async def _new_data_source_manager() -> DataSourceManager:
+    manager = DataSourceManager()
+    await manager.load_priority_from_database_async()
+    return manager
+
+
 class SyncRequest(BaseModel):
     """同步请求模型"""
 
@@ -49,7 +55,7 @@ class DataSourceStatus(BaseModel):
 async def get_data_sources_status():
     """获取所有数据源的状态"""
     try:
-        manager = DataSourceManager()
+        manager = await _new_data_source_manager()
         available_adapters = manager.get_available_adapters()
         all_adapters = manager.adapters
 
@@ -103,7 +109,7 @@ async def get_data_sources_status():
 async def get_current_data_source():
     """获取当前正在使用的数据源（优先级最高且可用的）"""
     try:
-        manager = DataSourceManager()
+        manager = await _new_data_source_manager()
         available_adapters = manager.get_available_adapters()
 
         if not available_adapters:
@@ -313,7 +319,7 @@ async def test_data_sources(request: TestSourceRequest = TestSourceRequest()):
     - 快速返回结果
     """
     try:
-        manager = DataSourceManager()
+        manager = await _new_data_source_manager()
         all_adapters = manager.adapters
 
         # 从请求体中获取数据源名称
@@ -386,7 +392,7 @@ async def test_data_sources(request: TestSourceRequest = TestSourceRequest()):
 async def get_sync_recommendations():
     """获取数据源使用建议"""
     try:
-        manager = DataSourceManager()
+        manager = await _new_data_source_manager()
         available_adapters = manager.get_available_adapters()
 
         recommendations = {
@@ -539,7 +545,7 @@ async def clear_sync_cache():
 
         # 2. 清空数据源缓存（如果有的话）
         try:
-            DataSourceManager()
+            await _new_data_source_manager()
             # 这里可以添加数据源特定的缓存清理逻辑
             # 目前数据源适配器没有持久化缓存，所以跳过
         except Exception as e:

@@ -106,8 +106,8 @@ async def validate_config():
     StartupValidator = getattr(
         importlib.import_module("app.core.startup"), "StartupValidator"
     )
-    bridge_config_to_env = getattr(
-        importlib.import_module("app.core.bridge"), "bridge_config_to_env"
+    bridge_config_to_env_async = getattr(
+        importlib.import_module("app.core.bridge"), "bridge_config_to_env_async"
     )
     config_service = getattr(
         importlib.import_module("app.services.config"), "config_service"
@@ -116,7 +116,7 @@ async def validate_config():
     try:
         # 🔧 步骤1: 重载配置 - 从 PostgreSQL 读取配置并桥接到环境变量
         try:
-            bridge_config_to_env()
+            await bridge_config_to_env_async()
             logger.info("✅ 配置已从 PostgreSQL 重载到环境变量")
         except Exception as e:
             logger.warning(f"⚠️  配置重载失败: {e}，将验证 .env 文件中的配置")
@@ -143,18 +143,18 @@ async def validate_config():
 
             # 🔥 修改：直接从数据库读取原始数据，避免使用 get_llm_providers() 返回的已修改数据
             # get_llm_providers() 会将环境变量的 Key 赋值给 provider.api_key，导致无法区分来源
-            get_postgres_db_sync = getattr(
-                importlib.import_module("app.core.database"), "get_postgres_db_sync"
+            get_postgres_db = getattr(
+                importlib.import_module("app.core.database"), "get_postgres_db"
             )
             LLMProvider = getattr(
                 importlib.import_module("app.schemas.config"), "LLMProvider"
             )
 
-            db = get_postgres_db_sync()
+            db = get_postgres_db()
             providers_collection = db.llm_providers
 
             # 查询所有厂家配置（原始数据）
-            providers_data = list(providers_collection.find())
+            providers_data = await providers_collection.find().to_list(None)
             llm_providers = [LLMProvider(**data) for data in providers_data]
 
             logger.info(f"🔍 获取到 {len(llm_providers)} 个大模型厂家")

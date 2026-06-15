@@ -132,6 +132,16 @@ def test_market_quote_mapper_generates_stable_legacy_id_without_postgres_id():
     assert values["legacy_id"] == "market_quotes:akshare:000001"
 
 
+def test_market_quote_mapper_uses_business_key_legacy_id_with_postgres_id():
+    document_id = DocumentId()
+    values = map_market_quote(
+        {"_id": document_id, "code": "000001", "source": "akshare"}
+    )
+
+    assert values["legacy_id"] == "market_quotes:akshare:000001"
+    assert values["payload"]["_id"] == str(document_id)
+
+
 def test_stock_daily_quote_mapper_splits_history_business_key_and_metrics():
     values = map_stock_daily_quote(
         {

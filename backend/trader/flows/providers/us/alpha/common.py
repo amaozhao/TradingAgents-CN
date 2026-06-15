@@ -96,6 +96,46 @@ def _get_api_key_from_database() -> Optional[str]:
     return None
 
 
+def _valid_alpha_api_key(value: Any) -> Optional[str]:
+    api_key = str(value or "").strip()
+    if api_key and not api_key.startswith("your_"):
+        return api_key
+    return None
+
+
+async def _get_api_key_from_database_async() -> Optional[str]:
+    """
+    从异步数据库读取 Alpha Vantage API Key。
+
+    async runtime 使用该函数，避免通过同步 facade 创建额外 DB loop。
+    """
+    try:
+        logger.debug("🔍 [DB异步查询] 开始从数据库读取 Alpha Vantage API Key...")
+        get_postgres_db = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db"
+        )
+        db = get_postgres_db()
+        config_data = await db.system_configs.find_one(
+            {"is_active": True}, sort=[("version", -1)]
+        )
+
+        if config_data and config_data.get("data_source_configs"):
+            for ds_config in config_data["data_source_configs"]:
+                if ds_config.get("type") == "alpha_vantage":
+                    api_key = _valid_alpha_api_key(ds_config.get("api_key"))
+                    if api_key:
+                        logger.debug(
+                            f"✅ [DB异步查询] 找到 Alpha Vantage API Key (长度: {len(api_key)})"
+                        )
+                        return api_key
+
+        logger.debug("⚠️ [DB异步查询] 数据库中未找到有效的 Alpha Vantage API Key")
+    except Exception as e:
+        logger.debug(f"❌ [DB异步查询] 从数据库读取 API Key 失败: {e}")
+
+    return None
+
+
 def get_api_key() -> str:
     """
     获取 Alpha Vantage API Key
@@ -154,6 +194,47 @@ def get_api_key() -> str:
     )
 
     return api_key
+
+
+async def get_api_key_async() -> str:
+    """
+    异步获取 Alpha Vantage API Key。
+
+    优先级与同步版本一致：数据库配置 > 环境变量 > 配置文件。
+    """
+    logger.debug("🔍 [异步步骤1] 开始从数据库读取 Alpha Vantage API Key...")
+    db_api_key = await _get_api_key_from_database_async()
+    if db_api_key:
+        logger.debug(f"✅ [异步步骤1] 数据库中找到 API Key (长度: {len(db_api_key)})")
+        return db_api_key
+
+    logger.debug("🔍 [异步步骤2] 读取 .env 中的 API Key...")
+    api_key = settings.ALPHA_VANTAGE_API_KEY
+    if api_key:
+        logger.debug(f"✅ [异步步骤2] .env 中找到 API Key (长度: {len(api_key)})")
+        return api_key
+
+    logger.debug("🔍 [异步步骤3] 读取配置文件中的 API Key...")
+    try:
+        ConfigManager = getattr(
+            importlib.import_module("trader.config.manager"), "ConfigManager"
+        )
+        config_manager = ConfigManager()
+        api_key = config_manager.load_settings().get("ALPHA_VANTAGE_API_KEY")
+        if api_key:
+            logger.debug(f"✅ [异步步骤3] 配置文件中找到 API Key (长度: {len(api_key)})")
+            return api_key
+    except Exception as e:
+        logger.debug(f"⚠️ [异步步骤3] 无法从配置文件获取 Alpha Vantage API Key: {e}")
+
+    raise ValueError(
+        "❌ Alpha Vantage API Key 未配置！\n"
+        "请通过以下任一方式配置：\n"
+        "1. Web 后台配置（推荐）: http://localhost:3000/api/config/datasource\n"
+        "2. 设置环境变量: ALPHA_VANTAGE_API_KEY\n"
+        "3. 在配置文件中配置\n"
+        "获取 API Key: https://www.alphavantage.co/support/#api-key"
+    )
 
 
 def format_datetime_for_api(date_str: str) -> str:

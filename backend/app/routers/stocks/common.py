@@ -94,6 +94,16 @@ def _build_fundamentals_payload(
     }
 
 
+async def _new_data_source_manager_async():
+    DataSourceManager = getattr(
+        importlib.import_module("app.services.sources.manager"),
+        "DataSourceManager",
+    )
+    manager = DataSourceManager()
+    await manager.load_priority_from_database_async()
+    return manager
+
+
 def _format_kline_item(row: Dict[str, Any]) -> Dict[str, Any]:
     trade_time = row.get("time") or row.get("trade_date") or row.get("date")
     if hasattr(trade_time, "isoformat"):
@@ -410,12 +420,8 @@ async def get_news(
             if not items:
                 logger.info(f"🔄 数据库/同步服务无新闻，尝试统一数据源兜底: {normalized_code}")
                 try:
-                    DataSourceManager = getattr(
-                        importlib.import_module("app.services.sources.manager"),
-                        "DataSourceManager",
-                    )
-
-                    fallback_items, fallback_source = DataSourceManager().get_news_with_fallback(
+                    manager = await _new_data_source_manager_async()
+                    fallback_items, fallback_source = manager.get_news_with_fallback(
                         normalized_code,
                         days=days,
                         limit=limit,
@@ -444,12 +450,8 @@ async def get_news(
         except Exception as e:
             logger.error(f"❌ 获取新闻失败: {e}", exc_info=True)
             try:
-                DataSourceManager = getattr(
-                    importlib.import_module("app.services.sources.manager"),
-                    "DataSourceManager",
-                )
-
-                fallback_items, fallback_source = DataSourceManager().get_news_with_fallback(
+                manager = await _new_data_source_manager_async()
+                fallback_items, fallback_source = manager.get_news_with_fallback(
                     normalized_code,
                     days=days,
                     limit=limit,

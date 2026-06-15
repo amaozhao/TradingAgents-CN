@@ -11,9 +11,12 @@ import httpx
 
 from app.core.bridge import get_bridged_api_key, get_bridged_model
 from app.core.config import settings
-from app.core.database import get_postgres_db_sync
+from app.core.database import get_postgres_db, get_postgres_db_sync
 from app.core.unified import unified_config
-from app.services.analysis.simple.provider import get_provider_and_url_by_model_sync
+from app.services.analysis.simple.provider import (
+    get_provider_and_url_by_model,
+    get_provider_and_url_by_model_sync,
+)
 
 from ..context import ResearchPrincipal
 from ..loop import ModelStreamChunk, ResearchTool
@@ -233,9 +236,80 @@ def _configured_candidate_models() -> list[tuple[str, str, dict[str, Any]]]:
     return candidates
 
 
+async def _configured_candidate_models_async() -> list[tuple[str, str, dict[str, Any]]]:
+    candidates: list[tuple[str, str, dict[str, Any]]] = []
+    seen: set[tuple[str, str]] = set()
+    try:
+        db = get_postgres_db()
+        system = (
+            await db.system_configs.find_one({"is_active": True}, sort=[("version", -1)])
+            or {}
+        )
+        provider_rows = await db.llm_providers.find({}).to_list(None)
+        providers = {
+            str(item.get("name") or "").strip().lower(): item
+            for item in provider_rows
+        }
+        for item in system.get("llm_configs", []):
+            if not item.get("enabled"):
+                continue
+            model = str(item.get("model_name") or "").strip()
+            provider = str(item.get("provider") or "").strip().lower()
+            if not model or not provider:
+                continue
+            key = (provider, model)
+            if key in seen:
+                continue
+            seen.add(key)
+            provider_doc = providers.get(provider) or providers.get(
+                "qwen" if provider == "dashscope" else provider
+            )
+            candidates.append((
+                provider,
+                model,
+                {
+                    "provider": provider,
+                    "api_key": item.get("api_key") or (provider_doc or {}).get("api_key") or "",
+                    "backend_url": _candidate_backend_url(
+                        provider,
+                        str(item.get("api_base") or ""),
+                        str((provider_doc or {}).get("default_base_url") or ""),
+                    ),
+                },
+            ))
+
+        minimax_provider = providers.get("minimax-token-plan")
+        if minimax_provider and ("minimax-token-plan", "MiniMax-M3") not in seen:
+            minimax_key = minimax_provider.get("api_key") or _provider_env_key(
+                "minimax-token-plan"
+            )
+            candidates.append((
+                "minimax-token-plan",
+                "MiniMax-M3",
+                {
+                    "provider": "minimax-token-plan",
+                    "api_key": minimax_key,
+                    "backend_url": minimax_provider.get("default_base_url") or "",
+                },
+            ))
+    except Exception:
+        return candidates
+    return candidates
+
+
 def _fallback_configured_model() -> tuple[str, str, dict[str, Any]] | None:
     for provider, model, info in _configured_candidate_models():
         api_key = _first_configured_text(str(info.get("api_key") or ""), _provider_env_key(provider))
+        if api_key:
+            return provider, model, {**info, "api_key": api_key}
+    return None
+
+
+async def _fallback_configured_model_async() -> tuple[str, str, dict[str, Any]] | None:
+    for provider, model, info in await _configured_candidate_models_async():
+        api_key = _first_configured_text(
+            str(info.get("api_key") or ""), _provider_env_key(provider)
+        )
         if api_key:
             return provider, model, {**info, "api_key": api_key}
     return None
@@ -252,6 +326,17 @@ def _safe_provider_model(value: str) -> tuple[str, str]:
         return "", value
 
 
+async def _safe_provider_model_async(value: str) -> tuple[str, str]:
+    try:
+        provider, model = _split_provider_model(value)
+        if provider is None:
+            provider_info = await get_provider_and_url_by_model(model)
+            provider = str(provider_info.get("provider") or "").strip().lower()
+        return provider or "", model
+    except Exception:
+        return "", value
+
+
 async def describe_agent_model_resolution(principal: ResearchPrincipal) -> dict[str, Any]:
     """Return redacted Agent model diagnostics for UI/settings surfaces."""
     default_model = _default_agent_model()
@@ -260,11 +345,11 @@ async def describe_agent_model_resolution(principal: ResearchPrincipal) -> dict[
     default_has_key = False
     default_error = ""
     if default_model:
-        default_provider, default_model_name = _safe_provider_model(default_model)
+        default_provider, default_model_name = await _safe_provider_model_async(default_model)
         if default_provider:
             try:
                 provider_info = (
-                    get_provider_and_url_by_model_sync(default_model_name)
+                    await get_provider_and_url_by_model(default_model_name)
                     if "/" not in default_model
                     else {}
                 )
@@ -284,7 +369,7 @@ async def describe_agent_model_resolution(principal: ResearchPrincipal) -> dict[
                 default_error = str(exc)
 
     candidates = []
-    for provider, model, info in _configured_candidate_models():
+    for provider, model, info in await _configured_candidate_models_async():
         has_key = bool(_first_configured_text(str(info.get("api_key") or ""), _provider_env_key(provider)))
         candidates.append(
             {
@@ -295,7 +380,7 @@ async def describe_agent_model_resolution(principal: ResearchPrincipal) -> dict[
             }
         )
 
-    fallback = _fallback_configured_model()
+    fallback = await _fallback_configured_model_async()
     effective_provider = ""
     effective_model = ""
     effective_base_url = ""
@@ -350,13 +435,13 @@ async def resolve_agent_model_config(principal: ResearchPrincipal) -> AgentModel
     if default_model:
         provider, model = _split_provider_model(default_model)
     else:
-        provider, model, provider_info = _fallback_configured_model() or ("", "", {})
+        provider, model, provider_info = await _fallback_configured_model_async() or ("", "", {})
         if not provider or not model:
             raise AgentModelConfigurationError(
                 "未配置可用的 Agent 模型 API Key；请在 MiniMax Token Plan、DeepSeek、Qwen 或其他启用模型中配置有效密钥"
             )
     if provider is None:
-        provider_info = get_provider_and_url_by_model_sync(model)
+        provider_info = await get_provider_and_url_by_model(model)
         provider = str(provider_info.get("provider") or "").strip().lower()
     if not provider:
         raise AgentModelConfigurationError(f"未找到 Agent 模型 {model} 的提供方")
@@ -371,7 +456,7 @@ async def resolve_agent_model_config(principal: ResearchPrincipal) -> AgentModel
         _provider_env_key(provider),
     )
     if not api_key:
-        fallback = _fallback_configured_model()
+        fallback = await _fallback_configured_model_async()
         if fallback:
             provider, model, provider_info = fallback
             api_key = str(provider_info.get("api_key") or "")

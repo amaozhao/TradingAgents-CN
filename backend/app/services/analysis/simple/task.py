@@ -20,7 +20,120 @@ from .common import (
 )
 
 
+def _model_config_from_doc(
+    doc: dict[str, Any] | None, model_name: str
+) -> dict[str, Any] | None:
+    if not doc:
+        return None
+    llm_configs = doc.get("llm_configs")
+    if not isinstance(llm_configs, list):
+        return None
+    for llm_config in llm_configs:
+        if not isinstance(llm_config, dict):
+            continue
+        if llm_config.get("model_name") != model_name:
+            continue
+        return {
+            "max_tokens": llm_config.get("max_tokens", 4000),
+            "temperature": llm_config.get("temperature", 0.7),
+            "timeout": llm_config.get("timeout", 180),
+            "retry_times": llm_config.get("retry_times", 3),
+            "api_base": llm_config.get("api_base"),
+        }
+    return None
+
+
 class AnalysisTaskMixin:
+    async def _resolve_stock_name_async(self, code: str | None) -> str:
+        """Resolve stock name without entering the sync data-source facade."""
+
+        if not code:
+            return ""
+        try:
+            get_stock_info = getattr(
+                importlib.import_module("app.services.analysis.simple.provider"),
+                "_get_stock_info_safe_async",
+            )
+            info = await get_stock_info(code)
+            if isinstance(info, dict) and info.get("name"):
+                return str(info["name"])
+        except Exception as e:
+            logger.warning(f"⚠️ 获取股票名称失败: {code} - {e}")
+        return f"股票{code}"
+
+    async def _prepare_analysis_thread_context(
+        self,
+        request: SingleAnalysisRequest,
+    ):
+        """Prepare model/provider data before entering the analysis thread pool."""
+
+        provider_module = importlib.import_module(
+            "app.services.analysis.simple.provider"
+        )
+        SimpleAnalysisThreadContext = getattr(
+            importlib.import_module("app.services.analysis.simple.runner"),
+            "SimpleAnalysisThreadContext",
+        )
+        get_provider_and_url_by_model = getattr(
+            provider_module,
+            "get_provider_and_url_by_model",
+        )
+        get_model_capability_service = getattr(
+            importlib.import_module("app.services.capability"),
+            "get_model_capability_service",
+        )
+        capability_service = get_model_capability_service()
+        research_depth = (
+            request.parameters.research_depth if request.parameters else "标准"
+        )
+
+        if (
+            request.parameters
+            and request.parameters.quick_analysis_model
+            and request.parameters.deep_analysis_model
+        ):
+            quick_model = request.parameters.quick_analysis_model
+            deep_model = request.parameters.deep_analysis_model
+            validation = await capability_service.validate_model_pair_async(
+                quick_model, deep_model, research_depth
+            )
+            if not validation["valid"]:
+                for warning in validation["warnings"]:
+                    logger.warning(warning)
+                (
+                    quick_model,
+                    deep_model,
+                ) = await capability_service.recommend_models_for_depth_async(
+                    research_depth
+                )
+            else:
+                for warning in validation["warnings"]:
+                    logger.info(warning)
+        else:
+            (
+                quick_model,
+                deep_model,
+            ) = await capability_service.recommend_models_for_depth_async(
+                research_depth
+            )
+
+        db = get_postgres_db()
+        doc = await db.system_configs.find_one(
+            {"is_active": True}, sort=[("version", -1)]
+        )
+        quick_provider_info = await get_provider_and_url_by_model(quick_model)
+        deep_provider_info = await get_provider_and_url_by_model(deep_model)
+
+        return SimpleAnalysisThreadContext(
+            quick_model=quick_model,
+            deep_model=deep_model,
+            llm_provider=str(quick_provider_info.get("provider") or "qwen"),
+            quick_model_config=_model_config_from_doc(doc, quick_model),
+            deep_model_config=_model_config_from_doc(doc, deep_model),
+            quick_provider_info=quick_provider_info,
+            deep_provider_info=deep_provider_info,
+        )
+
     async def create_analysis_task(
         self, user_id: str, request: SingleAnalysisRequest
     ) -> Dict[str, Any]:
@@ -36,6 +149,7 @@ class AnalysisTaskMixin:
 
             logger.info(f"📝 创建分析任务: {task_id} - {stock_code}")
             logger.info(f"🔍 内存管理器实例ID: {id(self.memory_manager)}")
+            stock_name = await self._resolve_stock_name_async(stock_code)
 
             # 在内存中创建任务状态
             task_state = await self.memory_manager.create_task(
@@ -45,11 +159,7 @@ class AnalysisTaskMixin:
                 parameters=request.parameters.model_dump()
                 if request.parameters
                 else {},
-                stock_name=(
-                    self._resolve_stock_name(stock_code)
-                    if hasattr(self, "_resolve_stock_name")
-                    else None
-                ),
+                stock_name=stock_name,
             )
 
             logger.info(f"✅ 任务状态已创建: {task_state.task_id}")
@@ -63,11 +173,7 @@ class AnalysisTaskMixin:
 
             # 补齐股票名称并写入数据库任务文档的初始记录
             code = stock_code
-            name = (
-                self._resolve_stock_name(code)
-                if hasattr(self, "_resolve_stock_name")
-                else f"股票{code}"
-            )
+            name = stock_name
 
             try:
                 db = get_postgres_db()
@@ -425,6 +531,7 @@ class AnalysisTaskMixin:
         # 🔧 使用共享线程池，支持多个任务并发执行
         # 不再每次创建新的线程池，避免串行执行
         loop = asyncio.get_event_loop()
+        model_context = await self._prepare_analysis_thread_context(request)
         logger.info(
             f"🚀 [线程池] 提交分析任务到共享线程池: {task_id} - {request.stock_code}"
         )
@@ -435,6 +542,8 @@ class AnalysisTaskMixin:
             user_id,
             request,
             tracker,
+            loop,
+            model_context,
         )
         logger.info(f"✅ [线程池] 分析任务执行完成: {task_id}")
         return result

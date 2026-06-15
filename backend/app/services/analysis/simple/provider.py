@@ -45,6 +45,27 @@ def _get_stock_info_safe(stock_code: str):
         return None
 
 
+async def _get_stock_info_safe_async(stock_code: str):
+    """Async stock-info lookup for Web/Worker analysis runtimes."""
+
+    try:
+        get_data_source_manager_async = getattr(
+            importlib.import_module("trader.flows.sources"),
+            "get_data_source_manager_async",
+        )
+        manager = await get_data_source_manager_async()
+        get_stock_basic_info_async = getattr(
+            manager,
+            "get_stock_basic_info_async",
+            None,
+        )
+        if get_stock_basic_info_async is not None:
+            return await get_stock_basic_info_async(stock_code)
+        return await asyncio.to_thread(manager.get_stock_basic_info, stock_code)
+    except Exception:
+        return None
+
+
 # 设置日志
 logger = logging.getLogger("app.services.analysis.simple")
 
@@ -116,6 +137,125 @@ def get_provider_by_model_name_sync(model_name: str) -> str:
     """
     provider_info = get_provider_and_url_by_model_sync(model_name)
     return provider_info["provider"]
+
+
+async def get_provider_and_url_by_model(model_name: str) -> dict:
+    """
+    根据模型名称从数据库配置中查找对应的供应商和 API URL（异步版本）。
+    """
+    try:
+        get_postgres_db = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db"
+        )
+        db = get_postgres_db()
+        doc = await db.system_configs.find_one(
+            {"is_active": True}, sort=[("version", -1)]
+        )
+
+        if doc and "llm_configs" in doc:
+            for config_dict in doc["llm_configs"]:
+                if config_dict.get("model_name") != model_name:
+                    continue
+                provider = config_dict.get("provider")
+                provider_doc = await db.llm_providers.find_one({"name": provider})
+                return _build_provider_info(
+                    model_name=model_name,
+                    provider=provider,
+                    api_base=config_dict.get("api_base"),
+                    model_api_key=config_dict.get("api_key"),
+                    provider_doc=provider_doc,
+                    log_prefix="[异步查询]",
+                )
+
+        provider = _get_default_provider_by_model(model_name)
+        provider_doc = await db.llm_providers.find_one({"name": provider})
+        return _build_provider_info(
+            model_name=model_name,
+            provider=provider,
+            api_base=None,
+            model_api_key=None,
+            provider_doc=provider_doc,
+            log_prefix="[异步查询]",
+        )
+    except Exception as e:
+        logger.error(f"❌ [异步查询] 查找模型供应商失败: {e}")
+        provider = _get_default_provider_by_model(model_name)
+        return {
+            "provider": provider,
+            "backend_url": _get_default_backend_url(provider),
+            "api_key": _get_env_api_key_for_provider(provider),
+        }
+
+
+def _valid_configured_key(value: Any) -> str | None:
+    api_key = str(value or "").strip()
+    if api_key and api_key != "your-api-key":
+        return api_key
+    return None
+
+
+def _build_provider_info(
+    *,
+    model_name: str,
+    provider: Any,
+    api_base: Any,
+    model_api_key: Any,
+    provider_doc: dict | None,
+    log_prefix: str,
+) -> dict:
+    normalize_provider_key = getattr(
+        importlib.import_module("trader.llm.clients.providers"),
+        "normalize_provider_key",
+    )
+    default_backend_url = getattr(
+        importlib.import_module("trader.llm.clients.providers"),
+        "default_backend_url",
+    )
+    provider_key = normalize_provider_key(provider)
+
+    api_key = (
+        _valid_configured_key(model_api_key)
+        or _valid_configured_key((provider_doc or {}).get("api_key"))
+        or _get_env_api_key_for_provider(provider_key)
+    )
+
+    if api_base:
+        backend_url = str(api_base)
+        logger.info(f"✅ {log_prefix} 模型 {model_name} 使用自定义 API: {backend_url}")
+    elif provider_doc and provider_doc.get("default_base_url"):
+        backend_url = str(provider_doc["default_base_url"])
+        logger.info(
+            f"✅ {log_prefix} 模型 {model_name} 使用厂家默认 API: {backend_url}"
+        )
+    else:
+        backend_url = _get_default_backend_url(provider_key)
+        logger.warning(
+            f"⚠️ {log_prefix} 厂家 {provider_key} 没有配置 default_base_url，使用硬编码默认值"
+        )
+
+    if (
+        provider_key == "qwen"
+        and backend_url == "https://dashscope.aliyuncs.com/api/v1"
+    ):
+        backend_url = default_backend_url(provider_key)
+    elif (
+        provider_key == "minimax-token-plan"
+        and "api.minimaxi.com/anthropic" not in str(backend_url).rstrip("/")
+    ):
+        backend_url = (provider_doc or {}).get(
+            "default_base_url"
+        ) or default_backend_url(provider_key)
+        logger.info(
+            "✅ %s MiniMax Token Plan 使用 Anthropic 兼容 API: %s",
+            log_prefix,
+            backend_url,
+        )
+
+    return {
+        "provider": provider_key,
+        "backend_url": backend_url,
+        "api_key": api_key,
+    }
 
 
 def get_provider_and_url_by_model_sync(model_name: str) -> dict:
@@ -468,6 +608,8 @@ def create_analysis_config(
     market_type: str = "A股",
     quick_model_config: Optional[dict] = None,  # 新增：快速模型的完整配置
     deep_model_config: Optional[dict] = None,  # 新增：深度模型的完整配置
+    quick_provider_info: Optional[dict] = None,
+    deep_provider_info: Optional[dict] = None,
 ) -> dict:
     """
     创建分析配置 - 支持数字等级和中文等级
@@ -610,8 +752,10 @@ def create_analysis_config(
     # 🔧 获取 backend_url 和 API Key（优先级：模型配置 > 厂家配置 > 环境变量）
     try:
         # 1️⃣ 优先从数据库获取（包含模型配置的 api_base、API Key 和厂家的 default_base_url、API Key）
-        quick_provider_info = get_provider_and_url_by_model_sync(quick_model)
-        deep_provider_info = get_provider_and_url_by_model_sync(deep_model)
+        if quick_provider_info is None:
+            quick_provider_info = get_provider_and_url_by_model_sync(quick_model)
+        if deep_provider_info is None:
+            deep_provider_info = get_provider_and_url_by_model_sync(deep_model)
 
         config["backend_url"] = quick_provider_info["backend_url"]
         config["quick_api_key"] = quick_provider_info.get(
@@ -677,3 +821,33 @@ def create_analysis_config(
     logger.info("📋 ========================================")
 
     return config
+
+
+async def create_analysis_config_async(
+    research_depth,
+    selected_analysts: list,
+    quick_model: str,
+    deep_model: str,
+    llm_provider: str,
+    market_type: str = "A股",
+    quick_model_config: Optional[dict] = None,
+    deep_model_config: Optional[dict] = None,
+    quick_provider_info: Optional[dict] = None,
+    deep_provider_info: Optional[dict] = None,
+) -> dict:
+    if quick_provider_info is None:
+        quick_provider_info = await get_provider_and_url_by_model(quick_model)
+    if deep_provider_info is None:
+        deep_provider_info = await get_provider_and_url_by_model(deep_model)
+    return create_analysis_config(
+        research_depth=research_depth,
+        selected_analysts=selected_analysts,
+        quick_model=quick_model,
+        deep_model=deep_model,
+        llm_provider=llm_provider,
+        market_type=market_type,
+        quick_model_config=quick_model_config,
+        deep_model_config=deep_model_config,
+        quick_provider_info=quick_provider_info,
+        deep_provider_info=deep_provider_info,
+    )

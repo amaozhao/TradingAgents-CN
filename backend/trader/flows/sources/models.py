@@ -402,6 +402,34 @@ class _DataSourceManagerMixin3:
             logger.error(f"❌ 获取股票信息失败: {e}")
             return {"error": str(e)}
 
+    async def get_stock_basic_info_async(self, stock_code: Optional[str] = None) -> Any:
+        """
+        异步获取股票基础信息。
+
+        Web/Worker runtime 使用该 companion，避免全量股票列表读取通过同步 cursor
+        触发 sync facade 的 `_run_blocking()`。
+        """
+        if stock_code is not None:
+            asyncio = importlib.import_module("asyncio")
+            return await asyncio.to_thread(self.get_stock_basic_info, stock_code)
+
+        logger.info("📊 异步获取所有股票列表")
+        try:
+            get_postgres_db = globals().get("get_postgres_db")
+            if get_postgres_db is None:
+                get_postgres_db = getattr(
+                    importlib.import_module("app.core.database"), "get_postgres_db"
+                )
+            db = get_postgres_db()
+            stocks = await db.stock_basic_info.find({}, {"_id": 0}).to_list(None)
+            if stocks:
+                logger.info(f"✅ 从异步 PostgreSQL 获取所有股票: {len(stocks)}条")
+                return stocks
+        except Exception as e:
+            logger.warning(f"⚠️ 从异步 PostgreSQL 获取所有股票失败: {e}")
+
+        return []
+
     def get_stock_data_with_fallback(self, stock_code: str, start_date: str, end_date: str) -> str:
         """
         获取股票数据（兼容 stock_data_service 接口）

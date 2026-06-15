@@ -3,6 +3,7 @@
 将统一配置系统的配置桥接到环境变量，供 分析引擎使用
 """
 
+import asyncio
 import importlib
 import json
 import logging
@@ -335,6 +336,240 @@ def bridge_config_to_env():
         return False
 
 
+async def bridge_config_to_env_async():
+    """将统一配置异步桥接到环境变量，供 FastAPI/Worker 运行时使用。"""
+    try:
+        unified_config = getattr(
+            importlib.import_module("app.core.unified"), "unified_config"
+        )
+        get_postgres_db = getattr(
+            importlib.import_module("app.core.database"), "get_postgres_db"
+        )
+        LLMProvider = getattr(
+            importlib.import_module("app.schemas.config"), "LLMProvider"
+        )
+        SystemConfig = getattr(
+            importlib.import_module("app.schemas.config"), "SystemConfig"
+        )
+
+        logger.info("🔧 开始异步桥接配置到环境变量...")
+        bridged_count = 0
+
+        use_postgres_storage = str(settings.USE_POSTGRES_STORAGE).lower()
+        _set_bridged_env("USE_POSTGRES_STORAGE", use_postgres_storage)
+        bridged_count += 1
+
+        postgres_db_name = settings.POSTGRES_DB.strip()
+        _set_bridged_env("POSTGRES_DB", postgres_db_name)
+        bridged_count += 1
+
+        db = get_postgres_db()
+
+        try:
+            providers_data = await db.llm_providers.find().to_list(None)
+            providers = [LLMProvider(**data) for data in providers_data]
+            bridged_count += _bridge_llm_provider_configs(
+                providers, unified_config.get_llm_configs()
+            )
+        except Exception as e:
+            logger.error(f"❌ 从数据库异步读取厂家配置失败: {e}", exc_info=True)
+            bridged_count += _bridge_llm_config_fallback(
+                unified_config.get_llm_configs()
+            )
+
+        default_model = unified_config.get_default_model()
+        if default_model:
+            _set_bridged_env("TRADING_AGENTS_DEFAULT_MODEL", default_model)
+            bridged_count += 1
+
+        quick_model = unified_config.get_quick_analysis_model()
+        if quick_model:
+            _set_bridged_env("TRADING_AGENTS_QUICK_MODEL", quick_model)
+            bridged_count += 1
+
+        deep_model = unified_config.get_deep_analysis_model()
+        if deep_model:
+            _set_bridged_env("TRADING_AGENTS_DEEP_MODEL", deep_model)
+            bridged_count += 1
+
+        try:
+            config_data = await db.system_configs.find_one(
+                {"is_active": True}, sort=[("version", -1)]
+            )
+            if config_data and config_data.get("data_source_configs"):
+                system_config = SystemConfig(**config_data)
+                data_source_configs = system_config.data_source_configs
+            else:
+                data_source_configs = await unified_config.get_data_source_configs_async()
+        except Exception as e:
+            logger.error(f"❌ 从数据库异步读取数据源配置失败: {e}", exc_info=True)
+            data_source_configs = await unified_config.get_data_source_configs_async()
+
+        bridged_count += _bridge_data_source_api_keys(data_source_configs)
+        bridged_count += _bridge_datasource_details(data_source_configs)
+
+        try:
+            config_doc = await db.system_configs.find_one({"is_active": True})
+            system_settings = (
+                config_doc.get("system_settings")
+                if isinstance(config_doc, dict)
+                else None
+            )
+            if isinstance(system_settings, dict):
+                bridged_count += _bridge_system_settings_values(system_settings)
+        except Exception as e:
+            logger.debug(f"  ⚠️  无法异步获取系统设置: {e}")
+
+        await asyncio.to_thread(_reinitialize_trading_agents_postgres_storage)
+        await _sync_pricing_config_from_db()
+
+        logger.info(f"✅ 异步配置桥接完成，共桥接 {bridged_count} 项配置")
+        return True
+
+    except Exception as e:
+        logger.error(f"❌ 异步配置桥接失败: {e}", exc_info=True)
+        logger.warning("⚠️  分析引擎将使用 .env 文件中的配置")
+        return False
+
+
+def _bridge_llm_provider_configs(providers, fallback_llm_configs) -> int:
+    bridged_count = 0
+    for provider in providers:
+        if not provider.is_active:
+            continue
+
+        env_key = f"{provider.name.upper()}_API_KEY"
+        existing_env_value = settings.text_value(env_key)
+        if existing_env_value and not existing_env_value.startswith("your_"):
+            bridged_count += 1
+        elif provider.api_key and not provider.api_key.startswith("your_"):
+            _set_bridged_env(env_key, provider.api_key)
+            bridged_count += 1
+
+    if bridged_count == 0 and fallback_llm_configs:
+        return _bridge_llm_config_fallback(fallback_llm_configs)
+    return bridged_count
+
+
+def _bridge_llm_config_fallback(llm_configs) -> int:
+    bridged_count = 0
+    for llm_config in llm_configs:
+        env_key = f"{llm_config.provider.upper()}_API_KEY"
+        existing_env_value = settings.text_value(env_key)
+        if existing_env_value and not existing_env_value.startswith("your_"):
+            bridged_count += 1
+        elif llm_config.enabled and llm_config.api_key:
+            if not llm_config.api_key.startswith("your_"):
+                _set_bridged_env(env_key, llm_config.api_key)
+                bridged_count += 1
+    return bridged_count
+
+
+def _bridge_data_source_api_keys(data_source_configs) -> int:
+    bridged_count = 0
+    for ds_config in data_source_configs:
+        if not (ds_config.enabled and ds_config.api_key):
+            continue
+
+        if ds_config.type.value == "tushare":
+            existing_token = settings.TUSHARE_TOKEN
+            if ds_config.api_key and not ds_config.api_key.startswith("your_"):
+                _set_bridged_env("TUSHARE_TOKEN", ds_config.api_key)
+                bridged_count += 1
+            elif existing_token and not existing_token.startswith("your_"):
+                bridged_count += 1
+
+        elif ds_config.type.value == "finnhub":
+            existing_key = settings.FINNHUB_API_KEY
+            if ds_config.api_key and not ds_config.api_key.startswith("your_"):
+                _set_bridged_env("FINNHUB_API_KEY", ds_config.api_key)
+                bridged_count += 1
+            elif existing_key and not existing_key.startswith("your_"):
+                bridged_count += 1
+
+    return bridged_count
+
+
+def _bridge_system_settings_values(system_settings: dict) -> int:
+    if not system_settings:
+        return 0
+
+    bridged_count = 0
+    ta_settings = {
+        "ta_hk_min_request_interval_seconds": "TA_HK_MIN_REQUEST_INTERVAL_SECONDS",
+        "ta_hk_timeout_seconds": "TA_HK_TIMEOUT_SECONDS",
+        "ta_hk_max_retries": "TA_HK_MAX_RETRIES",
+        "ta_hk_rate_limit_wait_seconds": "TA_HK_RATE_LIMIT_WAIT_SECONDS",
+        "ta_hk_cache_ttl_seconds": "TA_HK_CACHE_TTL_SECONDS",
+        "ta_use_app_cache": "TA_USE_APP_CACHE",
+    }
+    token_tracking_settings = {
+        "enable_cost_tracking": "ENABLE_COST_TRACKING",
+        "auto_save_usage": "AUTO_SAVE_USAGE",
+    }
+
+    for setting_key, env_key in ta_settings.items():
+        env_value = settings.value(env_key, None)
+        if env_value is not None:
+            bridged_count += 1
+        elif setting_key in system_settings:
+            value = system_settings[setting_key]
+            _set_bridged_env(
+                env_key, str(value).lower() if isinstance(value, bool) else value
+            )
+            bridged_count += 1
+
+    for setting_key, env_key in token_tracking_settings.items():
+        if setting_key in system_settings:
+            value = system_settings[setting_key]
+            _set_bridged_env(
+                env_key, str(value).lower() if isinstance(value, bool) else value
+            )
+            bridged_count += 1
+
+    if "app_timezone" in system_settings:
+        _set_bridged_env("APP_TIMEZONE", system_settings["app_timezone"])
+        bridged_count += 1
+
+    if "currency_preference" in system_settings:
+        _set_bridged_env("CURRENCY_PREFERENCE", system_settings["currency_preference"])
+        bridged_count += 1
+
+    try:
+        unified_config = getattr(
+            importlib.import_module("app.core.unified"), "unified_config"
+        )
+        unified_config.save_system_settings(system_settings)
+    except Exception as e:
+        logger.warning(f"  ⚠️  同步系统设置到文件系统失败: {e}")
+
+    return bridged_count
+
+
+def _reinitialize_trading_agents_postgres_storage() -> None:
+    try:
+        config_manager = getattr(
+            importlib.import_module("trader.config.manager"), "config_manager"
+        )
+        PostgresStorage = getattr(
+            importlib.import_module("trader.config.postgres"), "PostgresStorage"
+        )
+        use_postgres = str(settings.USE_POSTGRES_STORAGE).lower()
+        postgres_db = settings.POSTGRES_DB
+
+        if use_postgres.lower() != "true":
+            return
+
+        close_postgres_storage = getattr(config_manager, "close_postgres_storage", None)
+        if close_postgres_storage is not None:
+            close_postgres_storage()
+        config_manager.postgres_storage = PostgresStorage(database_name=postgres_db)
+        if not config_manager.postgres_storage.is_connected():
+            config_manager.postgres_storage = None
+    except Exception as e:
+        logger.error(f"❌ 重新初始化 trading_agents PostgreSQL token 存储失败: {e}")
+
+
 def _bridge_datasource_details(data_source_configs) -> int:
     """
     桥接数据源细节配置到环境变量
@@ -643,6 +878,13 @@ def reload_bridged_config():
     return bridge_config_to_env()
 
 
+async def reload_bridged_config_async():
+    """异步重新加载桥接配置，供 FastAPI/Worker 运行时使用。"""
+    logger.info("🔄 异步重新加载配置桥接...")
+    clear_bridged_config()
+    return await bridge_config_to_env_async()
+
+
 def _sync_pricing_config(llm_configs):
     """
     同步定价配置到 trading_agents 的 config/pricing.json
@@ -784,9 +1026,11 @@ async def _sync_pricing_config_from_db():
 # 导出函数
 __all__ = [
     "bridge_config_to_env",
+    "bridge_config_to_env_async",
     "get_bridged_api_key",
     "get_bridged_model",
     "clear_bridged_config",
     "reload_bridged_config",
+    "reload_bridged_config_async",
     "sync_pricing_config_now",
 ]

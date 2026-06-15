@@ -181,15 +181,15 @@ async def recommend_models(request: ModelRecommendationRequest):
         capability_service = get_model_capability_service()
 
         # 获取推荐模型
-        quick_model, deep_model = capability_service.recommend_models_for_depth(
+        quick_model, deep_model = await capability_service.recommend_models_for_depth_async(
             request.research_depth
         )
 
         logger.info(f"🔍 推荐模型: quick={quick_model}, deep={deep_model}")
 
         # 获取模型详细信息
-        quick_info = capability_service.get_model_config(quick_model)
-        deep_info = capability_service.get_model_config(deep_model)
+        quick_info = await capability_service.get_model_config_async(quick_model)
+        deep_info = await capability_service.get_model_config_async(deep_model)
 
         logger.info(f"🔍 模型详细信息: quick_info={quick_info}, deep_info={deep_info}")
 
@@ -242,7 +242,7 @@ async def validate_models(request: ModelValidationRequest):
         capability_service = get_model_capability_service()
 
         # 验证模型对
-        validation = capability_service.validate_model_pair(
+        validation = await capability_service.validate_model_pair_async(
             request.quick_model, request.deep_model, request.research_depth
         )
 
@@ -325,7 +325,7 @@ async def get_model_capability(model_name: str):
     """
     try:
         capability_service = get_model_capability_service()
-        config = capability_service.get_model_config(model_name)
+        config = await capability_service.get_model_config_async(model_name)
 
         return ok(config, f"获取模型 {model_name} 能力信息成功")
     except Exception as e:

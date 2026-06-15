@@ -62,8 +62,11 @@ def map_stock_basic_info(document: Mapping[str, Any]) -> dict[str, Any]:
 def map_market_quote(document: Mapping[str, Any]) -> dict[str, Any]:
     source = _as_str(document.get("source") or document.get("data_source") or "")
     code = _as_str(document.get("code"))
+    legacy_id = f"market_quotes:{source}:{code}"
+    values = _base_values(document, legacy_id)
+    values["legacy_id"] = document.get("legacy_id") or legacy_id
     return {
-        **_base_values(document, f"market_quotes:{source}:{code}"),
+        **values,
         "code": code,
         "source": source,
         "trade_date": _as_date(document.get("trade_date")),

@@ -1,9 +1,14 @@
+from dataclasses import dataclass
+from typing import Any
+
 from .common import (
     AnalysisResult,
     AnalysisStatus,
     AnalysisTask,
     RedisProgressTracker,
     datetime,
+    get_postgres_db,
+    get_provider_and_url_by_model,
     get_provider_by_model_name_sync,
     importlib,
     logger,
@@ -11,9 +16,131 @@ from .common import (
 )
 
 
+@dataclass(frozen=True)
+class AnalysisThreadModelContext:
+    quick_model: str
+    deep_model: str
+    llm_provider: str
+    quick_model_config: dict[str, Any] | None = None
+    deep_model_config: dict[str, Any] | None = None
+    quick_provider_info: dict[str, Any] | None = None
+    deep_provider_info: dict[str, Any] | None = None
+
+
+def _model_config_from_doc(
+    doc: dict[str, Any] | None, model_name: str
+) -> dict[str, Any] | None:
+    if not doc:
+        return None
+    llm_configs = doc.get("llm_configs")
+    if not isinstance(llm_configs, list):
+        return None
+    for llm_config in llm_configs:
+        if not isinstance(llm_config, dict):
+            continue
+        if llm_config.get("model_name") != model_name:
+            continue
+        return {
+            "max_tokens": llm_config.get("max_tokens", 4000),
+            "temperature": llm_config.get("temperature", 0.7),
+            "timeout": llm_config.get("timeout", 180),
+            "retry_times": llm_config.get("retry_times", 3),
+            "api_base": llm_config.get("api_base"),
+        }
+    return None
+
+
+def _system_settings_from_doc(doc: dict[str, Any] | None) -> dict[str, Any]:
+    settings = doc.get("system_settings") if doc else {}
+    return settings if isinstance(settings, dict) else {}
+
+
 class AnalysisExecuteMixin:
+    async def _load_active_system_config_doc_for_thread(
+        self,
+    ) -> dict[str, Any] | None:
+        try:
+            doc = await get_postgres_db().system_configs.find_one(
+                {"is_active": True}, sort=[("version", -1)]
+            )
+        except RuntimeError as exc:
+            logger.warning("⚠️ 从 PostgreSQL 读取模型配置失败: %s，将使用默认参数", exc)
+            return None
+        return doc if isinstance(doc, dict) else None
+
+    async def _resolve_thread_model_context(
+        self, task: AnalysisTask
+    ) -> AnalysisThreadModelContext:
+        unified_config = getattr(
+            importlib.import_module("app.core.unified"), "unified_config"
+        )
+        doc = await self._load_active_system_config_doc_for_thread()
+        settings = _system_settings_from_doc(doc)
+        default_model = doc.get("default_llm") if doc else None
+        quick_model = (
+            getattr(task.parameters, "quick_analysis_model", None)
+            or settings.get("quick_analysis_model")
+            or settings.get("quick_think_llm")
+            or default_model
+            or unified_config.get_quick_analysis_model()
+        )
+        deep_model = (
+            getattr(task.parameters, "deep_analysis_model", None)
+            or settings.get("deep_analysis_model")
+            or settings.get("deep_think_llm")
+            or default_model
+            or unified_config.get_deep_analysis_model()
+        )
+
+        quick_provider_info = await get_provider_and_url_by_model(quick_model)
+        deep_provider_info = await get_provider_and_url_by_model(deep_model)
+        normalize_provider_key = getattr(
+            importlib.import_module("trader.llm.clients.providers"),
+            "normalize_provider_key",
+        )
+        return AnalysisThreadModelContext(
+            quick_model=quick_model,
+            deep_model=deep_model,
+            llm_provider=normalize_provider_key(
+                str(quick_provider_info.get("provider") or "qwen")
+            ),
+            quick_model_config=_model_config_from_doc(doc, quick_model),
+            deep_model_config=_model_config_from_doc(doc, deep_model),
+            quick_provider_info=quick_provider_info,
+            deep_provider_info=deep_provider_info,
+        )
+
+    def _legacy_thread_model_context(
+        self, task: AnalysisTask
+    ) -> AnalysisThreadModelContext:
+        unified_config = getattr(
+            importlib.import_module("app.core.unified"), "unified_config"
+        )
+        quick_model = (
+            getattr(task.parameters, "quick_analysis_model", None)
+            or unified_config.get_quick_analysis_model()
+        )
+        deep_model = (
+            getattr(task.parameters, "deep_analysis_model", None)
+            or unified_config.get_deep_analysis_model()
+        )
+        normalize_provider_key = getattr(
+            importlib.import_module("trader.llm.clients.providers"),
+            "normalize_provider_key",
+        )
+        return AnalysisThreadModelContext(
+            quick_model=quick_model,
+            deep_model=deep_model,
+            llm_provider=normalize_provider_key(
+                get_provider_by_model_name_sync(quick_model)
+            ),
+        )
+
     def _execute_analysis_sync_with_progress(
-        self, task: AnalysisTask, tracker: RedisProgressTracker
+        self,
+        task: AnalysisTask,
+        tracker: RedisProgressTracker,
+        model_context: AnalysisThreadModelContext | None = None,
     ) -> AnalysisResult:
         """同步执行分析任务（在线程池中运行，带进度跟踪）"""
         try:
@@ -36,85 +163,10 @@ class AnalysisExecuteMixin:
             tracker.update_progress("🔧 检查环境配置")
 
             # 使用标准配置函数创建完整配置
-            unified_config = getattr(
-                importlib.import_module("app.core.unified"), "unified_config"
-            )
-
-            quick_model = (
-                getattr(task.parameters, "quick_analysis_model", None)
-                or unified_config.get_quick_analysis_model()
-            )
-            deep_model = (
-                getattr(task.parameters, "deep_analysis_model", None)
-                or unified_config.get_deep_analysis_model()
-            )
-
-            # 🔧 从 PostgreSQL 数据库读取模型的完整配置参数（而不是从 JSON 文件）
-            quick_model_config = None
-            deep_model_config = None
-
-            try:
-                get_postgres_db_sync = getattr(
-                    importlib.import_module("app.core.database"), "get_postgres_db_sync"
-                )
-                db = get_postgres_db_sync()
-                collection = db.system_configs
-
-                # 查询最新的活跃配置
-                doc = collection.find_one({"is_active": True}, sort=[("version", -1)])
-
-                if doc and "llm_configs" in doc:
-                    llm_configs = doc["llm_configs"]
-                    logger.info(
-                        f"✅ 从 PostgreSQL 读取到 {len(llm_configs)} 个模型配置"
-                    )
-
-                    for llm_config in llm_configs:
-                        if llm_config.get("model_name") == quick_model:
-                            quick_model_config = {
-                                "max_tokens": llm_config.get("max_tokens", 4000),
-                                "temperature": llm_config.get("temperature", 0.7),
-                                "timeout": llm_config.get("timeout", 180),
-                                "retry_times": llm_config.get("retry_times", 3),
-                                "api_base": llm_config.get("api_base"),
-                            }
-                            logger.info(f"✅ 读取快速模型配置: {quick_model}")
-                            logger.info(
-                                f"   max_tokens={quick_model_config['max_tokens']}, temperature={quick_model_config['temperature']}"
-                            )
-                            logger.info(
-                                f"   timeout={quick_model_config['timeout']}, retry_times={quick_model_config['retry_times']}"
-                            )
-                            logger.info(f"   api_base={quick_model_config['api_base']}")
-
-                        if llm_config.get("model_name") == deep_model:
-                            deep_model_config = {
-                                "max_tokens": llm_config.get("max_tokens", 4000),
-                                "temperature": llm_config.get("temperature", 0.7),
-                                "timeout": llm_config.get("timeout", 180),
-                                "retry_times": llm_config.get("retry_times", 3),
-                                "api_base": llm_config.get("api_base"),
-                            }
-                            logger.info(
-                                f"✅ 读取深度模型配置: {deep_model} - {deep_model_config}"
-                            )
-                else:
-                    logger.warning("⚠️ PostgreSQL 中没有找到系统配置，将使用默认参数")
-            except Exception as e:
-                logger.warning(f"⚠️ 从 PostgreSQL 读取模型配置失败: {e}，将使用默认参数")
+            model_context = model_context or self._legacy_thread_model_context(task)
 
             # 成本估算
             tracker.update_progress("💰 预估分析成本")
-
-            # 根据模型名称动态查找供应商（同步版本）
-            normalize_provider_key = getattr(
-                importlib.import_module("trader.llm.clients.providers"),
-                "normalize_provider_key",
-            )
-
-            llm_provider = normalize_provider_key(
-                get_provider_by_model_name_sync(quick_model)
-            )
 
             # 参数配置
             tracker.update_progress("⚙️ 配置分析参数")
@@ -128,12 +180,14 @@ class AnalysisExecuteMixin:
                 research_depth=task.parameters.research_depth,
                 selected_analysts=task.parameters.selected_analysts
                 or ["market", "fundamentals"],
-                quick_model=quick_model,
-                deep_model=deep_model,
-                llm_provider=llm_provider,
+                quick_model=model_context.quick_model,
+                deep_model=model_context.deep_model,
+                llm_provider=model_context.llm_provider,
                 market_type=getattr(task.parameters, "market_type", "A股"),
-                quick_model_config=quick_model_config,  # 传递模型配置
-                deep_model_config=deep_model_config,  # 传递模型配置
+                quick_model_config=model_context.quick_model_config,
+                deep_model_config=model_context.deep_model_config,
+                quick_provider_info=model_context.quick_provider_info,
+                deep_provider_info=model_context.deep_provider_info,
             )
 
             # 启动引擎
@@ -193,88 +247,16 @@ class AnalysisExecuteMixin:
             logger.error(f"❌ [线程池] 执行分析任务失败: {task.task_id} - {e}")
             raise
 
-    def _execute_analysis_sync(self, task: AnalysisTask) -> AnalysisResult:
+    def _execute_analysis_sync(
+        self,
+        task: AnalysisTask,
+        model_context: AnalysisThreadModelContext | None = None,
+    ) -> AnalysisResult:
         """同步执行分析任务（在线程池中运行）"""
         try:
             logger.info(f"🔄 [线程池] 开始执行分析任务: {task.task_id} - {task.symbol}")
 
-            # 使用标准配置函数创建完整配置
-            unified_config = getattr(
-                importlib.import_module("app.core.unified"), "unified_config"
-            )
-
-            quick_model = (
-                getattr(task.parameters, "quick_analysis_model", None)
-                or unified_config.get_quick_analysis_model()
-            )
-            deep_model = (
-                getattr(task.parameters, "deep_analysis_model", None)
-                or unified_config.get_deep_analysis_model()
-            )
-
-            # 🔧 从 PostgreSQL 数据库读取模型的完整配置参数（而不是从 JSON 文件）
-            quick_model_config = None
-            deep_model_config = None
-
-            try:
-                get_postgres_db_sync = getattr(
-                    importlib.import_module("app.core.database"), "get_postgres_db_sync"
-                )
-                db = get_postgres_db_sync()
-                collection = db.system_configs
-
-                # 查询最新的活跃配置
-                doc = collection.find_one({"is_active": True}, sort=[("version", -1)])
-
-                if doc and "llm_configs" in doc:
-                    llm_configs = doc["llm_configs"]
-                    logger.info(
-                        f"✅ 从 PostgreSQL 读取到 {len(llm_configs)} 个模型配置"
-                    )
-
-                    for llm_config in llm_configs:
-                        if llm_config.get("model_name") == quick_model:
-                            quick_model_config = {
-                                "max_tokens": llm_config.get("max_tokens", 4000),
-                                "temperature": llm_config.get("temperature", 0.7),
-                                "timeout": llm_config.get("timeout", 180),
-                                "retry_times": llm_config.get("retry_times", 3),
-                                "api_base": llm_config.get("api_base"),
-                            }
-                            logger.info(f"✅ 读取快速模型配置: {quick_model}")
-                            logger.info(
-                                f"   max_tokens={quick_model_config['max_tokens']}, temperature={quick_model_config['temperature']}"
-                            )
-                            logger.info(
-                                f"   timeout={quick_model_config['timeout']}, retry_times={quick_model_config['retry_times']}"
-                            )
-                            logger.info(f"   api_base={quick_model_config['api_base']}")
-
-                        if llm_config.get("model_name") == deep_model:
-                            deep_model_config = {
-                                "max_tokens": llm_config.get("max_tokens", 4000),
-                                "temperature": llm_config.get("temperature", 0.7),
-                                "timeout": llm_config.get("timeout", 180),
-                                "retry_times": llm_config.get("retry_times", 3),
-                                "api_base": llm_config.get("api_base"),
-                            }
-                            logger.info(
-                                f"✅ 读取深度模型配置: {deep_model} - {deep_model_config}"
-                            )
-                else:
-                    logger.warning("⚠️ PostgreSQL 中没有找到系统配置，将使用默认参数")
-            except Exception as e:
-                logger.warning(f"⚠️ 从 PostgreSQL 读取模型配置失败: {e}，将使用默认参数")
-
-            # 根据模型名称动态查找供应商（同步版本）
-            normalize_provider_key = getattr(
-                importlib.import_module("trader.llm.clients.providers"),
-                "normalize_provider_key",
-            )
-
-            llm_provider = normalize_provider_key(
-                get_provider_by_model_name_sync(quick_model)
-            )
+            model_context = model_context or self._legacy_thread_model_context(task)
 
             # 使用标准配置函数创建完整配置
             create_analysis_config = getattr(
@@ -285,12 +267,14 @@ class AnalysisExecuteMixin:
                 research_depth=task.parameters.research_depth,
                 selected_analysts=task.parameters.selected_analysts
                 or ["market", "fundamentals"],
-                quick_model=quick_model,
-                deep_model=deep_model,
-                llm_provider=llm_provider,
+                quick_model=model_context.quick_model,
+                deep_model=model_context.deep_model,
+                llm_provider=model_context.llm_provider,
                 market_type=getattr(task.parameters, "market_type", "A股"),
-                quick_model_config=quick_model_config,  # 传递模型配置
-                deep_model_config=deep_model_config,  # 传递模型配置
+                quick_model_config=model_context.quick_model_config,
+                deep_model_config=model_context.deep_model_config,
+                quick_provider_info=model_context.quick_provider_info,
+                deep_provider_info=model_context.deep_provider_info,
             )
 
             # 获取分析引擎实例
@@ -362,6 +346,8 @@ class AnalysisExecuteMixin:
                 task.task_id, AnalysisStatus.PROCESSING, tracker
             )
 
+            model_context = await self._resolve_thread_model_context(task)
+
             # 在线程池中执行分析，避免阻塞事件循环
             asyncio = importlib.import_module("asyncio")
             importlib.import_module("concurrent.futures")
@@ -372,7 +358,11 @@ class AnalysisExecuteMixin:
             # 使用线程池执行器运行同步的分析代码
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 result = await loop.run_in_executor(
-                    executor, self._execute_analysis_sync_with_progress, task, tracker
+                    executor,
+                    self._execute_analysis_sync_with_progress,
+                    task,
+                    tracker,
+                    model_context,
                 )
 
             # 标记完成
@@ -383,22 +373,10 @@ class AnalysisExecuteMixin:
 
             # 记录 token 使用
             try:
-                # 获取使用的模型信息
-                quick_model = getattr(task.parameters, "quick_analysis_model", None)
-                deep_model = getattr(task.parameters, "deep_analysis_model", None)
-
-                # 优先使用深度分析模型，如果没有则使用快速分析模型
-                model_name = deep_model or quick_model or "qwen-plus"
-
-                # 根据模型名称确定供应商
-                get_provider_by_model_name = getattr(
-                    importlib.import_module("app.services.analysis.simple"),
-                    "get_provider_by_model_name",
-                )
-                provider = await get_provider_by_model_name(model_name)
-
                 # 记录使用情况
-                await self._record_token_usage(task, result, provider, model_name)
+                await self._record_token_usage(
+                    task, result, model_context.llm_provider, model_context.deep_model
+                )
             except Exception as e:
                 logger.error(f"⚠️  记录 token 使用失败: {e}")
 

@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
+from app.core.database import get_postgres_db
 from app.services.screening.eval import (
     collect_fields_from_conditions as _collect_fields_from_conditions_util,
 )
@@ -108,7 +109,35 @@ class ScreeningService:
     def run(
         self, conditions: Dict[str, Any], params: ScreeningParams
     ) -> Dict[str, Any]:
-        symbols = self._get_universe()
+        return self._run_with_symbols(self._get_universe(), conditions, params)
+
+    async def run_async(
+        self, conditions: Dict[str, Any], params: ScreeningParams
+    ) -> Dict[str, Any]:
+        data_source_manager = None
+        need_base, _need_tech, _need_fund = self._field_requirements(
+            conditions, params
+        )
+        if need_base:
+            get_data_source_manager_async = getattr(
+                importlib.import_module("trader.flows.sources"),
+                "get_data_source_manager_async",
+            )
+            data_source_manager = await get_data_source_manager_async()
+        return self._run_with_symbols(
+            await self._get_universe_async(),
+            conditions,
+            params,
+            data_source_manager=data_source_manager,
+        )
+
+    def _run_with_symbols(
+        self,
+        symbols: List[str],
+        conditions: Dict[str, Any],
+        params: ScreeningParams,
+        data_source_manager=None,
+    ) -> Dict[str, Any]:
         # 为控制时长，先限制样本规模（后续用批量/缓存优化）
         symbols = symbols[:120]
 
@@ -119,15 +148,9 @@ class ScreeningService:
 
         results: List[Dict[str, Any]] = []
 
-        # 解析条件中涉及的字段，决定是否需要技术指标/行情
-        needed_fields = self._collect_fields_from_conditions(conditions)
-        order_fields = {
-            o.get("field") for o in (params.order_by or []) if o.get("field")
-        }
-        all_needed = set(needed_fields) | set(order_fields)
-        need_tech = any(f in TECH_FIELDS for f in all_needed)
-        need_base = any(f in BASE_FIELDS for f in all_needed) or need_tech
-        need_fund = any(f in FUND_FIELDS for f in all_needed)
+        need_base, need_tech, need_fund = self._field_requirements(
+            conditions, params
+        )
 
         for code in symbols:
             try:
@@ -143,7 +166,7 @@ class ScreeningService:
                         "get_data_source_manager",
                     )
 
-                    manager = get_data_source_manager()
+                    manager = data_source_manager or get_data_source_manager()
                     df = manager.get_stock_dataframe(code, start_s, end_s)
                     if df is None or df.empty:
                         continue
@@ -263,6 +286,19 @@ class ScreeningService:
             "items": page_items,
         }
 
+    def _field_requirements(
+        self, conditions: Dict[str, Any], params: ScreeningParams
+    ) -> tuple[bool, bool, bool]:
+        needed_fields = self._collect_fields_from_conditions(conditions)
+        order_fields = {
+            o.get("field") for o in (params.order_by or []) if o.get("field")
+        }
+        all_needed = set(needed_fields) | set(order_fields)
+        need_tech = any(f in TECH_FIELDS for f in all_needed)
+        need_base = any(f in BASE_FIELDS for f in all_needed) or need_tech
+        need_fund = any(f in FUND_FIELDS for f in all_needed)
+        return need_base, need_tech, need_fund
+
     def _evaluate_fund_conditions(
         self, snap: Dict[str, Any], node: Dict[str, Any]
     ) -> bool:
@@ -329,6 +365,53 @@ class ScreeningService:
         except Exception as e:
             logger.error(f"❌ 从 PostgreSQL 获取股票列表失败: {e}")
             # 异常时返回常见股票代码作为兜底
+            return [
+                "000001",
+                "000002",
+                "000858",
+                "600519",
+                "600036",
+                "601318",
+                "300750",
+            ]
+
+    async def _get_universe_async(self) -> List[str]:
+        """异步获取A股代码集合，供 FastAPI/Worker 运行时使用。"""
+        try:
+            db = get_postgres_db()
+            collection = db.stock_basic_info
+
+            cursor = collection.find(
+                {
+                    "$or": [
+                        {"market_info.market": "CN"},
+                        {"category": "stock_cn"},
+                        {"market": {"$in": ["主板", "创业板", "科创板", "北交所"]}},
+                    ]
+                },
+                {"code": 1, "_id": 0},
+            )
+
+            docs = await cursor.to_list(None)
+            codes = [doc.get("code") for doc in docs if doc.get("code")]
+
+            if codes:
+                logger.info(f"📊 从 PostgreSQL 获取到 {len(codes)} 只A股股票")
+                return codes
+
+            logger.warning("⚠️ PostgreSQL 中未找到股票数据，使用兜底股票列表")
+            return [
+                "000001",
+                "000002",
+                "000858",
+                "600519",
+                "600036",
+                "601318",
+                "300750",
+            ]
+
+        except Exception as e:
+            logger.error(f"❌ 从 PostgreSQL 获取股票列表失败: {e}")
             return [
                 "000001",
                 "000002",

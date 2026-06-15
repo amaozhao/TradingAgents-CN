@@ -1,4 +1,5 @@
 import inspect
+import re
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
@@ -27,3 +28,16 @@ def test_market_sync_scheduler_wrappers_run_as_executor_jobs():
     ]
 
     assert all(not inspect.iscoroutinefunction(wrapper) for wrapper in wrappers)
+
+
+def test_application_does_not_register_sync_market_wrappers_as_scheduler_jobs():
+    application = (_backend_root() / "app" / "main" / "application.py").read_text(
+        encoding="utf-8"
+    )
+
+    forbidden = re.compile(
+        r"scheduler\.add_job\(\s*run_(?:tushare|akshare|baostock)_[a-z_]+",
+        re.MULTILINE,
+    )
+
+    assert forbidden.search(application) is None

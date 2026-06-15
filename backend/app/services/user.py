@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
-from app.core.database import get_postgres_db_sync
+from app.core.database import get_postgres_db
 from app.db.dual import dual_write_hot_document
 from app.db.ids import DocumentId
 from app.schemas.user import User, UserCreate, UserPreferences, UserResponse, UserUpdate
@@ -32,8 +32,9 @@ class UserService:
 
     def __init__(self):
         self.client = None
-        self.db = get_postgres_db_sync()
-        self.users_collection = self.db.users
+
+    async def _users_collection(self):
+        return get_postgres_db().users
 
     def close(self, log: bool = True):
         """关闭数据库连接"""
@@ -66,8 +67,9 @@ class UserService:
     async def create_user(self, user_data: UserCreate) -> Optional[User]:
         """创建用户"""
         try:
+            users_collection = await self._users_collection()
             # 检查用户名是否已存在
-            existing_user = self.users_collection.find_one(
+            existing_user = await users_collection.find_one(
                 {"username": user_data.username}
             )
             if existing_user:
@@ -75,7 +77,7 @@ class UserService:
                 return None
 
             # 检查邮箱是否已存在
-            existing_email = self.users_collection.find_one({"email": user_data.email})
+            existing_email = await users_collection.find_one({"email": user_data.email})
             if existing_email:
                 logger.warning(f"邮箱已存在: {user_data.email}")
                 return None
@@ -118,7 +120,7 @@ class UserService:
                 "favorite_stocks": [],
             }
 
-            result = self.users_collection.insert_one(user_doc)
+            result = await users_collection.insert_one(user_doc)
             user_doc["_id"] = result.inserted_id
             await self._dual_write_user(user_doc)
 
@@ -166,6 +168,7 @@ class UserService:
                 return None
 
             # 更新最后登录时间
+            users_collection = await self._users_collection()
             login_update = {"last_login": datetime.utcnow()}
             postgres_user_id = (
                 DocumentId(user_doc["_id"])
@@ -173,7 +176,7 @@ class UserService:
                 and DocumentId.is_valid(user_doc["_id"])
                 else user_doc["_id"]
             )
-            self.users_collection.update_one(
+            await users_collection.update_one(
                 {"_id": postgres_user_id}, {"$set": login_update}
             )
             await self._dual_write_user({**user_doc, **login_update})
@@ -209,12 +212,13 @@ class UserService:
     async def update_user(self, username: str, user_data: UserUpdate) -> Optional[User]:
         """更新用户信息"""
         try:
+            users_collection = await self._users_collection()
             update_data: Dict[str, Any] = {"updated_at": datetime.utcnow()}
 
             # 只更新提供的字段
             if user_data.email:
                 # 检查邮箱是否已被其他用户使用
-                existing_email = self.users_collection.find_one(
+                existing_email = await users_collection.find_one(
                     {"email": user_data.email, "username": {"$ne": username}}
                 )
                 if existing_email:
@@ -231,12 +235,12 @@ class UserService:
             if user_data.concurrent_limit is not None:
                 update_data["concurrent_limit"] = user_data.concurrent_limit
 
-            result = self.users_collection.update_one(
+            result = await users_collection.update_one(
                 {"username": username}, {"$set": update_data}
             )
 
             if result.modified_count > 0:
-                existing_user = self.users_collection.find_one(
+                existing_user = await users_collection.find_one(
                     {"username": username}
                 ) or {"username": username}
                 await self._dual_write_user({**existing_user, **update_data})
@@ -262,8 +266,9 @@ class UserService:
                 return False
 
             # 更新密码
+            users_collection = await self._users_collection()
             new_hashed_password = self.hash_password(new_password)
-            result = self.users_collection.update_one(
+            result = await users_collection.update_one(
                 {"username": username},
                 {
                     "$set": {
@@ -274,7 +279,7 @@ class UserService:
             )
 
             if result.modified_count > 0:
-                existing_user = self.users_collection.find_one(
+                existing_user = await users_collection.find_one(
                     {"username": username}
                 ) or {"username": username}
                 await self._dual_write_user(
@@ -297,8 +302,9 @@ class UserService:
     async def reset_password(self, username: str, new_password: str) -> bool:
         """重置密码（管理员操作）"""
         try:
+            users_collection = await self._users_collection()
             new_hashed_password = self.hash_password(new_password)
-            result = self.users_collection.update_one(
+            result = await users_collection.update_one(
                 {"username": username},
                 {
                     "$set": {
@@ -309,7 +315,7 @@ class UserService:
             )
 
             if result.modified_count > 0:
-                existing_user = self.users_collection.find_one(
+                existing_user = await users_collection.find_one(
                     {"username": username}
                 ) or {"username": username}
                 await self._dual_write_user(
@@ -337,8 +343,9 @@ class UserService:
     ) -> Optional[User]:
         """创建管理员用户"""
         try:
+            users_collection = await self._users_collection()
             # 检查是否已存在管理员
-            existing_admin = self.users_collection.find_one({"username": username})
+            existing_admin = await users_collection.find_one({"username": username})
             if existing_admin:
                 logger.info(f"管理员用户已存在: {username}")
                 return User(**existing_admin)
@@ -370,7 +377,7 @@ class UserService:
                 "favorite_stocks": [],
             }
 
-            result = self.users_collection.insert_one(admin_doc)
+            result = await users_collection.insert_one(admin_doc)
             admin_doc["_id"] = result.inserted_id
             await self._dual_write_user(admin_doc)
 
@@ -384,6 +391,27 @@ class UserService:
             logger.error(f"❌ 创建管理员用户失败: {e}")
             return None
 
+    async def set_admin(self, username: str, is_admin: bool) -> bool:
+        """设置用户管理员状态。"""
+        try:
+            users_collection = await self._users_collection()
+            update_data = {"is_admin": is_admin, "updated_at": datetime.utcnow()}
+            result = await users_collection.update_one(
+                {"username": username}, {"$set": update_data}
+            )
+            if result.modified_count <= 0:
+                logger.warning("用户不存在或管理员状态无需更新: %s", username)
+                return False
+
+            existing_user = await users_collection.find_one(
+                {"username": username}
+            ) or {"username": username}
+            await self._dual_write_user({**existing_user, **update_data})
+            return True
+        except Exception as e:
+            logger.error("❌ 设置管理员状态失败: %s", e)
+            return False
+
     async def list_users(self, skip: int = 0, limit: int = 100) -> List[UserResponse]:
         """获取用户列表"""
         try:
@@ -394,10 +422,13 @@ class UserService:
                 if postgres_users:
                     return postgres_users
 
-            cursor = self.users_collection.find().skip(skip).limit(limit)
+            users_collection = await self._users_collection()
+            user_docs = await users_collection.find().skip(skip).limit(limit).to_list(
+                None
+            )
             users = []
 
-            for user_doc in cursor:
+            for user_doc in user_docs:
                 user = User(**user_doc)
                 users.append(
                     UserResponse(
@@ -432,14 +463,16 @@ class UserService:
             )
             if postgres_doc:
                 return postgres_doc
-        return self.users_collection.find_one({"username": username})
+        users_collection = await self._users_collection()
+        return await users_collection.find_one({"username": username})
 
     async def _get_user_document_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
         if settings.POSTGRES_READ_ENABLED:
             postgres_doc = await self._get_user_document_from_postgres(user_id=user_id)
             if postgres_doc:
                 return postgres_doc
-        return self.users_collection.find_one({"_id": DocumentId(user_id)})
+        users_collection = await self._users_collection()
+        return await users_collection.find_one({"_id": DocumentId(user_id)})
 
     async def _get_user_document_from_postgres(
         self,
@@ -554,13 +587,14 @@ class UserService:
     async def deactivate_user(self, username: str) -> bool:
         """禁用用户"""
         try:
-            result = self.users_collection.update_one(
+            users_collection = await self._users_collection()
+            result = await users_collection.update_one(
                 {"username": username},
                 {"$set": {"is_active": False, "updated_at": datetime.utcnow()}},
             )
 
             if result.modified_count > 0:
-                existing_user = self.users_collection.find_one(
+                existing_user = await users_collection.find_one(
                     {"username": username}
                 ) or {"username": username}
                 await self._dual_write_user(
@@ -583,13 +617,14 @@ class UserService:
     async def activate_user(self, username: str) -> bool:
         """激活用户"""
         try:
-            result = self.users_collection.update_one(
+            users_collection = await self._users_collection()
+            result = await users_collection.update_one(
                 {"username": username},
                 {"$set": {"is_active": True, "updated_at": datetime.utcnow()}},
             )
 
             if result.modified_count > 0:
-                existing_user = self.users_collection.find_one(
+                existing_user = await users_collection.find_one(
                     {"username": username}
                 ) or {"username": username}
                 await self._dual_write_user(

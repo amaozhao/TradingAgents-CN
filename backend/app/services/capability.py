@@ -14,7 +14,9 @@ from app.constants.capabilities import (
     ModelFeature,
     ModelRole,
 )
+from app.core.database import get_postgres_db
 from app.core.unified import unified_config
+from app.services.config import config_service
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +119,99 @@ class ModelCapabilityService:
 
         return capability
 
+    def _build_model_config_from_dict(
+        self, model_name: str, config_dict: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        features_str = config_dict.get("features", [])
+        features_enum = []
+        for feature_str in features_str:
+            try:
+                features_enum.append(ModelFeature(feature_str))
+            except ValueError:
+                logger.warning(f"⚠️ 未知的特性值: {feature_str}")
+
+        roles_str = config_dict.get("suitable_roles", ["both"])
+        roles_enum = []
+        for role_str in roles_str:
+            try:
+                roles_enum.append(ModelRole(role_str))
+            except ValueError:
+                logger.warning(f"⚠️ 未知的角色值: {role_str}")
+
+        if not roles_enum:
+            roles_enum = [ModelRole.BOTH]
+
+        default_config = DEFAULT_MODEL_CAPABILITIES.get(model_name, {})
+        if not features_enum and default_config:
+            features_enum = list(default_config.get("features", []))
+            logger.info(
+                "🔧 [模型能力] %s 数据库未配置 features，使用默认能力表: %s",
+                model_name,
+                features_enum,
+            )
+        if roles_enum == [ModelRole.BOTH] and default_config.get("suitable_roles"):
+            roles_enum = list(default_config["suitable_roles"])
+
+        return {
+            "model_name": config_dict.get("model_name"),
+            "capability_level": config_dict.get(
+                "capability_level",
+                default_config.get("capability_level", 2),
+            ),
+            "suitable_roles": roles_enum,
+            "features": features_enum,
+            "recommended_depths": config_dict.get(
+                "recommended_depths",
+                default_config.get("recommended_depths", ["快速", "基础", "标准"]),
+            ),
+            "performance_metrics": config_dict.get(
+                "performance_metrics",
+                default_config.get("performance_metrics"),
+            ),
+        }
+
+    def _default_model_config(self, model_name: str) -> Dict[str, Any]:
+        if model_name in DEFAULT_MODEL_CAPABILITIES:
+            return DEFAULT_MODEL_CAPABILITIES[model_name]
+
+        provider, original_model = self._parse_aggregator_model_name(model_name)
+        if original_model and original_model != model_name:
+            if original_model in DEFAULT_MODEL_CAPABILITIES:
+                logger.info(f"🔄 聚合渠道模型映射: {model_name} -> {original_model}")
+                config = DEFAULT_MODEL_CAPABILITIES[original_model].copy()
+                config["model_name"] = model_name
+                config["_mapped_from"] = original_model
+                return config
+
+        logger.warning(f"未找到模型 {model_name} 的配置，使用默认配置")
+        return {
+            "model_name": model_name,
+            "capability_level": 2,
+            "suitable_roles": [ModelRole.BOTH],
+            "features": [ModelFeature.TOOL_CALLING],
+            "recommended_depths": ["快速", "基础", "标准"],
+            "performance_metrics": {"speed": 3, "cost": 3, "quality": 3},
+        }
+
+    async def get_model_config_async(self, model_name: str) -> Dict[str, Any]:
+        """异步获取模型配置，供 FastAPI/Worker 运行时使用。"""
+        try:
+            db = get_postgres_db()
+            doc = await db.system_configs.find_one(
+                {"is_active": True}, sort=[("version", -1)]
+            )
+
+            if doc and "llm_configs" in doc:
+                for config_dict in doc["llm_configs"]:
+                    if config_dict.get("model_name") == model_name:
+                        return self._build_model_config_from_dict(
+                            model_name, config_dict
+                        )
+        except Exception as e:
+            logger.warning(f"从 PostgreSQL 异步读取模型信息失败: {e}", exc_info=True)
+
+        return self._default_model_config(model_name)
+
     def get_model_config(self, model_name: str) -> Dict[str, Any]:
         """
         获取模型的完整配置信息（支持聚合渠道模型映射）
@@ -153,94 +248,22 @@ class ModelCapabilityService:
                 for config_dict in llm_configs:
                     if config_dict.get("model_name") == model_name:
                         logger.info(f"🔍 [PostgreSQL] 找到模型配置: {model_name}")
-                        # 🔧 将字符串列表转换为枚举列表
-                        features_str = config_dict.get("features", [])
-                        features_enum = []
-                        for feature_str in features_str:
-                            try:
-                                # 将字符串转换为 ModelFeature 枚举
-                                features_enum.append(ModelFeature(feature_str))
-                            except ValueError:
-                                logger.warning(f"⚠️ 未知的特性值: {feature_str}")
-
-                        # 🔧 将字符串列表转换为枚举列表
-                        roles_str = config_dict.get("suitable_roles", ["both"])
-                        roles_enum = []
-                        for role_str in roles_str:
-                            try:
-                                # 将字符串转换为 ModelRole 枚举
-                                roles_enum.append(ModelRole(role_str))
-                            except ValueError:
-                                logger.warning(f"⚠️ 未知的角色值: {role_str}")
-
-                        # 如果没有角色，默认为 both
-                        if not roles_enum:
-                            roles_enum = [ModelRole.BOTH]
-
-                        default_config = DEFAULT_MODEL_CAPABILITIES.get(model_name, {})
-                        if not features_enum and default_config:
-                            features_enum = list(default_config.get("features", []))
-                            logger.info(
-                                "🔧 [模型能力] %s 数据库未配置 features，使用默认能力表: %s",
-                                model_name,
-                                features_enum,
-                            )
-                        if roles_enum == [ModelRole.BOTH] and default_config.get(
-                            "suitable_roles"
-                        ):
-                            roles_enum = list(default_config["suitable_roles"])
-
-                        logger.info(
-                            f"📊 [PostgreSQL配置] {model_name}: features={features_enum}, roles={roles_enum}"
+                        model_config = self._build_model_config_from_dict(
+                            model_name, config_dict
                         )
 
-                        return {
-                            "model_name": config_dict.get("model_name"),
-                            "capability_level": config_dict.get(
-                                "capability_level",
-                                default_config.get("capability_level", 2),
-                            ),
-                            "suitable_roles": roles_enum,
-                            "features": features_enum,
-                            "recommended_depths": config_dict.get(
-                                "recommended_depths",
-                                default_config.get(
-                                    "recommended_depths", ["快速", "基础", "标准"]
-                                ),
-                            ),
-                            "performance_metrics": config_dict.get(
-                                "performance_metrics",
-                                default_config.get("performance_metrics"),
-                            ),
-                        }
+                        logger.info(
+                            "📊 [PostgreSQL配置] %s: features=%s, roles=%s",
+                            model_name,
+                            model_config.get("features"),
+                            model_config.get("suitable_roles"),
+                        )
+                        return model_config
 
         except Exception as e:
             logger.warning(f"从 PostgreSQL 读取模型信息失败: {e}", exc_info=True)
 
-        # 2. 从默认映射表读取（直接匹配）
-        if model_name in DEFAULT_MODEL_CAPABILITIES:
-            return DEFAULT_MODEL_CAPABILITIES[model_name]
-
-        # 3. 尝试聚合渠道模型映射
-        provider, original_model = self._parse_aggregator_model_name(model_name)
-        if original_model and original_model != model_name:
-            if original_model in DEFAULT_MODEL_CAPABILITIES:
-                logger.info(f"🔄 聚合渠道模型映射: {model_name} -> {original_model}")
-                config = DEFAULT_MODEL_CAPABILITIES[original_model].copy()
-                config["model_name"] = model_name  # 保持原始模型名
-                config["_mapped_from"] = original_model  # 记录映射来源
-                return config
-
-        # 4. 返回默认配置
-        logger.warning(f"未找到模型 {model_name} 的配置，使用默认配置")
-        return {
-            "model_name": model_name,
-            "capability_level": 2,
-            "suitable_roles": [ModelRole.BOTH],
-            "features": [ModelFeature.TOOL_CALLING],
-            "recommended_depths": ["快速", "基础", "标准"],
-            "performance_metrics": {"speed": 3, "cost": 3, "quality": 3},
-        }
+        return self._default_model_config(model_name)
 
     def validate_model_pair(
         self, quick_model: str, deep_model: str, research_depth: str
@@ -268,6 +291,45 @@ class ModelCapabilityService:
         quick_config = self.get_model_config(quick_model)
         deep_config = self.get_model_config(deep_model)
 
+        return self._validate_model_pair_configs(
+            quick_model, deep_model, research_depth, quick_config, deep_config
+        )
+
+    async def validate_model_pair_async(
+        self, quick_model: str, deep_model: str, research_depth: str
+    ) -> Dict[str, Any]:
+        """异步验证模型对，供 FastAPI/Worker 运行时使用。"""
+        quick_config = await self.get_model_config_async(quick_model)
+        deep_config = await self.get_model_config_async(deep_model)
+        requirements = ANALYSIS_DEPTH_REQUIREMENTS.get(
+            research_depth, ANALYSIS_DEPTH_REQUIREMENTS["标准"]
+        )
+        deep_recommendation = None
+        if deep_config["capability_level"] < requirements["deep_model_min"]:
+            deep_recommendation = await self._recommend_model_async(
+                "deep", requirements["deep_model_min"]
+            )
+        return self._validate_model_pair_configs(
+            quick_model,
+            deep_model,
+            research_depth,
+            quick_config,
+            deep_config,
+            deep_recommendation,
+        )
+
+    def _validate_model_pair_configs(
+        self,
+        quick_model: str,
+        deep_model: str,
+        research_depth: str,
+        quick_config: Dict[str, Any],
+        deep_config: Dict[str, Any],
+        deep_recommendation: str | None = None,
+    ) -> Dict[str, Any]:
+        requirements = ANALYSIS_DEPTH_REQUIREMENTS.get(
+            research_depth, ANALYSIS_DEPTH_REQUIREMENTS["标准"]
+        )
         logger.info(f"🔍 快速模型配置: {quick_config}")
         logger.info(f"🔍 深度模型配置: {deep_config}")
 
@@ -316,7 +378,8 @@ class ModelCapabilityService:
             result["warnings"].append(warning)
             logger.error(warning)
             result["recommendations"].append(
-                self._recommend_model("deep", requirements["deep_model_min"])
+                deep_recommendation
+                or self._recommend_model("deep", requirements["deep_model_min"])
             )
 
         # 检查深度模型角色适配
@@ -350,6 +413,33 @@ class ModelCapabilityService:
 
         return result
 
+    async def recommend_models_for_depth_async(
+        self, research_depth: str
+    ) -> Tuple[str, str]:
+        """异步推荐模型对，供 FastAPI/Worker 运行时使用。"""
+        requirements = ANALYSIS_DEPTH_REQUIREMENTS.get(
+            research_depth, ANALYSIS_DEPTH_REQUIREMENTS["标准"]
+        )
+        try:
+            config = await config_service.get_system_config()
+            enabled_models = [
+                c for c in (config.llm_configs if config else []) if c.enabled
+            ]
+        except Exception as e:
+            logger.error(f"获取模型配置失败: {e}")
+            return await self._get_default_models_async()
+
+        if not enabled_models:
+            logger.warning("没有启用的模型，使用默认配置")
+            return await self._get_default_models_async()
+
+        return self._choose_models_for_requirements(
+            research_depth,
+            requirements,
+            enabled_models,
+            fallback_models=await self._get_default_models_async(),
+        )
+
     def recommend_models_for_depth(self, research_depth: str) -> Tuple[str, str]:
         """
         根据分析深度推荐合适的模型对
@@ -377,6 +467,17 @@ class ModelCapabilityService:
             logger.warning("没有启用的模型，使用默认配置")
             return self._get_default_models()
 
+        return self._choose_models_for_requirements(
+            research_depth, requirements, enabled_models
+        )
+
+    def _choose_models_for_requirements(
+        self,
+        research_depth: str,
+        requirements: Dict[str, Any],
+        enabled_models: list,
+        fallback_models: Tuple[str, str] | None = None,
+    ) -> Tuple[str, str]:
         # 筛选适合快速分析的模型
         quick_candidates = []
         for m in enabled_models:
@@ -429,7 +530,7 @@ class ModelCapabilityService:
 
         # 如果没找到合适的，使用系统默认
         if not quick_model or not deep_model:
-            return self._get_default_models()
+            return fallback_models or self._get_default_models()
 
         logger.info(
             f"🤖 为 {research_depth} 分析推荐模型: "
@@ -438,6 +539,29 @@ class ModelCapabilityService:
         )
 
         return quick_model, deep_model
+
+    async def _get_default_models_async(self) -> Tuple[str, str]:
+        """异步获取默认模型对。"""
+        try:
+            config = await config_service.get_system_config()
+            settings = config.system_settings if config else {}
+            quick_model = (
+                settings.get("quick_analysis_model")
+                or settings.get("quick_think_llm")
+                or settings.get("default_model")
+                or "qwen-turbo"
+            )
+            deep_model = (
+                settings.get("deep_analysis_model")
+                or settings.get("deep_think_llm")
+                or settings.get("default_model")
+                or "qwen-plus"
+            )
+            logger.info(f"使用系统默认模型: quick={quick_model}, deep={deep_model}")
+            return quick_model, deep_model
+        except Exception as e:
+            logger.error(f"获取默认模型失败: {e}")
+            return "qwen-turbo", "qwen-plus"
 
     def _get_default_models(self) -> Tuple[str, str]:
         """获取默认模型对"""
@@ -460,6 +584,24 @@ class ModelCapabilityService:
                     and getattr(config, "capability_level", 2) >= min_level
                 ):
                     display_name = config.model_display_name or config.model_name
+                    return f"建议使用: {display_name}"
+        except Exception as e:
+            logger.warning(f"推荐模型失败: {e}")
+
+        return "建议升级模型配置"
+
+    async def _recommend_model_async(self, _model_type: str, min_level: int) -> str:
+        """异步推荐满足要求的模型。"""
+        try:
+            config = await config_service.get_system_config()
+            for llm_config in config.llm_configs if config else []:
+                if (
+                    llm_config.enabled
+                    and getattr(llm_config, "capability_level", 2) >= min_level
+                ):
+                    display_name = (
+                        llm_config.model_display_name or llm_config.model_name
+                    )
                     return f"建议使用: {display_name}"
         except Exception as e:
             logger.warning(f"推荐模型失败: {e}")

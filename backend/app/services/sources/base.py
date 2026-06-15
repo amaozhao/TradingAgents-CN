@@ -2,6 +2,7 @@
 Base classes and shared typing for data source adapters
 """
 
+import asyncio
 from abc import ABC, abstractmethod
 from typing import Dict, Optional
 
@@ -37,6 +38,10 @@ class DataSourceAdapter(ABC):
     def is_available(self) -> bool:
         """检查数据源是否可用"""
         raise NotImplementedError
+
+    async def is_available_async(self) -> bool:
+        """检查数据源是否可用，供 async runtime 使用。"""
+        return await asyncio.to_thread(self.is_available)
 
     @abstractmethod
     def get_stock_list(self) -> Optional[pd.DataFrame]:

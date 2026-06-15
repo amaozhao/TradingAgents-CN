@@ -39,9 +39,11 @@ async def reload_config(current_user: dict = Depends(get_current_user)):
     用于配置更新后立即生效，无需重启服务
     """
     try:
-        reload_bridged_config = getattr(importlib.import_module("app.core.bridge"), "reload_bridged_config")
+        reload_bridged_config_async = getattr(
+            importlib.import_module("app.core.bridge"), "reload_bridged_config_async"
+        )
 
-        success = reload_bridged_config()
+        success = await reload_bridged_config_async()
 
         if success:
             await log_operation(

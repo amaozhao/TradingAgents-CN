@@ -74,6 +74,13 @@ def analysis_parameters(monkeypatch) -> None:
 
     monkeypatch.setattr(batch_context, "_analysis_parameters", fake_analysis_parameters)
 
+    async def fake_analysis_parameters_async(payload: dict[str, Any]):
+        return fake_analysis_parameters(payload)
+
+    monkeypatch.setattr(
+        batch_context, "_analysis_parameters_async", fake_analysis_parameters_async
+    )
+
 
 @pytest.mark.asyncio
 async def test_submit_persists_batch_state_and_returns_tool_result() -> None:

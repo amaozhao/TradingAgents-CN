@@ -19,7 +19,7 @@ from app.db.ids import DocumentId
 from app.models.table import StockBasicInfo
 from trader.utils.stocks import StockUtils
 
-from ..core.database import get_postgres_db, get_postgres_db_sync
+from ..core.database import get_postgres_db
 from ..core.unified import UnifiedConfigManager
 from ..db.dual import dual_write_hot_document
 from ..schemas.response import ApiResponse
@@ -32,7 +32,7 @@ logger = logging.getLogger("webapi")
 _stock_name_cache = {}
 
 
-def get_stock_name(stock_code: str) -> str:
+async def get_stock_name(stock_code: str) -> str:
     """
     获取股票名称
     优先级：缓存 -> PostgreSQL（按数据源优先级） -> 默认返回股票代码
@@ -45,12 +45,12 @@ def get_stock_name(stock_code: str) -> str:
 
     try:
         # 从 PostgreSQL 获取股票名称
-        db = get_postgres_db_sync()
+        db = get_postgres_db()
         code6 = str(stock_code).zfill(6)
 
         # 🔥 按数据源优先级查询
         config = UnifiedConfigManager()
-        data_source_configs = config.get_data_source_configs()
+        data_source_configs = await config.get_data_source_configs_async()
 
         # 提取启用的数据源，按优先级排序
         enabled_sources = [
@@ -65,7 +65,7 @@ def get_stock_name(stock_code: str) -> str:
         # 按数据源优先级查询
         stock_info = None
         for data_source in enabled_sources:
-            stock_info = db.stock_basic_info.find_one(
+            stock_info = await db.stock_basic_info.find_one(
                 {"$or": [{"symbol": code6}, {"code": code6}], "source": data_source}
             )
             if stock_info:
@@ -74,7 +74,7 @@ def get_stock_name(stock_code: str) -> str:
 
         # 如果所有数据源都没有，尝试不带 source 条件查询（兼容旧数据）
         if not stock_info:
-            stock_info = db.stock_basic_info.find_one(
+            stock_info = await db.stock_basic_info.find_one(
                 {"$or": [{"symbol": code6}, {"code": code6}]}
             )
             if stock_info:
@@ -452,7 +452,7 @@ async def get_report_detail(report_id: str, user: dict = Depends(get_current_use
             )
             stock_name = r.get("stock_name")
             if not stock_name or stock_name in {stock_symbol, f"股票{stock_symbol}"}:
-                stock_name = get_stock_name(stock_symbol)
+                stock_name = await get_stock_name(stock_symbol)
 
             report = {
                 "id": tasks_doc.get("task_id", report_id),
@@ -482,7 +482,7 @@ async def get_report_detail(report_id: str, user: dict = Depends(get_current_use
             stock_symbol = doc.get("stock_symbol", "")
             stock_name = doc.get("stock_name")
             if not stock_name or stock_name in {stock_symbol, f"股票{stock_symbol}"}:
-                stock_name = get_stock_name(stock_symbol)
+                stock_name = await get_stock_name(stock_symbol)
 
             # 获取时间（数据库中是 UTC 时间，需要转换为 UTC+8）
             created_at = doc.get("created_at") or datetime.now(timezone.utc)

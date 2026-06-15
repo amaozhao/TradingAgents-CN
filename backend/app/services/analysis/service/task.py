@@ -4,7 +4,7 @@ from .common import (
     AnalysisTask,
     Callable,
     Optional,
-    create_analysis_config,
+    create_analysis_config_async,
     datetime,
     get_provider_by_model_name,
     importlib,
@@ -78,7 +78,7 @@ class AnalysisTaskMixin:
             )
 
             # 使用标准配置函数创建完整配置
-            config = create_analysis_config(
+            config = await create_analysis_config_async(
                 research_depth=task.parameters.research_depth,
                 selected_analysts=task.parameters.selected_analysts
                 or ["market", "fundamentals"],

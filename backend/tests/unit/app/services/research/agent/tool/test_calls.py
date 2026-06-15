@@ -335,15 +335,28 @@ def deterministic_external_boundaries(monkeypatch):
         stock_module, "get_simple_analysis_service", lambda: FakeAnalysisService()
     )
     monkeypatch.setattr(stock_module, "run_agent_stock_workflow", fake_agent_workflow)
+
+    async def fake_analysis_parameters(payload: dict[str, Any]):
+        return (
+            stock_module.AnalysisParameters(
+                market_type=payload.get("market_type") or "A股",
+                research_depth=payload.get("research_depth") or "标准",
+                selected_analysts=payload.get("selected_analysts")
+                or ["market", "fundamentals"],
+                quick_analysis_model="quick",
+                deep_analysis_model="deep",
+            ),
+            [],
+            [],
+        )
+
+    async def no_missing_keys(_parameters) -> list[str]:
+        return []
+
     monkeypatch.setattr(
-        stock_module,
-        "get_provider_and_url_by_model_sync",
-        lambda _model: {
-            "provider": "qwen",
-            "backend_url": "https://example.test/v1",
-            "api_key": "key",
-        },
+        stock_module, "_analysis_parameters_async", fake_analysis_parameters
     )
+    monkeypatch.setattr(stock_module, "_missing_model_keys_async", no_missing_keys)
     assert _multi_package
 
 

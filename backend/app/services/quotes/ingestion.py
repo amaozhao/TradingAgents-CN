@@ -1,6 +1,7 @@
 import importlib
 import logging
 import traceback
+import asyncio
 from collections import deque
 from datetime import datetime, timedelta
 from datetime import time as dtime
@@ -46,6 +47,11 @@ class QuotesIngestionService:
         # 接口轮换相关属性
         self._rotation_sources = ["tushare", "akshare_eastmoney", "akshare_sina"]
         self._rotation_index = 0  # 当前轮换索引
+
+    async def _new_data_source_manager_async(self) -> DataSourceManager:
+        manager = DataSourceManager()
+        await manager.load_priority_from_database_async()
+        return manager
 
     @staticmethod
     def _normalize_stock_code(code: str) -> str:
@@ -511,7 +517,7 @@ class QuotesIngestionService:
             logger.info("📊 market_quotes 集合为空，开始从历史数据导入")
 
             db = get_postgres_db()
-            manager = DataSourceManager()
+            manager = await self._new_data_source_manager_async()
 
             # 获取最新交易日
             try:
@@ -590,17 +596,19 @@ class QuotesIngestionService:
     async def backfill_last_close_snapshot(self) -> None:
         """一次性补齐上一笔收盘快照（用于冷启动或数据陈旧）。允许在休市期调用。"""
         try:
-            manager = DataSourceManager()
+            manager = await self._new_data_source_manager_async()
             # 使用近实时快照作为兜底，休市期返回的即为最后收盘数据
-            quotes_map, source = manager.get_realtime_quotes_with_fallback()
+            quotes_map, source = await asyncio.to_thread(
+                manager.get_realtime_quotes_with_fallback
+            )
             if not quotes_map:
                 logger.warning("backfill: 未获取到行情数据，跳过")
                 return
             try:
-                trade_date = (
-                    manager.find_latest_trade_date_with_fallback()
-                    or datetime.now(self.tz).strftime("%Y%m%d")
+                trade_date = await asyncio.to_thread(
+                    manager.find_latest_trade_date_with_fallback
                 )
+                trade_date = trade_date or datetime.now(self.tz).strftime("%Y%m%d")
             except Exception:
                 trade_date = datetime.now(self.tz).strftime("%Y%m%d")
             await self._bulk_upsert(quotes_map, trade_date, source)
@@ -622,8 +630,10 @@ class QuotesIngestionService:
                 return
 
             # 如果集合不为空但数据陈旧，使用实时接口更新
-            manager = DataSourceManager()
-            latest_td = manager.find_latest_trade_date_with_fallback()
+            manager = await self._new_data_source_manager_async()
+            latest_td = await asyncio.to_thread(
+                manager.find_latest_trade_date_with_fallback
+            )
             if await self._collection_stale(latest_td):
                 logger.info("🔁 触发休市期/启动期 backfill 以填充最新收盘数据")
                 await self.backfill_last_close_snapshot()
@@ -714,7 +724,7 @@ class QuotesIngestionService:
                 and not self._tushare_permission_checked
             ):
                 logger.info("🔍 首次运行，检测 Tushare rt_k 接口权限...")
-                has_premium = self._check_tushare_permission()
+                has_premium = await asyncio.to_thread(self._check_tushare_permission)
 
                 if has_premium:
                     logger.info(
@@ -730,8 +740,8 @@ class QuotesIngestionService:
             source_type, akshare_api = self._get_next_source()
 
             # 尝试获取行情
-            quotes_map, source_name = self._fetch_quotes_from_source(
-                source_type, akshare_api
+            quotes_map, source_name = await asyncio.to_thread(
+                self._fetch_quotes_from_source, source_type, akshare_api
             )
 
             if not quotes_map:
@@ -739,9 +749,11 @@ class QuotesIngestionService:
                     f"⚠️ {source_name or source_type} 未获取到行情数据，尝试统一数据源兜底"
                 )
                 try:
-                    manager = DataSourceManager()
+                    manager = await self._new_data_source_manager_async()
                     quotes_map, source_name = (
-                        manager.get_realtime_quotes_with_fallback()
+                        await asyncio.to_thread(
+                            manager.get_realtime_quotes_with_fallback
+                        )
                     )
                 except Exception as fallback_error:
                     logger.warning(f"⚠️ 统一数据源兜底失败: {fallback_error}")
@@ -761,7 +773,7 @@ class QuotesIngestionService:
 
             # 获取交易日
             try:
-                manager = DataSourceManager()
+                manager = await self._new_data_source_manager_async()
                 trade_date = (
                     manager.find_latest_trade_date_with_fallback()
                     or datetime.now(self.tz).strftime("%Y%m%d")

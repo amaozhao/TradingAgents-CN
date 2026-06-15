@@ -181,6 +181,128 @@ async def test_missing_default_model_fails_visibly(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_default_model_without_provider_uses_async_provider_resolver(monkeypatch):
+    async def no_user_key(**_kwargs: Any) -> None:
+        return None
+
+    async def async_provider_info(model: str) -> dict[str, str]:
+        assert model == "qwen-plus"
+        return {
+            "provider": "qwen",
+            "backend_url": "https://dashscope.example/v1",
+            "api_key": "db-key-valid-123456",
+        }
+
+    def sync_provider_info(_model: str) -> dict[str, str]:
+        raise AssertionError("async model resolution must not call sync provider resolver")
+
+    monkeypatch.setattr(provider_module, "_default_agent_model", lambda: "qwen-plus")
+    monkeypatch.setattr(provider_module, "_fallback_configured_model", lambda: None)
+    monkeypatch.setattr(
+        provider_module.user_model_key_service,
+        "resolve_key_for_agent",
+        no_user_key,
+    )
+    monkeypatch.setattr(
+        provider_module,
+        "get_provider_and_url_by_model",
+        async_provider_info,
+    )
+    monkeypatch.setattr(
+        provider_module,
+        "get_provider_and_url_by_model_sync",
+        sync_provider_info,
+    )
+
+    config = await provider_module.resolve_agent_model_config(_principal())
+
+    assert config.provider == "qwen"
+    assert config.model == "qwen-plus"
+    assert config.api_key == "db-key-valid-123456"
+    assert config.base_url == "https://dashscope.example/v1"
+
+
+@pytest.mark.asyncio
+async def test_model_resolution_diagnostics_use_async_provider_resolver(monkeypatch):
+    async def async_provider_info(model: str) -> dict[str, str]:
+        assert model == "qwen-plus"
+        return {
+            "provider": "qwen",
+            "backend_url": "https://dashscope.example/v1",
+            "api_key": "db-key-valid-123456",
+        }
+
+    async def no_user_key(**_kwargs: Any) -> None:
+        return None
+
+    def sync_provider_info(_model: str) -> dict[str, str]:
+        raise AssertionError("async diagnostics must not call sync provider resolver")
+
+    monkeypatch.setattr(provider_module, "_default_agent_model", lambda: "qwen-plus")
+    monkeypatch.setattr(provider_module, "_configured_candidate_models", lambda: [])
+    monkeypatch.setattr(provider_module, "_fallback_configured_model", lambda: None)
+    monkeypatch.setattr(
+        provider_module.user_model_key_service,
+        "resolve_key_for_agent",
+        no_user_key,
+    )
+    monkeypatch.setattr(
+        provider_module,
+        "get_provider_and_url_by_model",
+        async_provider_info,
+    )
+    monkeypatch.setattr(
+        provider_module,
+        "get_provider_and_url_by_model_sync",
+        sync_provider_info,
+    )
+
+    result = await provider_module.describe_agent_model_resolution(_principal())
+
+    assert result["default_provider"] == "qwen"
+    assert result["default_has_valid_key"] is True
+
+
+@pytest.mark.asyncio
+async def test_missing_default_model_uses_async_fallback(monkeypatch):
+    async def no_user_key(**_kwargs: Any) -> None:
+        return None
+
+    async def async_fallback() -> tuple[str, str, dict[str, str]]:
+        return (
+            "qwen",
+            "qwen-plus",
+            {
+                "api_key": "db-key-valid-123456",
+                "backend_url": "https://dashscope.example/v1",
+            },
+        )
+
+    def sync_fallback():
+        raise AssertionError("async model resolution must not call sync fallback")
+
+    monkeypatch.setattr(provider_module, "_default_agent_model", lambda: "")
+    monkeypatch.setattr(provider_module, "_fallback_configured_model", sync_fallback)
+    monkeypatch.setattr(
+        provider_module,
+        "_fallback_configured_model_async",
+        async_fallback,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        provider_module.user_model_key_service,
+        "resolve_key_for_agent",
+        no_user_key,
+    )
+
+    config = await provider_module.resolve_agent_model_config(_principal())
+
+    assert config.provider == "qwen"
+    assert config.model == "qwen-plus"
+    assert config.api_key == "db-key-valid-123456"
+
+
+@pytest.mark.asyncio
 async def test_openai_compatible_client_maps_tool_calls(monkeypatch):
     async def no_user_key(**_kwargs: Any) -> None:
         return None

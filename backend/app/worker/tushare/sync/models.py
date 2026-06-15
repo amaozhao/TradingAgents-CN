@@ -2,10 +2,10 @@ from .imports import (
     Any,
     Dict,
     List,
+    TaskCancelledException,
     asyncio,
     dual_write_hot_document,
     get_utc8_now,
-    importlib,
     logger,
 )
 
@@ -90,18 +90,10 @@ class _TushareSyncServiceMixin3:
             message: 进度消息
         """
         try:
-            TaskCancelledException = getattr(
-                importlib.import_module("app.services.scheduler"),
-                "TaskCancelledException",
-            )
-            get_postgres_db_sync = getattr(importlib.import_module("app.core.database"), "get_postgres_db_sync")
-
             logger.info(f"📊 [进度更新] 开始更新任务 {job_id} 进度: {progress}% - {message}")
 
-            sync_db = get_postgres_db_sync()
-
             # 查找最新的 running 记录
-            execution = sync_db.scheduler_executions.find_one(
+            execution = await self.db.scheduler_executions.find_one(
                 {"job_id": job_id, "status": "running"}, sort=[("timestamp", -1)]
             )
 
@@ -116,13 +108,14 @@ class _TushareSyncServiceMixin3:
                 raise TaskCancelledException(f"任务 {job_id} 已被用户取消")
 
             # 更新进度（使用 UTC+8 时间）
-            result = sync_db.scheduler_executions.update_one(
+            updated_at = get_utc8_now()
+            result = await self.db.scheduler_executions.update_one(
                 {"_id": execution["_id"]},
                 {
                     "$set": {
                         "progress": progress,
                         "progress_message": message,
-                        "updated_at": get_utc8_now(),
+                        "updated_at": updated_at,
                     }
                 },
             )
@@ -132,14 +125,14 @@ class _TushareSyncServiceMixin3:
                     **execution,
                     "progress": progress,
                     "progress_message": message,
-                    "updated_at": get_utc8_now(),
+                    "updated_at": updated_at,
                 },
             )
 
             logger.info(f"📊 [进度更新] 更新结果: matched={result.matched_count}, modified={result.modified_count}")
             logger.info(f"✅ 任务 {job_id} 进度更新成功: {progress}% - {message}")
 
+        except TaskCancelledException:
+            raise
         except Exception as e:
-            if "TaskCancelledException" in str(type(e).__name__):
-                raise
             logger.error(f"❌ 更新任务进度失败: {e}", exc_info=True)

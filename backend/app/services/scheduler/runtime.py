@@ -2,8 +2,8 @@ from .common import (
     AsyncIOScheduler,
     Optional,
     TaskCancelledException,
+    get_postgres_db,
     get_utc8_now,
-    importlib,
     logger,
 )
 from .service import SchedulerService
@@ -64,13 +64,10 @@ async def update_job_progress(
         processed_items: 已处理项数
     """
     try:
-        get_postgres_db_sync = getattr(
-            importlib.import_module("app.core.database"), "get_postgres_db_sync"
-        )
-        sync_db = get_postgres_db_sync()
+        db = get_postgres_db()
 
         # 查找最近的执行记录
-        latest_execution = sync_db.scheduler_executions.find_one(
+        latest_execution = await db.scheduler_executions.find_one(
             {"job_id": job_id, "status": {"$in": ["running", "success", "failed"]}},
             sort=[("timestamp", -1)],
         )
@@ -97,16 +94,11 @@ async def update_job_progress(
             if processed_items is not None:
                 update_data["processed_items"] = processed_items
 
-            sync_db.scheduler_executions.update_one(
+            await db.scheduler_executions.update_one(
                 {"_id": latest_execution["_id"]}, {"$set": update_data}
             )
         else:
             # 创建新的执行记录（任务刚开始）
-            getattr(
-                importlib.import_module("apscheduler.schedulers.asyncio"),
-                "AsyncIOScheduler",
-            )
-
             # 获取任务名称
             job_name = job_id
             if _scheduler_instance:
@@ -132,7 +124,9 @@ async def update_job_progress(
             if processed_items is not None:
                 execution_record["processed_items"] = processed_items
 
-            sync_db.scheduler_executions.insert_one(execution_record)
+            await db.scheduler_executions.insert_one(execution_record)
 
+    except TaskCancelledException:
+        raise
     except Exception as e:
         logger.error(f"❌ 更新任务进度失败: {e}")

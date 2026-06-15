@@ -12,6 +12,7 @@ from .common import (
     get_memory_state_manager,
     importlib,
     logger,
+    settings,
 )
 from .provider import _ensure_trading_agents_logging, _get_stock_info_safe
 
@@ -25,14 +26,16 @@ class BaseAnalysisMixin:
         self._trackers: Dict[str, RedisProgressTracker] = {}
 
         # 🔧 创建共享的线程池，支持并发执行多个分析任务
-        # 默认最多同时执行3个分析任务（可根据服务器资源调整）
+        max_workers = max(1, int(settings.ANALYSIS_MAX_WORKERS))
         importlib.import_module("concurrent.futures")
         concurrent = importlib.import_module("concurrent")
-        self._thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=3)
+        self._thread_pool = concurrent.futures.ThreadPoolExecutor(
+            max_workers=max_workers
+        )
 
         logger.info(f"🔧 [服务初始化] SimpleAnalysisService 实例ID: {id(self)}")
         logger.info(f"🔧 [服务初始化] 内存管理器实例ID: {id(self.memory_manager)}")
-        logger.info("🔧 [服务初始化] 线程池最大并发数: 3")
+        logger.info(f"🔧 [服务初始化] 线程池最大并发数: {max_workers}")
 
         # 设置 WebSocket 管理器
         # 简单的股票名称缓存，减少重复查询
@@ -47,7 +50,13 @@ class BaseAnalysisMixin:
         except ImportError:
             logger.warning("⚠️ WebSocket 管理器不可用")
 
-    async def _update_progress_async(self, task_id: str, progress: int, message: str):
+    async def _update_progress_async(
+        self,
+        task_id: str,
+        progress: int,
+        message: str,
+        current_step: str | None = None,
+    ):
         """异步更新进度（内存和PostgreSQL）"""
         try:
             # 更新内存
@@ -56,7 +65,7 @@ class BaseAnalysisMixin:
                 status=TaskStatus.RUNNING,
                 progress=progress,
                 message=message,
-                current_step=message,
+                current_step=current_step or message,
             )
 
             # 更新 PostgreSQL
@@ -67,7 +76,7 @@ class BaseAnalysisMixin:
             db = get_postgres_db()
             update_data = {
                 "progress": progress,
-                "current_step": message,
+                "current_step": current_step or message,
                 "message": message,
                 "updated_at": datetime.utcnow(),
             }

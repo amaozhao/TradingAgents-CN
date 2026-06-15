@@ -29,7 +29,7 @@ class TushareAdapter(DataSourceAdapter):
                 importlib.import_module("trader.flows.providers.china.tushare"),
                 "get_tushare_provider",
             )
-            self._provider = get_tushare_provider()
+            self._provider = get_tushare_provider(auto_connect=False)
         except Exception as e:
             logger.warning(f"Failed to initialize Tushare provider: {e}")
             self._provider = None
@@ -55,6 +55,20 @@ class TushareAdapter(DataSourceAdapter):
                 self._provider.connect_sync()
             except Exception as e:
                 logger.debug(f"Tushare: Auto-connect failed: {e}")
+
+        return (
+            self._provider is not None
+            and getattr(self._provider, "connected", False)
+            and self._provider.api is not None
+        )
+
+    async def is_available_async(self) -> bool:
+        """Check availability without calling the sync Tushare connection path."""
+        if self._provider and not getattr(self._provider, "connected", False):
+            try:
+                await self._provider.connect()
+            except Exception as e:
+                logger.debug(f"Tushare: Async auto-connect failed: {e}")
 
         return (
             self._provider is not None

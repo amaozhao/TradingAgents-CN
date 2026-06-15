@@ -71,7 +71,7 @@ def _patch_native_workflow(monkeypatch):
     async def fail_native(*args, **kwargs):
         raise AssertionError("native workflow must not be default")
 
-    def build_context(**kwargs):
+    async def build_context(**kwargs):
         parameters = kwargs["parameters"]
         calls.append(
             {
@@ -163,6 +163,41 @@ def _patch_native_workflow(monkeypatch):
         def __str__(self):
             return "task-600519"
 
+    async def provider_info(model: str) -> dict[str, str]:
+        return {
+            "provider": "qwen",
+            "backend_url": "https://example.test/v1",
+            "api_key": "key",
+        }
+
+    async def active_system_config_doc() -> dict[str, Any]:
+        return {
+            "system_settings": {
+                "quick_analysis_model": "qwen-turbo",
+                "deep_analysis_model": "qwen-max",
+            },
+            "llm_configs": [
+                {
+                    "model_name": "qwen-turbo",
+                    "provider": "qwen",
+                    "enabled": True,
+                    "api_key": "key",
+                    "priority": 10,
+                    "capability_level": 2,
+                    "suitable_roles": ["quick_analysis"],
+                },
+                {
+                    "model_name": "qwen-max",
+                    "provider": "qwen",
+                    "enabled": True,
+                    "api_key": "key",
+                    "priority": 10,
+                    "capability_level": 4,
+                    "suitable_roles": ["deep_analysis"],
+                },
+            ],
+        }
+
     monkeypatch.setattr(stock_module, "get_simple_analysis_service", lambda: service)
     monkeypatch.setattr(stock_module.uuid, "uuid4", lambda: FakeUuid())
     monkeypatch.setattr(
@@ -175,6 +210,12 @@ def _patch_native_workflow(monkeypatch):
     monkeypatch.setattr(stock_module, "StockDagParityWorkflow", FakeWorkflow)
     monkeypatch.setattr(stock_module, "build_stock_workflow_report", build_report)
     monkeypatch.setattr(stock_module, "persist_stock_workflow_report", persist_report)
+    monkeypatch.setattr(stock_module, "get_provider_and_url_by_model", provider_info)
+    monkeypatch.setattr(
+        stock_module,
+        "_load_active_system_config_doc_async",
+        active_system_config_doc,
+    )
     calls.service = service
     return calls
 
@@ -382,10 +423,9 @@ async def test_stock_analysis_tool_records_token_usage(monkeypatch):
     _patch_native_workflow(monkeypatch)
     usage_service = FakeUsageService()
     monkeypatch.setattr(stock_module, "usage_statistics_service", usage_service)
-    monkeypatch.setattr(
-        stock_module,
-        "_load_active_system_config_doc",
-        lambda: {
+
+    async def active_system_config_doc() -> dict[str, Any]:
+        return {
             "llm_configs": [
                 {
                     "model_name": "qwen-max",
@@ -397,7 +437,12 @@ async def test_stock_analysis_tool_records_token_usage(monkeypatch):
                     "currency": "CNY",
                 }
             ]
-        },
+        }
+
+    monkeypatch.setattr(
+        stock_module,
+        "_load_active_system_config_doc_async",
+        active_system_config_doc,
         raising=False,
     )
     monkeypatch.setattr(
@@ -572,10 +617,9 @@ async def test_single_stock_analysis_tool_uses_configured_models_when_agent_omit
     monkeypatch,
 ):
     calls = _patch_native_workflow(monkeypatch)
-    monkeypatch.setattr(
-        stock_module,
-        "_load_active_system_config_doc",
-        lambda: {
+
+    async def active_system_config_doc() -> dict[str, Any]:
+        return {
             "system_settings": {
                 "quick_analysis_model": "minimax-m1",
                 "deep_analysis_model": "minimax-m1",
@@ -593,17 +637,25 @@ async def test_single_stock_analysis_tool_uses_configured_models_when_agent_omit
                     "recommended_depths": ["标准", "深度", "全面"],
                 }
             ],
-        },
+        }
+
+    async def provider_info(model: str) -> dict[str, str]:
+        return {
+            "provider": "minimax" if model == "minimax-m1" else "qwen",
+            "backend_url": "https://example.test/v1",
+            "api_key": "minimax-key" if model == "minimax-m1" else "",
+        }
+
+    monkeypatch.setattr(
+        stock_module,
+        "_load_active_system_config_doc_async",
+        active_system_config_doc,
         raising=False,
     )
     monkeypatch.setattr(
         stock_module,
-        "get_provider_and_url_by_model_sync",
-        lambda model: {
-            "provider": "minimax" if model == "minimax-m1" else "qwen",
-            "backend_url": "https://example.test/v1",
-            "api_key": "minimax-key" if model == "minimax-m1" else "",
-        },
+        "get_provider_and_url_by_model",
+        provider_info,
         raising=False,
     )
 
@@ -631,10 +683,9 @@ async def test_single_stock_analysis_tool_uses_default_llm_when_quick_deep_are_u
     monkeypatch,
 ):
     calls = _patch_native_workflow(monkeypatch)
-    monkeypatch.setattr(
-        stock_module,
-        "_load_active_system_config_doc",
-        lambda: {
+
+    async def active_system_config_doc() -> dict[str, Any]:
+        return {
             "default_llm": "MiniMax-M3",
             "system_settings": {},
             "llm_configs": [
@@ -653,17 +704,25 @@ async def test_single_stock_analysis_tool_uses_default_llm_when_quick_deep_are_u
                     "suitable_roles": ["both"],
                 },
             ],
-        },
+        }
+
+    async def provider_info(model: str) -> dict[str, str]:
+        return {
+            "provider": "minimax-token-plan" if model == "MiniMax-M3" else "zhipu",
+            "backend_url": "https://example.test/v1",
+            "api_key": "minimax-key" if model == "MiniMax-M3" else "glm-key",
+        }
+
+    monkeypatch.setattr(
+        stock_module,
+        "_load_active_system_config_doc_async",
+        active_system_config_doc,
         raising=False,
     )
     monkeypatch.setattr(
         stock_module,
-        "get_provider_and_url_by_model_sync",
-        lambda model: {
-            "provider": "minimax-token-plan" if model == "MiniMax-M3" else "zhipu",
-            "backend_url": "https://example.test/v1",
-            "api_key": "minimax-key" if model == "MiniMax-M3" else "glm-key",
-        },
+        "get_provider_and_url_by_model",
+        provider_info,
         raising=False,
     )
 

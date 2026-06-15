@@ -1,21 +1,32 @@
+from dataclasses import dataclass
+
 from .common import (
     Any,
     Dict,
     Optional,
     RedisProgressTracker,
     SingleAnalysisRequest,
-    TaskStatus,
     datetime,
     importlib,
     logger,
     traceback,
 )
 from .provider import (
-    _dual_write_analysis_task_sync,
     create_analysis_config,
     get_provider_and_url_by_model_sync,
 )
 from .result import build_analysis_result
+
+
+@dataclass(frozen=True)
+class SimpleAnalysisThreadContext:
+    quick_model: str
+    deep_model: str
+    llm_provider: str
+    quick_model_config: dict[str, Any] | None = None
+    deep_model_config: dict[str, Any] | None = None
+    quick_provider_info: dict[str, Any] | None = None
+    deep_provider_info: dict[str, Any] | None = None
 
 
 class AnalysisRunnerMixin:
@@ -25,6 +36,8 @@ class AnalysisRunnerMixin:
         user_id: str,
         request: SingleAnalysisRequest,
         tracker: Optional[RedisProgressTracker] = None,
+        runtime_loop: Any = None,
+        model_context: SimpleAnalysisThreadContext | None = None,
     ) -> Dict[str, Any]:
         """同步执行分析的具体实现"""
         try:
@@ -57,110 +70,83 @@ class AnalysisRunnerMixin:
                             {"progress_percentage": progress, "last_message": message}
                         )
 
-                    # 🔥 使用同步方式更新内存和 PostgreSQL，避免事件循环冲突
-                    # 1. 更新内存中的任务状态（使用新事件循环）
-                    asyncio = importlib.import_module("asyncio")
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    try:
-                        loop.run_until_complete(
-                            self.memory_manager.update_task_status(
-                                task_id=task_id,
-                                status=TaskStatus.RUNNING,
-                                progress=progress,
-                                message=message,
-                                current_step=step,
-                            )
-                        )
-                    finally:
-                        loop.close()
-
-                    # 2. 更新PostgreSQL文档存储（同步接口，避免事件循环冲突）
-                    get_postgres_db_sync = getattr(
-                        importlib.import_module("app.core.database"),
-                        "get_postgres_db_sync",
+                    self._submit_progress_update(
+                        runtime_loop,
+                        task_id,
+                        progress,
+                        message,
+                        step,
                     )
-                    datetime = getattr(importlib.import_module("datetime"), "datetime")
-
-                    sync_db = get_postgres_db_sync()
-
-                    update_data = {
-                        "progress": progress,
-                        "current_step": step,
-                        "message": message,
-                        "updated_at": datetime.utcnow(),
-                    }
-                    sync_db.analysis_tasks.update_one(
-                        {"task_id": task_id}, {"$set": update_data}
-                    )
-                    _dual_write_analysis_task_sync({"task_id": task_id, **update_data})
                 except Exception as e:
                     logger.warning(f"⚠️ 进度更新失败: {e}")
 
             # 配置阶段 - 对应步骤3 "⚙️ 参数设置" (6-8%)
             update_progress_sync(7, "⚙️ 配置分析参数", "configuration")
 
-            # 🆕 智能模型选择逻辑
-            get_model_capability_service = getattr(
-                importlib.import_module("app.services.capability"),
-                "get_model_capability_service",
-            )
-            capability_service = get_model_capability_service()
-
             research_depth = (
                 request.parameters.research_depth if request.parameters else "标准"
             )
-
-            # 1. 检查前端是否指定了模型
-            if (
-                request.parameters
-                and hasattr(request.parameters, "quick_analysis_model")
-                and hasattr(request.parameters, "deep_analysis_model")
-                and request.parameters.quick_analysis_model
-                and request.parameters.deep_analysis_model
-            ):
-                # 使用前端指定的模型
-                quick_model = request.parameters.quick_analysis_model
-                deep_model = request.parameters.deep_analysis_model
-
-                logger.info(
-                    f"📝 [分析服务] 用户指定模型: quick={quick_model}, deep={deep_model}"
+            if model_context is None:
+                # Legacy sync/thread callers may still enter without prepared context.
+                get_model_capability_service = getattr(
+                    importlib.import_module("app.services.capability"),
+                    "get_model_capability_service",
                 )
+                capability_service = get_model_capability_service()
 
-                # 验证模型是否合适
-                validation = capability_service.validate_model_pair(
-                    quick_model, deep_model, research_depth
-                )
+                if (
+                    request.parameters
+                    and hasattr(request.parameters, "quick_analysis_model")
+                    and hasattr(request.parameters, "deep_analysis_model")
+                    and request.parameters.quick_analysis_model
+                    and request.parameters.deep_analysis_model
+                ):
+                    quick_model = request.parameters.quick_analysis_model
+                    deep_model = request.parameters.deep_analysis_model
 
-                if not validation["valid"]:
-                    # 记录警告
-                    for warning in validation["warnings"]:
-                        logger.warning(warning)
+                    logger.info(
+                        f"📝 [分析服务] 用户指定模型: quick={quick_model}, deep={deep_model}"
+                    )
 
-                    # 如果模型不合适，自动切换到推荐模型
-                    logger.info("🔄 自动切换到推荐模型...")
+                    validation = capability_service.validate_model_pair(
+                        quick_model, deep_model, research_depth
+                    )
+
+                    if not validation["valid"]:
+                        for warning in validation["warnings"]:
+                            logger.warning(warning)
+
+                        logger.info("🔄 自动切换到推荐模型...")
+                        quick_model, deep_model = (
+                            capability_service.recommend_models_for_depth(
+                                research_depth
+                            )
+                        )
+                        logger.info(
+                            f"✅ 已切换: quick={quick_model}, deep={deep_model}"
+                        )
+                    else:
+                        for warning in validation["warnings"]:
+                            logger.info(warning)
+                        logger.info(
+                            f"✅ 用户选择的模型验证通过: quick={quick_model}, deep={deep_model}"
+                        )
+
+                else:
                     quick_model, deep_model = (
                         capability_service.recommend_models_for_depth(research_depth)
                     )
-                    logger.info(f"✅ 已切换: quick={quick_model}, deep={deep_model}")
-                else:
-                    # 即使验证通过，也记录警告信息
-                    for warning in validation["warnings"]:
-                        logger.info(warning)
                     logger.info(
-                        f"✅ 用户选择的模型验证通过: quick={quick_model}, deep={deep_model}"
+                        f"🤖 自动推荐模型: quick={quick_model}, deep={deep_model}"
                     )
 
+                quick_provider_info = get_provider_and_url_by_model_sync(quick_model)
+                deep_provider_info = get_provider_and_url_by_model_sync(deep_model)
             else:
-                # 2. 自动推荐模型
-                quick_model, deep_model = capability_service.recommend_models_for_depth(
-                    research_depth
-                )
-                logger.info(f"🤖 自动推荐模型: quick={quick_model}, deep={deep_model}")
-
-            # 🔧 根据快速模型和深度模型分别查找对应的供应商和 API URL
-            quick_provider_info = get_provider_and_url_by_model_sync(quick_model)
-            deep_provider_info = get_provider_and_url_by_model_sync(deep_model)
+                quick_model = model_context.quick_model
+                deep_model = model_context.deep_model
+                quick_provider_info = model_context.quick_provider_info or {}
+                deep_provider_info = model_context.deep_provider_info or {}
 
             quick_provider = quick_provider_info["provider"]
             deep_provider = deep_provider_info["provider"]
@@ -200,6 +186,14 @@ class AnalysisRunnerMixin:
                 deep_model=deep_model,
                 llm_provider=quick_provider,  # 主要使用快速模型的供应商
                 market_type=market_type,  # 使用前端传递的市场类型
+                quick_model_config=model_context.quick_model_config
+                if model_context
+                else None,
+                deep_model_config=model_context.deep_model_config
+                if model_context
+                else None,
+                quick_provider_info=quick_provider_info,
+                deep_provider_info=deep_provider_info,
             )
 
             # 🔧 添加混合模式配置
@@ -423,63 +417,13 @@ class AnalysisRunnerMixin:
 
                             # 🔥 同时更新内存和 PostgreSQL
                             try:
-                                asyncio = importlib.import_module("asyncio")
-                                datetime = getattr(
-                                    importlib.import_module("datetime"), "datetime"
+                                self._submit_progress_update(
+                                    runtime_loop,
+                                    task_id,
+                                    int(progress_pct),
+                                    message,
+                                    message,
                                 )
-
-                                # 尝试获取当前运行的事件循环
-                                try:
-                                    loop = asyncio.get_running_loop()
-                                    # 如果在事件循环中，使用 create_task
-                                    asyncio.create_task(
-                                        self._update_progress_async(
-                                            task_id, int(progress_pct), message
-                                        )
-                                    )
-                                    logger.debug(
-                                        f"✅ [Graph进度] 已提交异步更新任务: {int(progress_pct)}%"
-                                    )
-                                except RuntimeError:
-                                    # 没有运行的事件循环，使用同步方式更新PostgreSQL文档存储
-                                    get_postgres_db_sync = getattr(
-                                        importlib.import_module("app.core.database"),
-                                        "get_postgres_db_sync",
-                                    )
-                                    sync_db = get_postgres_db_sync()
-
-                                    # 同步更新 PostgreSQL
-                                    update_data = {
-                                        "progress": int(progress_pct),
-                                        "current_step": message,
-                                        "message": message,
-                                        "updated_at": datetime.utcnow(),
-                                    }
-                                    sync_db.analysis_tasks.update_one(
-                                        {"task_id": task_id}, {"$set": update_data}
-                                    )
-                                    _dual_write_analysis_task_sync(
-                                        {"task_id": task_id, **update_data}
-                                    )
-                                    # 异步更新内存（创建新的事件循环）
-                                    loop = asyncio.new_event_loop()
-                                    asyncio.set_event_loop(loop)
-                                    try:
-                                        loop.run_until_complete(
-                                            self.memory_manager.update_task_status(
-                                                task_id=task_id,
-                                                status=TaskStatus.RUNNING,
-                                                progress=int(progress_pct),
-                                                message=message,
-                                                current_step=message,
-                                            )
-                                        )
-                                    finally:
-                                        loop.close()
-
-                                    logger.debug(
-                                        f"✅ [Graph进度] 已同步更新内存和PostgreSQL: {int(progress_pct)}%"
-                                    )
                             except Exception as sync_err:
                                 logger.warning(
                                     f"⚠️ [Graph进度] 同步更新失败: {sync_err}"
@@ -558,8 +502,13 @@ class AnalysisRunnerMixin:
                 if deep_model:
                     error_context["model"] = deep_model
                 try:
-                    if quick_model:
+                    if model_context and model_context.quick_provider_info:
+                        provider_info = model_context.quick_provider_info
+                    elif quick_model:
                         provider_info = get_provider_and_url_by_model_sync(quick_model)
+                    else:
+                        provider_info = None
+                    if provider_info:
                         error_context["llm_provider"] = provider_info.get("provider")
                         error_context["backend_url"] = provider_info.get("backend_url")
                 except Exception as context_error:
@@ -581,3 +530,32 @@ class AnalysisRunnerMixin:
 
             # 抛出包含友好错误信息的异常
             raise Exception(user_friendly_error) from e
+
+    def _submit_progress_update(
+        self,
+        runtime_loop: Any,
+        task_id: str,
+        progress: int,
+        message: str,
+        current_step: str,
+    ) -> None:
+        """在线程池中把进度持久化投递回应用事件循环。"""
+        if runtime_loop is None:
+            logger.debug(
+                "⚠️ 未提供 runtime loop，跳过异步进度持久化: task_id=%s progress=%s",
+                task_id,
+                progress,
+            )
+            return
+
+        asyncio = importlib.import_module("asyncio")
+        future = asyncio.run_coroutine_threadsafe(
+            self._update_progress_async(
+                task_id,
+                progress,
+                message,
+                current_step=current_step,
+            ),
+            runtime_loop,
+        )
+        future.result()

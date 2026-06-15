@@ -32,6 +32,61 @@ class BatchRequestContext:
     raw_payload: Mapping[str, object]
 
 
+async def build_batch_request_context_async(
+    context: ToolExecutionContext,
+    payload: Mapping[str, object],
+    *,
+    system_max_concurrency: int = 3,
+) -> BatchRequestContext:
+    raw_symbols = _raw_symbols(payload)
+    if raw_symbols is None or len(raw_symbols) == 0:
+        raise BatchConfigError(
+            missing=["symbols"],
+            reason="Missing required argument: symbols or stock_codes.",
+            instruction="请提供 1-10 个股票代码。",
+        )
+    if len(raw_symbols) > 10:
+        raise BatchConfigError(
+            missing=["symbols"],
+            reason="批量分析最多 10 只股票。",
+            instruction="请提供 1-10 个股票代码。",
+        )
+
+    parameters, skipped_stages, stage_plan = await _analysis_parameters_async(
+        dict(payload)
+    )
+    strict_symbols = bool(payload.get("strict_symbols", True))
+    symbols, skipped = _normalize_symbols(
+        raw_symbols,
+        market_type=parameters.market_type,
+        strict_symbols=strict_symbols,
+    )
+    if not symbols:
+        raise BatchConfigError(
+            missing=["symbols"],
+            reason="No valid stock symbols were provided.",
+            instruction="请提供 1-10 个有效股票代码。",
+        )
+
+    return BatchRequestContext(
+        user_id=context.principal.user_id,
+        title=str(payload.get("title") or "批量分析"),
+        description=_optional_string(payload.get("description")),
+        symbols=tuple(symbols),
+        skipped_symbols=tuple(skipped),
+        parameters=parameters,
+        skipped_stages=tuple(skipped_stages),
+        stage_plan=tuple(stage_plan),
+        strict_symbols=strict_symbols,
+        max_concurrency=_bounded_concurrency(
+            payload.get("max_concurrency"),
+            system_max_concurrency=system_max_concurrency,
+        ),
+        wait_for_completion=bool(payload.get("wait_for_completion", False)),
+        raw_payload=dict(payload),
+    )
+
+
 def build_batch_request_context(
     context: ToolExecutionContext,
     payload: Mapping[str, object],
@@ -104,6 +159,14 @@ def _analysis_parameters(payload: dict[str, Any]) -> tuple[AnalysisParameters, l
     from ..stock import _analysis_parameters as stock_analysis_parameters
 
     return stock_analysis_parameters(payload)
+
+
+async def _analysis_parameters_async(
+    payload: dict[str, Any],
+) -> tuple[AnalysisParameters, list[dict[str, str]], list[dict[str, str]]]:
+    from ..stock import _analysis_parameters_async as stock_analysis_parameters_async
+
+    return await stock_analysis_parameters_async(payload)
 
 
 def _normalize_stock_symbol_for_analysis(

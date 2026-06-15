@@ -23,6 +23,7 @@ from app.db.store import (
     create_sync_database,
 )
 from app.core.session import get_session_factory, init_postgres
+from app.db.store.helpers import ensure_sync_postgres_runtime_allowed
 
 from .config import settings
 
@@ -486,10 +487,16 @@ def get_postgres_db() -> PostgresDocumentDatabase:
 
 def get_postgres_db_sync() -> SyncPostgresDocumentDatabase:
     """
-    获取同步版本的 PostgreSQL 文档数据库实例
-    用于非异步上下文（如普通函数调用）
+    获取同步版本的 PostgreSQL 文档数据库实例。
+
+    仅用于 CLI、脚本和明确的 legacy 同步调用链。FastAPI、worker、
+    scheduler 等 async runtime 必须使用 `get_postgres_db()` 或对应
+    async companion API；如确需兼容旧同步边界，需要显式使用
+    `allow_sync_postgres_in_async(...)` 放行。
     """
     global _sync_postgres_client, _sync_postgres_db
+
+    ensure_sync_postgres_runtime_allowed("get_postgres_db_sync")
 
     if _sync_postgres_db is not None:
         return _sync_postgres_db

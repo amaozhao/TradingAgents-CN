@@ -105,6 +105,29 @@ class TestTushareProvider:
             assert provider.connected is False
 
     @pytest.mark.asyncio
+    async def test_connect_uses_async_database_token_loader(self, provider):
+        """异步连接不能调用同步 Token DB 读取。"""
+        async_calls: list[str] = []
+
+        async def no_database_token():
+            async_calls.append("async")
+            return None
+
+        connect_globals = provider.connect.__globals__
+        with patch.object(provider, "config", {"token": ""}):
+            connect_globals["TUSHARE_AVAILABLE"] = True
+            sync_loader = Mock(
+                side_effect=AssertionError("async connect must not use sync token loader")
+            )
+            provider._get_token_from_database = sync_loader
+            provider._get_token_from_database_async = no_database_token
+            result = await provider.connect()
+
+        sync_loader.assert_not_called()
+        assert async_calls == ["async"]
+        assert result is False
+
+    @pytest.mark.asyncio
     async def test_get_stock_list(self, provider, mock_tushare_api):
         """测试获取股票列表"""
         provider.connected = True

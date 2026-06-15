@@ -13,7 +13,8 @@ from app.core.database import get_postgres_db, get_postgres_db_sync
 from app.schemas.analysis import AnalysisParameters
 from app.schemas.config import UsageRecord
 from app.services.analysis.simple import (
-    create_analysis_config,
+    create_analysis_config_async,
+    get_provider_and_url_by_model,
     get_provider_and_url_by_model_sync,
     get_simple_analysis_service,
 )
@@ -104,6 +105,13 @@ def _load_active_system_config_doc() -> dict[str, Any] | None:
     return doc if isinstance(doc, dict) else None
 
 
+async def _load_active_system_config_doc_async() -> dict[str, Any] | None:
+    doc = await get_postgres_db().system_configs.find_one(
+        {"is_active": True}, sort=[("version", -1)]
+    )
+    return doc if isinstance(doc, dict) else None
+
+
 def _enabled_llm_configs(doc: dict[str, Any] | None) -> list[dict[str, Any]]:
     if not doc:
         return []
@@ -159,10 +167,26 @@ def _provider_info_for_model(
     return cache[model_name]
 
 
+async def _provider_info_for_model_async(
+    model_name: str, cache: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    if model_name not in cache:
+        cache[model_name] = await get_provider_and_url_by_model(model_name)
+    return cache[model_name]
+
+
 def _model_has_configured_key(
     model_name: str, cache: dict[str, dict[str, Any]]
 ) -> bool:
     provider_info = _provider_info_for_model(model_name, cache)
+    api_key = provider_info.get("api_key")
+    return bool(str(api_key or "").strip())
+
+
+async def _model_has_configured_key_async(
+    model_name: str, cache: dict[str, dict[str, Any]]
+) -> bool:
+    provider_info = await _provider_info_for_model_async(model_name, cache)
     api_key = provider_info.get("api_key")
     return bool(str(api_key or "").strip())
 
@@ -272,6 +296,35 @@ def _configured_model_for_role(
     return None
 
 
+async def _configured_model_for_role_async(
+    *,
+    doc: dict[str, Any] | None,
+    role: str,
+    configured_default: str | None,
+    provider_cache: dict[str, dict[str, Any]],
+) -> str | None:
+    configs = _enabled_llm_configs(doc)
+    role_candidates = sorted(
+        [config for config in configs if _is_role_candidate(config, role)],
+        key=lambda config: _model_sort_key(config, role),
+        reverse=True,
+    )
+    fallback_candidates = sorted(
+        configs,
+        key=lambda config: _model_sort_key(config, role),
+        reverse=True,
+    )
+    candidate_names = _dedupe_model_names(
+        [configured_default]
+        + [str(config["model_name"]) for config in role_candidates]
+        + [str(config["model_name"]) for config in fallback_candidates]
+    )
+    for model_name in candidate_names:
+        if await _model_has_configured_key_async(model_name, provider_cache):
+            return model_name
+    return None
+
+
 def _resolve_analysis_models(payload: dict[str, Any]) -> tuple[str | None, str | None]:
     explicit_quick_model = _clean_model_name(payload.get("quick_analysis_model"))
     explicit_deep_model = _clean_model_name(payload.get("deep_analysis_model"))
@@ -293,6 +346,38 @@ def _resolve_analysis_models(payload: dict[str, Any]) -> tuple[str | None, str |
         provider_cache=provider_cache,
     )
     deep_model = explicit_deep_model or _configured_model_for_role(
+        doc=doc,
+        role="deep_analysis",
+        configured_default=_clean_model_name(settings.get("deep_analysis_model"))
+        or default_model,
+        provider_cache=provider_cache,
+    )
+    return quick_model, deep_model
+
+
+async def _resolve_analysis_models_async(
+    payload: dict[str, Any],
+) -> tuple[str | None, str | None]:
+    explicit_quick_model = _clean_model_name(payload.get("quick_analysis_model"))
+    explicit_deep_model = _clean_model_name(payload.get("deep_analysis_model"))
+    if explicit_quick_model and explicit_deep_model:
+        return explicit_quick_model, explicit_deep_model
+
+    doc = await _load_active_system_config_doc_async()
+    settings = doc.get("system_settings") if doc else {}
+    if not isinstance(settings, dict):
+        settings = {}
+    default_model = _clean_model_name(doc.get("default_llm")) if doc else None
+
+    provider_cache: dict[str, dict[str, Any]] = {}
+    quick_model = explicit_quick_model or await _configured_model_for_role_async(
+        doc=doc,
+        role="quick_analysis",
+        configured_default=_clean_model_name(settings.get("quick_analysis_model"))
+        or default_model,
+        provider_cache=provider_cache,
+    )
+    deep_model = explicit_deep_model or await _configured_model_for_role_async(
         doc=doc,
         role="deep_analysis",
         configured_default=_clean_model_name(settings.get("deep_analysis_model"))
@@ -374,6 +459,48 @@ def _analysis_parameters(
     )
 
 
+async def _analysis_parameters_async(
+    payload: dict[str, Any],
+) -> tuple[AnalysisParameters, list[dict[str, str]], list[dict[str, str]]]:
+    quick_model, deep_model = await _resolve_analysis_models_async(payload)
+    market_type = str(payload.get("market_type") or "A股")
+    analysts, skipped_stages = _normalize_analysts(
+        payload.get("selected_analysts") or payload.get("analysts"),
+        market_type=market_type,
+    )
+    include_risk = bool(payload.get("include_risk", True))
+    stage_plan = planned_stock_stages(
+        selected_analysts=analysts,
+        include_risk=include_risk,
+        initial_skipped=skipped_stages,
+    )
+    skipped_stages = [
+        {"stage": item["stage"], "reason": item["reason"]}
+        for item in stage_plan
+        if item.get("status") == "skipped" and item.get("reason")
+    ]
+    return (
+        AnalysisParameters.model_validate(
+            {
+                "market_type": market_type,
+                "analysis_date": payload.get("analysis_date"),
+                "research_depth": _normalize_depth(
+                    payload.get("research_depth") or payload.get("depth")
+                ),
+                "selected_analysts": analysts,
+                "custom_prompt": payload.get("custom_prompt"),
+                "include_sentiment": bool(payload.get("include_sentiment", True)),
+                "include_risk": include_risk,
+                "language": payload.get("language") or "zh-CN",
+                "quick_analysis_model": quick_model,
+                "deep_analysis_model": deep_model,
+            }
+        ),
+        skipped_stages,
+        stage_plan,
+    )
+
+
 def _missing_model_keys(parameters: AnalysisParameters) -> list[str]:
     missing: list[str] = []
     for role_name, model_name in (
@@ -384,6 +511,24 @@ def _missing_model_keys(parameters: AnalysisParameters) -> list[str]:
             missing.append(f"{role_name} 未选择可用模型")
             continue
         provider_info = get_provider_and_url_by_model_sync(model_name)
+        if not provider_info.get("api_key"):
+            missing.append(
+                f"{role_name} {model_name} ({provider_info.get('provider')})"
+            )
+    return missing
+
+
+async def _missing_model_keys_async(parameters: AnalysisParameters) -> list[str]:
+    missing: list[str] = []
+    provider_cache: dict[str, dict[str, Any]] = {}
+    for role_name, model_name in (
+        ("快速分析模型", parameters.quick_analysis_model),
+        ("深度决策模型", parameters.deep_analysis_model),
+    ):
+        if not model_name:
+            missing.append(f"{role_name} 未选择可用模型")
+            continue
+        provider_info = await _provider_info_for_model_async(model_name, provider_cache)
         if not provider_info.get("api_key"):
             missing.append(
                 f"{role_name} {model_name} ({provider_info.get('provider')})"
@@ -513,7 +658,7 @@ async def read_stock_analysis_report(
     }
 
 
-def build_agent_stock_workflow_context(
+async def build_agent_stock_workflow_context(
     *,
     principal_context: ToolExecutionContext,
     symbol: str,
@@ -527,15 +672,18 @@ def build_agent_stock_workflow_context(
 
     quick_model = parameters.quick_analysis_model or "qwen-turbo"
     deep_model = parameters.deep_analysis_model or quick_model
-    quick_provider = _provider_info_for_model(quick_model, {})
-    deep_provider = _provider_info_for_model(deep_model, {})
-    config = create_analysis_config(
+    provider_cache: dict[str, dict[str, Any]] = {}
+    quick_provider = await _provider_info_for_model_async(quick_model, provider_cache)
+    deep_provider = await _provider_info_for_model_async(deep_model, provider_cache)
+    config = await create_analysis_config_async(
         parameters.research_depth,
         parameters.selected_analysts,
         quick_model,
         deep_model,
         str(quick_provider.get("provider") or "qwen"),
         market_type=market_type,
+        quick_provider_info=quick_provider,
+        deep_provider_info=deep_provider,
     )
     config.update(
         {
@@ -575,7 +723,7 @@ async def run_agent_stock_workflow(
     batch_id: str | None = None,
 ) -> dict[str, Any]:
     task_id = str(uuid.uuid4())
-    workflow_context = build_agent_stock_workflow_context(
+    workflow_context = await build_agent_stock_workflow_context(
         principal_context=context,
         symbol=symbol,
         market_type=market_type,
@@ -776,10 +924,10 @@ async def _record_stock_workflow_usage(
     if not model_name:
         return
 
-    provider_info = _provider_info_for_model(model_name, {})
+    provider_info = await _provider_info_for_model_async(model_name, {})
     provider = str(provider_info.get("provider") or "unknown")
     input_tokens, output_tokens = _usage_token_counts(report)
-    pricing = _usage_pricing_for_model(model_name)
+    pricing = await _usage_pricing_for_model_async(model_name)
     cost = (
         input_tokens / 1000 * pricing["input_price_per_1k"]
         + output_tokens / 1000 * pricing["output_price_per_1k"]
@@ -828,6 +976,23 @@ def _usage_token_counts(report: dict[str, Any]) -> tuple[int, int]:
 
 def _usage_pricing_for_model(model_name: str) -> dict[str, Any]:
     config_doc = _load_active_system_config_doc()
+    for config in _enabled_llm_configs(config_doc):
+        if str(config.get("model_name") or "") != model_name:
+            continue
+        return {
+            "input_price_per_1k": _usage_float(config.get("input_price_per_1k")),
+            "output_price_per_1k": _usage_float(config.get("output_price_per_1k")),
+            "currency": str(config.get("currency") or "CNY"),
+        }
+    return {
+        "input_price_per_1k": 0.0,
+        "output_price_per_1k": 0.0,
+        "currency": "CNY",
+    }
+
+
+async def _usage_pricing_for_model_async(model_name: str) -> dict[str, Any]:
+    config_doc = await _load_active_system_config_doc_async()
     for config in _enabled_llm_configs(config_doc):
         if str(config.get("model_name") or "") != model_name:
             continue
@@ -892,8 +1057,6 @@ class StockAnalysisWorkflow:
         symbol, market_type = _normalize_stock_symbol_for_analysis(
             raw_symbol, payload.get("market_type")
         )
-        parameter_payload = {**payload, "market_type": market_type}
-        parameters, skipped_stages, stage_plan = _analysis_parameters(parameter_payload)
         if not symbol:
             return {
                 "tool": self.tool_name,
@@ -905,6 +1068,10 @@ class StockAnalysisWorkflow:
                     "请提供要分析的股票代码，例如 600519、000001、AAPL 或 00700。"
                 ),
             }
+        parameter_payload = {**payload, "market_type": market_type}
+        parameters, skipped_stages, stage_plan = await _analysis_parameters_async(
+            parameter_payload
+        )
         format_error = _stock_symbol_format_error(
             raw_symbol, symbol, parameters.market_type
         )
@@ -916,7 +1083,7 @@ class StockAnalysisWorkflow:
                 "reason": format_error,
                 "instruction": "请提供可识别的 A 股、港股或美股代码。",
             }
-        missing_keys = _missing_model_keys(parameters)
+        missing_keys = await _missing_model_keys_async(parameters)
         if missing_keys:
             return {
                 "tool": self.tool_name,

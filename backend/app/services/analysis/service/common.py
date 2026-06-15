@@ -24,6 +24,8 @@ from app.schemas.config import UsageRecord
 from app.schemas.user import PyDocumentId
 from app.services.analysis.simple import (
     create_analysis_config,
+    create_analysis_config_async,
+    get_provider_and_url_by_model,
     get_provider_by_model_name,
     get_provider_by_model_name_sync,
 )
@@ -68,9 +70,11 @@ __all__ = [
     "UsageStatisticsService",
     "cast",
     "create_analysis_config",
+    "create_analysis_config_async",
     "datetime",
     "dual_write_hot_document",
     "get_postgres_db",
+    "get_provider_and_url_by_model",
     "get_provider_by_model_name",
     "get_provider_by_model_name_sync",
     "get_redis_client",

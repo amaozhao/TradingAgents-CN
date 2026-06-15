@@ -66,7 +66,9 @@ class BatchStockWorkflow:
         payload: Mapping[str, object],
     ) -> dict[str, Any]:
         try:
-            request = batch_context.build_batch_request_context(context, payload)
+            request = await batch_context.build_batch_request_context_async(
+                context, payload
+            )
         except batch_context.BatchConfigError as exc:
             return {
                 "tool": self.tool_name,
@@ -108,7 +110,9 @@ class BatchStockWorkflow:
         payload: Mapping[str, object],
     ) -> dict[str, Any]:
         try:
-            request = batch_context.build_batch_request_context(context, payload)
+            request = await batch_context.build_batch_request_context_async(
+                context, payload
+            )
         except batch_context.BatchConfigError as exc:
             return {
                 "tool": self.tool_name,

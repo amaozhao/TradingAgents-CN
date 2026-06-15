@@ -5,7 +5,6 @@
 
 import importlib
 import time
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
@@ -484,21 +483,7 @@ async def create_user(
 
         # 如果需要设置为管理员
         if payload.is_admin:
-            db = user_service.db
-            db.users.update_one(
-                {"username": payload.username}, {"$set": {"is_admin": True}}
-            )
-            await user_service._dual_write_user(
-                {
-                    "_id": new_user.id,
-                    "username": new_user.username,
-                    "email": new_user.email,
-                    "is_active": new_user.is_active,
-                    "is_verified": new_user.is_verified,
-                    "is_admin": True,
-                    "updated_at": datetime.utcnow(),
-                }
-            )
+            await user_service.set_admin(payload.username, True)
 
         return {
             "success": True,

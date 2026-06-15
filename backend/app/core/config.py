@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     # 并发控制
     DEFAULT_USER_CONCURRENT_LIMIT: int = Field(default=3)
     GLOBAL_CONCURRENT_LIMIT: int = Field(default=50)
+    ANALYSIS_MAX_WORKERS: int = Field(
+        default=3,
+        description="SimpleAnalysisService thread-pool worker count. Keep this aligned with user/global analysis concurrency limits.",
+    )
     DEFAULT_DAILY_QUOTA: int = Field(default=1000)
 
     # 速率限制

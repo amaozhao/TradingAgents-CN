@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import asyncio
 import atexit
+import contextvars
 import copy
 import importlib
+import os
 import re
 import threading
 import uuid
+import warnings
 from collections.abc import Coroutine
+from contextlib import contextmanager
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from typing import Any
+from typing import Any, Iterator
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -24,6 +28,57 @@ from .imports import CONFIG_COLLECTIONS, SPECIALIZED_MODELS
 _sync_loop: asyncio.AbstractEventLoop | None = None
 _sync_loop_thread: threading.Thread | None = None
 _sync_loop_lock = threading.Lock()
+_sync_postgres_async_allowance: contextvars.ContextVar[int] = contextvars.ContextVar(
+    "sync_postgres_async_allowance", default=0
+)
+
+
+@contextmanager
+def allow_sync_postgres_in_async(_reason: str = "") -> Iterator[None]:
+    """Temporarily allow the sync document-store bridge in an async runtime."""
+    token = _sync_postgres_async_allowance.set(
+        _sync_postgres_async_allowance.get() + 1
+    )
+    try:
+        yield
+    finally:
+        _sync_postgres_async_allowance.reset(token)
+
+
+def ensure_sync_postgres_runtime_allowed(operation: str) -> None:
+    """Reject accidental sync document-store use from an active event loop."""
+    if _sync_postgres_async_allowance.get() > 0:
+        return
+    if _env_flag_enabled("TRADING_AGENTS_ALLOW_SYNC_DB_IN_ASYNC"):
+        return
+    if not _has_running_loop():
+        return
+
+    mode = os.getenv("TRADING_AGENTS_SYNC_DB_ASYNC_GUARD", "error").strip().lower()
+    if mode in {"0", "false", "off", "disable", "disabled", "none"}:
+        return
+
+    message = (
+        f"{operation} is not allowed inside a running async event loop. "
+        "Use the async PostgreSQL document store, or explicitly wrap a legacy "
+        "sync-only boundary with allow_sync_postgres_in_async(...)."
+    )
+    if mode in {"warn", "warning"}:
+        warnings.warn(message, RuntimeWarning, stacklevel=3)
+        return
+    raise RuntimeError(message)
+
+
+def _has_running_loop() -> bool:
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return False
+    return True
+
+
+def _env_flag_enabled(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _row_to_document(row: Any) -> dict[str, Any]:
@@ -301,6 +356,11 @@ def _group_documents(
 
 
 def _run_blocking(coro: Coroutine[Any, Any, Any]) -> Any:
+    try:
+        ensure_sync_postgres_runtime_allowed("_run_blocking")
+    except Exception:
+        coro.close()
+        raise
     loop = _get_sync_loop()
     return asyncio.run_coroutine_threadsafe(coro, loop).result()
 

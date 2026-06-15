@@ -72,6 +72,39 @@ class _TushareProviderMixin1:
 
         return None
 
+    async def _get_token_from_database_async(self) -> Optional[str]:
+        """
+        从数据库异步读取 Tushare Token，供 Web/Worker async path 使用。
+        """
+        try:
+            self.logger.info("🔍 [DB查询] 开始从数据库异步读取 Token...")
+            get_postgres_db = getattr(
+                importlib.import_module("app.core.database"), "get_postgres_db"
+            )
+            db = get_postgres_db()
+            config_data = await db.system_configs.find_one(
+                {"is_active": True}, sort=[("version", -1)]
+            )
+
+            if config_data and config_data.get("data_source_configs"):
+                for ds_config in config_data["data_source_configs"]:
+                    if ds_config.get("type") != "tushare":
+                        continue
+                    api_key = ds_config.get("api_key")
+                    if api_key and not api_key.startswith("your_"):
+                        self.logger.info(
+                            f"✅ [DB查询] 异步读取到有效 Tushare Token (长度: {len(api_key)})"
+                        )
+                        return api_key
+
+            self.logger.info("⚠️ [DB查询] 数据库中未找到有效的 Tushare Token")
+        except Exception as e:
+            self.logger.error(f"❌ [DB查询] 从数据库异步读取 Token 失败: {e}")
+            traceback = importlib.import_module("traceback")
+            self.logger.error(f"❌ [DB查询] 堆栈跟踪:\n{traceback.format_exc()}")
+
+        return None
+
     def connect_sync(self) -> bool:
         """同步连接到Tushare"""
         if not TUSHARE_AVAILABLE:
@@ -174,7 +207,7 @@ class _TushareProviderMixin1:
 
         try:
             # 🔥 优先从数据库读取 Token
-            db_token = self._get_token_from_database()
+            db_token = await self._get_token_from_database_async()
             env_token = self.config.get("token")
 
             # 尝试数据库 Token
